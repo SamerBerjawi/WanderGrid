@@ -1,4 +1,5 @@
 
+
 import React, { useEffect, useState, useMemo } from 'react';
 import { Button, Badge } from '../components/ui';
 import { TripModal } from '../components/TripModal';
@@ -113,12 +114,12 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
                 {filteredTrips.map(trip => {
                     const days = Math.ceil((new Date(trip.endDate).getTime() - new Date(trip.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1;
-                    const flightCount = trip.flights?.length || 0;
+                    const transportCount = trip.transports?.length || 0;
                     const accommodationCount = trip.accommodations?.length || 0;
                     
-                    const flightCost = trip.flights?.reduce((sum, f) => sum + (f.cost || 0), 0) || 0;
+                    const transportCost = trip.transports?.reduce((sum, f) => sum + (f.cost || 0), 0) || 0;
                     const stayCost = trip.accommodations?.reduce((sum, a) => sum + (a.cost || 0), 0) || 0;
-                    const totalCost = flightCost + stayCost;
+                    const totalCost = transportCost + stayCost;
 
                     return (
                         <div key={trip.id} className="group relative bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-white/5 shadow-lg overflow-hidden flex flex-col hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
@@ -161,8 +162,8 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                                  <div className="flex justify-between items-center mb-4">
                                      <div className="flex gap-4">
                                          <div className="flex flex-col">
-                                             <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Flights</span>
-                                             <span className="text-lg font-black text-gray-800 dark:text-white">{flightCount}</span>
+                                             <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Transport</span>
+                                             <span className="text-lg font-black text-gray-800 dark:text-white">{transportCount}</span>
                                          </div>
                                          <div className="flex flex-col">
                                              <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Stays</span>

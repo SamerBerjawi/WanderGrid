@@ -1,5 +1,6 @@
 
-import { User, Trip, PublicHoliday, EntitlementType, SavedConfig, EntitlementRule, WorkspaceSettings, CustomEvent } from '../types';
+
+import { User, Trip, PublicHoliday, EntitlementType, SavedConfig, EntitlementRule, WorkspaceSettings, CustomEvent, Transport } from '../types';
 
 const STORAGE_KEY = 'wandergrid_app_data';
 
@@ -90,7 +91,28 @@ class DataService {
       if (stored) {
         const data = JSON.parse(stored);
         this.users = Array.isArray(data.users) ? data.users : DEFAULT_USERS;
-        this.trips = Array.isArray(data.trips) ? data.trips : DEFAULT_TRIPS;
+        
+        // Migration logic for trips
+        this.trips = (Array.isArray(data.trips) ? data.trips : DEFAULT_TRIPS).map((t: any) => {
+            // Migrate legacy flights to transports
+            let transports: Transport[] = t.transports || [];
+            if (!transports.length && t.flights && t.flights.length > 0) {
+                transports = t.flights.map((f: any) => ({
+                    ...f,
+                    mode: 'Flight',
+                    provider: f.airline || '',
+                    identifier: f.flightNumber || '',
+                }));
+            }
+
+            return {
+                ...t,
+                transports: transports,
+                accommodations: t.accommodations || [],
+                activities: t.activities || []
+            };
+        });
+
         this.customEvents = Array.isArray(data.customEvents) ? data.customEvents : DEFAULT_CUSTOM_EVENTS;
         this.entitlements = Array.isArray(data.entitlements) ? data.entitlements : DEFAULT_ENTITLEMENTS;
         this.savedConfigs = Array.isArray(data.savedConfigs) ? data.savedConfigs : DEFAULT_SAVED_CONFIGS;
@@ -292,21 +314,20 @@ class DataService {
   // --- Export/Import ---
   async exportFullState(): Promise<string> {
       const state = {
-          version: '3.1', // Updated schema version
+          version: '3.2', // Updated schema version
           timestamp: new Date().toISOString(),
           users: this.users,
           trips: this.trips,
           customEvents: this.customEvents,
           entitlements: this.entitlements,
           savedConfigs: this.savedConfigs,
-          workspaceSettings: this.workspaceSettings // Includes aviationStackApiKey & currency
+          workspaceSettings: this.workspaceSettings 
       };
       return JSON.stringify(state, null, 2);
   }
 
   async importFullState(jsonString: string): Promise<void> {
       try {
-          // Robustly handle string input, strip BOM if present
           const cleanString = jsonString.trim().replace(/^\uFEFF/, '');
           if (!cleanString) throw new Error("File is empty");
 
@@ -316,35 +337,25 @@ class DataService {
              throw new Error("Invalid backup file format: Root must be an object");
           }
 
-          // Basic validation to ensure it looks like a backup
-          if (!Array.isArray(state.users) && !state.users) {
-              console.warn("Backup missing 'users' array, assuming empty.");
-          }
-
-          // Load into memory with schema migration logic
           this.users = (Array.isArray(state.users) ? state.users : []).map((u: any) => ({
             ...u,
-            activeYears: u.activeYears || [new Date().getFullYear()], // V2.4 migration
+            activeYears: u.activeYears || [new Date().getFullYear()], 
             policies: u.policies || []
           }));
 
           this.trips = (Array.isArray(state.trips) ? state.trips : []).map((t: any) => ({
               ...t,
-              flights: t.flights || [], // V3.0 migration
-              accommodations: t.accommodations || [], // V3.0 migration
-              activities: t.activities || [] // V3.1 migration
+              transports: t.transports || t.flights?.map((f:any) => ({...f, mode: 'Flight', provider: f.airline, identifier: f.flightNumber})) || [],
+              accommodations: t.accommodations || [], 
+              activities: t.activities || [] 
           }));
 
           this.customEvents = Array.isArray(state.customEvents) ? state.customEvents : [];
           this.entitlements = Array.isArray(state.entitlements) ? state.entitlements : [];
           this.savedConfigs = Array.isArray(state.savedConfigs) ? state.savedConfigs : [];
           
-          // Robust merge for settings to preserve defaults if missing in backup
-          // This ensures aviationStackApiKey is imported if present in the backup
           this.workspaceSettings = { ...DEFAULT_WORKSPACE_SETTINGS, ...(state.workspaceSettings || {}) };
 
-          // Persist
-          // Note: We avoid localStorage.removeItem() to prevent data loss if saveToStorage fails (e.g. quota)
           this.saveToStorage();
           
           return Promise.resolve();

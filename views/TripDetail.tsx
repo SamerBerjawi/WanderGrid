@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, Button, Badge, Tabs, Modal, Input } from '../components/ui';
-import { FlightConfigurator } from '../components/FlightConfigurator';
+import { TransportConfigurator } from '../components/FlightConfigurator';
 import { AccommodationConfigurator } from '../components/AccommodationConfigurator';
 import { TripModal } from '../components/TripModal';
 import { dataService } from '../services/mockDb';
-import { Trip, User, Flight, Accommodation, WorkspaceSettings, Activity } from '../types';
+import { Trip, User, Transport, Accommodation, WorkspaceSettings, Activity, TransportMode } from '../types';
 
 interface TripDetailProps {
     tripId: string;
@@ -15,12 +15,12 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     const [trip, setTrip] = useState<Trip | null>(null);
     const [users, setUsers] = useState<User[]>([]);
     const [settings, setSettings] = useState<WorkspaceSettings | null>(null);
-    const [activeTab, setActiveTab] = useState('planner'); // Default to planner
-    const [plannerView, setPlannerView] = useState<'list' | 'table'>('list'); // New view toggle
+    const [activeTab, setActiveTab] = useState('planner'); 
+    const [plannerView, setPlannerView] = useState<'list' | 'table'>('list'); 
     const [loading, setLoading] = useState(true);
 
     // Modals
-    const [isFlightModalOpen, setIsFlightModalOpen] = useState(false);
+    const [isTransportModalOpen, setIsTransportModalOpen] = useState(false);
     const [isAccommodationModalOpen, setIsAccommodationModalOpen] = useState(false);
     const [isEditTripOpen, setIsEditTripOpen] = useState(false);
     
@@ -29,8 +29,8 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     const [currentDayForActivity, setCurrentDayForActivity] = useState<string>('');
     const [activityForm, setActivityForm] = useState<Partial<Activity>>({});
     
-    // For editing specific sets of flights/accommodations (reuse logic from Planner)
-    const [editingFlights, setEditingFlights] = useState<Flight[] | null>(null);
+    // Editing States
+    const [editingTransports, setEditingTransports] = useState<Transport[] | null>(null);
     const [editingAccommodations, setEditingAccommodations] = useState<Accommodation[] | null>(null);
 
     useEffect(() => {
@@ -54,7 +54,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
 
     const handleUpdateTrip = async (updatedTrip: Trip) => {
         if (!trip) return;
-        // Merge updates carefully
         const finalTrip = { ...trip, ...updatedTrip };
         await dataService.updateTrip(finalTrip);
         setTrip(finalTrip);
@@ -66,32 +65,31 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         onBack();
     };
 
-    const handleSaveFlights = async (newFlights: Flight[]) => {
+    const handleSaveTransports = async (newTransports: Transport[]) => {
         if (!trip) return;
-        let updatedFlights = [...(trip.flights || [])];
+        let updatedTransports = [...(trip.transports || [])];
         
-        // Remove old versions if editing existing set
-        if (editingFlights && editingFlights.length > 0) {
-             const oldIds = new Set(editingFlights.map(f => f.id));
-             updatedFlights = updatedFlights.filter(f => !oldIds.has(f.id));
+        if (editingTransports && editingTransports.length > 0) {
+             const oldIds = new Set(editingTransports.map(f => f.id));
+             updatedTransports = updatedTransports.filter(f => !oldIds.has(f.id));
         }
         
-        updatedFlights = [...updatedFlights, ...newFlights];
-        const updatedTrip = { ...trip, flights: updatedFlights };
+        updatedTransports = [...updatedTransports, ...newTransports];
+        const updatedTrip = { ...trip, transports: updatedTransports };
         await dataService.updateTrip(updatedTrip);
         setTrip(updatedTrip);
-        setIsFlightModalOpen(false);
-        setEditingFlights(null);
+        setIsTransportModalOpen(false);
+        setEditingTransports(null);
     };
 
-    const handleDeleteFlights = async (ids: string[]) => {
+    const handleDeleteTransports = async (ids: string[]) => {
         if (!trip) return;
-        const updatedFlights = (trip.flights || []).filter(f => !ids.includes(f.id));
-        const updatedTrip = { ...trip, flights: updatedFlights };
+        const updatedTransports = (trip.transports || []).filter(f => !ids.includes(f.id));
+        const updatedTrip = { ...trip, transports: updatedTransports };
         await dataService.updateTrip(updatedTrip);
         setTrip(updatedTrip);
-        setIsFlightModalOpen(false);
-        setEditingFlights(null);
+        setIsTransportModalOpen(false);
+        setEditingTransports(null);
     };
 
     const handleSaveAccommodations = async (items: Accommodation[]) => {
@@ -110,7 +108,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         setIsAccommodationModalOpen(false);
     };
 
-    // --- Activity Handlers ---
     const handleOpenActivityModal = (dateStr: string, existingActivity?: Activity) => {
         setCurrentDayForActivity(dateStr);
         if (existingActivity) {
@@ -159,9 +156,9 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         setActivityForm({});
     };
 
-    const openFlightModal = (flightSet?: Flight[]) => {
-        setEditingFlights(flightSet || null);
-        setIsFlightModalOpen(true);
+    const openTransportModal = (transportSet?: Transport[]) => {
+        setEditingTransports(transportSet || null);
+        setIsTransportModalOpen(true);
     };
 
     const openAccommodationModal = () => {
@@ -178,33 +175,39 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         }
     };
 
+    const getTransportIcon = (mode: TransportMode) => {
+        switch(mode) {
+            case 'Train': return 'train';
+            case 'Bus': return 'directions_bus';
+            case 'Car Rental': return 'car_rental';
+            case 'Personal Car': return 'directions_car';
+            default: return 'flight_takeoff';
+        }
+    };
+
     if (loading || !trip) return <div className="p-8 text-gray-400 animate-pulse">Loading Trip Data...</div>;
 
     const activityCost = trip.activities?.reduce((sum, a) => sum + (a.cost || 0), 0) || 0;
-    const flightCost = trip.flights?.reduce((sum, f) => sum + (f.cost || 0), 0) || 0;
+    const transportCost = trip.transports?.reduce((sum, f) => sum + (f.cost || 0), 0) || 0;
     const stayCost = trip.accommodations?.reduce((sum, a) => sum + (a.cost || 0), 0) || 0;
-    const totalCost = flightCost + stayCost + activityCost;
+    const totalCost = transportCost + stayCost + activityCost;
 
     const duration = Math.ceil((new Date(trip.endDate).getTime() - new Date(trip.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
-    // Group flights by Itinerary ID for display
-    const flightGroups = (trip.flights || []).reduce((groups, flight) => {
-        const key = flight.itineraryId || 'misc';
+    // Group by Itinerary ID
+    const transportGroups = (trip.transports || []).reduce((groups, t) => {
+        const key = t.itineraryId || 'misc';
         if (!groups[key]) groups[key] = [];
-        groups[key].push(flight);
+        groups[key].push(t);
         return groups;
-    }, {} as Record<string, Flight[]>);
+    }, {} as Record<string, Transport[]>);
 
-    // --- Timeline Generation Logic (Robust UTC) ---
     const getTripDates = () => {
         const dates: string[] = [];
-        // Parse strictly as UTC components to avoid local timezone offsets shifts
         const [sy, sm, sd] = trip.startDate.split('-').map(Number);
         const [ey, em, ed] = trip.endDate.split('-').map(Number);
-        
         const curr = new Date(Date.UTC(sy, sm - 1, sd));
         const last = new Date(Date.UTC(ey, em - 1, ed));
-
         while (curr <= last) {
             dates.push(curr.toISOString().split('T')[0]);
             curr.setUTCDate(curr.getUTCDate() + 1);
@@ -265,7 +268,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                             <span className="text-[9px] font-bold text-purple-500/70 uppercase tracking-widest">{trip.participants.length} Travelers</span>
                         </div>
                         <div className="p-4 rounded-2xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-white/5 flex flex-col items-center justify-center text-center">
-                            <span className="text-2xl font-black text-gray-700 dark:text-gray-300">{(trip.flights?.length || 0) + (trip.accommodations?.length || 0) + (trip.activities?.length || 0)}</span>
+                            <span className="text-2xl font-black text-gray-700 dark:text-gray-300">{(trip.transports?.length || 0) + (trip.accommodations?.length || 0) + (trip.activities?.length || 0)}</span>
                             <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Planned Items</span>
                         </div>
                     </div>
@@ -276,7 +279,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 <Tabs 
                     tabs={[
                         { id: 'planner', label: 'Daily Planner', icon: <span className="material-icons-outlined">calendar_view_day</span> },
-                        { id: 'itinerary', label: 'Manage Bookings', icon: <span className="material-icons-outlined">airplane_ticket</span> },
+                        { id: 'itinerary', label: 'Transportation', icon: <span className="material-icons-outlined">commute</span> },
                         { id: 'budget', label: 'Cost Breakdown', icon: <span className="material-icons-outlined">receipt_long</span> },
                     ]}
                     activeTab={activeTab}
@@ -310,16 +313,14 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                             <div className="absolute left-8 top-4 bottom-4 w-0.5 bg-gray-200 dark:bg-gray-800 hidden md:block" />
 
                             {tripDates.map((dateStr, index) => {
-                                const dateObj = new Date(dateStr); // Local display parsing is fine now that string is stable
+                                const dateObj = new Date(dateStr); 
                                 
-                                // Matching
-                                const dayFlights = trip.flights?.filter(f => f.departureDate === dateStr);
+                                const dayTransports = trip.transports?.filter(f => f.departureDate === dateStr);
                                 const dayStay = trip.accommodations?.find(a => dateStr >= a.checkInDate && dateStr < a.checkOutDate);
                                 const dayActivities = trip.activities?.filter(a => a.date === dateStr);
 
                                 return (
                                     <div key={dateStr} className="relative md:pl-20 group">
-                                        {/* Date Bubble */}
                                         <div className="hidden md:flex absolute left-0 top-0 w-16 h-16 bg-white dark:bg-gray-900 border-4 border-gray-100 dark:border-gray-800 rounded-2xl items-center justify-center flex-col z-10 shadow-sm">
                                             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{dateObj.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' })}</span>
                                             <span className="text-xl font-black text-gray-800 dark:text-white leading-none">{dateObj.getUTCDate()}</span>
@@ -332,17 +333,19 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                         </div>
 
                                         <div className="space-y-3 pb-8">
-                                            {/* FLIGHTS */}
-                                            {dayFlights && dayFlights.length > 0 && dayFlights.map(f => (
-                                                <div key={f.id} className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all">
+                                            {/* TRANSPORTS */}
+                                            {dayTransports && dayTransports.length > 0 && dayTransports.map(t => (
+                                                <div key={t.id} className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all">
                                                     <div className="w-10 h-10 rounded-xl bg-blue-500 text-white flex items-center justify-center shadow-lg shadow-blue-500/30">
-                                                        <span className="material-icons-outlined">flight_takeoff</span>
+                                                        <span className="material-icons-outlined">{getTransportIcon(t.mode)}</span>
                                                     </div>
                                                     <div className="flex-1">
-                                                        <h4 className="font-bold text-gray-900 dark:text-white text-sm">Flight to {f.destination}</h4>
-                                                        <p className="text-[10px] text-blue-600 dark:text-blue-300 font-bold uppercase tracking-wider">{f.airline} {f.flightNumber} • {f.departureTime}</p>
+                                                        <h4 className="font-bold text-gray-900 dark:text-white text-sm">{t.mode} to {t.destination}</h4>
+                                                        <p className="text-[10px] text-blue-600 dark:text-blue-300 font-bold uppercase tracking-wider">
+                                                            {t.provider} {t.identifier} • {t.departureTime}
+                                                        </p>
                                                     </div>
-                                                    <button onClick={() => { setActiveTab('itinerary'); setTimeout(() => openFlightModal([f]), 100); }} className="text-gray-400 hover:text-blue-500"><span className="material-icons-outlined text-sm">edit</span></button>
+                                                    <button onClick={() => { setActiveTab('itinerary'); setTimeout(() => openTransportModal([t]), 100); }} className="text-gray-400 hover:text-blue-500"><span className="material-icons-outlined text-sm">edit</span></button>
                                                 </div>
                                             ))}
 
@@ -382,7 +385,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                 </div>
                                             ))}
 
-                                            {/* Add Activity Button */}
                                             <button 
                                                 onClick={() => handleOpenActivityModal(dateStr)}
                                                 className="w-full py-3 border-2 border-dashed border-gray-200 dark:border-white/10 rounded-2xl text-xs font-bold text-gray-400 uppercase tracking-widest hover:border-blue-300 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 focus:opacity-100"
@@ -411,7 +413,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                     <tbody className="divide-y divide-gray-100 dark:divide-white/5">
                                         {tripDates.map((dateStr, index) => {
                                             const dateObj = new Date(dateStr);
-                                            const dayFlights = trip.flights?.filter(f => f.departureDate === dateStr);
+                                            const dayTransports = trip.transports?.filter(f => f.departureDate === dateStr);
                                             const dayStay = trip.accommodations?.find(a => dateStr >= a.checkInDate && dateStr < a.checkOutDate);
                                             const dayActivities = trip.activities?.filter(a => a.date === dateStr);
 
@@ -424,12 +426,12 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                         </div>
                                                     </td>
                                                     <td className="p-4 align-top">
-                                                        {dayFlights && dayFlights.length > 0 ? (
+                                                        {dayTransports && dayTransports.length > 0 ? (
                                                             <div className="space-y-2">
-                                                                {dayFlights.map(f => (
-                                                                    <div key={f.id} className="flex items-center gap-2 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1.5 rounded-lg border border-blue-100 dark:border-blue-900/30 cursor-pointer hover:bg-blue-100" onClick={() => { setActiveTab('itinerary'); setTimeout(() => openFlightModal([f]), 100); }}>
-                                                                        <span className="material-icons-outlined text-sm">flight</span>
-                                                                        <span>{f.origin} &rarr; {f.destination}</span>
+                                                                {dayTransports.map(t => (
+                                                                    <div key={t.id} className="flex items-center gap-2 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1.5 rounded-lg border border-blue-100 dark:border-blue-900/30 cursor-pointer hover:bg-blue-100" onClick={() => { setActiveTab('itinerary'); setTimeout(() => openTransportModal([t]), 100); }}>
+                                                                        <span className="material-icons-outlined text-sm">{getTransportIcon(t.mode)}</span>
+                                                                        <span>{t.origin} &rarr; {t.destination}</span>
                                                                     </div>
                                                                 ))}
                                                             </div>
@@ -480,47 +482,48 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 </>
             )}
 
-            {/* MANAGE BOOKINGS TAB (Existing Lists) */}
+            {/* MANAGE BOOKINGS TAB */}
             {activeTab === 'itinerary' && (
                 <div className="space-y-8">
-                    {/* FLIGHTS */}
+                    {/* TRANSPORT */}
                     <Card noPadding className="rounded-[2rem]">
                         <div className="p-6 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-blue-50/10">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center">
-                                    <span className="material-icons-outlined">flight</span>
+                                    <span className="material-icons-outlined">commute</span>
                                 </div>
-                                <h3 className="text-lg font-black text-gray-900 dark:text-white">Flights</h3>
+                                <h3 className="text-lg font-black text-gray-900 dark:text-white">Transportation</h3>
                             </div>
-                            <Button size="sm" variant="secondary" onClick={() => openFlightModal()}>+ Add Flight</Button>
+                            <Button size="sm" variant="secondary" onClick={() => openTransportModal()}>+ Add Transport</Button>
                         </div>
                         <div className="p-6 space-y-6">
-                            {Object.keys(flightGroups).length === 0 ? (
-                                <div className="text-center py-8 text-gray-400 text-xs font-bold uppercase tracking-widest">No flights booked</div>
+                            {Object.keys(transportGroups).length === 0 ? (
+                                <div className="text-center py-8 text-gray-400 text-xs font-bold uppercase tracking-widest">No transport booked</div>
                             ) : (
-                                Object.entries(flightGroups).map(([gId, groupFlights]) => {
-                                    // FIX: Explicitly cast groupFlights to Flight[] to resolve TS error
-                                    const flights = groupFlights as Flight[];
+                                Object.entries(transportGroups).map(([gId, groupTransports]) => {
+                                    const items = groupTransports as Transport[];
                                     return (
                                     <div key={gId} className="bg-gray-50 dark:bg-white/5 rounded-2xl p-4 border border-gray-100 dark:border-white/5 relative group">
                                         <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button onClick={() => openFlightModal(flights)} className="p-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm text-blue-500 hover:bg-blue-50 transition-colors">
+                                            <button onClick={() => openTransportModal(items)} className="p-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm text-blue-500 hover:bg-blue-50 transition-colors">
                                                 <span className="material-icons-outlined text-sm">edit</span>
                                             </button>
                                         </div>
                                         <div className="space-y-4">
-                                            {flights.map((f, idx) => (
-                                                <div key={f.id} className="flex items-center gap-4">
-                                                    <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xs font-black">{idx + 1}</div>
+                                            {items.map((t, idx) => (
+                                                <div key={t.id} className="flex items-center gap-4">
+                                                    <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                                                        <span className="material-icons-outlined text-sm">{getTransportIcon(t.mode)}</span>
+                                                    </div>
                                                     <div className="flex-1">
                                                         <div className="flex items-center gap-2">
-                                                            <span className="font-black text-gray-800 dark:text-white">{f.origin}</span>
+                                                            <span className="font-black text-gray-800 dark:text-white">{t.origin}</span>
                                                             <span className="material-icons-outlined text-xs text-gray-400">arrow_forward</span>
-                                                            <span className="font-black text-gray-800 dark:text-white">{f.destination}</span>
+                                                            <span className="font-black text-gray-800 dark:text-white">{t.destination}</span>
                                                         </div>
-                                                        <div className="text-xs text-gray-500 mt-0.5">{f.airline} {f.flightNumber} • {new Date(f.departureDate).toLocaleDateString()}</div>
+                                                        <div className="text-xs text-gray-500 mt-0.5">{t.mode} • {t.provider} {t.identifier} • {new Date(t.departureDate).toLocaleDateString()}</div>
                                                     </div>
-                                                    {f.cost && <div className="font-bold text-gray-700 dark:text-gray-300">{formatCurrency(f.cost)}</div>}
+                                                    {t.cost && <div className="font-bold text-gray-700 dark:text-gray-300">{formatCurrency(t.cost)}</div>}
                                                 </div>
                                             ))}
                                         </div>
@@ -585,8 +588,8 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                         </div>
                         <div className="p-6 space-y-6">
                             <div className="flex justify-between items-center">
-                                <span className="font-bold text-gray-600 dark:text-gray-300">Flights Total</span>
-                                <span className="font-black text-gray-900 dark:text-white">{formatCurrency(flightCost)}</span>
+                                <span className="font-bold text-gray-600 dark:text-gray-300">Transportation</span>
+                                <span className="font-black text-gray-900 dark:text-white">{formatCurrency(transportCost)}</span>
                             </div>
                             <div className="flex justify-between items-center">
                                 <span className="font-bold text-gray-600 dark:text-gray-300">Accommodation Total</span>
@@ -609,13 +612,13 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                             <h3 className="text-lg font-black text-gray-900 dark:text-white">Expense Details</h3>
                         </div>
                         <div className="p-6 space-y-4 max-h-[500px] overflow-y-auto custom-scrollbar">
-                            {(trip.flights || []).filter(f => f.cost).map((f, i) => (
-                                <div key={'f'+i} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
+                            {(trip.transports || []).filter(t => t.cost).map((t, i) => (
+                                <div key={'t'+i} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
                                     <div>
-                                        <div className="font-bold text-sm text-gray-800 dark:text-white">Flight: {f.airline}</div>
-                                        <div className="text-[10px] text-gray-500">{f.origin} -&gt; {f.destination}</div>
+                                        <div className="font-bold text-sm text-gray-800 dark:text-white">{t.mode}: {t.provider}</div>
+                                        <div className="text-[10px] text-gray-500">{t.origin} -&gt; {t.destination}</div>
                                     </div>
-                                    <span className="font-bold text-gray-900 dark:text-white">{formatCurrency(f.cost || 0)}</span>
+                                    <span className="font-bold text-gray-900 dark:text-white">{formatCurrency(t.cost || 0)}</span>
                                 </div>
                             ))}
                             {(trip.accommodations || []).filter(a => a.cost).map((a, i) => (
@@ -652,12 +655,12 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 initialData={trip}
             />
 
-            <Modal isOpen={isFlightModalOpen} onClose={() => { setIsFlightModalOpen(false); setEditingFlights(null); }} title="Manage Flights" maxWidth="max-w-2xl">
-                 <FlightConfigurator 
-                    initialData={editingFlights || undefined}
-                    onSave={handleSaveFlights}
-                    onDelete={handleDeleteFlights}
-                    onCancel={() => { setIsFlightModalOpen(false); setEditingFlights(null); }}
+            <Modal isOpen={isTransportModalOpen} onClose={() => { setIsTransportModalOpen(false); setEditingTransports(null); }} title="Manage Transport" maxWidth="max-w-2xl">
+                 <TransportConfigurator 
+                    initialData={editingTransports || undefined}
+                    onSave={handleSaveTransports}
+                    onDelete={handleDeleteTransports}
+                    onCancel={() => { setIsTransportModalOpen(false); setEditingTransports(null); }}
                     defaultStartDate={trip.startDate}
                     defaultEndDate={trip.endDate}
                  />

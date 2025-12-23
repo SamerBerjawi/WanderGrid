@@ -1,4 +1,5 @@
 
+
 export interface User {
   id: string;
   name: string;
@@ -38,27 +39,33 @@ export interface TripAllocation {
   targetYear?: number; // New: specific year this allocation applies to
 }
 
-export interface Flight {
+export type TransportMode = 'Flight' | 'Train' | 'Bus' | 'Car Rental' | 'Personal Car';
+
+export interface Transport {
   id: string;
   itineraryId: string; // Grouping ID for round trips/multi-city
   type: 'One-Way' | 'Round Trip' | 'Multi-City';
-  airline: string;
-  flightNumber: string;
+  mode: TransportMode; // New: Transport Type
+  provider: string; // airline, train operator, rental company
+  identifier: string; // flightNumber, train number, plate number
   confirmationCode: string;
-  origin: string; // Airport Code or City
+  origin: string; // Airport Code, Station, or City
   destination: string;
   departureDate: string;
   departureTime: string;
   arrivalDate: string;
   arrivalTime: string;
-  travelClass: 'Economy' | 'Economy+' | 'Business' | 'First';
-  seatNumber: string;
-  seatType: 'Window' | 'Aisle' | 'Middle';
-  isExitRow: boolean;
+  travelClass?: 'Economy' | 'Economy+' | 'Business' | 'First' | 'Standard' | 'Sleeper'; // Optional for Car
+  seatNumber?: string;
+  seatType?: 'Window' | 'Aisle' | 'Middle';
+  isExitRow?: boolean;
+  vehicleModel?: string; // For Car
+  pickupLocation?: string; // For Car Rental
+  dropoffLocation?: string; // For Car Rental
   reason: 'Personal' | 'Business';
-  cost?: number; // New
-  currency?: string; // New
-  website?: string; // New
+  cost?: number; 
+  currency?: string; 
+  website?: string; 
 }
 
 export interface Accommodation {
@@ -104,7 +111,8 @@ export interface Trip {
   entitlementId?: string; // Primary entitlement (legacy or main color)
   allocations?: TripAllocation[]; // Support for split categories
   excludedDates?: string[]; // New: Persist specific days toggled off by user
-  flights?: Flight[]; // New: Flight itinerary
+  transports?: Transport[]; // Renamed from flights
+  flights?: any[]; // Deprecated: kept for temporary type safety during migration if needed, but preferred to use transports
   accommodations?: Accommodation[]; // New: Accommodation list
   activities?: Activity[]; // New: Daily activities
 }
