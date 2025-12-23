@@ -562,7 +562,7 @@ export const LeaveRequestModal: React.FC<LeaveRequestModalProps> = ({
     };
 
     const getBalanceForEntitlement = (entId: string, targetYearOverride?: number): number => {
-        if (entId === NO_IMPACT_KEY) return Infinity;
+        if (entId === NO_IMPACT_KEY) return Infinity; 
         
         let year = targetYearOverride;
         if (!year) {
@@ -708,6 +708,53 @@ export const LeaveRequestModal: React.FC<LeaveRequestModalProps> = ({
         { label: '📅 General Event (No Impact)', value: NO_IMPACT_KEY }
     ];
 
+    const suggestion = useMemo(() => {
+        if (!requestForm.startDate || !requestForm.userId || requestForm.useMultiCategory || requestForm.crossYearMode) return null;
+        
+        const currentYear = parseInt(requestForm.startDate.split('-')[0]);
+        const tripStart = new Date(requestForm.startDate);
+        const user = users.find(u => u.id === requestForm.userId);
+        if (!user) return null;
+
+        // Check other entitlements
+        const userEnts = getUserEntitlements(requestForm.userId);
+        
+        for (const ent of userEnts) {
+            if (ent.id === requestForm.entitlementId) continue; // Skip current
+
+            const prevYear = currentYear - 1;
+            const prevPolicies = user.policies?.filter(p => p.year === prevYear && p.carryOver.enabled) || [];
+
+            for (const prevP of prevPolicies) {
+                const targetId = prevP.carryOver.targetEntitlementId || prevP.entitlementId;
+                
+                if (targetId === ent.id) {
+                     const balance = getBalanceForEntitlement(ent.id, currentYear);
+                     if (balance <= 0) continue;
+
+                     let expiryDate: Date | null = null;
+                     if (prevP.carryOver.expiryType === 'fixed_date' && prevP.carryOver.expiryValue) {
+                         const [m, d] = (prevP.carryOver.expiryValue as string).split('-').map(Number);
+                         expiryDate = new Date(currentYear, m - 1, d);
+                     } else if (prevP.carryOver.expiryType === 'months' && prevP.carryOver.expiryValue) {
+                         expiryDate = new Date(currentYear, 0, 1);
+                         expiryDate.setMonth(expiryDate.getMonth() + (prevP.carryOver.expiryValue as number));
+                     }
+
+                     if (expiryDate && tripStart <= expiryDate) {
+                         return {
+                             entitlementId: ent.id,
+                             name: ent.name,
+                             expiryDate,
+                             balance
+                         };
+                     }
+                }
+            }
+        }
+        return null;
+    }, [requestForm.startDate, requestForm.userId, requestForm.entitlementId, requestForm.useMultiCategory, requestForm.crossYearMode, users, entitlements]);
+
     return (
         <>
             <Modal isOpen={isOpen} onClose={onClose} title={requestForm.id ? "Edit Request" : "New Leave Request"} maxWidth="max-w-4xl">
@@ -723,12 +770,30 @@ export const LeaveRequestModal: React.FC<LeaveRequestModalProps> = ({
                                     onChange={e => setRequestForm({...requestForm, userId: e.target.value, entitlementId: getUserEntitlements(e.target.value)[0]?.id || NO_IMPACT_KEY})} 
                                 />
                                 {!requestForm.useMultiCategory && !requestForm.crossYearMode ? (
-                                    <Select 
-                                        label="Leave Type" 
-                                        options={leaveOptions} 
-                                        value={requestForm.entitlementId} 
-                                        onChange={e => setRequestForm({...requestForm, entitlementId: e.target.value})} 
-                                    />
+                                    <div className="flex flex-col gap-1.5 w-full">
+                                        <Select 
+                                            label="Leave Type" 
+                                            options={leaveOptions} 
+                                            value={requestForm.entitlementId} 
+                                            onChange={e => setRequestForm({...requestForm, entitlementId: e.target.value})} 
+                                        />
+                                        {suggestion && (
+                                            <div className="flex items-center justify-between p-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 animate-fade-in">
+                                                <div className="flex items-center gap-2 text-xs font-medium text-amber-800 dark:text-amber-300">
+                                                    <span className="material-icons-outlined text-sm">lightbulb</span>
+                                                    <span>
+                                                        <strong>{Math.floor(suggestion.balance)}d</strong> in {suggestion.name} expire soon!
+                                                    </span>
+                                                </div>
+                                                <button 
+                                                    onClick={() => setRequestForm({...requestForm, entitlementId: suggestion.entitlementId})}
+                                                    className="px-2 py-1 text-[10px] font-bold uppercase tracking-wide bg-white dark:bg-black/20 text-amber-700 dark:text-amber-400 rounded-lg shadow-sm hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
+                                                >
+                                                    Switch
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
                                 ) : (
                                     <div className="flex flex-col justify-end">
                                         <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide ml-1 mb-1.5">Allocation Mode</label>

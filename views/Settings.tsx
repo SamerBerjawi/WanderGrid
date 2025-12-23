@@ -27,7 +27,8 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
       dateFormat: 'MM/DD/YYYY',
       autoSync: false,
       theme: 'light',
-      workingDays: [1, 2, 3, 4, 5]
+      workingDays: [1, 2, 3, 4, 5],
+      aviationStackApiKey: ''
   });
 
   const [isEditingUser, setIsEditingUser] = useState(false);
@@ -330,6 +331,33 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                     </div>
                 </Card>
 
+                {/* External Integrations Section */}
+                <Card noPadding className="rounded-[2rem]">
+                    <div className="p-8 border-b border-gray-100 dark:border-white/5">
+                        <div className="flex items-center gap-3">
+                             <div className="w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-600 flex items-center justify-center">
+                                <span className="material-icons-outlined">api</span>
+                             </div>
+                             <div>
+                                <h3 className="text-2xl font-black text-gray-900 dark:text-white leading-none">Integrations</h3>
+                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">External Data Providers</p>
+                             </div>
+                        </div>
+                    </div>
+                    <div className="p-8">
+                        <Input 
+                            label="AviationStack API Key (Flight Data)" 
+                            placeholder="e.g. 840d..."
+                            value={config.aviationStackApiKey || ''}
+                            onChange={e => setConfig({...config, aviationStackApiKey: e.target.value})}
+                            rightElement={
+                                <a href="https://aviationstack.com/" target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-500 font-bold uppercase hover:underline mr-2">Get Key</a>
+                            }
+                        />
+                        <p className="text-[10px] text-gray-400 mt-2">Required for retrieving real-time flight schedules and airline details in the Planner.</p>
+                    </div>
+                </Card>
+
                 <Card noPadding className="rounded-[2rem]">
                     <div className="p-8 border-b border-gray-100 dark:border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="space-y-1">
@@ -480,7 +508,8 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
             </div>
         </div>
       )}
-
+      
+      {/* ... Rest of tabs ... */}
       {activeTab === 'policies' && (
           <div className="h-[800px] animate-fade-in">
               <EntitlementsManager />
@@ -544,7 +573,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
             </div>
        </Modal>
 
-       {/* Modal: Backup Restoration Confirmation (Replaces window.confirm) */}
+       {/* Modal: Backup Restoration Confirmation */}
        <Modal isOpen={isRestoreModalOpen} onClose={() => { if(restoreStatus !== 'importing') setIsRestoreModalOpen(false); }} title="System Restoration">
             <div className="space-y-6 text-center">
                 {restoreStatus === 'success' ? (

@@ -1,5 +1,4 @@
 
-
 export interface User {
   id: string;
   name: string;
@@ -39,13 +38,64 @@ export interface TripAllocation {
   targetYear?: number; // New: specific year this allocation applies to
 }
 
+export interface Flight {
+  id: string;
+  itineraryId: string; // Grouping ID for round trips/multi-city
+  type: 'One-Way' | 'Round Trip' | 'Multi-City';
+  airline: string;
+  flightNumber: string;
+  confirmationCode: string;
+  origin: string; // Airport Code or City
+  destination: string;
+  departureDate: string;
+  departureTime: string;
+  arrivalDate: string;
+  arrivalTime: string;
+  travelClass: 'Economy' | 'Economy+' | 'Business' | 'First';
+  seatNumber: string;
+  seatType: 'Window' | 'Aisle' | 'Middle';
+  isExitRow: boolean;
+  reason: 'Personal' | 'Business';
+  cost?: number; // New
+  currency?: string; // New
+  website?: string; // New
+}
+
+export interface Accommodation {
+  id: string;
+  name: string; // e.g., "Hilton Garden Inn"
+  address: string;
+  type: 'Hotel' | 'Airbnb' | 'Resort' | 'Villa' | 'Apartment' | 'Hostel' | 'Campground' | 'Friends/Family';
+  checkInDate: string;
+  checkOutDate: string;
+  checkInTime?: string;
+  checkOutTime?: string;
+  confirmationCode?: string;
+  website?: string;
+  cost?: number;
+  currency?: string;
+  notes?: string;
+}
+
+export interface Activity {
+  id: string;
+  date: string; // YYYY-MM-DD
+  title: string;
+  description?: string;
+  time?: string; // HH:MM
+  location?: string;
+  cost?: number;
+  link?: string;
+  isBooked?: boolean;
+}
+
 export interface Trip {
   id: string;
   name: string;
   startDate: string;
   endDate: string;
   location: string;
-  status: 'Upcoming' | 'Past' | 'Planning';
+  status: 'Upcoming' | 'Past' | 'Planning'; // Planning = Planned, Upcoming = Confirmed
   participants: string[]; // user IDs
   icon?: string; // User selected emoji/icon
   durationMode?: 'all_full' | 'all_am' | 'all_pm' | 'single_am' | 'single_pm' | 'custom';
@@ -54,6 +104,9 @@ export interface Trip {
   entitlementId?: string; // Primary entitlement (legacy or main color)
   allocations?: TripAllocation[]; // Support for split categories
   excludedDates?: string[]; // New: Persist specific days toggled off by user
+  flights?: Flight[]; // New: Flight itinerary
+  accommodations?: Accommodation[]; // New: Accommodation list
+  activities?: Activity[]; // New: Daily activities
 }
 
 export interface PlaceResult {
@@ -139,11 +192,14 @@ export interface WorkspaceSettings {
   autoSync: boolean;
   theme: 'light' | 'dark' | 'auto';
   workingDays: number[]; // 0=Sun, 1=Mon, ... 6=Sat
+  aviationStackApiKey?: string; // Key for Flight Data Provider
 }
 
 export enum ViewState {
   DASHBOARD = 'DASHBOARD',
   SETTINGS = 'SETTINGS',
   TIME_OFF = 'TIME_OFF',
-  USER_DETAIL = 'USER_DETAIL'
+  USER_DETAIL = 'USER_DETAIL',
+  PLANNER = 'PLANNER',
+  TRIP_DETAIL = 'TRIP_DETAIL'
 }

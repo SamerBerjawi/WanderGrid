@@ -67,7 +67,8 @@ const DEFAULT_WORKSPACE_SETTINGS: WorkspaceSettings = {
   dateFormat: 'MM/DD/YYYY',
   autoSync: false,
   theme: 'light',
-  workingDays: [1, 2, 3, 4, 5] 
+  workingDays: [1, 2, 3, 4, 5],
+  aviationStackApiKey: ''
 };
 
 // --- State Management ---
@@ -291,14 +292,14 @@ class DataService {
   // --- Export/Import ---
   async exportFullState(): Promise<string> {
       const state = {
-          version: '2.4',
+          version: '3.1', // Updated schema version
           timestamp: new Date().toISOString(),
           users: this.users,
           trips: this.trips,
           customEvents: this.customEvents,
           entitlements: this.entitlements,
           savedConfigs: this.savedConfigs,
-          workspaceSettings: this.workspaceSettings
+          workspaceSettings: this.workspaceSettings // Includes aviationStackApiKey & currency
       };
       return JSON.stringify(state, null, 2);
   }
@@ -320,20 +321,26 @@ class DataService {
               console.warn("Backup missing 'users' array, assuming empty.");
           }
 
-          // Load into memory
-          this.users = Array.isArray(state.users) ? state.users : [];
-          this.trips = Array.isArray(state.trips) ? state.trips : [];
+          // Load into memory with schema migration logic
+          this.users = (Array.isArray(state.users) ? state.users : []).map((u: any) => ({
+            ...u,
+            activeYears: u.activeYears || [new Date().getFullYear()], // V2.4 migration
+            policies: u.policies || []
+          }));
+
+          this.trips = (Array.isArray(state.trips) ? state.trips : []).map((t: any) => ({
+              ...t,
+              flights: t.flights || [], // V3.0 migration
+              accommodations: t.accommodations || [], // V3.0 migration
+              activities: t.activities || [] // V3.1 migration
+          }));
+
           this.customEvents = Array.isArray(state.customEvents) ? state.customEvents : [];
           this.entitlements = Array.isArray(state.entitlements) ? state.entitlements : [];
           this.savedConfigs = Array.isArray(state.savedConfigs) ? state.savedConfigs : [];
           
-          // Ensure activeYears exists on import (Migration logic)
-          this.users = this.users.map(u => ({
-            ...u,
-            activeYears: u.activeYears || [new Date().getFullYear()]
-          }));
-
           // Robust merge for settings to preserve defaults if missing in backup
+          // This ensures aviationStackApiKey is imported if present in the backup
           this.workspaceSettings = { ...DEFAULT_WORKSPACE_SETTINGS, ...(state.workspaceSettings || {}) };
 
           // Persist

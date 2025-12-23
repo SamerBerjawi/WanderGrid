@@ -5,6 +5,8 @@ import { Dashboard } from './views/Dashboard';
 import { Settings } from './views/Settings';
 import { TimeOff } from './views/TimeOff';
 import { UserDetail } from './views/UserDetail';
+import { VacationPlanner } from './views/VacationPlanner';
+import { TripDetail } from './views/TripDetail';
 import { ViewState } from './types';
 import { dataService } from './services/mockDb';
 
@@ -12,6 +14,7 @@ export default function App() {
   const [view, setView] = useState<ViewState>(ViewState.DASHBOARD);
   const [theme, setTheme] = useState<'light' | 'dark' | 'auto'>('light');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
 
   // Initialize theme from settings on mount
   useEffect(() => {
@@ -61,18 +64,27 @@ export default function App() {
       setView(ViewState.USER_DETAIL);
   };
 
+  const handleTripClick = (tripId: string) => {
+      setSelectedTripId(tripId);
+      setView(ViewState.TRIP_DETAIL);
+  };
+
   const renderView = () => {
     switch (view) {
       case ViewState.DASHBOARD:
-        return <Dashboard onUserClick={handleUserClick} />;
+        return <Dashboard onUserClick={handleUserClick} onTripClick={handleTripClick} />;
       case ViewState.SETTINGS:
         return <Settings onThemeChange={setTheme} />;
       case ViewState.TIME_OFF:
         return <TimeOff />;
       case ViewState.USER_DETAIL:
         return <UserDetail userId={selectedUserId!} onBack={() => setView(ViewState.DASHBOARD)} />;
+      case ViewState.PLANNER:
+        return <VacationPlanner onTripClick={handleTripClick} />;
+      case ViewState.TRIP_DETAIL:
+        return <TripDetail tripId={selectedTripId!} onBack={() => setView(ViewState.DASHBOARD)} />;
       default:
-        return <Dashboard onUserClick={handleUserClick} />;
+        return <Dashboard onUserClick={handleUserClick} onTripClick={handleTripClick} />;
     }
   };
 

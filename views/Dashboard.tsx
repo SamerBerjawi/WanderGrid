@@ -9,6 +9,7 @@ type CalendarViewType = 'week' | 'month' | 'year';
 
 interface DashboardProps {
     onUserClick?: (userId: string) => void;
+    onTripClick?: (tripId: string) => void;
 }
 
 const DonutChart: React.FC<{ percentage: number; colorClass: string; size?: number }> = ({ percentage, colorClass, size = 60 }) => {
@@ -49,7 +50,7 @@ const DonutChart: React.FC<{ percentage: number; colorClass: string; size?: numb
   );
 };
 
-export const Dashboard: React.FC<DashboardProps> = ({ onUserClick }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [holidays, setHolidays] = useState<PublicHoliday[]>([]);
@@ -285,8 +286,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick }) => {
   };
 
   const handleEditRequest = (trip: Trip) => {
-    setEditingTrip(trip);
-    setIsRequestModalOpen(true);
+    if (onTripClick) {
+        onTripClick(trip.id);
+    } else {
+        setEditingTrip(trip);
+        setIsRequestModalOpen(true);
+    }
   };
 
   const handleSubmitRequest = async (tripData: Trip) => {
@@ -745,48 +750,4 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick }) => {
                                     className="text-xs font-black text-gray-900 dark:text-gray-100 hover:text-blue-600 transition-colors uppercase tracking-[0.2em] w-full text-left flex items-center justify-between"
                                 >
                                     {firstOfMonth.toLocaleString('default', { month: 'long' })}
-                                    <span className="material-icons-outlined text-sm opacity-30 group-hover:opacity-100">north_east</span>
-                                </button>
-                                <div className="grid grid-cols-7 gap-1.5">
-                                    {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
-                                        <div key={i} className="text-[8px] font-black text-gray-400 text-center uppercase">{d}</div>
-                                    ))}
-                                    {Array.from({ length: 42 }).map((__, dayIdx) => {
-                                        const startOffset = (firstOfMonth.getDay() === 0 ? 6 : firstOfMonth.getDay() - 1);
-                                        const d = new Date(viewDate.getFullYear(), monthIdx, dayIdx + 1 - startOffset);
-                                        const isCurrentMonth = d.getMonth() === monthIdx;
-                                        if (!isCurrentMonth) return <div key={dayIdx} />;
-                                        return renderDayCell(d, '', false, 'compact');
-                                    })}
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
-         </div>
-      </Card>
-
-      <LeaveRequestModal 
-        isOpen={isRequestModalOpen}
-        onClose={() => setIsRequestModalOpen(false)}
-        onSubmit={handleSubmitRequest}
-        onDelete={handleDeleteRequest}
-        initialData={editingTrip}
-        users={users}
-        entitlements={entitlements}
-        trips={trips}
-        holidays={holidays}
-        workspaceConfig={workspaceConfig}
-      />
-
-      <style>{`
-        input[type=number]::-webkit-inner-spin-button, 
-        input[type=number]::-webkit-outer-spin-button { 
-          -webkit-appearance: none; 
-          margin: 0; 
-        }
-      `}</style>
-    </div>
-  );
-};
+                                    <span className="material-icons-outlined text-sm opacity-30 group-hover:opacity

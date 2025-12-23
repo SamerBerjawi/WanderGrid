@@ -1,5 +1,4 @@
 
-
 import React, { ReactNode, useState, useEffect, useRef, forwardRef } from 'react';
 
 // --- Utils ---
@@ -42,7 +41,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(({ children, variant = 'primary', size = 'md', className, icon, isLoading, disabled, ...props }, ref) => {
   const variants = {
-    primary: "bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/20 border border-transparent dark:bg-blue-600 dark:hover:bg-blue-500 dark:shadow-blue-900/20",
+    primary: "bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/20 border border-transparent dark:bg-blue-600 dark:hover:bg-blue-50 dark:shadow-blue-900/20",
     secondary: "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 shadow-sm dark:bg-gray-800 dark:text-gray-200 dark:border-white/10 dark:hover:bg-gray-700",
     ghost: "bg-transparent text-gray-600 hover:bg-gray-100/50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white",
     danger: "bg-red-50 text-red-600 hover:bg-red-100 border border-red-100 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20 dark:hover:bg-red-500/20",
@@ -317,7 +316,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
       <div className="relative group">
         <input
           className={cn(
-            "w-full px-4 py-3 rounded-2xl bg-gray-50/50 border border-gray-200 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none text-gray-800 placeholder-gray-400 dark:bg-gray-800/40 dark:border-white/10 dark:text-gray-100 dark:focus:bg-gray-800 dark:placeholder-gray-600",
+            "w-full px-4 py-3 rounded-2xl bg-gray-50/50 border border-gray-200 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none text-gray-800 placeholder-gray-400 dark:bg-gray-800/40 dark:border-white/10 dark:text-gray-100 dark:focus:bg-gray-800 dark:focus:border-blue-500 dark:placeholder-gray-600",
             className
           )}
           value={value}
@@ -333,12 +332,12 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
       </div>
       
       {isOpen && suggestions.length > 0 && (
-        <ul className="absolute z-50 w-full mt-2 bg-white/95 backdrop-blur-xl border border-white/20 shadow-2xl rounded-2xl overflow-hidden max-h-60 overflow-y-auto dark:bg-gray-900/95 dark:border-white/10 animate-fade-in">
+        <ul className="absolute z-50 min-w-full w-max max-w-[90vw] mt-2 bg-white/95 backdrop-blur-xl border border-white/20 shadow-2xl rounded-2xl overflow-hidden max-h-60 overflow-y-auto dark:bg-gray-900/95 dark:border-white/10 animate-fade-in left-0">
           {suggestions.map((item, index) => (
             <li 
               key={index} 
               onClick={() => handleSelect(item)}
-              className="px-4 py-3 hover:bg-blue-50 cursor-pointer text-sm font-medium text-gray-700 border-b border-gray-50 last:border-0 transition-colors dark:text-gray-200 dark:border-white/5 dark:hover:bg-white/5"
+              className="px-4 py-3 hover:bg-blue-50 cursor-pointer text-sm font-medium text-gray-700 border-b border-gray-50 last:border-0 transition-colors dark:text-gray-200 dark:border-white/5 dark:hover:bg-white/5 whitespace-nowrap"
             >
               {item}
             </li>
