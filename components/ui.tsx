@@ -103,6 +103,92 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({ label, error, c
 ));
 Input.displayName = "Input";
 
+// --- Time Input (AM/PM) ---
+interface TimeInputProps {
+  label?: string;
+  value: string; // HH:mm 24h format
+  onChange: (value: string) => void;
+  className?: string;
+}
+
+export const TimeInput: React.FC<TimeInputProps> = ({ label, value, onChange, className }) => {
+  const [hourStr, minuteStr] = (value || '12:00').split(':');
+  let hour = parseInt(hourStr);
+  if (isNaN(hour)) hour = 12;
+  
+  const isPm = hour >= 12;
+  const displayHour = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour);
+  
+  const handlePeriodChange = (p: 'AM' | 'PM') => {
+      let newH = displayHour;
+      if (p === 'PM' && newH !== 12) newH += 12;
+      if (p === 'AM' && newH === 12) newH = 0;
+      if (p === 'PM' && newH === 12) newH = 12;
+      
+      onChange(`${String(newH).padStart(2, '0')}:${minuteStr}`);
+  };
+
+  const handleHourChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      let val = parseInt(e.target.value);
+      if (isNaN(val)) return;
+      if (val < 1) val = 1;
+      if (val > 12) val = 12;
+      
+      let newH = val;
+      if (isPm && newH !== 12) newH += 12;
+      if (!isPm && newH === 12) newH = 0;
+      
+      onChange(`${String(newH).padStart(2, '0')}:${minuteStr}`);
+  };
+
+  const handleMinuteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      let val = parseInt(e.target.value);
+      if (isNaN(val)) return; 
+      if (val < 0) val = 0;
+      if (val > 59) val = 59;
+      onChange(`${hourStr}:${String(val).padStart(2, '0')}`);
+  };
+
+  return (
+      <div className={cn("flex flex-col gap-1.5 w-full", className)}>
+          {label && <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide ml-1">{label}</label>}
+          <div className="flex gap-2 h-[50px]">
+              <div className="relative w-20 h-full">
+                  <input
+                      type="number"
+                      min="1"
+                      max="12"
+                      className="w-full h-full px-2 rounded-2xl bg-gray-50/50 border border-gray-200 focus:bg-white focus:border-blue-500 outline-none text-center font-bold text-gray-800 dark:bg-gray-800/40 dark:border-white/10 dark:text-gray-100"
+                      value={displayHour}
+                      onChange={handleHourChange}
+                  />
+                  <span className="absolute top-1/2 -right-2.5 -translate-y-1/2 font-black text-gray-300 dark:text-gray-600">:</span>
+              </div>
+              <div className="relative w-20 h-full">
+                  <input
+                      type="number"
+                      min="0"
+                      max="59"
+                      className="w-full h-full px-2 rounded-2xl bg-gray-50/50 border border-gray-200 focus:bg-white focus:border-blue-500 outline-none text-center font-bold text-gray-800 dark:bg-gray-800/40 dark:border-white/10 dark:text-gray-100"
+                      value={minuteStr}
+                      onChange={handleMinuteChange}
+                  />
+              </div>
+              <div className="flex bg-gray-100 dark:bg-gray-800 rounded-2xl p-1 border border-gray-200 dark:border-white/5 flex-1 h-full">
+                  <button
+                      onClick={() => handlePeriodChange('AM')}
+                      className={cn("flex-1 rounded-xl text-xs font-bold transition-all h-full", !isPm ? "bg-white shadow text-blue-600 dark:bg-gray-700 dark:text-white" : "text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300")}
+                  >AM</button>
+                  <button
+                      onClick={() => handlePeriodChange('PM')}
+                      className={cn("flex-1 rounded-xl text-xs font-bold transition-all h-full", isPm ? "bg-white shadow text-blue-600 dark:bg-gray-700 dark:text-white" : "text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300")}
+                  >PM</button>
+              </div>
+          </div>
+      </div>
+  );
+};
+
 // --- Select ---
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;

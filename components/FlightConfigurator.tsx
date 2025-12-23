@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { Button, Input, Select, Autocomplete, Badge } from './ui';
+import { GoogleGenAI } from "@google/genai";
+import { Button, Input, Select, Autocomplete, Badge, TimeInput } from './ui';
 import { Transport, TransportMode } from '../types';
 import { dataService } from '../services/mockDb';
 
@@ -30,6 +31,7 @@ interface SegmentForm {
     isExitRow: boolean;
     cost?: number;
     website?: string;
+    distance?: number;
 }
 
 // Separate interface for Car logic to keep state clean
@@ -46,6 +48,7 @@ interface CarForm {
     cost?: number;
     website?: string;
     sameDropoff: boolean;
+    distance?: number;
 }
 
 interface AirportData {
@@ -53,6 +56,12 @@ interface AirportData {
     name: string;
     city: string;
     country: string;
+}
+
+interface AirlineData {
+    name: string;
+    iata: string;
+    icao?: string;
 }
 
 const DEFAULT_SEGMENT: Omit<SegmentForm, 'id'> = {
@@ -80,6 +89,7 @@ const TRANSPORT_MODES: { mode: TransportMode; label: string; icon: string }[] = 
     { mode: 'Flight', label: 'Flight', icon: 'flight' },
     { mode: 'Train', label: 'Train', icon: 'train' },
     { mode: 'Bus', label: 'Bus', icon: 'directions_bus' },
+    { mode: 'Cruise', label: 'Cruise', icon: 'directions_boat' },
     { mode: 'Car Rental', label: 'Rental', icon: 'key' },
     { mode: 'Personal Car', label: 'My Car', icon: 'directions_car' },
 ];
@@ -105,7 +115,9 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
         { id: '2', ...DEFAULT_SEGMENT, date: defaultEndDate || '' } 
     ]);
     const [isAutoFilling, setIsAutoFilling] = useState<string | null>(null);
+    const [isEstimatingDistance, setIsEstimatingDistance] = useState<string | null>(null); // segment ID or 'car'
     const [airportList, setAirportList] = useState<AirportData[]>([]);
+    const [airlineList, setAirlineList] = useState<AirlineData[]>([]);
 
     // Private Transport State (Rental/Personal)
     const [carForm, setCarForm] = useState<CarForm>({
@@ -143,6 +155,26 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                 setAirportList(list);
             })
             .catch(e => console.error("Failed to load airports", e));
+
+        // Load Airlines from processed JSONL
+        fetch('https://raw.githubusercontent.com/dlubom/iata_code_fetcher/main/carrier_data_full_processed.jsonl')
+            .then(res => res.text())
+            .then(text => {
+                const lines = text.split('\n').filter(line => line.trim() !== '');
+                const list: AirlineData[] = lines.map(line => {
+                    try {
+                        const d = JSON.parse(line);
+                        // Support keys from standard IATA datasets
+                        return {
+                            name: d.name || d.Name || '',
+                            iata: d.iata || d.IATA || '',
+                            icao: d.icao || d.ICAO || ''
+                        };
+                    } catch { return null; }
+                }).filter(x => x && x.name) as AirlineData[];
+                setAirlineList(list);
+            })
+            .catch(e => console.error("Failed to load airlines", e));
     }, []);
 
     // --- Load Initial Data ---
@@ -166,7 +198,8 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                     confirmationCode: first.confirmationCode,
                     cost: first.cost,
                     website: first.website,
-                    sameDropoff: isSame
+                    sameDropoff: isSame,
+                    distance: first.distance
                 });
             } else {
                 // It's public transport
@@ -186,6 +219,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                     isExitRow: f.isExitRow || false,
                     cost: f.cost,
                     website: f.website,
+                    distance: f.distance
                 }));
                 setSegments(mapped);
             }
@@ -200,7 +234,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
         if (newMode === 'Flight') {
             // Keep current if valid, else default
             if (!['Round Trip', 'One-Way', 'Multi-City'].includes(tripType)) setTripType('Round Trip');
-        } else if (newMode === 'Train' || newMode === 'Bus') {
+        } else if (newMode === 'Train' || newMode === 'Bus' || newMode === 'Cruise') {
             if (tripType === 'Multi-City') setTripType('Round Trip');
         }
     };
@@ -260,6 +294,28 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
         setCarForm(prev => ({ ...prev, [field]: value }));
     };
 
+    // --- AI Estimate Distance ---
+    const estimateDistance = async (origin: string, dest: string, transportMode: string, setCallback: (val: number) => void, loadingId: string) => {
+        if (!origin || !dest) return;
+        setIsEstimatingDistance(loadingId);
+        try {
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            const response = await ai.models.generateContent({
+                model: 'gemini-3-flash-preview',
+                contents: `Estimate the travel distance in Kilometers between "${origin}" and "${dest}" by ${transportMode}. Return ONLY the number (e.g. 150.5). Do not include units or text.`,
+            });
+            const text = response.text?.trim();
+            const dist = parseFloat(text || '');
+            if (!isNaN(dist)) {
+                setCallback(dist);
+            }
+        } catch (e) {
+            console.error("Distance estimation failed", e);
+        } finally {
+            setIsEstimatingDistance(null);
+        }
+    };
+
     // --- Save Logic ---
     const handleSave = () => {
         const itineraryId = (initialData && initialData.length > 0) ? initialData[0].itineraryId : Math.random().toString(36).substr(2, 9);
@@ -289,7 +345,8 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                 vehicleModel: carForm.model,
                 cost: carForm.cost,
                 website: carForm.website,
-                reason: 'Personal'
+                reason: 'Personal',
+                distance: carForm.distance
             };
             onSave([t]);
         } else {
@@ -314,7 +371,8 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                 isExitRow: seg.isExitRow,
                 reason: 'Personal',
                 cost: seg.cost,
-                website: seg.website
+                website: seg.website,
+                distance: seg.distance
             }));
             onSave(transports);
         }
@@ -332,6 +390,18 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
             )
             .slice(0, 10)
             .map(a => `${a.iata} - ${a.city} (${a.name})`);
+    };
+
+    const fetchAirlineSuggestions = async (query: string): Promise<string[]> => {
+        if (!query || query.length < 2) return [];
+        const lower = query.toLowerCase();
+        return airlineList
+            .filter(a => 
+                (a.name && a.name.toLowerCase().includes(lower)) || 
+                (a.iata && a.iata.toLowerCase().includes(lower))
+            )
+            .slice(0, 10)
+            .map(a => a.iata ? `${a.iata} - ${a.name}` : a.name);
     };
 
     const extractIata = (val: string) => val.includes(' - ') ? val.split(' - ')[0] : val;
@@ -449,11 +519,11 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                     <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200 dark:border-white/5">
                         <div className="space-y-2">
                             <Input label="Pickup Date" type="date" value={carForm.pickupDate} onChange={e => updateCar('pickupDate', e.target.value)} />
-                            <Input type="time" value={carForm.pickupTime} onChange={e => updateCar('pickupTime', e.target.value)} />
+                            <TimeInput value={carForm.pickupTime} onChange={val => updateCar('pickupTime', val)} />
                         </div>
                         <div className="space-y-2">
                             <Input label="Drop-off Date" type="date" value={carForm.dropoffDate} min={carForm.pickupDate} onChange={e => updateCar('dropoffDate', e.target.value)} />
-                            <Input type="time" value={carForm.dropoffTime} onChange={e => updateCar('dropoffTime', e.target.value)} />
+                            <TimeInput value={carForm.dropoffTime} onChange={val => updateCar('dropoffTime', val)} />
                         </div>
                     </div>
 
@@ -481,6 +551,25 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                 <Input label="Booking Link" placeholder="https://" value={carForm.website || ''} onChange={e => updateCar('website', e.target.value)} />
                             </div>
                         )}
+                    </div>
+                    {/* Car Distance */}
+                    <div className="relative pt-2">
+                        <Input 
+                            label="Distance (km)" 
+                            type="number"
+                            placeholder="e.g. 450" 
+                            value={carForm.distance || ''} 
+                            onChange={e => updateCar('distance', parseFloat(e.target.value))} 
+                            className="pr-12"
+                        />
+                        <button 
+                            onClick={() => estimateDistance(carForm.pickupLocation, carForm.sameDropoff ? carForm.pickupLocation : carForm.dropoffLocation, 'Car', (val) => updateCar('distance', val), 'car')}
+                            className="absolute right-2 top-8 text-blue-500 hover:text-blue-600 disabled:opacity-50"
+                            title="Auto-Estimate Distance"
+                            disabled={isEstimatingDistance === 'car' || !carForm.pickupLocation}
+                        >
+                            {isEstimatingDistance === 'car' ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <span className="material-icons-outlined text-lg">timeline</span>}
+                        </button>
                     </div>
                 </div>
             ) : (
@@ -522,7 +611,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                     <div className="md:col-span-5">
                                         <Autocomplete 
                                             label="Origin" 
-                                            placeholder={mode === 'Flight' ? "JFK" : "Station/City"} 
+                                            placeholder={mode === 'Flight' ? "JFK" : "Station/City/Port"} 
                                             value={segment.origin} 
                                             onChange={val => updateSegment(index, 'origin', val)} 
                                             fetchSuggestions={mode === 'Flight' ? fetchAirportSuggestions : () => Promise.resolve([])}
@@ -534,7 +623,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                     <div className="md:col-span-5">
                                         <Autocomplete 
                                             label="Destination" 
-                                            placeholder={mode === 'Flight' ? "LHR" : "Station/City"} 
+                                            placeholder={mode === 'Flight' ? "LHR" : "Station/City/Port"} 
                                             value={segment.destination} 
                                             onChange={val => updateSegment(index, 'destination', val)} 
                                             fetchSuggestions={mode === 'Flight' ? fetchAirportSuggestions : () => Promise.resolve([])}
@@ -552,13 +641,13 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                         />
                                     </div>
                                     <div className="md:col-span-4">
-                                        <Input label="Time" type="time" value={segment.time} onChange={e => updateSegment(index, 'time', e.target.value)} />
+                                        <TimeInput label="Time" value={segment.time} onChange={val => updateSegment(index, 'time', val)} />
                                     </div>
 
                                     {/* Details */}
                                     <div className="md:col-span-4 relative">
                                         <Input 
-                                            label={mode === 'Flight' ? "Flight #" : "Train/Bus #"}
+                                            label={mode === 'Flight' ? "Flight #" : mode === 'Cruise' ? "Voyage #" : "Train/Bus #"}
                                             placeholder="1234"
                                             value={segment.identifier} 
                                             onChange={e => updateSegment(index, 'identifier', e.target.value.toUpperCase())} 
@@ -575,10 +664,44 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                         )}
                                     </div>
                                     <div className="md:col-span-4">
-                                        <Input label={mode === 'Flight' ? "Airline" : "Operator"} placeholder={mode === 'Flight' ? "Delta" : "Eurostar"} value={segment.provider} onChange={e => updateSegment(index, 'provider', e.target.value)} />
+                                        {mode === 'Flight' ? (
+                                            <Autocomplete 
+                                                label="Carrier" 
+                                                placeholder="Delta" 
+                                                value={segment.provider} 
+                                                onChange={val => updateSegment(index, 'provider', val)} 
+                                                fetchSuggestions={fetchAirlineSuggestions}
+                                            />
+                                        ) : (
+                                            <Input 
+                                                label={mode === 'Cruise' ? "Cruise Line" : "Carrier"} 
+                                                placeholder={mode === 'Cruise' ? "Royal Caribbean" : "Eurostar"} 
+                                                value={segment.provider} 
+                                                onChange={e => updateSegment(index, 'provider', e.target.value)} 
+                                            />
+                                        )}
                                     </div>
                                     <div className="md:col-span-4">
                                         <Input label="Conf. Code" placeholder="XYZ" value={segment.confirmationCode} onChange={e => updateSegment(index, 'confirmationCode', e.target.value.toUpperCase())} />
+                                    </div>
+
+                                    {/* Distance Field for Public Transport */}
+                                    <div className="md:col-span-4 relative">
+                                        <Input 
+                                            label="Distance (km)"
+                                            type="number"
+                                            value={segment.distance || ''} 
+                                            onChange={e => updateSegment(index, 'distance', parseFloat(e.target.value))} 
+                                            className="pr-12"
+                                        />
+                                        <button 
+                                            onClick={() => estimateDistance(segment.origin, segment.destination, mode, (val) => updateSegment(index, 'distance', val), segment.id)}
+                                            className="absolute right-2 top-8 text-blue-500 hover:text-blue-600 disabled:opacity-50"
+                                            title="Auto-Estimate Distance"
+                                            disabled={isEstimatingDistance === segment.id || !segment.origin || !segment.destination}
+                                        >
+                                            {isEstimatingDistance === segment.id ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <span className="material-icons-outlined text-lg">timeline</span>}
+                                        </button>
                                     </div>
 
                                     {mode === 'Flight' && (

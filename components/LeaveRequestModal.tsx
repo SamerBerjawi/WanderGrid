@@ -1,10 +1,10 @@
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Modal, Button, Select, Input } from './ui';
+import { GoogleGenAI } from "@google/genai";
+import { Modal, Button, Select, Input, Autocomplete } from './ui';
 import { Trip, User, EntitlementType, WorkspaceSettings, PublicHoliday, TripAllocation } from '../types';
 
-// ... (Rest of interfaces same as before)
 interface LeaveRequestModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -32,6 +32,7 @@ interface RequestFormState {
     userId: string;
     entitlementId: string;
     reason: string;
+    location: string;
     startDate: string;
     endDate: string;
     mode: 'all_full' | 'all_am' | 'all_pm' | 'single_am' | 'single_pm' | 'custom';
@@ -42,6 +43,7 @@ interface RequestFormState {
     useMultiCategory: boolean;
     crossYearMode: boolean;
     crossYearConfig?: CrossYearConfig;
+    isTravel: boolean;
 }
 
 interface DayBreakdown {
@@ -90,9 +92,9 @@ export const LeaveRequestModal: React.FC<LeaveRequestModalProps> = ({
     const [pickerPosition, setPickerPosition] = useState<{top: number, left: number} | null>(null);
 
     const [requestForm, setRequestForm] = useState<RequestFormState>({
-        userId: '', entitlementId: '', reason: '', startDate: '', endDate: '', mode: 'all_full',
+        userId: '', entitlementId: '', reason: '', location: '', startDate: '', endDate: '', mode: 'all_full',
         startPortion: 'full', endPortion: 'full', icon: '✈️', allocations: [], useMultiCategory: false,
-        crossYearMode: false
+        crossYearMode: false, isTravel: false
     });
 
     const [excludedDates, setExcludedDates] = useState<Set<string>>(new Set());
@@ -123,11 +125,15 @@ export const LeaveRequestModal: React.FC<LeaveRequestModalProps> = ({
                     };
                 }
 
+                // Determine if this is a "Trip" (Has location)
+                const isTravelTrip = !!initialData.location && initialData.location !== 'Time Off' && initialData.location !== 'Remote';
+
                 setRequestForm({
                     id: initialData.id,
                     userId: initialData.participants?.[0] || users[0]?.id || '',
                     entitlementId: initialData.entitlementId || NO_IMPACT_KEY,
                     reason: cleanReason,
+                    location: initialData.location || '',
                     startDate: initialData.startDate || new Date().toISOString().split('T')[0],
                     endDate: initialData.endDate || new Date().toISOString().split('T')[0],
                     mode: initialData.durationMode || 'all_full',
@@ -137,7 +143,8 @@ export const LeaveRequestModal: React.FC<LeaveRequestModalProps> = ({
                     useMultiCategory: initialAllocations.length > 0 && !hasYearTargets, 
                     allocations: initialAllocations,
                     crossYearMode: hasYearTargets,
-                    crossYearConfig: crossYearData
+                    crossYearConfig: crossYearData,
+                    isTravel: isTravelTrip
                 });
             } else {
                 setExcludedDates(new Set());
@@ -148,6 +155,7 @@ export const LeaveRequestModal: React.FC<LeaveRequestModalProps> = ({
                     userId: defaultUser?.id || '',
                     entitlementId: defaultEnts[0]?.id || entitlements[0]?.id || NO_IMPACT_KEY,
                     reason: '',
+                    location: '',
                     startDate: new Date().toISOString().split('T')[0],
                     endDate: '',
                     mode: 'all_full',
@@ -156,7 +164,8 @@ export const LeaveRequestModal: React.FC<LeaveRequestModalProps> = ({
                     icon: '✈️',
                     allocations: [],
                     useMultiCategory: false,
-                    crossYearMode: false
+                    crossYearMode: false,
+                    isTravel: false
                 });
             }
         }
@@ -616,7 +625,7 @@ export const LeaveRequestModal: React.FC<LeaveRequestModalProps> = ({
             name: requestForm.reason,
             startDate: requestForm.startDate,
             endDate: finalEndDate,
-            location: 'Time Off',
+            location: requestForm.isTravel ? requestForm.location : 'Time Off',
             status: 'Upcoming',
             participants: [requestForm.userId],
             icon: requestForm.icon,
@@ -697,6 +706,21 @@ export const LeaveRequestModal: React.FC<LeaveRequestModalProps> = ({
                 { entitlementId: secondaryEnt?.id || requestForm.entitlementId, days: remaining }
             ]
         });
+    };
+
+    const fetchLocationSuggestions = async (query: string): Promise<string[]> => {
+        try {
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            const response = await ai.models.generateContent({
+                model: 'gemini-3-flash-preview',
+                contents: `List 5 distinct cities or popular travel destinations that match "${query}". Return ONLY a raw JSON array of strings (e.g. ["Paris, France", "Paros, Greece"]).`,
+                config: { responseMimeType: 'application/json' }
+            });
+            return response.text ? JSON.parse(response.text) : [];
+        } catch (e) {
+            console.error("GenAI autocomplete failed", e);
+            return [];
+        }
     };
 
     const isInvalidAllocation = requestForm.useMultiCategory 
@@ -858,6 +882,33 @@ export const LeaveRequestModal: React.FC<LeaveRequestModalProps> = ({
 
                             <Input label="Reason / Notes" value={requestForm.reason} onChange={e => setRequestForm({...requestForm, reason: e.target.value})} placeholder="e.g. Summer Vacation" />
                             
+                            <div className="flex items-center gap-3">
+                                <label className="flex items-center gap-2 cursor-pointer bg-gray-50 dark:bg-white/5 px-3 py-2 rounded-xl border border-gray-200 dark:border-white/10 h-[50px] mt-1.5">
+                                    <span className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide">Traveling?</span>
+                                    <div className={`w-8 h-4 rounded-full p-0.5 transition-colors ${requestForm.isTravel ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'}`}>
+                                        <div className={`w-3 h-3 bg-white rounded-full shadow transform transition-transform ${requestForm.isTravel ? 'translate-x-4' : 'translate-x-0'}`} />
+                                    </div>
+                                    <input 
+                                        type="checkbox" 
+                                        className="hidden" 
+                                        checked={requestForm.isTravel}
+                                        onChange={e => setRequestForm({...requestForm, isTravel: e.target.checked})}
+                                    />
+                                </label>
+                                
+                                {requestForm.isTravel && (
+                                    <div className="flex-1 animate-fade-in">
+                                        <Autocomplete 
+                                            label="Destination" 
+                                            placeholder="e.g. Paris"
+                                            value={requestForm.location}
+                                            onChange={val => setRequestForm({...requestForm, location: val})}
+                                            fetchSuggestions={fetchLocationSuggestions}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
                             <div className="grid grid-cols-2 gap-4">
                                 <Input label="From" type="date" value={requestForm.startDate} onChange={e => { const newStart = e.target.value; setRequestForm(prev => { const shouldSync = prev.endDate === ''; return { ...prev, startDate: newStart, endDate: shouldSync ? newStart : prev.endDate }; }); }} />
                                 <Input label="To" type="date" value={requestForm.endDate} min={requestForm.startDate} onChange={e => setRequestForm({...requestForm, endDate: e.target.value})} />

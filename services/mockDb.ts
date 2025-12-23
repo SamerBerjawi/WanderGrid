@@ -109,7 +109,8 @@ class DataService {
                 ...t,
                 transports: transports,
                 accommodations: t.accommodations || [],
-                activities: t.activities || []
+                activities: t.activities || [],
+                locations: t.locations || [] // Initialize locations
             };
         });
 
@@ -347,7 +348,8 @@ class DataService {
               ...t,
               transports: t.transports || t.flights?.map((f:any) => ({...f, mode: 'Flight', provider: f.airline, identifier: f.flightNumber})) || [],
               accommodations: t.accommodations || [], 
-              activities: t.activities || [] 
+              activities: t.activities || [],
+              locations: t.locations || []
           }));
 
           this.customEvents = Array.isArray(state.customEvents) ? state.customEvents : [];

@@ -39,7 +39,7 @@ export interface TripAllocation {
   targetYear?: number; // New: specific year this allocation applies to
 }
 
-export type TransportMode = 'Flight' | 'Train' | 'Bus' | 'Car Rental' | 'Personal Car';
+export type TransportMode = 'Flight' | 'Train' | 'Bus' | 'Car Rental' | 'Personal Car' | 'Cruise';
 
 export interface Transport {
   id: string;
@@ -66,6 +66,7 @@ export interface Transport {
   cost?: number; 
   currency?: string; 
   website?: string; 
+  distance?: number; // Distance in km
 }
 
 export interface Accommodation {
@@ -94,6 +95,15 @@ export interface Activity {
   cost?: number;
   link?: string;
   isBooked?: boolean;
+  type?: 'Activity' | 'Reservation'; // New field for categorization
+}
+
+export interface LocationEntry {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  description?: string;
 }
 
 export interface Trip {
@@ -115,6 +125,7 @@ export interface Trip {
   flights?: any[]; // Deprecated: kept for temporary type safety during migration if needed, but preferred to use transports
   accommodations?: Accommodation[]; // New: Accommodation list
   activities?: Activity[]; // New: Daily activities
+  locations?: LocationEntry[]; // New: Planner locations
 }
 
 export interface PlaceResult {

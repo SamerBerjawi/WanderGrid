@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Card, Button } from '../components/ui';
 import { LeaveRequestModal } from '../components/LeaveRequestModal';
+import { TripModal } from '../components/TripModal';
 import { dataService } from '../services/mockDb';
 import { User, Trip, PublicHoliday, CustomEvent, EntitlementType, WorkspaceSettings, TripAllocation, SavedConfig } from '../types';
 
@@ -71,6 +72,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
 
   // Modal State
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
+  const [isTripModalOpen, setIsTripModalOpen] = useState(false);
   const [editingTrip, setEditingTrip] = useState<Trip | undefined>(undefined);
 
   useEffect(() => {
@@ -285,6 +287,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
     setIsRequestModalOpen(true);
   };
 
+  const handleOpenTrip = () => {
+    setEditingTrip(undefined);
+    setIsTripModalOpen(true);
+  };
+
   const handleEditRequest = (trip: Trip) => {
     if (onTripClick) {
         onTripClick(trip.id);
@@ -308,6 +315,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
       await dataService.deleteTrip(tripId);
       refreshData();
       setIsRequestModalOpen(false);
+  };
+
+  const handleSaveTrip = async (tripData: Trip) => {
+    if (tripData.id && trips.some(t => t.id === tripData.id)) {
+        await dataService.updateTrip(tripData);
+    } else {
+        await dataService.addTrip(tripData);
+    }
+    refreshData();
+    setIsTripModalOpen(false);
+  };
+
+  const handleDeleteTrip = async (tripId: string) => {
+      await dataService.deleteTrip(tripId);
+      refreshData();
+      setIsTripModalOpen(false);
   };
 
   // --- Selection Logic ---
@@ -523,9 +546,27 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Trips</span>
                 <span className="text-2xl font-black text-gray-800 dark:text-white">{trips.filter(t => t.status !== 'Planning').length}</span>
            </div>
-           <Button variant="primary" size="lg" className="shadow-2xl shadow-blue-500/40 ring-4 ring-blue-500/10" icon={<span className="material-icons-outlined">add_circle</span>} onClick={handleOpenRequest}>
-             New Request
-           </Button>
+           
+           <div className="flex gap-2">
+                <Button 
+                    variant="primary" 
+                    size="lg" 
+                    className="shadow-xl shadow-blue-500/20 hover:shadow-blue-500/40" 
+                    icon={<span className="material-icons-outlined">add_task</span>} 
+                    onClick={handleOpenRequest}
+                >
+                    New Time Off
+                </Button>
+                <Button 
+                    variant="secondary" 
+                    size="lg" 
+                    className="shadow-sm border-2" 
+                    icon={<span className="material-icons-outlined">add_location_alt</span>} 
+                    onClick={handleOpenTrip}
+                >
+                    New Trip
+                </Button>
+           </div>
         </div>
       </header>
 
@@ -750,4 +791,43 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                     className="text-xs font-black text-gray-900 dark:text-gray-100 hover:text-blue-600 transition-colors uppercase tracking-[0.2em] w-full text-left flex items-center justify-between"
                                 >
                                     {firstOfMonth.toLocaleString('default', { month: 'long' })}
-                                    <span className="material-icons-outlined text-sm opacity-30 group-hover:opacity
+                                    <span className="material-icons-outlined text-sm opacity-30 group-hover:opacity-100">arrow_forward</span>
+                                </button>
+                                <div className="grid grid-cols-7 gap-1">
+                                    {Array.from({ length: new Date(viewDate.getFullYear(), monthIdx + 1, 0).getDate() }).map((_, dayIdx) => {
+                                        const d = new Date(viewDate.getFullYear(), monthIdx, dayIdx + 1);
+                                        return renderDayCell(d, 'h-6', false, 'compact');
+                                    })}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+         </div>
+      </Card>
+
+      <LeaveRequestModal 
+        isOpen={isRequestModalOpen}
+        onClose={() => setIsRequestModalOpen(false)}
+        onSubmit={handleSubmitRequest}
+        onDelete={handleDeleteRequest}
+        initialData={editingTrip}
+        users={users}
+        entitlements={entitlements}
+        trips={trips}
+        holidays={holidays}
+        workspaceConfig={workspaceConfig}
+      />
+
+      <TripModal 
+        isOpen={isTripModalOpen}
+        onClose={() => setIsTripModalOpen(false)}
+        onSubmit={handleSaveTrip}
+        onDelete={handleDeleteTrip}
+        initialData={editingTrip} // Reusing editingTrip logic if applicable, or null
+        users={users}
+      />
+    </div>
+  );
+};

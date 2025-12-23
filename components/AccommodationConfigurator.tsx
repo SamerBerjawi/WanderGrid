@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { GoogleGenAI } from "@google/genai";
-import { Button, Input, Select, Autocomplete, Badge } from './ui';
+import { Button, Input, Select, Autocomplete, Badge, TimeInput } from './ui';
 import { Accommodation } from '../types';
 import { dataService } from '../services/mockDb';
 
@@ -207,36 +207,33 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
             {/* List of Accommodations */}
             <div className="space-y-4">
                 {items.filter(i => i.id !== editingId).map((item) => (
-                    <div key={item.id} className="relative p-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-white/10 group flex justify-between items-center hover:shadow-md transition-all">
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex items-center justify-center text-2xl">
+                    <div key={item.id} className="relative p-5 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-white/10 group flex justify-between items-center hover:shadow-md transition-all">
+                        <div className="flex items-center gap-5">
+                            <div className="w-14 h-14 rounded-2xl bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex items-center justify-center text-3xl shrink-0 shadow-sm">
                                 <span className="material-icons-outlined">
                                     {item.type === 'Hotel' ? 'hotel' : item.type === 'Airbnb' ? 'house' : 'apartment'}
                                 </span>
                             </div>
                             <div>
-                                <h4 className="font-bold text-gray-900 dark:text-white">{item.name}</h4>
-                                <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                                    <span>{new Date(item.checkInDate).toLocaleDateString(undefined, {month:'short', day:'numeric'})}</span>
-                                    <span className="material-icons-outlined text-[10px]">arrow_forward</span>
-                                    <span>{new Date(item.checkOutDate).toLocaleDateString(undefined, {month:'short', day:'numeric'})}</span>
+                                <h4 className="font-bold text-lg text-gray-900 dark:text-white">{item.name}</h4>
+                                <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2 mt-1">
+                                    <Badge color="gray" className="!px-1.5 !py-0 !text-[9px]">
+                                        {new Date(item.checkInDate).toLocaleDateString(undefined, {month:'short', day:'numeric'})} &rarr; {new Date(item.checkOutDate).toLocaleDateString(undefined, {month:'short', day:'numeric'})}
+                                    </Badge>
+                                    
                                     {item.cost && (
-                                        <>
-                                            <span className="w-1 h-1 rounded-full bg-gray-300 mx-1"></span>
-                                            <span className="text-emerald-600 font-bold">{currencySymbol}{item.cost}</span>
-                                        </>
+                                        <span className="text-emerald-600 font-bold ml-2">{currencySymbol}{item.cost}</span>
                                     )}
-                                    <span className="w-1 h-1 rounded-full bg-gray-300 mx-1"></span>
-                                    <span className="truncate max-w-[150px]">{item.address}</span>
                                 </div>
+                                <p className="text-xs text-gray-400 mt-1 truncate max-w-[200px]">{item.address}</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
-                            <button onClick={() => handleEditItem(item)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg dark:hover:bg-white/5 transition-colors">
-                                <span className="material-icons-outlined text-lg">edit</span>
+                            <button onClick={() => handleEditItem(item)} className="p-3 text-blue-500 hover:bg-blue-50 rounded-xl dark:hover:bg-white/5 transition-colors">
+                                <span className="material-icons-outlined text-xl">edit</span>
                             </button>
-                            <button onClick={() => handleDeleteItem(item.id)} className="p-2 text-gray-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg dark:hover:bg-white/5 transition-colors">
-                                <span className="material-icons-outlined text-lg">close</span>
+                            <button onClick={() => handleDeleteItem(item.id)} className="p-3 text-gray-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl dark:hover:bg-white/5 transition-colors">
+                                <span className="material-icons-outlined text-xl">close</span>
                             </button>
                         </div>
                     </div>
@@ -245,32 +242,34 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
 
             {/* Editor Form */}
             {(editingId || items.length === 0) && (
-                <div className="p-6 bg-gray-50 dark:bg-white/5 rounded-3xl border border-gray-100 dark:border-white/5 animate-fade-in relative">
-                    <div className="flex justify-between items-center mb-6">
-                        <h4 className="text-sm font-black text-gray-500 uppercase tracking-widest">
+                <div className="p-8 bg-gray-50 dark:bg-white/5 rounded-3xl border border-gray-100 dark:border-white/5 animate-fade-in relative">
+                    <div className="flex justify-between items-center mb-8">
+                        <h4 className="text-sm font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                            <span className="material-icons-outlined text-lg">edit_location_alt</span>
                             {items.find(i => i.id === editingId) ? 'Edit Accommodation' : 'New Stay Details'}
                         </h4>
                         {items.length > 0 && (
-                            <button onClick={() => setEditingId(null)} className="text-gray-400 hover:text-gray-600">
+                            <button onClick={() => setEditingId(null)} className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-200 dark:hover:bg-white/10 rounded-full transition-colors">
                                 <span className="material-icons-outlined">close</span>
                             </button>
                         )}
                     </div>
 
-                    <div className="space-y-5">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <Input 
                                 label="Name of Place" 
                                 placeholder="e.g. The Grand Hotel"
                                 value={form.name || ''}
                                 onChange={e => setForm({...form, name: e.target.value})}
-                                className="!font-bold"
+                                className="!font-bold !text-lg"
                             />
                             <Select 
                                 label="Type"
                                 options={ACCOMMODATION_TYPES}
                                 value={form.type || 'Hotel'}
                                 onChange={e => setForm({...form, type: e.target.value as any})}
+                                className="!text-lg"
                             />
                         </div>
 
@@ -282,7 +281,7 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                             fetchSuggestions={fetchPlaceSuggestions}
                         />
 
-                        <div className="grid grid-cols-2 gap-4 relative">
+                        <div className="grid grid-cols-2 gap-6 relative">
                             <Input 
                                 label="Check In" 
                                 type="date"
@@ -297,24 +296,22 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                                 onChange={e => setForm({...form, checkOutDate: e.target.value})}
                             />
                             {nights > 0 && (
-                                <div className="absolute top-0 right-0 -mt-2 -mr-2">
-                                    <Badge color="blue" className="shadow-sm">{nights} Nights</Badge>
+                                <div className="absolute top-0 right-0 -mt-3 -mr-2">
+                                    <Badge color="blue" className="shadow-sm text-xs py-1 px-2">{nights} Nights</Badge>
                                 </div>
                             )}
                         </div>
 
-                        <div className="grid grid-cols-3 gap-4">
-                            <Input 
+                        <div className="grid grid-cols-3 gap-6">
+                            <TimeInput 
                                 label="Check In Time" 
-                                type="time"
-                                value={form.checkInTime || ''}
-                                onChange={e => setForm({...form, checkInTime: e.target.value})}
+                                value={form.checkInTime || '15:00'}
+                                onChange={val => setForm({...form, checkInTime: val})}
                             />
-                            <Input 
+                            <TimeInput 
                                 label="Check Out Time" 
-                                type="time"
-                                value={form.checkOutTime || ''}
-                                onChange={e => setForm({...form, checkOutTime: e.target.value})}
+                                value={form.checkOutTime || '11:00'}
+                                onChange={val => setForm({...form, checkOutTime: val})}
                             />
                             <Input 
                                 label="Conf. Code" 
@@ -324,7 +321,7 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                             />
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="relative">
                                 <Input 
                                     label="Total Cost" 
@@ -367,12 +364,12 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                             onChange={e => setForm({...form, notes: e.target.value})}
                         />
 
-                        <div className="pt-2 flex justify-end">
+                        <div className="pt-6 flex justify-end">
                             <Button 
                                 variant="primary" 
                                 onClick={handleSaveItem}
                                 disabled={!form.name || !form.checkInDate || !form.checkOutDate}
-                                className="shadow-lg shadow-amber-500/20 bg-amber-500 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 border-transparent"
+                                className="shadow-lg shadow-amber-500/20 bg-amber-500 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 border-transparent px-8 py-3"
                             >
                                 {items.some(i => i.id === editingId) ? 'Update Stay' : 'Add Stay'}
                             </Button>
@@ -385,8 +382,8 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
             {!editingId && (
                 <Button 
                     variant="secondary" 
-                    className="w-full border-dashed py-4" 
-                    icon={<span className="material-icons-outlined">add_location</span>}
+                    className="w-full border-dashed py-6 text-gray-500 hover:text-gray-700 hover:border-gray-400 transition-all" 
+                    icon={<span className="material-icons-outlined text-2xl">add_location</span>}
                     onClick={prepareNewItem}
                 >
                     Add Another Accommodation
@@ -394,15 +391,15 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
             )}
 
             {/* Footer Actions */}
-            <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-white/5 sticky bottom-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur p-2 justify-between">
+            <div className="flex gap-4 pt-6 border-t border-gray-100 dark:border-white/5 sticky bottom-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur p-4 -mx-1 justify-between rounded-b-2xl z-20">
                 {initialData && initialData.length > 0 && onDelete && (
                     <Button variant="danger" onClick={() => setShowDeleteConfirm(true)} icon={<span className="material-icons-outlined">delete</span>}>
                         Delete All
                     </Button>
                 )}
-                <div className="flex gap-3 flex-1 justify-end">
+                <div className="flex gap-4 flex-1 justify-end">
                     <Button variant="ghost" onClick={onCancel} className="w-full md:w-auto">Cancel</Button>
-                    <Button variant="primary" onClick={handleSaveAll} className="w-full md:w-auto">
+                    <Button variant="primary" onClick={handleSaveAll} className="w-full md:w-auto shadow-xl">
                         Save Accommodations
                     </Button>
                 </div>

@@ -1,10 +1,14 @@
+
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Badge, Tabs, Modal, Input } from '../components/ui';
+import { GoogleGenAI } from "@google/genai";
+import { Card, Button, Badge, Tabs, Modal, Input, Autocomplete, TimeInput } from '../components/ui';
 import { TransportConfigurator } from '../components/FlightConfigurator';
 import { AccommodationConfigurator } from '../components/AccommodationConfigurator';
+import { LocationManager } from '../components/LocationManager';
 import { TripModal } from '../components/TripModal';
+import { LeaveRequestModal } from '../components/LeaveRequestModal';
 import { dataService } from '../services/mockDb';
-import { Trip, User, Transport, Accommodation, WorkspaceSettings, Activity, TransportMode } from '../types';
+import { Trip, User, Transport, Accommodation, WorkspaceSettings, Activity, TransportMode, LocationEntry, EntitlementType, PublicHoliday, SavedConfig } from '../types';
 
 interface TripDetailProps {
     tripId: string;
@@ -15,6 +19,12 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     const [trip, setTrip] = useState<Trip | null>(null);
     const [users, setUsers] = useState<User[]>([]);
     const [settings, setSettings] = useState<WorkspaceSettings | null>(null);
+    
+    // Dependencies for Leave Request Modal
+    const [entitlements, setEntitlements] = useState<EntitlementType[]>([]);
+    const [holidays, setHolidays] = useState<PublicHoliday[]>([]);
+    const [allTrips, setAllTrips] = useState<Trip[]>([]);
+
     const [activeTab, setActiveTab] = useState('planner'); 
     const [plannerView, setPlannerView] = useState<'list' | 'table'>('list'); 
     const [loading, setLoading] = useState(true);
@@ -23,18 +33,28 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     const [isTransportModalOpen, setIsTransportModalOpen] = useState(false);
     const [isAccommodationModalOpen, setIsAccommodationModalOpen] = useState(false);
     const [isEditTripOpen, setIsEditTripOpen] = useState(false);
+    const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+    const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
     
     // Activity Modal
     const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
     const [currentDayForActivity, setCurrentDayForActivity] = useState<string>('');
     const [activityForm, setActivityForm] = useState<Partial<Activity>>({});
     
+    // Context State for Modals (Pre-fill date)
+    const [selectedDateForModal, setSelectedDateForModal] = useState<string | null>(null);
+    const [openMenuDate, setOpenMenuDate] = useState<string | null>(null);
+
     // Editing States
     const [editingTransports, setEditingTransports] = useState<Transport[] | null>(null);
     const [editingAccommodations, setEditingAccommodations] = useState<Accommodation[] | null>(null);
 
     useEffect(() => {
         loadData();
+        // Close menus on outside click
+        const handleClickOutside = () => setOpenMenuDate(null);
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
     }, [tripId]);
 
     const loadData = () => {
@@ -42,12 +62,18 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         Promise.all([
             dataService.getTrips(), 
             dataService.getUsers(),
-            dataService.getWorkspaceSettings()
-        ]).then(([allTrips, allUsers, s]) => {
-            const t = allTrips.find(t => t.id === tripId);
+            dataService.getWorkspaceSettings(),
+            dataService.getEntitlementTypes(),
+            dataService.getSavedConfigs()
+        ]).then(([tripsList, allUsers, s, ents, configs]) => {
+            const t = tripsList.find(t => t.id === tripId);
             setTrip(t || null);
             setUsers(allUsers);
             setSettings(s);
+            setAllTrips(tripsList);
+            setEntitlements(ents);
+            const flatHolidays = configs.flatMap(c => c.holidays.map(h => ({ ...h, configId: c.id })));
+            setHolidays(flatHolidays);
             setLoading(false);
         });
     };
@@ -108,6 +134,14 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         setIsAccommodationModalOpen(false);
     };
 
+    const handleSaveLocations = async (items: LocationEntry[]) => {
+        if (!trip) return;
+        const updatedTrip = { ...trip, locations: items };
+        await dataService.updateTrip(updatedTrip);
+        setTrip(updatedTrip);
+        setIsLocationModalOpen(false);
+    };
+
     const handleOpenActivityModal = (dateStr: string, existingActivity?: Activity) => {
         setCurrentDayForActivity(dateStr);
         if (existingActivity) {
@@ -120,7 +154,8 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 time: '12:00',
                 cost: 0,
                 location: '',
-                description: ''
+                description: '',
+                type: 'Activity'
             });
         }
         setIsActivityModalOpen(true);
@@ -130,6 +165,9 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         if (!trip || !activityForm.title || !activityForm.date) return;
         
         const newActivity = activityForm as Activity;
+        // Default to Activity if not set
+        if (!newActivity.type) newActivity.type = 'Activity';
+
         let updatedActivities = [...(trip.activities || [])];
         
         const existingIndex = updatedActivities.findIndex(a => a.id === newActivity.id);
@@ -156,14 +194,56 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         setActivityForm({});
     };
 
-    const openTransportModal = (transportSet?: Transport[]) => {
+    // --- Time Off Handlers ---
+    const handleBookTimeOff = () => {
+        setIsLeaveModalOpen(true);
+    };
+
+    const handleTimeOffSubmit = async (tripData: Trip) => {
+        // This is called by LeaveRequestModal. Since we pass initialData with an ID, 
+        // the modal usually calls updateTrip if handled by Dashboard/Planner logic.
+        // Here we handle it specifically for this view.
+        
+        // We are essentially updating the *current* trip to include entitlement data and status=Upcoming
+        if (!trip) return;
+        
+        const mergedTrip: Trip = {
+            ...trip,
+            ...tripData, // Overwrite with data from modal (dates, entitlement, etc)
+            id: trip.id, // Ensure ID stays same
+            status: 'Upcoming' // Force confirm
+        };
+
+        await dataService.updateTrip(mergedTrip);
+        setTrip(mergedTrip);
+        // Refresh global list for dependencies
+        const newTrips = allTrips.map(t => t.id === mergedTrip.id ? mergedTrip : t);
+        setAllTrips(newTrips);
+        setIsLeaveModalOpen(false);
+    };
+
+    const openTransportModal = (transportSet?: Transport[], date?: string) => {
         setEditingTransports(transportSet || null);
+        setSelectedDateForModal(date || null);
         setIsTransportModalOpen(true);
     };
 
-    const openAccommodationModal = () => {
+    const openAccommodationModal = (date?: string) => {
         setEditingAccommodations(trip?.accommodations || []);
+        setSelectedDateForModal(date || null);
         setIsAccommodationModalOpen(true);
+    };
+
+    const openLocationModal = (date?: string) => {
+        setSelectedDateForModal(date || null);
+        setIsLocationModalOpen(true);
+    };
+
+    const getCurrencySymbol = (code: string) => {
+        const symbols: Record<string, string> = {
+            'USD': '$', 'EUR': '€', 'GBP': '£', 'AUD': 'A$', 'JPY': '¥'
+        };
+        return symbols[code] || code || '$';
     };
 
     const formatCurrency = (amount: number) => {
@@ -175,13 +255,73 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         }
     };
 
+    const formatTime = (time24?: string) => {
+        if (!time24) return '';
+        const [h, m] = time24.split(':');
+        const hour = parseInt(h);
+        if (isNaN(hour)) return time24;
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const hour12 = hour % 12 || 12;
+        return `${hour12}:${m} ${ampm}`;
+    };
+
     const getTransportIcon = (mode: TransportMode) => {
         switch(mode) {
             case 'Train': return 'train';
             case 'Bus': return 'directions_bus';
             case 'Car Rental': return 'car_rental';
             case 'Personal Car': return 'directions_car';
+            case 'Cruise': return 'directions_boat';
             default: return 'flight_takeoff';
+        }
+    };
+
+    const getLocationForDate = (dateStr: string) => {
+        if (!trip?.locations) return null;
+        return trip.locations.find(l => dateStr >= l.startDate && dateStr <= l.endDate);
+    };
+
+    const calculateDuration = (t: Transport) => {
+        if (!t.departureTime || !t.arrivalTime) return '';
+        const [dh, dm] = t.departureTime.split(':').map(Number);
+        const [ah, am] = t.arrivalTime.split(':').map(Number);
+        let diff = (ah * 60 + am) - (dh * 60 + dm);
+        if (diff < 0) diff += 24 * 60; 
+        
+        if (t.departureDate && t.arrivalDate) {
+             const start = new Date(`${t.departureDate}T${t.departureTime}`);
+             const end = new Date(`${t.arrivalDate}T${t.arrivalTime}`);
+             if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+                 diff = (end.getTime() - start.getTime()) / (1000 * 60);
+             }
+        }
+        
+        const h = Math.floor(diff / 60);
+        const m = diff % 60;
+        return `${h}h ${m}m`;
+    };
+
+    const sortActivities = (acts: Activity[]) => {
+        return acts.sort((a, b) => {
+            const timeA = a.time || '23:59';
+            const timeB = b.time || '23:59';
+            return timeA.localeCompare(timeB);
+        });
+    };
+
+    const fetchLocationSuggestions = async (query: string): Promise<string[]> => {
+        try {
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            const context = trip?.location ? `in or near ${trip.location}` : '';
+            const response = await ai.models.generateContent({
+                model: 'gemini-3-flash-preview',
+                contents: `List 5 distinct places, restaurants, or attractions ${context} that match "${query}". Return ONLY a raw JSON array of strings (e.g. ["Eiffel Tower, Paris", "Louvre Museum, Paris"]).`,
+                config: { responseMimeType: 'application/json' }
+            });
+            return response.text ? JSON.parse(response.text) : [];
+        } catch (e) {
+            console.error(e);
+            return [];
         }
     };
 
@@ -244,7 +384,12 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                 </div>
                             </div>
                         </div>
-                        <Button variant="secondary" onClick={() => setIsEditTripOpen(true)} icon={<span className="material-icons-outlined">edit</span>}>Edit Details</Button>
+                        <div className="flex gap-2">
+                            {(!trip.entitlementId && trip.status === 'Planning') && (
+                                <Button variant="primary" onClick={handleBookTimeOff} className="bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20" icon={<span className="material-icons-outlined">event_available</span>}>Book Time Off</Button>
+                            )}
+                            <Button variant="secondary" onClick={() => setIsEditTripOpen(true)} icon={<span className="material-icons-outlined">edit</span>}>Edit Details</Button>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -279,7 +424,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 <Tabs 
                     tabs={[
                         { id: 'planner', label: 'Daily Planner', icon: <span className="material-icons-outlined">calendar_view_day</span> },
-                        { id: 'itinerary', label: 'Transportation', icon: <span className="material-icons-outlined">commute</span> },
+                        { id: 'itinerary', label: 'Bookings', icon: <span className="material-icons-outlined">commute</span> },
                         { id: 'budget', label: 'Cost Breakdown', icon: <span className="material-icons-outlined">receipt_long</span> },
                     ]}
                     activeTab={activeTab}
@@ -287,19 +432,24 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 />
                 
                 {activeTab === 'planner' && (
-                    <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
-                        <button 
-                            onClick={() => setPlannerView('list')}
-                            className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${plannerView === 'list' ? 'bg-white shadow text-blue-600 dark:bg-gray-700 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
-                        >
-                            <span className="material-icons-outlined text-sm align-middle mr-1">view_agenda</span> List
-                        </button>
-                        <button 
-                            onClick={() => setPlannerView('table')}
-                            className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${plannerView === 'table' ? 'bg-white shadow text-blue-600 dark:bg-gray-700 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
-                        >
-                            <span className="material-icons-outlined text-sm align-middle mr-1">table_chart</span> Table
-                        </button>
+                    <div className="flex gap-2">
+                        <Button variant="secondary" size="sm" onClick={() => setIsLocationModalOpen(true)} className="hidden md:flex">
+                            <span className="material-icons-outlined text-sm mr-2">map</span> Manage Route
+                        </Button>
+                        <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
+                            <button 
+                                onClick={() => setPlannerView('list')}
+                                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${plannerView === 'list' ? 'bg-white shadow text-blue-600 dark:bg-gray-700 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
+                            >
+                                <span className="material-icons-outlined text-sm align-middle mr-1">view_agenda</span> List
+                            </button>
+                            <button 
+                                onClick={() => setPlannerView('table')}
+                                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${plannerView === 'table' ? 'bg-white shadow text-blue-600 dark:bg-gray-700 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
+                            >
+                                <span className="material-icons-outlined text-sm align-middle mr-1">table_chart</span> Table
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>
@@ -317,7 +467,10 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                 
                                 const dayTransports = trip.transports?.filter(f => f.departureDate === dateStr);
                                 const dayStay = trip.accommodations?.find(a => dateStr >= a.checkInDate && dateStr < a.checkOutDate);
-                                const dayActivities = trip.activities?.filter(a => a.date === dateStr);
+                                const location = getLocationForDate(dateStr);
+                                
+                                // Unified sorted activities list
+                                const dayActivities = sortActivities(trip.activities?.filter(a => a.date === dateStr) || []);
 
                                 return (
                                     <div key={dateStr} className="relative md:pl-20 group">
@@ -333,6 +486,14 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                         </div>
 
                                         <div className="space-y-3 pb-8">
+                                            {/* Location Badge for Day */}
+                                            {location && (
+                                                <div className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
+                                                    <span className="material-icons-outlined text-xs">place</span>
+                                                    {location.name}
+                                                </div>
+                                            )}
+
                                             {/* TRANSPORTS */}
                                             {dayTransports && dayTransports.length > 0 && dayTransports.map(t => (
                                                 <div key={t.id} className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all">
@@ -341,11 +502,17 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                     </div>
                                                     <div className="flex-1">
                                                         <h4 className="font-bold text-gray-900 dark:text-white text-sm">{t.mode} to {t.destination}</h4>
-                                                        <p className="text-[10px] text-blue-600 dark:text-blue-300 font-bold uppercase tracking-wider">
-                                                            {t.provider} {t.identifier} • {t.departureTime}
-                                                        </p>
+                                                        <div className="flex gap-4 mt-1">
+                                                            <p className="text-[10px] text-blue-600 dark:text-blue-300 font-bold uppercase tracking-wider">
+                                                                {t.provider} {t.identifier} • {formatTime(t.departureTime)}
+                                                            </p>
+                                                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                                                                {calculateDuration(t)} Duration
+                                                            </p>
+                                                            {t.distance && <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{t.distance} km</p>}
+                                                        </div>
                                                     </div>
-                                                    <button onClick={() => { setActiveTab('itinerary'); setTimeout(() => openTransportModal([t]), 100); }} className="text-gray-400 hover:text-blue-500"><span className="material-icons-outlined text-sm">edit</span></button>
+                                                    <button onClick={() => openTransportModal([t])} className="text-gray-400 hover:text-blue-500"><span className="material-icons-outlined text-sm">edit</span></button>
                                                 </div>
                                             ))}
 
@@ -361,35 +528,61 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                             {dayStay.checkInDate === dateStr ? 'Check-In' : 'Overnight Stay'}
                                                         </p>
                                                     </div>
-                                                    <button onClick={() => { setActiveTab('itinerary'); setTimeout(() => openAccommodationModal(), 100); }} className="text-gray-400 hover:text-amber-500"><span className="material-icons-outlined text-sm">edit</span></button>
+                                                    <button onClick={() => openAccommodationModal()} className="text-gray-400 hover:text-amber-500"><span className="material-icons-outlined text-sm">edit</span></button>
                                                 </div>
                                             )}
 
-                                            {/* ACTIVITIES */}
-                                            {dayActivities && dayActivities.map(act => (
-                                                <div key={act.id} className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-white/10 p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all group/act">
-                                                    <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
-                                                        <span className="material-icons-outlined">local_activity</span>
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-xs font-black text-gray-400">{act.time}</span>
-                                                            <h4 className="font-bold text-gray-900 dark:text-white text-sm">{act.title}</h4>
+                                            {/* UNIFIED SCHEDULE */}
+                                            {dayActivities.length > 0 && dayActivities.map(item => {
+                                                if (item.type === 'Reservation') {
+                                                    return (
+                                                        <div key={item.id} className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30 p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all group/act border-l-4 border-l-emerald-500">
+                                                            <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                                                                <span className="material-icons-outlined">confirmation_number</span>
+                                                            </div>
+                                                            <div className="flex-1">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-xs font-black text-gray-500 dark:text-gray-400 bg-white dark:bg-black/20 px-1.5 py-0.5 rounded">{formatTime(item.time)}</span>
+                                                                    <h4 className="font-bold text-emerald-900 dark:text-emerald-100 text-sm">{item.title}</h4>
+                                                                </div>
+                                                                <div className="flex gap-2 mt-1 items-center">
+                                                                    <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600/70 dark:text-emerald-400/70">Reservation</span>
+                                                                    {item.description && <span className="text-[10px] text-gray-500 dark:text-gray-400 truncate max-w-[200px]">• {item.description}</span>}
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center gap-2 opacity-0 group-hover/act:opacity-100 transition-opacity">
+                                                                <button onClick={() => handleOpenActivityModal(dateStr, item)} className="text-gray-400 hover:text-blue-500"><span className="material-icons-outlined text-sm">edit</span></button>
+                                                                <button onClick={() => handleDeleteActivity(item.id)} className="text-gray-400 hover:text-rose-500"><span className="material-icons-outlined text-sm">delete</span></button>
+                                                            </div>
                                                         </div>
-                                                        {act.description && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">{act.description}</p>}
-                                                    </div>
-                                                    <div className="flex items-center gap-2 opacity-0 group-hover/act:opacity-100 transition-opacity">
-                                                        <button onClick={() => handleOpenActivityModal(dateStr, act)} className="text-gray-400 hover:text-blue-500"><span className="material-icons-outlined text-sm">edit</span></button>
-                                                        <button onClick={() => handleDeleteActivity(act.id)} className="text-gray-400 hover:text-rose-500"><span className="material-icons-outlined text-sm">delete</span></button>
-                                                    </div>
-                                                </div>
-                                            ))}
+                                                    );
+                                                } else {
+                                                    return (
+                                                        <div key={item.id} className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-white/10 p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all group/act">
+                                                            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                                                                <span className="material-icons-outlined">local_activity</span>
+                                                            </div>
+                                                            <div className="flex-1">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-xs font-black text-gray-400">{formatTime(item.time)}</span>
+                                                                    <h4 className="font-bold text-gray-900 dark:text-white text-sm">{item.title}</h4>
+                                                                </div>
+                                                                {item.description && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">{item.description}</p>}
+                                                            </div>
+                                                            <div className="flex items-center gap-2 opacity-0 group-hover/act:opacity-100 transition-opacity">
+                                                                <button onClick={() => handleOpenActivityModal(dateStr, item)} className="text-gray-400 hover:text-blue-500"><span className="material-icons-outlined text-sm">edit</span></button>
+                                                                <button onClick={() => handleDeleteActivity(item.id)} className="text-gray-400 hover:text-rose-500"><span className="material-icons-outlined text-sm">delete</span></button>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+                                            })}
 
                                             <button 
                                                 onClick={() => handleOpenActivityModal(dateStr)}
                                                 className="w-full py-3 border-2 border-dashed border-gray-200 dark:border-white/10 rounded-2xl text-xs font-bold text-gray-400 uppercase tracking-widest hover:border-blue-300 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 focus:opacity-100"
                                             >
-                                                <span className="material-icons-outlined text-sm">add</span> Add Activity
+                                                <span className="material-icons-outlined text-sm">add</span> Add Schedule Item
                                             </button>
                                         </div>
                                     </div>
@@ -405,8 +598,11 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                         <tr className="bg-gray-50/50 dark:bg-white/5 border-b border-gray-100 dark:border-white/5">
                                             <th className="p-4 text-[10px] font-black uppercase tracking-widest text-gray-400 w-24">Date</th>
                                             <th className="p-4 text-[10px] font-black uppercase tracking-widest text-gray-400 w-48">Transport</th>
+                                            <th className="p-4 text-[10px] font-black uppercase tracking-widest text-gray-400 w-32">Location</th>
+                                            <th className="p-4 text-[10px] font-black uppercase tracking-widest text-gray-400 w-24">Distance</th>
+                                            <th className="p-4 text-[10px] font-black uppercase tracking-widest text-gray-400 w-24">Duration</th>
                                             <th className="p-4 text-[10px] font-black uppercase tracking-widest text-gray-400 w-48">Accommodation</th>
-                                            <th className="p-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Activity Plan</th>
+                                            <th className="p-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Schedule</th>
                                             <th className="p-4 text-[10px] font-black uppercase tracking-widest text-gray-400 w-12"></th>
                                         </tr>
                                     </thead>
@@ -415,21 +611,24 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                             const dateObj = new Date(dateStr);
                                             const dayTransports = trip.transports?.filter(f => f.departureDate === dateStr);
                                             const dayStay = trip.accommodations?.find(a => dateStr >= a.checkInDate && dateStr < a.checkOutDate);
-                                            const dayActivities = trip.activities?.filter(a => a.date === dateStr);
+                                            const location = getLocationForDate(dateStr);
+                                            
+                                            // Unified sorted activities list
+                                            const dayActivities = sortActivities(trip.activities?.filter(a => a.date === dateStr) || []);
 
                                             return (
                                                 <tr key={dateStr} className="hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors group">
-                                                    <td className="p-4 align-top">
+                                                    <td className="p-4 align-top cursor-default">
                                                         <div className="flex flex-col">
                                                             <span className="text-xs font-black text-gray-800 dark:text-white">{dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}</span>
                                                             <span className="text-[9px] font-bold text-gray-400 uppercase">{dateObj.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}</span>
                                                         </div>
                                                     </td>
-                                                    <td className="p-4 align-top">
+                                                    <td className="p-4 align-top cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10" onClick={() => openTransportModal(undefined, dateStr)}>
                                                         {dayTransports && dayTransports.length > 0 ? (
                                                             <div className="space-y-2">
                                                                 {dayTransports.map(t => (
-                                                                    <div key={t.id} className="flex items-center gap-2 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1.5 rounded-lg border border-blue-100 dark:border-blue-900/30 cursor-pointer hover:bg-blue-100" onClick={() => { setActiveTab('itinerary'); setTimeout(() => openTransportModal([t]), 100); }}>
+                                                                    <div key={t.id} className="flex items-center gap-2 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1.5 rounded-lg border border-blue-100 dark:border-blue-900/30 cursor-pointer hover:bg-blue-100" onClick={(e) => { e.stopPropagation(); openTransportModal([t]); }}>
                                                                         <span className="material-icons-outlined text-sm">{getTransportIcon(t.mode)}</span>
                                                                         <span>{t.origin} &rarr; {t.destination}</span>
                                                                     </div>
@@ -439,9 +638,42 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                             <span className="text-[10px] text-gray-300 font-bold uppercase tracking-widest">-</span>
                                                         )}
                                                     </td>
-                                                    <td className="p-4 align-top">
+                                                    <td className="p-4 align-top cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10" onClick={() => openLocationModal(dateStr)}>
+                                                        {location ? (
+                                                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-lg text-xs font-bold">
+                                                                {location.name}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-[10px] text-gray-300 font-bold uppercase tracking-widest">-</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="p-4 align-top text-xs font-medium text-gray-600 dark:text-gray-400 cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10" onClick={() => openTransportModal(undefined, dateStr)}>
+                                                        {dayTransports && dayTransports.length > 0 ? (
+                                                            dayTransports.map((t, i) => (
+                                                                <div key={i} className="mb-2 h-8 flex items-center">
+                                                                    {t.distance ? `${t.distance} km` : '-'}
+                                                                </div>
+                                                            ))
+                                                        ) : (
+                                                            <span className="text-[10px] text-gray-300 font-bold uppercase tracking-widest">-</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="p-4 align-top cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10" onClick={() => openTransportModal(undefined, dateStr)}>
+                                                        {dayTransports && dayTransports.length > 0 ? (
+                                                            <div className="space-y-2">
+                                                                {dayTransports.map(t => (
+                                                                    <div key={t.id} className="flex items-center h-[34px]">
+                                                                         <span className="text-xs font-bold text-gray-500 dark:text-gray-400">{calculateDuration(t)}</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-[10px] text-gray-300 font-bold uppercase tracking-widest">-</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="p-4 align-top cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10" onClick={() => openAccommodationModal(dateStr)}>
                                                         {dayStay ? (
-                                                            <div className="flex items-center gap-2 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1.5 rounded-lg border border-amber-100 dark:border-amber-900/30 cursor-pointer hover:bg-amber-100" onClick={() => { setActiveTab('itinerary'); setTimeout(() => openAccommodationModal(), 100); }}>
+                                                            <div className="flex items-center gap-2 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1.5 rounded-lg border border-amber-100 dark:border-amber-900/30 cursor-pointer hover:bg-amber-100" onClick={(e) => { e.stopPropagation(); openAccommodationModal(dateStr); }}>
                                                                 <span className="material-icons-outlined text-sm">hotel</span>
                                                                 <span className="truncate max-w-[120px]">{dayStay.name}</span>
                                                             </div>
@@ -449,27 +681,54 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                             <span className="text-[10px] text-gray-300 font-bold uppercase tracking-widest">-</span>
                                                         )}
                                                     </td>
-                                                    <td className="p-4 align-top">
+                                                    <td className="p-4 align-top cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10" onClick={() => handleOpenActivityModal(dateStr)}>
                                                         <div className="space-y-1.5">
-                                                            {dayActivities && dayActivities.map(act => (
-                                                                <div key={act.id} className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300 group/item">
-                                                                    <span className="text-[10px] font-bold text-gray-400 w-8">{act.time}</span>
-                                                                    <span className="font-medium truncate">{act.title}</span>
-                                                                    <button onClick={() => handleDeleteActivity(act.id)} className="opacity-0 group-hover/item:opacity-100 text-rose-400 hover:text-rose-600 ml-auto"><span className="material-icons-outlined text-[10px]">close</span></button>
-                                                                </div>
-                                                            ))}
-                                                            <button 
-                                                                onClick={() => handleOpenActivityModal(dateStr)}
-                                                                className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider hover:text-indigo-700 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            {dayActivities.map(item => {
+                                                                if (item.type === 'Reservation') {
+                                                                    return (
+                                                                        <div key={item.id} onClick={(e) => { e.stopPropagation(); handleOpenActivityModal(dateStr, item); }} className="flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/10 px-2 py-1 rounded border border-emerald-100 dark:border-emerald-900/20 group/item hover:bg-emerald-100 dark:hover:bg-emerald-900/30 cursor-pointer">
+                                                                            <span className="text-[10px] font-black opacity-70 w-8">{formatTime(item.time)}</span>
+                                                                            <span className="font-bold truncate">{item.title}</span>
+                                                                            <button onClick={(e) => { e.stopPropagation(); handleDeleteActivity(item.id); }} className="opacity-0 group-hover/item:opacity-100 text-emerald-400 hover:text-emerald-600 ml-auto"><span className="material-icons-outlined text-[10px]">close</span></button>
+                                                                        </div>
+                                                                    );
+                                                                } else {
+                                                                    return (
+                                                                        <div key={item.id} onClick={(e) => { e.stopPropagation(); handleOpenActivityModal(dateStr, item); }} className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300 group/item hover:bg-gray-100 dark:hover:bg-white/10 rounded px-1 py-0.5 cursor-pointer">
+                                                                            <span className="text-[10px] font-bold text-gray-400 w-8">{formatTime(item.time)}</span>
+                                                                            <span className="font-medium truncate">{item.title}</span>
+                                                                            <button onClick={(e) => { e.stopPropagation(); handleDeleteActivity(item.id); }} className="opacity-0 group-hover/item:opacity-100 text-rose-400 hover:text-rose-600 ml-auto"><span className="material-icons-outlined text-[10px]">close</span></button>
+                                                                        </div>
+                                                                    );
+                                                                }
+                                                            })}
+                                                            <div 
+                                                                className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider hover:text-indigo-700 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity mt-2"
                                                             >
                                                                 <span className="material-icons-outlined text-[10px]">add</span> Plan
-                                                            </button>
+                                                            </div>
                                                         </div>
                                                     </td>
-                                                    <td className="p-4 align-middle text-center">
-                                                        <button className="text-gray-300 hover:text-blue-500 transition-colors opacity-0 group-hover:opacity-100">
+                                                    <td className="p-4 align-middle text-center relative">
+                                                        <button 
+                                                            onClick={(e) => { e.stopPropagation(); setOpenMenuDate(openMenuDate === dateStr ? null : dateStr); }}
+                                                            className={`text-gray-300 hover:text-blue-500 transition-all p-2 rounded-full hover:bg-gray-100 dark:hover:bg-white/5 ${openMenuDate === dateStr ? 'text-blue-500 bg-gray-100 dark:bg-white/5' : ''}`}
+                                                        >
                                                             <span className="material-icons-outlined text-sm">more_vert</span>
                                                         </button>
+                                                        {openMenuDate === dateStr && (
+                                                            <div className="absolute right-0 top-10 w-48 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-white/10 z-50 overflow-hidden flex flex-col py-1 text-left animate-fade-in origin-top-right">
+                                                                <button onClick={(e) => { e.stopPropagation(); handleOpenActivityModal(dateStr); setOpenMenuDate(null); }} className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-white/5 text-xs font-bold text-gray-700 dark:text-gray-200 flex items-center gap-2 w-full text-left transition-colors">
+                                                                    <span className="material-icons-outlined text-sm text-indigo-500">add_task</span> Add Activity
+                                                                </button>
+                                                                <button onClick={(e) => { e.stopPropagation(); openTransportModal(undefined, dateStr); setOpenMenuDate(null); }} className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-white/5 text-xs font-bold text-gray-700 dark:text-gray-200 flex items-center gap-2 w-full text-left transition-colors">
+                                                                    <span className="material-icons-outlined text-sm text-blue-500">commute</span> Add Transport
+                                                                </button>
+                                                                 <button onClick={(e) => { e.stopPropagation(); openAccommodationModal(dateStr); setOpenMenuDate(null); }} className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-white/5 text-xs font-bold text-gray-700 dark:text-gray-200 flex items-center gap-2 w-full text-left transition-colors">
+                                                                    <span className="material-icons-outlined text-sm text-amber-500">hotel</span> Add Stay
+                                                                </button>
+                                                            </div>
+                                                        )}
                                                     </td>
                                                 </tr>
                                             );
@@ -482,7 +741,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 </>
             )}
 
-            {/* MANAGE BOOKINGS TAB */}
+            {/* MANAGE BOOKINGS TAB (Existing code...) */}
             {activeTab === 'itinerary' && (
                 <div className="space-y-8">
                     {/* TRANSPORT */}
@@ -521,7 +780,11 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                             <span className="material-icons-outlined text-xs text-gray-400">arrow_forward</span>
                                                             <span className="font-black text-gray-800 dark:text-white">{t.destination}</span>
                                                         </div>
-                                                        <div className="text-xs text-gray-500 mt-0.5">{t.mode} • {t.provider} {t.identifier} • {new Date(t.departureDate).toLocaleDateString()}</div>
+                                                        <div className="text-xs text-gray-500 mt-0.5 flex gap-3">
+                                                            <span>{t.mode} • {t.provider} {t.identifier}</span>
+                                                            <span>{new Date(t.departureDate).toLocaleDateString()}</span>
+                                                            {t.distance && <span className="font-bold">{t.distance} km</span>}
+                                                        </div>
                                                     </div>
                                                     {t.cost && <div className="font-bold text-gray-700 dark:text-gray-300">{formatCurrency(t.cost)}</div>}
                                                 </div>
@@ -580,6 +843,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 </div>
             )}
 
+            {/* BUDGET TAB */}
             {activeTab === 'budget' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <Card noPadding className="rounded-[2rem] h-fit">
@@ -661,21 +925,44 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                     onSave={handleSaveTransports}
                     onDelete={handleDeleteTransports}
                     onCancel={() => { setIsTransportModalOpen(false); setEditingTransports(null); }}
-                    defaultStartDate={trip.startDate}
+                    defaultStartDate={selectedDateForModal || trip.startDate}
                     defaultEndDate={trip.endDate}
                  />
             </Modal>
 
-            <Modal isOpen={isAccommodationModalOpen} onClose={() => setIsAccommodationModalOpen(false)} title="Manage Accommodations" maxWidth="max-w-xl">
+            <Modal isOpen={isAccommodationModalOpen} onClose={() => setIsAccommodationModalOpen(false)} title="Manage Accommodations" maxWidth="max-w-4xl">
                 <AccommodationConfigurator
                     initialData={editingAccommodations || []}
                     onSave={handleSaveAccommodations}
                     onDelete={handleDeleteAccommodations}
                     onCancel={() => setIsAccommodationModalOpen(false)}
-                    defaultStartDate={trip.startDate}
+                    defaultStartDate={selectedDateForModal || trip.startDate}
                     defaultEndDate={trip.endDate}
                 />
             </Modal>
+
+            <Modal isOpen={isLocationModalOpen} onClose={() => setIsLocationModalOpen(false)} title="Manage Route Locations" maxWidth="max-w-xl">
+                <LocationManager 
+                    locations={trip.locations || []} 
+                    onSave={handleSaveLocations} 
+                    onCancel={() => setIsLocationModalOpen(false)} 
+                    defaultStartDate={selectedDateForModal || trip.startDate} 
+                    defaultEndDate={trip.endDate}
+                />
+            </Modal>
+
+            {/* LEAVE REQUEST MODAL */}
+            <LeaveRequestModal 
+                isOpen={isLeaveModalOpen}
+                onClose={() => setIsLeaveModalOpen(false)}
+                onSubmit={handleTimeOffSubmit}
+                initialData={trip}
+                users={users}
+                entitlements={entitlements}
+                trips={allTrips}
+                holidays={holidays}
+                workspaceConfig={settings}
+            />
 
             {/* ACTIVITY EDITOR MODAL */}
             <Modal isOpen={isActivityModalOpen} onClose={() => { setIsActivityModalOpen(false); setActivityForm({}); }} title="Activity Details">
@@ -690,20 +977,34 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                         </div>
                     </div>
 
+                    <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
+                        <button 
+                            onClick={() => setActivityForm(prev => ({ ...prev, type: 'Activity' }))}
+                            className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase transition-all ${activityForm.type !== 'Reservation' ? 'bg-white shadow text-indigo-600 dark:bg-gray-700 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
+                        >
+                            General Activity
+                        </button>
+                        <button 
+                            onClick={() => setActivityForm(prev => ({ ...prev, type: 'Reservation' }))}
+                            className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase transition-all ${activityForm.type === 'Reservation' ? 'bg-white shadow text-emerald-600 dark:bg-gray-700 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
+                        >
+                            Reservation
+                        </button>
+                    </div>
+
                     <Input 
-                        label="Activity Title" 
-                        placeholder="e.g. Dinner at Mario's"
+                        label="Title" 
+                        placeholder={activityForm.type === 'Reservation' ? "e.g. Dinner at Mario's" : "e.g. Walk around city center"}
                         value={activityForm.title || ''}
                         onChange={e => setActivityForm({...activityForm, title: e.target.value})}
                         className="!font-bold"
                     />
 
                     <div className="grid grid-cols-2 gap-4">
-                        <Input 
+                        <TimeInput 
                             label="Time" 
-                            type="time"
-                            value={activityForm.time || ''}
-                            onChange={e => setActivityForm({...activityForm, time: e.target.value})}
+                            value={activityForm.time || '12:00'}
+                            onChange={val => setActivityForm({...activityForm, time: val})}
                         />
                         <div className="relative">
                             <Input 
@@ -714,27 +1015,28 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                 value={activityForm.cost || ''}
                                 onChange={e => setActivityForm({...activityForm, cost: parseFloat(e.target.value)})}
                             />
-                            <span className="absolute left-3 top-9 text-gray-400 font-bold">$</span>
+                            <span className="absolute left-3 top-9 text-gray-400 font-bold">{getCurrencySymbol(settings?.currency || 'USD')}</span>
                         </div>
                     </div>
 
-                    <Input 
+                    <Autocomplete 
                         label="Location" 
                         placeholder="e.g. 123 Main St"
                         value={activityForm.location || ''}
-                        onChange={e => setActivityForm({...activityForm, location: e.target.value})}
+                        onChange={val => setActivityForm({...activityForm, location: val})}
+                        fetchSuggestions={fetchLocationSuggestions}
                     />
 
                     <Input 
-                        label="Notes / Description" 
-                        placeholder="Reservation #, Links, etc."
+                        label={activityForm.type === 'Reservation' ? "Booking Reference / Notes" : "Notes / Description"} 
+                        placeholder={activityForm.type === 'Reservation' ? "Res #12345" : "Bring sunscreen"}
                         value={activityForm.description || ''}
                         onChange={e => setActivityForm({...activityForm, description: e.target.value})}
                     />
 
                     <div className="flex gap-3 pt-2 justify-end">
                         <Button variant="ghost" onClick={() => setIsActivityModalOpen(false)}>Cancel</Button>
-                        <Button variant="primary" onClick={handleSaveActivity} disabled={!activityForm.title}>Save Activity</Button>
+                        <Button variant="primary" onClick={handleSaveActivity} disabled={!activityForm.title}>Save {activityForm.type === 'Reservation' ? 'Reservation' : 'Activity'}</Button>
                     </div>
                 </div>
             </Modal>
