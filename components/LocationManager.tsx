@@ -12,6 +12,14 @@ interface LocationManagerProps {
     defaultEndDate: string;
 }
 
+// Date helper to handle YYYY-MM-DD strings safely
+const addDays = (dateStr: string, days: number): string => {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    date.setDate(date.getDate() + days);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
+
 export const LocationManager: React.FC<LocationManagerProps> = ({ locations, onSave, onCancel, defaultStartDate, defaultEndDate }) => {
     const [entries, setEntries] = useState<LocationEntry[]>(locations.length > 0 ? locations : []);
     const [newEntry, setNewEntry] = useState<Partial<LocationEntry>>({
@@ -24,7 +32,7 @@ export const LocationManager: React.FC<LocationManagerProps> = ({ locations, onS
     const handleAddEntry = () => {
         if (!newEntry.name || !newEntry.startDate || !newEntry.endDate) return;
         
-        const entry: LocationEntry = {
+        const newLocation: LocationEntry = {
             id: Math.random().toString(36).substr(2, 9),
             name: newEntry.name,
             startDate: newEntry.startDate!,
@@ -32,11 +40,52 @@ export const LocationManager: React.FC<LocationManagerProps> = ({ locations, onS
             description: newEntry.description
         };
 
-        const updatedEntries = [...entries, entry].sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+        // Intelligent Merge/Split Logic to handle Overrides
+        let updatedEntries: LocationEntry[] = [];
+        const nStart = newLocation.startDate;
+        const nEnd = newLocation.endDate;
+
+        entries.forEach(existing => {
+            const eStart = existing.startDate;
+            const eEnd = existing.endDate;
+
+            // Check if existing entry overlaps with new entry
+            if (eEnd < nStart || eStart > nEnd) {
+                // No overlap, keep as is
+                updatedEntries.push(existing);
+            } else {
+                // Overlap detected: "Punch a hole" in existing entry or trim it
+                
+                // 1. Preserve part BEFORE new entry
+                if (eStart < nStart) {
+                    updatedEntries.push({
+                        ...existing,
+                        id: Math.random().toString(36).substr(2, 9), // New ID to avoid key conflicts
+                        endDate: addDays(nStart, -1)
+                    });
+                }
+
+                // 2. Preserve part AFTER new entry
+                if (eEnd > nEnd) {
+                    updatedEntries.push({
+                        ...existing,
+                        id: Math.random().toString(36).substr(2, 9),
+                        startDate: addDays(nEnd, 1)
+                    });
+                }
+            }
+        });
+
+        // Add the new overriding entry
+        updatedEntries.push(newLocation);
+        
+        // Sort chronologically
+        updatedEntries.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+        
         setEntries(updatedEntries);
         setNewEntry({
             name: '',
-            startDate: newEntry.endDate, // Auto-advance to previous end date
+            startDate: newEntry.endDate, // Auto-advance to previous end date for convenience
             endDate: defaultEndDate,
             description: ''
         });
@@ -70,7 +119,7 @@ export const LocationManager: React.FC<LocationManagerProps> = ({ locations, onS
                 <div>
                     <h4 className="font-bold text-gray-900 dark:text-white">Route Plan</h4>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Define which city or region you will be in during specific dates of your trip.
+                        Define locations for dates. Adding an overlapping date will automatically override existing entries.
                     </p>
                 </div>
             </div>
@@ -124,7 +173,7 @@ export const LocationManager: React.FC<LocationManagerProps> = ({ locations, onS
                 </div>
                 <div className="flex justify-end">
                     <Button variant="secondary" size="sm" onClick={handleAddEntry} disabled={!newEntry.name || !newEntry.startDate || !newEntry.endDate}>
-                        Add Segment
+                        Add / Override
                     </Button>
                 </div>
             </div>

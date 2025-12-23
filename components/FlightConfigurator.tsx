@@ -24,9 +24,10 @@ interface SegmentForm {
     time: string; // Departure Time
     arrivalDate: string; // Arrival Date
     arrivalTime: string; // Arrival Time
-    provider: string; // Carrier Name
-    providerCode: string; // IATA Code
-    identifier: string; // Flight Number
+    duration: number; // Duration in minutes
+    provider: string; 
+    providerCode: string; 
+    identifier: string; 
     travelClass: string;
     seatType: string;
     seatNumber: string;
@@ -36,7 +37,6 @@ interface SegmentForm {
     logoUrl?: string;
 }
 
-// Separate interface for Car logic to keep state clean
 interface CarForm {
     pickupLocation: string;
     dropoffLocation: string;
@@ -44,8 +44,9 @@ interface CarForm {
     pickupTime: string;
     dropoffDate: string;
     dropoffTime: string;
-    agency: string; // provider
-    model: string; // vehicleModel
+    duration: number; // Duration in minutes
+    agency: string; 
+    model: string; 
     confirmationCode: string;
     cost?: number;
     website?: string;
@@ -74,6 +75,7 @@ const DEFAULT_SEGMENT: Omit<SegmentForm, 'id'> = {
     time: '10:00',
     arrivalDate: '',
     arrivalTime: '14:00',
+    duration: 240, // 4 hours default
     provider: '',
     providerCode: '',
     identifier: '',
@@ -81,6 +83,15 @@ const DEFAULT_SEGMENT: Omit<SegmentForm, 'id'> = {
     seatType: 'Window',
     seatNumber: '',
     isExitRow: false
+};
+
+const AVERAGE_SPEEDS: Record<TransportMode, number> = {
+    'Flight': 800,
+    'Train': 100,
+    'Bus': 60,
+    'Car Rental': 80,
+    'Personal Car': 80,
+    'Cruise': 30
 };
 
 const getCurrencySymbol = (code: string) => {
@@ -98,6 +109,46 @@ const TRANSPORT_MODES: { mode: TransportMode; label: string; icon: string }[] = 
     { mode: 'Car Rental', label: 'Rental', icon: 'key' },
     { mode: 'Personal Car', label: 'My Car', icon: 'directions_car' },
 ];
+
+const DurationInput: React.FC<{ minutes: number; onChange: (m: number) => void }> = ({ minutes, onChange }) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+
+    return (
+        <div className="flex flex-col gap-1.5 w-full">
+            <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide ml-1">Duration</label>
+            <div className="flex gap-2">
+                <div className="relative flex-1">
+                    <input 
+                        type="number" 
+                        min="0"
+                        className="w-full px-3 py-3 rounded-2xl bg-gray-50/50 border border-gray-200 focus:bg-white focus:border-blue-500 outline-none font-bold text-gray-800 dark:bg-gray-800/40 dark:border-white/10 dark:text-gray-100 pr-8"
+                        value={hours}
+                        onChange={(e) => {
+                            const val = Math.max(0, parseInt(e.target.value) || 0);
+                            onChange(val * 60 + mins);
+                        }}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">h</span>
+                </div>
+                <div className="relative flex-1">
+                    <input 
+                        type="number" 
+                        min="0" 
+                        max="59"
+                        className="w-full px-3 py-3 rounded-2xl bg-gray-50/50 border border-gray-200 focus:bg-white focus:border-blue-500 outline-none font-bold text-gray-800 dark:bg-gray-800/40 dark:border-white/10 dark:text-gray-100 pr-8"
+                        value={mins}
+                        onChange={(e) => {
+                            const val = Math.max(0, Math.min(59, parseInt(e.target.value) || 0));
+                            onChange(hours * 60 + val);
+                        }}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">m</span>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({ 
     initialData, 
@@ -139,12 +190,38 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
         pickupTime: '10:00',
         dropoffDate: defaultEndDate || '',
         dropoffTime: '10:00',
+        duration: 0,
         agency: '',
         model: '',
         confirmationCode: '',
         sameDropoff: true,
         logoUrl: ''
     });
+
+    // Helper: Calculate diff in minutes
+    const getDiffMinutes = (d1: string, t1: string, d2: string, t2: string) => {
+        if (!d1 || !t1 || !d2 || !t2) return 0;
+        const start = new Date(`${d1}T${t1}`);
+        const end = new Date(`${d2}T${t2}`);
+        return Math.round((end.getTime() - start.getTime()) / 60000);
+    };
+
+    // Helper: Add minutes to date
+    const addMinutes = (d: string, t: string, minutes: number) => {
+        if (!d || !t) return { date: '', time: '' };
+        const start = new Date(`${d}T${t}`);
+        const end = new Date(start.getTime() + minutes * 60000);
+        // Handle local date string manually to avoid timezone shifts if using toISOString
+        const year = end.getFullYear();
+        const month = String(end.getMonth() + 1).padStart(2, '0');
+        const day = String(end.getDate()).padStart(2, '0');
+        const hours = String(end.getHours()).padStart(2, '0');
+        const mins = String(end.getMinutes()).padStart(2, '0');
+        return {
+            date: `${year}-${month}-${day}`,
+            time: `${hours}:${mins}`
+        };
+    };
 
     // --- Init & Data Loading ---
     useEffect(() => {
@@ -154,7 +231,6 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
             setCurrencySymbol(getCurrencySymbol(s.currency));
         });
 
-        // Load Airports
         fetch('https://raw.githubusercontent.com/mwgg/Airports/master/airports.json')
             .then(res => res.json())
             .then(data => {
@@ -170,7 +246,6 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
             })
             .catch(e => console.error("Failed to load airports", e));
 
-        // Load Airlines
         fetch('https://raw.githubusercontent.com/dlubom/iata_code_fetcher/main/carrier_data_full_processed.jsonl')
             .then(res => res.text())
             .then(text => {
@@ -196,7 +271,6 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
             const first = initialData[0];
             setMode(first.mode);
             
-            // Is it a car/rental?
             if (first.mode === 'Car Rental' || first.mode === 'Personal Car') {
                 const isSame = first.origin === first.destination;
                 setCarForm({
@@ -206,6 +280,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                     pickupTime: first.departureTime,
                     dropoffDate: first.arrivalDate,
                     dropoffTime: first.arrivalTime,
+                    duration: getDiffMinutes(first.departureDate, first.departureTime, first.arrivalDate, first.arrivalTime),
                     agency: first.provider,
                     model: first.vehicleModel || '',
                     confirmationCode: first.confirmationCode,
@@ -216,15 +291,11 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                     logoUrl: first.logoUrl
                 });
             } else {
-                // Public transport
                 setTripType(first.type);
-                
-                // Set Global Booking Details
                 const totalCost = initialData.reduce((acc, curr) => acc + (curr.cost || 0), 0);
                 setBookingCost(totalCost > 0 ? totalCost.toString() : '');
                 setBookingRef(first.confirmationCode || '');
 
-                // Fix: Sort by date to ensure Outbound is first (index 0) and Return is second (index 1)
                 const sortedData = [...initialData].sort((a, b) => {
                     const timeA = a.departureTime || '00:00';
                     const timeB = b.departureTime || '00:00';
@@ -234,7 +305,6 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                 });
 
                 const mapped: SegmentForm[] = sortedData.map(f => {
-                    // Try to split provider if it contains " - CODE" from legacy data
                     let providerName = f.provider || '';
                     let providerCode = '';
                     const splitMatch = f.provider.match(/^(.*) - ([A-Z0-9]{2,3})$/);
@@ -251,6 +321,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                         time: f.departureTime,
                         arrivalDate: f.arrivalDate || f.departureDate,
                         arrivalTime: f.arrivalTime || '14:00',
+                        duration: getDiffMinutes(f.departureDate, f.departureTime, f.arrivalDate || f.departureDate, f.arrivalTime || '14:00'),
                         provider: providerName,
                         providerCode: providerCode,
                         identifier: f.identifier,
@@ -271,10 +342,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
     // --- Handlers: Mode Switch ---
     const handleModeChange = (newMode: TransportMode) => {
         setMode(newMode);
-        
-        // Reset trip type based on constraints
         if (newMode === 'Flight') {
-            // Keep current if valid, else default
             if (!['Round Trip', 'One-Way', 'Multi-City'].includes(tripType)) setTripType('Round Trip');
         } else if (newMode === 'Train' || newMode === 'Bus' || newMode === 'Cruise') {
             if (tripType === 'Multi-City') setTripType('Round Trip');
@@ -298,7 +366,6 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
             };
             setSegments([first, second]);
         } else {
-            // Multi-city
             if (segments.length < 2) {
                 setSegments([...segments, { id: Math.random().toString(), ...DEFAULT_SEGMENT }]);
             }
@@ -307,9 +374,10 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
 
     const updateSegment = (index: number, field: keyof SegmentForm, value: any) => {
         const newSegments = [...segments];
+        const prev = newSegments[index];
         let updates: Partial<SegmentForm> = { [field]: value };
 
-        // Auto-fill IATA code if Provider Name is updated
+        // Provider Logic
         if (field === 'provider' && mode === 'Flight') {
             const matchedAirline = airlineList.find(a => a.name.toLowerCase() === (value as string).toLowerCase());
             if (matchedAirline) {
@@ -317,9 +385,51 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
             }
         }
 
-        newSegments[index] = { ...newSegments[index], ...updates };
+        // --- Recalculation Logic ---
         
-        // Auto-link round trip logic
+        // 1. Changing Date or Time -> Shift Arrival based on current Duration
+        if (field === 'date' || field === 'time') {
+            const newDate = field === 'date' ? value : prev.date;
+            const newTime = field === 'time' ? value : prev.time;
+            const { date: arrDate, time: arrTime } = addMinutes(newDate, newTime, prev.duration);
+            updates.arrivalDate = arrDate;
+            updates.arrivalTime = arrTime;
+        }
+        
+        // 2. Changing Duration -> Update Arrival
+        else if (field === 'duration') {
+            const mins = value as number;
+            const { date: arrDate, time: arrTime } = addMinutes(prev.date, prev.time, mins);
+            updates.arrivalDate = arrDate;
+            updates.arrivalTime = arrTime;
+        }
+
+        // 3. Changing Arrival -> Update Duration
+        else if (field === 'arrivalDate' || field === 'arrivalTime') {
+            const newArrDate = field === 'arrivalDate' ? value : prev.arrivalDate;
+            const newArrTime = field === 'arrivalTime' ? value : prev.arrivalTime;
+            const newDur = getDiffMinutes(prev.date, prev.time, newArrDate, newArrTime);
+            updates.duration = newDur > 0 ? newDur : 0;
+        }
+
+        // 4. Changing Distance -> Estimate Duration -> Update Arrival
+        else if (field === 'distance') {
+            const dist = value as number;
+            const speed = AVERAGE_SPEEDS[mode] || 800;
+            // dist (km) / speed (km/h) * 60 = minutes
+            const estimatedMins = Math.round((dist / speed) * 60);
+            
+            // Add buffering for public transport (boarding etc not usually included in pure travel time, but user expects travel time)
+            // Let's stick to pure physics calculation as a baseline
+            updates.duration = estimatedMins;
+            const { date: arrDate, time: arrTime } = addMinutes(prev.date, prev.time, estimatedMins);
+            updates.arrivalDate = arrDate;
+            updates.arrivalTime = arrTime;
+        }
+
+        newSegments[index] = { ...prev, ...updates };
+        
+        // Auto-link round trip
         if (tripType === 'Round Trip' && index === 0) {
             if (field === 'origin') newSegments[1].destination = value;
             if (field === 'destination') newSegments[1].origin = value;
@@ -345,7 +455,44 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
 
     // --- Handlers: Car ---
     const updateCar = (field: keyof CarForm, value: any) => {
-        setCarForm(prev => ({ ...prev, [field]: value }));
+        setCarForm(prev => {
+            const updates: Partial<CarForm> = { [field]: value };
+            
+            // 1. Changing Pickup -> Shift Dropoff using Duration
+            if (field === 'pickupDate' || field === 'pickupTime') {
+                const newDate = field === 'pickupDate' ? value : prev.pickupDate;
+                const newTime = field === 'pickupTime' ? value : prev.pickupTime;
+                const { date, time } = addMinutes(newDate, newTime, prev.duration);
+                updates.dropoffDate = date;
+                updates.dropoffTime = time;
+            }
+            // 2. Changing Duration -> Update Dropoff
+            else if (field === 'duration') {
+                const mins = value as number;
+                const { date, time } = addMinutes(prev.pickupDate, prev.pickupTime, mins);
+                updates.dropoffDate = date;
+                updates.dropoffTime = time;
+            }
+            // 3. Changing Dropoff -> Update Duration
+            else if (field === 'dropoffDate' || field === 'dropoffTime') {
+                const newD = field === 'dropoffDate' ? value : prev.dropoffDate;
+                const newT = field === 'dropoffTime' ? value : prev.dropoffTime;
+                const newDur = getDiffMinutes(prev.pickupDate, prev.pickupTime, newD, newT);
+                updates.duration = newDur > 0 ? newDur : 0;
+            }
+            // 4. Changing Distance -> Estimate
+            else if (field === 'distance') {
+                const dist = value as number;
+                const speed = AVERAGE_SPEEDS[mode] || 80;
+                const estimatedMins = Math.round((dist / speed) * 60);
+                updates.duration = estimatedMins;
+                const { date, time } = addMinutes(prev.pickupDate, prev.pickupTime, estimatedMins);
+                updates.dropoffDate = date;
+                updates.dropoffTime = time;
+            }
+
+            return { ...prev, ...updates };
+        });
     };
 
     // --- AI Estimate Distance ---
@@ -408,11 +555,10 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
         const isCar = mode === 'Car Rental' || mode === 'Personal Car';
 
         if (isCar) {
-            // Map Car Form to single Transport object
             const t: Transport = {
                 id: (initialData && initialData.length > 0) ? initialData[0].id : Math.random().toString(36).substr(2, 9),
                 itineraryId,
-                type: 'One-Way', // Arbitrary for cars
+                type: 'One-Way', 
                 mode: mode,
                 provider: carForm.agency,
                 identifier: '', 
@@ -434,7 +580,6 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
             };
             onSave([t]);
         } else {
-            // Map Segments with One Cost/One Code
             const parsedCost = parseFloat(bookingCost);
             const finalCost = isNaN(parsedCost) ? 0 : parsedCost;
 
@@ -443,7 +588,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                 itineraryId,
                 type: tripType,
                 mode: mode,
-                provider: seg.provider, // Just the name now
+                provider: seg.provider,
                 identifier: seg.identifier,
                 confirmationCode: bookingRef.toUpperCase(),
                 origin: extractIata(seg.origin),
@@ -457,7 +602,6 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                 seatType: seg.seatType as any,
                 isExitRow: seg.isExitRow,
                 reason: 'Personal',
-                // Assign total cost to the first segment only to avoid double counting in sums
                 cost: idx === 0 ? finalCost : 0, 
                 website: seg.website,
                 distance: seg.distance,
@@ -467,7 +611,6 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
         }
     };
 
-    // --- Helpers ---
     const fetchAirportSuggestions = async (query: string): Promise<string[]> => {
         if (!query || query.length < 2) return [];
         const lower = query.toLowerCase();
@@ -490,15 +633,13 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                 (a.iata && a.iata.toLowerCase().includes(lower))
             )
             .slice(0, 10)
-            .map(a => a.name); // Just return Name for Autocomplete
+            .map(a => a.name); 
     };
 
     const extractIata = (val: string) => val.includes(' - ') ? val.split(' - ')[0] : val;
 
     const handleAutoFill = async (index: number) => {
         const seg = segments[index];
-        // Construct IATA flight code: ProviderCode + Identifier (e.g. DL + 123 = DL123)
-        // If providerCode is missing, fallback to identifier (user might have typed "DL123")
         const fullFlightIata = seg.providerCode ? `${seg.providerCode}${seg.identifier}` : seg.identifier;
 
         if (!fullFlightIata || !seg.date || !apiKey) {
@@ -521,7 +662,6 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                     updates.providerCode = flight.airline.iata;
                 }
                 
-                // Parse Scheduled Times
                 if (flight.departure?.scheduled) {
                     const [dDate, dTime] = flight.departure.scheduled.split('T');
                     updates.date = dDate;
@@ -533,9 +673,16 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                     updates.arrivalTime = aTime.substring(0, 5);
                 }
 
+                const newDur = getDiffMinutes(
+                    updates.date || seg.date, 
+                    updates.time || seg.time, 
+                    updates.arrivalDate || seg.arrivalDate, 
+                    updates.arrivalTime || seg.arrivalTime
+                );
+                updates.duration = newDur;
+
                 const newSegments = [...segments];
                 newSegments[index] = { ...newSegments[index], ...updates };
-                // Sync return leg if needed
                 if (tripType === 'Round Trip' && index === 0) {
                      if (updates.origin) newSegments[1].destination = updates.origin;
                      if (updates.destination) newSegments[1].origin = updates.destination;
@@ -548,13 +695,10 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
         finally { setIsAutoFilling(null); }
     };
 
-    // --- Validation ---
     const isCar = mode === 'Car Rental' || mode === 'Personal Car';
     const isValid = isCar 
         ? carForm.pickupLocation && carForm.pickupDate && carForm.dropoffDate
         : segments.every(s => s.origin && s.destination && s.date);
-
-    // --- Renderers ---
 
     if (showDeleteConfirm) {
         return (
@@ -579,7 +723,6 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
     return (
         <div className="space-y-6 animate-fade-in max-h-[80vh] overflow-y-auto custom-scrollbar p-1">
             
-            {/* 1. Mode Selector */}
             <div className="bg-gray-100 dark:bg-black/30 p-1.5 rounded-2xl flex gap-1 overflow-x-auto">
                 {TRANSPORT_MODES.map(m => (
                     <button
@@ -597,7 +740,6 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                 ))}
             </div>
 
-            {/* 2. Configuration Form */}
             {isCar ? (
                 // --- PRIVATE TRANSPORT FORM ---
                 <div className="space-y-6 bg-gray-50 dark:bg-white/5 p-6 rounded-3xl border border-gray-100 dark:border-white/5 animate-fade-in">
@@ -634,6 +776,29 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                         <div className="space-y-2">
                             <Input label="Drop-off Date" type="date" value={carForm.dropoffDate} min={carForm.pickupDate} onChange={e => updateCar('dropoffDate', e.target.value)} />
                             <TimeInput value={carForm.dropoffTime} onChange={val => updateCar('dropoffTime', val)} />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end pt-2">
+                        <DurationInput minutes={carForm.duration} onChange={m => updateCar('duration', m)} />
+                        
+                        <div className="relative">
+                            <Input 
+                                label="Distance (km)" 
+                                type="number"
+                                placeholder="e.g. 450" 
+                                value={carForm.distance || ''} 
+                                onChange={e => updateCar('distance', parseFloat(e.target.value))} 
+                                className="pr-12"
+                            />
+                            <button 
+                                onClick={() => estimateDistance(carForm.pickupLocation, carForm.sameDropoff ? carForm.pickupLocation : carForm.dropoffLocation, 'Car', (val) => updateCar('distance', val), 'car')}
+                                className="absolute right-2 top-8 text-blue-500 hover:text-blue-600 disabled:opacity-50"
+                                title="Auto-Estimate Distance"
+                                disabled={isEstimatingDistance === 'car' || !carForm.pickupLocation}
+                            >
+                                {isEstimatingDistance === 'car' ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <span className="material-icons-outlined text-lg">timeline</span>}
+                            </button>
                         </div>
                     </div>
 
@@ -687,30 +852,10 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                             </div>
                         )}
                     </div>
-                    {/* Car Distance */}
-                    <div className="relative pt-2">
-                        <Input 
-                            label="Distance (km)" 
-                            type="number"
-                            placeholder="e.g. 450" 
-                            value={carForm.distance || ''} 
-                            onChange={e => updateCar('distance', parseFloat(e.target.value))} 
-                            className="pr-12"
-                        />
-                        <button 
-                            onClick={() => estimateDistance(carForm.pickupLocation, carForm.sameDropoff ? carForm.pickupLocation : carForm.dropoffLocation, 'Car', (val) => updateCar('distance', val), 'car')}
-                            className="absolute right-2 top-8 text-blue-500 hover:text-blue-600 disabled:opacity-50"
-                            title="Auto-Estimate Distance"
-                            disabled={isEstimatingDistance === 'car' || !carForm.pickupLocation}
-                        >
-                            {isEstimatingDistance === 'car' ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <span className="material-icons-outlined text-lg">timeline</span>}
-                        </button>
-                    </div>
                 </div>
             ) : (
                 // --- PUBLIC TRANSPORT FORM (Flight/Train/Bus) ---
                 <div className="space-y-6">
-                    {/* Sub-Tabs for Trip Type */}
                     <div className="flex p-1 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5">
                         {(mode === 'Flight' ? ['Round Trip', 'One-Way', 'Multi-City'] : ['Round Trip', 'One-Way']).map((t) => (
                             <button
@@ -779,11 +924,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                             type="date" 
                                             value={segment.date} 
                                             min={index === 0 ? defaultStartDate : segments[index - 1]?.date}
-                                            onChange={e => {
-                                                const val = e.target.value;
-                                                updateSegment(index, 'date', val);
-                                                if (!segment.arrivalDate || segment.arrivalDate < val) updateSegment(index, 'arrivalDate', val);
-                                            }} 
+                                            onChange={e => updateSegment(index, 'date', e.target.value)} 
                                         />
                                     </div>
                                     <div className="md:col-span-4">
@@ -804,7 +945,30 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                         <TimeInput label="Arr. Time" value={segment.arrivalTime} onChange={val => updateSegment(index, 'arrivalTime', val)} />
                                     </div>
 
-                                    {/* Details - Updated Layout for Separate IATA */}
+                                    {/* Duration & Distance Row */}
+                                    <div className="md:col-span-6">
+                                        <DurationInput minutes={segment.duration} onChange={m => updateSegment(index, 'duration', m)} />
+                                    </div>
+                                    
+                                    <div className="md:col-span-6 relative">
+                                        <Input 
+                                            label="Distance (km)"
+                                            type="number"
+                                            value={segment.distance || ''} 
+                                            onChange={e => updateSegment(index, 'distance', parseFloat(e.target.value))} 
+                                            className="pr-12"
+                                        />
+                                        <button 
+                                            onClick={() => estimateDistance(segment.origin, segment.destination, mode, (val) => updateSegment(index, 'distance', val), segment.id)}
+                                            className="absolute right-2 top-8 text-blue-500 hover:text-blue-600 disabled:opacity-50"
+                                            title="Auto-Estimate Distance"
+                                            disabled={isEstimatingDistance === segment.id || !segment.origin || !segment.destination}
+                                        >
+                                            {isEstimatingDistance === segment.id ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <span className="material-icons-outlined text-lg">timeline</span>}
+                                        </button>
+                                    </div>
+
+                                    {/* Details */}
                                     {mode === 'Flight' ? (
                                         <>
                                             <div className="md:col-span-4 relative">
@@ -858,7 +1022,6 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                             </div>
                                         </>
                                     ) : (
-                                        // Non-flight modes
                                         <div className="md:col-span-6 relative">
                                             <div className="relative w-full">
                                                 <Input 
@@ -882,7 +1045,6 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                         </div>
                                     )}
 
-                                    {/* Distance & Other Non-Flight Inputs */}
                                     {mode !== 'Flight' && (
                                         <div className="md:col-span-3 relative">
                                             <Input 
@@ -893,24 +1055,6 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                             />
                                         </div>
                                     )}
-
-                                    <div className="md:col-span-3 relative">
-                                        <Input 
-                                            label="Distance (km)"
-                                            type="number"
-                                            value={segment.distance || ''} 
-                                            onChange={e => updateSegment(index, 'distance', parseFloat(e.target.value))} 
-                                            className="pr-12"
-                                        />
-                                        <button 
-                                            onClick={() => estimateDistance(segment.origin, segment.destination, mode, (val) => updateSegment(index, 'distance', val), segment.id)}
-                                            className="absolute right-2 top-8 text-blue-500 hover:text-blue-600 disabled:opacity-50"
-                                            title="Auto-Estimate Distance"
-                                            disabled={isEstimatingDistance === segment.id || !segment.origin || !segment.destination}
-                                        >
-                                            {isEstimatingDistance === segment.id ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <span className="material-icons-outlined text-lg">timeline</span>}
-                                        </button>
-                                    </div>
 
                                     {mode === 'Flight' && (
                                         <div className="md:col-span-12 grid grid-cols-4 gap-4 mt-2 p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5">
@@ -938,7 +1082,6 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                             </Button>
                         )}
                         
-                        {/* Global Booking Summary */}
                         <div className="bg-gray-50 dark:bg-white/5 p-5 rounded-2xl border border-gray-100 dark:border-white/5 space-y-4">
                             <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
                                 <span className="material-icons-outlined text-sm">receipt_long</span> Booking Summary

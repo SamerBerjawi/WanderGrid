@@ -200,23 +200,17 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     };
 
     const handleTimeOffSubmit = async (tripData: Trip) => {
-        // This is called by LeaveRequestModal. Since we pass initialData with an ID, 
-        // the modal usually calls updateTrip if handled by Dashboard/Planner logic.
-        // Here we handle it specifically for this view.
-        
-        // We are essentially updating the *current* trip to include entitlement data and status=Upcoming
         if (!trip) return;
         
         const mergedTrip: Trip = {
             ...trip,
-            ...tripData, // Overwrite with data from modal (dates, entitlement, etc)
-            id: trip.id, // Ensure ID stays same
-            status: 'Upcoming' // Force confirm
+            ...tripData, 
+            id: trip.id, 
+            status: 'Upcoming' 
         };
 
         await dataService.updateTrip(mergedTrip);
         setTrip(mergedTrip);
-        // Refresh global list for dependencies
         const newTrips = allTrips.map(t => t.id === mergedTrip.id ? mergedTrip : t);
         setAllTrips(newTrips);
         setIsLeaveModalOpen(false);
@@ -322,7 +316,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         if (c.includes('first')) return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50';
         if (c.includes('business')) return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 border border-purple-200 dark:border-purple-900/50';
         if (c.includes('economy+')) return 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/50';
-        // Default Economy with Color
         return 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-900/30';
     };
 
@@ -349,6 +342,24 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
             console.error(e);
             return [];
         }
+    };
+
+    // Helper to get day transports including drops for cars
+    const getDayEvents = (dateStr: string) => {
+        if (!trip?.transports) return [];
+        const events: (Transport & { isDropoff?: boolean })[] = [];
+        
+        trip.transports.forEach(t => {
+            // Standard Departure
+            if (t.departureDate === dateStr) {
+                events.push(t);
+            }
+            // Car Drop-off on a different day
+            if (t.arrivalDate === dateStr && t.departureDate !== dateStr && (t.mode === 'Car Rental' || t.mode === 'Personal Car')) {
+                events.push({ ...t, isDropoff: true });
+            }
+        });
+        return events;
     };
 
     if (loading || !trip) return <div className="p-8 text-gray-400 animate-pulse">Loading Trip Data...</div>;
@@ -491,7 +502,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                             {tripDates.map((dateStr, index) => {
                                 const dateObj = new Date(dateStr); 
                                 
-                                const dayTransports = trip.transports?.filter(f => f.departureDate === dateStr);
+                                const dayEvents = getDayEvents(dateStr);
                                 const dayStay = trip.accommodations?.find(a => dateStr >= a.checkInDate && dateStr < a.checkOutDate);
                                 const location = getLocationForDate(dateStr);
                                 
@@ -520,22 +531,36 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                 </div>
                                             )}
 
-                                            {/* TRANSPORTS */}
-                                            {dayTransports && dayTransports.length > 0 && dayTransports.map(t => (
-                                                <div key={t.id} className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all">
+                                            {/* TRANSPORTS (Events) */}
+                                            {dayEvents.map(t => (
+                                                <div key={t.id + (t.isDropoff ? '_drop' : '')} className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all">
                                                     <div className="w-10 h-10 rounded-xl bg-blue-500 text-white flex items-center justify-center shadow-lg shadow-blue-500/30">
                                                         <span className="material-icons-outlined">{getTransportIcon(t.mode)}</span>
                                                     </div>
                                                     <div className="flex-1">
-                                                        <h4 className="font-bold text-gray-900 dark:text-white text-sm">{t.mode} to {t.destination}</h4>
+                                                        <h4 className="font-bold text-gray-900 dark:text-white text-sm">
+                                                            {t.isDropoff ? `Dropoff ${t.mode}` : (t.mode === 'Car Rental' || t.mode === 'Personal Car' ? `Pickup ${t.mode}` : `${t.mode} to ${t.destination}`)}
+                                                        </h4>
                                                         <div className="flex gap-4 mt-1">
                                                             <p className="text-[10px] text-blue-600 dark:text-blue-300 font-bold uppercase tracking-wider">
-                                                                {t.provider} {t.identifier} • {formatTime(t.departureTime)}
+                                                                {t.provider} {t.identifier} • {formatTime(t.isDropoff ? t.arrivalTime : t.departureTime)}
                                                             </p>
-                                                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
-                                                                {calculateDuration(t)} Duration
-                                                            </p>
-                                                            {t.distance && <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{t.distance} km</p>}
+                                                            {t.isDropoff && (
+                                                                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                                                                    to {t.dropoffLocation || t.destination}
+                                                                </p>
+                                                            )}
+                                                            {!t.isDropoff && (t.mode === 'Car Rental' || t.mode === 'Personal Car') && (
+                                                                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                                                                    from {t.pickupLocation || t.origin}
+                                                                </p>
+                                                            )}
+                                                            {!t.isDropoff && t.mode !== 'Car Rental' && t.mode !== 'Personal Car' && (
+                                                                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                                                                    {calculateDuration(t)} Duration
+                                                                </p>
+                                                            )}
+                                                            {!t.isDropoff && t.distance && <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{t.distance} km</p>}
                                                         </div>
                                                     </div>
                                                     <button onClick={() => openTransportModal([t])} className="text-gray-400 hover:text-blue-500"><span className="material-icons-outlined text-sm">edit</span></button>
@@ -635,7 +660,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                     <tbody className="divide-y divide-gray-100 dark:divide-white/5">
                                         {tripDates.map((dateStr, index) => {
                                             const dateObj = new Date(dateStr);
-                                            const dayTransports = trip.transports?.filter(f => f.departureDate === dateStr);
+                                            const dayEvents = getDayEvents(dateStr);
                                             const dayStay = trip.accommodations?.find(a => dateStr >= a.checkInDate && dateStr < a.checkOutDate);
                                             const location = getLocationForDate(dateStr);
                                             
@@ -644,19 +669,19 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
 
                                             return (
                                                 <tr key={dateStr} className="hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors group">
-                                                    <td className="p-4 align-top cursor-default">
+                                                    <td className="p-4 align-middle cursor-default">
                                                         <div className="flex flex-col">
                                                             <span className="text-xs font-black text-gray-800 dark:text-white">{dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}</span>
                                                             <span className="text-[9px] font-bold text-gray-400 uppercase">{dateObj.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}</span>
                                                         </div>
                                                     </td>
-                                                    <td className="p-4 align-top cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10" onClick={() => openTransportModal(undefined, dateStr)}>
-                                                        {dayTransports && dayTransports.length > 0 ? (
+                                                    <td className="p-4 align-middle cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10" onClick={() => openTransportModal(undefined, dateStr)}>
+                                                        {dayEvents && dayEvents.length > 0 ? (
                                                             <div className="space-y-2">
-                                                                {dayTransports.map(t => (
-                                                                    <div key={t.id} className="flex items-center gap-2 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1.5 rounded-lg border border-blue-100 dark:border-blue-900/30 cursor-pointer hover:bg-blue-100" onClick={(e) => { e.stopPropagation(); openTransportModal([t]); }}>
+                                                                {dayEvents.map(t => (
+                                                                    <div key={t.id + (t.isDropoff ? '_d' : '')} className="flex items-center gap-2 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1.5 rounded-lg border border-blue-100 dark:border-blue-900/30 cursor-pointer hover:bg-blue-100" onClick={(e) => { e.stopPropagation(); openTransportModal([t]); }}>
                                                                         <span className="material-icons-outlined text-sm">{getTransportIcon(t.mode)}</span>
-                                                                        <span>{t.origin} &rarr; {t.destination}</span>
+                                                                        <span>{t.isDropoff ? `Return ${t.mode}` : (t.mode === 'Car Rental' || t.mode === 'Personal Car' ? `Pickup ${t.mode}` : `${t.origin} → ${t.destination}`)}</span>
                                                                     </div>
                                                                 ))}
                                                             </div>
@@ -664,7 +689,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                             <span className="text-[10px] text-gray-300 font-bold uppercase tracking-widest">-</span>
                                                         )}
                                                     </td>
-                                                    <td className="p-4 align-top cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10" onClick={() => openLocationModal(dateStr)}>
+                                                    <td className="p-4 align-middle cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10" onClick={() => openLocationModal(dateStr)}>
                                                         {location ? (
                                                             <span className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-lg text-xs font-bold">
                                                                 {location.name}
@@ -673,23 +698,25 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                             <span className="text-[10px] text-gray-300 font-bold uppercase tracking-widest">-</span>
                                                         )}
                                                     </td>
-                                                    <td className="p-4 align-top text-xs font-medium text-gray-600 dark:text-gray-400 cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10" onClick={() => openTransportModal(undefined, dateStr)}>
-                                                        {dayTransports && dayTransports.length > 0 ? (
-                                                            dayTransports.map((t, i) => (
+                                                    <td className="p-4 align-middle text-xs font-medium text-gray-600 dark:text-gray-400 cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10" onClick={() => openTransportModal(undefined, dateStr)}>
+                                                        {dayEvents && dayEvents.length > 0 ? (
+                                                            dayEvents.map((t, i) => (
                                                                 <div key={i} className="mb-2 h-8 flex items-center">
-                                                                    {t.distance ? `${t.distance} km` : '-'}
+                                                                    {!t.isDropoff && t.distance ? `${t.distance} km` : '-'}
                                                                 </div>
                                                             ))
                                                         ) : (
                                                             <span className="text-[10px] text-gray-300 font-bold uppercase tracking-widest">-</span>
                                                         )}
                                                     </td>
-                                                    <td className="p-4 align-top cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10" onClick={() => openTransportModal(undefined, dateStr)}>
-                                                        {dayTransports && dayTransports.length > 0 ? (
+                                                    <td className="p-4 align-middle cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10" onClick={() => openTransportModal(undefined, dateStr)}>
+                                                        {dayEvents && dayEvents.length > 0 ? (
                                                             <div className="space-y-2">
-                                                                {dayTransports.map(t => (
+                                                                {dayEvents.map(t => (
                                                                     <div key={t.id} className="flex items-center h-[34px]">
-                                                                         <span className="text-xs font-bold text-gray-500 dark:text-gray-400">{calculateDuration(t)}</span>
+                                                                         <span className="text-xs font-bold text-gray-500 dark:text-gray-400">
+                                                                             {t.isDropoff ? formatTime(t.arrivalTime) : calculateDuration(t)}
+                                                                         </span>
                                                                     </div>
                                                                 ))}
                                                             </div>
@@ -697,7 +724,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                             <span className="text-[10px] text-gray-300 font-bold uppercase tracking-widest">-</span>
                                                         )}
                                                     </td>
-                                                    <td className="p-4 align-top cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10" onClick={() => openAccommodationModal(dateStr)}>
+                                                    <td className="p-4 align-middle cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10" onClick={() => openAccommodationModal(dateStr)}>
                                                         {dayStay ? (
                                                             <div className="flex items-center gap-2 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1.5 rounded-lg border border-amber-100 dark:border-amber-900/30 cursor-pointer hover:bg-amber-100" onClick={(e) => { e.stopPropagation(); openAccommodationModal(dateStr); }}>
                                                                 <span className="material-icons-outlined text-sm">hotel</span>
@@ -707,7 +734,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                             <span className="text-[10px] text-gray-300 font-bold uppercase tracking-widest">-</span>
                                                         )}
                                                     </td>
-                                                    <td className="p-4 align-top cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10" onClick={() => handleOpenActivityModal(dateStr)}>
+                                                    <td className="p-4 align-middle cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10" onClick={() => handleOpenActivityModal(dateStr)}>
                                                         <div className="space-y-1.5">
                                                             {dayActivities.map(item => {
                                                                 if (item.type === 'Reservation') {
@@ -744,6 +771,9 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                         </button>
                                                         {openMenuDate === dateStr && (
                                                             <div className="absolute right-0 top-10 w-48 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-white/10 z-50 overflow-hidden flex flex-col py-1 text-left animate-fade-in origin-top-right">
+                                                                <button onClick={(e) => { e.stopPropagation(); openLocationModal(dateStr); setOpenMenuDate(null); }} className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-white/5 text-xs font-bold text-gray-700 dark:text-gray-200 flex items-center gap-2 w-full text-left transition-colors">
+                                                                    <span className="material-icons-outlined text-sm text-indigo-500">place</span> Set Location
+                                                                </button>
                                                                 <button onClick={(e) => { e.stopPropagation(); handleOpenActivityModal(dateStr); setOpenMenuDate(null); }} className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-white/5 text-xs font-bold text-gray-700 dark:text-gray-200 flex items-center gap-2 w-full text-left transition-colors">
                                                                     <span className="material-icons-outlined text-sm text-indigo-500">add_task</span> Add Activity
                                                                 </button>
@@ -1135,7 +1165,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                     onSave={handleSaveLocations} 
                     onCancel={() => setIsLocationModalOpen(false)} 
                     defaultStartDate={selectedDateForModal || trip.startDate} 
-                    defaultEndDate={trip.endDate}
+                    defaultEndDate={selectedDateForModal || trip.endDate}
                 />
             </Modal>
 
