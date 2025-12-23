@@ -1,5 +1,4 @@
 
-
 export interface User {
   id: string;
   name: string;
@@ -67,6 +66,7 @@ export interface Transport {
   currency?: string; 
   website?: string; 
   distance?: number; // Distance in km
+  logoUrl?: string; // Brandfetch Logo
 }
 
 export interface Accommodation {
@@ -83,6 +83,7 @@ export interface Accommodation {
   cost?: number;
   currency?: string;
   notes?: string;
+  logoUrl?: string; // Brandfetch Logo
 }
 
 export interface Activity {
@@ -212,6 +213,7 @@ export interface WorkspaceSettings {
   theme: 'light' | 'dark' | 'auto';
   workingDays: number[]; // 0=Sun, 1=Mon, ... 6=Sat
   aviationStackApiKey?: string; // Key for Flight Data Provider
+  brandfetchApiKey?: string; // Key for Brandfetch Brand Search
 }
 
 export enum ViewState {

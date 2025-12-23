@@ -1,5 +1,4 @@
 
-
 import { User, Trip, PublicHoliday, EntitlementType, SavedConfig, EntitlementRule, WorkspaceSettings, CustomEvent, Transport } from '../types';
 
 const STORAGE_KEY = 'wandergrid_app_data';
@@ -69,7 +68,8 @@ const DEFAULT_WORKSPACE_SETTINGS: WorkspaceSettings = {
   autoSync: false,
   theme: 'light',
   workingDays: [1, 2, 3, 4, 5],
-  aviationStackApiKey: ''
+  aviationStackApiKey: '',
+  brandfetchApiKey: ''
 };
 
 // --- State Management ---

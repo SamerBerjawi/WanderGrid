@@ -51,12 +51,15 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
     
     // Currency & Input State
     const [currencySymbol, setCurrencySymbol] = useState('$');
+    const [brandfetchKey, setBrandfetchKey] = useState<string>('');
+    const [isFetchingBrand, setIsFetchingBrand] = useState(false);
     const [perNightInput, setPerNightInput] = useState('');
     const [activeField, setActiveField] = useState<'total' | 'perNight' | null>(null);
 
     useEffect(() => {
         dataService.getWorkspaceSettings().then(s => {
             setCurrencySymbol(getCurrencySymbol(s.currency));
+            if (s.brandfetchApiKey) setBrandfetchKey(s.brandfetchApiKey);
         });
 
         if (initialData && initialData.length > 0) {
@@ -106,7 +109,8 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
             confirmationCode: '',
             notes: '',
             website: '',
-            cost: undefined
+            cost: undefined,
+            logoUrl: undefined
         });
         setPerNightInput('');
         setEditingId(newItemId);
@@ -181,6 +185,28 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
         }
     };
 
+    const handleFetchBrand = async () => {
+        if (!form.name || !brandfetchKey) return;
+        setIsFetchingBrand(true);
+        try {
+            // Using Brandfetch Search API to find icon
+            const response = await fetch(`https://api.brandfetch.io/v2/search/${encodeURIComponent(form.name)}?c=${brandfetchKey}`);
+            if (response.ok) {
+                const data = await response.json();
+                if (Array.isArray(data) && data.length > 0) {
+                    const firstResult = data[0];
+                    if (firstResult.icon) {
+                        setForm(prev => ({ ...prev, logoUrl: firstResult.icon }));
+                    }
+                }
+            }
+        } catch (e) {
+            console.error("Brandfetch failed", e);
+        } finally {
+            setIsFetchingBrand(false);
+        }
+    };
+
     if (showDeleteConfirm) {
         return (
             <div className="text-center space-y-6 animate-fade-in py-8">
@@ -209,10 +235,14 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                 {items.filter(i => i.id !== editingId).map((item) => (
                     <div key={item.id} className="relative p-5 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-white/10 group flex justify-between items-center hover:shadow-md transition-all">
                         <div className="flex items-center gap-5">
-                            <div className="w-14 h-14 rounded-2xl bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex items-center justify-center text-3xl shrink-0 shadow-sm">
-                                <span className="material-icons-outlined">
-                                    {item.type === 'Hotel' ? 'hotel' : item.type === 'Airbnb' ? 'house' : 'apartment'}
-                                </span>
+                            <div className="w-14 h-14 rounded-2xl bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex items-center justify-center text-3xl shrink-0 shadow-sm overflow-hidden">
+                                {item.logoUrl ? (
+                                    <img src={item.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                                ) : (
+                                    <span className="material-icons-outlined">
+                                        {item.type === 'Hotel' ? 'hotel' : item.type === 'Airbnb' ? 'house' : 'apartment'}
+                                    </span>
+                                )}
                             </div>
                             <div>
                                 <h4 className="font-bold text-lg text-gray-900 dark:text-white">{item.name}</h4>
@@ -257,13 +287,36 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
 
                     <div className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <Input 
-                                label="Name of Place" 
-                                placeholder="e.g. The Grand Hotel"
-                                value={form.name || ''}
-                                onChange={e => setForm({...form, name: e.target.value})}
-                                className="!font-bold !text-lg"
-                            />
+                            <div className="relative">
+                                <Input 
+                                    label="Name of Place" 
+                                    placeholder="e.g. The Grand Hotel"
+                                    value={form.name || ''}
+                                    onChange={e => setForm({...form, name: e.target.value})}
+                                    className="!font-bold !text-lg pr-10"
+                                    rightElement={
+                                        brandfetchKey && (
+                                            <button 
+                                                onClick={handleFetchBrand}
+                                                disabled={isFetchingBrand || !form.name}
+                                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-blue-500 disabled:opacity-50 transition-colors"
+                                                title="Auto-fetch Brand Logo"
+                                            >
+                                                {isFetchingBrand ? (
+                                                    <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin block" />
+                                                ) : (
+                                                    <span className="material-icons-outlined text-lg">image_search</span>
+                                                )}
+                                            </button>
+                                        )
+                                    }
+                                />
+                                {form.logoUrl && (
+                                    <div className="absolute top-8 right-12 w-8 h-8 rounded-lg overflow-hidden border border-gray-200 shadow-sm bg-white">
+                                        <img src={form.logoUrl} alt="Brand" className="w-full h-full object-cover" />
+                                    </div>
+                                )}
+                            </div>
                             <Select 
                                 label="Type"
                                 options={ACCOMMODATION_TYPES}

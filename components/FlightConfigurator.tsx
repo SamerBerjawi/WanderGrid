@@ -20,18 +20,20 @@ interface SegmentForm {
     id: string;
     origin: string;
     destination: string;
-    date: string;
-    time: string;
-    provider: string; 
-    identifier: string;
-    confirmationCode: string;
+    date: string; // Departure Date
+    time: string; // Departure Time
+    arrivalDate: string; // Arrival Date
+    arrivalTime: string; // Arrival Time
+    provider: string; // Carrier Name
+    providerCode: string; // IATA Code
+    identifier: string; // Flight Number
     travelClass: string;
     seatType: string;
     seatNumber: string;
     isExitRow: boolean;
-    cost?: number;
     website?: string;
     distance?: number;
+    logoUrl?: string;
 }
 
 // Separate interface for Car logic to keep state clean
@@ -49,6 +51,7 @@ interface CarForm {
     website?: string;
     sameDropoff: boolean;
     distance?: number;
+    logoUrl?: string;
 }
 
 interface AirportData {
@@ -68,10 +71,12 @@ const DEFAULT_SEGMENT: Omit<SegmentForm, 'id'> = {
     origin: '',
     destination: '',
     date: '',
-    time: '12:00',
+    time: '10:00',
+    arrivalDate: '',
+    arrivalTime: '14:00',
     provider: '',
+    providerCode: '',
     identifier: '',
-    confirmationCode: '',
     travelClass: 'Economy',
     seatType: 'Window',
     seatNumber: '',
@@ -98,7 +103,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
     initialData, 
     onSave, 
     onDelete, 
-    onCancel,
+    onCancel, 
     defaultStartDate,
     defaultEndDate
 }) => {
@@ -108,14 +113,21 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [currencySymbol, setCurrencySymbol] = useState('$');
     const [apiKey, setApiKey] = useState<string>('');
+    const [brandfetchKey, setBrandfetchKey] = useState<string>('');
+
+    // Booking Details (Global for Public Transport)
+    const [bookingCost, setBookingCost] = useState<string>('');
+    const [bookingRef, setBookingRef] = useState<string>('');
 
     // Public Transport State (Flight/Train/Bus)
     const [segments, setSegments] = useState<SegmentForm[]>([
-        { id: '1', ...DEFAULT_SEGMENT, date: defaultStartDate || '' },
-        { id: '2', ...DEFAULT_SEGMENT, date: defaultEndDate || '' } 
+        { id: '1', ...DEFAULT_SEGMENT, date: defaultStartDate || '', arrivalDate: defaultStartDate || '' },
+        { id: '2', ...DEFAULT_SEGMENT, date: defaultEndDate || '', arrivalDate: defaultEndDate || '' } 
     ]);
     const [isAutoFilling, setIsAutoFilling] = useState<string | null>(null);
     const [isEstimatingDistance, setIsEstimatingDistance] = useState<string | null>(null); // segment ID or 'car'
+    const [isFetchingBrand, setIsFetchingBrand] = useState<string | null>(null); // segment ID or 'car'
+    
     const [airportList, setAirportList] = useState<AirportData[]>([]);
     const [airlineList, setAirlineList] = useState<AirlineData[]>([]);
 
@@ -130,13 +142,15 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
         agency: '',
         model: '',
         confirmationCode: '',
-        sameDropoff: true
+        sameDropoff: true,
+        logoUrl: ''
     });
 
     // --- Init & Data Loading ---
     useEffect(() => {
         dataService.getWorkspaceSettings().then(s => {
             if (s.aviationStackApiKey) setApiKey(s.aviationStackApiKey);
+            if (s.brandfetchApiKey) setBrandfetchKey(s.brandfetchApiKey);
             setCurrencySymbol(getCurrencySymbol(s.currency));
         });
 
@@ -156,7 +170,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
             })
             .catch(e => console.error("Failed to load airports", e));
 
-        // Load Airlines from processed JSONL
+        // Load Airlines
         fetch('https://raw.githubusercontent.com/dlubom/iata_code_fetcher/main/carrier_data_full_processed.jsonl')
             .then(res => res.text())
             .then(text => {
@@ -164,14 +178,13 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                 const list: AirlineData[] = lines.map(line => {
                     try {
                         const d = JSON.parse(line);
-                        // Support keys from standard IATA datasets
                         return {
-                            name: d.name || d.Name || '',
-                            iata: d.iata || d.IATA || '',
-                            icao: d.icao || d.ICAO || ''
+                            name: d.company_name || d.name || '',
+                            iata: d.iata || '',
+                            icao: d.icao || ''
                         };
                     } catch { return null; }
-                }).filter(x => x && x.name) as AirlineData[];
+                }).filter(x => x && x.name && x.iata) as AirlineData[];
                 setAirlineList(list);
             })
             .catch(e => console.error("Failed to load airlines", e));
@@ -199,28 +212,57 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                     cost: first.cost,
                     website: first.website,
                     sameDropoff: isSame,
-                    distance: first.distance
+                    distance: first.distance,
+                    logoUrl: first.logoUrl
                 });
             } else {
-                // It's public transport
+                // Public transport
                 setTripType(first.type);
-                const mapped: SegmentForm[] = initialData.map(f => ({
-                    id: f.id,
-                    origin: f.origin,
-                    destination: f.destination,
-                    date: f.departureDate,
-                    time: f.departureTime,
-                    provider: f.provider,
-                    identifier: f.identifier,
-                    confirmationCode: f.confirmationCode,
-                    travelClass: f.travelClass || 'Economy',
-                    seatType: f.seatType || 'Window',
-                    seatNumber: f.seatNumber || '',
-                    isExitRow: f.isExitRow || false,
-                    cost: f.cost,
-                    website: f.website,
-                    distance: f.distance
-                }));
+                
+                // Set Global Booking Details
+                const totalCost = initialData.reduce((acc, curr) => acc + (curr.cost || 0), 0);
+                setBookingCost(totalCost > 0 ? totalCost.toString() : '');
+                setBookingRef(first.confirmationCode || '');
+
+                // Fix: Sort by date to ensure Outbound is first (index 0) and Return is second (index 1)
+                const sortedData = [...initialData].sort((a, b) => {
+                    const timeA = a.departureTime || '00:00';
+                    const timeB = b.departureTime || '00:00';
+                    const dateA = new Date(`${a.departureDate}T${timeA}`).getTime();
+                    const dateB = new Date(`${b.departureDate}T${timeB}`).getTime();
+                    return dateA - dateB;
+                });
+
+                const mapped: SegmentForm[] = sortedData.map(f => {
+                    // Try to split provider if it contains " - CODE" from legacy data
+                    let providerName = f.provider || '';
+                    let providerCode = '';
+                    const splitMatch = f.provider.match(/^(.*) - ([A-Z0-9]{2,3})$/);
+                    if (splitMatch) {
+                        providerName = splitMatch[1];
+                        providerCode = splitMatch[2];
+                    }
+
+                    return {
+                        id: f.id,
+                        origin: f.origin,
+                        destination: f.destination,
+                        date: f.departureDate,
+                        time: f.departureTime,
+                        arrivalDate: f.arrivalDate || f.departureDate,
+                        arrivalTime: f.arrivalTime || '14:00',
+                        provider: providerName,
+                        providerCode: providerCode,
+                        identifier: f.identifier,
+                        travelClass: f.travelClass || 'Economy',
+                        seatType: f.seatType || 'Window',
+                        seatNumber: f.seatNumber || '',
+                        isExitRow: f.isExitRow || false,
+                        website: f.website,
+                        distance: f.distance,
+                        logoUrl: f.logoUrl
+                    };
+                });
                 setSegments(mapped);
             }
         }
@@ -243,15 +285,16 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
     const handleTripTypeChange = (type: TripType) => {
         setTripType(type);
         if (type === 'One-Way') {
-            setSegments([segments[0] || { id: '1', ...DEFAULT_SEGMENT, date: defaultStartDate || '' }]);
+            setSegments([segments[0] || { id: '1', ...DEFAULT_SEGMENT, date: defaultStartDate || '', arrivalDate: defaultStartDate || '' }]);
         } else if (type === 'Round Trip') {
-            const first = segments[0] || { id: '1', ...DEFAULT_SEGMENT, date: defaultStartDate || '' };
+            const first = segments[0] || { id: '1', ...DEFAULT_SEGMENT, date: defaultStartDate || '', arrivalDate: defaultStartDate || '' };
             const second = segments[1] || { 
                 id: '2', 
                 ...DEFAULT_SEGMENT, 
                 origin: first.destination, 
                 destination: first.origin,
-                date: defaultEndDate || '' 
+                date: defaultEndDate || '',
+                arrivalDate: defaultEndDate || ''
             };
             setSegments([first, second]);
         } else {
@@ -264,7 +307,17 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
 
     const updateSegment = (index: number, field: keyof SegmentForm, value: any) => {
         const newSegments = [...segments];
-        newSegments[index] = { ...newSegments[index], [field]: value };
+        let updates: Partial<SegmentForm> = { [field]: value };
+
+        // Auto-fill IATA code if Provider Name is updated
+        if (field === 'provider' && mode === 'Flight') {
+            const matchedAirline = airlineList.find(a => a.name.toLowerCase() === (value as string).toLowerCase());
+            if (matchedAirline) {
+                updates.providerCode = matchedAirline.iata;
+            }
+        }
+
+        newSegments[index] = { ...newSegments[index], ...updates };
         
         // Auto-link round trip logic
         if (tripType === 'Round Trip' && index === 0) {
@@ -280,7 +333,8 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
             id: Math.random().toString(), 
             ...DEFAULT_SEGMENT,
             origin: last ? last.destination : '',
-            date: last ? last.date : ''
+            date: last ? last.arrivalDate : '',
+            arrivalDate: last ? last.arrivalDate : ''
         }]);
     };
 
@@ -316,6 +370,38 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
         }
     };
 
+    // --- Brandfetch Logic ---
+    const handleFetchBrandForCar = async () => {
+        if (!carForm.agency || !brandfetchKey) return;
+        setIsFetchingBrand('car');
+        try {
+            const response = await fetch(`https://api.brandfetch.io/v2/search/${encodeURIComponent(carForm.agency)}?c=${brandfetchKey}`);
+            if (response.ok) {
+                const data = await response.json();
+                if (Array.isArray(data) && data.length > 0 && data[0].icon) {
+                    updateCar('logoUrl', data[0].icon);
+                }
+            }
+        } catch (e) { console.error("Brand fetch error", e); }
+        finally { setIsFetchingBrand(null); }
+    };
+
+    const handleFetchBrandForSegment = async (index: number) => {
+        const seg = segments[index];
+        if (!seg.provider || !brandfetchKey) return;
+        setIsFetchingBrand(seg.id);
+        try {
+            const response = await fetch(`https://api.brandfetch.io/v2/search/${encodeURIComponent(seg.provider)}?c=${brandfetchKey}`);
+            if (response.ok) {
+                const data = await response.json();
+                if (Array.isArray(data) && data.length > 0 && data[0].icon) {
+                    updateSegment(index, 'logoUrl', data[0].icon);
+                }
+            }
+        } catch (e) { console.error("Brand fetch error", e); }
+        finally { setIsFetchingBrand(null); }
+    };
+
     // --- Save Logic ---
     const handleSave = () => {
         const itineraryId = (initialData && initialData.length > 0) ? initialData[0].itineraryId : Math.random().toString(36).substr(2, 9);
@@ -329,50 +415,53 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                 type: 'One-Way', // Arbitrary for cars
                 mode: mode,
                 provider: carForm.agency,
-                identifier: '', // No specific identifier usually
+                identifier: '', 
                 confirmationCode: carForm.confirmationCode,
-                // Map Pickup to Origin/Departure
                 origin: carForm.pickupLocation,
                 departureDate: carForm.pickupDate,
                 departureTime: carForm.pickupTime,
                 pickupLocation: carForm.pickupLocation,
-                // Map Dropoff to Dest/Arrival
                 destination: carForm.sameDropoff ? carForm.pickupLocation : carForm.dropoffLocation,
                 arrivalDate: carForm.dropoffDate,
                 arrivalTime: carForm.dropoffTime,
                 dropoffLocation: carForm.sameDropoff ? carForm.pickupLocation : carForm.dropoffLocation,
-                
                 vehicleModel: carForm.model,
                 cost: carForm.cost,
                 website: carForm.website,
                 reason: 'Personal',
-                distance: carForm.distance
+                distance: carForm.distance,
+                logoUrl: carForm.logoUrl
             };
             onSave([t]);
         } else {
-            // Map Segments
-            const transports: Transport[] = segments.map(seg => ({
+            // Map Segments with One Cost/One Code
+            const parsedCost = parseFloat(bookingCost);
+            const finalCost = isNaN(parsedCost) ? 0 : parsedCost;
+
+            const transports: Transport[] = segments.map((seg, idx) => ({
                 id: (initialData?.find(f => f.id === seg.id)?.id) || Math.random().toString(36).substr(2, 9),
                 itineraryId,
                 type: tripType,
                 mode: mode,
-                provider: seg.provider,
+                provider: seg.provider, // Just the name now
                 identifier: seg.identifier,
-                confirmationCode: seg.confirmationCode,
+                confirmationCode: bookingRef.toUpperCase(),
                 origin: extractIata(seg.origin),
                 destination: extractIata(seg.destination),
                 departureDate: seg.date,
                 departureTime: seg.time,
-                arrivalDate: seg.date, // Simplifying arrival date = dep date for segments unless we add arrival date field
-                arrivalTime: '00:00', // Simplify
+                arrivalDate: seg.arrivalDate || seg.date,
+                arrivalTime: seg.arrivalTime || '00:00',
                 travelClass: seg.travelClass as any,
                 seatNumber: seg.seatNumber,
                 seatType: seg.seatType as any,
                 isExitRow: seg.isExitRow,
                 reason: 'Personal',
-                cost: seg.cost,
+                // Assign total cost to the first segment only to avoid double counting in sums
+                cost: idx === 0 ? finalCost : 0, 
                 website: seg.website,
-                distance: seg.distance
+                distance: seg.distance,
+                logoUrl: seg.logoUrl
             }));
             onSave(transports);
         }
@@ -401,20 +490,24 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                 (a.iata && a.iata.toLowerCase().includes(lower))
             )
             .slice(0, 10)
-            .map(a => a.iata ? `${a.iata} - ${a.name}` : a.name);
+            .map(a => a.name); // Just return Name for Autocomplete
     };
 
     const extractIata = (val: string) => val.includes(' - ') ? val.split(' - ')[0] : val;
 
     const handleAutoFill = async (index: number) => {
         const seg = segments[index];
-        if (!seg.identifier || !seg.date || !apiKey) {
-            alert("Please enter Flight Number, Date and check Settings for API Key.");
+        // Construct IATA flight code: ProviderCode + Identifier (e.g. DL + 123 = DL123)
+        // If providerCode is missing, fallback to identifier (user might have typed "DL123")
+        const fullFlightIata = seg.providerCode ? `${seg.providerCode}${seg.identifier}` : seg.identifier;
+
+        if (!fullFlightIata || !seg.date || !apiKey) {
+            alert("Please enter Flight Number and Date.");
             return;
         }
         setIsAutoFilling(seg.id);
         try {
-            const res = await fetch(`http://api.aviationstack.com/v1/flights?access_key=${apiKey}&flight_iata=${seg.identifier}`);
+            const res = await fetch(`http://api.aviationstack.com/v1/flights?access_key=${apiKey}&flight_iata=${fullFlightIata}`);
             const data = await res.json();
             if (data.data && data.data.length > 0) {
                 const flight = data.data[0];
@@ -423,6 +516,23 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                     origin: flight.departure?.iata || seg.origin,
                     destination: flight.arrival?.iata || seg.destination,
                 };
+                
+                if (flight.airline?.iata) {
+                    updates.providerCode = flight.airline.iata;
+                }
+                
+                // Parse Scheduled Times
+                if (flight.departure?.scheduled) {
+                    const [dDate, dTime] = flight.departure.scheduled.split('T');
+                    updates.date = dDate;
+                    updates.time = dTime.substring(0, 5);
+                }
+                if (flight.arrival?.scheduled) {
+                    const [aDate, aTime] = flight.arrival.scheduled.split('T');
+                    updates.arrivalDate = aDate;
+                    updates.arrivalTime = aTime.substring(0, 5);
+                }
+
                 const newSegments = [...segments];
                 newSegments[index] = { ...newSegments[index], ...updates };
                 // Sync return leg if needed
@@ -530,7 +640,32 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-gray-200 dark:border-white/5">
                         {mode === 'Car Rental' ? (
                             <>
-                                <Input label="Agency" placeholder="Hertz, Avis..." value={carForm.agency} onChange={e => updateCar('agency', e.target.value)} />
+                                <div className="relative">
+                                    <Input 
+                                        label="Agency" 
+                                        placeholder="Hertz, Avis..." 
+                                        value={carForm.agency} 
+                                        onChange={e => updateCar('agency', e.target.value)} 
+                                        rightElement={
+                                            brandfetchKey && (
+                                                <button 
+                                                    onClick={handleFetchBrandForCar}
+                                                    disabled={isFetchingBrand === 'car' || !carForm.agency}
+                                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-blue-500 disabled:opacity-50 transition-colors"
+                                                    title="Fetch Brand Logo"
+                                                >
+                                                    {isFetchingBrand === 'car' ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin block" /> : <span className="material-icons-outlined text-lg">image_search</span>}
+                                                </button>
+                                            )
+                                        }
+                                        className="pr-10"
+                                    />
+                                    {carForm.logoUrl && (
+                                        <div className="absolute top-8 right-12 w-8 h-8 rounded-lg overflow-hidden border border-gray-200 shadow-sm bg-white">
+                                            <img src={carForm.logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                                        </div>
+                                    )}
+                                </div>
                                 <Input label="Car Model" placeholder="Ford Mustang" value={carForm.model} onChange={e => updateCar('model', e.target.value)} />
                                 <Input label="Reservation #" placeholder="RES-123" value={carForm.confirmationCode} onChange={e => updateCar('confirmationCode', e.target.value)} />
                             </>
@@ -596,9 +731,16 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                         {segments.map((segment, index) => (
                             <div key={segment.id} className="relative p-5 bg-white dark:bg-white/5 rounded-3xl border border-gray-100 dark:border-white/5 shadow-sm group">
                                 <div className="flex justify-between items-center mb-4">
-                                    <Badge color="blue" className="!text-[9px]">
-                                        {tripType === 'Round Trip' ? (index === 0 ? 'Outbound' : 'Return') : `Leg ${index + 1}`}
-                                    </Badge>
+                                    <div className="flex items-center gap-3">
+                                        <Badge color="blue" className="!text-[9px]">
+                                            {tripType === 'Round Trip' ? (index === 0 ? 'Outbound' : 'Return') : `Leg ${index + 1}`}
+                                        </Badge>
+                                        {segment.logoUrl && (
+                                            <div className="w-6 h-6 rounded overflow-hidden bg-white border shadow-sm">
+                                                <img src={segment.logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                                            </div>
+                                        )}
+                                    </div>
                                     {tripType === 'Multi-City' && segments.length > 1 && (
                                         <button onClick={() => removeSegment(index)} className="text-gray-300 hover:text-rose-500 transition-colors">
                                             <span className="material-icons-outlined text-sm">close</span>
@@ -630,63 +772,129 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                         />
                                     </div>
 
-                                    {/* Date/Time */}
-                                    <div className="md:col-span-8">
+                                    {/* Date/Time - DEPARTURE */}
+                                    <div className="md:col-span-2">
                                         <Input 
-                                            label="Date" 
+                                            label="Dep. Date" 
                                             type="date" 
                                             value={segment.date} 
                                             min={index === 0 ? defaultStartDate : segments[index - 1]?.date}
-                                            onChange={e => updateSegment(index, 'date', e.target.value)} 
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                updateSegment(index, 'date', val);
+                                                if (!segment.arrivalDate || segment.arrivalDate < val) updateSegment(index, 'arrivalDate', val);
+                                            }} 
                                         />
                                     </div>
                                     <div className="md:col-span-4">
-                                        <TimeInput label="Time" value={segment.time} onChange={val => updateSegment(index, 'time', val)} />
+                                        <TimeInput label="Dep. Time" value={segment.time} onChange={val => updateSegment(index, 'time', val)} />
                                     </div>
 
-                                    {/* Details */}
-                                    <div className="md:col-span-4 relative">
+                                    {/* Date/Time - ARRIVAL */}
+                                    <div className="md:col-span-2">
                                         <Input 
-                                            label={mode === 'Flight' ? "Flight #" : mode === 'Cruise' ? "Voyage #" : "Train/Bus #"}
-                                            placeholder="1234"
-                                            value={segment.identifier} 
-                                            onChange={e => updateSegment(index, 'identifier', e.target.value.toUpperCase())} 
+                                            label="Arr. Date" 
+                                            type="date" 
+                                            value={segment.arrivalDate} 
+                                            min={segment.date}
+                                            onChange={e => updateSegment(index, 'arrivalDate', e.target.value)} 
                                         />
-                                        {mode === 'Flight' && apiKey && (
-                                            <button 
-                                                onClick={() => handleAutoFill(index)}
-                                                className="absolute right-2 top-8 text-blue-500 hover:text-blue-600 disabled:opacity-50"
-                                                title="Auto-fill"
-                                                disabled={isAutoFilling === segment.id || !segment.identifier}
-                                            >
-                                                {isAutoFilling === segment.id ? <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <span className="material-icons-outlined text-lg">bolt</span>}
-                                            </button>
-                                        )}
                                     </div>
                                     <div className="md:col-span-4">
-                                        {mode === 'Flight' ? (
-                                            <Autocomplete 
-                                                label="Carrier" 
-                                                placeholder="Delta" 
-                                                value={segment.provider} 
-                                                onChange={val => updateSegment(index, 'provider', val)} 
-                                                fetchSuggestions={fetchAirlineSuggestions}
-                                            />
-                                        ) : (
-                                            <Input 
-                                                label={mode === 'Cruise' ? "Cruise Line" : "Carrier"} 
-                                                placeholder={mode === 'Cruise' ? "Royal Caribbean" : "Eurostar"} 
-                                                value={segment.provider} 
-                                                onChange={e => updateSegment(index, 'provider', e.target.value)} 
-                                            />
-                                        )}
-                                    </div>
-                                    <div className="md:col-span-4">
-                                        <Input label="Conf. Code" placeholder="XYZ" value={segment.confirmationCode} onChange={e => updateSegment(index, 'confirmationCode', e.target.value.toUpperCase())} />
+                                        <TimeInput label="Arr. Time" value={segment.arrivalTime} onChange={val => updateSegment(index, 'arrivalTime', val)} />
                                     </div>
 
-                                    {/* Distance Field for Public Transport */}
-                                    <div className="md:col-span-4 relative">
+                                    {/* Details - Updated Layout for Separate IATA */}
+                                    {mode === 'Flight' ? (
+                                        <>
+                                            <div className="md:col-span-4 relative">
+                                                <div className="relative w-full">
+                                                    <Autocomplete 
+                                                        label="Carrier" 
+                                                        placeholder="Delta Air Lines" 
+                                                        value={segment.provider} 
+                                                        onChange={val => updateSegment(index, 'provider', val)} 
+                                                        fetchSuggestions={fetchAirlineSuggestions}
+                                                        className="pr-10"
+                                                    />
+                                                    {brandfetchKey && (
+                                                        <button 
+                                                            onClick={() => handleFetchBrandForSegment(index)}
+                                                            disabled={isFetchingBrand === segment.id || !segment.provider}
+                                                            className="absolute right-2 top-8 text-gray-400 hover:text-blue-500 disabled:opacity-50 transition-colors z-10"
+                                                            title="Fetch Brand Logo"
+                                                        >
+                                                            {isFetchingBrand === segment.id ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin block" /> : <span className="material-icons-outlined text-lg">image_search</span>}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="md:col-span-2">
+                                                <Input 
+                                                    label="IATA"
+                                                    placeholder="DL"
+                                                    value={segment.providerCode} 
+                                                    onChange={e => updateSegment(index, 'providerCode', e.target.value.toUpperCase())}
+                                                    className="font-mono font-bold uppercase"
+                                                />
+                                            </div>
+                                            <div className="md:col-span-3 relative">
+                                                <Input 
+                                                    label="Flight #"
+                                                    placeholder="1234"
+                                                    value={segment.identifier} 
+                                                    onChange={e => updateSegment(index, 'identifier', e.target.value.toUpperCase())} 
+                                                />
+                                                {mode === 'Flight' && apiKey && (
+                                                    <button 
+                                                        onClick={() => handleAutoFill(index)}
+                                                        className="absolute right-2 top-8 text-blue-500 hover:text-blue-600 disabled:opacity-50"
+                                                        title="Auto-fill from AviationStack"
+                                                        disabled={isAutoFilling === segment.id || !segment.identifier}
+                                                    >
+                                                        {isAutoFilling === segment.id ? <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <span className="material-icons-outlined text-lg">bolt</span>}
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </>
+                                    ) : (
+                                        // Non-flight modes
+                                        <div className="md:col-span-6 relative">
+                                            <div className="relative w-full">
+                                                <Input 
+                                                    label={mode === 'Cruise' ? "Cruise Line" : "Carrier"} 
+                                                    placeholder={mode === 'Cruise' ? "Royal Caribbean" : "Eurostar"} 
+                                                    value={segment.provider} 
+                                                    onChange={e => updateSegment(index, 'provider', e.target.value)}
+                                                    className="pr-10"
+                                                />
+                                                {brandfetchKey && (
+                                                    <button 
+                                                        onClick={() => handleFetchBrandForSegment(index)}
+                                                        disabled={isFetchingBrand === segment.id || !segment.provider}
+                                                        className="absolute right-2 top-8 text-gray-400 hover:text-blue-500 disabled:opacity-50 transition-colors z-10"
+                                                        title="Fetch Brand Logo"
+                                                    >
+                                                        {isFetchingBrand === segment.id ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin block" /> : <span className="material-icons-outlined text-lg">image_search</span>}
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Distance & Other Non-Flight Inputs */}
+                                    {mode !== 'Flight' && (
+                                        <div className="md:col-span-3 relative">
+                                            <Input 
+                                                label={mode === 'Cruise' ? "Voyage #" : "Train/Bus #"}
+                                                placeholder="1234"
+                                                value={segment.identifier} 
+                                                onChange={e => updateSegment(index, 'identifier', e.target.value.toUpperCase())} 
+                                            />
+                                        </div>
+                                    )}
+
+                                    <div className="md:col-span-3 relative">
                                         <Input 
                                             label="Distance (km)"
                                             type="number"
@@ -705,14 +913,18 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                     </div>
 
                                     {mode === 'Flight' && (
-                                        <div className="md:col-span-12 grid grid-cols-4 gap-4 mt-2">
+                                        <div className="md:col-span-12 grid grid-cols-4 gap-4 mt-2 p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5">
                                             <Select label="Class" options={[{label:'Economy', value:'Economy'}, {label:'Business', value:'Business'}, {label:'First', value:'First'}]} value={segment.travelClass} onChange={e => updateSegment(index, 'travelClass', e.target.value)} className="!py-2 !text-xs" />
-                                            <Input label="Seat" value={segment.seatNumber} onChange={e => updateSegment(index, 'seatNumber', e.target.value)} className="!py-2 !text-xs" />
-                                            <div className="col-span-2 flex items-center gap-2 mt-6">
-                                                <div className="relative w-full">
-                                                    <Input label="Cost" type="number" placeholder="0.00" value={segment.cost || ''} onChange={e => updateSegment(index, 'cost', parseFloat(e.target.value))} className="pl-6 !py-2 !text-xs" />
-                                                    <span className="absolute left-2 top-7 text-xs text-gray-400">{currencySymbol}</span>
-                                                </div>
+                                            <Input label="Seat" placeholder="12A" value={segment.seatNumber} onChange={e => updateSegment(index, 'seatNumber', e.target.value)} className="!py-2 !text-xs" />
+                                            <Select label="Type" options={[{label:'Window', value:'Window'}, {label:'Middle', value:'Middle'}, {label:'Aisle', value:'Aisle'}]} value={segment.seatType} onChange={e => updateSegment(index, 'seatType', e.target.value)} className="!py-2 !text-xs" />
+                                            <div className="flex items-center h-full pt-6">
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${segment.isExitRow ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-gray-300 dark:border-gray-600 dark:bg-gray-800'}`}>
+                                                        {segment.isExitRow && <span className="material-icons-outlined text-white text-[10px]">check</span>}
+                                                    </div>
+                                                    <input type="checkbox" className="hidden" checked={segment.isExitRow} onChange={e => updateSegment(index, 'isExitRow', e.target.checked)} />
+                                                    <span className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase">Exit Row</span>
+                                                </label>
                                             </div>
                                         </div>
                                     )}
@@ -725,11 +937,38 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                 Add Segment
                             </Button>
                         )}
+                        
+                        {/* Global Booking Summary */}
+                        <div className="bg-gray-50 dark:bg-white/5 p-5 rounded-2xl border border-gray-100 dark:border-white/5 space-y-4">
+                            <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                                <span className="material-icons-outlined text-sm">receipt_long</span> Booking Summary
+                            </h4>
+                            <div className="grid grid-cols-2 gap-6">
+                                <Input 
+                                    label="Booking Ref / PNR" 
+                                    placeholder="XYZ-123" 
+                                    value={bookingRef} 
+                                    onChange={e => setBookingRef(e.target.value.toUpperCase())} 
+                                    className="font-mono uppercase tracking-wide font-bold" 
+                                />
+                                <div className="relative">
+                                    <Input 
+                                        label="Total Cost" 
+                                        type="number" 
+                                        placeholder="0.00" 
+                                        value={bookingCost} 
+                                        onChange={e => setBookingCost(e.target.value)} 
+                                        className="pl-8 font-black text-lg" 
+                                    />
+                                    <span className="absolute left-3 top-10 text-gray-400 font-bold text-sm">{currencySymbol}</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
 
-            <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-white/5 sticky bottom-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur p-2 justify-between">
+            <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-white/5 sticky bottom-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur p-2 justify-between z-20 rounded-b-2xl">
                 {initialData && onDelete && (
                     <Button variant="danger" onClick={() => setShowDeleteConfirm(true)} icon={<span className="material-icons-outlined">delete</span>}>
                         Delete

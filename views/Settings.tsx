@@ -28,7 +28,8 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
       autoSync: false,
       theme: 'light',
       workingDays: [1, 2, 3, 4, 5],
-      aviationStackApiKey: ''
+      aviationStackApiKey: '',
+      brandfetchApiKey: ''
   });
 
   const [isEditingUser, setIsEditingUser] = useState(false);
@@ -344,17 +345,31 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                              </div>
                         </div>
                     </div>
-                    <div className="p-8">
-                        <Input 
-                            label="AviationStack API Key (Flight Data)" 
-                            placeholder="e.g. 840d..."
-                            value={config.aviationStackApiKey || ''}
-                            onChange={e => setConfig({...config, aviationStackApiKey: e.target.value})}
-                            rightElement={
-                                <a href="https://aviationstack.com/" target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-500 font-bold uppercase hover:underline mr-2">Get Key</a>
-                            }
-                        />
-                        <p className="text-[10px] text-gray-400 mt-2">Required for retrieving real-time flight schedules and airline details in the Planner.</p>
+                    <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <Input 
+                                label="AviationStack API Key (Flight Data)" 
+                                placeholder="e.g. 840d..."
+                                value={config.aviationStackApiKey || ''}
+                                onChange={e => setConfig({...config, aviationStackApiKey: e.target.value})}
+                                rightElement={
+                                    <a href="https://aviationstack.com/" target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-500 font-bold uppercase hover:underline mr-2">Get Key</a>
+                                }
+                            />
+                            <p className="text-[10px] text-gray-400">Required for retrieving real-time flight schedules and airline details.</p>
+                        </div>
+                        <div className="space-y-2">
+                            <Input 
+                                label="Brandfetch Client ID (Logos)" 
+                                placeholder="e.g. brandfetch_..."
+                                value={config.brandfetchApiKey || ''}
+                                onChange={e => setConfig({...config, brandfetchApiKey: e.target.value})}
+                                rightElement={
+                                    <a href="https://brandfetch.com/developers" target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-500 font-bold uppercase hover:underline mr-2">Get Key</a>
+                                }
+                            />
+                            <p className="text-[10px] text-gray-400">Required for fetching official brand logos for accommodations and transport.</p>
+                        </div>
                     </div>
                 </Card>
 
