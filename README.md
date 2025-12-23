@@ -1,15 +1,24 @@
-
-# WanderGrid
+# WanderGrid v0.2
 
 A private, self-hosted Vacation & Leave Management System designed for families, digital nomads, and small teams to track expeditions, holidays, and time off with precision and style.
 
 ## ✨ Features
+
+### 🧠 AI-Powered Intelligence (Gemini)
+- **Smart Autocomplete**: Context-aware destination, hotel, and activity suggestions powered by Google Gemini.
+- **Distance Estimation**: Automatic calculation of travel distances (km) between cities or pickup/drop-off points to estimate travel duration.
 
 ### 🌍 Dashboard Command Center
 - **Visual Overview**: At-a-glance view of team members, leave balances, and consumption via interactive donut charts.
 - **Calendar System**: Seamlessly switch between Year, Month, and Week views to visualize schedules.
 - **Drag-to-Book**: Intuitive drag-and-drop selection on the calendar to initiate leave requests instantly.
 - **Upcoming Intel**: "Next Trip" indicators and countdowns.
+
+### ✈️ Expedition Logistics & Planning
+- **Transport Configurator**: Detailed itinerary builder supporting Multi-City, Round Trip, and One-Way journeys. Tracks classes, seat types, and specific flight numbers.
+- **Accommodation Tracker**: Manage hotel, Airbnb, or villa stays with automated cost-per-night calculations and check-in/out logic.
+- **Route Manager**: Visual timeline of locations during a trip to handle complex multi-leg journeys.
+- **Activity Scheduler**: Day-by-day planning for reservations and tours with cost tracking.
 
 ### 📅 Advanced Leave Management
 - **Flexible Booking**: Support for Full Days, AM/PM Half-Days, and custom start/end splits (e.g., start a trip on Friday PM).
@@ -24,15 +33,13 @@ A private, self-hosted Vacation & Leave Management System designed for families,
 - **Carry-Over Rules**: Robust support for carrying over unused days with configurable expiry logic (Fixed Date, Rolling Months, or Permanent).
 - **Unlimited Allowance**: Toggle specific categories to bypass balance checks.
 
-### 🏖️ Public Holiday Management
-- **Global Data**: Integrated with Nager.Date API to fetch statutory holidays for almost any country.
-- **Smart Handling**:
-  - **Weekend Rules**: Configurable logic for holidays falling on weekends (Forfeit, Move to Next Monday, or Accrue to "In Lieu" balance).
-  - **Custom Holidays**: Manually add extra days off (e.g., Company Retreats).
-  - **Regional Mix**: Assign different users to different regional calendars (e.g., one user on US holidays, another on UK).
+### 🔌 External Integrations
+- **Nager.Date**: Automated public holiday importation for over 100+ countries.
+- **Brandfetch**: Auto-discovery of brand logos for airlines, car rental agencies, and hotels to beautify your itinerary.
+- **AviationStack**: Real-time flight schedule lookups to populate departure/arrival times automatically.
 
 ### 👥 User & Identity Management
-- **Role-Based Access**: Distinguish between Partners (Executives), Children, and Admins.
+- **Role-Based Access**: Distinguish between Partners (Executive), Children, and Admins.
 - **Per-User Configuration**: Unique policy overrides, working patterns, and holiday calendars for each individual.
 - **Fiscal Year Management**: Initialize new fiscal years per user, with options to replicate previous protocols.
 
@@ -48,7 +55,25 @@ A private, self-hosted Vacation & Leave Management System designed for families,
 
 ## 🛠️ Tech Stack
 - **Frontend**: React 19, TypeScript, Tailwind CSS
+- **AI**: Google GenAI SDK (Gemini models)
 - **Icons**: Material Icons Outlined
 - **State/Persistence**: LocalStorage (Mock Service) for instant setup, adaptable to SQLite/Postgres.
 
+## 🚀 Getting Started
 
+1. **Clone & Install**:
+   ```bash
+   npm install
+   ```
+
+2. **Environment Setup**:
+   - The app uses `process.env.API_KEY` for Google Gemini features. Ensure this is configured in your build environment.
+
+3. **Run**:
+   ```bash
+   npm start
+   ```
+
+4. **In-App Configuration**:
+   - Navigate to **Settings** to configure your Workspace.
+   - Add API Keys for **AviationStack** and **Brandfetch** to unlock full logistical features.

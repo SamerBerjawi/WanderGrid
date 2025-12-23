@@ -1009,7 +1009,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                     <div key={idx} className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-white/5 shadow-sm hover:shadow-xl transition-all overflow-hidden flex flex-col border-l-4 border-l-amber-500">
                                         <div className="p-5 flex gap-5">
                                             {/* Left: Image/Icon */}
-                                            <div className="w-24 h-24 rounded-2xl bg-amber-50 dark:bg-amber-900/10 flex items-center justify-center shrink-0 overflow-hidden shadow-inner relative">
+                                            <div className="w-24 h-24 rounded-2xl bg-amber-50 dark:bg-amber-900/10 flex items-center justify-center shrink-0 overflow-hidden shadow-inner shadow-amber-500/20 relative">
                                                 {stay.logoUrl ? (
                                                     <img src={stay.logoUrl} className="w-full h-full object-cover" />
                                                 ) : (

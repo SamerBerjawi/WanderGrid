@@ -2,6 +2,8 @@
 export interface User {
   id: string;
   name: string;
+  email?: string; // New: Auth identifier
+  password?: string; // New: Mock password
   role: 'Admin' | 'Partner' | 'Child';
   leaveBalance: number; // in days
   takenLeave: number;

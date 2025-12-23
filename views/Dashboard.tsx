@@ -598,7 +598,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                 <div className="flex items-start justify-between mb-6">
                     <div className="flex items-center gap-4">
                         <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-black text-white shadow-lg transition-transform group-hover:rotate-3
-                            ${user.role === 'Partner' ? 'bg-gradient-to-br from-blue-500 to-indigo-700' : 'bg-gradient-to-br from-emerald-400 to-teal-600'}`}>
+                            ${user.role === 'Partner' ? 'bg-gradient-to-br from-blue-500 to-indigo-700 shadow-blue-500/30' : 'bg-gradient-to-br from-emerald-400 to-teal-600 shadow-emerald-500/30'}`}>
                             {user.name.charAt(0)}
                         </div>
                         <div>

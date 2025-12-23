@@ -8,11 +8,13 @@ const DEFAULT_USERS: User[] = [
   { 
     id: '1', 
     name: 'Admin User', 
+    email: 'admin@wandergrid.app',
+    password: 'password', // Default mock password
     role: 'Admin', 
     leaveBalance: 0, 
     takenLeave: 0, 
     allowance: 0, 
-    lieuBalance: 0,
+    lieuBalance: 0, 
     holidayConfigIds: [],
     policies: [],
     activeYears: [new Date().getFullYear()]
@@ -66,7 +68,7 @@ const DEFAULT_WORKSPACE_SETTINGS: WorkspaceSettings = {
   currency: 'USD',
   dateFormat: 'MM/DD/YYYY',
   autoSync: false,
-  theme: 'light',
+  theme: 'dark', // Changed default to dark
   workingDays: [1, 2, 3, 4, 5],
   aviationStackApiKey: '',
   brandfetchApiKey: ''
@@ -162,6 +164,36 @@ class DataService {
     this.savedConfigs = [...DEFAULT_SAVED_CONFIGS];
     this.workspaceSettings = { ...DEFAULT_WORKSPACE_SETTINGS };
     this.saveToStorage();
+  }
+
+  // --- Auth ---
+  async login(email: string, pass: string): Promise<User | null> {
+    // Check against users. If password matches (simple check for mock)
+    // For default admin, password is 'password'.
+    const user = this.users.find(u => u.email === email && u.password === pass);
+    return Promise.resolve(user || null);
+  }
+
+  async register(name: string, email: string, pass: string): Promise<User> {
+    const exists = this.users.find(u => u.email === email);
+    if (exists) throw new Error("User already exists");
+
+    const newUser: User = {
+        id: Math.random().toString(36).substr(2, 9),
+        name,
+        email,
+        password: pass,
+        role: 'Partner',
+        leaveBalance: 0,
+        takenLeave: 0,
+        allowance: 0,
+        lieuBalance: 0,
+        activeYears: [new Date().getFullYear()],
+        policies: [],
+        holidayConfigIds: []
+    };
+    await this.addUser(newUser);
+    return newUser;
   }
 
   // --- Users ---

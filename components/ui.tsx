@@ -14,7 +14,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(({ className, title, a
   <div 
     ref={ref}
     className={cn(
-      "relative flex flex-col bg-white/60 dark:bg-gray-900/60 backdrop-blur-2xl border border-white/50 dark:border-white/5 shadow-xl rounded-[2rem] overflow-hidden transition-all duration-300",
+      "relative flex flex-col bg-white/60 dark:bg-gray-900/60 backdrop-blur-2xl border border-gray-200/50 dark:border-white/5 shadow-xl rounded-[2rem] overflow-hidden transition-all duration-300",
       className
     )} 
     {...props}
