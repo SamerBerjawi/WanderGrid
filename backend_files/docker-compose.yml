@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: wandergrid
+    restart: unless-stopped
+    ports:
+      - "6923:3000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=sqlite:/app/data/database.db
+      - API_KEY=${API_KEY} # Gemini API Key
+    networks:
+      - wandergrid-net
+
+networks:
+  wandergrid-net:
+    driver: bridge
