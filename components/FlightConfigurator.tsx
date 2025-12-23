@@ -700,6 +700,49 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
         ? carForm.pickupLocation && carForm.pickupDate && carForm.dropoffDate
         : segments.every(s => s.origin && s.destination && s.date);
 
+    const getClassColor = (cls?: string) => {
+        const c = (cls || '').toLowerCase();
+        if (c.includes('first')) return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50';
+        if (c.includes('business')) return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 border border-purple-200 dark:border-purple-900/50';
+        if (c.includes('economy+')) return 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/50';
+        return 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-900/30';
+    };
+
+    const getSeatTypeIcon = (type?: string) => {
+        switch(type) {
+            case 'Window': return 'crop_portrait'; 
+            case 'Aisle': return 'chair_alt'; 
+            case 'Middle': return 'event_seat'; 
+            default: return 'airline_seat_recline_normal';
+        }
+    };
+
+    const calculateDuration = (seg: SegmentForm) => {
+        const h = Math.floor(seg.duration / 60);
+        const m = seg.duration % 60;
+        return `${h}h ${m}m`;
+    };
+
+    const formatTime = (t?: string) => {
+        if (!t) return '';
+        const [h, m] = t.split(':');
+        const hour = parseInt(h);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const hour12 = hour % 12 || 12;
+        return `${hour12}:${m} ${ampm}`;
+    };
+
+    const getTransportIcon = (mode: TransportMode) => {
+        switch(mode) {
+            case 'Train': return 'train';
+            case 'Bus': return 'directions_bus';
+            case 'Car Rental': return 'car_rental';
+            case 'Personal Car': return 'directions_car';
+            case 'Cruise': return 'directions_boat';
+            default: return 'flight_takeoff';
+        }
+    };
+
     if (showDeleteConfirm) {
         return (
             <div className="text-center space-y-6 animate-fade-in py-8">

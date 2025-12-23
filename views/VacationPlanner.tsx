@@ -13,7 +13,7 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
     const [trips, setTrips] = useState<Trip[]>([]);
     const [users, setUsers] = useState<User[]>([]);
     const [settings, setSettings] = useState<WorkspaceSettings | null>(null);
-    const [activeTab, setActiveTab] = useState<'Planned' | 'Confirmed'>('Planned');
+    const [activeTab, setActiveTab] = useState<'Planned' | 'Confirmed' | 'History'>('Planned');
     
     const [isCreateTripOpen, setIsCreateTripOpen] = useState(false);
     const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
@@ -36,6 +36,8 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
     };
 
     const handleUpdateStatus = async (trip: Trip, newStatus: 'Planning' | 'Upcoming') => {
+        // If moving to upcoming/confirmed, we keep it as 'Upcoming' in DB.
+        // If it's a past date, the UI will filter it into History tab automatically based on date.
         await dataService.updateTrip({ ...trip, status: newStatus });
         refreshData();
     };
@@ -90,25 +92,43 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
             .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
     }, [trips]);
 
-    // Confirmed: Grouped view, Descending (Newest first)
+    // Confirmed (Upcoming): Timeline view, Ascending (Soonest first)
     const confirmedTrips = useMemo(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
         return trips
-            .filter(t => t.status === 'Upcoming' || t.status === 'Past')
+            .filter(t => t.status !== 'Planning' && new Date(t.endDate) >= today)
+            .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+    }, [trips]);
+
+    // History (Past): Timeline view, Descending (Newest first)
+    const historyTrips = useMemo(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return trips
+            .filter(t => t.status !== 'Planning' && new Date(t.endDate) < today)
             .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
     }, [trips]);
 
-    const confirmedTripsByYear = useMemo(() => {
-        return confirmedTrips.reduce((groups, trip) => {
+    // Grouping Logic based on Active Tab
+    const timelineTripsByYear = useMemo(() => {
+        const source = activeTab === 'History' ? historyTrips : confirmedTrips;
+        return source.reduce((groups, trip) => {
             const year = new Date(trip.startDate).getFullYear();
             if (!groups[year]) groups[year] = [];
             groups[year].push(trip);
             return groups;
         }, {} as Record<number, Trip[]>);
-    }, [confirmedTrips]);
+    }, [activeTab, confirmedTrips, historyTrips]);
 
-    const confirmedYears = useMemo(() => {
-        return Object.keys(confirmedTripsByYear).map(Number).sort((a, b) => b - a);
-    }, [confirmedTripsByYear]);
+    const timelineYears = useMemo(() => {
+        const years = Object.keys(timelineTripsByYear).map(Number);
+        // History: Descending (2024, 2023...)
+        // Confirmed: Ascending (2025, 2026...)
+        return activeTab === 'History' 
+            ? years.sort((a, b) => b - a)
+            : years.sort((a, b) => a - b);
+    }, [timelineTripsByYear, activeTab]);
 
     const renderTripCard = (trip: Trip) => {
         const days = Math.ceil((new Date(trip.endDate).getTime() - new Date(trip.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1;
@@ -180,9 +200,9 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                                     Confirm
                                 </Button>
                             ) : (
-                            <Button size="sm" variant="secondary" onClick={() => handleUpdateStatus(trip, 'Planning')} className="flex-1 !text-amber-600 hover:!bg-amber-50 border-amber-100 dark:border-amber-900/30 dark:bg-amber-900/10" icon={<span className="material-icons-outlined text-sm">undo</span>}>
-                                    Revert
-                            </Button>
+                                <Button size="sm" variant="secondary" onClick={() => handleUpdateStatus(trip, 'Planning')} className="flex-1 !text-amber-600 hover:!bg-amber-50 border-amber-100 dark:border-amber-900/30 dark:bg-amber-900/10" icon={<span className="material-icons-outlined text-sm">undo</span>}>
+                                        Revert
+                                </Button>
                             )}
                             {onTripClick && (
                             <Button size="sm" variant="primary" onClick={() => onTripClick(trip.id)} className="flex-1 shadow-none" icon={<span className="material-icons-outlined text-sm">visibility</span>}>
@@ -227,6 +247,12 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                 >
                     Confirmed
                 </button>
+                <button 
+                    onClick={() => setActiveTab('History')}
+                    className={`px-8 py-3 text-sm font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'History' ? 'border-purple-500 text-purple-600 dark:text-purple-400' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                >
+                    History
+                </button>
             </div>
 
             {/* Grid vs Grouped View */}
@@ -237,7 +263,7 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                     {/* Add New Card Stub */}
                     <button 
                         onClick={() => { setEditingTrip(null); setIsCreateTripOpen(true); }}
-                        className="group min-h-[300px] rounded-[2.5rem] border-2 border-dashed border-gray-200 dark:border-white/10 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 flex flex-col items-center justify-center gap-4 transition-all duration-300"
+                        className="group min-h-[300px] rounded-[2.5rem] border-2 border-dashed border-gray-200 dark:border-white/10 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-white/5 flex flex-col items-center justify-center gap-4 transition-all duration-300"
                     >
                         <div className="w-20 h-20 rounded-full bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-gray-600 group-hover:bg-blue-500 group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-sm group-hover:shadow-blue-500/30 group-hover:scale-110">
                             <span className="material-icons-outlined text-4xl">add</span>
@@ -250,14 +276,14 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                     {/* Timeline Line */}
                     <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200 dark:bg-gray-800 hidden md:block" />
                     
-                    {confirmedYears.length === 0 ? (
+                    {timelineYears.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 text-center opacity-40">
-                            <span className="material-icons-outlined text-4xl text-gray-400 mb-4">event_busy</span>
-                            <h3 className="text-xl font-black text-gray-900 dark:text-white">No Confirmed Trips</h3>
-                            <p className="text-sm font-bold text-gray-400 uppercase tracking-widest mt-2">Confirm a planned trip to see it here</p>
+                            <span className="material-icons-outlined text-4xl text-gray-400 mb-4">{activeTab === 'Confirmed' ? 'event_busy' : 'history_edu'}</span>
+                            <h3 className="text-xl font-black text-gray-900 dark:text-white">{activeTab === 'Confirmed' ? 'No Upcoming Trips' : 'No Past Trips'}</h3>
+                            <p className="text-sm font-bold text-gray-400 uppercase tracking-widest mt-2">{activeTab === 'Confirmed' ? 'Confirm a planned trip to see it here' : 'Archive is empty'}</p>
                         </div>
                     ) : (
-                        confirmedYears.map(year => {
+                        timelineYears.map(year => {
                             const isCollapsed = collapsedYears.has(year);
                             return (
                                 <div key={year} className="relative md:pl-12">
@@ -284,7 +310,7 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                                     </div>
 
                                     <div className={`grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 transition-all duration-500 ease-in-out origin-top ${isCollapsed ? 'opacity-0 scale-y-0 h-0 overflow-hidden' : 'opacity-100 scale-y-100 h-auto'}`}>
-                                        {confirmedTripsByYear[year].map(trip => renderTripCard(trip))}
+                                        {timelineTripsByYear[year].map(trip => renderTripCard(trip))}
                                     </div>
                                 </div>
                             )

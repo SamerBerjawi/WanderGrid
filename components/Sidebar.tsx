@@ -66,22 +66,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
   };
 
   return (
-    <aside className={`flex-shrink-0 flex flex-col h-full border-r border-white/30 bg-white/40 backdrop-blur-2xl dark:bg-gray-900/80 dark:border-white/5 transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-64'}`}>
+    <aside className={`flex-shrink-0 flex flex-col h-full border-r border-white/30 bg-white/40 backdrop-blur-2xl dark:bg-gray-900/80 dark:border-white/5 transition-all duration-300 relative ${isCollapsed ? 'w-20' : 'w-64'}`}>
+      
+      <button 
+         onClick={() => setIsCollapsed(!isCollapsed)}
+         className="absolute -right-3 top-10 w-6 h-6 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-white/10 flex items-center justify-center text-gray-500 hover:text-blue-500 transition-all z-50 shadow-sm hover:scale-110 active:scale-95 cursor-pointer"
+         title={isCollapsed ? "Expand" : "Collapse"}
+      >
+         <span className="material-icons-outlined text-sm">{isCollapsed ? 'chevron_right' : 'chevron_left'}</span>
+      </button>
+
       <div className={`p-8 ${isCollapsed ? 'px-4' : 'px-8'}`}>
-        <div className={`flex items-center gap-3 mb-8 relative ${isCollapsed ? 'justify-center' : ''}`}>
+        <div className={`flex items-center gap-3 mb-8 ${isCollapsed ? 'justify-center' : ''}`}>
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg flex items-center justify-center text-white font-bold text-xl shrink-0">
             W
           </div>
           {!isCollapsed && (
              <h1 className="text-xl font-bold text-gray-800 dark:text-white tracking-tight whitespace-nowrap overflow-hidden">WanderGrid</h1>
           )}
-          
-          <button 
-             onClick={() => setIsCollapsed(!isCollapsed)}
-             className={`absolute -right-12 top-1.5 w-6 h-6 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-white/10 flex items-center justify-center text-gray-500 hover:text-blue-500 transition-all z-50 ${isCollapsed ? 'right-auto left-full ml-2' : ''}`}
-          >
-             <span className="material-icons-outlined text-sm">{isCollapsed ? 'chevron_right' : 'chevron_left'}</span>
-          </button>
         </div>
 
         <nav className="flex flex-col gap-2">

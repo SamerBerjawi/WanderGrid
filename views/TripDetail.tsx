@@ -533,7 +533,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
 
                                             {/* TRANSPORTS (Events) */}
                                             {dayEvents.map(t => (
-                                                <div key={t.id + (t.isDropoff ? '_drop' : '')} className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all">
+                                                <div key={t.id + (t.isDropoff ? '_drop' : '')} className="bg-blue-50 dark:bg-gray-800 border border-blue-100 dark:border-gray-700 p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all">
                                                     <div className="w-10 h-10 rounded-xl bg-blue-500 text-white flex items-center justify-center shadow-lg shadow-blue-500/30">
                                                         <span className="material-icons-outlined">{getTransportIcon(t.mode)}</span>
                                                     </div>
@@ -587,7 +587,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                             {dayActivities.length > 0 && dayActivities.map(item => {
                                                 if (item.type === 'Reservation') {
                                                     return (
-                                                        <div key={item.id} className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30 p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all group/act border-l-4 border-l-emerald-500">
+                                                        <div key={item.id} className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30 p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all group/act">
                                                             <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-500/20">
                                                                 <span className="material-icons-outlined">confirmation_number</span>
                                                             </div>
@@ -944,14 +944,14 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                                 
                                                                 {/* Seat Info */}
                                                                 <div className="h-6 flex items-center gap-1 text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 rounded border border-emerald-100 dark:border-emerald-900/30">
-                                                                    <span className="material-icons-outlined text-[12px] opacity-70">{getSeatTypeIcon(leg.seatType)}</span>
+                                                                    <span className="material-icons-outlined text-[10px] opacity-70">{getSeatTypeIcon(leg.seatType)}</span>
                                                                     <span>{leg.seatNumber || 'Unassigned'}</span>
                                                                 </div>
 
                                                                 {/* Exit Row Indicator */}
                                                                 {leg.isExitRow && (
                                                                      <div className="h-6 flex items-center gap-1 text-[9px] font-black text-orange-500 uppercase tracking-wider bg-orange-50 dark:bg-orange-900/20 px-2 rounded border border-orange-100 dark:border-orange-900/30">
-                                                                        <span className="material-icons-outlined text-[10px]">emergency</span> Exit
+                                                                        <span className="material-icons-outlined text-[9px]">emergency</span> Exit
                                                                      </div>
                                                                 )}
                                                             </div>

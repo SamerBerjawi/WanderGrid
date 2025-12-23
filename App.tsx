@@ -89,8 +89,8 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-gradient-to-br from-[#f3f4f6] to-[#e5e7eb] dark:from-gray-950 dark:to-black transition-colors duration-500 text-gray-900 dark:text-gray-100">
-      <div className="absolute inset-0 pointer-events-none opacity-50 dark:opacity-20" 
+    <div className="flex h-screen w-full overflow-hidden bg-gradient-to-br from-[#f3f4f6] to-[#e5e7eb] dark:from-black dark:to-[#171717] transition-colors duration-500 text-gray-900 dark:text-gray-100">
+      <div className="absolute inset-0 pointer-events-none opacity-50 dark:opacity-10" 
            style={{
              backgroundImage: 'radial-gradient(circle at 10% 20%, rgba(37, 99, 235, 0.05) 0%, transparent 20%), radial-gradient(circle at 90% 80%, rgba(124, 58, 237, 0.05) 0%, transparent 20%)'
            }}
