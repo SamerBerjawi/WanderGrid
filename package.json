@@ -11,7 +11,8 @@
   "dependencies": {
     "react-dom": "^19.2.3",
     "@google/genai": "^1.34.0",
-    "react": "^19.2.3"
+    "react": "^19.2.3",
+    "leaflet": "1.9.4"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

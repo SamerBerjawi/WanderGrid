@@ -7,6 +7,7 @@ import { TimeOff } from './views/TimeOff';
 import { UserDetail } from './views/UserDetail';
 import { VacationPlanner } from './views/VacationPlanner';
 import { TripDetail } from './views/TripDetail';
+import { ExpeditionMapView } from './views/ExpeditionMapView';
 import { Auth } from './views/Auth';
 import { ViewState, User } from './types';
 import { dataService } from './services/mockDb';
@@ -102,6 +103,8 @@ export default function App() {
         return <VacationPlanner onTripClick={handleTripClick} />;
       case ViewState.TRIP_DETAIL:
         return <TripDetail tripId={selectedTripId!} onBack={() => setView(ViewState.DASHBOARD)} />;
+      case ViewState.MAP:
+        return <ExpeditionMapView onTripClick={handleTripClick} />;
       default:
         return <Dashboard onUserClick={handleUserClick} onTripClick={handleTripClick} />;
     }

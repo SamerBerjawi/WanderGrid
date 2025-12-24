@@ -42,6 +42,11 @@ export interface TripAllocation {
 
 export type TransportMode = 'Flight' | 'Train' | 'Bus' | 'Car Rental' | 'Personal Car' | 'Cruise';
 
+export interface GeoCoordinates {
+  lat: number;
+  lng: number;
+}
+
 export interface Transport {
   id: string;
   itineraryId: string; // Grouping ID for round trips/multi-city
@@ -50,95 +55,103 @@ export interface Transport {
   provider: string; // airline, train operator, rental company
   identifier: string; // flightNumber, train number, plate number
   confirmationCode: string;
-  origin: string; // Airport Code, Station, or City
+  origin: string;
   destination: string;
   departureDate: string;
-  departureTime: string;
+  departureTime: string; // HH:mm
   arrivalDate: string;
   arrivalTime: string;
-  travelClass?: 'Economy' | 'Economy+' | 'Business' | 'First' | 'Standard' | 'Sleeper'; // Optional for Car
+  travelClass?: 'Economy' | 'Premium Economy' | 'Business' | 'First';
   seatNumber?: string;
   seatType?: 'Window' | 'Aisle' | 'Middle';
   isExitRow?: boolean;
-  vehicleModel?: string; // For Car
-  pickupLocation?: string; // For Car Rental
-  dropoffLocation?: string; // For Car Rental
-  reason: 'Personal' | 'Business';
-  cost?: number; 
-  currency?: string; 
-  website?: string; 
-  distance?: number; // Distance in km
-  logoUrl?: string; // Brandfetch Logo
+  cost?: number;
+  
+  // Car Rental Specifics
+  pickupLocation?: string;
+  dropoffLocation?: string;
+  vehicleModel?: string;
+  
+  website?: string;
+  reason?: string; // Business/Personal
+  
+  // Metadata
+  distance?: number; // km
+  logoUrl?: string; // URL to carrier logo
+
+  // Coordinates for Map
+  originLat?: number;
+  originLng?: number;
+  destLat?: number;
+  destLng?: number;
 }
 
 export interface Accommodation {
   id: string;
-  name: string; // e.g., "Hilton Garden Inn"
+  name: string;
   address: string;
   type: 'Hotel' | 'Airbnb' | 'Resort' | 'Villa' | 'Apartment' | 'Hostel' | 'Campground' | 'Friends/Family';
   checkInDate: string;
+  checkInTime: string;
   checkOutDate: string;
-  checkInTime?: string;
-  checkOutTime?: string;
+  checkOutTime: string;
   confirmationCode?: string;
+  notes?: string;
   website?: string;
   cost?: number;
-  currency?: string;
-  notes?: string;
-  logoUrl?: string; // Brandfetch Logo
+  logoUrl?: string; // URL to brand logo
+  coordinates?: GeoCoordinates;
 }
 
 export interface Activity {
   id: string;
-  date: string; // YYYY-MM-DD
+  date: string;
+  time: string;
   title: string;
-  description?: string;
-  time?: string; // HH:MM
-  location?: string;
   cost?: number;
-  link?: string;
-  isBooked?: boolean;
-  type?: 'Activity' | 'Reservation'; // New field for categorization
+  location?: string;
+  description?: string;
+  type?: 'Reservation' | 'Activity' | 'Tour';
+  coordinates?: GeoCoordinates;
 }
 
 export interface LocationEntry {
-  id: string;
-  name: string;
-  startDate: string;
-  endDate: string;
-  description?: string;
+    id: string;
+    name: string;
+    startDate: string;
+    endDate: string;
+    description?: string;
+    coordinates?: GeoCoordinates;
 }
 
 export interface Trip {
   id: string;
   name: string;
+  location: string;
   startDate: string;
   endDate: string;
-  location: string;
-  status: 'Upcoming' | 'Past' | 'Planning'; // Planning = Planned, Upcoming = Confirmed
-  participants: string[]; // user IDs
-  icon?: string; // User selected emoji/icon
+  status: 'Planning' | 'Upcoming' | 'Past' | 'Cancelled';
+  participants: string[];
+  icon?: string;
+  
+  // Basic Leave Request Fields (Legacy/Simple)
+  entitlementId?: string; // If null, counts as 'General Event' (no balance impact)
   durationMode?: 'all_full' | 'all_am' | 'all_pm' | 'single_am' | 'single_pm' | 'custom';
-  startPortion?: 'full' | 'pm'; // Precision for custom start
-  endPortion?: 'full' | 'am';   // Precision for custom end
-  entitlementId?: string; // Primary entitlement (legacy or main color)
-  allocations?: TripAllocation[]; // Support for split categories
-  excludedDates?: string[]; // New: Persist specific days toggled off by user
-  transports?: Transport[]; // Renamed from flights
-  flights?: any[]; // Deprecated: kept for temporary type safety during migration if needed, but preferred to use transports
-  accommodations?: Accommodation[]; // New: Accommodation list
-  activities?: Activity[]; // New: Daily activities
-  locations?: LocationEntry[]; // New: Planner locations
-}
+  startPortion?: 'full' | 'pm'; // for custom mode
+  endPortion?: 'full' | 'am'; // for custom mode
+  
+  // Advanced Allocation (Multi-Category / Cross-Year)
+  allocations?: TripAllocation[];
+  excludedDates?: string[]; // specific dates to NOT count (e.g. working during vacay)
 
-export interface PlaceResult {
-  title: string;
-  address?: string;
-  rating?: number;
-  userRatingCount?: number;
-  websiteUri?: string;
-  googleMapsUri?: string;
-  snippet?: string;
+  // Logistics
+  transports?: Transport[];
+  accommodations?: Accommodation[];
+  activities?: Activity[];
+  locations?: LocationEntry[]; // Visual route planner entries
+
+  // Map Data
+  coordinates?: GeoCoordinates;
 }
 
 export interface PublicHoliday {
@@ -146,34 +159,46 @@ export interface PublicHoliday {
   name: string;
   date: string;
   countryCode: string;
-  isIncluded: boolean;
-  // Rule Engine props
-  isWeekend?: boolean;
-  ruleAction?: 'monday' | 'lieu' | 'none'; 
-  configId?: string; // Track which config this holiday belongs to
+  isIncluded: boolean; // Toggle to include in calculation
+  isWeekend?: boolean; // Helper from API
+  configId?: string; // Link to SavedConfig
+}
+
+export interface SavedConfig {
+    id: string; // countryCode-Year
+    countryCode: string;
+    countryName: string;
+    year: number;
+    holidays: PublicHoliday[];
+    updatedAt: string;
 }
 
 export interface CustomEvent {
   id: string;
-  title: string;
-  date: string; // YYYY-MM-DD
-  description?: string;
-  color: 'blue' | 'green' | 'amber' | 'purple' | 'red' | 'gray';
+  name: string;
+  date: string;
+  isWorkingDay: boolean; // Does this count as a working day? (e.g., Company Offsite vs Work Saturday)
 }
 
-export type AccrualPeriod = 'lump_sum' | 'yearly' | 'monthly';
+export interface EntitlementRule {
+    accrualPeriod: 'monthly' | 'yearly' | 'lump_sum';
+    accrualAmount: number;
+    carryOver: boolean;
+    carryOverLimit?: number;
+    carryOverExpiry?: number; // months
+}
+
+export type AccrualPeriod = 'monthly' | 'yearly' | 'lump_sum';
 export type CarryOverExpiryType = 'none' | 'months' | 'fixed_date';
 
 export interface EntitlementType {
   id: string;
   name: string;
-  category: string; 
-  color: 'blue' | 'green' | 'amber' | 'gray' | 'purple' | 'red' | 'indigo' | 'pink' | 'teal' | 'cyan'; 
-  // Legacy props kept optional to prevent breakage during migration, but logic moves to UserPolicy
-  defaultAllowance?: number; 
-  isUnlimited?: boolean;
+  category: 'Annual' | 'Sick' | 'Unpaid' | 'Lieu' | 'Seniority' | 'Custom';
+  color: 'blue' | 'green' | 'amber' | 'gray' | 'purple' | 'red' | 'indigo' | 'pink' | 'teal' | 'cyan';
+  isUnlimited?: boolean; // New: If true, balance check is skipped
   
-  // Default configuration for this entitlement type
+  // Default Policy Configuration
   accrual: {
     period: AccrualPeriod;
     amount: number;
@@ -181,48 +206,29 @@ export interface EntitlementType {
   carryOver: {
     enabled: boolean;
     maxDays: number;
-    targetEntitlementId?: string; 
+    targetEntitlementId?: string; // "Existing category" or "Self"
     expiryType: CarryOverExpiryType;
-    expiryValue?: number | string; 
+    expiryValue?: number | string; // e.g., 3 (months) or "06-30" (fixed date)
   };
 }
 
-export interface EntitlementRule {
-  id: string;
-  entitlementId: string; // Links to EntitlementType.id
-  name: string;
-  type: 'accrual' | 'carry_over' | 'expiry' | 'transfer';
-  value: number;
-  unit: 'days' | 'months' | 'percent' | 'days_per_month' | 'lump_sum' | 'years_service';
-  targetEntitlementId?: string; // For transfer rules
-  description: string;
-}
-
-export interface SavedConfig {
-  id: string;
-  countryCode: string;
-  countryName: string;
-  year: number;
-  holidays: PublicHoliday[];
-  updatedAt: string;
-}
-
 export interface WorkspaceSettings {
-  orgName: string;
-  currency: string;
-  dateFormat: string;
-  autoSync: boolean;
-  theme: 'light' | 'dark' | 'auto';
-  workingDays: number[]; // 0=Sun, 1=Mon, ... 6=Sat
-  aviationStackApiKey?: string; // Key for Flight Data Provider
-  brandfetchApiKey?: string; // Key for Brandfetch Brand Search
+    orgName: string;
+    currency: string;
+    dateFormat: string;
+    autoSync: boolean; // Sync with Google Calendar?
+    theme: 'light' | 'dark' | 'auto';
+    workingDays: number[]; // 0=Sun, 1=Mon...
+    aviationStackApiKey?: string;
+    brandfetchApiKey?: string;
 }
 
 export enum ViewState {
-  DASHBOARD = 'DASHBOARD',
-  SETTINGS = 'SETTINGS',
-  TIME_OFF = 'TIME_OFF',
-  USER_DETAIL = 'USER_DETAIL',
-  PLANNER = 'PLANNER',
-  TRIP_DETAIL = 'TRIP_DETAIL'
+  DASHBOARD = 'dashboard',
+  SETTINGS = 'settings',
+  TIME_OFF = 'time_off',
+  USER_DETAIL = 'user_detail',
+  PLANNER = 'planner',
+  TRIP_DETAIL = 'trip_detail',
+  MAP = 'map'
 }

@@ -1,5 +1,5 @@
-
 import { User, Trip, PublicHoliday, EntitlementType, SavedConfig, EntitlementRule, WorkspaceSettings, CustomEvent, Transport } from '../types';
+import { getCoordinates } from './geocoding';
 
 const STORAGE_KEY = 'wandergrid_app_data';
 
@@ -112,7 +112,8 @@ class DataService {
                 transports: transports,
                 accommodations: t.accommodations || [],
                 activities: t.activities || [],
-                locations: t.locations || [] // Initialize locations
+                locations: t.locations || [], // Initialize locations
+                coordinates: t.coordinates || undefined
             };
         });
 
@@ -168,8 +169,6 @@ class DataService {
 
   // --- Auth ---
   async login(email: string, pass: string): Promise<User | null> {
-    // Check against users. If password matches (simple check for mock)
-    // For default admin, password is 'password'.
     const user = this.users.find(u => u.email === email && u.password === pass);
     return Promise.resolve(user || null);
   }
@@ -226,21 +225,62 @@ class DataService {
     return Promise.resolve();
   }
 
-  // --- Trips ---
+  // --- Trips (With Geocoding Intelligence) ---
+  
+  private async processGeocoding(trip: Trip): Promise<Trip> {
+      const updatedTrip = { ...trip };
+      
+      // 1. Trip Main Location
+      if (updatedTrip.location && !updatedTrip.coordinates) {
+          const coords = await getCoordinates(updatedTrip.location);
+          if (coords) updatedTrip.coordinates = coords;
+      }
+
+      // 2. Transports
+      if (updatedTrip.transports) {
+          const updatedTransports = await Promise.all(updatedTrip.transports.map(async (t) => {
+              const u = { ...t };
+              // Origin
+              if (u.origin && (!u.originLat || !u.originLng)) {
+                  const c = await getCoordinates(u.origin);
+                  if (c) { u.originLat = c.lat; u.originLng = c.lng; }
+              }
+              // Destination
+              if (u.destination && (!u.destLat || !u.destLng)) {
+                  const c = await getCoordinates(u.destination);
+                  if (c) { u.destLat = c.lat; u.destLng = c.lng; }
+              }
+              return u;
+          }));
+          updatedTrip.transports = updatedTransports;
+      }
+
+      return updatedTrip;
+  }
+
   async getTrips(): Promise<Trip[]> {
     return Promise.resolve([...this.trips]);
   }
 
   async addTrip(trip: Trip): Promise<void> {
-    this.trips.push({ ...trip });
+    const intelligentTrip = await this.processGeocoding(trip);
+    this.trips.push(intelligentTrip);
+    this.saveToStorage();
+    return Promise.resolve();
+  }
+
+  async addTrips(newTrips: Trip[]): Promise<void> {
+    // Bulk add skips geocoding to prevent rate limiting and execution timeout for large imports
+    this.trips.push(...newTrips);
     this.saveToStorage();
     return Promise.resolve();
   }
 
   async updateTrip(trip: Trip): Promise<void> {
-    const index = this.trips.findIndex(t => t.id === trip.id);
+    const intelligentTrip = await this.processGeocoding(trip);
+    const index = this.trips.findIndex(t => t.id === intelligentTrip.id);
     if (index !== -1) {
-        this.trips[index] = { ...trip };
+        this.trips[index] = { ...intelligentTrip };
         this.saveToStorage();
     }
     return Promise.resolve();
@@ -347,7 +387,7 @@ class DataService {
   // --- Export/Import ---
   async exportFullState(): Promise<string> {
       const state = {
-          version: '3.2', // Updated schema version
+          version: '3.3', // Updated schema version with coordinates
           timestamp: new Date().toISOString(),
           users: this.users,
           trips: this.trips,
@@ -381,7 +421,8 @@ class DataService {
               transports: t.transports || t.flights?.map((f:any) => ({...f, mode: 'Flight', provider: f.airline, identifier: f.flightNumber})) || [],
               accommodations: t.accommodations || [], 
               activities: t.activities || [],
-              locations: t.locations || []
+              locations: t.locations || [],
+              coordinates: t.coordinates || undefined
           }));
 
           this.customEvents = Array.isArray(state.customEvents) ? state.customEvents : [];

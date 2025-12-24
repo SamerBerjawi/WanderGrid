@@ -179,7 +179,7 @@ export const TripModal: React.FC<TripModalProps> = ({ isOpen, onClose, onSubmit,
             icon,
             entitlementId: initialData?.entitlementId, 
             allocations: initialData?.allocations, 
-            flights: initialData?.flights || []
+            transports: initialData?.transports || []
         };
 
         await onSubmit(tripData);

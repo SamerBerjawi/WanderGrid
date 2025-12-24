@@ -155,7 +155,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
     onSave, 
     onDelete, 
     onCancel, 
-    defaultStartDate,
+    defaultStartDate, 
     defaultEndDate
 }) => {
     // Top Level State
@@ -446,6 +446,41 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
             date: last ? last.arrivalDate : '',
             arrivalDate: last ? last.arrivalDate : ''
         }]);
+    };
+
+    const addLayover = (index: number) => {
+        const current = segments[index];
+        const next = segments[index + 1];
+        
+        // Calculate smart default time (e.g. +2h from arrival)
+        let defaultTime = '12:00';
+        let defaultDate = current.arrivalDate || current.date;
+        
+        if (current.arrivalTime) {
+            const [h, m] = current.arrivalTime.split(':').map(Number);
+            let newH = h + 2;
+            if (newH >= 24) {
+                newH -= 24;
+                // Simple wrapping, date increment ideally needed but keeping simple for now
+            }
+            defaultTime = `${String(newH).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        }
+
+        const newSegment: SegmentForm = {
+            id: Math.random().toString(),
+            ...DEFAULT_SEGMENT,
+            origin: current.destination, // Start where previous ended
+            destination: next ? next.origin : '', // Connect to next if exists
+            date: defaultDate,
+            time: defaultTime,
+            arrivalDate: defaultDate, 
+            arrivalTime: defaultTime, 
+        };
+        
+        const newSegments = [...segments];
+        newSegments.splice(index + 1, 0, newSegment);
+        setSegments(newSegments);
+        setTripType('Multi-City');
     };
 
     const removeSegment = (index: number) => {
@@ -929,11 +964,21 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                             </div>
                                         )}
                                     </div>
-                                    {tripType === 'Multi-City' && segments.length > 1 && (
-                                        <button onClick={() => removeSegment(index)} className="text-gray-300 hover:text-rose-500 transition-colors">
-                                            <span className="material-icons-outlined text-sm">close</span>
+                                    <div className="flex items-center gap-2">
+                                        <button 
+                                            onClick={() => addLayover(index)}
+                                            className="text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 dark:text-blue-400 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 px-2 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+                                            title="Add Connecting Flight"
+                                        >
+                                            <span className="material-icons-outlined text-xs">add_circle_outline</span> Layover
                                         </button>
-                                    )}
+
+                                        {tripType === 'Multi-City' && segments.length > 1 && (
+                                            <button onClick={() => removeSegment(index)} className="text-gray-300 hover:text-rose-500 transition-colors">
+                                                <span className="material-icons-outlined text-sm">close</span>
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4">

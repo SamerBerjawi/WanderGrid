@@ -1,8 +1,8 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, Button, Badge, Tabs, Input, Select, Modal } from '../components/ui';
 import { dataService } from '../services/mockDb';
-import { User, WorkspaceSettings, EntitlementType, SavedConfig } from '../types';
+import { flightImporter } from '../services/flightImportExport';
+import { User, WorkspaceSettings, EntitlementType, SavedConfig, Trip } from '../types';
 import { EntitlementsManager } from '../components/EntitlementsManager';
 import { PublicHolidaysManager } from '../components/PublicHolidaysManager';
 
@@ -20,6 +20,11 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
   const [isDeletingMember, setIsDeletingMember] = useState<string | null>(null);
   const [memberToDelete, setMemberToDelete] = useState<User | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Flight Import Refs
+  const flightJsonInputRef = useRef<HTMLInputElement>(null);
+  const flightCsvInputRef = useRef<HTMLInputElement>(null);
+  const [importStatus, setImportStatus] = useState<string>('');
   
   const [config, setConfig] = useState<WorkspaceSettings>({
       orgName: '',
@@ -235,6 +240,73 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
       reader.readAsText(pendingFile);
   };
 
+  // --- Flight Import / Export Handlers ---
+
+  const handleFlightImport = (e: React.ChangeEvent<HTMLInputElement>, format: 'json' | 'csv') => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      
+      setImportStatus('Reading file...');
+      const reader = new FileReader();
+      reader.onload = async (evt) => {
+          try {
+              const content = evt.target?.result as string;
+              setImportStatus('Parsing...');
+              
+              // Import to the first user found (typically admin/self) or handle via selection later.
+              // For now, attaching to first user for simplicity.
+              const targetUserId = users[0]?.id; 
+              if (!targetUserId) throw new Error("No user available to assign flights");
+
+              let importedTrips: Trip[] = [];
+              if (format === 'json') {
+                  importedTrips = await flightImporter.importJson(content, targetUserId);
+              } else {
+                  importedTrips = await flightImporter.importCsv(content, targetUserId);
+              }
+
+              setImportStatus(`Importing ${importedTrips.length} trips...`);
+              
+              // Use bulk add to bypass individual geocoding lag
+              await dataService.addTrips(importedTrips);
+              
+              setImportStatus(`Success! Imported ${importedTrips.length} trips.`);
+              setTimeout(() => setImportStatus(''), 3000);
+          } catch (err) {
+              console.error(err);
+              setImportStatus('Error importing file.');
+          }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+  };
+
+  const handleFlightExport = async (format: 'json' | 'csv') => {
+      const trips = await dataService.getTrips();
+      // Filter only trips with flights?
+      
+      let content = '';
+      let filename = `flights_export_${new Date().toISOString().split('T')[0]}`;
+      
+      if (format === 'json') {
+          content = flightImporter.exportJson(trips);
+          filename += '.json';
+      } else {
+          content = flightImporter.exportCsv(trips);
+          filename += '.csv';
+      }
+
+      const blob = new Blob([content], { type: format === 'json' ? 'application/json' : 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+  };
+
   if (loading) return <div className="p-8 text-gray-400 animate-pulse">Initializing Systems...</div>;
 
   const workingDayUiOrder = [
@@ -370,6 +442,19 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                             />
                             <p className="text-[10px] text-gray-400">Required for fetching official brand logos for accommodations and transport.</p>
                         </div>
+                        <div className="space-y-2">
+                            <div className="relative group">
+                                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide ml-1">Geocoding Service</label>
+                                <div className="w-full px-4 py-3 rounded-2xl bg-emerald-50/50 border border-emerald-100 flex items-center justify-between dark:bg-emerald-900/10 dark:border-emerald-900/30">
+                                    <span className="font-bold text-gray-700 dark:text-gray-200">OpenStreetMap (Nominatim)</span>
+                                    <div className="flex items-center gap-1.5 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider">
+                                        <span className="material-icons-outlined text-sm">check_circle</span>
+                                        Active
+                                    </div>
+                                </div>
+                            </div>
+                            <p className="text-[10px] text-gray-400">Free, high-precision coordinate lookup for maps. No API key required.</p>
+                        </div>
                     </div>
                 </Card>
 
@@ -488,6 +573,38 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                                 ]}
                             />
                         </div>
+                    </div>
+                </Card>
+
+                {/* FLIGHT LOG MANAGEMENT */}
+                <Card noPadding className="rounded-[2rem] border-blue-500/20">
+                    <div className="p-8 border-b border-blue-500/10 bg-blue-500/5 rounded-t-[2rem]">
+                        <h3 className="text-2xl font-black text-blue-900 dark:text-blue-400 leading-none">Flight Log Management</h3>
+                        <p className="text-[10px] font-black text-blue-500/50 uppercase tracking-widest mt-2">Bulk Import/Export of Flight Data</p>
+                    </div>
+                    <div className="p-8 space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                            <input type="file" ref={flightJsonInputRef} className="hidden" accept=".json" onChange={(e) => handleFlightImport(e, 'json')} />
+                            <input type="file" ref={flightCsvInputRef} className="hidden" accept=".csv" onChange={(e) => handleFlightImport(e, 'csv')} />
+                            
+                            <Button variant="outline" className="!rounded-xl border-blue-500/20 text-blue-600 hover:bg-blue-50" onClick={() => flightJsonInputRef.current?.click()}>
+                                Import JSON
+                            </Button>
+                            <Button variant="outline" className="!rounded-xl border-blue-500/20 text-blue-600 hover:bg-blue-50" onClick={() => flightCsvInputRef.current?.click()}>
+                                Import CSV
+                            </Button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <Button variant="ghost" className="!rounded-xl text-gray-500" onClick={() => handleFlightExport('json')}>
+                                Export JSON
+                            </Button>
+                            <Button variant="ghost" className="!rounded-xl text-gray-500" onClick={() => handleFlightExport('csv')}>
+                                Export CSV
+                            </Button>
+                        </div>
+                        {importStatus && (
+                            <p className="text-[10px] text-center font-bold text-emerald-500 animate-pulse">{importStatus}</p>
+                        )}
                     </div>
                 </Card>
 

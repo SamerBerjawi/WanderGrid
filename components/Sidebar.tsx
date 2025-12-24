@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { ViewState, Trip } from '../types';
 import { dataService } from '../services/mockDb';
@@ -45,7 +46,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
 
   const navItems = [
     { label: 'Dashboard', value: ViewState.DASHBOARD, icon: 'grid_view' },
-    { label: 'Planner', value: ViewState.PLANNER, icon: 'map' }, // New Item
+    { label: 'Map', value: ViewState.MAP, icon: 'public' }, // New Item
+    { label: 'Planner', value: ViewState.PLANNER, icon: 'map' }, 
     { label: 'Time Off', value: ViewState.TIME_OFF, icon: 'date_range' },
     { label: 'Settings', value: ViewState.SETTINGS, icon: 'settings' },
   ];
