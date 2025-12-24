@@ -127,3 +127,41 @@ export async function getCoordinates(location: string): Promise<{ lat: number; l
     return undefined;
   }
 }
+
+export async function resolvePlaceName(query: string): Promise<{ city: string, country: string, displayName: string } | null> {
+    if (!query) return null;
+    
+    // 1. IATA Lookup
+    if (query.length === 3 && /^[A-Za-z]{3}$/.test(query)) {
+        const code = query.toUpperCase();
+        // Try cache immediately
+        if (airportCache[code]) {
+            const a = airportCache[code];
+            return { city: a.city, country: a.country, displayName: `${a.city}, ${a.country}` };
+        }
+        // Try waiting
+        await loadAirportData();
+        if (airportCache[code]) {
+            const a = airportCache[code];
+            return { city: a.city, country: a.country, displayName: `${a.city}, ${a.country}` };
+        }
+    }
+    
+    // 2. Simple String Parsing
+    // If user typed "London, UK", assume that's correct
+    if (query.includes(',')) {
+        const parts = query.split(',').map(s => s.trim());
+        if (parts.length >= 2) {
+            // Assume format "City, Country" or "Address, City, Country"
+            const country = parts[parts.length - 1];
+            const city = parts[parts.length - 2];
+            // Filter out numbers (zip codes)
+            if (!/^\d+$/.test(country) && !/^\d+$/.test(city)) {
+                 return { city, country, displayName: `${city}, ${country}` };
+            }
+        }
+    }
+
+    // 3. Fallback: Treat as City
+    return { city: query, country: '', displayName: query };
+}

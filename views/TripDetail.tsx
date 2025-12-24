@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { Card, Button, Badge, Tabs, Modal, Input, Autocomplete, TimeInput } from '../components/ui';
 import { TransportConfigurator } from '../components/FlightConfigurator';
 import { AccommodationConfigurator } from '../components/AccommodationConfigurator';
@@ -9,7 +9,7 @@ import { LeaveRequestModal } from '../components/LeaveRequestModal';
 import { dataService } from '../services/mockDb';
 import { flightImporter } from '../services/flightImportExport';
 import { Trip, User, Transport, Accommodation, WorkspaceSettings, Activity, TransportMode, LocationEntry, EntitlementType, PublicHoliday, SavedConfig } from '../types';
-import { searchLocations } from '../services/geocoding';
+import { searchLocations, resolvePlaceName } from '../services/geocoding';
 
 interface TripDetailProps {
     tripId: string;
@@ -21,6 +21,13 @@ interface ImportCandidate {
     trip: Trip;
     confidence: number;
     selected: boolean;
+}
+
+interface DetectedPlace {
+    city: string;
+    country: string;
+    displayName: string;
+    source: 'Transport' | 'Accommodation' | 'Location';
 }
 
 export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
@@ -63,6 +70,10 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     const [editingTransports, setEditingTransports] = useState<Transport[] | null>(null);
     const [editingAccommodations, setEditingAccommodations] = useState<Accommodation[] | null>(null);
 
+    // Detected Places State
+    const [visitedPlaces, setVisitedPlaces] = useState<DetectedPlace[]>([]);
+    const [uniqueCountries, setUniqueCountries] = useState<Set<string>>(new Set());
+
     // Import Refs
     const importInputRef = useRef<HTMLInputElement>(null);
 
@@ -94,6 +105,63 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
             setLoading(false);
         });
     };
+
+    // --- Automatic Place Detection ---
+    useEffect(() => {
+        const detectPlaces = async () => {
+            if (!trip) return;
+            const detected: DetectedPlace[] = [];
+            const processedKeys = new Set<string>();
+
+            const addPlace = async (query: string, source: DetectedPlace['source']) => {
+                if (!query) return;
+                const details = await resolvePlaceName(query);
+                if (details) {
+                    const key = details.displayName.toLowerCase();
+                    if (!processedKeys.has(key)) {
+                        detected.push({ ...details, source });
+                        processedKeys.add(key);
+                    }
+                }
+            };
+
+            // 1. Transports (Destinations)
+            if (trip.transports) {
+                for (const t of trip.transports) {
+                    // For cars, use destination or dropoff. For flights, destination.
+                    const dest = t.mode === 'Car Rental' || t.mode === 'Personal Car' 
+                        ? (t.dropoffLocation || t.destination) 
+                        : t.destination;
+                    await addPlace(dest, 'Transport');
+                }
+            }
+
+            // 2. Locations (Route Manager)
+            if (trip.locations) {
+                for (const l of trip.locations) {
+                    await addPlace(l.name, 'Location');
+                }
+            }
+
+            // 3. Accommodations
+            if (trip.accommodations) {
+                for (const a of trip.accommodations) {
+                    // Try to extract city from address if it contains commas, otherwise use address as query
+                    await addPlace(a.address, 'Accommodation');
+                }
+            }
+
+            setVisitedPlaces(detected);
+            
+            const countries = new Set<string>();
+            detected.forEach(p => {
+                if (p.country) countries.add(p.country);
+            });
+            setUniqueCountries(countries);
+        };
+
+        detectPlaces();
+    }, [trip]);
 
     // Calculate relevance score (0-100)
     const calculateRelevance = (currentTrip: Trip, candidateTrip: Trip): number => {
@@ -570,7 +638,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     return (
         <div className="space-y-8 animate-fade-in max-w-[1400px] mx-auto pb-12">
             
-            {/* HERO CARD (Unchanged) */}
+            {/* HERO CARD */}
             <div className="relative w-full rounded-[2.5rem] bg-white dark:bg-gray-900 shadow-2xl border border-gray-100 dark:border-white/5 overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5 pointer-events-none" />
                 <div className="relative p-8 lg:p-10 flex flex-col gap-8">
@@ -598,6 +666,8 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                             <Button variant="secondary" onClick={() => setIsEditTripOpen(true)} icon={<span className="material-icons-outlined">edit</span>}>Edit Details</Button>
                         </div>
                     </div>
+                    
+                    {/* Stats Grid */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30 flex flex-col items-center justify-center text-center">
                             <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{formatCurrency(totalCost)}</span>
@@ -623,6 +693,39 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                             <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Planned Items</span>
                         </div>
                     </div>
+
+                    {/* Detected Places Card */}
+                    {(visitedPlaces.length > 0) && (
+                        <div className="p-5 rounded-2xl bg-white/50 dark:bg-white/5 border border-white/20 dark:border-white/5 backdrop-blur-md">
+                            <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-3 flex items-center gap-2">
+                                <span className="material-icons-outlined text-sm">public</span> Expedition Footprint
+                            </h4>
+                            <div className="space-y-3">
+                                {/* Countries */}
+                                {uniqueCountries.size > 0 && (
+                                    <div className="flex flex-wrap gap-2">
+                                        {Array.from(uniqueCountries).map(country => (
+                                            <span key={country} className="px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-900/30 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
+                                                <span className="material-icons-outlined text-sm">flag</span> {country}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                                
+                                {/* Cities */}
+                                <div className="flex flex-wrap gap-2">
+                                    {visitedPlaces.map((place, idx) => (
+                                        <div key={idx} className="px-3 py-1 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-white/10 text-xs font-bold text-gray-600 dark:text-gray-300 shadow-sm flex items-center gap-1.5">
+                                            <span className={`material-icons-outlined text-[10px] ${place.source === 'Transport' ? 'text-blue-500' : place.source === 'Accommodation' ? 'text-amber-500' : 'text-purple-500'}`}>
+                                                {place.source === 'Transport' ? 'flight_land' : place.source === 'Accommodation' ? 'hotel' : 'place'}
+                                            </span>
+                                            {place.displayName}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
