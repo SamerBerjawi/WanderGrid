@@ -221,6 +221,86 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(({ label, optio
 ));
 Select.displayName = "Select";
 
+// --- MultiSelect ---
+interface MultiSelectProps {
+  label?: string;
+  options: { label: string; value: string }[];
+  value: string[];
+  onChange: (value: string[]) => void;
+  placeholder?: string;
+  className?: string;
+}
+
+export const MultiSelect: React.FC<MultiSelectProps> = ({ label, options, value, onChange, placeholder = "Select...", className }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filteredOptions = options.filter(o => o.label.toLowerCase().includes(search.toLowerCase()) || o.value.toLowerCase().includes(search.toLowerCase()));
+
+  const toggleOption = (val: string) => {
+    if (value.includes(val)) {
+      onChange(value.filter(v => v !== val));
+    } else {
+      onChange([...value, val]);
+    }
+  };
+
+  const selectedLabels = options.filter(o => value.includes(o.value)).map(o => o.label);
+  const displayValue = selectedLabels.length === 0 ? placeholder : selectedLabels.length === 1 ? selectedLabels[0] : `${selectedLabels.length} Selected`;
+
+  return (
+    <div className={cn("flex flex-col gap-1.5 w-full relative", className)} ref={wrapperRef}>
+      {label && <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide ml-1">{label}</label>}
+      <button 
+        className="w-full px-4 py-2 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-left flex items-center justify-between text-[10px] font-bold text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors h-[38px]"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <span className="truncate">{displayValue}</span>
+        <span className="material-icons-outlined text-xs text-gray-400">expand_more</span>
+      </button>
+
+      {isOpen && (
+        <div className="absolute top-full mt-2 w-full min-w-[200px] z-50 bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/10 rounded-xl shadow-2xl p-2 animate-fade-in left-0">
+          <input 
+            type="text" 
+            placeholder="Search..." 
+            autoFocus
+            className="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-black/30 border-none outline-none text-xs text-gray-800 dark:text-white mb-2"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+          <div className="max-h-48 overflow-y-auto custom-scrollbar space-y-1">
+            {filteredOptions.length > 0 ? filteredOptions.map(opt => (
+              <label key={opt.value} className="flex items-center gap-2 p-2 rounded-lg hover:bg-blue-50 dark:hover:bg-white/5 cursor-pointer transition-colors">
+                <input 
+                  type="checkbox" 
+                  checked={value.includes(opt.value)} 
+                  onChange={() => toggleOption(opt.value)}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-xs text-gray-700 dark:text-gray-300 font-medium truncate">{opt.label}</span>
+              </label>
+            )) : (
+              <div className="p-2 text-[10px] text-gray-400 text-center">No results</div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // --- Modal ---
 interface ModalProps {
   isOpen: boolean;

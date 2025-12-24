@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { Button, Badge } from '../components/ui';
+import { Button, Badge, Input, Select } from '../components/ui';
 import { TripModal } from '../components/TripModal';
 import { dataService } from '../services/mockDb';
 import { Trip, User, WorkspaceSettings } from '../types';
@@ -19,6 +19,14 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
     const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
     const [collapsedYears, setCollapsedYears] = useState<Set<number>>(new Set());
 
+    // Selection & Merging State
+    const [isSelectionMode, setIsSelectionMode] = useState(false);
+    const [selectedTripIds, setSelectedTripIds] = useState<Set<string>>(new Set());
+
+    // New Filters
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filterYear, setFilterYear] = useState<string>('all');
+
     useEffect(() => {
         refreshData();
     }, []);
@@ -36,8 +44,6 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
     };
 
     const handleUpdateStatus = async (trip: Trip, newStatus: 'Planning' | 'Upcoming') => {
-        // If moving to upcoming/confirmed, we keep it as 'Upcoming' in DB.
-        // If it's a past date, the UI will filter it into History tab automatically based on date.
         await dataService.updateTrip({ ...trip, status: newStatus });
         refreshData();
     };
@@ -60,8 +66,84 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
     };
 
     const handleEditTrip = (trip: Trip) => {
-        setEditingTrip(trip);
-        setIsCreateTripOpen(true);
+        if (isSelectionMode) {
+            toggleTripSelection(trip.id);
+        } else {
+            setEditingTrip(trip);
+            setIsCreateTripOpen(true);
+        }
+    };
+
+    const toggleTripSelection = (id: string) => {
+        const newSet = new Set(selectedTripIds);
+        if (newSet.has(id)) newSet.delete(id);
+        else newSet.add(id);
+        setSelectedTripIds(newSet);
+    };
+
+    const toggleSelectionMode = () => {
+        if (isSelectionMode) {
+            // Cancel mode
+            setIsSelectionMode(false);
+            setSelectedTripIds(new Set());
+        } else {
+            setIsSelectionMode(true);
+        }
+    };
+
+    const handleMergeTrips = async () => {
+        if (selectedTripIds.size < 2) return;
+        
+        const tripsToMerge = trips.filter(t => selectedTripIds.has(t.id));
+        if (tripsToMerge.length === 0) return;
+
+        // Sort by start date to determine primary
+        tripsToMerge.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+        
+        const primary = tripsToMerge[0];
+        
+        // Calculate new ranges
+        const allStartDates = tripsToMerge.map(t => new Date(t.startDate).getTime());
+        const allEndDates = tripsToMerge.map(t => new Date(t.endDate).getTime());
+        const minStart = new Date(Math.min(...allStartDates));
+        const maxEnd = new Date(Math.max(...allEndDates));
+        
+        const fmt = (d: Date) => d.toISOString().split('T')[0];
+
+        // Merge Arrays
+        const mergedTransports = tripsToMerge.flatMap(t => t.transports || []);
+        const mergedAccommodations = tripsToMerge.flatMap(t => t.accommodations || []);
+        const mergedActivities = tripsToMerge.flatMap(t => t.activities || []);
+        const mergedLocations = tripsToMerge.flatMap(t => t.locations || []);
+        const mergedParticipants = Array.from(new Set(tripsToMerge.flatMap(t => t.participants)));
+
+        const newName = `Merged: ${primary.name} & +${tripsToMerge.length - 1}`;
+
+        const mergedTrip: Trip = {
+            ...primary,
+            id: Math.random().toString(36).substr(2, 9),
+            name: newName,
+            startDate: fmt(minStart),
+            endDate: fmt(maxEnd),
+            transports: mergedTransports,
+            accommodations: mergedAccommodations,
+            activities: mergedActivities,
+            locations: mergedLocations,
+            participants: mergedParticipants,
+            status: 'Planning' // Always reset to Planning on merge for safety
+        };
+
+        // Save new
+        await dataService.addTrip(mergedTrip);
+        
+        // Delete old
+        for (const t of tripsToMerge) {
+            await dataService.deleteTrip(t.id);
+        }
+
+        setIsSelectionMode(false);
+        setSelectedTripIds(new Set());
+        refreshData();
     };
 
     const toggleYearCollapse = (year: number) => {
@@ -85,30 +167,53 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
 
     // --- Data Processing ---
     
+    // Filtered base
+    const filteredTrips = useMemo(() => {
+        return trips.filter(t => {
+            // Search Text
+            const matchesSearch = !searchQuery 
+                || t.name.toLowerCase().includes(searchQuery.toLowerCase()) 
+                || t.location.toLowerCase().includes(searchQuery.toLowerCase());
+            
+            // Year Filter
+            const year = new Date(t.startDate).getFullYear().toString();
+            const matchesYear = filterYear === 'all' || year === filterYear;
+
+            return matchesSearch && matchesYear;
+        });
+    }, [trips, searchQuery, filterYear]);
+
+    // Available Years for Filter
+    const availableYears = useMemo(() => {
+        const years = new Set<number>();
+        trips.forEach(t => years.add(new Date(t.startDate).getFullYear()));
+        return Array.from(years).sort((a,b) => b - a);
+    }, [trips]);
+
     // Planned: Grid view, Ascending (Next up first)
     const plannedTrips = useMemo(() => {
-        return trips
+        return filteredTrips
             .filter(t => t.status === 'Planning')
             .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
-    }, [trips]);
+    }, [filteredTrips]);
 
     // Confirmed (Upcoming): Timeline view, Ascending (Soonest first)
     const confirmedTrips = useMemo(() => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        return trips
+        return filteredTrips
             .filter(t => t.status !== 'Planning' && new Date(t.endDate) >= today)
             .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
-    }, [trips]);
+    }, [filteredTrips]);
 
     // History (Past): Timeline view, Descending (Newest first)
     const historyTrips = useMemo(() => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        return trips
+        return filteredTrips
             .filter(t => t.status !== 'Planning' && new Date(t.endDate) < today)
             .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
-    }, [trips]);
+    }, [filteredTrips]);
 
     // Grouping Logic based on Active Tab
     const timelineTripsByYear = useMemo(() => {
@@ -139,13 +244,27 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
         const stayCost = trip.accommodations?.reduce((sum, a) => sum + (a.cost || 0), 0) || 0;
         const totalCost = transportCost + stayCost;
 
+        const isSelected = selectedTripIds.has(trip.id);
+
         return (
-            <div key={trip.id} className="group relative bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-white/5 shadow-lg overflow-hidden flex flex-col hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
-                    {/* Card Action Overlay */}
-                    <div 
-                    className="absolute inset-0 z-0 cursor-pointer" 
-                    onClick={() => onTripClick ? onTripClick(trip.id) : handleEditTrip(trip)}
-                    />
+            <div 
+                key={trip.id} 
+                onClick={() => {
+                    if (isSelectionMode) toggleTripSelection(trip.id);
+                    else if (onTripClick) onTripClick(trip.id);
+                    else handleEditTrip(trip);
+                }}
+                className={`group relative bg-white dark:bg-gray-900 rounded-[2.5rem] border shadow-lg overflow-hidden flex flex-col hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 cursor-pointer ${
+                    isSelectionMode && isSelected 
+                    ? 'border-blue-500 ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-black transform scale-[1.02]' 
+                    : 'border-gray-100 dark:border-white/5'
+                }`}
+            >
+                    {isSelectionMode && (
+                        <div className={`absolute top-4 right-4 z-20 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-blue-500 border-blue-500' : 'bg-white border-gray-300 dark:bg-gray-800'}`}>
+                            {isSelected && <span className="material-icons-outlined text-white text-sm">check</span>}
+                        </div>
+                    )}
 
                     <div className="p-8 pb-6 flex justify-between items-start relative z-10 pointer-events-none">
                         <div className="flex items-center gap-4">
@@ -160,20 +279,22 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                                 </div>
                             </div>
                         </div>
-                        <div className="pointer-events-auto">
-                            <button onClick={() => handleEditTrip(trip)} className="p-2 text-gray-300 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all">
-                                <span className="material-icons-outlined text-lg">edit</span>
-                            </button>
-                        </div>
+                        {!isSelectionMode && (
+                            <div className="pointer-events-auto">
+                                <button onClick={(e) => { e.stopPropagation(); handleEditTrip(trip); }} className="p-2 text-gray-300 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all">
+                                    <span className="material-icons-outlined text-lg">edit</span>
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     <div className="px-8 pb-4 relative z-10 pointer-events-none">
-                    <div className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-white/5 p-3 rounded-xl border border-gray-100 dark:border-white/5">
-                        <span className="material-icons-outlined text-sm">calendar_today</span>
-                        <span>{new Date(trip.startDate).toLocaleDateString(undefined, {month:'short', day:'numeric'})} - {new Date(trip.endDate).toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'})}</span>
-                        <span className="w-1 h-1 rounded-full bg-gray-300 mx-1"/>
-                        <span>{days} Days</span>
-                    </div>
+                        <div className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-white/5 p-3 rounded-xl border border-gray-100 dark:border-white/5">
+                            <span className="material-icons-outlined text-sm">calendar_today</span>
+                            <span>{new Date(trip.startDate).toLocaleDateString(undefined, {month:'short', day:'numeric'})} - {new Date(trip.endDate).toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'})}</span>
+                            <span className="w-1 h-1 rounded-full bg-gray-300 mx-1"/>
+                            <span>{days} Days</span>
+                        </div>
                     </div>
 
                     <div className="mt-auto bg-gray-50/50 dark:bg-black/20 border-t border-gray-100 dark:border-white/5 p-6 relative z-10">
@@ -194,22 +315,24 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                             </div>
                         </div>
 
-                        <div className="flex gap-2 pointer-events-auto">
-                            {activeTab === 'Planned' ? (
-                                <Button size="sm" variant="secondary" onClick={() => handleUpdateStatus(trip, 'Upcoming')} className="flex-1 !text-emerald-600 hover:!bg-emerald-50 border-emerald-100 dark:border-emerald-900/30 dark:bg-emerald-900/10" icon={<span className="material-icons-outlined text-sm">check_circle</span>}>
-                                    Confirm
+                        {!isSelectionMode && (
+                            <div className="flex gap-2 pointer-events-auto">
+                                {activeTab === 'Planned' ? (
+                                    <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleUpdateStatus(trip, 'Upcoming'); }} className="flex-1 !text-emerald-600 hover:!bg-emerald-50 border-emerald-100 dark:border-emerald-900/30 dark:bg-emerald-900/10" icon={<span className="material-icons-outlined text-sm">check_circle</span>}>
+                                        Confirm
+                                    </Button>
+                                ) : (
+                                    <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleUpdateStatus(trip, 'Planning'); }} className="flex-1 !text-amber-600 hover:!bg-amber-50 border-amber-100 dark:border-amber-900/30 dark:bg-amber-900/10" icon={<span className="material-icons-outlined text-sm">undo</span>}>
+                                            Revert
+                                    </Button>
+                                )}
+                                {onTripClick && (
+                                <Button size="sm" variant="primary" onClick={(e) => { e.stopPropagation(); onTripClick(trip.id); }} className="flex-1 shadow-none" icon={<span className="material-icons-outlined text-sm">visibility</span>}>
+                                        Details
                                 </Button>
-                            ) : (
-                                <Button size="sm" variant="secondary" onClick={() => handleUpdateStatus(trip, 'Planning')} className="flex-1 !text-amber-600 hover:!bg-amber-50 border-amber-100 dark:border-amber-900/30 dark:bg-amber-900/10" icon={<span className="material-icons-outlined text-sm">undo</span>}>
-                                        Revert
-                                </Button>
-                            )}
-                            {onTripClick && (
-                            <Button size="sm" variant="primary" onClick={() => onTripClick(trip.id)} className="flex-1 shadow-none" icon={<span className="material-icons-outlined text-sm">visibility</span>}>
-                                    Details
-                            </Button>
-                            )}
-                        </div>
+                                )}
+                            </div>
+                        )}
                     </div>
             </div>
         );
@@ -218,19 +341,74 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
     return (
         <div className="space-y-8 animate-fade-in max-w-[1400px] mx-auto pb-12">
             
-            <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white/40 dark:bg-gray-900/40 p-6 rounded-[2rem] backdrop-blur-xl border border-white/50 dark:border-white/5 shadow-xl">
-                <div>
+            <header className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 bg-white/40 dark:bg-gray-900/40 p-6 rounded-[2rem] backdrop-blur-xl border border-white/50 dark:border-white/5 shadow-xl">
+                <div className="space-y-1">
                     <h2 className="text-4xl font-black text-gray-900 dark:text-white tracking-tight">Vacation Planner</h2>
                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Logistics, flights, and itineraries.</p>
                 </div>
-                <Button 
-                    variant="primary" 
-                    size="lg" 
-                    icon={<span className="material-icons-outlined">add_location_alt</span>} 
-                    onClick={() => { setEditingTrip(null); setIsCreateTripOpen(true); }}
-                >
-                    Create Trip
-                </Button>
+                
+                <div className="flex flex-col md:flex-row gap-4 w-full xl:w-auto">
+                    {/* Filters */}
+                    <div className="flex items-center gap-2 bg-white/60 dark:bg-black/30 p-1.5 rounded-2xl border border-white/20 dark:border-white/10 flex-1 xl:flex-initial">
+                        <div className="relative flex-1 min-w-[200px]">
+                            <span className="material-icons-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">search</span>
+                            <input 
+                                type="text"
+                                placeholder="Search trips..."
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                                className="w-full bg-transparent pl-10 pr-4 py-2 text-sm font-medium outline-none text-gray-800 dark:text-white placeholder-gray-400"
+                            />
+                        </div>
+                        <div className="w-px h-6 bg-gray-300 dark:bg-white/10 mx-1" />
+                        <select 
+                            value={filterYear}
+                            onChange={e => setFilterYear(e.target.value)}
+                            className="bg-transparent text-xs font-bold text-gray-600 dark:text-gray-300 outline-none px-2 py-2 cursor-pointer"
+                        >
+                            <option value="all">All Years</option>
+                            {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+                        </select>
+                    </div>
+
+                    {isSelectionMode ? (
+                        <div className="flex gap-2 animate-fade-in">
+                            <Button 
+                                variant="ghost"
+                                onClick={toggleSelectionMode}
+                            >
+                                Cancel
+                            </Button>
+                            <Button 
+                                variant="primary" 
+                                disabled={selectedTripIds.size < 2}
+                                onClick={handleMergeTrips}
+                                icon={<span className="material-icons-outlined">merge</span>}
+                            >
+                                Merge ({selectedTripIds.size})
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className="flex gap-2">
+                            <Button 
+                                variant="secondary" 
+                                className="border-2"
+                                onClick={toggleSelectionMode}
+                                icon={<span className="material-icons-outlined">checklist</span>}
+                            >
+                                Select
+                            </Button>
+                            <Button 
+                                variant="primary" 
+                                size="lg" 
+                                icon={<span className="material-icons-outlined">add_location_alt</span>} 
+                                onClick={() => { setEditingTrip(null); setIsCreateTripOpen(true); }}
+                            >
+                                Create Trip
+                            </Button>
+                        </div>
+                    )}
+                </div>
             </header>
 
             {/* Tabs */}

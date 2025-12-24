@@ -79,11 +79,11 @@ const mapCsvRowToTransport = (row: any): Transport => {
     // Handle simple Date column if ISO missing
     let depDate = '', depTime = '12:00';
     
-    if (depIso.includes('T')) {
+    if (depIso && depIso.includes('T')) {
         const p = parseIso(depIso);
         depDate = p.date;
         depTime = p.time;
-    } else {
+    } else if (depIso) {
         // Assume DD/MM/YYYY
         const parts = depIso.split('/');
         if (parts.length === 3) {
@@ -129,10 +129,7 @@ const createTripFromTransports = (transports: Transport[], userId: string): Trip
     const first = sorted[0];
     const last = sorted[sorted.length - 1];
     
-    // Naming Logic:
-    // 1. If Round Trip (Origin == Last Dest), use "Trip to [Main Destination]"
-    // 2. If Multi-City, list key stops.
-    
+    // Naming Logic
     const origin = first.origin;
     const distinctDestinations = new Set<string>();
     let mainDest = last.destination;
@@ -154,17 +151,14 @@ const createTripFromTransports = (transports: Transport[], userId: string): Trip
         name = `Trip to ${mainDest}`;
     }
 
-    // Determine Status
-    const today = new Date();
-    const isPast = new Date(last.arrivalDate) < today;
-
+    // Always set imported trips to Planning mode so user can review them
     return {
         id: Math.random().toString(36).substr(2, 9),
         name: name,
         location: destArray[0] || mainDest,
         startDate: first.departureDate,
         endDate: last.arrivalDate || last.departureDate,
-        status: isPast ? 'Past' : 'Upcoming',
+        status: 'Planning', // Force Planning
         participants: [userId],
         icon: '✈️',
         transports: sorted,
@@ -205,51 +199,36 @@ const groupTransportsIntoTrips = (transports: Transport[], userId: string): Trip
         const gapDays = (currDep - lastArrival) / (1000 * 60 * 60 * 24);
 
         // --- Logic Tree ---
-        
-        // 1. IS RETURN FLIGHT: If this flight goes back to the trip origin, it's likely the end of the trip.
-        // Unless it's a very short hop (e.g. day trip) and there are more flights immediately after? 
-        // For simplicity, we assume returning to home base closes the loop.
         const isReturningHome = flight.destination === currentHomeBase;
-        
-        // 2. IS CONNECTED: Does this flight start where the last one ended?
         const isConnected = flight.origin === lastFlight.destination;
 
         // 3. DECISION
         let addToCurrent = false;
 
         if (gapDays > 21) {
-            // A gap > 3 weeks usually implies a separate trip or separate life event, unless it's a huge backpacking trip.
-            // We'll break it to be safe.
             addToCurrent = false;
         } else if (isReturningHome) {
-            // It's the return leg. Add it, but force the batch to close AFTER this.
             addToCurrent = true;
         } else if (isConnected) {
-            // It's a connection or next leg of multi-city
             addToCurrent = true;
         } else if (gapDays < 4) {
-            // Not directly connected (maybe took a train/car between cities), but close in time.
             addToCurrent = true;
         }
 
         if (addToCurrent) {
             currentBatch.push(flight);
-            // If we just returned home, seal the trip immediately
             if (isReturningHome) {
                 trips.push(createTripFromTransports(currentBatch, userId));
                 currentBatch = [];
                 currentHomeBase = '';
             }
         } else {
-            // Seal previous batch
             trips.push(createTripFromTransports(currentBatch, userId));
-            // Start new
             currentBatch = [flight];
             currentHomeBase = flight.origin;
         }
     }
 
-    // Flush remaining
     if (currentBatch.length > 0) {
         trips.push(createTripFromTransports(currentBatch, userId));
     }
@@ -260,27 +239,50 @@ const groupTransportsIntoTrips = (transports: Transport[], userId: string): Trip
 // --- Public API ---
 
 export const flightImporter = {
-    importJson: async (jsonContent: string, userId: string): Promise<Trip[]> => {
+    // New: Parse RAW transports for adding to existing trips
+    parseTransportsJson: (jsonContent: string): Transport[] => {
         try {
             const data = JSON.parse(jsonContent);
             const flights = data.flights || (Array.isArray(data) ? data : []);
-            const transports = flights.map(mapJsonFlightToTransport).filter((t: Transport) => t.departureDate); // Ensure valid date
-            return groupTransportsIntoTrips(transports, userId);
+            return flights.map(mapJsonFlightToTransport).filter((t: Transport) => t.departureDate);
         } catch (e) {
-            console.error("JSON Import Error", e);
-            throw new Error("Invalid JSON format");
+            console.error("JSON Parse Error", e);
+            return [];
         }
     },
 
-    importCsv: async (csvContent: string, userId: string): Promise<Trip[]> => {
+    parseTransportsCsv: (csvContent: string): Transport[] => {
         try {
             const rows = csvToArray(csvContent);
-            const transports = rows.map(mapCsvRowToTransport).filter((t: Transport) => t.departureDate);
-            return groupTransportsIntoTrips(transports, userId);
+            return rows.map(mapCsvRowToTransport).filter((t: Transport) => t.departureDate);
         } catch (e) {
-            console.error("CSV Import Error", e);
-            throw new Error("Invalid CSV format");
+            console.error("CSV Parse Error", e);
+            return [];
         }
+    },
+
+    validateTransport: (t: Transport): string[] => {
+        const errors: string[] = [];
+        if (!t.departureDate) errors.push("Missing departure date");
+        if (!t.origin) errors.push("Missing origin");
+        if (!t.destination) errors.push("Missing destination");
+        // Check dates validity
+        if (t.departureDate && isNaN(new Date(t.departureDate).getTime())) errors.push("Invalid departure date format");
+        return errors;
+    },
+
+    // Exposed Logic
+    groupTransports: (transports: Transport[], userId: string) => groupTransportsIntoTrips(transports, userId),
+
+    // Standard Import logic (creates new trips)
+    importJson: async (jsonContent: string, userId: string): Promise<Trip[]> => {
+        const transports = flightImporter.parseTransportsJson(jsonContent);
+        return groupTransportsIntoTrips(transports, userId);
+    },
+
+    importCsv: async (csvContent: string, userId: string): Promise<Trip[]> => {
+        const transports = flightImporter.parseTransportsCsv(csvContent);
+        return groupTransportsIntoTrips(transports, userId);
     },
 
     exportJson: (trips: Trip[]): string => {

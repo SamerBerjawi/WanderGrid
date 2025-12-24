@@ -105,43 +105,65 @@
         background-color: rgba(50, 50, 50, 0.9) !important;
       }
       
-      /* Flight Path Animation Base */
-      .flight-path-base {
-        /* Removed fixed stroke-width: 2; to allow JS dynamic weight */
-        animation: dash 3s linear infinite;
-        fill: none;
+      /* --- AIRTRAIL STYLE FLIGHT PATHS --- */
+
+      /* 1. Background Track (Static) */
+      .flight-path-track {
+        stroke-opacity: 0.15;
         stroke-linecap: round;
-        transition: stroke-width 0.3s ease, opacity 0.3s ease, filter 0.3s ease;
+        stroke-linejoin: round;
+        fill: none;
       }
 
-      /* Highlighted/Selected Path */
+      /* 2. Animated Flow (Moving Dash) */
+      .flight-path-flow {
+        fill: none;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        /* Dash pattern: [dash_length, gap_length] */
+        /* We use a long gap to create a "bullet" or "comet" effect */
+        stroke-dasharray: 12, 180; 
+        stroke-dashoffset: 0;
+        animation: flow 3s linear infinite;
+        /* Neon Glow Effect */
+        filter: drop-shadow(0 0 3px currentColor) drop-shadow(0 0 6px currentColor);
+      }
+
+      /* Highlighted State (Hover) */
       .flight-path-selected {
-        /* Removed fixed stroke-width: 4 !important; to allow relative thickening in JS */
-        opacity: 1 !important;
-        filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.8)) drop-shadow(0 0 15px rgba(255, 255, 255, 0.5)) !important;
+        stroke-opacity: 1 !important;
+        filter: drop-shadow(0 0 8px white) drop-shadow(0 0 15px white) !important;
         stroke: #ffffff !important;
-        z-index: 1000 !important;
-        animation: none !important; /* Stop dash animation on hover for solid look */
+        z-index: 9999 !important;
+        animation: none !important;
         stroke-dasharray: none !important;
       }
 
+      /* Animation Keyframe */
+      @keyframes flow {
+        to {
+          /* Move backwards by the total length of dash+gap to create continuous flow */
+          stroke-dashoffset: -192; 
+        }
+      }
+
+      /* Status Colors (used via inline styles usually, but classes help for specificity) */
       /* Historic (Blue) */
       .flight-path-blue {
-        stroke: #3b82f6; /* Blue-500 */
-        filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.8)) drop-shadow(0 0 12px rgba(59, 130, 246, 0.4));
+        color: #3b82f6; /* Used for currentColor context */
+        stroke: #3b82f6; 
       }
 
-      /* Confirmed (Green) */
+      /* Confirmed (Green/Emerald) */
       .flight-path-green {
-        stroke: #10b981; /* Emerald-500 */
-        filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.8)) drop-shadow(0 0 12px rgba(16, 185, 129, 0.4));
+        color: #10b981; 
+        stroke: #10b981;
       }
 
-      /* Planned (White) */
+      /* Planned (White/Gray) */
       .flight-path-white {
+        color: #ffffff;
         stroke: #ffffff;
-        filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.8)) drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
-        opacity: 0.7;
       }
 
       /* Route Labels on Map */
@@ -158,12 +180,6 @@
         white-space: nowrap;
         pointer-events: none; /* Let clicks pass through to the line */
       }
-      
-      @keyframes dash {
-        to {
-          stroke-dashoffset: -30;
-        }
-      }
     </style>
     <script type="importmap">
 {
@@ -173,7 +189,8 @@
     "react": "https://esm.sh/react@^19.2.3",
     "react/": "https://esm.sh/react@^19.2.3/",
     "react-dom": "https://esm.sh/react-dom@^19.2.3",
-    "leaflet": "https://esm.sh/leaflet@1.9.4"
+    "leaflet": "https://esm.sh/leaflet@1.9.4",
+    "html2canvas": "https://esm.sh/html2canvas@1.4.1"
   }
 }
 </script>
@@ -182,3 +199,4 @@
     <div id="root"></div>
   </body>
 </html>
+    

@@ -1,7 +1,8 @@
 
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef, useMemo, useState } from 'react';
 import L from 'leaflet';
 import { Trip, Transport } from '../types';
+import html2canvas from 'html2canvas';
 
 interface ExpeditionMapProps {
     trips: Trip[];
@@ -10,7 +11,7 @@ interface ExpeditionMapProps {
     animateRoutes?: boolean;
 }
 
-// Leaflet default icon fix for Webpack/React env
+// Leaflet default icon fix
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
     iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
@@ -18,16 +19,14 @@ L.Icon.Default.mergeOptions({
     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-// Helper to normalize route key for undirected graph counting (A->B same as B->A)
+// Helper to normalize route key
 const getRouteKey = (lat1: number, lng1: number, lat2: number, lng2: number) => {
-    // Round to 3 decimals (~100m precision) to group nearby airports/stations
     const p1 = `${lat1.toFixed(3)},${lng1.toFixed(3)}`;
     const p2 = `${lat2.toFixed(3)},${lng2.toFixed(3)}`;
-    // Sort to treat direction equally
     return p1 < p2 ? `${p1}|${p2}` : `${p2}|${p1}`;
 };
 
-// Quadratic Bezier generator with Shortest Path logic (Dateline Crossing)
+// Quadratic Bezier generator
 const getCurvePoints = (start: L.LatLng, end: L.LatLng): L.LatLng[] => {
     let lat1 = start.lat;
     let lng1 = start.lng;
@@ -42,21 +41,24 @@ const getCurvePoints = (start: L.LatLng, end: L.LatLng): L.LatLng[] => {
         lng2 += 360;
     }
 
-    // Calculate midpoint
+    // Midpoint calculation
     const midLat = (lat1 + lat2) / 2;
     const midLng = (lng1 + lng2) / 2;
 
     const dist = Math.sqrt(Math.pow(lat2 - lat1, 2) + Math.pow(lng2 - lng1, 2));
     
-    // Curvature Physics
+    // Curvature Physics - Tweak for AirTrail look (higher arc on long flights)
     const curvatureDir = midLat >= 0 ? 1 : -1;
-
-    // Offset control point latitude to create the arc
-    const controlLat = midLat + (dist * 0.15 * curvatureDir);
+    
+    // Dynamic curvature based on distance. 
+    // Short flights (dist < 10) need less curve. Long flights need more.
+    const curveIntensity = Math.min(0.2, Math.max(0.1, dist * 0.005)); 
+    
+    const controlLat = midLat + (dist * curveIntensity * curvatureDir);
     const controlLng = midLng;
 
     const points: L.LatLng[] = [];
-    const steps = 100; // High resolution for smoothness
+    const steps = 100; 
     
     for (let i = 0; i <= steps; i++) {
         const t = i / steps;
@@ -70,24 +72,25 @@ const getCurvePoints = (start: L.LatLng, end: L.LatLng): L.LatLng[] => {
     return points;
 };
 
-// Helper to determine styling based on status and date
+// Helper to determine styling
 const getStatusStyle = (trip: Trip) => {
     const today = new Date();
     today.setHours(0,0,0,0);
     const endDate = new Date(trip.endDate);
     
+    // Determine base class suffix for colors defined in CSS
     if (endDate < today) {
-         return { color: '#3b82f6', className: 'flight-path-base flight-path-blue' }; // Blue
+         return { color: '#3b82f6', className: 'flight-path-blue' }; 
     }
 
     switch (trip.status) {
         case 'Past':
-            return { color: '#3b82f6', className: 'flight-path-base flight-path-blue' }; // Blue
+            return { color: '#3b82f6', className: 'flight-path-blue' }; 
         case 'Upcoming':
-            return { color: '#10b981', className: 'flight-path-base flight-path-green' }; // Green
+            return { color: '#10b981', className: 'flight-path-green' }; 
         case 'Planning':
         default:
-            return { color: '#ffffff', className: 'flight-path-base flight-path-white' }; // White
+            return { color: '#ffffff', className: 'flight-path-white' }; 
     }
 };
 
@@ -99,8 +102,9 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
 }) => {
     const mapContainer = useRef<HTMLDivElement>(null);
     const mapInstance = useRef<L.Map | null>(null);
+    const [isScreenshotting, setIsScreenshotting] = useState(false);
 
-    // Pre-calculate frequencies for route weighting
+    // Pre-calculate frequencies
     const routeFrequencies = useMemo(() => {
         const counts = new Map<string, number>();
         trips.forEach(trip => {
@@ -117,23 +121,20 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
     useEffect(() => {
         if (!mapContainer.current || mapInstance.current) return;
 
-        // Initialize Map
         const map = L.map(mapContainer.current, {
             zoomControl: false,
             attributionControl: false,
             scrollWheelZoom: true,
             worldCopyJump: true
-        }).setView([20, 0], 2);
+        }).setView([25, 10], 2); // Slightly centered for aesthetics
 
-        // Dark Matter Tiles (Voyager)
+        // Dark Matter Tiles
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
             subdomains: 'abcd',
             maxZoom: 19,
             noWrap: false 
         }).addTo(map);
-
-        L.control.zoom({ position: 'bottomright' }).addTo(map);
 
         mapInstance.current = map;
 
@@ -160,7 +161,6 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
         trips.forEach(trip => {
             const { color, className } = getStatusStyle(trip);
 
-            // Process Transports for Flight Paths
             if (trip.transports && trip.transports.length > 0) {
                 trip.transports.forEach(t => {
                     if (t.originLat && t.originLng && t.destLat && t.destLng) {
@@ -169,67 +169,86 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                         
                         const curvedPath = getCurvePoints(start, end);
 
-                        // Calculate Frequency Weight
                         const key = getRouteKey(t.originLat, t.originLng, t.destLat, t.destLng);
                         const freq = routeFrequencies.get(key) || 1;
                         
-                        // Enhanced Weight Calculation
-                        // If showFrequencyWeight is false, force base weight (2)
+                        // Weight Logic
                         const dynamicWeight = showFrequencyWeight 
-                            ? Math.min(14, 2 + ((freq - 1) * 1.5))
+                            ? Math.min(10, 2 + ((freq - 1) * 1))
                             : 2;
 
-                        // Animation Logic
-                        const activeClassName = animateRoutes ? className : '';
-                        const activeDashArray = animateRoutes 
-                            ? (trip.status === 'Planning' ? '4, 8' : '6, 12')
-                            : undefined;
-
-                        // 1. Visible Neon Line (Visuals)
-                        const visualLine = L.polyline(curvedPath, {
+                        // 1. STATIC TRACK (The base line)
+                        // This creates the subtle path connection even when the "pulse" isn't there
+                        const trackLine = L.polyline(curvedPath, {
                             color: color, 
-                            weight: dynamicWeight, 
-                            opacity: animateRoutes ? 0.8 : 0.6,
-                            dashArray: activeDashArray, 
-                            className: activeClassName, 
-                            interactive: false,
-                            lineCap: 'round'
+                            weight: 1 + (dynamicWeight * 0.2), // Thinner than flow
+                            opacity: 0.2,
+                            className: `flight-path-track ${className}`,
+                            interactive: false
                         }).addTo(map);
 
-                        // 2. Invisible Hit-Test Line (Interaction)
+                        // 2. ANIMATED FLOW (The moving dash)
+                        let flowLine: L.Polyline | null = null;
+                        if (animateRoutes) {
+                            flowLine = L.polyline(curvedPath, {
+                                color: color,
+                                weight: dynamicWeight,
+                                opacity: 1, // High opacity for glow
+                                className: `flight-path-flow ${className}`,
+                                interactive: false,
+                                lineCap: 'round'
+                            }).addTo(map);
+                        } else {
+                            // Solid line if animation disabled
+                            flowLine = L.polyline(curvedPath, {
+                                color: color,
+                                weight: dynamicWeight,
+                                opacity: 0.8,
+                                interactive: false
+                            }).addTo(map);
+                        }
+
+                        // 3. INVISIBLE INTERACTION LAYER (Hit area)
                         const hitLine = L.polyline(curvedPath, {
                             color: 'transparent',
-                            weight: Math.max(20, dynamicWeight + 12), // Ensure hit area covers thick lines
+                            weight: Math.max(15, dynamicWeight + 10), 
                             opacity: 0,
                             interactive: true
                         }).addTo(map);
 
-                        // Bind Popup to Hit Line
                         hitLine.bindPopup(`
                             <div class="p-2">
                                 <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">${trip.status} Trip</div>
                                 <div class="font-bold text-sm text-white">${t.origin} <span class="text-gray-500">→</span> ${t.destination}</div>
                                 <div class="text-xs opacity-70 text-gray-300">${t.provider}</div>
-                                ${freq > 1 ? `<div class="mt-2 text-[9px] font-black bg-white/10 px-2 py-1 rounded w-fit text-blue-300 uppercase tracking-wider">Route Frequency: ${freq}</div>` : ''}
+                                <div class="text-[10px] text-gray-500 mt-1">${new Date(t.departureDate).toLocaleDateString()}</div>
                             </div>
                         `);
 
-                        // Hover Effect (JS based to respect dynamic weight)
+                        // Hover Effects
                         hitLine.on('mouseover', () => {
-                            if (visualLine.getElement()) {
-                                // Add class for Glow Filter only
-                                visualLine.getElement()?.classList.add('flight-path-selected');
-                                // Manually set weight thicker relative to base weight
-                                visualLine.setStyle({ weight: dynamicWeight + 4, opacity: 1 });
-                                visualLine.bringToFront();
+                            // Highlight the flow line
+                            if (flowLine && flowLine.getElement()) {
+                                flowLine.getElement()?.classList.add('flight-path-selected');
+                                flowLine.bringToFront();
+                            }
+                            // Also highlight track slightly
+                            if (trackLine && trackLine.getElement()) {
+                                trackLine.setStyle({ opacity: 0.5 });
                             }
                         });
+                        
                         hitLine.on('mouseout', () => {
-                            if (visualLine.getElement()) {
-                                visualLine.getElement()?.classList.remove('flight-path-selected');
-                                // Reset weight
-                                visualLine.setStyle({ weight: dynamicWeight, opacity: animateRoutes ? 0.8 : 0.6 });
+                            if (flowLine && flowLine.getElement()) {
+                                flowLine.getElement()?.classList.remove('flight-path-selected');
                             }
+                            if (trackLine && trackLine.getElement()) {
+                                trackLine.setStyle({ opacity: 0.2 });
+                            }
+                        });
+
+                        hitLine.on('click', () => {
+                            if (onTripClick) onTripClick(trip.id);
                         });
 
                         // Origin Dot
@@ -237,13 +256,13 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                             radius: 2, 
                             fillColor: color,
                             color: 'transparent',
-                            fillOpacity: 0.6
+                            fillOpacity: 0.5
                         }).addTo(map);
 
                         // Destination Dot
                         const destMarker = L.circleMarker(end, {
-                            radius: 4, 
-                            fillColor: '#000000', 
+                            radius: 3, 
+                            fillColor: '#000', 
                             color: color, 
                             weight: 2,
                             fillOpacity: 1
@@ -257,7 +276,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                             permanent: false, 
                             direction: 'top',
                             offset: [0, -5],
-                            className: 'bg-black/80 text-white border-0 text-xs font-bold px-2 py-1 rounded'
+                            className: 'bg-black/90 text-white border border-white/20 shadow-xl text-xs font-bold px-3 py-1.5 rounded-lg'
                         });
                         
                         bounds.extend(start);
@@ -278,7 +297,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                 }).addTo(map)
                 .bindTooltip(trip.name, { 
                     direction: 'top', 
-                    className: 'bg-black/80 text-white border-0 text-xs font-bold px-2 py-1 rounded' 
+                    className: 'bg-black/90 text-white border border-white/20 shadow-xl text-xs font-bold px-3 py-1.5 rounded-lg' 
                 })
                 .on('click', () => onTripClick && onTripClick(trip.id));
 
@@ -287,13 +306,111 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
             }
         });
 
+        // Fit initial bounds if points exist
         if (hasPoints) {
-            map.fitBounds(bounds, { padding: [100, 100], maxZoom: 6 });
+            map.fitBounds(bounds, { padding: [80, 80], maxZoom: 6 });
         } else {
             map.setView([20, 0], 2);
         }
 
     }, [trips, onTripClick, routeFrequencies, showFrequencyWeight, animateRoutes]);
 
-    return <div ref={mapContainer} className="w-full h-full bg-black" />;
+    const handleZoomIn = () => mapInstance.current?.zoomIn();
+    const handleZoomOut = () => mapInstance.current?.zoomOut();
+    
+    const handleFitBounds = () => {
+        if (!mapInstance.current) return;
+        const bounds = L.latLngBounds([]);
+        let hasPoints = false;
+        trips.forEach(trip => {
+            if (trip.transports) {
+                trip.transports.forEach(t => {
+                    if (t.originLat && t.originLng) bounds.extend([t.originLat, t.originLng]);
+                    if (t.destLat && t.destLng) bounds.extend([t.destLat, t.destLng]);
+                });
+                hasPoints = true;
+            } else if (trip.coordinates) {
+                bounds.extend([trip.coordinates.lat, trip.coordinates.lng]);
+                hasPoints = true;
+            }
+        });
+        if (hasPoints) {
+            mapInstance.current.fitBounds(bounds, { padding: [80, 80], maxZoom: 6 });
+        } else {
+            mapInstance.current.setView([20, 0], 2);
+        }
+    };
+
+    const handleScreenshot = async () => {
+        if (!mapContainer.current) return;
+        setIsScreenshotting(true);
+        try {
+            // Wait a tick to ensure state is rendered if we had loading indicators
+            await new Promise(r => setTimeout(r, 100));
+            const canvas = await html2canvas(mapContainer.current, {
+                useCORS: true,
+                allowTaint: true,
+                backgroundColor: '#0a0a0a',
+                logging: false
+            });
+            const link = document.createElement('a');
+            link.download = `expedition-map-${new Date().toISOString().split('T')[0]}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        } catch (e) {
+            console.error("Screenshot failed", e);
+            alert("Failed to capture map. Cross-origin restrictions may apply to map tiles.");
+        } finally {
+            setIsScreenshotting(false);
+        }
+    };
+
+    return (
+        <div className="relative w-full h-full group overflow-hidden bg-[#0a0a0a]">
+            <div ref={mapContainer} className="w-full h-full bg-[#0a0a0a]" />
+            
+            {/* Control Bar */}
+            <div className="absolute bottom-12 right-12 flex flex-col gap-3 z-[1000]">
+                
+                <div className="flex flex-col bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-2xl overflow-hidden">
+                    <button 
+                        onClick={handleZoomIn} 
+                        className="w-10 h-10 flex items-center justify-center text-white hover:bg-white/20 transition-colors border-b border-white/10"
+                        title="Zoom In"
+                    >
+                        <span className="material-icons-outlined text-lg">add</span>
+                    </button>
+                    <button 
+                        onClick={handleZoomOut} 
+                        className="w-10 h-10 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
+                        title="Zoom Out"
+                    >
+                        <span className="material-icons-outlined text-lg">remove</span>
+                    </button>
+                </div>
+
+                <button 
+                    onClick={handleFitBounds} 
+                    className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-2xl flex items-center justify-center text-white hover:bg-white/20 transition-colors group/fit"
+                    title="Fit to Screen"
+                >
+                    <span className="material-icons-outlined text-lg group-hover/fit:scale-110 transition-transform">center_focus_strong</span>
+                </button>
+
+                <button 
+                    onClick={handleScreenshot} 
+                    disabled={isScreenshotting}
+                    className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-2xl flex items-center justify-center text-white hover:bg-white/20 transition-colors disabled:opacity-50 group/shot"
+                    title="Take Screenshot"
+                >
+                    {isScreenshotting ? (
+                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    ) : (
+                        <span className="material-icons-outlined text-lg group-hover/shot:scale-110 transition-transform">photo_camera</span>
+                    )}
+                </button>
+
+            </div>
+        </div>
+    );
 };

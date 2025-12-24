@@ -3,6 +3,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { ExpeditionMap } from '../components/ExpeditionMap';
 import { dataService } from '../services/mockDb';
 import { Trip } from '../types';
+import { Input, MultiSelect } from '../components/ui';
 
 interface ExpeditionMapViewProps {
     onTripClick: (tripId: string) => void;
@@ -19,6 +20,12 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
     // Filters
     const [statusFilter, setStatusFilter] = useState<'all' | 'Past' | 'Upcoming' | 'Planning'>('all');
     const [yearFilter, setYearFilter] = useState<string>('all');
+    
+    // New Filters (Arrays for Multi-Select)
+    const [depFilter, setDepFilter] = useState<string[]>([]);
+    const [arrFilter, setArrFilter] = useState<string[]>([]);
+    const [dateFrom, setDateFrom] = useState<string>('');
+    const [dateTo, setDateTo] = useState<string>('');
 
     useEffect(() => {
         dataService.getTrips().then(t => {
@@ -39,28 +46,55 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
         return Array.from(y).sort((a,b) => b - a);
     }, [trips]);
 
+    const uniqueAirports = useMemo(() => {
+        const origins = new Set<string>();
+        const destinations = new Set<string>();
+        
+        trips.forEach(t => {
+            t.transports?.forEach(tr => {
+                if (tr.origin) origins.add(tr.origin);
+                if (tr.destination) destinations.add(tr.destination);
+            });
+        });
+
+        return {
+            origins: Array.from(origins).sort().map(code => ({ label: code, value: code })),
+            destinations: Array.from(destinations).sort().map(code => ({ label: code, value: code }))
+        };
+    }, [trips]);
+
     const filteredTrips = useMemo(() => {
         const today = new Date();
         today.setHours(0,0,0,0);
 
         return trips.filter(t => {
-            const tDate = new Date(t.endDate);
+            const tStart = new Date(t.startDate);
+            const tEnd = new Date(t.endDate);
             let matchesStatus = true;
             
             // Status Logic mapping
             if (statusFilter === 'Past') {
-                matchesStatus = tDate < today;
+                matchesStatus = tEnd < today;
             } else if (statusFilter === 'Upcoming') { // Confirmed
-                matchesStatus = t.status === 'Upcoming' && tDate >= today;
+                matchesStatus = t.status === 'Upcoming' && tEnd >= today;
             } else if (statusFilter === 'Planning') { // Planned
                 matchesStatus = t.status === 'Planning';
             }
 
-            const matchesYear = yearFilter === 'all' || new Date(t.startDate).getFullYear().toString() === yearFilter;
+            const matchesYear = yearFilter === 'all' || tStart.getFullYear().toString() === yearFilter;
 
-            return matchesStatus && matchesYear;
+            // Date Range
+            const matchesFrom = !dateFrom || tEnd >= new Date(dateFrom);
+            const matchesTo = !dateTo || tStart <= new Date(dateTo);
+
+            // Airport Logic (Check if ANY flight in trip matches ANY selected filter)
+            // If filter array is empty, it means 'All', so match everything.
+            const matchesDep = depFilter.length === 0 || (t.transports?.some(tr => depFilter.includes(tr.origin)) ?? false);
+            const matchesArr = arrFilter.length === 0 || (t.transports?.some(tr => arrFilter.includes(tr.destination)) ?? false);
+
+            return matchesStatus && matchesYear && matchesFrom && matchesTo && matchesDep && matchesArr;
         });
-    }, [trips, statusFilter, yearFilter]);
+    }, [trips, statusFilter, yearFilter, dateFrom, dateTo, depFilter, arrFilter]);
 
     const stats = useMemo(() => {
         let totalKm = 0;
@@ -80,115 +114,147 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
     if (loading) return <div className="h-full flex items-center justify-center text-gray-500">Initializing Satellite Uplink...</div>;
 
     return (
-        <div className="flex flex-col h-full w-full rounded-[2.5rem] overflow-hidden border border-gray-200 dark:border-white/5 shadow-2xl bg-black">
+        <div className="flex flex-col h-full w-full gap-6">
             
-            {/* HERO HEADER / COMMAND CENTER */}
-            <div className="z-10 bg-white/10 dark:bg-black/60 backdrop-blur-xl border-b border-white/10 p-4 md:p-6 flex flex-col xl:flex-row items-center justify-between gap-6 shrink-0">
+            {/* HERO HEADER / COMMAND CENTER - Distinct Card */}
+            <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] p-6 shadow-xl border border-gray-100 dark:border-white/5 flex flex-col xl:flex-row items-start justify-between gap-6 shrink-0 relative overflow-visible z-20">
                 
-                {/* Left: Title & Stats */}
-                <div className="flex flex-col md:flex-row items-center gap-6 w-full xl:w-auto">
-                    <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
-                            <span className="material-icons-outlined text-xl">public</span>
+                {/* Background Decor */}
+                <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-500/5 to-purple-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+
+                {/* Left: Identity & Stats */}
+                <div className="flex flex-col md:flex-row items-center gap-8 w-full xl:w-auto relative z-10 xl:py-2">
+                    <div className="flex items-center gap-4">
+                        <div className="w-16 h-16 rounded-[1.5rem] bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+                            <span className="material-icons-outlined text-3xl">public</span>
                         </div>
                         <div>
-                            <h2 className="text-2xl font-black text-white tracking-tight leading-none">Expedition Map</h2>
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Global Logistics View</p>
+                            <h2 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight leading-none">Global Ops</h2>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mt-1.5">Expedition Logistics</p>
                         </div>
                     </div>
 
-                    <div className="hidden md:block w-px h-10 bg-white/10"></div>
+                    <div className="hidden md:block w-px h-12 bg-gray-200 dark:bg-white/10 mx-2"></div>
 
-                    <div className="flex gap-4 w-full md:w-auto justify-center md:justify-start">
-                        <div className="flex-1 md:flex-initial p-3 rounded-2xl bg-white/5 border border-white/5 flex flex-col min-w-[120px]">
-                            <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Distance</span>
-                            <div className="mt-0.5">
-                                <span className="text-xl font-black text-white">{stats.distance.toLocaleString()}</span>
-                                <span className="text-[10px] font-bold text-gray-500 ml-1">km</span>
+                    <div className="flex gap-6">
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Coverage</span>
+                            <div className="flex items-baseline gap-1">
+                                <span className="text-2xl font-black text-gray-900 dark:text-white">{stats.distance.toLocaleString()}</span>
+                                <span className="text-xs font-bold text-gray-500 dark:text-gray-400">km</span>
                             </div>
                         </div>
-                        <div className="flex-1 md:flex-initial p-3 rounded-2xl bg-white/5 border border-white/5 flex flex-col min-w-[100px]">
-                            <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Missions</span>
-                            <div className="mt-0.5">
-                                <span className="text-xl font-black text-white">{stats.count}</span>
-                            </div>
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Missions</span>
+                            <span className="text-2xl font-black text-gray-900 dark:text-white">{stats.count}</span>
                         </div>
                     </div>
                 </div>
 
-                {/* Right: Filters & Controls */}
-                <div className="flex flex-col md:flex-row gap-4 items-center w-full xl:w-auto xl:max-w-[60%] bg-white/5 p-2 rounded-3xl border border-white/5">
+                {/* Right: Controls Grid */}
+                <div className="flex flex-col gap-3 w-full xl:w-auto relative z-10">
                     
-                    {/* Visual Toggles */}
-                    <div className="flex items-center gap-3 px-3 py-1 border-r border-white/10 shrink-0">
-                        <label className="flex items-center gap-2 cursor-pointer group" title="Thicker lines for frequently traveled routes">
-                            <div className={`w-8 h-4 rounded-full p-0.5 transition-colors ${showFrequencyWeight ? 'bg-blue-600' : 'bg-gray-700'}`}>
-                                <div className={`w-3 h-3 bg-white rounded-full shadow transform transition-transform ${showFrequencyWeight ? 'translate-x-4' : 'translate-x-0'}`} />
-                            </div>
-                            <input 
-                                type="checkbox" 
-                                className="hidden" 
-                                checked={showFrequencyWeight} 
-                                onChange={(e) => setShowFrequencyWeight(e.target.checked)} 
-                            />
-                            <span className="text-[10px] font-bold text-gray-400 uppercase group-hover:text-white transition-colors">Weight</span>
-                        </label>
+                    {/* Row 1: Primary Filters & Toggles */}
+                    <div className="flex flex-col md:flex-row items-center gap-3">
+                        <div className="flex items-center p-1 bg-gray-100 dark:bg-black/30 rounded-2xl border border-gray-200 dark:border-white/5 w-full md:w-auto">
+                            <select 
+                                value={yearFilter}
+                                onChange={(e) => setYearFilter(e.target.value)}
+                                className="bg-transparent text-xs font-bold text-gray-700 dark:text-gray-200 outline-none px-3 py-2 cursor-pointer border-r border-gray-300 dark:border-white/10"
+                            >
+                                <option value="all">All Years</option>
+                                {years.map(y => <option key={y} value={y}>{y}</option>)}
+                            </select>
 
-                        <label className="flex items-center gap-2 cursor-pointer group" title="Show animated dash paths">
-                            <div className={`w-8 h-4 rounded-full p-0.5 transition-colors ${animateRoutes ? 'bg-emerald-600' : 'bg-gray-700'}`}>
-                                <div className={`w-3 h-3 bg-white rounded-full shadow transform transition-transform ${animateRoutes ? 'translate-x-4' : 'translate-x-0'}`} />
+                            <div className="flex gap-1 pl-2">
+                                {['all', 'Upcoming', 'Past'].map((s) => (
+                                    <button
+                                        key={s}
+                                        onClick={() => setStatusFilter(s as any)}
+                                        className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${
+                                            statusFilter === s 
+                                            ? 'bg-white dark:bg-gray-700 text-black dark:text-white shadow-sm' 
+                                            : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+                                        }`}
+                                    >
+                                        {s === 'all' ? 'All' : s}
+                                    </button>
+                                ))}
                             </div>
-                            <input 
-                                type="checkbox" 
-                                className="hidden" 
-                                checked={animateRoutes} 
-                                onChange={(e) => setAnimateRoutes(e.target.checked)} 
-                            />
-                            <span className="text-[10px] font-bold text-gray-400 uppercase group-hover:text-white transition-colors">Anim</span>
-                        </label>
-                    </div>
+                        </div>
 
-                    {/* Status Toggles */}
-                    <div className="flex p-1 bg-black/40 rounded-2xl w-full md:w-auto shrink-0 overflow-x-auto scrollbar-hide">
-                        {['all', 'Past', 'Upcoming', 'Planning'].map((status) => (
-                             <button 
-                                key={status}
-                                onClick={() => setStatusFilter(status as any)}
-                                className={`flex-1 md:flex-initial px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap ${
-                                    statusFilter === status 
-                                    ? (status === 'Past' ? 'bg-blue-600 text-white shadow-lg' : status === 'Upcoming' ? 'bg-emerald-600 text-white shadow-lg' : status === 'Planning' ? 'bg-white text-black shadow-lg' : 'bg-gray-700 text-white shadow-lg') 
-                                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                        {/* Toggles */}
+                        <div className="flex gap-2 w-full md:w-auto">
+                            <button 
+                                onClick={() => setAnimateRoutes(!animateRoutes)}
+                                className={`flex-1 md:flex-initial flex items-center justify-center gap-2 px-3 py-2 rounded-2xl border transition-all ${
+                                    animateRoutes 
+                                    ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-400' 
+                                    : 'bg-transparent border-gray-200 dark:border-white/10 text-gray-400'
                                 }`}
+                                title="Toggle Animation"
                             >
-                                {status === 'all' ? 'All' : status === 'Upcoming' ? 'Confirmed' : status === 'Planning' ? 'Planned' : 'Historic'}
+                                <span className="material-icons-outlined text-lg">{animateRoutes ? 'blur_on' : 'blur_off'}</span>
                             </button>
-                        ))}
+                            
+                            <button 
+                                onClick={() => setShowFrequencyWeight(!showFrequencyWeight)}
+                                className={`flex-1 md:flex-initial flex items-center justify-center gap-2 px-3 py-2 rounded-2xl border transition-all ${
+                                    showFrequencyWeight 
+                                    ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-900/50 text-blue-700 dark:text-blue-400' 
+                                    : 'bg-transparent border-gray-200 dark:border-white/10 text-gray-400'
+                                }`}
+                                title="Toggle Route Frequency Weight"
+                            >
+                                <span className="material-icons-outlined text-lg">line_weight</span>
+                            </button>
+                        </div>
                     </div>
 
-                    {/* Year Selector */}
-                    <div className="flex items-center gap-2 overflow-x-auto max-w-full min-w-0 px-2 scrollbar-hide mask-fade-right">
-                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wide hidden lg:block">Year:</span>
-                        <button
-                            onClick={() => setYearFilter('all')}
-                            className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all whitespace-nowrap border ${yearFilter === 'all' ? 'bg-white text-black border-white' : 'bg-transparent text-gray-500 border-white/10 hover:border-white/30'}`}
-                        >
-                            All
-                        </button>
-                        {years.map(y => (
-                            <button
-                                key={y}
-                                onClick={() => setYearFilter(y.toString())}
-                                className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all whitespace-nowrap border ${yearFilter === y.toString() ? 'bg-white text-black border-white' : 'bg-transparent text-gray-500 border-white/10 hover:border-white/30'}`}
-                            >
-                                {y}
-                            </button>
-                        ))}
+                    {/* Row 2: Detailed Filters */}
+                    <div className="flex flex-col md:flex-row gap-3">
+                        <div className="flex gap-2 w-full md:w-auto min-w-[300px]">
+                            <div className="flex-1">
+                                <MultiSelect 
+                                    placeholder="Any Origin"
+                                    options={uniqueAirports.origins}
+                                    value={depFilter}
+                                    onChange={setDepFilter}
+                                />
+                            </div>
+                            <div className="flex-1">
+                                <MultiSelect 
+                                    placeholder="Any Dest"
+                                    options={uniqueAirports.destinations}
+                                    value={arrFilter}
+                                    onChange={setArrFilter}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex gap-2 w-full md:w-auto">
+                            <Input 
+                                type="date" 
+                                value={dateFrom} 
+                                onChange={(e) => setDateFrom(e.target.value)} 
+                                className="!py-1.5 !text-[10px] !font-bold !h-[38px] w-full md:w-32"
+                                placeholder="From"
+                            />
+                            <Input 
+                                type="date" 
+                                value={dateTo} 
+                                onChange={(e) => setDateTo(e.target.value)} 
+                                className="!py-1.5 !text-[10px] !font-bold !h-[38px] w-full md:w-32"
+                                placeholder="To"
+                            />
+                        </div>
                     </div>
+
                 </div>
             </div>
             
-            {/* Map Container */}
-            <div className="flex-1 relative w-full min-h-0">
+            {/* MAP CONTAINER - Strictly Below */}
+            <div className="flex-1 min-h-0 w-full rounded-[2.5rem] overflow-hidden border border-gray-200 dark:border-white/5 shadow-2xl relative bg-black z-10">
                 <ExpeditionMap 
                     trips={filteredTrips} 
                     onTripClick={onTripClick} 
