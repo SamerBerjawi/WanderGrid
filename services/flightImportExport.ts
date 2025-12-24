@@ -120,60 +120,54 @@ const mapCsvRowToTransport = (row: any): Transport => {
     };
 };
 
-// --- Grouping Logic ---
-
-const groupTransportsIntoTrips = (transports: Transport[], userId: string): Trip[] => {
-    if (transports.length === 0) return [];
-
-    // Sort by departure
-    const sorted = transports.sort((a, b) => new Date(`${a.departureDate}T${a.departureTime}`).getTime() - new Date(`${b.departureDate}T${b.departureTime}`).getTime());
-
-    const trips: Trip[] = [];
-    let currentTripTransports: Transport[] = [];
-
-    sorted.forEach((t, index) => {
-        if (currentTripTransports.length === 0) {
-            currentTripTransports.push(t);
-        } else {
-            const last = currentTripTransports[currentTripTransports.length - 1];
-            const lastEnd = new Date(`${last.arrivalDate}T${last.arrivalTime}`).getTime();
-            const currStart = new Date(`${t.departureDate}T${t.departureTime}`).getTime();
-            
-            // If gap is less than 48 hours, group together
-            const diffHours = (currStart - lastEnd) / (1000 * 60 * 60);
-            
-            if (diffHours < 48) {
-                currentTripTransports.push(t);
-            } else {
-                // Finalize current trip
-                trips.push(createTripFromTransports(currentTripTransports, userId));
-                currentTripTransports = [t];
-            }
-        }
-    });
-
-    if (currentTripTransports.length > 0) {
-        trips.push(createTripFromTransports(currentTripTransports, userId));
-    }
-
-    return trips;
-};
+// --- Smart Grouping Logic ---
 
 const createTripFromTransports = (transports: Transport[], userId: string): Trip => {
-    const first = transports[0];
-    const last = transports[transports.length - 1];
-    const mainDest = last.destination; // Simple logic: last destination is the trip name
+    // Sort chronologically just in case
+    const sorted = transports.sort((a, b) => new Date(`${a.departureDate}T${a.departureTime}`).getTime() - new Date(`${b.departureDate}T${b.departureTime}`).getTime());
+    
+    const first = sorted[0];
+    const last = sorted[sorted.length - 1];
+    
+    // Naming Logic:
+    // 1. If Round Trip (Origin == Last Dest), use "Trip to [Main Destination]"
+    // 2. If Multi-City, list key stops.
+    
+    const origin = first.origin;
+    const distinctDestinations = new Set<string>();
+    let mainDest = last.destination;
+
+    sorted.forEach(t => {
+        if (t.destination !== origin) distinctDestinations.add(t.destination);
+    });
+
+    let name = '';
+    const destArray = Array.from(distinctDestinations);
+    
+    if (destArray.length === 1) {
+        name = `Trip to ${destArray[0]}`;
+    } else if (destArray.length === 2) {
+        name = `Trip to ${destArray[0]} & ${destArray[1]}`;
+    } else if (destArray.length > 2) {
+        name = `Tour: ${destArray[0]}, ${destArray[1]}...`;
+    } else {
+        name = `Trip to ${mainDest}`;
+    }
+
+    // Determine Status
+    const today = new Date();
+    const isPast = new Date(last.arrivalDate) < today;
 
     return {
         id: Math.random().toString(36).substr(2, 9),
-        name: `Trip to ${mainDest}`,
-        location: mainDest,
+        name: name,
+        location: destArray[0] || mainDest,
         startDate: first.departureDate,
         endDate: last.arrivalDate || last.departureDate,
-        status: new Date(last.arrivalDate) < new Date() ? 'Past' : 'Upcoming',
+        status: isPast ? 'Past' : 'Upcoming',
         participants: [userId],
         icon: '✈️',
-        transports: transports,
+        transports: sorted,
         durationMode: 'all_full',
         startPortion: 'full',
         endPortion: 'full',
@@ -181,6 +175,86 @@ const createTripFromTransports = (transports: Transport[], userId: string): Trip
         activities: [],
         locations: []
     };
+};
+
+const groupTransportsIntoTrips = (transports: Transport[], userId: string): Trip[] => {
+    if (transports.length === 0) return [];
+
+    // 1. Sort by departure
+    const sorted = transports.sort((a, b) => new Date(`${a.departureDate}T${a.departureTime}`).getTime() - new Date(`${b.departureDate}T${b.departureTime}`).getTime());
+
+    const trips: Trip[] = [];
+    let currentBatch: Transport[] = [];
+    let currentHomeBase = ''; 
+
+    for (let i = 0; i < sorted.length; i++) {
+        const flight = sorted[i];
+
+        // Start a new batch?
+        if (currentBatch.length === 0) {
+            currentBatch.push(flight);
+            currentHomeBase = flight.origin;
+            continue;
+        }
+
+        const lastFlight = currentBatch[currentBatch.length - 1];
+        const lastArrival = new Date(`${lastFlight.arrivalDate}T${lastFlight.arrivalTime}`).getTime();
+        const currDep = new Date(`${flight.departureDate}T${flight.departureTime}`).getTime();
+        
+        // Gap Analysis (in Days)
+        const gapDays = (currDep - lastArrival) / (1000 * 60 * 60 * 24);
+
+        // --- Logic Tree ---
+        
+        // 1. IS RETURN FLIGHT: If this flight goes back to the trip origin, it's likely the end of the trip.
+        // Unless it's a very short hop (e.g. day trip) and there are more flights immediately after? 
+        // For simplicity, we assume returning to home base closes the loop.
+        const isReturningHome = flight.destination === currentHomeBase;
+        
+        // 2. IS CONNECTED: Does this flight start where the last one ended?
+        const isConnected = flight.origin === lastFlight.destination;
+
+        // 3. DECISION
+        let addToCurrent = false;
+
+        if (gapDays > 21) {
+            // A gap > 3 weeks usually implies a separate trip or separate life event, unless it's a huge backpacking trip.
+            // We'll break it to be safe.
+            addToCurrent = false;
+        } else if (isReturningHome) {
+            // It's the return leg. Add it, but force the batch to close AFTER this.
+            addToCurrent = true;
+        } else if (isConnected) {
+            // It's a connection or next leg of multi-city
+            addToCurrent = true;
+        } else if (gapDays < 4) {
+            // Not directly connected (maybe took a train/car between cities), but close in time.
+            addToCurrent = true;
+        }
+
+        if (addToCurrent) {
+            currentBatch.push(flight);
+            // If we just returned home, seal the trip immediately
+            if (isReturningHome) {
+                trips.push(createTripFromTransports(currentBatch, userId));
+                currentBatch = [];
+                currentHomeBase = '';
+            }
+        } else {
+            // Seal previous batch
+            trips.push(createTripFromTransports(currentBatch, userId));
+            // Start new
+            currentBatch = [flight];
+            currentHomeBase = flight.origin;
+        }
+    }
+
+    // Flush remaining
+    if (currentBatch.length > 0) {
+        trips.push(createTripFromTransports(currentBatch, userId));
+    }
+
+    return trips;
 };
 
 // --- Public API ---

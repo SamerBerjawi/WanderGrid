@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Button, Input, Autocomplete } from './ui';
 import { LocationEntry } from '../types';
-import { GoogleGenAI } from "@google/genai";
+import { searchLocations } from '../services/geocoding';
 
 interface LocationManagerProps {
     locations: LocationEntry[];
@@ -96,18 +96,7 @@ export const LocationManager: React.FC<LocationManagerProps> = ({ locations, onS
     };
 
     const fetchLocationSuggestions = async (query: string): Promise<string[]> => {
-        try {
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-            const response = await ai.models.generateContent({
-                model: 'gemini-3-flash-preview',
-                contents: `List 5 distinct cities or popular travel destinations that match "${query}". Return ONLY a raw JSON array of strings (e.g. ["Paris, France", "Paros, Greece"]).`,
-                config: { responseMimeType: 'application/json' }
-            });
-            return response.text ? JSON.parse(response.text) : [];
-        } catch (e) {
-            console.error("GenAI autocomplete failed", e);
-            return [];
-        }
+        return searchLocations(query);
     };
 
     return (

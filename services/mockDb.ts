@@ -1,3 +1,4 @@
+
 import { User, Trip, PublicHoliday, EntitlementType, SavedConfig, EntitlementRule, WorkspaceSettings, CustomEvent, Transport } from '../types';
 import { getCoordinates } from './geocoding';
 
@@ -74,6 +75,12 @@ const DEFAULT_WORKSPACE_SETTINGS: WorkspaceSettings = {
   brandfetchApiKey: ''
 };
 
+export interface ImportState {
+    status: string;
+    progress: number;
+    isActive: boolean;
+}
+
 // --- State Management ---
 class DataService {
   private users: User[] = [];
@@ -82,6 +89,10 @@ class DataService {
   private entitlements: EntitlementType[] = [];
   private savedConfigs: SavedConfig[] = [];
   private workspaceSettings: WorkspaceSettings = DEFAULT_WORKSPACE_SETTINGS;
+
+  // Import State Tracking
+  private _importState: ImportState = { status: '', progress: 0, isActive: false };
+  private _importListeners: ((state: ImportState) => void)[] = [];
 
   constructor() {
     this.loadFromStorage();
@@ -195,6 +206,24 @@ class DataService {
     return newUser;
   }
 
+  // --- Import State Management ---
+  public getImportState(): ImportState {
+      return { ...this._importState };
+  }
+
+  public subscribeToImport(listener: (state: ImportState) => void): () => void {
+      this._importListeners.push(listener);
+      listener(this._importState); // Send current state immediately
+      return () => {
+          this._importListeners = this._importListeners.filter(l => l !== listener);
+      };
+  }
+
+  private updateImportState(status: string, progress: number, isActive: boolean) {
+      this._importState = { status, progress, isActive };
+      this._importListeners.forEach(listener => listener(this._importState));
+  }
+
   // --- Users ---
   async getUsers(): Promise<User[]> {
     return Promise.resolve([...this.users]);
@@ -269,10 +298,81 @@ class DataService {
     return Promise.resolve();
   }
 
+  // Generate a unique signature for duplicate detection
+  private getTripSignature(trip: Trip): string {
+      // For flight imports, transport details are the best identifier
+      if (trip.transports && trip.transports.length > 0) {
+          // Sort transports by departure date to ensure consistency
+          const sorted = [...trip.transports].sort((a,b) => {
+              const dA = a.departureDate || '';
+              const dB = b.departureDate || '';
+              return dA.localeCompare(dB);
+          });
+          // Signature: Provider + FlightNum + Date
+          return sorted.map(t => `${t.mode}|${t.provider}|${t.identifier}|${t.departureDate}`).join('||');
+      }
+      // Fallback for manual trips: Name + Dates
+      return `${trip.name}|${trip.startDate}|${trip.endDate}|${trip.location}`;
+  }
+
   async addTrips(newTrips: Trip[]): Promise<void> {
-    // Bulk add skips geocoding to prevent rate limiting and execution timeout for large imports
-    this.trips.push(...newTrips);
-    this.saveToStorage();
+    if (this._importState.isActive) return; // Prevent concurrent imports
+
+    const total = newTrips.length;
+    this.updateImportState(`Analyzing ${total} trips...`, 0, true);
+
+    const existingSignatures = new Set(this.trips.map(t => this.getTripSignature(t)));
+    let addedCount = 0;
+
+    for (let i = 0; i < total; i++) {
+        const trip = newTrips[i];
+        const sig = this.getTripSignature(trip);
+        const percent = Math.round(((i + 1) / total) * 100);
+        
+        // 1. Check Duplicate
+        if (existingSignatures.has(sig)) {
+            console.warn(`Duplicate trip skipped: ${trip.name} (${trip.startDate})`);
+            this.updateImportState(`Skipping duplicate: ${trip.name}`, percent, true);
+            continue;
+        }
+
+        this.updateImportState(`Importing ${i + 1}/${total}: ${trip.name}`, percent, true);
+
+        // 2. Geocode & Add (Sequential to respect API limits if using OSM)
+        try {
+            // If using OSM Nominatim, we need to be polite. 
+            // However, with IATA lookup optimization, many calls will be instant.
+            
+            const intelligentTrip = await this.processGeocoding(trip);
+            this.trips.push(intelligentTrip);
+            
+            // Add to signatures immediately to prevent duplicates within the same import batch
+            existingSignatures.add(sig); 
+            addedCount++;
+            
+            // Small throttle to be safe if mixing IATA and Nominatim calls
+            await new Promise(r => setTimeout(r, 200)); 
+        } catch (e) {
+            console.error(`Geocoding failed for ${trip.name}, saving raw data.`, e);
+            this.trips.push(trip);
+            existingSignatures.add(sig);
+            addedCount++;
+        }
+    }
+
+    if (addedCount > 0) {
+        this.saveToStorage();
+    }
+    
+    this.updateImportState(`Successfully imported ${addedCount} trips.`, 100, false);
+    
+    // Clear status after 3 seconds
+    setTimeout(() => {
+        if (!this._importState.isActive) {
+            this.updateImportState('', 0, false);
+        }
+    }, 3000);
+
     return Promise.resolve();
   }
 

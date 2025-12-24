@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { GoogleGenAI } from "@google/genai";
 import { Modal, Button, Input, Select, Autocomplete } from './ui';
 import { Trip, User } from '../types';
+import { searchLocations } from '../services/geocoding';
 
 interface TripModalProps {
     isOpen: boolean;
@@ -145,23 +145,7 @@ export const TripModal: React.FC<TripModalProps> = ({ isOpen, onClose, onSubmit,
     };
 
     const fetchLocationSuggestions = async (query: string): Promise<string[]> => {
-        try {
-            // Using GenAI to simulate Google Maps Autocomplete for travel destinations
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-            const response = await ai.models.generateContent({
-                model: 'gemini-3-flash-preview',
-                contents: `List 5 distinct cities or popular travel destinations that match "${query}". Return ONLY a raw JSON array of strings (e.g. ["Paris, France", "Paros, Greece"]).`,
-                config: {
-                    responseMimeType: 'application/json'
-                }
-            });
-            const text = response.text;
-            if (!text) return [];
-            return JSON.parse(text);
-        } catch (e) {
-            console.error("GenAI autocomplete failed", e);
-            return [];
-        }
+        return searchLocations(query);
     };
 
     const handleSubmit = async () => {

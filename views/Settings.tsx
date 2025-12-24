@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Card, Button, Badge, Tabs, Input, Select, Modal } from '../components/ui';
-import { dataService } from '../services/mockDb';
+import { dataService, ImportState } from '../services/mockDb';
 import { flightImporter } from '../services/flightImportExport';
 import { User, WorkspaceSettings, EntitlementType, SavedConfig, Trip } from '../types';
 import { EntitlementsManager } from '../components/EntitlementsManager';
@@ -24,8 +25,15 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
   // Flight Import Refs
   const flightJsonInputRef = useRef<HTMLInputElement>(null);
   const flightCsvInputRef = useRef<HTMLInputElement>(null);
-  const [importStatus, setImportStatus] = useState<string>('');
   
+  // Import State from Global Service
+  const [importState, setImportState] = useState<ImportState>(dataService.getImportState());
+  
+  // Import Verification Modal State
+  const [isImportVerifyOpen, setIsImportVerifyOpen] = useState(false);
+  const [proposedTrips, setProposedTrips] = useState<Trip[]>([]);
+  const [selectedTripIds, setSelectedTripIds] = useState<Set<string>>(new Set());
+
   const [config, setConfig] = useState<WorkspaceSettings>({
       orgName: '',
       currency: 'USD',
@@ -61,6 +69,12 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
         setConfig(settings);
         setLoading(false);
     });
+
+    // Subscribe to import progress updates
+    const unsubscribe = dataService.subscribeToImport((state) => {
+        setImportState(state);
+    });
+    return unsubscribe;
   }, []);
 
   const refreshUsers = () => {
@@ -246,15 +260,16 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
       const file = e.target.files?.[0];
       if (!file) return;
       
-      setImportStatus('Reading file...');
+      if (importState.isActive) {
+          alert("An import is already in progress.");
+          return;
+      }
+      
       const reader = new FileReader();
       reader.onload = async (evt) => {
           try {
               const content = evt.target?.result as string;
-              setImportStatus('Parsing...');
               
-              // Import to the first user found (typically admin/self) or handle via selection later.
-              // For now, attaching to first user for simplicity.
               const targetUserId = users[0]?.id; 
               if (!targetUserId) throw new Error("No user available to assign flights");
 
@@ -265,20 +280,31 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                   importedTrips = await flightImporter.importCsv(content, targetUserId);
               }
 
-              setImportStatus(`Importing ${importedTrips.length} trips...`);
+              // Show Verification Modal
+              setProposedTrips(importedTrips);
+              // Select all by default
+              setSelectedTripIds(new Set(importedTrips.map(t => t.id)));
+              setIsImportVerifyOpen(true);
               
-              // Use bulk add to bypass individual geocoding lag
-              await dataService.addTrips(importedTrips);
-              
-              setImportStatus(`Success! Imported ${importedTrips.length} trips.`);
-              setTimeout(() => setImportStatus(''), 3000);
           } catch (err) {
               console.error(err);
-              setImportStatus('Error importing file.');
+              alert('Error reading file format');
           }
       };
       reader.readAsText(file);
       e.target.value = '';
+  };
+
+  const handleConfirmFlightImport = async () => {
+      if (proposedTrips.length === 0) return;
+      
+      const tripsToAdd = proposedTrips.filter(t => selectedTripIds.has(t.id));
+      if (tripsToAdd.length === 0) return;
+
+      setIsImportVerifyOpen(false);
+      // Fire and forget - dataService will update state which we listen to
+      await dataService.addTrips(tripsToAdd);
+      setProposedTrips([]);
   };
 
   const handleFlightExport = async (format: 'json' | 'csv') => {
@@ -305,6 +331,21 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+  };
+
+  const toggleImportSelection = (tripId: string) => {
+      const newSet = new Set(selectedTripIds);
+      if (newSet.has(tripId)) newSet.delete(tripId);
+      else newSet.add(tripId);
+      setSelectedTripIds(newSet);
+  };
+
+  const toggleAllImportSelection = () => {
+      if (selectedTripIds.size === proposedTrips.length) {
+          setSelectedTripIds(new Set());
+      } else {
+          setSelectedTripIds(new Set(proposedTrips.map(t => t.id)));
+      }
   };
 
   if (loading) return <div className="p-8 text-gray-400 animate-pulse">Initializing Systems...</div>;
@@ -602,8 +643,21 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                                 Export CSV
                             </Button>
                         </div>
-                        {importStatus && (
-                            <p className="text-[10px] text-center font-bold text-emerald-500 animate-pulse">{importStatus}</p>
+                        {(importState.status || importState.isActive) && (
+                            <div className="mt-4 space-y-2 animate-fade-in">
+                                <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-emerald-500">
+                                    <span>{importState.status || 'Processing...'}</span>
+                                    {importState.progress > 0 && <span>{importState.progress}%</span>}
+                                </div>
+                                {importState.progress > 0 && (
+                                    <div className="h-2 w-full bg-gray-100 dark:bg-white/10 rounded-full overflow-hidden">
+                                        <div 
+                                            className="h-full bg-blue-500 transition-all duration-300 ease-out" 
+                                            style={{ width: `${importState.progress}%` }}
+                                        />
+                                    </div>
+                                )}
+                            </div>
                         )}
                     </div>
                 </Card>
@@ -654,6 +708,72 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
           </div>
       )}
        
+       {/* Modal: Flight Import Verification */}
+       <Modal isOpen={isImportVerifyOpen} onClose={() => setIsImportVerifyOpen(false)} title="Verify Flight Import" maxWidth="max-w-3xl">
+            <div className="space-y-6">
+                <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-2xl border border-blue-100 dark:border-blue-900/30 flex items-start gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-blue-500 text-white flex items-center justify-center shrink-0">
+                        <span className="material-icons-outlined">fact_check</span>
+                    </div>
+                    <div>
+                        <h4 className="font-bold text-gray-900 dark:text-white">Detected Itineraries</h4>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            We've grouped your flight logs into {proposedTrips.length} logical trips. Review and select the ones you wish to import.
+                        </p>
+                    </div>
+                </div>
+
+                <div className="flex justify-between items-center px-2">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{selectedTripIds.size} Selected</span>
+                    <button onClick={toggleAllImportSelection} className="text-xs font-bold text-blue-500 hover:underline">
+                        {selectedTripIds.size === proposedTrips.length ? 'Deselect All' : 'Select All'}
+                    </button>
+                </div>
+
+                <div className="space-y-3 max-h-[50vh] overflow-y-auto custom-scrollbar pr-2">
+                    {proposedTrips.map(trip => (
+                        <label 
+                            key={trip.id} 
+                            className={`flex items-start gap-4 p-4 rounded-2xl border transition-all cursor-pointer ${
+                                selectedTripIds.has(trip.id)
+                                ? 'bg-white dark:bg-gray-800 border-blue-500 ring-1 ring-blue-500 shadow-md'
+                                : 'bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10 opacity-70 hover:opacity-100'
+                            }`}
+                        >
+                            <input 
+                                type="checkbox" 
+                                className="w-5 h-5 accent-blue-600 mt-1"
+                                checked={selectedTripIds.has(trip.id)}
+                                onChange={() => toggleImportSelection(trip.id)}
+                            />
+                            <div className="flex-1">
+                                <div className="flex justify-between">
+                                    <h4 className="font-bold text-gray-900 dark:text-white text-sm">{trip.name}</h4>
+                                    <span className="text-[10px] font-mono text-gray-400">{new Date(trip.startDate).toLocaleDateString()}</span>
+                                </div>
+                                <div className="mt-2 space-y-1">
+                                    {trip.transports?.map((t, idx) => (
+                                        <div key={idx} className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
+                                            <span className="material-icons-outlined text-[10px] opacity-70">flight_takeoff</span>
+                                            <span>{t.origin} &rarr; {t.destination}</span>
+                                            <span className="opacity-50 text-[10px]">({t.provider})</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </label>
+                    ))}
+                </div>
+
+                <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-white/5">
+                    <Button variant="ghost" className="flex-1" onClick={() => setIsImportVerifyOpen(false)}>Cancel</Button>
+                    <Button variant="primary" className="flex-1" onClick={handleConfirmFlightImport} disabled={selectedTripIds.size === 0}>
+                        Import {selectedTripIds.size} Trips
+                    </Button>
+                </div>
+            </div>
+       </Modal>
+
        {/* Modal: Member Access Control */}
        <Modal isOpen={isEditingUser} onClose={() => setIsEditingUser(false)} title="Member Access Control">
             <div className="space-y-6 max-h-[75vh] overflow-y-auto px-1 custom-scrollbar">

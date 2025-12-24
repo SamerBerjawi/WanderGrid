@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { GoogleGenAI } from "@google/genai";
 import { Button, Input, Select, Autocomplete, Badge, TimeInput } from './ui';
 import { Accommodation } from '../types';
 import { dataService } from '../services/mockDb';
+import { searchLocations } from '../services/geocoding';
 
 interface AccommodationConfiguratorProps {
     initialData?: Accommodation[];
@@ -171,18 +171,7 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
     };
 
     const fetchPlaceSuggestions = async (query: string): Promise<string[]> => {
-        try {
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-            const response = await ai.models.generateContent({
-                model: 'gemini-3-flash-preview',
-                contents: `List 5 real hotels or accommodations that match "${query}". Return ONLY a raw JSON array of strings (e.g. ["Hilton London Metropole, London", "The Ritz, Paris"]).`,
-                config: { responseMimeType: 'application/json' }
-            });
-            return response.text ? JSON.parse(response.text) : [];
-        } catch (e) {
-            console.error("Autocomplete failed", e);
-            return [];
-        }
+        return searchLocations(query);
     };
 
     const handleFetchBrand = async () => {

@@ -1,9 +1,9 @@
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { GoogleGenAI } from "@google/genai";
 import { Modal, Button, Select, Input, Autocomplete } from './ui';
 import { Trip, User, EntitlementType, WorkspaceSettings, PublicHoliday, TripAllocation } from '../types';
+import { searchLocations } from '../services/geocoding';
 
 interface LeaveRequestModalProps {
     isOpen: boolean;
@@ -709,18 +709,7 @@ export const LeaveRequestModal: React.FC<LeaveRequestModalProps> = ({
     };
 
     const fetchLocationSuggestions = async (query: string): Promise<string[]> => {
-        try {
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-            const response = await ai.models.generateContent({
-                model: 'gemini-3-flash-preview',
-                contents: `List 5 distinct cities or popular travel destinations that match "${query}". Return ONLY a raw JSON array of strings (e.g. ["Paris, France", "Paros, Greece"]).`,
-                config: { responseMimeType: 'application/json' }
-            });
-            return response.text ? JSON.parse(response.text) : [];
-        } catch (e) {
-            console.error("GenAI autocomplete failed", e);
-            return [];
-        }
+        return searchLocations(query);
     };
 
     const isInvalidAllocation = requestForm.useMultiCategory 
@@ -782,6 +771,7 @@ export const LeaveRequestModal: React.FC<LeaveRequestModalProps> = ({
     return (
         <>
             <Modal isOpen={isOpen} onClose={onClose} title={requestForm.id ? "Edit Request" : "New Leave Request"} maxWidth="max-w-4xl">
+                {/* ... (Existing Modal JSX remains unchanged) ... */}
                 <div className="flex flex-col h-full">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 flex-1">
                         
@@ -831,7 +821,7 @@ export const LeaveRequestModal: React.FC<LeaveRequestModalProps> = ({
                                 )}
                             </div>
 
-                            {/* Cross Year & Allocations Logic ... (Code kept largely same, abbreviated for focus) */}
+                            {/* ... Cross Year & Allocations Logic ... */}
                             {requestForm.crossYearMode && requestForm.crossYearConfig && (
                                 <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-3xl space-y-3 border border-indigo-100 dark:border-indigo-900/30 animate-fade-in">
                                     <div className="flex items-center gap-2 mb-2 text-indigo-700 dark:text-indigo-300">
@@ -1030,7 +1020,7 @@ export const LeaveRequestModal: React.FC<LeaveRequestModalProps> = ({
                                 </div>
                             </div>
 
-                            {/* Balance Feedback Section (Keep existing logic) */}
+                            {/* Balance Feedback Section */}
                             <div className={`p-4 rounded-2xl border ${isInvalidAllocation || isDateInvalid ? 'bg-rose-50 border-rose-200 dark:bg-rose-900/10 dark:border-rose-900/30' : 'bg-blue-50/50 border-blue-100 dark:bg-blue-900/10 dark:border-blue-900/30'}`}>
                                 <div className="flex justify-between items-end mb-4">
                                     <div className="space-y-1">

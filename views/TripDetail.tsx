@@ -1,6 +1,5 @@
 
 import React, { useEffect, useState } from 'react';
-import { GoogleGenAI } from "@google/genai";
 import { Card, Button, Badge, Tabs, Modal, Input, Autocomplete, TimeInput } from '../components/ui';
 import { TransportConfigurator } from '../components/FlightConfigurator';
 import { AccommodationConfigurator } from '../components/AccommodationConfigurator';
@@ -9,6 +8,7 @@ import { TripModal } from '../components/TripModal';
 import { LeaveRequestModal } from '../components/LeaveRequestModal';
 import { dataService } from '../services/mockDb';
 import { Trip, User, Transport, Accommodation, WorkspaceSettings, Activity, TransportMode, LocationEntry, EntitlementType, PublicHoliday, SavedConfig } from '../types';
+import { searchLocations } from '../services/geocoding';
 
 interface TripDetailProps {
     tripId: string;
@@ -329,22 +329,10 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     };
 
     const fetchLocationSuggestions = async (query: string): Promise<string[]> => {
-        try {
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-            const context = trip?.location ? `in or near ${trip.location}` : '';
-            const response = await ai.models.generateContent({
-                model: 'gemini-3-flash-preview',
-                contents: `List 5 distinct places, restaurants, or attractions ${context} that match "${query}". Return ONLY a raw JSON array of strings (e.g. ["Eiffel Tower, Paris", "Louvre Museum, Paris"]).`,
-                config: { responseMimeType: 'application/json' }
-            });
-            return response.text ? JSON.parse(response.text) : [];
-        } catch (e) {
-            console.error(e);
-            return [];
-        }
+        return searchLocations(query);
     };
 
-    // Helper to get day transports including drops for cars
+    // Helper to get day events including drops for cars
     const getDayEvents = (dateStr: string) => {
         if (!trip?.transports) return [];
         const events: (Transport & { isDropoff?: boolean })[] = [];
@@ -1091,43 +1079,52 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
 
                     <Card noPadding className="rounded-[2rem]">
                         <div className="p-6 border-b border-gray-100 dark:border-white/5">
-                            <h3 className="text-lg font-black text-gray-900 dark:text-white">Expense Details</h3>
+                            <h3 className="text-lg font-black text-gray-900 dark:text-white">Detailed Expenses</h3>
                         </div>
-                        <div className="p-6 space-y-4 max-h-[500px] overflow-y-auto custom-scrollbar">
-                            {(trip.transports || []).filter(t => t.cost).map((t, i) => (
-                                <div key={'t'+i} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
-                                    <div>
-                                        <div className="font-bold text-sm text-gray-800 dark:text-white">{t.mode}: {t.provider}</div>
-                                        <div className="text-[10px] text-gray-500">{t.origin} -&gt; {t.destination}</div>
-                                    </div>
-                                    <span className="font-bold text-gray-900 dark:text-white">{formatCurrency(t.cost || 0)}</span>
-                                </div>
-                            ))}
-                            {(trip.accommodations || []).filter(a => a.cost).map((a, i) => (
-                                <div key={'a'+i} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
-                                    <div>
-                                        <div className="font-bold text-sm text-gray-800 dark:text-white">Stay: {a.name}</div>
-                                        <div className="text-[10px] text-gray-500">{a.type}</div>
-                                    </div>
-                                    <span className="font-bold text-gray-900 dark:text-white">{formatCurrency(a.cost || 0)}</span>
-                                </div>
-                            ))}
-                            {(trip.activities || []).filter(a => a.cost).map((a, i) => (
-                                <div key={'act'+i} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-white/5 rounded-xl">
-                                    <div>
-                                        <div className="font-bold text-sm text-gray-800 dark:text-white">Activity: {a.title}</div>
-                                        <div className="text-[10px] text-gray-500">{new Date(a.date).toLocaleDateString()}</div>
-                                    </div>
-                                    <span className="font-bold text-gray-900 dark:text-white">{formatCurrency(a.cost || 0)}</span>
-                                </div>
-                            ))}
-                            {totalCost === 0 && <div className="text-center text-gray-400 text-xs py-8 font-bold uppercase">No expenses recorded</div>}
+                        <div className="p-6">
+                             <div className="text-center py-10 opacity-40">
+                                <span className="material-icons-outlined text-4xl mb-2">receipt_long</span>
+                                <p className="text-xs font-bold uppercase tracking-widest">Itemized list coming soon</p>
+                             </div>
                         </div>
                     </Card>
                 </div>
             )}
 
             {/* MODALS */}
+            
+            <Modal isOpen={isTransportModalOpen} onClose={() => setIsTransportModalOpen(false)} title="Manage Transport" maxWidth="max-w-4xl">
+                <TransportConfigurator 
+                    initialData={editingTransports || []}
+                    onSave={handleSaveTransports}
+                    onDelete={handleDeleteTransports}
+                    onCancel={() => setIsTransportModalOpen(false)}
+                    defaultStartDate={selectedDateForModal || trip.startDate}
+                    defaultEndDate={selectedDateForModal || trip.endDate}
+                />
+            </Modal>
+
+            <Modal isOpen={isAccommodationModalOpen} onClose={() => setIsAccommodationModalOpen(false)} title="Manage Accommodation" maxWidth="max-w-3xl">
+                <AccommodationConfigurator 
+                    initialData={editingAccommodations || []}
+                    onSave={handleSaveAccommodations}
+                    onDelete={handleDeleteAccommodations}
+                    onCancel={() => setIsAccommodationModalOpen(false)}
+                    defaultStartDate={selectedDateForModal || trip.startDate}
+                    defaultEndDate={selectedDateForModal || trip.endDate}
+                />
+            </Modal>
+
+            <Modal isOpen={isLocationModalOpen} onClose={() => setIsLocationModalOpen(false)} title="Route Management">
+                <LocationManager 
+                    locations={trip.locations || []}
+                    onSave={handleSaveLocations}
+                    onCancel={() => setIsLocationModalOpen(false)}
+                    defaultStartDate={selectedDateForModal || trip.startDate}
+                    defaultEndDate={selectedDateForModal || trip.endDate}
+                />
+            </Modal>
+
             <TripModal 
                 isOpen={isEditTripOpen} 
                 onClose={() => setIsEditTripOpen(false)} 
@@ -1137,39 +1134,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 initialData={trip}
             />
 
-            <Modal isOpen={isTransportModalOpen} onClose={() => { setIsTransportModalOpen(false); setEditingTransports(null); }} title="Manage Transport" maxWidth="max-w-6xl">
-                 <TransportConfigurator 
-                    initialData={editingTransports || undefined}
-                    onSave={handleSaveTransports}
-                    onDelete={handleDeleteTransports}
-                    onCancel={() => { setIsTransportModalOpen(false); setEditingTransports(null); }}
-                    defaultStartDate={selectedDateForModal || trip.startDate}
-                    defaultEndDate={trip.endDate}
-                 />
-            </Modal>
-
-            <Modal isOpen={isAccommodationModalOpen} onClose={() => setIsAccommodationModalOpen(false)} title="Manage Accommodations" maxWidth="max-w-4xl">
-                <AccommodationConfigurator
-                    initialData={editingAccommodations || []}
-                    onSave={handleSaveAccommodations}
-                    onDelete={handleDeleteAccommodations}
-                    onCancel={() => setIsAccommodationModalOpen(false)}
-                    defaultStartDate={selectedDateForModal || trip.startDate}
-                    defaultEndDate={trip.endDate}
-                />
-            </Modal>
-
-            <Modal isOpen={isLocationModalOpen} onClose={() => setIsLocationModalOpen(false)} title="Manage Route Locations" maxWidth="max-w-xl">
-                <LocationManager 
-                    locations={trip.locations || []} 
-                    onSave={handleSaveLocations} 
-                    onCancel={() => setIsLocationModalOpen(false)} 
-                    defaultStartDate={selectedDateForModal || trip.startDate} 
-                    defaultEndDate={selectedDateForModal || trip.endDate}
-                />
-            </Modal>
-
-            {/* LEAVE REQUEST MODAL */}
             <LeaveRequestModal 
                 isOpen={isLeaveModalOpen}
                 onClose={() => setIsLeaveModalOpen(false)}
@@ -1182,82 +1146,46 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 workspaceConfig={settings}
             />
 
-            {/* ACTIVITY EDITOR MODAL */}
-            <Modal isOpen={isActivityModalOpen} onClose={() => { setIsActivityModalOpen(false); setActivityForm({}); }} title="Activity Details">
-                <div className="space-y-5">
-                    <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-2xl flex items-center gap-4 border border-indigo-100 dark:border-indigo-900/30">
-                        <div className="w-10 h-10 rounded-xl bg-indigo-500 text-white flex items-center justify-center shrink-0">
-                            <span className="material-icons-outlined">calendar_today</span>
-                        </div>
-                        <div>
-                            <h4 className="font-bold text-gray-900 dark:text-white text-sm">Planning for {currentDayForActivity ? new Date(currentDayForActivity).toLocaleDateString() : 'Date'}</h4>
-                            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Add reservations, tours, or general plans.</p>
-                        </div>
-                    </div>
-
-                    <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
-                        <button 
-                            onClick={() => setActivityForm(prev => ({ ...prev, type: 'Activity' }))}
-                            className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase transition-all ${activityForm.type !== 'Reservation' ? 'bg-white shadow text-indigo-600 dark:bg-gray-700 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
-                        >
-                            General Activity
-                        </button>
-                        <button 
-                            onClick={() => setActivityForm(prev => ({ ...prev, type: 'Reservation' }))}
-                            className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase transition-all ${activityForm.type === 'Reservation' ? 'bg-white shadow text-emerald-600 dark:bg-gray-700 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
-                        >
-                            Reservation
-                        </button>
-                    </div>
-
+            <Modal isOpen={isActivityModalOpen} onClose={() => setIsActivityModalOpen(false)} title={activityForm.id ? "Edit Activity" : "Add Activity"}>
+                <div className="space-y-4">
                     <Input 
-                        label="Title" 
-                        placeholder={activityForm.type === 'Reservation' ? "e.g. Dinner at Mario's" : "e.g. Walk around city center"}
-                        value={activityForm.title || ''}
-                        onChange={e => setActivityForm({...activityForm, title: e.target.value})}
-                        className="!font-bold"
+                        label="Activity Title" 
+                        placeholder="e.g. Museum Tour"
+                        value={activityForm.title || ''} 
+                        onChange={e => setActivityForm({...activityForm, title: e.target.value})} 
                     />
-
                     <div className="grid grid-cols-2 gap-4">
+                        <Input 
+                            label="Date" 
+                            type="date"
+                            value={activityForm.date || ''} 
+                            onChange={e => setActivityForm({...activityForm, date: e.target.value})} 
+                        />
                         <TimeInput 
                             label="Time" 
-                            value={activityForm.time || '12:00'}
-                            onChange={val => setActivityForm({...activityForm, time: val})}
+                            value={activityForm.time || '12:00'} 
+                            onChange={val => setActivityForm({...activityForm, time: val})} 
                         />
-                        <div className="relative">
-                            <Input 
-                                label="Cost" 
-                                type="number" 
-                                placeholder="0.00"
-                                className="pl-8"
-                                value={activityForm.cost || ''}
-                                onChange={e => setActivityForm({...activityForm, cost: parseFloat(e.target.value)})}
-                            />
-                            <span className="absolute left-3 top-9 text-gray-400 font-bold">{getCurrencySymbol(settings?.currency || 'USD')}</span>
-                        </div>
                     </div>
-
-                    <Autocomplete 
-                        label="Location" 
-                        placeholder="e.g. 123 Main St"
-                        value={activityForm.location || ''}
-                        onChange={val => setActivityForm({...activityForm, location: val})}
-                        fetchSuggestions={fetchLocationSuggestions}
-                    />
-
                     <Input 
-                        label={activityForm.type === 'Reservation' ? "Booking Reference / Notes" : "Notes / Description"} 
-                        placeholder={activityForm.type === 'Reservation' ? "Res #12345" : "Bring sunscreen"}
-                        value={activityForm.description || ''}
-                        onChange={e => setActivityForm({...activityForm, description: e.target.value})}
+                        label="Type" 
+                        placeholder="Reservation, Activity, etc."
+                        value={activityForm.type || 'Activity'} 
+                        onChange={e => setActivityForm({...activityForm, type: e.target.value as any})} 
                     />
-
-                    <div className="flex gap-3 pt-2 justify-end">
-                        <Button variant="ghost" onClick={() => setIsActivityModalOpen(false)}>Cancel</Button>
-                        <Button variant="primary" onClick={handleSaveActivity} disabled={!activityForm.title}>Save {activityForm.type === 'Reservation' ? 'Reservation' : 'Activity'}</Button>
+                    <Input 
+                        label="Description" 
+                        placeholder="Details..."
+                        value={activityForm.description || ''} 
+                        onChange={e => setActivityForm({...activityForm, description: e.target.value})} 
+                    />
+                    <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-white/5">
+                        <Button variant="ghost" className="flex-1" onClick={() => setIsActivityModalOpen(false)}>Cancel</Button>
+                        <Button variant="primary" className="flex-1" onClick={handleSaveActivity} disabled={!activityForm.title || !activityForm.date}>Save</Button>
                     </div>
                 </div>
             </Modal>
+
         </div>
     );
 };
