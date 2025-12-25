@@ -16,6 +16,7 @@ interface VisitedCountry {
     flag: string; // Emoji
     tripCount: number;
     lastVisit: Date;
+    region: string; // New field
 }
 
 const LEVEL_THRESHOLDS = [
@@ -27,6 +28,197 @@ const LEVEL_THRESHOLDS = [
     { level: 50, name: 'Citizen of the World', countries: 30 },
 ];
 
+// --- Regional Styling Configuration ---
+const REGION_STYLES: Record<string, { bg: string, border: string, text: string, icon: string, accent: string, badge: string }> = {
+    // Americas
+    'North America': {
+        bg: 'bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/20',
+        border: 'border-blue-100 dark:border-blue-500/30',
+        text: 'text-blue-900 dark:text-blue-100',
+        icon: 'text-blue-500 dark:text-blue-400',
+        accent: 'bg-blue-100 dark:bg-blue-500/20',
+        badge: 'bg-white/60 dark:bg-black/20 text-blue-700 dark:text-blue-300'
+    },
+    'Central America': {
+        bg: 'bg-gradient-to-br from-teal-50 to-cyan-100 dark:from-teal-900/30 dark:to-cyan-900/20',
+        border: 'border-teal-100 dark:border-teal-500/30',
+        text: 'text-teal-900 dark:text-teal-100',
+        icon: 'text-teal-500 dark:text-teal-400',
+        accent: 'bg-teal-100 dark:bg-teal-500/20',
+        badge: 'bg-white/60 dark:bg-black/20 text-teal-700 dark:text-teal-300'
+    },
+    'South America': {
+        bg: 'bg-gradient-to-br from-emerald-50 to-green-100 dark:from-emerald-900/30 dark:to-green-900/20',
+        border: 'border-emerald-100 dark:border-emerald-500/30',
+        text: 'text-emerald-900 dark:text-emerald-100',
+        icon: 'text-emerald-500 dark:text-emerald-400',
+        accent: 'bg-emerald-100 dark:bg-emerald-500/20',
+        badge: 'bg-white/60 dark:bg-black/20 text-emerald-700 dark:text-emerald-300'
+    },
+
+    // Europe
+    'Northern Europe': {
+        bg: 'bg-gradient-to-br from-sky-50 to-slate-100 dark:from-sky-900/30 dark:to-slate-800',
+        border: 'border-sky-100 dark:border-sky-500/30',
+        text: 'text-slate-900 dark:text-white',
+        icon: 'text-sky-500 dark:text-sky-400',
+        accent: 'bg-sky-100 dark:bg-sky-500/20',
+        badge: 'bg-white/60 dark:bg-black/20 text-sky-700 dark:text-sky-300'
+    },
+    'Western Europe': {
+        bg: 'bg-gradient-to-br from-indigo-50 to-violet-100 dark:from-indigo-900/30 dark:to-violet-900/20',
+        border: 'border-indigo-100 dark:border-indigo-500/30',
+        text: 'text-indigo-900 dark:text-indigo-100',
+        icon: 'text-indigo-500 dark:text-indigo-400',
+        accent: 'bg-indigo-100 dark:bg-indigo-500/20',
+        badge: 'bg-white/60 dark:bg-black/20 text-indigo-700 dark:text-indigo-300'
+    },
+    'Southern Europe': {
+        bg: 'bg-gradient-to-br from-orange-50 to-amber-100 dark:from-orange-900/30 dark:to-amber-900/20',
+        border: 'border-orange-100 dark:border-orange-500/30',
+        text: 'text-orange-900 dark:text-orange-100',
+        icon: 'text-orange-500 dark:text-orange-400',
+        accent: 'bg-orange-100 dark:bg-orange-500/20',
+        badge: 'bg-white/60 dark:bg-black/20 text-orange-700 dark:text-orange-300'
+    },
+    'Eastern Europe': {
+        bg: 'bg-gradient-to-br from-rose-50 to-pink-100 dark:from-rose-900/30 dark:to-pink-900/20',
+        border: 'border-rose-100 dark:border-rose-500/30',
+        text: 'text-rose-900 dark:text-rose-100',
+        icon: 'text-rose-500 dark:text-rose-400',
+        accent: 'bg-rose-100 dark:bg-rose-500/20',
+        badge: 'bg-white/60 dark:bg-black/20 text-rose-700 dark:text-rose-300'
+    },
+
+    // Africa
+    'North Africa': {
+        bg: 'bg-gradient-to-br from-stone-50 to-orange-100 dark:from-stone-800 dark:to-orange-900/20',
+        border: 'border-stone-200 dark:border-orange-500/30',
+        text: 'text-stone-900 dark:text-stone-100',
+        icon: 'text-orange-600 dark:text-orange-400',
+        accent: 'bg-orange-100 dark:bg-orange-500/20',
+        badge: 'bg-white/60 dark:bg-black/20 text-stone-700 dark:text-stone-300'
+    },
+    'Sub-Saharan Africa': {
+        bg: 'bg-gradient-to-br from-yellow-50 to-lime-100 dark:from-yellow-900/30 dark:to-lime-900/20',
+        border: 'border-yellow-100 dark:border-yellow-500/30',
+        text: 'text-yellow-900 dark:text-yellow-100',
+        icon: 'text-yellow-600 dark:text-yellow-400',
+        accent: 'bg-yellow-100 dark:bg-yellow-500/20',
+        badge: 'bg-white/60 dark:bg-black/20 text-yellow-800 dark:text-yellow-300'
+    },
+
+    // Asia
+    'East Asia': {
+        bg: 'bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/30 dark:to-red-900/20',
+        border: 'border-red-100 dark:border-red-500/30',
+        text: 'text-red-900 dark:text-red-100',
+        icon: 'text-red-500 dark:text-red-400',
+        accent: 'bg-red-100 dark:bg-red-500/20',
+        badge: 'bg-white/60 dark:bg-black/20 text-red-700 dark:text-red-300'
+    },
+    'Southeast Asia': {
+        bg: 'bg-gradient-to-br from-lime-50 to-emerald-100 dark:from-lime-900/30 dark:to-emerald-900/20',
+        border: 'border-emerald-100 dark:border-emerald-500/30',
+        text: 'text-emerald-900 dark:text-emerald-100',
+        icon: 'text-emerald-500 dark:text-emerald-400',
+        accent: 'bg-emerald-100 dark:bg-emerald-500/20',
+        badge: 'bg-white/60 dark:bg-black/20 text-emerald-700 dark:text-emerald-300'
+    },
+    'South & West Asia': {
+        bg: 'bg-gradient-to-br from-amber-50 to-yellow-100 dark:from-amber-900/30 dark:to-yellow-900/20',
+        border: 'border-amber-100 dark:border-amber-500/30',
+        text: 'text-amber-900 dark:text-amber-100',
+        icon: 'text-amber-600 dark:text-amber-400',
+        accent: 'bg-amber-100 dark:bg-amber-500/20',
+        badge: 'bg-white/60 dark:bg-black/20 text-amber-700 dark:text-amber-300'
+    },
+
+    // Oceania
+    'Oceania': {
+        bg: 'bg-gradient-to-br from-cyan-50 to-sky-100 dark:from-cyan-900/30 dark:to-sky-900/20',
+        border: 'border-cyan-100 dark:border-cyan-500/30',
+        text: 'text-cyan-900 dark:text-cyan-100',
+        icon: 'text-cyan-500 dark:text-cyan-400',
+        accent: 'bg-cyan-100 dark:bg-cyan-500/20',
+        badge: 'bg-white/60 dark:bg-black/20 text-cyan-700 dark:text-cyan-300'
+    },
+    
+    // Fallback
+    'Unknown': {
+        bg: 'bg-gradient-to-br from-gray-50 to-slate-100 dark:from-gray-800 dark:to-slate-800',
+        border: 'border-gray-200 dark:border-white/5',
+        text: 'text-gray-900 dark:text-white',
+        icon: 'text-gray-400',
+        accent: 'bg-gray-100 dark:bg-white/10',
+        badge: 'bg-white dark:bg-white/5 text-gray-500 dark:text-gray-400'
+    }
+};
+
+const COUNTRY_REGION_MAP: Record<string, string> = {
+    // North America
+    'US': 'North America', 'CA': 'North America', 'MX': 'North America', // Mexico often grouped North or Central
+
+    // Central America & Caribbean
+    'CR': 'Central America', 'CU': 'Central America', 'JM': 'Central America', 
+    'BS': 'Central America', 'DO': 'Central America', 'PA': 'Central America',
+    'GT': 'Central America', 'BZ': 'Central America', 'HN': 'Central America',
+
+    // South America
+    'BR': 'South America', 'AR': 'South America', 'CL': 'South America', 
+    'CO': 'South America', 'PE': 'South America', 'EC': 'South America',
+    'UY': 'South America', 'PY': 'South America', 'BO': 'South America',
+
+    // Northern Europe
+    'NO': 'Northern Europe', 'SE': 'Northern Europe', 'DK': 'Northern Europe', 
+    'FI': 'Northern Europe', 'IS': 'Northern Europe', 'EE': 'Northern Europe',
+    'LV': 'Northern Europe', 'LT': 'Northern Europe',
+
+    // Western Europe
+    'GB': 'Western Europe', 'UK': 'Western Europe', 'FR': 'Western Europe', 
+    'DE': 'Western Europe', 'BE': 'Western Europe', 'NL': 'Western Europe', 
+    'CH': 'Western Europe', 'AT': 'Western Europe', 'IE': 'Western Europe',
+    'LU': 'Western Europe',
+
+    // Southern Europe
+    'IT': 'Southern Europe', 'ES': 'Southern Europe', 'PT': 'Southern Europe', 
+    'GR': 'Southern Europe', 'HR': 'Southern Europe', 'SI': 'Southern Europe',
+    'MT': 'Southern Europe', 'CY': 'Southern Europe',
+
+    // Eastern Europe
+    'PL': 'Eastern Europe', 'CZ': 'Eastern Europe', 'HU': 'Eastern Europe', 
+    'RU': 'Eastern Europe', 'RO': 'Eastern Europe', 'BG': 'Eastern Europe',
+    'SK': 'Eastern Europe', 'UA': 'Eastern Europe', 'RS': 'Eastern Europe',
+
+    // East Asia
+    'JP': 'East Asia', 'CN': 'East Asia', 'KR': 'East Asia', 'TW': 'East Asia', 
+    'HK': 'East Asia', 'MO': 'East Asia',
+
+    // Southeast Asia
+    'TH': 'Southeast Asia', 'VN': 'Southeast Asia', 'ID': 'Southeast Asia', 
+    'MY': 'Southeast Asia', 'SG': 'Southeast Asia', 'PH': 'Southeast Asia',
+    'KH': 'Southeast Asia', 'LA': 'Southeast Asia', 'MM': 'Southeast Asia',
+
+    // South & West Asia (Middle East + India)
+    'IN': 'South & West Asia', 'MV': 'South & West Asia', 'LK': 'South & West Asia',
+    'NP': 'South & West Asia', 'AE': 'South & West Asia', 'SA': 'South & West Asia', 
+    'IL': 'South & West Asia', 'QA': 'South & West Asia', 'TR': 'South & West Asia',
+    'JO': 'South & West Asia', 'LB': 'South & West Asia',
+
+    // North Africa
+    'EG': 'North Africa', 'MA': 'North Africa', 'TN': 'North Africa', 'DZ': 'North Africa',
+
+    // Sub-Saharan Africa
+    'ZA': 'Sub-Saharan Africa', 'KE': 'Sub-Saharan Africa', 'TZ': 'Sub-Saharan Africa', 
+    'GH': 'Sub-Saharan Africa', 'NG': 'Sub-Saharan Africa', 'MU': 'Sub-Saharan Africa', 
+    'SC': 'Sub-Saharan Africa', 'ZW': 'Sub-Saharan Africa', 'NA': 'Sub-Saharan Africa',
+
+    // Oceania
+    'AU': 'Oceania', 'NZ': 'Oceania', 'FJ': 'Oceania', 'PF': 'Oceania', 'PG': 'Oceania'
+};
+
+const getRegion = (code: string) => COUNTRY_REGION_MAP[code] || 'Unknown';
+
 const getFlagEmoji = (countryCode: string) => {
   if (!countryCode || countryCode.length !== 2) return '🏳️';
   const codePoints = countryCode
@@ -34,6 +226,33 @@ const getFlagEmoji = (countryCode: string) => {
     .split('')
     .map(char =>  127397 + char.charCodeAt(0));
   return String.fromCodePoint(...codePoints);
+};
+
+// --- Caching ---
+const CACHE_KEY = 'wandergrid_geo_cache_v2';
+let memoryCache: Map<string, any> | null = null;
+
+const getPersistentCache = (): Map<string, any> => {
+    if (memoryCache) return memoryCache;
+    try {
+        const stored = localStorage.getItem(CACHE_KEY);
+        if (stored) {
+            memoryCache = new Map(JSON.parse(stored));
+        } else {
+            memoryCache = new Map();
+        }
+    } catch (e) {
+        memoryCache = new Map();
+    }
+    return memoryCache!;
+};
+
+const savePersistentCache = (cache: Map<string, any>) => {
+    try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify(Array.from(cache.entries())));
+    } catch (e) {
+        console.warn("Failed to save geo cache", e);
+    }
 };
 
 export const Gamification: React.FC<GamificationProps> = ({ onTripClick }) => {
@@ -62,10 +281,16 @@ export const Gamification: React.FC<GamificationProps> = ({ onTripClick }) => {
     const processTravelHistory = async (tripList: Trip[]) => {
         const countryMap = new Map<string, VisitedCountry>();
         let kmCount = 0;
-        const placeCache = new Map<string, any>(); 
+        
+        // Load persistent cache
+        const placeCache = getPersistentCache();
+        let cacheDirty = false;
+
+        // 1. Collect all unique locations first
+        const placesToResolve = new Set<string>();
 
         for (const trip of tripList) {
-            // 1. Calculate Distance
+            // Distance Calculation (No API needed)
             if (trip.transports) {
                 for (const t of trip.transports) {
                     if (t.distance) {
@@ -76,93 +301,87 @@ export const Gamification: React.FC<GamificationProps> = ({ onTripClick }) => {
                 }
             }
 
-            // 2. Extract Locations
-            const placesToResolve = new Set<string>();
-            
-            // Trip Location (The intended main destination) - Only add if not generic
+            // Extract Places
             if (trip.location && !['Time Off', 'Remote', 'Trip', 'Vacation'].includes(trip.location)) {
                 placesToResolve.add(trip.location);
             }
-            
-            // Accommodations (Places where user stayed are definitely visited)
             if (trip.accommodations) {
                 trip.accommodations.forEach(a => placesToResolve.add(a.address));
             }
-
-            // Transports: Smart filtering for layovers and returns
             if (trip.transports && trip.transports.length > 0) {
-                // Sort chronologically
                 const sortedTransports = [...trip.transports].sort((a, b) => {
                     const da = new Date(`${a.departureDate}T${a.departureTime || '00:00'}`).getTime();
                     const db = new Date(`${b.departureDate}T${b.departureTime || '00:00'}`).getTime();
                     return da - db;
                 });
-
-                // Identify Trip Origin (Home Base) to filter out return legs
                 const tripOrigin = sortedTransports[0].origin.trim().toLowerCase();
-
                 for (let i = 0; i < sortedTransports.length; i++) {
                     const current = sortedTransports[i];
                     const next = sortedTransports[i+1];
                     const dest = current.destination;
                     const destNorm = dest.trim().toLowerCase();
-
-                    // Rule 1: Skip if returning to trip origin (Home)
-                    // This prevents "Home Country" from appearing as a visited destination for every trip
                     if (destNorm === tripOrigin) continue;
-
-                    // Rule 2: Layover Logic
                     if (next) {
                         const nextOriginNorm = next.origin.trim().toLowerCase();
-                        
-                        // Check if connecting from same place (e.g. LHR -> LHR or London -> London)
-                        // If strict string match fails, we might miss some (LHR vs LGW), but geocoding every point here is too slow.
-                        // Assuming data consistency for now.
-                        const locationMatch = destNorm === nextOriginNorm;
-
-                        if (locationMatch) {
-                            // Calculate stopover duration
+                        if (destNorm === nextOriginNorm) {
                             const arrT = new Date(`${current.arrivalDate}T${current.arrivalTime || '00:00'}`).getTime();
                             const depT = new Date(`${next.departureDate}T${next.departureTime || '00:00'}`).getTime();
-                            
-                            let isLayover = false;
-                            
                             if (!isNaN(arrT) && !isNaN(depT)) {
-                                const diffHours = (depT - arrT) / (3600000); // ms to hours
-                                // If < 24h, it's a layover. 
-                                if (diffHours < 24) isLayover = true;
+                                if ((depT - arrT) / 3600000 < 24) continue;
                             } else {
-                                // Fallback: If dates are invalid but it's a sequence in the same location, assume layover
-                                isLayover = true; 
+                                continue;
                             }
-
-                            if (isLayover) continue; // Skip adding this destination
                         }
                     }
-                    
-                    // If we passed checks, it's a visit
                     placesToResolve.add(dest);
                 }
             }
+        }
 
-            // Resolve Places
-            for (const place of placesToResolve) {
-                let resolved;
+        // 2. Resolve Places (Optimized Loop)
+        const uniquePlaces = Array.from(placesToResolve);
+        
+        for (const place of uniquePlaces) {
+            if (!placeCache.has(place)) {
+                // If checking API, throttle slightly unless it looks like an IATA code (fast local lookup)
+                const isLikelyIata = place.length === 3 && /^[A-Za-z]{3}$/.test(place);
                 
-                if (placeCache.has(place)) {
-                    resolved = placeCache.get(place);
-                } else {
-                    resolved = await resolvePlaceName(place);
-                    
-                    // Throttle for Nominatim if needed
-                    if (!placeCache.has(place) && place.length > 3) {
-                        await new Promise(r => setTimeout(r, 100));
-                    }
+                const resolved = await resolvePlaceName(place);
+                if (resolved) {
                     placeCache.set(place, resolved);
+                    cacheDirty = true;
                 }
 
+                // Throttle only if it was likely an API call (non-IATA)
+                if (!isLikelyIata && resolved) {
+                    await new Promise(r => setTimeout(r, 50)); 
+                }
+            }
+        }
+
+        if (cacheDirty) {
+            savePersistentCache(placeCache);
+        }
+
+        // 3. Map Data using Cache
+        for (const trip of tripList) {
+            const tripPlaces = new Set<string>();
+            // Re-extract relevant places for THIS trip to map them correctly
+            if (trip.location && !['Time Off', 'Remote', 'Trip', 'Vacation'].includes(trip.location)) tripPlaces.add(trip.location);
+            trip.accommodations?.forEach(a => tripPlaces.add(a.address));
+            
+            // Simplified transport logic for mapping (we already have cache populated)
+            if (trip.transports) {
+                 trip.transports.forEach(t => {
+                     // Simple heuristic: Destination is a place visited if not skipped by detailed logic earlier
+                     // For mapping stats, checking all destinations is usually acceptable approx
+                     if (placesToResolve.has(t.destination)) tripPlaces.add(t.destination);
+                 });
+            }
+
+            for (const place of tripPlaces) {
+                const resolved = placeCache.get(place);
                 if (resolved && resolved.country && resolved.country !== 'Unknown') {
-                    // Normalize Key: Use ISO code if available, else Name
                     const countryKey = resolved.countryCode || resolved.country;
                     
                     if (!countryMap.has(countryKey)) {
@@ -172,21 +391,20 @@ export const Gamification: React.FC<GamificationProps> = ({ onTripClick }) => {
                             cities: new Set(),
                             flag: resolved.countryCode ? getFlagEmoji(resolved.countryCode) : '🏳️',
                             tripCount: 0,
-                            lastVisit: new Date(trip.endDate)
+                            lastVisit: new Date(trip.endDate),
+                            region: getRegion(resolved.countryCode || 'XX')
                         });
                     }
 
                     const entry = countryMap.get(countryKey)!;
                     entry.cities.add(resolved.city);
                     
-                    // Update last visit if this trip is more recent
                     const tripEnd = new Date(trip.endDate);
                     if (tripEnd > entry.lastVisit) entry.lastVisit = tripEnd;
                 }
             }
         }
 
-        // Finalize Data
         const finalized: VisitedCountry[] = [];
         let totalC = 0;
         
@@ -202,7 +420,6 @@ export const Gamification: React.FC<GamificationProps> = ({ onTripClick }) => {
 
     const currentLevel = useMemo(() => {
         const count = visitedData.length;
-        // Find highest level met
         const lvl = [...LEVEL_THRESHOLDS].reverse().find(t => count >= t.countries);
         return lvl || LEVEL_THRESHOLDS[0];
     }, [visitedData]);
@@ -308,45 +525,48 @@ export const Gamification: React.FC<GamificationProps> = ({ onTripClick }) => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {visitedData.map((country) => (
-                        <div key={country.name} className="group relative bg-white dark:bg-gray-800 rounded-3xl p-6 border border-gray-100 dark:border-white/5 shadow-sm hover:shadow-xl transition-all hover:-translate-y-1 overflow-hidden">
-                            {/* Decorative Stamp Effect */}
-                            <div className="absolute -right-6 -top-6 w-24 h-24 border-4 border-dashed border-gray-200 dark:border-white/5 rounded-full opacity-50 pointer-events-none group-hover:scale-110 transition-transform" />
-                            <div className="absolute -right-6 -top-6 w-24 h-24 flex items-center justify-center pointer-events-none opacity-10 rotate-12">
-                                <span className="material-icons-outlined text-6xl text-gray-900 dark:text-white">verified</span>
-                            </div>
+                    {visitedData.map((country) => {
+                        const style = REGION_STYLES[country.region] || REGION_STYLES['Unknown'];
+                        return (
+                            <div key={country.name} className={`group relative rounded-3xl p-6 border shadow-sm hover:shadow-xl transition-all hover:-translate-y-1 overflow-hidden ${style.bg} ${style.border}`}>
+                                {/* Decorative Stamp Effect */}
+                                <div className={`absolute -right-6 -top-6 w-24 h-24 border-4 border-dashed rounded-full opacity-50 pointer-events-none group-hover:scale-110 transition-transform ${style.border}`} />
+                                <div className="absolute -right-6 -top-6 w-24 h-24 flex items-center justify-center pointer-events-none opacity-10 rotate-12">
+                                    <span className={`material-icons-outlined text-6xl ${style.text}`}>verified</span>
+                                </div>
 
-                            <div className="relative z-10">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="text-4xl filter drop-shadow-md">{country.flag}</div>
-                                    <div className="bg-gray-50 dark:bg-white/5 px-2 py-1 rounded-lg border border-gray-100 dark:border-white/5">
-                                        <span className="text-[10px] font-mono font-bold text-gray-400">{country.code}</span>
+                                <div className="relative z-10">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className="text-4xl filter drop-shadow-md">{country.flag}</div>
+                                        <div className={`px-2 py-1 rounded-lg border text-[10px] font-mono font-bold ${style.badge} ${style.border}`}>
+                                            {country.code}
+                                        </div>
+                                    </div>
+                                    
+                                    <h3 className={`text-xl font-black mb-1 leading-tight ${style.text}`}>{country.name}</h3>
+                                    <p className={`text-xs font-bold uppercase tracking-widest mb-4 opacity-60 ${style.text}`}>
+                                        {country.region} • {country.lastVisit.getFullYear()}
+                                    </p>
+
+                                    <div className="space-y-2">
+                                        <div className={`h-px w-full opacity-20 ${style.text} bg-current`} />
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {Array.from(country.cities).slice(0, 5).map(city => (
+                                                <span key={city} className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border ${style.accent} ${style.text} ${style.border} bg-opacity-50`}>
+                                                    {city}
+                                                </span>
+                                            ))}
+                                            {country.cities.size > 5 && (
+                                                <span className={`px-2 py-1 rounded-md text-[10px] font-bold ${style.accent} ${style.text}`}>
+                                                    +{country.cities.size - 5}
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                                
-                                <h3 className="text-xl font-black text-gray-900 dark:text-white mb-1 leading-tight">{country.name}</h3>
-                                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">
-                                    Last visited {country.lastVisit.getFullYear()}
-                                </p>
-
-                                <div className="space-y-2">
-                                    <div className="h-px w-full bg-gray-100 dark:bg-white/5" />
-                                    <div className="flex flex-wrap gap-1.5">
-                                        {Array.from(country.cities).slice(0, 5).map(city => (
-                                            <span key={city} className="px-2 py-1 rounded-md bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold uppercase tracking-wider border border-indigo-100 dark:border-indigo-900/30">
-                                                {city}
-                                            </span>
-                                        ))}
-                                        {country.cities.size > 5 && (
-                                            <span className="px-2 py-1 rounded-md bg-gray-50 dark:bg-white/5 text-gray-500 dark:text-gray-400 text-[10px] font-bold">
-                                                +{country.cities.size - 5}
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                     
                     {/* Empty State / Future Slot */}
                     <div className="rounded-3xl p-6 border-2 border-dashed border-gray-200 dark:border-white/10 flex flex-col items-center justify-center text-center opacity-50 min-h-[200px]">
