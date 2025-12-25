@@ -11,6 +11,21 @@ interface ExpeditionMapViewProps {
     onTripClick: (tripId: string) => void;
 }
 
+// Custom Hook to detect Dark Mode changes from Tailwind class on HTML element
+const useDarkMode = () => {
+    const [isDark, setIsDark] = useState(document.documentElement.classList.contains('dark'));
+
+    useEffect(() => {
+        const observer = new MutationObserver(() => {
+            setIsDark(document.documentElement.classList.contains('dark'));
+        });
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+        return () => observer.disconnect();
+    }, []);
+
+    return isDark;
+};
+
 const StatCard: React.FC<{ title: string; value: string | number; subtitle?: string; icon: string; color?: string }> = ({ title, value, subtitle, icon, color = 'blue' }) => (
     <div className={`p-6 rounded-[2rem] bg-white dark:bg-gray-800 border border-gray-100 dark:border-white/5 shadow-sm flex items-center gap-5 relative overflow-hidden group`}>
         <div className={`absolute right-0 top-0 w-32 h-32 bg-${color}-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/3 transition-all group-hover:bg-${color}-500/10`} />
@@ -83,6 +98,8 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
     const [arrFilter, setArrFilter] = useState<string[]>([]);
     const [dateFrom, setDateFrom] = useState<string>('');
     const [dateTo, setDateTo] = useState<string>('');
+
+    const isDark = useDarkMode();
 
     useEffect(() => {
         dataService.getTrips().then(t => {
@@ -391,6 +408,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                     <div className="w-full h-full rounded-[2.5rem] overflow-hidden border border-gray-200 dark:border-white/5 shadow-2xl relative bg-black">
                         {mapType === '2D' ? (
                             <ExpeditionMap 
+                                key={`2d-${isDark ? 'dark' : 'light'}`}
                                 trips={filteredTrips} 
                                 onTripClick={onTripClick} 
                                 showFrequencyWeight={showFrequencyWeight}
@@ -398,6 +416,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                             />
                         ) : (
                             <ExpeditionMap3D
+                                key={`3d-${isDark ? 'dark' : 'light'}`}
                                 trips={filteredTrips}
                                 onTripClick={onTripClick}
                                 animateRoutes={animateRoutes}

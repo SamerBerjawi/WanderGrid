@@ -393,20 +393,31 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
         setTripType(type);
         if (type === 'One-Way') {
             // Reset to a single outbound segment for One-Way
-            const first = segments[0] || { ...DEFAULT_SEGMENT, date: defaultStartDate || '' };
-            setSegments([{ ...first, section: 'outbound' }]);
+            const existingFirst = segments[0];
+            const first: SegmentForm = existingFirst 
+                ? { ...existingFirst, section: 'outbound' as const }
+                : { id: '1', ...DEFAULT_SEGMENT, section: 'outbound' as const, date: defaultStartDate || '' };
+            setSegments([first]);
         } else if (type === 'Round Trip') {
-            const first = segments[0] || { ...DEFAULT_SEGMENT, date: defaultStartDate || '' };
-            const second = segments[1] || { 
-                id: '2', 
-                ...DEFAULT_SEGMENT, 
-                origin: first.destination, 
-                destination: first.origin,
-                date: defaultEndDate || '',
-                section: 'return'
-            };
-            setSegments([{...first, section: 'outbound'}, {...second, section: 'return'}]);
+            const existingFirst = segments[0];
+            const first: SegmentForm = existingFirst 
+                ? { ...existingFirst, section: 'outbound' as const }
+                : { id: '1', ...DEFAULT_SEGMENT, section: 'outbound' as const, date: defaultStartDate || '' };
+            
+            const existingSecond = segments[1];
+            const second: SegmentForm = existingSecond 
+                ? { ...existingSecond, section: 'return' as const }
+                : { 
+                    id: '2', 
+                    ...DEFAULT_SEGMENT, 
+                    origin: first.destination, 
+                    destination: first.origin,
+                    date: defaultEndDate || '',
+                    section: 'return' as const
+                };
+            setSegments([first, second]);
         } else {
+            // Multi-city
             if (segments.length < 2) {
                 setSegments([...segments, { id: Math.random().toString(), ...DEFAULT_SEGMENT }]);
             }

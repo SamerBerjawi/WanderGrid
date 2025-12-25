@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import Globe from 'react-globe.gl';
 import { Trip } from '../types';
 
@@ -29,21 +29,38 @@ interface PointData {
     radius: number;
 }
 
-// Helper to determine styling (Shared logic with 2D)
-const getStatusColor = (trip: Trip) => {
-    const today = new Date();
+// Custom Hook to detect Dark Mode changes from Tailwind class on HTML element
+const useDarkMode = () => {
+    const [isDark, setIsDark] = useState(document.documentElement.classList.contains('dark'));
+
+    useEffect(() => {
+        const observer = new MutationObserver(() => {
+            setIsDark(document.documentElement.classList.contains('dark'));
+        });
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+        return () => observer.disconnect();
+    }, []);
+
+    return isDark;
+};
+
+// Helper to determine styling
+const getStatusColor = (trip: Trip, isDark: boolean) => {
+    const today = new Date(Date.now());
     today.setHours(0,0,0,0);
     const endDate = new Date(trip.endDate);
     
     if (endDate < today) return '#3b82f6'; // Blue (Past)
     if (trip.status === 'Upcoming') return '#10b981'; // Green
-    return '#ffffff'; // White (Planning)
+    // Dark: White, Light: Dark Slate/Blue
+    return isDark ? '#ffffff' : '#334155'; // White (Planning) vs Dark Slate
 };
 
 export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({ trips, onTripClick, animateRoutes = true }) => {
-    const globeEl = useRef<any>();
+    const globeEl = useRef<any>(null);
     const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
     const containerRef = useRef<HTMLDivElement>(null);
+    const isDark = useDarkMode();
 
     // Prepare Data
     const { arcs, points } = useMemo(() => {
@@ -51,7 +68,7 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({ trips, onTripC
         const pointMap = new Map<string, PointData>();
 
         trips.forEach(trip => {
-            const color = getStatusColor(trip);
+            const color = getStatusColor(trip, isDark);
 
             if (trip.transports && trip.transports.length > 0) {
                 trip.transports.forEach(t => {
@@ -78,7 +95,7 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({ trips, onTripC
                                 lat: t.originLat,
                                 lng: t.originLng,
                                 name: t.origin,
-                                color: 'rgba(255,255,255,0.8)',
+                                color: isDark ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.6)',
                                 radius: 0.3
                             });
                         }
@@ -87,7 +104,7 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({ trips, onTripC
                                 lat: t.destLat,
                                 lng: t.destLng,
                                 name: t.destination,
-                                color: 'rgba(255,255,255,0.8)',
+                                color: isDark ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.6)',
                                 radius: 0.3
                             });
                         }
@@ -109,7 +126,7 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({ trips, onTripC
         });
 
         return { arcs: arcList, points: Array.from(pointMap.values()) };
-    }, [trips]);
+    }, [trips, isDark]);
 
     // Resize Observer
     useEffect(() => {
@@ -140,15 +157,15 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({ trips, onTripC
     }, []);
 
     return (
-        <div ref={containerRef} className="w-full h-full bg-black overflow-hidden relative">
+        <div ref={containerRef} className={`w-full h-full overflow-hidden relative ${isDark ? 'bg-black' : 'bg-slate-50'}`}>
             <Globe
                 ref={globeEl}
                 width={dimensions.width}
                 height={dimensions.height}
-                globeImageUrl="//unpkg.com/three-globe/example/img/earth-night.jpg"
+                globeImageUrl={isDark ? "//unpkg.com/three-globe/example/img/earth-night.jpg" : "//unpkg.com/three-globe/example/img/earth-day.jpg"}
                 bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
-                backgroundColor="#000000"
-                atmosphereColor="#3a228a"
+                backgroundColor={isDark ? "#000000" : "#f8fafc"}
+                atmosphereColor={isDark ? "#3a228a" : "#ffffff"}
                 atmosphereAltitude={0.15}
                 
                 // Arcs
@@ -158,10 +175,10 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({ trips, onTripC
                 arcEndLat="endLat"
                 arcEndLng="endLng"
                 arcColor="color"
-                arcDashLength={0.4}
-                arcDashGap={0.2}
+                arcDashLength={animateRoutes ? 0.4 : 1}
+                arcDashGap={animateRoutes ? 0.2 : 0}
                 arcDashAnimateTime={animateRoutes ? 2000 : 0}
-                arcStroke={1.5}
+                arcStroke={0.5}
                 arcAltitudeAutoScale={0.4}
                 
                 // Points
@@ -186,9 +203,9 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({ trips, onTripC
                 pointLabel="name"
             />
             
-            {/* Custom Overlay Controls could go here if needed, but Globe has built-in zoom/rotate */}
+            {/* Custom Overlay Controls */}
             <div className="absolute bottom-6 left-6 pointer-events-none">
-                <div className="text-[10px] font-mono text-gray-500 bg-black/50 px-2 py-1 rounded">
+                <div className={`text-[10px] font-mono px-2 py-1 rounded ${isDark ? 'text-gray-500 bg-black/50' : 'text-slate-500 bg-white/50'}`}>
                     3D Visualization • {arcs.length} Routes
                 </div>
             </div>

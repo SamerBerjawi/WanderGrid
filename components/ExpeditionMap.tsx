@@ -19,6 +19,21 @@ L.Icon.Default.mergeOptions({
     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
+// Custom Hook to detect Dark Mode changes from Tailwind class on HTML element
+const useDarkMode = () => {
+    const [isDark, setIsDark] = useState(document.documentElement.classList.contains('dark'));
+
+    useEffect(() => {
+        const observer = new MutationObserver(() => {
+            setIsDark(document.documentElement.classList.contains('dark'));
+        });
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+        return () => observer.disconnect();
+    }, []);
+
+    return isDark;
+};
+
 // Helper to normalize route key
 const getRouteKey = (lat1: number, lng1: number, lat2: number, lng2: number) => {
     const p1 = `${lat1.toFixed(3)},${lng1.toFixed(3)}`;
@@ -73,7 +88,7 @@ const getCurvePoints = (start: L.LatLng, end: L.LatLng): L.LatLng[] => {
 };
 
 // Helper to determine styling
-const getStatusStyle = (trip: Trip) => {
+const getStatusStyle = (trip: Trip, isDark: boolean) => {
     const today = new Date();
     today.setHours(0,0,0,0);
     const endDate = new Date(trip.endDate);
@@ -90,7 +105,11 @@ const getStatusStyle = (trip: Trip) => {
             return { color: '#10b981', className: 'flight-path-green' }; 
         case 'Planning':
         default:
-            return { color: '#ffffff', className: 'flight-path-white' }; 
+            // Dark Mode: White, Light Mode: Slate-600
+            return { 
+                color: isDark ? '#ffffff' : '#475569', 
+                className: isDark ? 'flight-path-white' : 'flight-path-dark' 
+            }; 
     }
 };
 
@@ -102,7 +121,9 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
 }) => {
     const mapContainer = useRef<HTMLDivElement>(null);
     const mapInstance = useRef<L.Map | null>(null);
+    const tileLayerRef = useRef<L.TileLayer | null>(null);
     const [isScreenshotting, setIsScreenshotting] = useState(false);
+    const isDark = useDarkMode();
 
     // Pre-calculate frequencies
     const routeFrequencies = useMemo(() => {
@@ -128,14 +149,6 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
             worldCopyJump: true
         }).setView([25, 10], 2); // Slightly centered for aesthetics
 
-        // Dark Matter Tiles
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-            subdomains: 'abcd',
-            maxZoom: 19,
-            noWrap: false 
-        }).addTo(map);
-
         mapInstance.current = map;
 
         return () => {
@@ -143,6 +156,29 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
             mapInstance.current = null;
         };
     }, []);
+
+    // Handle Tile Layer Switching
+    useEffect(() => {
+        if (!mapInstance.current) return;
+        const map = mapInstance.current;
+
+        if (tileLayerRef.current) {
+            map.removeLayer(tileLayerRef.current);
+        }
+
+        const tileUrl = isDark 
+            ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+            : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+
+        const layer = L.tileLayer(tileUrl, {
+            attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+            subdomains: 'abcd',
+            maxZoom: 19,
+            noWrap: false 
+        }).addTo(map);
+
+        tileLayerRef.current = layer;
+    }, [isDark]);
 
     useEffect(() => {
         if (!mapInstance.current) return;
@@ -159,7 +195,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
         let hasPoints = false;
 
         trips.forEach(trip => {
-            const { color, className } = getStatusStyle(trip);
+            const { color, className } = getStatusStyle(trip, isDark);
 
             if (trip.transports && trip.transports.length > 0) {
                 trip.transports.forEach(t => {
@@ -182,7 +218,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                         const trackLine = L.polyline(curvedPath, {
                             color: color, 
                             weight: 1 + (dynamicWeight * 0.2), // Thinner than flow
-                            opacity: 0.2,
+                            opacity: isDark ? 0.2 : 0.4,
                             className: `flight-path-track ${className}`,
                             interactive: false
                         }).addTo(map);
@@ -216,6 +252,19 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                             interactive: true
                         }).addTo(map);
 
+                        // Tooltip on Hover
+                        hitLine.bindTooltip(`
+                            <div class="font-sans p-1">
+                                <div class="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">${trip.name}</div>
+                                <div class="font-bold text-sm text-white">${t.origin} <span class="text-gray-500">→</span> ${t.destination}</div>
+                                <div class="text-[10px] text-gray-400 mt-1">${t.provider} • ${new Date(t.departureDate).toLocaleDateString()}</div>
+                            </div>
+                        `, {
+                            sticky: true,
+                            direction: 'top',
+                            className: 'bg-black/90 text-white border border-white/20 shadow-xl rounded-xl backdrop-blur-md px-0 py-0'
+                        });
+
                         hitLine.bindPopup(`
                             <div class="p-2">
                                 <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">${trip.status} Trip</div>
@@ -243,7 +292,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                                 flowLine.getElement()?.classList.remove('flight-path-selected');
                             }
                             if (trackLine && trackLine.getElement()) {
-                                trackLine.setStyle({ opacity: 0.2 });
+                                trackLine.setStyle({ opacity: isDark ? 0.2 : 0.4 });
                             }
                         });
 
@@ -262,7 +311,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                         // Destination Dot
                         const destMarker = L.circleMarker(end, {
                             radius: 3, 
-                            fillColor: '#000', 
+                            fillColor: isDark ? '#000' : '#fff', 
                             color: color, 
                             weight: 2,
                             fillOpacity: 1
@@ -290,7 +339,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                 
                 L.circleMarker(point, {
                     radius: 5,
-                    fillColor: '#000000',
+                    fillColor: isDark ? '#000' : '#fff',
                     color: color,
                     weight: 2,
                     fillOpacity: 1
@@ -313,7 +362,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
             map.setView([20, 0], 2);
         }
 
-    }, [trips, onTripClick, routeFrequencies, showFrequencyWeight, animateRoutes]);
+    }, [trips, onTripClick, routeFrequencies, showFrequencyWeight, animateRoutes, isDark]);
 
     const handleZoomIn = () => mapInstance.current?.zoomIn();
     const handleZoomOut = () => mapInstance.current?.zoomOut();
@@ -350,7 +399,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
             const canvas = await html2canvas(mapContainer.current, {
                 useCORS: true,
                 allowTaint: true,
-                backgroundColor: '#0a0a0a',
+                backgroundColor: isDark ? '#0a0a0a' : '#f8fafc',
                 logging: false
             });
             const link = document.createElement('a');
@@ -366,23 +415,23 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
     };
 
     return (
-        <div className="relative w-full h-full group overflow-hidden bg-[#0a0a0a]">
-            <div ref={mapContainer} className="w-full h-full bg-[#0a0a0a]" />
+        <div className={`relative w-full h-full group overflow-hidden ${isDark ? 'bg-[#0a0a0a]' : 'bg-slate-50'}`}>
+            <div ref={mapContainer} className={`w-full h-full ${isDark ? 'bg-[#0a0a0a]' : 'bg-slate-50'}`} />
             
             {/* Control Bar */}
             <div className="absolute bottom-12 right-12 flex flex-col gap-3 z-[1000]">
                 
-                <div className="flex flex-col bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-2xl overflow-hidden">
+                <div className={`flex flex-col rounded-2xl border shadow-2xl overflow-hidden ${isDark ? 'bg-white/10 backdrop-blur-md border-white/20' : 'bg-white/80 backdrop-blur-md border-slate-200'}`}>
                     <button 
                         onClick={handleZoomIn} 
-                        className="w-10 h-10 flex items-center justify-center text-white hover:bg-white/20 transition-colors border-b border-white/10"
+                        className={`w-10 h-10 flex items-center justify-center transition-colors border-b ${isDark ? 'text-white hover:bg-white/20 border-white/10' : 'text-slate-600 hover:bg-slate-100 border-slate-100'}`}
                         title="Zoom In"
                     >
                         <span className="material-icons-outlined text-lg">add</span>
                     </button>
                     <button 
                         onClick={handleZoomOut} 
-                        className="w-10 h-10 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
+                        className={`w-10 h-10 flex items-center justify-center transition-colors ${isDark ? 'text-white hover:bg-white/20' : 'text-slate-600 hover:bg-slate-100'}`}
                         title="Zoom Out"
                     >
                         <span className="material-icons-outlined text-lg">remove</span>
@@ -391,7 +440,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
 
                 <button 
                     onClick={handleFitBounds} 
-                    className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-2xl flex items-center justify-center text-white hover:bg-white/20 transition-colors group/fit"
+                    className={`w-10 h-10 rounded-2xl border shadow-2xl flex items-center justify-center transition-colors group/fit ${isDark ? 'bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20' : 'bg-white/80 backdrop-blur-md border-slate-200 text-slate-600 hover:bg-slate-100'}`}
                     title="Fit to Screen"
                 >
                     <span className="material-icons-outlined text-lg group-hover/fit:scale-110 transition-transform">center_focus_strong</span>
@@ -400,11 +449,11 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                 <button 
                     onClick={handleScreenshot} 
                     disabled={isScreenshotting}
-                    className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-2xl flex items-center justify-center text-white hover:bg-white/20 transition-colors disabled:opacity-50 group/shot"
+                    className={`w-10 h-10 rounded-2xl border shadow-2xl flex items-center justify-center transition-colors disabled:opacity-50 group/shot ${isDark ? 'bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20' : 'bg-white/80 backdrop-blur-md border-slate-200 text-slate-600 hover:bg-slate-100'}`}
                     title="Take Screenshot"
                 >
                     {isScreenshotting ? (
-                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                        <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
                     ) : (
                         <span className="material-icons-outlined text-lg group-hover/shot:scale-110 transition-transform">photo_camera</span>
                     )}
