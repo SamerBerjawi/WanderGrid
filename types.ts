@@ -45,6 +45,7 @@ export type TransportMode = 'Flight' | 'Train' | 'Bus' | 'Car Rental' | 'Persona
 export interface GeoCoordinates {
   lat: number;
   lng: number;
+  tz?: string; // Timezone ID (e.g. "America/New_York")
 }
 
 export interface Transport {
@@ -76,6 +77,7 @@ export interface Transport {
   reason?: string; // Business/Personal
   
   // Metadata
+  duration?: number; // in minutes (timezone corrected)
   distance?: number; // km
   logoUrl?: string; // URL to carrier logo
 

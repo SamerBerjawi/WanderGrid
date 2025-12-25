@@ -454,6 +454,14 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     };
 
     const calculateDuration = (t: Transport) => {
+        // Preferred: Use pre-calculated duration from object (which includes TZ logic)
+        if (t.duration) {
+            const h = Math.floor(t.duration / 60);
+            const m = Math.round(t.duration % 60);
+            return `${h}h ${m}m`;
+        }
+
+        // Fallback: Simple math
         if (!t.departureTime || !t.arrivalTime) return '';
         const [dh, dm] = t.departureTime.split(':').map(Number);
         const [ah, am] = t.arrivalTime.split(':').map(Number);
