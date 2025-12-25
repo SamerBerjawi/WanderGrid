@@ -1,6 +1,7 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { ExpeditionMap } from '../components/ExpeditionMap';
+import { ExpeditionMap3D } from '../components/ExpeditionMap3D';
 import { dataService } from '../services/mockDb';
 import { Trip, Transport } from '../types';
 import { Input, MultiSelect, Card } from '../components/ui';
@@ -67,6 +68,7 @@ const TopList: React.FC<{ title: string; items: { label: string; sub?: string; c
 
 export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClick }) => {
     const [viewMode, setViewMode] = useState<'map' | 'stats'>('map');
+    const [mapType, setMapType] = useState<'2D' | '3D'>('2D');
     const [trips, setTrips] = useState<Trip[]>([]);
     const [loading, setLoading] = useState(true);
     
@@ -126,7 +128,6 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
         let totalDurationMinutes = 0;
         
         const airports = new Map<string, number>(); // Code -> Count
-        const airportNames = new Map<string, string>(); // Code -> Name
         const airlines = new Map<string, number>();
         const aircraft = new Map<string, number>();
         const routes = new Map<string, number>();
@@ -155,7 +156,6 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                         // Airports
                         if (tr.origin) {
                             airports.set(tr.origin, (airports.get(tr.origin) || 0) + 1);
-                            // Ideally we'd have full names, but we might rely on what we have
                         }
                         if (tr.destination) {
                             airports.set(tr.destination, (airports.get(tr.destination) || 0) + 1);
@@ -173,8 +173,6 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
 
                         // Route
                         if (tr.origin && tr.destination) {
-                            // Sort for bidirectional route counting? Or strictly directional?
-                            // Flighty usually does directional "JFK-LHR".
                             const key = `${tr.origin} → ${tr.destination}`;
                             routes.set(key, (routes.get(key) || 0) + 1);
                         }
@@ -186,7 +184,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
         // Sort Top Lists
         const topAirports = Array.from(airports.entries())
             .sort((a, b) => b[1] - a[1])
-            .map(([code, count]) => ({ label: code, count, code })); // Need map to look up city names if possible
+            .map(([code, count]) => ({ label: code, count, code }));
 
         const topAirlines = Array.from(airlines.entries())
             .sort((a, b) => b[1] - a[1])
@@ -270,7 +268,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                     </div>
                 </div>
 
-                {/* Filters */}
+                {/* Filters & Toggles */}
                 <div className="flex flex-col gap-3 w-full xl:w-auto relative z-10">
                     <div className="flex flex-col md:flex-row items-center gap-3">
                         <div className="flex items-center p-1 bg-gray-100 dark:bg-black/30 rounded-2xl border border-gray-200 dark:border-white/5 w-full md:w-auto">
@@ -302,9 +300,25 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
 
                         {viewMode === 'map' && (
                             <div className="flex gap-2 w-full md:w-auto">
+                                {/* 2D/3D Toggle */}
+                                <div className="flex p-1 bg-gray-100 dark:bg-black/30 rounded-2xl border border-gray-200 dark:border-white/5">
+                                    <button 
+                                        onClick={() => setMapType('2D')}
+                                        className={`px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase transition-all ${mapType === '2D' ? 'bg-white dark:bg-gray-700 shadow text-blue-600 dark:text-white' : 'text-gray-400 hover:text-gray-600'}`}
+                                    >
+                                        2D
+                                    </button>
+                                    <button 
+                                        onClick={() => setMapType('3D')}
+                                        className={`px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase transition-all ${mapType === '3D' ? 'bg-white dark:bg-gray-700 shadow text-purple-600 dark:text-white' : 'text-gray-400 hover:text-gray-600'}`}
+                                    >
+                                        3D
+                                    </button>
+                                </div>
+
                                 <button 
                                     onClick={() => setAnimateRoutes(!animateRoutes)}
-                                    className={`flex-1 md:flex-initial flex items-center justify-center gap-2 px-3 py-2 rounded-2xl border transition-all ${
+                                    className={`flex items-center justify-center gap-2 px-3 py-2 rounded-2xl border transition-all ${
                                         animateRoutes 
                                         ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-400' 
                                         : 'bg-transparent border-gray-200 dark:border-white/10 text-gray-400'
@@ -314,17 +328,19 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                     <span className="material-icons-outlined text-lg">{animateRoutes ? 'blur_on' : 'blur_off'}</span>
                                 </button>
                                 
-                                <button 
-                                    onClick={() => setShowFrequencyWeight(!showFrequencyWeight)}
-                                    className={`flex-1 md:flex-initial flex items-center justify-center gap-2 px-3 py-2 rounded-2xl border transition-all ${
-                                        showFrequencyWeight 
-                                        ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-900/50 text-blue-700 dark:text-blue-400' 
-                                        : 'bg-transparent border-gray-200 dark:border-white/10 text-gray-400'
-                                    }`}
-                                    title="Toggle Route Frequency Weight"
-                                >
-                                    <span className="material-icons-outlined text-lg">line_weight</span>
-                                </button>
+                                {mapType === '2D' && (
+                                    <button 
+                                        onClick={() => setShowFrequencyWeight(!showFrequencyWeight)}
+                                        className={`flex items-center justify-center gap-2 px-3 py-2 rounded-2xl border transition-all ${
+                                            showFrequencyWeight 
+                                            ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-900/50 text-blue-700 dark:text-blue-400' 
+                                            : 'bg-transparent border-gray-200 dark:border-white/10 text-gray-400'
+                                        }`}
+                                        title="Toggle Route Frequency Weight"
+                                    >
+                                        <span className="material-icons-outlined text-lg">line_weight</span>
+                                    </button>
+                                )}
                             </div>
                         )}
                     </div>
@@ -373,12 +389,21 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
             <div className="flex-1 min-h-0 w-full overflow-hidden relative z-10">
                 {viewMode === 'map' ? (
                     <div className="w-full h-full rounded-[2.5rem] overflow-hidden border border-gray-200 dark:border-white/5 shadow-2xl relative bg-black">
-                        <ExpeditionMap 
-                            trips={filteredTrips} 
-                            onTripClick={onTripClick} 
-                            showFrequencyWeight={showFrequencyWeight}
-                            animateRoutes={animateRoutes}
-                        />
+                        {mapType === '2D' ? (
+                            <ExpeditionMap 
+                                trips={filteredTrips} 
+                                onTripClick={onTripClick} 
+                                showFrequencyWeight={showFrequencyWeight}
+                                animateRoutes={animateRoutes}
+                            />
+                        ) : (
+                            <ExpeditionMap3D
+                                trips={filteredTrips}
+                                onTripClick={onTripClick}
+                                animateRoutes={animateRoutes}
+                            />
+                        )}
+                        
                         {trips.length === 0 && (
                             <div className="absolute inset-0 flex items-center justify-center z-[500] pointer-events-none">
                                 <div className="bg-black/80 backdrop-blur-md p-8 rounded-3xl border border-white/10 text-center">

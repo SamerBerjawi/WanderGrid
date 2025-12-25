@@ -13,7 +13,8 @@
     "@google/genai": "^1.34.0",
     "react": "^19.2.3",
     "leaflet": "1.9.4",
-    "html2canvas": "1.4.1"
+    "html2canvas": "1.4.1",
+    "react-globe.gl": "2.27.2"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
