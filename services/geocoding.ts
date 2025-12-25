@@ -69,36 +69,39 @@ export function getCachedTimeZone(iata: string): string | undefined {
 // Helper: Get UTC offset in minutes for a specific TimeZone at a specific Date
 function getOffsetMinutes(timeZone: string, date: Date): number {
     try {
-        // Create a string representation in the target timezone
-        const str = date.toLocaleString('en-US', { timeZone, hourCycle: 'h23' });
-        // Create a date object treating that string as local/UTC to find difference
-        const targetTime = new Date(str);
-        // Compare with the actual UTC timestamp of the original date object
-        // NOTE: This assumes 'date' is created in browser local time. 
-        // A robust way without libraries is to check the diff between UTC string and TZ string.
-        
-        // Let's use a simpler heuristic for the scope of this app:
-        // Parse the offset from the detailed string
+        // Use shortOffset (e.g. "GMT-5" or "GMT+5:30")
         const parts = new Intl.DateTimeFormat('en-US', {
             timeZone,
-            timeZoneName: 'longOffset',
+            timeZoneName: 'shortOffset',
         }).formatToParts(date);
         
-        const tzName = parts.find(p => p.type === 'timeZoneName')?.value; // "GMT-05:00"
-        if (!tzName) return 0;
+        const offsetPart = parts.find(p => p.type === 'timeZoneName');
+        if (!offsetPart) return 0;
         
-        // Extract offset
-        const match = tzName.match(/GMT([+-])(\d{1,2}):?(\d{2})?/);
-        if (match) {
-            const sign = match[1] === '+' ? 1 : -1;
-            const hours = parseInt(match[2], 10);
-            const minutes = match[3] ? parseInt(match[3], 10) : 0;
-            return sign * (hours * 60 + minutes);
-        }
-        return 0;
+        // Parse "GMT-5", "GMT+5:30", "UTC+1"
+        // Remove GMT/UTC prefix
+        const val = offsetPart.value.replace(/^(GMT|UTC)/, '');
+        if (!val) return 0; // GMT or UTC with no offset
+        
+        const sign = val.includes('-') ? -1 : 1;
+        const [h, m] = val.replace('+', '').replace('-', '').split(':').map(Number);
+        
+        const hours = isNaN(h) ? 0 : h;
+        const minutes = isNaN(m) ? 0 : m;
+        
+        return sign * (hours * 60 + minutes);
     } catch (e) {
+        console.warn("Offset Calc Error", e);
         return 0;
     }
+}
+
+// Helper: Convert YYYY-MM-DD + HH:mm into a UTC timestamp (Wall Time treated as UTC)
+// This avoids browser local timezone interference
+function getWallTimeAsUtc(dateStr: string, timeStr: string): number {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const [h, min] = timeStr.split(':').map(Number);
+    return Date.UTC(y, m - 1, d, h, min, 0);
 }
 
 // Calculate duration (minutes) between two locations/times respecting TZ
@@ -115,31 +118,30 @@ export function calculateDurationMinutes(
     const originTz = getCachedTimeZone(originIata) || 'UTC';
     const destTz = getCachedTimeZone(destIata) || 'UTC';
 
-    // Construct "Wall Time" dates (treating input strings as local)
-    // We pick an arbitrary base for calculation, but dates matter for DST
-    const depWall = new Date(`${depDateStr}T${depTimeStr}:00`);
-    const arrWall = new Date(`${arrDateStr}T${arrTimeStr}:00`);
+    // 1. Get Wall Times as UTC Timestamps to measure pure wall difference
+    const depWallUtc = getWallTimeAsUtc(depDateStr, depTimeStr);
+    const arrWallUtc = getWallTimeAsUtc(arrDateStr, arrTimeStr);
 
-    if (isNaN(depWall.getTime()) || isNaN(arrWall.getTime())) return 0;
+    if (isNaN(depWallUtc) || isNaN(arrWallUtc)) return 0;
 
-    // Get offsets at those specific times
-    const depOffset = getOffsetMinutes(originTz, depWall);
-    const arrOffset = getOffsetMinutes(destTz, arrWall);
+    // 2. Get Offsets at those times
+    // We use the Wall Time as the lookup instant. This is 99% accurate unless flight is exactly during a DST jump.
+    const depOffset = getOffsetMinutes(originTz, new Date(depWallUtc));
+    const arrOffset = getOffsetMinutes(destTz, new Date(arrWallUtc));
 
-    // Duration = (ArrWall - DepWall) - (ArrOffset - DepOffset)
-    // Example: NY (-300) to London (+60). Flight 10:00 -> 22:00.
-    // Wall Diff: 720 mins.
-    // Offset Diff: 60 - (-300) = 360 mins.
-    // Duration: 720 - 360 = 360 mins (6 hours).
+    // 3. Formula:
+    // UTC_Departure = Wall_Departure - Offset_Departure
+    // UTC_Arrival = Wall_Arrival - Offset_Arrival
+    // Duration = UTC_Arrival - UTC_Departure
+    //          = (Wall_Arrival - Offset_Arrival) - (Wall_Departure - Offset_Departure)
+    //          = (Wall_Arrival - Wall_Departure) - (Offset_Arrival - Offset_Departure)
     
-    const wallDiffMinutes = (arrWall.getTime() - depWall.getTime()) / 60000;
+    const wallDiffMinutes = (arrWallUtc - depWallUtc) / 60000;
     const offsetDiffMinutes = arrOffset - depOffset;
     
     let duration = wallDiffMinutes - offsetDiffMinutes;
     
-    // Fallback if calculation went negative (e.g. crossing date line wrong way in math)
-    if (duration < 0) duration += 24 * 60; // Normalize? No, duration shouldn't be negative unless dates are wrong.
-    
+    // Safety clamp
     return Math.max(0, Math.round(duration));
 }
 
@@ -154,40 +156,51 @@ export function calculateArrivalTime(
     const originTz = getCachedTimeZone(originIata) || 'UTC';
     const destTz = getCachedTimeZone(destIata) || 'UTC';
 
-    const depWall = new Date(`${depDateStr}T${depTimeStr}:00`);
-    if (isNaN(depWall.getTime())) return { date: '', time: '' };
+    // 1. Get Departure Wall Time as UTC Timestamp
+    const depWallUtc = getWallTimeAsUtc(depDateStr, depTimeStr);
+    if (isNaN(depWallUtc)) return { date: '', time: '' };
 
-    const depOffset = getOffsetMinutes(originTz, depWall);
+    // 2. Calculate Real UTC Departure Time
+    const depOffset = getOffsetMinutes(originTz, new Date(depWallUtc));
+    // Real UTC = Wall - Offset (in ms)
+    const depRealUtc = depWallUtc - (depOffset * 60000);
+
+    // 3. Calculate Real UTC Arrival Time
+    const arrRealUtc = depRealUtc + (durationMinutes * 60000);
+
+    // 4. Convert Real UTC Arrival to Destination Wall Time
+    // We rely on Intl to do the heavy lifting of converting a UTC timestamp to a TZ-specific string
+    const arrDateObj = new Date(arrRealUtc);
     
-    // We need to estimate Arrival Wall time to get the correct Arr Offset (chicken/egg problem with DST)
-    // Approx Arr Offset = Dest standard offset? Let's use Dep time at Dest as proxy for offset lookups
-    let arrOffset = getOffsetMinutes(destTz, depWall); 
-    
-    // Formula: ArrWall = DepWall + Duration + (ArrOffset - DepOffset)
-    let offsetDiff = arrOffset - depOffset;
-    let arrWallMs = depWall.getTime() + (durationMinutes * 60000) + (offsetDiff * 60000);
-    
-    // Re-check offset at the estimated arrival time to correct for DST boundary crossings
-    const estimatedArrDate = new Date(arrWallMs);
-    const refinedArrOffset = getOffsetMinutes(destTz, estimatedArrDate);
-    
-    if (refinedArrOffset !== arrOffset) {
-        offsetDiff = refinedArrOffset - depOffset;
-        arrWallMs = depWall.getTime() + (durationMinutes * 60000) + (offsetDiff * 60000);
+    try {
+        // Format to parts in the destination timezone
+        const formatter = new Intl.DateTimeFormat('en-CA', { // en-CA gives YYYY-MM-DD
+            timeZone: destTz,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hourCycle: 'h23' // Force 24h
+        });
+        
+        const parts = formatter.formatToParts(arrDateObj);
+        const getPart = (type: string) => parts.find(p => p.type === type)?.value || '';
+        
+        const year = getPart('year');
+        const month = getPart('month');
+        const day = getPart('day');
+        const hour = getPart('hour');
+        const minute = getPart('minute');
+
+        return {
+            date: `${year}-${month}-${day}`,
+            time: `${hour}:${minute}`
+        };
+    } catch (e) {
+        console.error("Arrival Calc Error", e);
+        return { date: '', time: '' };
     }
-
-    const finalDate = new Date(arrWallMs);
-    
-    const year = finalDate.getFullYear();
-    const month = String(finalDate.getMonth() + 1).padStart(2, '0');
-    const day = String(finalDate.getDate()).padStart(2, '0');
-    const hours = String(finalDate.getHours()).padStart(2, '0');
-    const mins = String(finalDate.getMinutes()).padStart(2, '0');
-
-    return {
-        date: `${year}-${month}-${day}`,
-        time: `${hours}:${mins}`
-    };
 }
 
 // --- Search ---

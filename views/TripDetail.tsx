@@ -16,7 +16,6 @@ interface TripDetailProps {
     onBack: () => void;
 }
 
-// Helper Interface for Import Candidates
 interface ImportCandidate {
     trip: Trip;
     confidence: number;
@@ -34,52 +33,42 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     const [trip, setTrip] = useState<Trip | null>(null);
     const [users, setUsers] = useState<User[]>([]);
     const [settings, setSettings] = useState<WorkspaceSettings | null>(null);
-    
-    // Dependencies for Leave Request Modal
     const [entitlements, setEntitlements] = useState<EntitlementType[]>([]);
     const [holidays, setHolidays] = useState<PublicHoliday[]>([]);
     const [allTrips, setAllTrips] = useState<Trip[]>([]);
-
+    
+    // View State
     const [activeTab, setActiveTab] = useState('planner'); 
     const [plannerView, setPlannerView] = useState<'list' | 'table'>('list'); 
     const [loading, setLoading] = useState(true);
 
-    // Modals
+    // Modal States
     const [isTransportModalOpen, setIsTransportModalOpen] = useState(false);
     const [isAccommodationModalOpen, setIsAccommodationModalOpen] = useState(false);
     const [isEditTripOpen, setIsEditTripOpen] = useState(false);
     const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
     const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
-    
-    // Import Preview State (Grouped Candidates)
-    const [importPreview, setImportPreview] = useState<{ open: boolean, candidates: ImportCandidate[] }>({ 
-        open: false, candidates: []
-    });
-    const [expandedCandidateId, setExpandedCandidateId] = useState<string | null>(null);
-
-    // Activity Modal
     const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
-    const [currentDayForActivity, setCurrentDayForActivity] = useState<string>('');
-    const [activityForm, setActivityForm] = useState<Partial<Activity>>({});
     
-    // Context State for Modals (Pre-fill date)
-    const [selectedDateForModal, setSelectedDateForModal] = useState<string | null>(null);
-    const [openMenuDate, setOpenMenuDate] = useState<string | null>(null);
+    // Import State
+    const [importPreview, setImportPreview] = useState<{ open: boolean, candidates: ImportCandidate[] }>({ open: false, candidates: [] });
+    const [expandedCandidateId, setExpandedCandidateId] = useState<string | null>(null);
+    const importInputRef = useRef<HTMLInputElement>(null);
 
-    // Editing States
+    // Editing State
+    const [activityForm, setActivityForm] = useState<Partial<Activity>>({});
+    const [currentDayForActivity, setCurrentDayForActivity] = useState<string>('');
+    const [selectedDateForModal, setSelectedDateForModal] = useState<string | null>(null);
     const [editingTransports, setEditingTransports] = useState<Transport[] | null>(null);
     const [editingAccommodations, setEditingAccommodations] = useState<Accommodation[] | null>(null);
-
-    // Detected Places State
+    
+    // Maps / Geocoding
     const [visitedPlaces, setVisitedPlaces] = useState<DetectedPlace[]>([]);
     const [uniqueCountries, setUniqueCountries] = useState<Set<string>>(new Set());
-
-    // Import Refs
-    const importInputRef = useRef<HTMLInputElement>(null);
+    const [openMenuDate, setOpenMenuDate] = useState<string | null>(null);
 
     useEffect(() => {
         loadData();
-        // Close menus on outside click
         const handleClickOutside = () => setOpenMenuDate(null);
         document.addEventListener('click', handleClickOutside);
         return () => document.removeEventListener('click', handleClickOutside);
@@ -106,7 +95,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         });
     };
 
-    // --- Automatic Place Detection ---
     useEffect(() => {
         const detectPlaces = async () => {
             if (!trip) return;
@@ -125,45 +113,34 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 }
             };
 
-            // 1. Transports (Destinations)
             if (trip.transports) {
                 for (const t of trip.transports) {
-                    // For cars, use destination or dropoff. For flights, destination.
                     const dest = t.mode === 'Car Rental' || t.mode === 'Personal Car' 
                         ? (t.dropoffLocation || t.destination) 
                         : t.destination;
                     await addPlace(dest, 'Transport');
                 }
             }
-
-            // 2. Locations (Route Manager)
             if (trip.locations) {
                 for (const l of trip.locations) {
                     await addPlace(l.name, 'Location');
                 }
             }
-
-            // 3. Accommodations
             if (trip.accommodations) {
                 for (const a of trip.accommodations) {
-                    // Try to extract city from address if it contains commas, otherwise use address as query
                     await addPlace(a.address, 'Accommodation');
                 }
             }
-
             setVisitedPlaces(detected);
-            
             const countries = new Set<string>();
             detected.forEach(p => {
                 if (p.country) countries.add(p.country);
             });
             setUniqueCountries(countries);
         };
-
         detectPlaces();
     }, [trip]);
 
-    // Calculate relevance score (0-100)
     const calculateRelevance = (currentTrip: Trip, candidateTrip: Trip): number => {
         let points = 0;
         const cStartDate = new Date(currentTrip.startDate).getTime();
@@ -171,24 +148,20 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         const candStartDate = new Date(candidateTrip.startDate).getTime();
         const candEndDate = new Date(candidateTrip.endDate).getTime();
 
-        // 1. Date Overlap (0-60 points)
         const overlapStart = Math.max(cStartDate, candStartDate);
         const overlapEnd = Math.min(cEndDate, candEndDate);
         
         if (overlapEnd >= overlapStart) {
             points += 60;
-            // Bonus for near-exact match
             if (cStartDate === candStartDate) points += 10;
             if (cEndDate === candEndDate) points += 10;
         } else {
-            // Penalty for distance
             const dist = Math.min(Math.abs(cStartDate - candEndDate), Math.abs(candStartDate - cEndDate));
             const daysOff = dist / (1000 * 60 * 60 * 24);
-            if (daysOff < 2) points += 40; // Very close
-            else if (daysOff < 7) points += 20; // Close
+            if (daysOff < 2) points += 40; 
+            else if (daysOff < 7) points += 20; 
         }
 
-        // 2. Location (0-20 points)
         if (currentTrip.location && candidateTrip.location) {
             const currLoc = currentTrip.location.toLowerCase();
             const candLoc = candidateTrip.location.toLowerCase();
@@ -196,7 +169,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 points += 20;
             }
         }
-
         return Math.min(100, points);
     };
 
@@ -216,12 +188,10 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     const handleSaveTransports = async (newTransports: Transport[]) => {
         if (!trip) return;
         let updatedTransports = [...(trip.transports || [])];
-        
         if (editingTransports && editingTransports.length > 0) {
              const oldIds = new Set(editingTransports.map(f => f.id));
              updatedTransports = updatedTransports.filter(f => !oldIds.has(f.id));
         }
-        
         updatedTransports = [...updatedTransports, ...newTransports];
         const updatedTrip = { ...trip, transports: updatedTransports };
         await dataService.updateTrip(updatedTrip);
@@ -233,18 +203,15 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     const handleImportFlights = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file || !trip) return;
-
         const reader = new FileReader();
         reader.onload = async (evt) => {
             const content = evt.target?.result as string;
             let rawTransports: Transport[] = [];
-            
             if (file.name.endsWith('.json')) {
                 rawTransports = flightImporter.parseTransportsJson(content);
             } else if (file.name.endsWith('.csv')) {
                 rawTransports = flightImporter.parseTransportsCsv(content);
             }
-
             if (rawTransports.length > 0) {
                 const groupedTrips = flightImporter.groupTransports(rawTransports, trip.participants[0] || 'temp');
                 const candidates: ImportCandidate[] = groupedTrips.map(gt => ({
@@ -252,15 +219,8 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                     confidence: calculateRelevance(trip, gt),
                     selected: false
                 })).sort((a, b) => b.confidence - a.confidence);
-
-                if (candidates.length > 0 && candidates[0].confidence > 80) {
-                    candidates[0].selected = true;
-                }
-
-                setImportPreview({
-                    open: true,
-                    candidates
-                });
+                if (candidates.length > 0 && candidates[0].confidence > 80) candidates[0].selected = true;
+                setImportPreview({ open: true, candidates });
             } else {
                 alert("No valid flights found in file.");
             }
@@ -282,13 +242,8 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 selectedTransports.push(...newTransports);
             }
         });
-
         if (selectedTransports.length === 0) return;
-
-        const updatedTrip = { 
-            ...trip, 
-            transports: [...(trip.transports || []), ...selectedTransports] 
-        };
+        const updatedTrip = { ...trip, transports: [...(trip.transports || []), ...selectedTransports] };
         await dataService.updateTrip(updatedTrip);
         setTrip(updatedTrip);
         setImportPreview({ open: false, candidates: [] });
@@ -297,9 +252,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     const toggleCandidateSelection = (tripId: string) => {
         setImportPreview(prev => ({
             ...prev,
-            candidates: prev.candidates.map(c => 
-                c.trip.id === tripId ? { ...c, selected: !c.selected } : c
-            )
+            candidates: prev.candidates.map(c => c.trip.id === tripId ? { ...c, selected: !c.selected } : c)
         }));
     };
 
@@ -339,20 +292,8 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
 
     const handleOpenActivityModal = (dateStr: string, existingActivity?: Activity) => {
         setCurrentDayForActivity(dateStr);
-        if (existingActivity) {
-            setActivityForm({ ...existingActivity });
-        } else {
-            setActivityForm({
-                id: Math.random().toString(36).substr(2, 9),
-                date: dateStr,
-                title: '',
-                time: '12:00',
-                cost: 0,
-                location: '',
-                description: '',
-                type: 'Activity'
-            });
-        }
+        if (existingActivity) setActivityForm({ ...existingActivity });
+        else setActivityForm({ id: Math.random().toString(36).substr(2, 9), date: dateStr, time: '12:00', cost: 0, location: '', description: '', type: 'Activity' });
         setIsActivityModalOpen(true);
     };
 
@@ -362,11 +303,8 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         if (!newActivity.type) newActivity.type = 'Activity';
         let updatedActivities = [...(trip.activities || [])];
         const existingIndex = updatedActivities.findIndex(a => a.id === newActivity.id);
-        if (existingIndex >= 0) {
-            updatedActivities[existingIndex] = newActivity;
-        } else {
-            updatedActivities.push(newActivity);
-        }
+        if (existingIndex >= 0) updatedActivities[existingIndex] = newActivity;
+        else updatedActivities.push(newActivity);
         const updatedTrip = { ...trip, activities: updatedActivities };
         await dataService.updateTrip(updatedTrip);
         setTrip(updatedTrip);
@@ -417,16 +355,10 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         const symbols: Record<string, string> = { 'USD': '$', 'EUR': '€', 'GBP': '£', 'AUD': 'A$', 'JPY': '¥' };
         return symbols[code] || code || '$';
     };
-
     const formatCurrency = (amount: number) => {
         if (!settings) return `$${amount}`;
-        try {
-            return new Intl.NumberFormat('en-US', { style: 'currency', currency: settings.currency }).format(amount);
-        } catch (e) {
-            return `${settings.currency} ${amount}`;
-        }
+        try { return new Intl.NumberFormat('en-US', { style: 'currency', currency: settings.currency }).format(amount); } catch (e) { return `${settings.currency} ${amount}`; }
     };
-
     const formatTime = (time24?: string) => {
         if (!time24) return '';
         const [h, m] = time24.split(':');
@@ -436,7 +368,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         const hour12 = hour % 12 || 12;
         return `${hour12}:${m} ${ampm}`;
     };
-
     const getTransportIcon = (mode: TransportMode) => {
         switch(mode) {
             case 'Train': return 'train';
@@ -447,27 +378,21 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
             default: return 'flight_takeoff';
         }
     };
-
     const getLocationForDate = (dateStr: string) => {
         if (!trip?.locations) return null;
         return trip.locations.find(l => dateStr >= l.startDate && dateStr <= l.endDate);
     };
-
     const calculateDuration = (t: Transport) => {
-        // Preferred: Use pre-calculated duration from object (which includes TZ logic)
         if (t.duration) {
             const h = Math.floor(t.duration / 60);
             const m = Math.round(t.duration % 60);
             return `${h}h ${m}m`;
         }
-
-        // Fallback: Simple math
         if (!t.departureTime || !t.arrivalTime) return '';
         const [dh, dm] = t.departureTime.split(':').map(Number);
         const [ah, am] = t.arrivalTime.split(':').map(Number);
         let diff = (ah * 60 + am) - (dh * 60 + dm);
         if (diff < 0) diff += 24 * 60; 
-        
         if (t.departureDate && t.arrivalDate) {
              const start = new Date(`${t.departureDate}T${t.departureTime}`);
              const end = new Date(`${t.arrivalDate}T${t.arrivalTime}`);
@@ -475,12 +400,10 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                  diff = (end.getTime() - start.getTime()) / (1000 * 60);
              }
         }
-        
         const h = Math.floor(diff / 60);
         const m = Math.round(diff % 60);
         return `${h}h ${m}m`;
     };
-
     const calculateNights = (start: string, end: string) => {
         const d1 = new Date(start);
         const d2 = new Date(end);
@@ -488,7 +411,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         const diff = d2.getTime() - d1.getTime();
         return Math.ceil(diff / (1000 * 3600 * 24));
     }
-
     const sortActivities = (acts: Activity[]) => {
         return acts.sort((a, b) => {
             const timeA = a.time || '23:59';
@@ -496,7 +418,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
             return timeA.localeCompare(timeB);
         });
     };
-
     const getClassColor = (cls?: string) => {
         const c = (cls || '').toLowerCase();
         if (c.includes('first')) return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50';
@@ -504,7 +425,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         if (c.includes('economy+')) return 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/50';
         return 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-900/30';
     };
-
     const getSeatTypeIcon = (type?: string) => {
         switch(type) {
             case 'Window': return 'crop_portrait'; 
@@ -513,7 +433,13 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
             default: return 'airline_seat_recline_normal';
         }
     };
-
+    const getSeatColor = (type?: string) => {
+        const t = (type || '').toLowerCase();
+        if (t.includes('window')) return 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800';
+        if (t.includes('aisle')) return 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800';
+        if (t.includes('middle')) return 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800';
+        return 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700';
+    };
     const getTypeStyles = (type: string) => {
         switch(type) {
             case 'Transport': return 'bg-blue-50 dark:bg-blue-900/10 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800';
@@ -524,22 +450,15 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
             default: return 'bg-indigo-50 dark:bg-indigo-900/10 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800';
         }
     };
-
     const fetchLocationSuggestions = async (query: string): Promise<string[]> => {
         return searchLocations(query);
     };
-
     const getDayEvents = (dateStr: string) => {
         if (!trip?.transports) return [];
         const events: (Transport & { isDropoff?: boolean })[] = [];
-        
         trip.transports.forEach(t => {
-            if (t.departureDate === dateStr) {
-                events.push(t);
-            }
-            if (t.arrivalDate === dateStr && t.departureDate !== dateStr && (t.mode === 'Car Rental' || t.mode === 'Personal Car')) {
-                events.push({ ...t, isDropoff: true });
-            }
+            if (t.departureDate === dateStr) events.push(t);
+            if (t.arrivalDate === dateStr && t.departureDate !== dateStr && (t.mode === 'Car Rental' || t.mode === 'Personal Car')) events.push({ ...t, isDropoff: true });
         });
         return events;
     };
@@ -550,7 +469,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     const transportCost = trip.transports?.reduce((sum, f) => sum + (f.cost || 0), 0) || 0;
     const stayCost = trip.accommodations?.reduce((sum, a) => sum + (a.cost || 0), 0) || 0;
     const totalCost = transportCost + stayCost + activityCost;
-
     const duration = Math.ceil((new Date(trip.endDate).getTime() - new Date(trip.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1;
     const costPerPerson = trip.participants.length > 0 ? totalCost / trip.participants.length : 0;
     const costPerDay = duration > 0 ? totalCost / duration : 0;
@@ -575,16 +493,10 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         }
         return dates;
     };
-
     const tripDates = getTripDates();
-
     const selectedCount = importPreview.candidates.filter(c => c.selected).length;
-
-    // Helper for Table View Items
     const getAllItemsForTable = (dateStr: string) => {
         const items: any[] = [];
-        
-        // Transports
         getDayEvents(dateStr).forEach(t => {
             const dur = !t.isDropoff ? calculateDuration(t) : '';
             const dist = t.distance ? `${t.distance} km` : '';
@@ -602,8 +514,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 isDropoff: t.isDropoff
             });
         });
-
-        // Accommodation Check-ins
         trip.accommodations?.forEach(a => {
             if (a.checkInDate === dateStr) {
                 const nights = calculateNights(a.checkInDate, a.checkOutDate);
@@ -621,8 +531,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 });
             }
         });
-
-        // Activities
         trip.activities?.forEach(a => {
             if (a.date === dateStr) {
                 items.push({
@@ -639,14 +547,11 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 });
             }
         });
-
         return items.sort((a,b) => (a.time || '23:59').localeCompare(b.time || '23:59'));
     };
 
     return (
         <div className="space-y-8 animate-fade-in max-w-[1400px] mx-auto pb-12">
-            
-            {/* HERO CARD */}
             <div className="relative w-full rounded-[2.5rem] bg-white dark:bg-gray-900 shadow-2xl border border-gray-100 dark:border-white/5 overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5 pointer-events-none" />
                 <div className="relative p-8 lg:p-10 flex flex-col gap-8">
@@ -674,8 +579,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                             <Button variant="secondary" onClick={() => setIsEditTripOpen(true)} icon={<span className="material-icons-outlined">edit</span>}>Edit Details</Button>
                         </div>
                     </div>
-                    
-                    {/* Stats Grid */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30 flex flex-col items-center justify-center text-center">
                             <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{formatCurrency(totalCost)}</span>
@@ -689,9 +592,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                             <div className="flex -space-x-2 mb-1">
                                 {trip.participants.map((pid, idx) => {
                                     const u = users.find(u => u.id === pid);
-                                    return u ? (
-                                        <div key={idx} className="w-6 h-6 rounded-full bg-purple-200 border-2 border-white flex items-center justify-center text-[8px] font-bold text-purple-800" title={u.name}>{u.name.charAt(0)}</div>
-                                    ) : null;
+                                    return u ? <div key={idx} className="w-6 h-6 rounded-full bg-purple-200 border-2 border-white flex items-center justify-center text-[8px] font-bold text-purple-800" title={u.name}>{u.name.charAt(0)}</div> : null;
                                 })}
                             </div>
                             <span className="text-[9px] font-bold text-purple-500/70 uppercase tracking-widest">{trip.participants.length} Travelers</span>
@@ -701,33 +602,21 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                             <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Planned Items</span>
                         </div>
                     </div>
-
-                    {/* Detected Places Card */}
                     {(visitedPlaces.length > 0) && (
                         <div className="p-5 rounded-2xl bg-white/50 dark:bg-white/5 border border-white/20 dark:border-white/5 backdrop-blur-md">
-                            <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-3 flex items-center gap-2">
-                                <span className="material-icons-outlined text-sm">public</span> Expedition Footprint
-                            </h4>
+                            <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-3 flex items-center gap-2"><span className="material-icons-outlined text-sm">public</span> Expedition Footprint</h4>
                             <div className="space-y-3">
-                                {/* Countries */}
                                 {uniqueCountries.size > 0 && (
                                     <div className="flex flex-wrap gap-2">
                                         {Array.from(uniqueCountries).map(country => (
-                                            <span key={country} className="px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-900/30 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
-                                                <span className="material-icons-outlined text-sm">flag</span> {country}
-                                            </span>
+                                            <span key={country} className="px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-900/30 text-[10px] font-black uppercase tracking-wider flex items-center gap-1"><span className="material-icons-outlined text-sm">flag</span> {country}</span>
                                         ))}
                                     </div>
                                 )}
-                                
-                                {/* Cities */}
                                 <div className="flex flex-wrap gap-2">
                                     {visitedPlaces.map((place, idx) => (
                                         <div key={idx} className="px-3 py-1 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-white/10 text-xs font-bold text-gray-600 dark:text-gray-300 shadow-sm flex items-center gap-1.5">
-                                            <span className={`material-icons-outlined text-[10px] ${place.source === 'Transport' ? 'text-blue-500' : place.source === 'Accommodation' ? 'text-amber-500' : 'text-purple-500'}`}>
-                                                {place.source === 'Transport' ? 'flight_land' : place.source === 'Accommodation' ? 'hotel' : 'place'}
-                                            </span>
-                                            {place.displayName}
+                                            <span className={`material-icons-outlined text-[10px] ${place.source === 'Transport' ? 'text-blue-500' : place.source === 'Accommodation' ? 'text-amber-500' : 'text-purple-500'}`}>{place.source === 'Transport' ? 'flight_land' : place.source === 'Accommodation' ? 'hotel' : 'place'}</span>{place.displayName}
                                         </div>
                                     ))}
                                 </div>
@@ -737,35 +626,20 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 </div>
             </div>
 
-            {/* ... Tabs (Unchanged) ... */}
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                <Tabs 
-                    tabs={[
-                        { id: 'planner', label: 'Daily Planner', icon: <span className="material-icons-outlined">calendar_view_day</span> },
-                        { id: 'itinerary', label: 'Bookings', icon: <span className="material-icons-outlined">commute</span> },
-                        { id: 'budget', label: 'Cost Breakdown', icon: <span className="material-icons-outlined">receipt_long</span> },
-                    ]}
-                    activeTab={activeTab}
-                    onChange={setActiveTab}
-                />
+                <Tabs tabs={[{ id: 'planner', label: 'Daily Planner', icon: <span className="material-icons-outlined">calendar_view_day</span> }, { id: 'itinerary', label: 'Bookings', icon: <span className="material-icons-outlined">commute</span> }, { id: 'budget', label: 'Cost Breakdown', icon: <span className="material-icons-outlined">receipt_long</span> }]} activeTab={activeTab} onChange={setActiveTab} />
                 {activeTab === 'planner' && (
                     <div className="flex gap-2">
-                        <Button variant="secondary" size="sm" onClick={() => setIsLocationModalOpen(true)} className="hidden md:flex">
-                            <span className="material-icons-outlined text-sm mr-2">map</span> Manage Route
-                        </Button>
+                        <Button variant="secondary" size="sm" onClick={() => setIsLocationModalOpen(true)} className="hidden md:flex"><span className="material-icons-outlined text-sm mr-2">map</span> Manage Route</Button>
                         <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
-                            <button onClick={() => setPlannerView('list')} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${plannerView === 'list' ? 'bg-white shadow text-blue-600 dark:bg-gray-700 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
-                                <span className="material-icons-outlined text-sm align-middle mr-1">view_agenda</span> List
-                            </button>
-                            <button onClick={() => setPlannerView('table')} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${plannerView === 'table' ? 'bg-white shadow text-blue-600 dark:bg-gray-700 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
-                                <span className="material-icons-outlined text-sm align-middle mr-1">table_chart</span> Table
-                            </button>
+                            <button onClick={() => setPlannerView('list')} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${plannerView === 'list' ? 'bg-white shadow text-blue-600 dark:bg-gray-700 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}><span className="material-icons-outlined text-sm align-middle mr-1">view_agenda</span> List</button>
+                            <button onClick={() => setPlannerView('table')} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${plannerView === 'table' ? 'bg-white shadow text-blue-600 dark:bg-gray-700 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}><span className="material-icons-outlined text-sm align-middle mr-1">table_chart</span> Table</button>
                         </div>
                     </div>
                 )}
             </div>
 
-            {/* ... View Renders ... */}
+            {/* Content Switcher */}
             {activeTab === 'planner' && (
                 <>
                     {plannerView === 'list' ? (
@@ -887,7 +761,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                         const items = getAllItemsForTable(dateStr);
                                         const dateObj = new Date(dateStr);
                                         const isToday = new Date().toDateString() === dateObj.toDateString();
-                                        
                                         return (
                                             <React.Fragment key={dateStr}>
                                                 <tr className={`border-b border-gray-50 dark:border-white/5 ${isToday ? 'bg-blue-50/50 dark:bg-blue-900/10' : 'bg-gray-50/30 dark:bg-black/20'}`}>
@@ -902,80 +775,18 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                 </tr>
                                                 {items.length === 0 ? (
                                                     <tr>
-                                                        <td colSpan={6} className="px-6 py-8 text-center text-xs text-gray-400 dark:text-gray-600 italic font-medium">
-                                                            No scheduled items for this day
-                                                        </td>
+                                                        <td colSpan={6} className="px-6 py-8 text-center text-xs text-gray-400 dark:text-gray-600 italic font-medium">No scheduled items for this day</td>
                                                     </tr>
                                                 ) : items.map((item, idx) => {
                                                     const styleClasses = getTypeStyles(item.type);
-
                                                     return (
                                                         <tr key={`${dateStr}-${idx}`} className="group hover:bg-blue-50/30 dark:hover:bg-white/5 transition-all duration-200 border-b border-gray-50 dark:border-white/5 last:border-0">
-                                                            {/* Time */}
-                                                            <td className="px-6 py-4">
-                                                                <div className="flex flex-col">
-                                                                    <span className="text-sm font-bold text-gray-800 dark:text-gray-200 font-mono tracking-tight">{formatTime(item.time)}</span>
-                                                                    {item.isDropoff && <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Arrive</span>}
-                                                                </div>
-                                                            </td>
-                                                            
-                                                            {/* Type Badge */}
-                                                            <td className="px-6 py-4">
-                                                                <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-[10px] font-bold uppercase tracking-wide ${styleClasses}`}>
-                                                                    <span className="material-icons-outlined text-sm">{item.icon}</span>
-                                                                    <span>{item.subType || item.type}</span>
-                                                                </div>
-                                                            </td>
-
-                                                            {/* Details */}
-                                                            <td className="px-6 py-4">
-                                                                <div>
-                                                                    <p className="font-bold text-gray-900 dark:text-white text-sm leading-snug">{item.name}</p>
-                                                                    {item.meta && (
-                                                                        <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1.5 font-medium opacity-80">
-                                                                            {item.type === 'Transport' && !item.isDropoff && <span className="material-icons-outlined text-[10px]">schedule</span>}
-                                                                            {item.meta}
-                                                                        </p>
-                                                                    )}
-                                                                </div>
-                                                            </td>
-
-                                                            {/* Location */}
-                                                            <td className="px-6 py-4">
-                                                                <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400 font-medium max-w-[180px]">
-                                                                    {item.location ? (
-                                                                        <>
-                                                                            <span className="material-icons-outlined text-[14px] opacity-60 shrink-0">place</span>
-                                                                            <span className="truncate" title={item.location}>{item.location}</span>
-                                                                        </>
-                                                                    ) : (
-                                                                        <span className="opacity-30">-</span>
-                                                                    )}
-                                                                </div>
-                                                            </td>
-
-                                                            {/* Cost */}
-                                                            <td className="px-6 py-4 text-right">
-                                                                {item.cost ? (
-                                                                    <span className="font-bold text-gray-900 dark:text-white text-sm tabular-nums tracking-tight">{formatCurrency(item.cost)}</span>
-                                                                ) : (
-                                                                    <span className="text-gray-300 dark:text-gray-600 text-xs font-mono">-</span>
-                                                                )}
-                                                            </td>
-
-                                                            {/* Action */}
-                                                            <td className="px-6 py-4 text-right">
-                                                                <button 
-                                                                    onClick={() => {
-                                                                        if (item.type === 'Transport') openTransportModal([item.ref]);
-                                                                        if (item.type === 'Accommodation') openAccommodationModal();
-                                                                        if (item.type === 'Activity' || item.type === 'Reservation' || item.type === 'Tour') handleOpenActivityModal(dateStr, item.ref);
-                                                                    }} 
-                                                                    className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all opacity-0 group-hover:opacity-100"
-                                                                >
-                                                                    <span className="material-icons-outlined text-lg">edit_note</span>
-                                                                </button>
-                                                            </td>
+                                                            <td className="px-6 py-4"><div className="flex flex-col"><span className="text-sm font-bold text-gray-800 dark:text-gray-200 font-mono tracking-tight">{formatTime(item.time)}</span>{item.isDropoff && <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Arrive</span>}</div></td>
+                                                            <td className="px-6 py-4"><div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-[10px] font-bold uppercase tracking-wide ${styleClasses}`}><span className="material-icons-outlined text-sm">{item.icon}</span><span>{item.subType || item.type}</span></div></td>
+                                                            <td className="px-6 py-4"><div><p className="font-bold text-gray-900 dark:text-white text-sm leading-snug">{item.name}</p>{item.meta && (<p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1.5 font-medium opacity-80">{item.type === 'Transport' && !item.isDropoff && <span className="material-icons-outlined text-[10px]">schedule</span>}{item.meta}</p>)}</div></td>
+                                                            <td className="px-6 py-4"><div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400 font-medium max-w-[180px]">{item.location ? (<><span className="material-icons-outlined text-[14px] opacity-60 shrink-0">place</span><span className="truncate" title={item.location}>{item.location}</span></>) : (<span className="opacity-30">-</span>)}</div></td>
+                                                            <td className="px-6 py-4 text-right">{item.cost ? (<span className="font-bold text-gray-900 dark:text-white text-sm tabular-nums tracking-tight">{formatCurrency(item.cost)}</span>) : (<span className="text-gray-300 dark:text-gray-600 text-xs font-mono">-</span>)}</td>
+                                                            <td className="px-6 py-4 text-right"><button onClick={() => { if (item.type === 'Transport') openTransportModal([item.ref]); if (item.type === 'Accommodation') openAccommodationModal(); if (item.type === 'Activity' || item.type === 'Reservation' || item.type === 'Tour') handleOpenActivityModal(dateStr, item.ref); }} className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all opacity-0 group-hover:opacity-100"><span className="material-icons-outlined text-lg">edit_note</span></button></td>
                                                         </tr>
                                                     );
                                                 })}
@@ -987,109 +798,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                         </div>
                     )}
                 </>
-            )}
-
-            {activeTab === 'budget' && (
-                <div className="space-y-8 animate-fade-in">
-                    {/* Summary Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="p-6 bg-emerald-50 dark:bg-emerald-900/10 rounded-3xl border border-emerald-100 dark:border-emerald-900/30">
-                            <div className="flex items-center gap-3 mb-2 text-emerald-600 dark:text-emerald-400">
-                                <span className="material-icons-outlined">payments</span>
-                                <span className="text-xs font-black uppercase tracking-widest">Total Estimated</span>
-                            </div>
-                            <div className="text-4xl font-black text-emerald-700 dark:text-emerald-300">{formatCurrency(totalCost)}</div>
-                        </div>
-                        <div className="p-6 bg-blue-50 dark:bg-blue-900/10 rounded-3xl border border-blue-100 dark:border-blue-900/30">
-                            <div className="flex items-center gap-3 mb-2 text-blue-600 dark:text-blue-400">
-                                <span className="material-icons-outlined">person</span>
-                                <span className="text-xs font-black uppercase tracking-widest">Per Person</span>
-                            </div>
-                            <div className="text-4xl font-black text-blue-700 dark:text-blue-300">{formatCurrency(costPerPerson)}</div>
-                            <div className="text-xs font-bold text-blue-400 mt-1">{trip.participants.length} Travelers</div>
-                        </div>
-                        <div className="p-6 bg-purple-50 dark:bg-purple-900/10 rounded-3xl border border-purple-100 dark:border-purple-900/30">
-                            <div className="flex items-center gap-3 mb-2 text-purple-600 dark:text-purple-400">
-                                <span className="material-icons-outlined">today</span>
-                                <span className="text-xs font-black uppercase tracking-widest">Per Day</span>
-                            </div>
-                            <div className="text-4xl font-black text-purple-700 dark:text-purple-300">{formatCurrency(costPerDay)}</div>
-                            <div className="text-xs font-bold text-purple-400 mt-1">{duration} Days</div>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        {/* Category Breakdown */}
-                        <div className="space-y-4">
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Category Breakdown</h3>
-                            
-                            {/* Transport Bar */}
-                            <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-white/5">
-                                <div className="flex justify-between items-center mb-2">
-                                    <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
-                                        <span className="material-icons-outlined">commute</span>
-                                        <span className="font-bold text-sm">Transport</span>
-                                    </div>
-                                    <span className="font-bold text-gray-900 dark:text-white">{formatCurrency(transportCost)}</span>
-                                </div>
-                                <div className="w-full h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                                    <div className="h-full bg-blue-500 rounded-full" style={{ width: `${totalCost > 0 ? (transportCost / totalCost) * 100 : 0}%` }}></div>
-                                </div>
-                            </div>
-
-                            {/* Accommodation Bar */}
-                            <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-white/5">
-                                <div className="flex justify-between items-center mb-2">
-                                    <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
-                                        <span className="material-icons-outlined">hotel</span>
-                                        <span className="font-bold text-sm">Accommodation</span>
-                                    </div>
-                                    <span className="font-bold text-gray-900 dark:text-white">{formatCurrency(stayCost)}</span>
-                                </div>
-                                <div className="w-full h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                                    <div className="h-full bg-amber-500 rounded-full" style={{ width: `${totalCost > 0 ? (stayCost / totalCost) * 100 : 0}%` }}></div>
-                                </div>
-                            </div>
-
-                            {/* Activities Bar */}
-                            <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-white/5">
-                                <div className="flex justify-between items-center mb-2">
-                                    <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
-                                        <span className="material-icons-outlined">local_activity</span>
-                                        <span className="font-bold text-sm">Activities</span>
-                                    </div>
-                                    <span className="font-bold text-gray-900 dark:text-white">{formatCurrency(activityCost)}</span>
-                                </div>
-                                <div className="w-full h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                                    <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${totalCost > 0 ? (activityCost / totalCost) * 100 : 0}%` }}></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Detailed Expense List */}
-                        <div className="bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-white/5 p-6 h-[400px] flex flex-col">
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Detailed Expenses</h3>
-                            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-3">
-                                {[
-                                    ...(trip.transports || []).map(t => ({ name: `${t.mode}: ${t.provider}`, cost: t.cost, icon: getTransportIcon(t.mode), color: 'text-blue-500' })),
-                                    ...(trip.accommodations || []).map(a => ({ name: a.name, cost: a.cost, icon: 'hotel', color: 'text-amber-500' })),
-                                    ...(trip.activities || []).map(a => ({ name: a.title, cost: a.cost, icon: 'confirmation_number', color: 'text-indigo-500' }))
-                                ].filter(i => (i.cost || 0) > 0).sort((a,b) => (b.cost||0) - (a.cost||0)).map((item, idx) => (
-                                    <div key={idx} className="flex justify-between items-center p-3 hover:bg-gray-50 dark:hover:bg-white/5 rounded-xl transition-colors">
-                                        <div className="flex items-center gap-3">
-                                            <span className={`material-icons-outlined ${item.color}`}>{item.icon}</span>
-                                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{item.name}</span>
-                                        </div>
-                                        <span className="font-bold text-gray-900 dark:text-white">{formatCurrency(item.cost || 0)}</span>
-                                    </div>
-                                ))}
-                                {totalCost === 0 && (
-                                    <div className="h-full flex items-center justify-center text-gray-400 text-xs italic">No expenses recorded</div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
             )}
 
             {activeTab === 'itinerary' && (
@@ -1120,7 +828,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                             </div>
                         </div>
 
-                        {/* List Transport Groups */}
                         {Object.keys(transportGroups).length === 0 ? (
                             <div className="text-center py-12 bg-gray-50 dark:bg-white/5 rounded-3xl border border-dashed border-gray-200 dark:border-white/10">
                                 <span className="material-icons-outlined text-4xl text-gray-300">confirmation_number</span>
@@ -1131,21 +838,16 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                 {Object.entries(transportGroups).map(([gId, groupTransports]) => {
                                     const items = groupTransports as Transport[];
                                     const mode = items[0]?.mode || 'Flight';
+                                    const tripTypeLabel = items[0].type || 'One-Way';
                                     
-                                    // CAR RENTAL / PERSONAL CAR CARD
                                     if (mode === 'Car Rental' || mode === 'Personal Car') {
                                         const car = items[0];
                                         return (
                                             <div key={gId} className="group relative bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-white/5 overflow-hidden hover:shadow-lg transition-all border-l-4 border-l-orange-500">
-                                                {/* Header */}
                                                 <div className="p-5 border-b border-gray-100 dark:border-white/5 flex justify-between items-start bg-orange-50/30 dark:bg-orange-900/5">
                                                     <div className="flex gap-4">
                                                         <div className="w-10 h-10 bg-white dark:bg-gray-700 rounded-lg shadow-sm flex items-center justify-center border border-gray-100 dark:border-white/5 overflow-hidden relative">
-                                                            {car.logoUrl ? (
-                                                                <img src={car.logoUrl} className="w-full h-full object-cover" />
-                                                            ) : (
-                                                                <span className="material-icons-outlined text-orange-500 text-xl">directions_car</span>
-                                                            )}
+                                                            {car.logoUrl ? <img src={car.logoUrl} className="w-full h-full object-cover" /> : <span className="material-icons-outlined text-orange-500 text-xl">directions_car</span>}
                                                         </div>
                                                         <div>
                                                             <h4 className="font-black text-gray-900 dark:text-white text-lg leading-none">{car.provider}</h4>
@@ -1157,127 +859,144 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                     </div>
                                                     <button onClick={() => openTransportModal(items)} className="text-gray-300 hover:text-orange-500 transition-colors"><span className="material-icons-outlined">edit</span></button>
                                                 </div>
-
-                                                {/* Route Grid */}
                                                 <div className="p-5 grid grid-cols-2 gap-6 relative">
-                                                    {/* Center Car Icon Overlay */}
-                                                    <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white dark:bg-gray-800 rounded-full border border-gray-100 dark:border-white/10 flex items-center justify-center z-10 shadow-sm">
-                                                        <span className="material-icons-outlined text-gray-400 text-sm">key</span>
-                                                    </div>
+                                                    <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white dark:bg-gray-800 rounded-full border border-gray-100 dark:border-white/10 flex items-center justify-center z-10 shadow-sm"><span className="material-icons-outlined text-gray-400 text-sm">key</span></div>
                                                     <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[1px] h-full bg-dashed border-l border-dashed border-gray-200 dark:border-white/10 z-0"></div>
-
-                                                    <div className="space-y-1">
-                                                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block">Pickup</span>
-                                                        <div className="font-bold text-gray-900 dark:text-white text-sm">{car.pickupLocation}</div>
-                                                        <div className="text-xs text-gray-500">{new Date(car.departureDate).toLocaleDateString()}</div>
-                                                        <div className="text-xs font-mono text-gray-400">{formatTime(car.departureTime)}</div>
-                                                    </div>
-                                                    <div className="space-y-1 text-right">
-                                                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block">Dropoff</span>
-                                                        <div className="font-bold text-gray-900 dark:text-white text-sm">{car.dropoffLocation}</div>
-                                                        <div className="text-xs text-gray-500">{new Date(car.arrivalDate).toLocaleDateString()}</div>
-                                                        <div className="text-xs font-mono text-gray-400">{formatTime(car.arrivalTime)}</div>
-                                                    </div>
+                                                    <div className="space-y-1"><span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block">Pickup</span><div className="font-bold text-gray-900 dark:text-white text-sm">{car.pickupLocation}</div><div className="text-xs text-gray-500">{new Date(car.departureDate).toLocaleDateString()}</div><div className="text-xs font-mono text-gray-400">{formatTime(car.departureTime)}</div></div>
+                                                    <div className="space-y-1 text-right"><span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block">Dropoff</span><div className="font-bold text-gray-900 dark:text-white text-sm">{car.dropoffLocation}</div><div className="text-xs text-gray-500">{new Date(car.arrivalDate).toLocaleDateString()}</div><div className="text-xs font-mono text-gray-400">{formatTime(car.arrivalTime)}</div></div>
                                                 </div>
-
-                                                {/* Vehicle Details Footer */}
                                                 <div className="bg-gray-50 dark:bg-white/5 p-4 border-t border-gray-100 dark:border-white/5 flex justify-between items-center">
-                                                    <div>
-                                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Vehicle</span>
-                                                        <span className="font-bold text-sm text-gray-800 dark:text-gray-200">{car.vehicleModel || 'Standard Car'}</span>
-                                                    </div>
+                                                    <div><span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Vehicle</span><span className="font-bold text-sm text-gray-800 dark:text-gray-200">{car.vehicleModel || 'Standard Car'}</span></div>
                                                     {car.cost && <div className="text-lg font-black text-emerald-600 dark:text-emerald-400">{formatCurrency(car.cost)}</div>}
                                                 </div>
                                             </div>
                                         );
                                     }
 
-                                    // FLIGHT / TRAIN / BUS TICKET
                                     return (
-                                        <div key={gId} className="group relative flex bg-white dark:bg-gray-800 rounded-3xl shadow-sm hover:shadow-xl transition-all border border-gray-100 dark:border-white/5 overflow-hidden border-l-4 border-l-blue-500">
-                                            
-                                            {/* Main Ticket Section (Left) */}
-                                            <div className="flex-1 p-5 flex flex-col justify-between relative">
-                                                {/* Header */}
-                                                <div className="flex justify-between items-start mb-6">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 bg-white dark:bg-gray-700 rounded-lg shadow-sm border border-gray-100 dark:border-white/5 flex items-center justify-center overflow-hidden relative">
-                                                            {items[0].logoUrl ? <img src={items[0].logoUrl} className="w-full h-full object-cover"/> : <span className="material-icons-outlined text-blue-500">flight</span>}
-                                                        </div>
-                                                        <div>
-                                                            <h4 className="font-black text-gray-900 dark:text-white text-sm leading-none">{items[0].provider}</h4>
-                                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{items[0].identifier}</span>
-                                                        </div>
+                                        <div key={gId} className="flex flex-col bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-white/5 overflow-hidden hover:shadow-lg transition-all">
+                                            {/* Header */}
+                                            <div className="flex justify-between items-center p-5 border-b border-gray-50 dark:border-white/5 bg-gray-50/50 dark:bg-white/5">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-xl bg-white dark:bg-gray-700 shadow-sm flex items-center justify-center overflow-hidden relative">
+                                                         {items[0].logoUrl ? <img src={items[0].logoUrl} className="w-full h-full object-cover" /> : <span className="material-icons-outlined text-gray-400">{getTransportIcon(mode)}</span>}
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="font-black text-gray-900 dark:text-white text-base leading-none">{items[0].provider}</h4>
+                                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1 block">{items[0].identifier} • {tripTypeLabel}</span>
                                                     </div>
                                                 </div>
+                                                <div className="text-right">
+                                                     {items[0].cost && <div className="text-lg font-black text-gray-900 dark:text-white leading-none">{formatCurrency(items[0].cost)}</div>}
+                                                     <button onClick={() => openTransportModal(items)} className="text-[10px] font-bold text-blue-500 hover:underline uppercase tracking-wider mt-1">Edit Details</button>
+                                                </div>
+                                            </div>
 
-                                                {/* Route Info - Iterate Segments */}
-                                                <div className="space-y-0 divide-y divide-dashed divide-gray-100 dark:divide-white/5">
-                                                    {items.map((leg, idx) => (
-                                                        <div key={leg.id} className="relative py-4 first:pt-0 last:pb-0">
-                                                            <div className="flex justify-between items-center relative">
-                                                                {/* Origin */}
-                                                                <div className="text-left min-w-[60px]">
-                                                                    <div className="text-3xl font-black text-gray-900 dark:text-white leading-none">{leg.origin}</div>
-                                                                    <div className="text-[10px] font-bold text-blue-600 dark:text-blue-400 mt-1">{formatTime(leg.departureTime)}</div>
-                                                                    <div className="text-[9px] font-bold text-gray-400 uppercase">{new Date(leg.departureDate).toLocaleDateString(undefined, {month:'short', day:'numeric'})}</div>
+                                            {/* Timeline Segments */}
+                                            <div className="p-5 space-y-6">
+                                                {items.map((leg, idx) => {
+                                                    const prevLeg = items[idx - 1];
+                                                    let showDivider = false;
+                                                    let dividerLabel = "Connection";
+                                                    let layoverDuration = "";
+
+                                                    if (prevLeg) {
+                                                        const arr = new Date(`${prevLeg.arrivalDate}T${prevLeg.arrivalTime}`);
+                                                        const dep = new Date(`${leg.departureDate}T${leg.departureTime}`);
+                                                        const diffMs = dep.getTime() - arr.getTime();
+                                                        const diffHours = diffMs / (1000 * 60 * 60);
+                                                        
+                                                        const h = Math.floor(diffMs / (1000 * 60 * 60));
+                                                        const m = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                                                        
+                                                        const isRoundTrip = tripTypeLabel === 'Round Trip';
+                                                        if (diffHours > 24 || (isRoundTrip && leg.origin === items[0].origin)) {
+                                                            showDivider = true;
+                                                            const diffDays = Math.round(diffHours / 24);
+                                                            dividerLabel = diffDays > 0 ? `Return Journey • ${diffDays} Days Later` : "Return Journey";
+                                                        } else if (diffMs > 0) {
+                                                            layoverDuration = `${h}h ${m}m Layover in ${leg.origin}`;
+                                                        }
+                                                    }
+
+                                                    const classColor = getClassColor(leg.travelClass);
+                                                    const seatTypeColor = getSeatColor(leg.seatType);
+
+                                                    return (
+                                                        <div key={leg.id}>
+                                                            {/* Divider Logic */}
+                                                            {showDivider ? (
+                                                                <div className="flex items-center gap-3 my-4">
+                                                                    <div className="h-px bg-gray-200 dark:bg-white/10 flex-1"></div>
+                                                                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest bg-gray-50 dark:bg-white/5 px-2 py-1 rounded">{dividerLabel}</span>
+                                                                    <div className="h-px bg-gray-200 dark:bg-white/10 flex-1"></div>
                                                                 </div>
-
-                                                                {/* Center Graphic */}
-                                                                <div className="flex flex-col items-center justify-center px-4 flex-1">
-                                                                    <div className="flex items-center w-full gap-2 opacity-30 mb-1">
-                                                                        <div className="h-[2px] bg-gray-400 w-full rounded-full"></div>
-                                                                        <span className="material-icons-outlined text-sm text-gray-600 dark:text-gray-300">{getTransportIcon(mode)}</span>
-                                                                        <div className="h-[2px] bg-gray-400 w-full rounded-full"></div>
+                                                            ) : layoverDuration ? (
+                                                                <div className="flex justify-center my-4 relative">
+                                                                    <div className="absolute top-0 bottom-0 left-[84px] w-0.5 bg-gray-100 dark:bg-white/5 -z-10" />
+                                                                    <div className="bg-gray-50 dark:bg-white/5 px-3 py-1.5 rounded-lg border border-gray-100 dark:border-white/5 flex items-center gap-2 shadow-sm">
+                                                                        <span className="material-icons-outlined text-[12px] text-gray-400">schedule</span>
+                                                                        <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{layoverDuration}</span>
                                                                     </div>
-                                                                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{calculateDuration(leg)}</span>
+                                                                </div>
+                                                            ) : idx > 0 && (
+                                                                <div className="my-2" />
+                                                            )}
+
+                                                            {/* Segment Row */}
+                                                            <div className="flex gap-5 items-stretch relative group/segment">
+                                                                {/* Times Column */}
+                                                                <div className="flex flex-col justify-between py-1 text-right min-w-[70px]">
+                                                                    <span className="text-xl font-black text-gray-900 dark:text-white leading-none tracking-tight">{formatTime(leg.departureTime)}</span>
+                                                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest my-2">{calculateDuration(leg)}</span>
+                                                                    <span className="text-xl font-black text-gray-500 dark:text-gray-400 leading-none tracking-tight">{formatTime(leg.arrivalTime)}</span>
                                                                 </div>
 
-                                                                {/* Dest */}
-                                                                <div className="text-right min-w-[60px]">
-                                                                    <div className="text-3xl font-black text-gray-900 dark:text-white leading-none">{leg.destination}</div>
-                                                                    <div className="text-[10px] font-bold text-blue-600 dark:text-blue-400 mt-1">{formatTime(leg.arrivalTime)}</div>
-                                                                    <div className="text-[9px] font-bold text-gray-400 uppercase">{new Date(leg.arrivalDate).toLocaleDateString(undefined, {month:'short', day:'numeric'})}</div>
-                                                                </div>
-                                                            </div>
-
-                                                            {/* Leg Details Row: Class, Seat, Exit */}
-                                                            <div className="flex items-center justify-center gap-4 mt-3 pt-2">
-                                                                <span className={`h-6 flex items-center text-[9px] font-bold px-2 rounded uppercase tracking-wider border ${getClassColor(leg.travelClass)}`}>
-                                                                    {leg.travelClass || 'Economy'}
-                                                                </span>
-                                                                
-                                                                <div className="h-6 flex items-center gap-1 text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 rounded border border-emerald-100 dark:border-emerald-900/30">
-                                                                    <span className="material-icons-outlined text-[10px] opacity-70">{getSeatTypeIcon(leg.seatType)}</span>
-                                                                    <span>{leg.seatNumber || 'Unassigned'}</span>
+                                                                {/* Visual Path Column */}
+                                                                <div className="flex flex-col items-center relative pt-2">
+                                                                    <div className="w-3 h-3 rounded-full bg-blue-500 shadow-[0_0_0_4px_rgba(59,130,246,0.2)] z-10"></div>
+                                                                    <div className="w-0.5 flex-grow bg-gradient-to-b from-blue-500/50 to-gray-200 dark:to-white/10 my-1 rounded-full"></div>
+                                                                    <div className="w-3 h-3 rounded-full border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 z-10"></div>
                                                                 </div>
 
-                                                                {leg.isExitRow && (
-                                                                     <div className="h-6 flex items-center gap-1 text-[9px] font-black text-orange-500 uppercase tracking-wider bg-orange-50 dark:bg-orange-900/20 px-2 rounded border border-orange-100 dark:border-orange-900/30">
-                                                                        <span className="material-icons-outlined text-[9px]">emergency</span> Exit
-                                                                     </div>
-                                                                )}
+                                                                {/* Locations & Details */}
+                                                                <div className="flex-1 pt-0.5 pb-2">
+                                                                    {/* Origin Block */}
+                                                                    <div className="mb-6">
+                                                                        <div className="flex items-baseline gap-2">
+                                                                            <span className="text-2xl font-black text-gray-900 dark:text-white leading-none tracking-tight">{leg.origin}</span>
+                                                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{new Date(leg.departureDate).toLocaleDateString()}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    
+                                                                    {/* Destination Block */}
+                                                                    <div>
+                                                                        <div className="flex items-baseline gap-2">
+                                                                            <span className="text-2xl font-black text-gray-900 dark:text-white leading-none tracking-tight">{leg.destination}</span>
+                                                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{new Date(leg.arrivalDate).toLocaleDateString()}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Meta Info (Right Side) */}
+                                                                <div className="flex flex-col gap-2 items-end pt-1">
+                                                                    <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border ${classColor}`}>
+                                                                        {leg.travelClass || 'Economy'}
+                                                                    </span>
+                                                                    <div className={`flex items-center gap-1.5 text-[10px] font-bold px-2 py-1.5 rounded-lg border ${seatTypeColor}`}>
+                                                                        <span className="material-icons-outlined text-[12px] opacity-70">{getSeatTypeIcon(leg.seatType)}</span> 
+                                                                        <span>{leg.seatNumber || '--'}</span>
+                                                                    </div>
+                                                                    {leg.isExitRow && (
+                                                                         <span className="text-[9px] font-black text-rose-500 bg-rose-50 dark:bg-rose-900/20 px-2 py-1 rounded-lg uppercase tracking-wider flex items-center gap-1 border border-rose-200 dark:border-rose-900/30">
+                                                                            <span className="material-icons-outlined text-[10px]">emergency</span> Exit
+                                                                         </span>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-
-                                            {/* Divider Line (Dashed) */}
-                                            <div className="relative w-[1px] my-4 border-l-2 border-dashed border-gray-200 dark:border-white/10 flex flex-col justify-between">
-                                                <div className="absolute -top-6 -left-3 w-6 h-6 rounded-full bg-[#f3f4f6] dark:bg-black z-10"></div>
-                                                <div className="absolute -bottom-6 -left-3 w-6 h-6 rounded-full bg-[#f3f4f6] dark:bg-black z-10"></div>
-                                            </div>
-
-                                            {/* Stub Section (Right) */}
-                                            <div className="w-24 bg-gray-50 dark:bg-white/5 p-4 flex flex-col items-center justify-between text-center relative">
-                                                <button onClick={() => openTransportModal(items)} className="absolute top-2 right-2 text-gray-300 hover:text-blue-500 p-1"><span className="material-icons-outlined text-sm">edit</span></button>
-                                                
-                                                <div className="mt-6 flex flex-col items-center gap-1"></div>
-
-                                                <div className="mb-2">
-                                                    {items[0].cost && <span className="block font-black text-emerald-600 dark:text-emerald-400 text-sm">{formatCurrency(items[0].cost)}</span>}
-                                                </div>
+                                                    )
+                                                })}
                                             </div>
                                         </div>
                                     );
@@ -1309,7 +1028,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                 {trip.accommodations.map((stay, idx) => (
                                     <div key={idx} className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-white/5 shadow-sm hover:shadow-xl transition-all overflow-hidden flex flex-col border-l-4 border-l-amber-500">
                                         <div className="p-5 flex gap-5">
-                                            {/* Left: Image/Icon */}
                                             <div className="w-24 h-24 rounded-2xl bg-amber-50 dark:bg-amber-900/10 flex items-center justify-center shrink-0 overflow-hidden shadow-inner shadow-amber-500/20 relative">
                                                 {stay.logoUrl ? (
                                                     <img src={stay.logoUrl} className="w-full h-full object-cover" />
@@ -1321,7 +1039,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                 </div>
                                             </div>
 
-                                            {/* Right: Info */}
                                             <div className="flex-1 flex flex-col justify-between">
                                                 <div>
                                                     <div className="flex justify-between items-start">
@@ -1346,7 +1063,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                             </div>
                                         </div>
                                         
-                                        {/* Footer Bar */}
                                         <div className="bg-amber-50/50 dark:bg-amber-900/10 px-5 py-3 flex justify-between items-center border-t border-amber-100/50 dark:border-white/5">
                                             <div className="flex gap-3">
                                                 {stay.confirmationCode && <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded">Ref: {stay.confirmationCode}</span>}
@@ -1362,8 +1078,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 </div>
             )}
 
-            {/* MODALS */}
-            
             <Modal isOpen={isTransportModalOpen} onClose={() => setIsTransportModalOpen(false)} title="Manage Transport" maxWidth="max-w-4xl">
                 <TransportConfigurator 
                     initialData={editingTransports || []}
@@ -1374,7 +1088,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                     defaultEndDate={selectedDateForModal || trip.endDate}
                 />
             </Modal>
-
+            
             <Modal isOpen={isAccommodationModalOpen} onClose={() => setIsAccommodationModalOpen(false)} title="Manage Accommodation" maxWidth="max-w-3xl">
                 <AccommodationConfigurator 
                     initialData={editingAccommodations || []}
@@ -1434,20 +1148,11 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                             </button>
                         ))}
                     </div>
-
-                    <Input 
-                        label="Title" 
-                        placeholder={activityForm.type === 'Reservation' ? "e.g. Dinner at Mario's" : "e.g. City Walking Tour"} 
-                        value={activityForm.title || ''} 
-                        onChange={e => setActivityForm({...activityForm, title: e.target.value})} 
-                        className="!text-lg font-bold"
-                    />
-                    
+                    <Input label="Title" placeholder="e.g. Dinner" value={activityForm.title || ''} onChange={e => setActivityForm({...activityForm, title: e.target.value})} className="!text-lg font-bold" />
                     <div className="grid grid-cols-2 gap-4">
                         <Input label="Date" type="date" value={activityForm.date || ''} onChange={e => setActivityForm({...activityForm, date: e.target.value})} />
                         <TimeInput label="Time" value={activityForm.time || '12:00'} onChange={val => setActivityForm({...activityForm, time: val})} />
                     </div>
-
                     <div className="grid grid-cols-2 gap-4">
                          <div className="relative">
                             <Input label="Cost" type="number" placeholder="0.00" value={activityForm.cost || ''} onChange={e => setActivityForm({...activityForm, cost: parseFloat(e.target.value)})} className="pl-8" />
@@ -1455,9 +1160,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                          </div>
                          <Input label="Location" placeholder="Address..." value={activityForm.location || ''} onChange={e => setActivityForm({...activityForm, location: e.target.value})} />
                     </div>
-
-                    <Input label="Notes / Confirmation" placeholder="Details..." value={activityForm.description || ''} onChange={e => setActivityForm({...activityForm, description: e.target.value})} />
-
+                    <Input label="Notes" placeholder="Details..." value={activityForm.description || ''} onChange={e => setActivityForm({...activityForm, description: e.target.value})} />
                     <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-white/5">
                         <Button variant="ghost" className="flex-1" onClick={() => setIsActivityModalOpen(false)}>Cancel</Button>
                         <Button variant="primary" className="flex-1" onClick={handleSaveActivity} disabled={!activityForm.title || !activityForm.date}>Save Item</Button>
@@ -1465,114 +1168,29 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 </div>
             </Modal>
 
-            {/* REDESIGNED Import Preview Modal */}
             <Modal isOpen={importPreview.open} onClose={() => setImportPreview({ open: false, candidates: [] })} title="Flight Import Analysis" maxWidth="max-w-3xl">
                 <div className="space-y-6">
                     <div className="bg-gradient-to-br from-blue-500/10 to-indigo-500/10 p-5 rounded-2xl border border-blue-500/20 flex items-start gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-blue-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/20">
-                            <span className="material-icons-outlined text-2xl">smart_toy</span>
-                        </div>
-                        <div>
-                            <h4 className="font-black text-gray-900 dark:text-white text-lg">AI Flight Analysis</h4>
-                            <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 leading-relaxed">
-                                We detected <strong>{importPreview.candidates.length} potential trips</strong> in your file. 
-                                Based on your current plan dates ({new Date(trip.startDate).toLocaleDateString()} - {new Date(trip.endDate).toLocaleDateString()}), matches are sorted by relevance.
-                            </p>
-                        </div>
+                        <div className="w-12 h-12 rounded-xl bg-blue-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/20"><span className="material-icons-outlined text-2xl">smart_toy</span></div>
+                        <div><h4 className="font-black text-gray-900 dark:text-white text-lg">AI Flight Analysis</h4><p className="text-sm text-gray-600 dark:text-gray-300 mt-1 leading-relaxed">We detected <strong>{importPreview.candidates.length} potential trips</strong> in your file.</p></div>
                     </div>
-
-                    <div className="flex justify-between items-center px-1">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Detected Itineraries</span>
-                        <div className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded-lg">
-                            {selectedCount} Selected
-                        </div>
-                    </div>
-
+                    <div className="flex justify-between items-center px-1"><span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Detected Itineraries</span><div className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded-lg">{selectedCount} Selected</div></div>
                     <div className="space-y-4 max-h-[50vh] overflow-y-auto custom-scrollbar p-1">
                         {importPreview.candidates.map((candidate, idx) => {
-                            const isHighConfidence = candidate.confidence > 75;
-                            const isMediumConfidence = candidate.confidence > 40 && candidate.confidence <= 75;
                             const isSelected = candidate.selected;
                             const isExpanded = expandedCandidateId === candidate.trip.id;
-
                             return (
-                                <div 
-                                    key={candidate.trip.id} 
-                                    className={`relative rounded-3xl border transition-all duration-300 overflow-hidden ${
-                                        isSelected 
-                                        ? 'bg-white dark:bg-gray-800 border-blue-500 ring-2 ring-blue-500 shadow-xl z-10' 
-                                        : 'bg-white dark:bg-gray-800/50 border-gray-200 dark:border-white/10 hover:border-blue-300 dark:hover:border-blue-700'
-                                    }`}
-                                >
-                                    {/* Confidence Badge */}
-                                    <div className={`absolute top-0 right-0 px-3 py-1 rounded-bl-2xl text-[9px] font-black uppercase tracking-widest ${
-                                        isHighConfidence ? 'bg-emerald-500 text-white' : isMediumConfidence ? 'bg-amber-500 text-white' : 'bg-gray-200 text-gray-500'
-                                    }`}>
-                                        {candidate.confidence}% Match
-                                    </div>
-
+                                <div key={candidate.trip.id} className={`relative rounded-3xl border transition-all duration-300 overflow-hidden ${isSelected ? 'bg-white dark:bg-gray-800 border-blue-500 ring-2 ring-blue-500 shadow-xl z-10' : 'bg-white dark:bg-gray-800/50 border-gray-200 dark:border-white/10 hover:border-blue-300 dark:hover:border-blue-700'}`}>
                                     <div className="p-5 flex items-start gap-4 cursor-pointer" onClick={() => toggleCandidateSelection(candidate.trip.id)}>
-                                        <div className={`mt-1 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
-                                            isSelected ? 'bg-blue-500 border-blue-500' : 'bg-transparent border-gray-300 dark:border-gray-600'
-                                        }`}>
-                                            {isSelected && <span className="material-icons-outlined text-white text-sm">check</span>}
-                                        </div>
-
-                                        <div className="flex-1">
-                                            <div className="pr-20">
-                                                <h4 className="font-bold text-lg text-gray-900 dark:text-white leading-tight">{candidate.trip.name}</h4>
-                                                <div className="flex flex-wrap items-center gap-3 mt-2 text-xs font-medium text-gray-500 dark:text-gray-400">
-                                                    <span className="flex items-center gap-1 bg-gray-100 dark:bg-white/10 px-2 py-1 rounded-lg">
-                                                        <span className="material-icons-outlined text-sm">calendar_today</span>
-                                                        {new Date(candidate.trip.startDate).toLocaleDateString()} - {new Date(candidate.trip.endDate).toLocaleDateString()}
-                                                    </span>
-                                                    <span className="flex items-center gap-1 bg-gray-100 dark:bg-white/10 px-2 py-1 rounded-lg">
-                                                        <span className="material-icons-outlined text-sm">flight</span>
-                                                        {candidate.trip.transports?.length} Flights
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
+                                        <div className={`mt-1 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${isSelected ? 'bg-blue-500 border-blue-500' : 'bg-transparent border-gray-300 dark:border-gray-600'}`}>{isSelected && <span className="material-icons-outlined text-white text-sm">check</span>}</div>
+                                        <div className="flex-1"><div className="pr-20"><h4 className="font-bold text-lg text-gray-900 dark:text-white leading-tight">{candidate.trip.name}</h4><div className="flex flex-wrap items-center gap-3 mt-2 text-xs font-medium text-gray-500 dark:text-gray-400"><span className="flex items-center gap-1 bg-gray-100 dark:bg-white/10 px-2 py-1 rounded-lg"><span className="material-icons-outlined text-sm">calendar_today</span>{new Date(candidate.trip.startDate).toLocaleDateString()} - {new Date(candidate.trip.endDate).toLocaleDateString()}</span><span className="flex items-center gap-1 bg-gray-100 dark:bg-white/10 px-2 py-1 rounded-lg"><span className="material-icons-outlined text-sm">flight</span>{candidate.trip.transports?.length} Flights</span></div></div></div>
                                     </div>
-
-                                    {/* Expandable Flight List */}
-                                    <div className="border-t border-gray-100 dark:border-white/5">
-                                        <button 
-                                            onClick={(e) => { e.stopPropagation(); setExpandedCandidateId(isExpanded ? null : candidate.trip.id); }}
-                                            className="w-full flex items-center justify-center py-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
-                                        >
-                                            {isExpanded ? 'Hide Details' : 'Show Flights'} <span className="material-icons-outlined text-sm ml-1">{isExpanded ? 'expand_less' : 'expand_more'}</span>
-                                        </button>
-                                        
-                                        {isExpanded && (
-                                            <div className="bg-gray-50/50 dark:bg-black/20 p-4 space-y-2 animate-fade-in">
-                                                {candidate.trip.transports?.map((t, i) => (
-                                                    <div key={i} className="flex items-center justify-between text-xs bg-white dark:bg-white/5 p-3 rounded-xl border border-gray-100 dark:border-white/5">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="font-mono font-bold text-gray-500 dark:text-gray-400 w-16">{t.provider.substring(0, 10)}</div>
-                                                            <div className="flex items-center gap-2 font-bold text-gray-800 dark:text-white">
-                                                                <span>{t.origin}</span>
-                                                                <span className="material-icons-outlined text-[10px] text-gray-400">arrow_forward</span>
-                                                                <span>{t.destination}</span>
-                                                            </div>
-                                                        </div>
-                                                        <div className="text-gray-500">{new Date(t.departureDate).toLocaleDateString()}</div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
+                                    <div className="border-t border-gray-100 dark:border-white/5"><button onClick={(e) => { e.stopPropagation(); setExpandedCandidateId(isExpanded ? null : candidate.trip.id); }} className="w-full flex items-center justify-center py-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">{isExpanded ? 'Hide Details' : 'Show Flights'} <span className="material-icons-outlined text-sm ml-1">{isExpanded ? 'expand_less' : 'expand_more'}</span></button>{isExpanded && (<div className="bg-gray-50/50 dark:bg-black/20 p-4 space-y-2 animate-fade-in">{candidate.trip.transports?.map((t, i) => (<div key={i} className="flex items-center justify-between text-xs bg-white dark:bg-white/5 p-3 rounded-xl border border-gray-100 dark:border-white/5"><div className="flex items-center gap-3"><div className="font-mono font-bold text-gray-500 dark:text-gray-400 w-16">{t.provider.substring(0, 10)}</div><div className="flex items-center gap-2 font-bold text-gray-800 dark:text-white"><span>{t.origin}</span><span className="material-icons-outlined text-[10px] text-gray-400">arrow_forward</span><span>{t.destination}</span></div></div><div className="text-gray-500">{new Date(t.departureDate).toLocaleDateString()}</div></div>))}</div>)}</div>
                                 </div>
                             );
                         })}
                     </div>
-
-                    <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-white/5">
-                        <Button variant="ghost" className="flex-1" onClick={() => setImportPreview({ open: false, candidates: [] })}>Cancel</Button>
-                        <Button variant="primary" className="flex-1 shadow-lg shadow-blue-500/20" onClick={confirmImportFlights} disabled={selectedCount === 0}>
-                            Import {selectedCount} Trips
-                        </Button>
-                    </div>
+                    <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-white/5"><Button variant="ghost" className="flex-1" onClick={() => setImportPreview({ open: false, candidates: [] })}>Cancel</Button><Button variant="primary" className="flex-1 shadow-lg shadow-blue-500/20" onClick={confirmImportFlights} disabled={selectedCount === 0}>Import {selectedCount} Trips</Button></div>
                 </div>
             </Modal>
 
