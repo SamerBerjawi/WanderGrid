@@ -1,26 +1,25 @@
 
-
 const FALLBACK_AIRPORTS: Record<string, any> = {
-    "AMS": { "lat": "52.3086", "lon": "4.7639", "name": "Schiphol", "city": "Amsterdam", "country": "NL", "tz": "Europe/Amsterdam" },
-    "LHR": { "lat": "51.4706", "lon": "-0.4619", "name": "Heathrow", "city": "London", "country": "GB", "tz": "Europe/London" },
-    "JFK": { "lat": "40.6398", "lon": "-73.7789", "name": "John F Kennedy Intl", "city": "New York", "country": "US", "tz": "America/New_York" },
-    "DXB": { "lat": "25.2528", "lon": "55.3644", "name": "Dubai Intl", "city": "Dubai", "country": "AE", "tz": "Asia/Dubai" },
-    "CDG": { "lat": "49.0097", "lon": "2.5478", "name": "Charles De Gaulle", "city": "Paris", "country": "FR", "tz": "Europe/Paris" },
-    "SFO": { "lat": "37.6189", "lon": "-122.375", "name": "San Francisco Intl", "city": "San Francisco", "country": "US", "tz": "America/Los_Angeles" },
-    "SIN": { "lat": "1.3502", "lon": "103.994", "name": "Changi Intl", "city": "Singapore", "country": "SG", "tz": "Asia/Singapore" },
-    "HKG": { "lat": "22.3089", "lon": "113.915", "name": "Hong Kong Intl", "city": "Hong Kong", "country": "HK", "tz": "Asia/Hong_Kong" },
-    "HND": { "lat": "35.5523", "lon": "139.78", "name": "Haneda", "city": "Tokyo", "country": "JP", "tz": "Asia/Tokyo" },
-    "SYD": { "lat": "-33.9461", "lon": "151.177", "name": "Kingsford Smith", "city": "Sydney", "country": "AU", "tz": "Australia/Sydney" },
-    "LAX": { "lat": "33.9425", "lon": "-118.408", "name": "Los Angeles Intl", "city": "Los Angeles", "country": "US", "tz": "America/Los_Angeles" },
-    "ORD": { "lat": "41.9742", "lon": "-87.9073", "name": "O'Hare Intl", "city": "Chicago", "country": "US", "tz": "America/Chicago" },
-    "FRA": { "lat": "50.0333", "lon": "8.5706", "name": "Frankfurt am Main", "city": "Frankfurt", "country": "DE", "tz": "Europe/Berlin" },
-    "MAD": { "lat": "40.4719", "lon": "-3.5626", "name": "Adolfo Suárez Madrid–Barajas", "city": "Madrid", "country": "ES", "tz": "Europe/Madrid" },
-    "BCN": { "lat": "41.2971", "lon": "2.0785", "name": "Barcelona–El Prat", "city": "Barcelona", "country": "ES", "tz": "Europe/Madrid" },
-    "MUC": { "lat": "48.3538", "lon": "11.7861", "name": "Munich", "city": "Munich", "country": "DE", "tz": "Europe/Berlin" },
-    "ZRH": { "lat": "47.4647", "lon": "8.5492", "name": "Zurich", "city": "Zurich", "country": "CH", "tz": "Europe/Zurich" },
-    "YYZ": { "lat": "43.6772", "lon": "-79.6306", "name": "Pearson Intl", "city": "Toronto", "country": "CA", "tz": "America/Toronto" },
-    "ICN": { "lat": "37.4692", "lon": "126.451", "name": "Incheon Intl", "city": "Seoul", "country": "KR", "tz": "Asia/Seoul" },
-    "PEK": { "lat": "40.0801", "lon": "116.585", "name": "Capital Intl", "city": "Beijing", "country": "CN", "tz": "Asia/Shanghai" }
+    "AMS": { "lat": "52.3086", "lon": "4.7639", "name": "Schiphol", "city": "Amsterdam", "country": "Netherlands", "tz": "Europe/Amsterdam", "iso": "NL" },
+    "LHR": { "lat": "51.4706", "lon": "-0.4619", "name": "Heathrow", "city": "London", "country": "United Kingdom", "tz": "Europe/London", "iso": "GB" },
+    "JFK": { "lat": "40.6398", "lon": "-73.7789", "name": "John F Kennedy Intl", "city": "New York", "country": "United States", "tz": "America/New_York", "iso": "US" },
+    "DXB": { "lat": "25.2528", "lon": "55.3644", "name": "Dubai Intl", "city": "Dubai", "country": "United Arab Emirates", "tz": "Asia/Dubai", "iso": "AE" },
+    "CDG": { "lat": "49.0097", "lon": "2.5478", "name": "Charles De Gaulle", "city": "Paris", "country": "France", "tz": "Europe/Paris", "iso": "FR" },
+    "SFO": { "lat": "37.6189", "lon": "-122.375", "name": "San Francisco Intl", "city": "San Francisco", "country": "United States", "tz": "America/Los_Angeles", "iso": "US" },
+    "SIN": { "lat": "1.3502", "lon": "103.994", "name": "Changi Intl", "city": "Singapore", "country": "Singapore", "tz": "Asia/Singapore", "iso": "SG" },
+    "HKG": { "lat": "22.3089", "lon": "113.915", "name": "Hong Kong Intl", "city": "Hong Kong", "country": "Hong Kong", "tz": "Asia/Hong_Kong", "iso": "HK" },
+    "HND": { "lat": "35.5523", "lon": "139.78", "name": "Haneda", "city": "Tokyo", "country": "Japan", "tz": "Asia/Tokyo", "iso": "JP" },
+    "SYD": { "lat": "-33.9461", "lon": "151.177", "name": "Kingsford Smith", "city": "Sydney", "country": "Australia", "tz": "Australia/Sydney", "iso": "AU" },
+    "LAX": { "lat": "33.9425", "lon": "-118.408", "name": "Los Angeles Intl", "city": "Los Angeles", "country": "United States", "tz": "America/Los_Angeles", "iso": "US" },
+    "ORD": { "lat": "41.9742", "lon": "-87.9073", "name": "O'Hare Intl", "city": "Chicago", "country": "United States", "tz": "America/Chicago", "iso": "US" },
+    "FRA": { "lat": "50.0333", "lon": "8.5706", "name": "Frankfurt am Main", "city": "Frankfurt", "country": "Germany", "tz": "Europe/Berlin", "iso": "DE" },
+    "MAD": { "lat": "40.4719", "lon": "-3.5626", "name": "Adolfo Suárez Madrid–Barajas", "city": "Madrid", "country": "Spain", "tz": "Europe/Madrid", "iso": "ES" },
+    "BCN": { "lat": "41.2971", "lon": "2.0785", "name": "Barcelona–El Prat", "city": "Barcelona", "country": "Spain", "tz": "Europe/Madrid", "iso": "ES" },
+    "MUC": { "lat": "48.3538", "lon": "11.7861", "name": "Munich", "city": "Munich", "country": "Germany", "tz": "Europe/Berlin", "iso": "DE" },
+    "ZRH": { "lat": "47.4647", "lon": "8.5492", "name": "Zurich", "city": "Zurich", "country": "Switzerland", "tz": "Europe/Zurich", "iso": "CH" },
+    "YYZ": { "lat": "43.6772", "lon": "-79.6306", "name": "Pearson Intl", "city": "Toronto", "country": "Canada", "tz": "America/Toronto", "iso": "CA" },
+    "ICN": { "lat": "37.4692", "lon": "126.451", "name": "Incheon Intl", "city": "Seoul", "country": "South Korea", "tz": "Asia/Seoul", "iso": "KR" },
+    "PEK": { "lat": "40.0801", "lon": "116.585", "name": "Capital Intl", "city": "Beijing", "country": "China", "tz": "Asia/Shanghai", "iso": "CN" }
 };
 
 // Initialize with fallback
@@ -293,7 +292,8 @@ export async function getCoordinates(location: string): Promise<{ lat: number; l
   }
 }
 
-export async function resolvePlaceName(query: string): Promise<{ city: string, country: string, displayName: string } | null> {
+// Updated resolvePlaceName to fetch real country data
+export async function resolvePlaceName(query: string): Promise<{ city: string, country: string, countryCode?: string, displayName: string } | null> {
     if (!query) return null;
     
     // 1. IATA Lookup
@@ -302,31 +302,64 @@ export async function resolvePlaceName(query: string): Promise<{ city: string, c
         // Try cache immediately
         if (airportCache[code]) {
             const a = airportCache[code];
-            return { city: a.city, country: a.country, displayName: `${a.city}, ${a.country}` };
+            // FALLBACK_AIRPORTS usually have 'iso' added manually above, but raw mwgg/Airports doesn't.
+            // If we have iso property, use it. Otherwise rely on Country Name.
+            return { 
+                city: a.city, 
+                country: a.country, 
+                countryCode: a.iso || undefined, 
+                displayName: `${a.city}, ${a.country}` 
+            };
         }
         // Try waiting
         await loadAirportData();
         if (airportCache[code]) {
             const a = airportCache[code];
-            return { city: a.city, country: a.country, displayName: `${a.city}, ${a.country}` };
+            return { 
+                city: a.city, 
+                country: a.country, 
+                countryCode: a.iso || undefined, 
+                displayName: `${a.city}, ${a.country}` 
+            };
         }
     }
     
-    // 2. Simple String Parsing
-    // If user typed "London, UK", assume that's correct
+    // 2. Nominatim Lookup (Detailed)
+    try {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=1`;
+        const res = await fetch(url);
+        if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data) && data.length > 0) {
+                const result = data[0];
+                const addr = result.address || {};
+                const city = addr.city || addr.town || addr.village || addr.municipality || addr.state || query;
+                const country = addr.country || '';
+                const countryCode = addr.country_code ? addr.country_code.toUpperCase() : '';
+                
+                return { 
+                    city, 
+                    country, 
+                    countryCode, 
+                    displayName: result.display_name 
+                };
+            }
+        }
+    } catch (e) {
+        console.warn("Detailed resolve failed", e);
+    }
+
+    // 3. Fallback: Treat as City/String
     if (query.includes(',')) {
         const parts = query.split(',').map(s => s.trim());
         if (parts.length >= 2) {
-            // Assume format "City, Country" or "Address, City, Country"
             const country = parts[parts.length - 1];
             const city = parts[parts.length - 2];
-            // Filter out numbers (zip codes)
             if (!/^\d+$/.test(country) && !/^\d+$/.test(city)) {
                  return { city, country, displayName: `${city}, ${country}` };
             }
         }
     }
 
-    // 3. Fallback: Treat as City
-    return { city: query, country: '', displayName: query };
+    return { city: query, country: 'Unknown', displayName: query };
 }

@@ -46,7 +46,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
 
   const navItems = [
     { label: 'Dashboard', value: ViewState.DASHBOARD, icon: 'grid_view' },
-    { label: 'Map', value: ViewState.MAP, icon: 'public' }, // New Item
+    { label: 'Passport', value: ViewState.GAMIFICATION, icon: 'military_tech' }, // Gamification
+    { label: 'Map', value: ViewState.MAP, icon: 'public' },
     { label: 'Planner', value: ViewState.PLANNER, icon: 'map' }, 
     { label: 'Time Off', value: ViewState.TIME_OFF, icon: 'date_range' },
     { label: 'Settings', value: ViewState.SETTINGS, icon: 'settings' },

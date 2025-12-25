@@ -151,7 +151,14 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
 
         mapInstance.current = map;
 
+        // Resize Observer to handle container size changes (e.g. sidebar toggle)
+        const resizeObserver = new ResizeObserver(() => {
+            map.invalidateSize();
+        });
+        resizeObserver.observe(mapContainer.current);
+
         return () => {
+            resizeObserver.disconnect();
             map.remove();
             mapInstance.current = null;
         };
@@ -415,11 +422,11 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
     };
 
     return (
-        <div className={`relative w-full h-full group overflow-hidden ${isDark ? 'bg-[#0a0a0a]' : 'bg-slate-50'}`}>
-            <div ref={mapContainer} className={`w-full h-full ${isDark ? 'bg-[#0a0a0a]' : 'bg-slate-50'}`} />
+        <div className={`relative w-full h-full group overflow-hidden isolation-auto ${isDark ? 'bg-[#0a0a0a]' : 'bg-slate-50'}`}>
+            <div ref={mapContainer} className={`w-full h-full z-0 ${isDark ? 'bg-[#0a0a0a]' : 'bg-slate-50'}`} />
             
-            {/* Control Bar */}
-            <div className="absolute bottom-12 right-12 flex flex-col gap-3 z-[1000]">
+            {/* Control Bar - High Z-Index to avoid clipping by map tiles or overlays */}
+            <div className="absolute bottom-12 right-12 flex flex-col gap-3 z-[5000]">
                 
                 <div className={`flex flex-col rounded-2xl border shadow-2xl overflow-hidden ${isDark ? 'bg-white/10 backdrop-blur-md border-white/20' : 'bg-white/80 backdrop-blur-md border-slate-200'}`}>
                     <button 
