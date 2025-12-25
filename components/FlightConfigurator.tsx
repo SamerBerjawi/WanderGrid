@@ -1,9 +1,10 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { Button, Input, Select, Autocomplete, Badge, TimeInput } from './ui';
 import { Transport, TransportMode } from '../types';
 import { dataService } from '../services/mockDb';
-import { getCoordinates, calculateDistance, calculateDurationMinutes, calculateArrivalTime } from '../services/geocoding';
+import { getCoordinates, calculateDistance, calculateDurationMinutes, calculateArrivalTime, searchLocations, searchStations } from '../services/geocoding';
 
 interface TransportConfiguratorProps {
     initialData?: Transport[];
@@ -703,6 +704,20 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
             .map(a => a.name); 
     };
 
+    const fetchCarLocationSuggestions = async (query: string): Promise<string[]> => {
+        const [airports, stations, places] = await Promise.all([
+            fetchAirportSuggestions(query),
+            searchStations(query, 'train'),
+            searchLocations(query)
+        ]);
+        // Interleave unique results
+        return Array.from(new Set([...airports, ...stations, ...places])).slice(0, 10);
+    };
+
+    const fetchTrainSuggestions = async (query: string) => searchStations(query, 'train');
+    const fetchBusSuggestions = async (query: string) => searchStations(query, 'bus');
+    const fetchGenericSuggestions = async (query: string) => searchLocations(query);
+
     const extractIata = (val: string) => val.includes(' - ') ? val.split(' - ')[0] : val;
 
     const handleAutoFill = async (index: number) => {
@@ -831,9 +846,21 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                 <div className="space-y-6 bg-gray-50 dark:bg-white/5 p-6 rounded-3xl border border-gray-100 dark:border-white/5 animate-fade-in">
                     {/* ... (Car Form Inputs - same as before) ... */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <Input label={mode === 'Car Rental' ? "Pickup Location" : "Start Location"} placeholder="e.g. LAX Terminal 4" value={carForm.pickupLocation} onChange={e => updateCar('pickupLocation', e.target.value)} />
+                        <Autocomplete 
+                            label={mode === 'Car Rental' ? "Pickup Location" : "Start Location"} 
+                            placeholder="Airport, City or Station" 
+                            value={carForm.pickupLocation} 
+                            onChange={val => updateCar('pickupLocation', val)}
+                            fetchSuggestions={fetchCarLocationSuggestions}
+                        />
                         {!carForm.sameDropoff && (
-                            <Input label={mode === 'Car Rental' ? "Drop-off Location" : "Destination"} placeholder="e.g. SFO Rental Return" value={carForm.dropoffLocation} onChange={e => updateCar('dropoffLocation', e.target.value)} />
+                            <Autocomplete 
+                                label={mode === 'Car Rental' ? "Drop-off Location" : "Destination"} 
+                                placeholder="Airport, City or Station" 
+                                value={carForm.dropoffLocation} 
+                                onChange={val => updateCar('dropoffLocation', val)}
+                                fetchSuggestions={fetchCarLocationSuggestions}
+                            />
                         )}
                         {mode === 'Car Rental' && (
                             <div className={`md:col-span-2 flex items-center gap-2 p-3 rounded-xl bg-white dark:bg-black/20 border border-gray-200 dark:border-white/10 w-fit cursor-pointer ${carForm.sameDropoff ? 'text-blue-600 dark:text-blue-400 border-blue-200' : 'text-gray-500'}`} onClick={() => updateCar('sameDropoff', !carForm.sameDropoff)}>
@@ -964,7 +991,12 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                             placeholder={mode === 'Flight' ? "JFK" : "Station/City/Port"} 
                                             value={segment.origin} 
                                             onChange={val => updateSegment(index, 'origin', val)} 
-                                            fetchSuggestions={mode === 'Flight' ? fetchAirportSuggestions : () => Promise.resolve([])}
+                                            fetchSuggestions={
+                                                mode === 'Flight' ? fetchAirportSuggestions : 
+                                                mode === 'Train' ? fetchTrainSuggestions :
+                                                mode === 'Bus' ? fetchBusSuggestions :
+                                                fetchGenericSuggestions
+                                            }
                                         />
                                     </div>
                                     <div className="md:col-span-2 flex items-center justify-center pt-4">
@@ -976,7 +1008,12 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                             placeholder={mode === 'Flight' ? "LHR" : "Station/City/Port"} 
                                             value={segment.destination} 
                                             onChange={val => updateSegment(index, 'destination', val)} 
-                                            fetchSuggestions={mode === 'Flight' ? fetchAirportSuggestions : () => Promise.resolve([])}
+                                            fetchSuggestions={
+                                                mode === 'Flight' ? fetchAirportSuggestions : 
+                                                mode === 'Train' ? fetchTrainSuggestions :
+                                                mode === 'Bus' ? fetchBusSuggestions :
+                                                fetchGenericSuggestions
+                                            }
                                         />
                                     </div>
 

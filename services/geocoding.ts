@@ -1,4 +1,5 @@
 
+
 const FALLBACK_AIRPORTS: Record<string, any> = {
     "AMS": { "lat": "52.3086", "lon": "4.7639", "name": "Schiphol", "city": "Amsterdam", "country": "NL", "tz": "Europe/Amsterdam" },
     "LHR": { "lat": "51.4706", "lon": "-0.4619", "name": "Heathrow", "city": "London", "country": "GB", "tz": "Europe/London" },
@@ -221,6 +222,24 @@ export async function searchLocations(query: string): Promise<string[]> {
         });
     } catch (e) {
         console.error("Location search failed", e);
+        return [];
+    }
+}
+
+export async function searchStations(query: string, type: 'train' | 'bus'): Promise<string[]> {
+    if (!query || query.length < 3) return [];
+    try {
+        const suffix = type === 'train' ? 'railway station' : 'bus station';
+        const q = `${query} ${suffix}`;
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&addressdetails=1&limit=8`;
+        const response = await fetch(url); 
+        
+        if (!response.ok) return [];
+        
+        const data = await response.json();
+        return data.map((item: any) => item.display_name || item.name);
+    } catch (e) {
+        console.error("Station search failed", e);
         return [];
     }
 }
