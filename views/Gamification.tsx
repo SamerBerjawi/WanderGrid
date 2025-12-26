@@ -4,6 +4,7 @@ import { ExpeditionMap3D } from '../components/ExpeditionMap3D';
 import { dataService } from '../services/mockDb';
 import { Trip } from '../types';
 import { resolvePlaceName, calculateDistance } from '../services/geocoding';
+import { Tabs } from '../components/ui';
 
 interface GamificationProps {
     onTripClick?: (tripId: string) => void;
@@ -228,6 +229,62 @@ const getFlagEmoji = (countryCode: string) => {
   return String.fromCodePoint(...codePoints);
 };
 
+// --- Statistics Components ---
+const StatCard: React.FC<{ title: string; value: string | number; subtitle?: string; icon: string; color?: string }> = ({ title, value, subtitle, icon, color = 'blue' }) => (
+    <div className={`p-6 rounded-[2rem] bg-white dark:bg-gray-800 border border-gray-100 dark:border-white/5 shadow-sm flex items-center gap-5 relative overflow-hidden group`}>
+        <div className={`absolute right-0 top-0 w-32 h-32 bg-${color}-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/3 transition-all group-hover:bg-${color}-500/10`} />
+        <div className={`w-14 h-14 rounded-2xl bg-${color}-50 dark:bg-${color}-900/20 text-${color}-600 dark:text-${color}-400 flex items-center justify-center text-3xl shadow-sm`}>
+            <span className="material-icons-outlined">{icon}</span>
+        </div>
+        <div>
+            <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{title}</div>
+            <div className="text-3xl font-black text-gray-900 dark:text-white leading-none">{value}</div>
+            {subtitle && <div className="text-xs font-bold text-gray-500 dark:text-gray-400 mt-1">{subtitle}</div>}
+        </div>
+    </div>
+);
+
+const TopList: React.FC<{ title: string; items: { label: string; sub?: string; count: number; code?: string }[]; icon: string; color: string }> = ({ title, items, icon, color }) => {
+    if (items.length === 0) return null;
+    const max = items[0].count;
+    
+    return (
+        <div className="p-6 rounded-[2rem] bg-white dark:bg-gray-800 border border-gray-100 dark:border-white/5 shadow-sm flex flex-col h-full">
+            <div className="flex items-center gap-3 mb-6">
+                <div className={`w-10 h-10 rounded-xl bg-${color}-50 dark:bg-${color}-900/20 text-${color}-600 dark:text-${color}-400 flex items-center justify-center`}>
+                    <span className="material-icons-outlined">{icon}</span>
+                </div>
+                <h3 className="font-black text-lg text-gray-900 dark:text-white uppercase tracking-tight">{title}</h3>
+            </div>
+            <div className="space-y-4 flex-1 overflow-y-auto custom-scrollbar pr-2">
+                {items.slice(0, 8).map((item, idx) => (
+                    <div key={idx} className="relative group">
+                        <div className="flex justify-between items-center mb-1.5 relative z-10">
+                            <div className="flex items-center gap-3">
+                                <span className="text-[10px] font-black text-gray-300 w-4">{idx + 1}</span>
+                                <div>
+                                    <div className="text-sm font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                                        {item.code && <span className="font-mono text-[10px] bg-gray-100 dark:bg-white/10 px-1.5 rounded text-gray-500">{item.code}</span>}
+                                        <span className="truncate max-w-[140px]" title={item.label}>{item.label}</span>
+                                    </div>
+                                    {item.sub && <div className="text-[10px] text-gray-400 font-medium truncate max-w-[140px]">{item.sub}</div>}
+                                </div>
+                            </div>
+                            <span className="text-xs font-black text-gray-900 dark:text-white">{item.count}</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden">
+                            <div 
+                                className={`h-full bg-${color}-500 rounded-full transition-all duration-500 opacity-50 group-hover:opacity-100`} 
+                                style={{ width: `${(item.count / max) * 100}%` }} 
+                            />
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 // --- Caching ---
 const CACHE_KEY = 'wandergrid_geo_cache_v2';
 let memoryCache: Map<string, any> | null = null;
@@ -262,6 +319,7 @@ export const Gamification: React.FC<GamificationProps> = ({ onTripClick }) => {
     const [totalCities, setTotalCities] = useState(0);
     const [totalDistance, setTotalDistance] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState('stamps');
 
     useEffect(() => {
         const load = async () => {
@@ -418,6 +476,71 @@ export const Gamification: React.FC<GamificationProps> = ({ onTripClick }) => {
         setVisitedData(finalized.sort((a, b) => a.name.localeCompare(b.name)));
     };
 
+    // Calculate Detailed Flight Stats
+    const stats = useMemo(() => {
+        // Use all trips (including upcoming) for the Flight Log to show full picture? 
+        // Or just past trips? Let's use all 'valid' trips (Past + Upcoming) for the analytics tab to be more useful.
+        const activeTrips = trips.filter(t => t.status !== 'Planning' && t.status !== 'Cancelled');
+        
+        let totalFlights = 0;
+        let totalDist = 0;
+        let totalDurationMinutes = 0;
+        
+        const airports = new Map<string, number>();
+        const airlines = new Map<string, number>();
+        const aircraft = new Map<string, number>();
+        const routes = new Map<string, number>();
+
+        activeTrips.forEach(t => {
+            if (t.transports) {
+                t.transports.forEach(tr => {
+                    if (tr.mode === 'Flight') {
+                        totalFlights++;
+                        
+                        let dist = tr.distance || 0;
+                        if (!dist && tr.originLat && tr.originLng && tr.destLat && tr.destLng) {
+                            dist = calculateDistance(tr.originLat, tr.originLng, tr.destLat, tr.destLng);
+                        }
+                        totalDist += dist;
+
+                        if (tr.departureDate && tr.departureTime && tr.arrivalDate && tr.arrivalTime) {
+                            const start = new Date(`${tr.departureDate}T${tr.departureTime}`);
+                            const end = new Date(`${tr.arrivalDate}T${tr.arrivalTime}`);
+                            const diff = (end.getTime() - start.getTime()) / 60000;
+                            if (diff > 0) totalDurationMinutes += diff;
+                        }
+
+                        if (tr.origin) airports.set(tr.origin, (airports.get(tr.origin) || 0) + 1);
+                        if (tr.destination) airports.set(tr.destination, (airports.get(tr.destination) || 0) + 1);
+                        if (tr.provider) airlines.set(tr.provider, (airlines.get(tr.provider) || 0) + 1);
+                        if (tr.vehicleModel) aircraft.set(tr.vehicleModel, (aircraft.get(tr.vehicleModel) || 0) + 1);
+                        if (tr.origin && tr.destination) {
+                            const key = `${tr.origin} → ${tr.destination}`;
+                            routes.set(key, (routes.get(key) || 0) + 1);
+                        }
+                    }
+                });
+            }
+        });
+
+        const topAirports = Array.from(airports.entries()).sort((a, b) => b[1] - a[1]).map(([code, count]) => ({ label: code, count, code }));
+        const topAirlines = Array.from(airlines.entries()).sort((a, b) => b[1] - a[1]).map(([name, count]) => ({ label: name, count }));
+        const topAircraft = Array.from(aircraft.entries()).sort((a, b) => b[1] - a[1]).map(([model, count]) => ({ label: model, count }));
+        const topRoutes = Array.from(routes.entries()).sort((a, b) => b[1] - a[1]).map(([key, count]) => { const [o, d] = key.split(' → '); return { label: key, count, code: `${o}-${d}` }; });
+
+        return {
+            totalFlights,
+            totalDistance: Math.round(totalDist),
+            totalDurationHours: Math.round(totalDurationMinutes / 60),
+            topAirports,
+            topAirlines,
+            topAircraft,
+            topRoutes,
+            earthCircumnavigations: (totalDist / 40075).toFixed(1),
+            daysInAir: (totalDurationMinutes / (60 * 24)).toFixed(1)
+        };
+    }, [trips]);
+
     const currentLevel = useMemo(() => {
         const count = visitedData.length;
         const lvl = [...LEVEL_THRESHOLDS].reverse().find(t => count >= t.countries);
@@ -512,69 +635,112 @@ export const Gamification: React.FC<GamificationProps> = ({ onTripClick }) => {
                 </div>
             </div>
 
-            {/* PASSPORT STAMPS GRID */}
-            <div className="space-y-6">
-                <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-500 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30">
-                        <span className="material-icons-outlined text-2xl">stars</span>
-                    </div>
-                    <div>
-                        <h2 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">Passport Stamps</h2>
-                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Collection of visited territories.</p>
-                    </div>
-                </div>
+            {/* MAIN CONTENT TABS */}
+            <div className="flex flex-col gap-6">
+                <Tabs 
+                    activeTab={activeTab} 
+                    onChange={setActiveTab} 
+                    tabs={[
+                        { id: 'stamps', label: 'Passport Stamps', icon: <span className="material-icons-outlined">verified</span> },
+                        { id: 'analytics', label: 'Flight Log', icon: <span className="material-icons-outlined">data_usage</span> }
+                    ]}
+                />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {visitedData.map((country) => {
-                        const style = REGION_STYLES[country.region] || REGION_STYLES['Unknown'];
-                        return (
-                            <div key={country.name} className={`group relative rounded-3xl p-6 border shadow-sm hover:shadow-xl transition-all hover:-translate-y-1 overflow-hidden ${style.bg} ${style.border}`}>
-                                {/* Decorative Stamp Effect */}
-                                <div className={`absolute -right-6 -top-6 w-24 h-24 border-4 border-dashed rounded-full opacity-50 pointer-events-none group-hover:scale-110 transition-transform ${style.border}`} />
-                                <div className="absolute -right-6 -top-6 w-24 h-24 flex items-center justify-center pointer-events-none opacity-10 rotate-12">
-                                    <span className={`material-icons-outlined text-6xl ${style.text}`}>verified</span>
-                                </div>
+                {activeTab === 'stamps' && (
+                    <div className="space-y-6 animate-fade-in">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            {visitedData.map((country) => {
+                                const style = REGION_STYLES[country.region] || REGION_STYLES['Unknown'];
+                                return (
+                                    <div key={country.name} className={`group relative rounded-3xl p-6 border shadow-sm hover:shadow-xl transition-all hover:-translate-y-1 overflow-hidden ${style.bg} ${style.border}`}>
+                                        <div className={`absolute -right-6 -top-6 w-24 h-24 border-4 border-dashed rounded-full opacity-50 pointer-events-none group-hover:scale-110 transition-transform ${style.border}`} />
+                                        <div className="absolute -right-6 -top-6 w-24 h-24 flex items-center justify-center pointer-events-none opacity-10 rotate-12">
+                                            <span className={`material-icons-outlined text-6xl ${style.text}`}>verified</span>
+                                        </div>
 
-                                <div className="relative z-10">
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div className="text-4xl filter drop-shadow-md">{country.flag}</div>
-                                        <div className={`px-2 py-1 rounded-lg border text-[10px] font-mono font-bold ${style.badge} ${style.border}`}>
-                                            {country.code}
+                                        <div className="relative z-10">
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div className="text-4xl filter drop-shadow-md">{country.flag}</div>
+                                                <div className={`px-2 py-1 rounded-lg border text-[10px] font-mono font-bold ${style.badge} ${style.border}`}>
+                                                    {country.code}
+                                                </div>
+                                            </div>
+                                            
+                                            <h3 className={`text-xl font-black mb-1 leading-tight ${style.text}`}>{country.name}</h3>
+                                            <p className={`text-xs font-bold uppercase tracking-widest mb-4 opacity-60 ${style.text}`}>
+                                                {country.region} • {country.lastVisit.getFullYear()}
+                                            </p>
+
+                                            <div className="space-y-2">
+                                                <div className={`h-px w-full opacity-20 ${style.text} bg-current`} />
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {Array.from(country.cities).slice(0, 5).map(city => (
+                                                        <span key={city} className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border ${style.accent} ${style.text} ${style.border} bg-opacity-50`}>
+                                                            {city}
+                                                        </span>
+                                                    ))}
+                                                    {country.cities.size > 5 && (
+                                                        <span className={`px-2 py-1 rounded-md text-[10px] font-bold ${style.accent} ${style.text}`}>
+                                                            +{country.cities.size - 5}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-                                    
-                                    <h3 className={`text-xl font-black mb-1 leading-tight ${style.text}`}>{country.name}</h3>
-                                    <p className={`text-xs font-bold uppercase tracking-widest mb-4 opacity-60 ${style.text}`}>
-                                        {country.region} • {country.lastVisit.getFullYear()}
-                                    </p>
-
-                                    <div className="space-y-2">
-                                        <div className={`h-px w-full opacity-20 ${style.text} bg-current`} />
-                                        <div className="flex flex-wrap gap-1.5">
-                                            {Array.from(country.cities).slice(0, 5).map(city => (
-                                                <span key={city} className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border ${style.accent} ${style.text} ${style.border} bg-opacity-50`}>
-                                                    {city}
-                                                </span>
-                                            ))}
-                                            {country.cities.size > 5 && (
-                                                <span className={`px-2 py-1 rounded-md text-[10px] font-bold ${style.accent} ${style.text}`}>
-                                                    +{country.cities.size - 5}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
+                                );
+                            })}
+                            
+                            {/* Empty State / Future Slot */}
+                            <div className="rounded-3xl p-6 border-2 border-dashed border-gray-200 dark:border-white/10 flex flex-col items-center justify-center text-center opacity-50 min-h-[200px]">
+                                <span className="material-icons-outlined text-4xl text-gray-300 mb-2">add_location_alt</span>
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Next Adventure</p>
+                                <p className="text-[10px] text-gray-300 mt-1">Book a trip to earn a new stamp</p>
                             </div>
-                        );
-                    })}
-                    
-                    {/* Empty State / Future Slot */}
-                    <div className="rounded-3xl p-6 border-2 border-dashed border-gray-200 dark:border-white/10 flex flex-col items-center justify-center text-center opacity-50 min-h-[200px]">
-                        <span className="material-icons-outlined text-4xl text-gray-300 mb-2">add_location_alt</span>
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Next Adventure</p>
-                        <p className="text-[10px] text-gray-300 mt-1">Book a trip to earn a new stamp</p>
+                        </div>
                     </div>
-                </div>
+                )}
+
+                {activeTab === 'analytics' && (
+                    <div className="space-y-8 animate-fade-in">
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+                            <StatCard 
+                                title="Total Flights" 
+                                value={stats.totalFlights} 
+                                icon="flight_takeoff" 
+                                color="blue" 
+                            />
+                            <StatCard 
+                                title="Distance Flown" 
+                                value={`${(stats.totalDistance / 1000).toFixed(1)}k km`} 
+                                subtitle={`${stats.earthCircumnavigations}x around Earth`}
+                                icon="public" 
+                                color="emerald" 
+                            />
+                            <StatCard 
+                                title="Time in Air" 
+                                value={`${stats.totalDurationHours}h`} 
+                                subtitle={`${stats.daysInAir} Days`}
+                                icon="schedule" 
+                                color="purple" 
+                            />
+                            <StatCard 
+                                title="Top Airport" 
+                                value={stats.topAirports[0]?.label || '-'} 
+                                subtitle={`${stats.topAirports[0]?.count || 0} Visits`}
+                                icon="location_on" 
+                                color="amber" 
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 h-[500px]">
+                            <TopList title="Top Airports" items={stats.topAirports} icon="flight_land" color="blue" />
+                            <TopList title="Top Airlines" items={stats.topAirlines} icon="airlines" color="indigo" />
+                            <TopList title="Top Routes" items={stats.topRoutes} icon="alt_route" color="emerald" />
+                            <TopList title="Aircraft" items={stats.topAircraft} icon="airplane_ticket" color="gray" />
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
