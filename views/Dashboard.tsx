@@ -309,6 +309,39 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
           if (portion === 'PM') pmTrips.push(t);
       });
 
+      // Calculate Day Weight - Only count if deductible (Working day, No holiday, Has entitlement)
+      const isTripDeductible = (t: Trip) => {
+          if (!t.entitlementId) return false;
+          if (t.excludedDates?.includes(dateKey)) return false;
+          
+          const dayOfWeek = date.getDay();
+          if (!workspaceConfig?.workingDays.includes(dayOfWeek)) return false; // Weekend/Non-working
+          
+          const uid = t.participants[0];
+          const user = users.find(u => u.id === uid);
+          if (user) {
+              const userHolidays = holidays.filter(h => h.isIncluded && user.holidayConfigIds?.includes(h.configId || ''));
+              const isHol = userHolidays.some(h => {
+                  if (h.date === dateKey) return true;
+                  if (user.holidayWeekendRule === 'monday') {
+                      const d = new Date(h.date);
+                      const dDay = d.getDay();
+                      if ((dDay===0 || dDay===6) && getNextMonday(h.date) === dateKey) return true;
+                  }
+                  return false;
+              });
+              if (isHol) return false;
+          }
+          return true;
+      };
+
+      let dayWeight = 0;
+      if (fullDayTrips.some(isTripDeductible)) dayWeight = 1;
+      else {
+          if (amTrips.some(isTripDeductible)) dayWeight += 0.5;
+          if (pmTrips.some(isTripDeductible)) dayWeight += 0.5;
+      }
+
       const isSelected = isDateInSelection(date);
       const isWorkingDay = workspaceConfig?.workingDays.includes(date.getDay());
       
@@ -359,10 +392,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
           onMouseEnter={() => onDayMouseEnter(date)}
           className={`relative ${minHeightClass} rounded-2xl border transition-all hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-xl group flex flex-col overflow-hidden cursor-pointer ${cellBackground} ${borderColor}`}
         >
-            {/* Date Number - Always Visible on Top */}
+            {/* Date Number - Always Visible on Top Right */}
             <div className="absolute top-2 right-3 z-20 pointer-events-none">
                 <span className={`text-sm font-bold ${isToday ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'} ${(!isWorkingDay && !isActualHoliday && !isShiftedHoliday) ? 'opacity-50' : ''}`}>{date.getDate()}</span>
             </div>
+
+            {/* Day Weight Label - Top Left */}
+            {dayWeight > 0 && (
+                <div className="absolute top-2 left-3 z-20 pointer-events-none">
+                    <span className="text-[10px] font-black text-gray-400 dark:text-white/30 tracking-tight">
+                        {dayWeight}
+                    </span>
+                </div>
+            )}
 
             {/* Holiday Label - Absolute Bottom Left */}
             {holidayNames && (
@@ -411,7 +453,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                         <div className="font-bold text-[10px] truncate leading-tight flex items-center gap-1">
                                             <span>{trip.icon}</span>
                                             <span>{trip.name}</span>
-                                            <span className="opacity-60 text-[8px] uppercase">(AM)</span>
                                         </div>
                                     </div>
                                 );
@@ -432,7 +473,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                         <div className="font-bold text-[10px] truncate leading-tight flex items-center gap-1">
                                             <span>{trip.icon}</span>
                                             <span>{trip.name}</span>
-                                            <span className="opacity-60 text-[8px] uppercase">(PM)</span>
                                         </div>
                                     </div>
                                 );
