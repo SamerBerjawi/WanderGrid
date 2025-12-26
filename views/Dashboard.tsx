@@ -13,42 +13,46 @@ interface DashboardProps {
     onTripClick?: (tripId: string) => void;
 }
 
-const DonutChart: React.FC<{ percentage: number; colorClass: string; size?: number }> = ({ percentage, colorClass, size = 60 }) => {
-  const strokeWidth = 6;
-  const radius = (size - strokeWidth) / 2;
-  const circumference = radius * 2 * Math.PI;
-  const offset = circumference - (percentage / 100) * circumference;
+const getCategoryClasses = (color?: string, isFullDay = true) => {
+    const map: any = {
+        blue: isFullDay 
+            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-100 border-l-4 border-blue-500' 
+            : 'bg-blue-100 text-blue-700 border border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800',
+        green: isFullDay 
+            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-100 border-l-4 border-emerald-500' 
+            : 'bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-800',
+        amber: isFullDay 
+            ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-100 border-l-4 border-amber-500' 
+            : 'bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-800',
+        purple: isFullDay 
+            ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-100 border-l-4 border-purple-500' 
+            : 'bg-purple-100 text-purple-700 border border-purple-200 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-800',
+        red: isFullDay 
+            ? 'bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-100 border-l-4 border-rose-500' 
+            : 'bg-rose-100 text-rose-700 border border-rose-200 dark:bg-rose-900/40 dark:text-rose-300 dark:border-rose-800',
+        indigo: isFullDay 
+            ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/60 dark:text-indigo-100 border-l-4 border-indigo-500' 
+            : 'bg-indigo-100 text-indigo-700 border border-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-300 dark:border-indigo-800',
+        gray: isFullDay 
+            ? 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-100 border-l-4 border-gray-500' 
+            : 'bg-gray-100 text-gray-700 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600',
+        pink: isFullDay 
+            ? 'bg-pink-100 text-pink-800 dark:bg-pink-900/60 dark:text-pink-100 border-l-4 border-pink-500' 
+            : 'bg-pink-100 text-pink-700 border border-pink-200 dark:bg-pink-900/40 dark:text-pink-300 dark:border-pink-800',
+        teal: isFullDay 
+            ? 'bg-teal-100 text-teal-800 dark:bg-teal-900/60 dark:text-teal-100 border-l-4 border-teal-500' 
+            : 'bg-teal-100 text-teal-700 border border-teal-200 dark:bg-teal-900/40 dark:text-teal-300 dark:border-teal-800',
+        cyan: isFullDay 
+            ? 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/60 dark:text-cyan-100 border-l-4 border-cyan-500' 
+            : 'bg-cyan-100 text-cyan-700 border border-cyan-200 dark:bg-cyan-900/40 dark:text-cyan-300 dark:border-cyan-800',
+    };
+    
+    // Fallback for General Events
+    const defaultStyle = isFullDay
+        ? 'bg-slate-200 text-slate-800 dark:bg-slate-800 dark:text-slate-100 border-l-4 border-slate-500'
+        : 'bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700';
 
-  return (
-    <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
-      <svg className="transform -rotate-90" width={size} height={size}>
-        <circle
-          className="text-gray-100 dark:text-gray-800"
-          strokeWidth={strokeWidth}
-          stroke="currentColor"
-          fill="transparent"
-          r={radius}
-          cx={size / 2}
-          cy={size / 2}
-        />
-        <circle
-          className={`transition-all duration-700 ease-out ${colorClass}`}
-          strokeWidth={strokeWidth}
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
-          stroke="currentColor"
-          fill="transparent"
-          r={radius}
-          cx={size / 2}
-          cy={size / 2}
-        />
-      </svg>
-      <span className="absolute text-[10px] font-bold text-gray-700 dark:text-gray-300">
-        {percentage === Infinity ? '∞' : `${Math.round(percentage)}%`}
-      </span>
-    </div>
-  );
+    return map[color || ''] || defaultStyle;
 };
 
 export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }) => {
@@ -140,14 +144,32 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
     return { holidayMap, shiftedMap };
   };
 
-  // ... (Calculation functions omitted for brevity, logic remains the same as previously defined) ...
-  // Re-implementing simplified calculation for view rendering
   const isDateInRange = (checkDate: Date, startStr: string, endStr: string) => {
     const start = new Date(startStr); const end = new Date(endStr);
     const check = new Date(checkDate.getFullYear(), checkDate.getMonth(), checkDate.getDate());
     const s = new Date(start.getFullYear(), start.getMonth(), start.getDate());
     const e = new Date(end.getFullYear(), end.getMonth(), end.getDate());
     return check >= s && check <= e;
+  };
+
+  const getDayPortion = (date: Date, trip: Trip): 'Full' | 'AM' | 'PM' => {
+      if (!trip.durationMode || trip.durationMode === 'all_full') return 'Full';
+      
+      const dateStr = date.toISOString().split('T')[0];
+      const isStart = dateStr === trip.startDate;
+      const isEnd = dateStr === trip.endDate;
+
+      if (trip.durationMode === 'all_am') return 'AM';
+      if (trip.durationMode === 'all_pm') return 'PM';
+      if (trip.durationMode === 'single_am') return 'AM';
+      if (trip.durationMode === 'single_pm') return 'PM';
+
+      if (trip.durationMode === 'custom') {
+          if (isStart && trip.startPortion === 'pm') return 'PM';
+          if (isEnd && trip.endPortion === 'am') return 'AM';
+      }
+      
+      return 'Full';
   };
 
   // --- Modal Handlers ---
@@ -255,7 +277,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
     setViewDate(next);
   };
 
-  const renderDayCell = (date: Date, minHeightClass: string = 'min-h-[120px]', showDate = true, size: 'normal' | 'compact' = 'normal') => {
+  const renderDayCell = (date: Date, minHeightClass: string = 'min-h-[140px]', showDate = true, size: 'normal' | 'compact' = 'normal') => {
       const isToday = isSameDay(date, new Date());
       const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
       
@@ -267,86 +289,157 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
         if (shiftedMap.has(dateKey)) shiftedMap.get(dateKey)?.forEach(n => dayHolidays.set(n, 'shifted'));
       });
       
-      const dayTrips = trips.filter(t => isDateInRange(date, t.startDate, t.endDate));
       const holidayList = Array.from(dayHolidays.entries());
       const holidayNames = holidayList.map(([name, type]) => `${name}${type === 'shifted' ? ' (Observed)' : ''}`).join(', ');
-      const hasActual = holidayList.some(([_, type]) => type === 'actual');
-      const hasShifted = holidayList.some(([_, type]) => type === 'shifted');
-      const isSelected = isDateInSelection(date);
+      
+      const isActualHoliday = holidayList.some(([_, type]) => type === 'actual');
+      const isShiftedHoliday = holidayList.some(([_, type]) => type === 'shifted');
 
+      const dayTrips = trips.filter(t => isDateInRange(date, t.startDate, t.endDate));
+      
+      // Bucket trips by type
+      const fullDayTrips: Trip[] = [];
+      const amTrips: Trip[] = [];
+      const pmTrips: Trip[] = [];
+
+      dayTrips.forEach(t => {
+          const portion = getDayPortion(date, t);
+          if (portion === 'Full') fullDayTrips.push(t);
+          if (portion === 'AM') amTrips.push(t);
+          if (portion === 'PM') pmTrips.push(t);
+      });
+
+      const isSelected = isDateInSelection(date);
       const isWorkingDay = workspaceConfig?.workingDays.includes(date.getDay());
       
-      let cellBackground = isToday 
-          ? 'bg-white border-blue-400 ring-2 ring-blue-100 dark:bg-gray-800 dark:border-blue-600 dark:ring-blue-900/30 shadow-inner' 
-          : !isWorkingDay 
-            ? 'bg-gray-100/80 border-gray-200/50 dark:bg-black/60 dark:border-white/5' 
-            : 'bg-white border-gray-100 dark:bg-gray-900/40 dark:border-white/5';
+      // Background Logic
+      let cellBackground = 'bg-white dark:bg-gray-900/40';
+      if (isToday) {
+          cellBackground = 'bg-white ring-2 ring-blue-400 dark:bg-gray-800 dark:ring-blue-600';
+      } else if (isSelected) {
+          cellBackground = 'bg-blue-50 dark:bg-blue-900/50';
+      } else if (isActualHoliday) {
+          cellBackground = 'bg-rose-50 dark:bg-rose-900/20';
+      } else if (isShiftedHoliday) {
+          cellBackground = 'bg-amber-50 dark:bg-amber-900/20';
+      } else if (!isWorkingDay) {
+          cellBackground = 'bg-gray-50/50 dark:bg-black/40';
+      }
 
-      if (hasActual) cellBackground = 'bg-rose-50 border-rose-200 dark:bg-rose-950/20 dark:border-rose-900/40';
-      else if (hasShifted) cellBackground = 'bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-900/40';
+      const borderColor = isSelected ? 'border-blue-300 dark:border-blue-700' : 'border-gray-100 dark:border-white/5';
 
-      if (isSelected) cellBackground = 'bg-blue-100 border-blue-300 dark:bg-blue-900/50 dark:border-blue-700';
-
+      // --- COMPACT VIEW (Year) ---
       if (size === 'compact') {
-          const hasEvent = dayTrips.some(t => !t.entitlementId);
-          const hasTrip = dayTrips.some(t => !!t.entitlementId);
-          
+          const hasTrip = dayTrips.length > 0;
           let intensity = '';
-          if (hasTrip) intensity = 'bg-blue-500';
-          else if (hasEvent) intensity = 'bg-slate-400';
-          else if (hasActual) intensity = 'bg-rose-500';
-          else if (hasShifted) intensity = 'bg-amber-500';
+          if (hasTrip) intensity = 'bg-blue-500 shadow-sm shadow-blue-500/50';
+          else if (isActualHoliday) intensity = 'bg-rose-500 shadow-sm shadow-rose-500/50';
+          else if (isShiftedHoliday) intensity = 'bg-amber-500';
 
           return (
             <div 
                 key={dateKey}
                 onMouseDown={() => onDayMouseDown(date)}
                 onMouseEnter={() => onDayMouseEnter(date)}
-                className={`relative w-full h-8 flex items-center justify-center border rounded-lg transition-all text-[9px] font-bold ${cellBackground} hover:scale-105 hover:z-10 cursor-pointer ${intensity ? 'ring-1 ring-offset-1 ring-offset-white dark:ring-offset-gray-900 ring-opacity-50' : ''}`}
+                className={`relative w-full h-8 flex items-center justify-center border rounded-lg transition-all text-[9px] font-bold ${cellBackground} ${borderColor} hover:scale-105 hover:z-10 cursor-pointer ${intensity ? 'text-white border-transparent' : 'text-gray-700 dark:text-gray-300'}`}
                 title={`${dateKey}${holidayNames ? ' • ' + holidayNames : ''}`}
             >
                 {date.getDate()}
-                {dayTrips.length > 0 && (
-                    <div className={`absolute bottom-1 w-1 h-1 rounded-full ${hasTrip ? 'bg-blue-500' : 'bg-slate-500'}`} />
-                )}
-                {holidayList.length > 0 && <div className="absolute top-1 right-1 w-1 h-1 bg-rose-500 rounded-full" />}
+                {intensity && <div className={`absolute inset-0 rounded-lg ${intensity} opacity-20`} />}
             </div>
           );
       }
 
+      // --- NORMAL VIEW (Month) ---
       return (
         <div 
           key={dateKey} 
           title={holidayNames || undefined}
           onMouseDown={() => onDayMouseDown(date)}
           onMouseEnter={() => onDayMouseEnter(date)}
-          className={`relative ${minHeightClass} p-2 rounded-2xl border transition-all hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-xl group flex flex-col justify-between cursor-pointer ${cellBackground}`}
+          className={`relative ${minHeightClass} rounded-2xl border transition-all hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-xl group flex flex-col overflow-hidden cursor-pointer ${cellBackground} ${borderColor}`}
         >
-            <div className="flex justify-between items-start">
-                <span className={`text-sm font-bold ${isToday ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'} ${!isWorkingDay ? 'opacity-50' : ''}`}>{date.getDate()}</span>
-                {holidayList.length > 0 && (
-                    <div className="flex gap-1">
-                        {hasActual && <div className="w-2 h-2 rounded-full bg-rose-500" title="Public Holiday" />}
-                        {hasShifted && <div className="w-2 h-2 rounded-full bg-amber-500" title="Observed Holiday" />}
-                    </div>
-                )}
+            {/* Date Number - Always Visible on Top */}
+            <div className="absolute top-2 right-3 z-20 pointer-events-none">
+                <span className={`text-sm font-bold ${isToday ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'} ${(!isWorkingDay && !isActualHoliday && !isShiftedHoliday) ? 'opacity-50' : ''}`}>{date.getDate()}</span>
             </div>
-            
-            <div className="space-y-1 mt-1 overflow-hidden">
-                {dayTrips.map(trip => {
-                    const ent = entitlements.find(e => e.id === trip.entitlementId);
-                    // Generate minimal trip pill
-                    let bg = 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300';
-                    if (ent) {
-                        const colors: any = { blue: 'bg-blue-100 text-blue-700', green: 'bg-emerald-100 text-emerald-700', amber: 'bg-amber-100 text-amber-700', purple: 'bg-purple-100 text-purple-700', red: 'bg-rose-100 text-rose-700' };
-                        bg = colors[ent.color] || bg;
-                    }
-                    return (
-                        <div key={trip.id} onClick={(e) => { e.stopPropagation(); handleEditRequest(trip); }} className={`text-[9px] font-bold px-1.5 py-0.5 rounded truncate ${bg} hover:brightness-95 transition-all`} title={trip.name}>
-                            {trip.name}
+
+            {/* Holiday Label - Absolute Bottom Left */}
+            {holidayNames && (
+                <div className="absolute bottom-1 left-2 z-20 max-w-[80%] truncate pointer-events-none">
+                    <span className={`text-[9px] font-black uppercase tracking-tight leading-none ${isActualHoliday ? 'text-rose-600 dark:text-rose-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                        {holidayNames}
+                    </span>
+                </div>
+            )}
+
+            {/* Content Container */}
+            <div className="flex flex-col h-full w-full z-10 relative">
+                {fullDayTrips.length > 0 ? (
+                    fullDayTrips.map((trip) => {
+                        const ent = entitlements.find(e => e.id === trip.entitlementId);
+                        const styleClass = getCategoryClasses(ent?.color, true);
+                        return (
+                            <div 
+                                key={trip.id}
+                                onClick={(e) => { e.stopPropagation(); handleEditRequest(trip); }}
+                                className={`flex-1 flex flex-col justify-center px-3 py-1 w-full cursor-pointer hover:brightness-95 transition-all ${styleClass}`}
+                            >
+                                <div className="font-bold text-xs truncate leading-tight">
+                                    <span className="mr-1">{trip.icon}</span>
+                                    {trip.name}
+                                </div>
+                                <div className="text-[9px] opacity-80 uppercase tracking-wider font-bold">
+                                    {ent?.name || 'Event'}
+                                </div>
+                            </div>
+                        );
+                    })
+                ) : (
+                    <>
+                        {/* Upper Half (AM) */}
+                        <div className="flex-1 w-full flex flex-col min-h-0 border-b border-dashed border-gray-400/20 dark:border-white/10">
+                            {amTrips.length > 0 ? amTrips.map(trip => {
+                                const ent = entitlements.find(e => e.id === trip.entitlementId);
+                                const styleClass = getCategoryClasses(ent?.color, true);
+                                return (
+                                    <div 
+                                        key={trip.id}
+                                        onClick={(e) => { e.stopPropagation(); handleEditRequest(trip); }}
+                                        className={`flex-1 flex flex-col justify-center px-3 py-0.5 w-full cursor-pointer hover:brightness-95 transition-all ${styleClass}`}
+                                    >
+                                        <div className="font-bold text-[10px] truncate leading-tight flex items-center gap-1">
+                                            <span>{trip.icon}</span>
+                                            <span>{trip.name}</span>
+                                            <span className="opacity-60 text-[8px] uppercase">(AM)</span>
+                                        </div>
+                                    </div>
+                                );
+                            }) : null}
                         </div>
-                    );
-                })}
+
+                        {/* Lower Half (PM) */}
+                        <div className="flex-1 w-full flex flex-col min-h-0">
+                            {pmTrips.length > 0 ? pmTrips.map(trip => {
+                                const ent = entitlements.find(e => e.id === trip.entitlementId);
+                                const styleClass = getCategoryClasses(ent?.color, true);
+                                return (
+                                    <div 
+                                        key={trip.id}
+                                        onClick={(e) => { e.stopPropagation(); handleEditRequest(trip); }}
+                                        className={`flex-1 flex flex-col justify-center px-3 py-0.5 w-full cursor-pointer hover:brightness-95 transition-all ${styleClass}`}
+                                    >
+                                        <div className="font-bold text-[10px] truncate leading-tight flex items-center gap-1">
+                                            <span>{trip.icon}</span>
+                                            <span>{trip.name}</span>
+                                            <span className="opacity-60 text-[8px] uppercase">(PM)</span>
+                                        </div>
+                                    </div>
+                                );
+                            }) : null}
+                        </div>
+                    </>
+                )}
             </div>
         </div>
       );
@@ -361,16 +454,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
       
       const grid: React.ReactNode[] = [];
       for (let i = 0; i < startDay; i++) {
-          grid.push(<div key={`empty-${i}`} className="min-h-[120px]" />);
+          grid.push(<div key={`empty-${i}`} className="min-h-[140px] bg-gray-50/20 dark:bg-white/5 rounded-2xl" />);
       }
       for (let d = 1; d <= daysInMonth; d++) {
           grid.push(renderDayCell(new Date(year, month, d)));
       }
 
       return (
-          <div className="grid grid-cols-7 gap-2">
+          <div className="grid grid-cols-7 gap-3">
               {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
-                  <div key={d} className="text-center py-2 text-xs font-black text-gray-400 uppercase tracking-widest">{d}</div>
+                  <div key={d} className="text-center py-3 text-xs font-black text-gray-400 uppercase tracking-widest">{d}</div>
               ))}
               {grid}
           </div>
