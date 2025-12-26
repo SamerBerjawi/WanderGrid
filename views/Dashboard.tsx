@@ -73,6 +73,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
   const [selectionEnd, setSelectionEnd] = useState<Date | null>(null);
 
   const activeYear = viewDate.getFullYear();
+  // Generate a dynamic range of years centered on current view
+  const yearRange = Array.from({ length: 11 }, (_, i) => activeYear - 5 + i);
 
   // Modal State
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
@@ -561,7 +563,25 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                         <button onClick={() => setViewDate(new Date())} className="px-4 text-xs font-bold uppercase tracking-wider hover:text-blue-500 transition-colors">Today</button>
                         <button onClick={() => handleNavigate(1)} className="p-2 hover:bg-white dark:hover:bg-gray-800 rounded-xl transition-all shadow-sm"><span className="material-icons-outlined text-sm">chevron_right</span></button>
                     </div>
-                    <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">{getCalendarTitle() || viewDate.getFullYear()}</h2>
+                    <div className="flex items-baseline gap-2">
+                        <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">
+                            {getCalendarTitle()}
+                        </h2>
+                        <div className="relative group">
+                             <select
+                                value={activeYear}
+                                onChange={(e) => {
+                                    const newDate = new Date(viewDate);
+                                    newDate.setFullYear(parseInt(e.target.value));
+                                    setViewDate(newDate);
+                                }}
+                                className="appearance-none bg-transparent text-2xl font-black text-gray-400 hover:text-blue-500 cursor-pointer outline-none pr-6 transition-colors"
+                            >
+                                {yearRange.map(y => <option key={y} value={y}>{y}</option>)}
+                            </select>
+                            <span className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 material-icons-outlined text-sm opacity-50 group-hover:opacity-100 transition-opacity">expand_more</span>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="flex gap-2">
@@ -587,7 +607,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                             
                             return (
                                 <div key={i} className="bg-gray-50/50 dark:bg-white/5 rounded-2xl p-4 border border-gray-100 dark:border-white/5">
-                                    <h4 className="text-sm font-black text-gray-900 dark:text-white mb-3 uppercase tracking-widest">{monthDate.toLocaleString('default', { month: 'long' })}</h4>
+                                    <h4 
+                                        className="text-sm font-black text-gray-900 dark:text-white mb-3 uppercase tracking-widest cursor-pointer hover:text-blue-500 transition-colors"
+                                        onClick={() => {
+                                            const newDate = new Date(viewDate);
+                                            newDate.setMonth(i);
+                                            setViewDate(newDate);
+                                            setCalendarView('month');
+                                        }}
+                                    >
+                                        {monthDate.toLocaleString('default', { month: 'long' })}
+                                    </h4>
                                     <div className="grid grid-cols-7 gap-1">
                                         {Array.from({ length: startDay }).map((_, k) => <div key={k} />)}
                                         {Array.from({ length: daysInMonth }).map((_, d) => {
