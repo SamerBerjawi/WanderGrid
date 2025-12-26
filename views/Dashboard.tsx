@@ -55,6 +55,15 @@ const getCategoryClasses = (color?: string, isFullDay = true) => {
     return map[color || ''] || defaultStyle;
 };
 
+const getProgressBarColor = (color: string) => {
+    const map: Record<string, string> = {
+        blue: 'bg-blue-500', green: 'bg-emerald-500', amber: 'bg-amber-500',
+        purple: 'bg-purple-500', red: 'bg-rose-500', indigo: 'bg-indigo-500',
+        gray: 'bg-gray-500', pink: 'bg-pink-500', teal: 'bg-teal-500', cyan: 'bg-cyan-500'
+    };
+    return map[color] || 'bg-blue-500';
+};
+
 export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [trips, setTrips] = useState<Trip[]>([]);
@@ -144,6 +153,78 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
       }
     });
     return { holidayMap, shiftedMap };
+  };
+
+  const calculateUsedDays = (userId: string, entId: string, year: number) => {
+      const user = users.find(u => u.id === userId);
+      if (!user) return 0;
+
+      // Filter relevant trips
+      const relevantTrips = trips.filter(t => 
+          t.participants.includes(userId) && 
+          t.status !== 'Cancelled' && 
+          (t.entitlementId === entId || t.allocations?.some(a => a.entitlementId === entId))
+      );
+
+      // Build holiday set for accuracy
+      const holidaySet = new Set<string>();
+      holidays.forEach(h => {
+          if (h.isIncluded && user.holidayConfigIds?.includes(h.configId || '')) {
+              holidaySet.add(h.date);
+              if (user.holidayWeekendRule === 'monday') {
+                  const d = new Date(h.date);
+                  if (d.getDay() === 0 || d.getDay() === 6) {
+                      holidaySet.add(getNextMonday(h.date));
+                  }
+              }
+          }
+      });
+
+      let totalUsed = 0;
+
+      relevantTrips.forEach(trip => {
+          // If explicit allocation exists, use it directly if year matches
+          const alloc = trip.allocations?.find(a => a.entitlementId === entId);
+          if (alloc) {
+              if (alloc.targetYear === year) {
+                  totalUsed += alloc.days;
+                  return;
+              }
+              // If no target year in allocation, assume proportional or check date overlap
+              if (!alloc.targetYear) {
+                  // Simplified: Check if trip falls in year. If mostly in year, count it.
+                  const startYear = new Date(trip.startDate).getFullYear();
+                  if (startYear === year) {
+                      totalUsed += alloc.days; 
+                      return;
+                  }
+              }
+          } else if (trip.entitlementId === entId) {
+              // Iterate days to check validity
+              const start = new Date(trip.startDate);
+              const end = new Date(trip.endDate);
+              const cur = new Date(start);
+              
+              while (cur <= end) {
+                  if (cur.getFullYear() === year) {
+                      const dStr = cur.toISOString().split('T')[0];
+                      const day = cur.getDay();
+                      const isWork = workspaceConfig?.workingDays.includes(day);
+                      const isHol = holidaySet.has(dStr);
+                      const isEx = trip.excludedDates?.includes(dStr);
+                      
+                      if (isWork && !isHol && !isEx) {
+                          let w = 1;
+                          if (trip.durationMode?.includes('am') || trip.durationMode?.includes('pm')) w = 0.5;
+                          totalUsed += w;
+                      }
+                  }
+                  cur.setDate(cur.getDate() + 1);
+              }
+          }
+      });
+
+      return totalUsed;
   };
 
   const isDateInRange = (checkDate: Date, startStr: string, endStr: string) => {
@@ -512,44 +593,138 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
       );
   };
 
+  const renderUserCard = (user: User) => {
+    const currentYear = new Date().getFullYear();
+    const isPartner = user.role === 'Partner';
+    const gradient = isPartner ? 'from-blue-600 to-indigo-600' : 'from-emerald-500 to-teal-600';
+    const shadowColor = isPartner ? 'shadow-blue-500/30' : 'shadow-emerald-500/30';
+    const lightBg = isPartner ? 'bg-blue-50 dark:bg-blue-900/10' : 'bg-emerald-50 dark:bg-emerald-900/10';
+    const textColor = isPartner ? 'text-blue-600 dark:text-blue-400' : 'text-emerald-600 dark:text-emerald-400';
+
+    // Get Active Entitlements for this User for the current year
+    // Filter to only include those in user.policies OR 'Lieu' if balance > 0
+    const userPolicies = user.policies?.filter(p => p.year === currentYear) || [];
+    const activeEntitlements = entitlements.filter(e => {
+        if (e.category === 'Lieu') return true; 
+        return userPolicies.some(p => p.entitlementId === e.id);
+    });
+
+    const upcomingCount = trips.filter(t => t.participants.includes(user.id) && new Date(t.endDate) >= new Date() && t.status !== 'Cancelled').length;
+    const totalDaysOff = trips.filter(t => t.participants.includes(user.id) && new Date(t.startDate).getFullYear() === currentYear && t.status !== 'Cancelled').reduce((acc, t) => {
+        // Simple day calc for total visual
+        return acc + (Math.ceil((new Date(t.endDate).getTime() - new Date(t.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1);
+    }, 0);
+
+    return (
+        <Card 
+            key={user.id} 
+            noPadding 
+            className="group cursor-pointer hover:-translate-y-1 transition-all overflow-visible h-full flex flex-col"
+            onClick={() => onUserClick && onUserClick(user.id)}
+        >
+            <div className="p-6 relative overflow-hidden rounded-[2rem] flex flex-col h-full">
+                {/* Background Blob */}
+                <div className={`absolute -right-10 -top-10 w-40 h-40 bg-gradient-to-br ${gradient} opacity-10 rounded-full blur-3xl group-hover:opacity-20 transition-opacity`} />
+
+                {/* Header */}
+                <div className="flex items-center gap-4 mb-6 relative z-10 shrink-0">
+                    <div className={`w-16 h-16 rounded-[1.2rem] bg-gradient-to-br ${gradient} flex items-center justify-center text-3xl font-black text-white shadow-xl ${shadowColor} transform group-hover:scale-105 group-hover:rotate-3 transition-all`}>
+                        {user.name?.charAt(0) || '?'}
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-black text-gray-900 dark:text-white leading-none tracking-tight">{user.name}</h3>
+                        <div className="flex items-center gap-2 mt-1.5">
+                            <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md ${lightBg} ${textColor}`}>
+                                {user.role}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Balance List */}
+                <div className="flex-1 space-y-3 relative z-10 overflow-y-auto custom-scrollbar pr-1 min-h-[140px]">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 sticky top-0 bg-white/95 dark:bg-[#121212]/95 backdrop-blur-sm pb-1 z-10">Leave Balances ({currentYear})</p>
+                    {activeEntitlements.map(ent => {
+                        // Calculate Balance Logic Inline for Dashboard
+                        const policy = userPolicies.find(p => p.entitlementId === ent.id);
+                        
+                        let allowance = 0;
+                        if (policy) {
+                            if (policy.isUnlimited) allowance = Infinity;
+                            else allowance = policy.accrual.amount; 
+                            // Add simplistic carry over approximation if enabled (detailed logic in UserDetail is better but complex to dupe here perfectly without bloating)
+                            if (policy.carryOver.enabled) {
+                                // Assume some carry over for visualization or just show base
+                                // To keep dashboard lightweight, we rely on the primary accrual mostly
+                            }
+                        } else if (ent.category === 'Lieu') {
+                            allowance = user.lieuBalance || 0;
+                        }
+
+                        const used = calculateUsedDays(user.id, ent.id, currentYear);
+                        const remaining = allowance === Infinity ? Infinity : Math.max(0, allowance - used);
+                        const percent = allowance === Infinity || allowance === 0 ? 0 : Math.min(100, (used / allowance) * 100);
+                        const barColor = getProgressBarColor(ent.color);
+
+                        return (
+                            <div key={ent.id} className="flex flex-col gap-1.5">
+                                <div className="flex justify-between items-end text-xs">
+                                    <span className="font-bold text-gray-700 dark:text-gray-300">{ent.name}</span>
+                                    <span className={`font-black ${allowance !== Infinity && remaining < 3 ? 'text-rose-500' : 'text-gray-900 dark:text-white'}`}>
+                                        {allowance === Infinity ? '∞' : remaining.toFixed(1)} <span className="text-[9px] font-normal text-gray-400 uppercase">Left</span>
+                                    </span>
+                                </div>
+                                <div className="h-1.5 w-full bg-gray-100 dark:bg-white/10 rounded-full overflow-hidden">
+                                    <div className={`h-full rounded-full transition-all duration-500 ${barColor}`} style={{ width: `${percent}%` }} />
+                                </div>
+                            </div>
+                        );
+                    })}
+                    {activeEntitlements.length === 0 && (
+                        <div className="flex items-center justify-center h-full text-[10px] text-gray-400 italic">No policies active for {currentYear}</div>
+                    )}
+                </div>
+
+                {/* Footer Stats */}
+                <div className="grid grid-cols-2 gap-4 border-t border-gray-100 dark:border-white/5 pt-4 mt-4 relative z-10 shrink-0">
+                    <div>
+                        <div className="text-xl font-black text-gray-900 dark:text-white leading-none">{upcomingCount}</div>
+                        <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">Upcoming</div>
+                    </div>
+                    <div className="text-right">
+                        <div className="text-xl font-black text-gray-900 dark:text-white leading-none">{totalDaysOff}</div>
+                        <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">Days Off</div>
+                    </div>
+                </div>
+            </div>
+        </Card>
+    );
+  };
+
   if (loading) return <div className="p-8 text-gray-400 animate-pulse">Synchronizing Dashboard...</div>;
+
+  // Responsive Grid Logic based on user count
+  // 1 User: Max width constrained, centered.
+  // 2 Users: 2 cols, centered.
+  // 3+ Users: Standard responsive grid.
+  const gridClass = users.length === 1 
+      ? 'max-w-xl mx-auto' 
+      : users.length === 2 
+          ? 'grid-cols-1 md:grid-cols-2 max-w-5xl mx-auto' 
+          : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4';
 
   return (
     <div className="space-y-8 animate-fade-in max-w-[1600px] mx-auto pb-12">
         
         {/* TEAM HEADER */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {users.map(user => (
-                <Card 
-                    key={user.id} 
-                    noPadding 
-                    className="group cursor-pointer hover:-translate-y-1 transition-all"
-                    onClick={() => onUserClick && onUserClick(user.id)}
-                >
-                    <div className="p-5 flex items-center gap-4">
-                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-black text-white shadow-lg transition-transform group-hover:scale-110 ${user.role === 'Partner' ? 'bg-gradient-to-br from-blue-500 to-indigo-600' : 'bg-gradient-to-br from-emerald-500 to-teal-600'}`}>
-                            {user.name?.charAt(0) || '?'}
-                        </div>
-                        <div>
-                            <h3 className="font-bold text-gray-900 dark:text-white leading-tight">{user.name || 'Unknown'}</h3>
-                            <div className="flex items-center gap-2 mt-1">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">{user.role}</span>
-                                {user.holidayWeekendRule && user.holidayWeekendRule !== 'none' && (
-                                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500" title="Custom Holiday Rule" />
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                    {/* Mini Usage Bar (Just visual approximation) */}
-                    <div className="h-1 w-full bg-gray-100 dark:bg-white/5">
-                        <div className={`h-full ${user.role === 'Partner' ? 'bg-blue-500' : 'bg-emerald-500'}`} style={{ width: '40%' }} />
-                    </div>
-                </Card>
-            ))}
+        <div className={`grid gap-6 ${gridClass}`}>
+            {users.map(user => renderUserCard(user))}
             
-            {/* Add User Stub */}
-            <button className="flex flex-col items-center justify-center p-6 rounded-[2rem] border-2 border-dashed border-gray-200 dark:border-white/10 text-gray-400 hover:text-blue-500 hover:border-blue-300 hover:bg-blue-50/50 dark:hover:bg-white/5 transition-all gap-2 h-full min-h-[100px]">
-                <span className="material-icons-outlined text-2xl">person_add</span>
+            {/* Add User Stub - Only show if > 0 users to avoid weird empty state, usually init has 1 */}
+            <button className="group flex flex-col items-center justify-center p-6 rounded-[2rem] border-2 border-dashed border-gray-200 dark:border-white/10 text-gray-400 hover:text-blue-500 hover:border-blue-300 hover:bg-blue-50/50 dark:hover:bg-white/5 transition-all gap-2 h-full min-h-[300px]">
+                <div className="w-16 h-16 rounded-full bg-gray-50 dark:bg-white/5 group-hover:bg-white dark:group-hover:bg-white/10 flex items-center justify-center transition-colors">
+                    <span className="material-icons-outlined text-3xl">person_add</span>
+                </div>
                 <span className="text-xs font-bold uppercase tracking-widest">Invite Member</span>
             </button>
         </div>
