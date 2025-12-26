@@ -133,6 +133,11 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack }) => {
         return allSavedConfigs.find(c => c.year === selectedYear && user.holidayConfigIds?.includes(c.id));
     }, [user, allSavedConfigs, selectedYear]);
 
+    const sortedHolidays = useMemo(() => {
+        if (!activeConfig) return [];
+        return [...activeConfig.holidays].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    }, [activeConfig]);
+
     const holidayCount = useMemo(() => {
         return activeConfig?.holidays.filter(h => h.isIncluded).length || 0;
     }, [activeConfig]);
@@ -272,8 +277,20 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack }) => {
             base = user?.lieuBalance || 0;
             // Add accrued lieu from weekends if rule active
             if (user?.holidayWeekendRule === 'lieu') {
-                 // Logic to count weekend holidays in this year
-                 // (Simplified for this view: base is manually managed mostly)
+                 // Check holidays state for relevant year and user config
+                 const accrued = holidays.filter(h => {
+                     if (!h.isIncluded) return false;
+                     if (!user.holidayConfigIds?.includes(h.configId || '')) return false;
+                     
+                     // Ensure year match
+                     const [y, m, d] = h.date.split('-').map(Number);
+                     if (y !== year) return false;
+                     
+                     const date = new Date(y, m - 1, d);
+                     const day = date.getDay();
+                     return day === 0 || day === 6; // Sunday or Saturday
+                 }).length;
+                 base += accrued;
             }
         }
 
@@ -306,7 +323,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack }) => {
             
             // Calculate components for display
             const base = p.accrual.amount;
-            const carryOver = total - base; // Simplified
+            const carryOver = total - base; // Simplified visualization
 
             return {
                 id: p.entitlementId,
@@ -323,7 +340,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack }) => {
                 }
             };
         });
-    }, [activePolicies, entitlements, trips]); // Dependency on trips to refresh usage
+    }, [activePolicies, entitlements, trips, holidays, user, selectedYear]); 
 
     const totalAllowance = entitlementBreakdown.reduce((sum, item) => sum + (item.allowance === Infinity ? 0 : item.allowance), 0);
 
@@ -501,6 +518,27 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack }) => {
         setAllSavedConfigs(newConfigs);
     };
 
+    const toggleHolidayInclusion = async (hId: string) => {
+        if (!activeConfig) return;
+        const updatedHolidays = activeConfig.holidays.map(h => 
+            h.id === hId ? { ...h, isIncluded: !h.isIncluded } : h
+        );
+        const updatedConfig = { ...activeConfig, holidays: updatedHolidays };
+        await dataService.saveConfig(updatedConfig);
+        
+        // Refresh local state
+        const idx = allSavedConfigs.findIndex(c => c.id === updatedConfig.id);
+        const newConfigs = [...allSavedConfigs];
+        newConfigs[idx] = updatedConfig;
+        setAllSavedConfigs(newConfigs);
+    };
+
+    const formatHolidayDate = (dateStr: string) => {
+        const [y, m, d] = dateStr.split('-').map(Number);
+        const date = new Date(y, m - 1, d);
+        return date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    };
+
     if (loading || !user) return <div className="p-8 text-gray-400 animate-pulse">Loading Identity Data...</div>;
 
     const uniqueCountries = availableCountries.length > 0 ? availableCountries : [{ label: 'Belgium', value: 'BE' }, { label: 'US', value: 'US' }];
@@ -667,22 +705,40 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack }) => {
                             </div>
 
                             <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
-                                {activeConfig.holidays.map(h => (
-                                    <div key={h.id} className="group flex justify-between items-center p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-white/5 border border-transparent hover:border-gray-100 dark:hover:border-white/5 transition-all">
-                                        <div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xs font-bold text-gray-800 dark:text-gray-200">{h.name}</span>
-                                                {h.isWeekend && <span className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-600 text-[9px] font-black uppercase">Weekend</span>}
+                                {sortedHolidays.map(h => {
+                                    const isCustom = h.id.startsWith('custom-');
+                                    return (
+                                        <div key={h.id} className={`group flex justify-between items-center p-3 rounded-xl border transition-all ${
+                                            h.isIncluded 
+                                            ? 'hover:bg-gray-50 dark:hover:bg-white/5 border-transparent hover:border-gray-100 dark:hover:border-white/5' 
+                                            : 'bg-gray-50/50 dark:bg-white/5 opacity-60 grayscale border-transparent'
+                                        }`}>
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`text-xs font-bold ${h.isIncluded ? 'text-gray-800 dark:text-gray-200' : 'text-gray-500'}`}>{h.name}</span>
+                                                    {h.isWeekend && <span className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-600 text-[9px] font-black uppercase">Weekend</span>}
+                                                    {isCustom && <span className="px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-900/30 text-purple-600 text-[9px] font-black uppercase">Custom</span>}
+                                                </div>
+                                                <span className="text-[10px] text-gray-400 font-mono">{formatHolidayDate(h.date)}</span>
                                             </div>
-                                            <span className="text-[10px] text-gray-400 font-mono">{h.date}</span>
+                                            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                {!isCustom ? (
+                                                    <button 
+                                                        onClick={() => toggleHolidayInclusion(h.id)}
+                                                        className={`p-1.5 rounded-lg transition-colors ${h.isIncluded ? 'text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20' : 'text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'}`}
+                                                        title={h.isIncluded ? "Exclude" : "Include"}
+                                                    >
+                                                        <span className="material-icons-outlined text-sm">{h.isIncluded ? 'remove_circle_outline' : 'add_circle_outline'}</span>
+                                                    </button>
+                                                ) : (
+                                                    <button onClick={() => handleDeleteCustomHoliday(h.id)} className="p-1.5 text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-colors" title="Delete Custom Holiday">
+                                                        <span className="material-icons-outlined text-sm">delete</span>
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
-                                        {h.id.startsWith('custom-') && (
-                                            <button onClick={() => handleDeleteCustomHoliday(h.id)} className="text-rose-400 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <span className="material-icons-outlined text-sm">delete</span>
-                                            </button>
-                                        )}
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     ) : (
