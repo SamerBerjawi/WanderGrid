@@ -3,6 +3,8 @@ import { User, Trip, PublicHoliday, EntitlementType, SavedConfig, EntitlementRul
 import { getCoordinates } from './geocoding';
 
 const STORAGE_KEY = 'wandergrid_app_data';
+const GEO_CACHE_KEY = 'wandergrid_geo_cache_v2';
+const COORD_CACHE_KEY = 'wandergrid_coord_cache';
 
 // --- Default Data (Clean Slate) ---
 const DEFAULT_USERS: User[] = [
@@ -486,15 +488,32 @@ class DataService {
 
   // --- Export/Import ---
   async exportFullState(): Promise<string> {
+      // Capture intelligent caches to persist expensive API results
+      let geoCache: any[] = [];
+      try {
+          const storedGeo = localStorage.getItem(GEO_CACHE_KEY);
+          if (storedGeo) geoCache = JSON.parse(storedGeo);
+      } catch (e) { console.warn("Failed to read geo cache", e); }
+
+      let coordCache: any[] = [];
+      try {
+          const storedCoord = localStorage.getItem(COORD_CACHE_KEY);
+          if (storedCoord) coordCache = JSON.parse(storedCoord);
+      } catch (e) { console.warn("Failed to read coord cache", e); }
+
       const state = {
-          version: '3.3', // Updated schema version with coordinates
+          version: '3.4', // Updated for Cache Support
           timestamp: new Date().toISOString(),
           users: this.users,
           trips: this.trips,
           customEvents: this.customEvents,
           entitlements: this.entitlements,
           savedConfigs: this.savedConfigs,
-          workspaceSettings: this.workspaceSettings 
+          workspaceSettings: this.workspaceSettings,
+          caches: {
+              geo: geoCache,
+              coord: coordCache
+          }
       };
       return JSON.stringify(state, null, 2);
   }
@@ -530,6 +549,20 @@ class DataService {
           this.savedConfigs = Array.isArray(state.savedConfigs) ? state.savedConfigs : [];
           
           this.workspaceSettings = { ...DEFAULT_WORKSPACE_SETTINGS, ...(state.workspaceSettings || {}) };
+
+          // Restore Caches if present
+          if (state.caches) {
+              if (state.caches.geo && Array.isArray(state.caches.geo)) {
+                  try {
+                      localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(state.caches.geo));
+                  } catch (e) { console.error("Failed to restore geo cache", e); }
+              }
+              if (state.caches.coord && Array.isArray(state.caches.coord)) {
+                  try {
+                      localStorage.setItem(COORD_CACHE_KEY, JSON.stringify(state.caches.coord));
+                  } catch (e) { console.error("Failed to restore coord cache", e); }
+              }
+          }
 
           this.saveToStorage();
           

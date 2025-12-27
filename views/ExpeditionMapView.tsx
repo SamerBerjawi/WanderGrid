@@ -5,6 +5,7 @@ import { ExpeditionMap3D } from '../components/ExpeditionMap3D';
 import { dataService } from '../services/mockDb';
 import { Trip } from '../types';
 import { Input, MultiSelect } from '../components/ui';
+import { resolvePlaceName, getCoordinates } from '../services/geocoding';
 
 interface ExpeditionMapViewProps {
     onTripClick: (tripId: string) => void;
@@ -25,14 +26,43 @@ const useDarkMode = () => {
     return isDark;
 };
 
+// Coordinate Cache to prevent excessive API calls
+const COORD_CACHE_KEY = 'wandergrid_coord_cache';
+let coordCache: Map<string, { lat: number, lng: number }> | null = null;
+
+const getCoordCache = () => {
+    if (coordCache) return coordCache;
+    try {
+        const stored = localStorage.getItem(COORD_CACHE_KEY);
+        coordCache = stored ? new Map(JSON.parse(stored)) : new Map();
+    } catch {
+        coordCache = new Map();
+    }
+    return coordCache!;
+};
+
+const saveCoordCache = (cache: Map<string, { lat: number, lng: number }>) => {
+    try {
+        localStorage.setItem(COORD_CACHE_KEY, JSON.stringify(Array.from(cache.entries())));
+    } catch (e) {
+        console.warn("Failed to save coord cache", e);
+    }
+};
+
 export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClick }) => {
     const [mapType, setMapType] = useState<'2D' | '3D'>('2D');
+    const [viewMode, setViewMode] = useState<'network' | 'scratch'>('network');
     const [trips, setTrips] = useState<Trip[]>([]);
     const [loading, setLoading] = useState(true);
     
     // Map Visual Settings
     const [showFrequencyWeight, setShowFrequencyWeight] = useState(true);
     const [animateRoutes, setAnimateRoutes] = useState(true);
+    const [showCountries, setShowCountries] = useState(false); 
+
+    // Data for Highlights
+    const [visitedCountryCodes, setVisitedCountryCodes] = useState<string[]>([]);
+    const [visitedPlaces, setVisitedPlaces] = useState<{lat: number, lng: number, name: string}[]>([]);
 
     // Filters
     const [statusFilter, setStatusFilter] = useState<'all' | 'Past' | 'Upcoming' | 'Planning'>('all');
@@ -50,6 +80,135 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
             setLoading(false);
         });
     }, []);
+
+    // Calculate Visited Countries & Cities
+    useEffect(() => {
+        const processGeoData = async () => {
+            const countryCodes = new Set<string>();
+            // Reuse cache from LocalStorage if available (shared with Gamification)
+            const placeCacheRaw = localStorage.getItem('wandergrid_geo_cache_v2');
+            const placeDetailsCache = placeCacheRaw ? new Map(JSON.parse(placeCacheRaw)) : new Map();
+            const coordinateCache = getCoordCache();
+            let coordsDirty = false;
+            
+            const placesToCheckForCountry = new Set<string>();
+            const placesToCheckForCoords = new Set<string>(); // Map Name -> LatLng
+            const finalPlaces: { lat: number, lng: number, name: string }[] = [];
+            const processedPlaceKeys = new Set<string>(); // "lat,lng"
+
+            trips.forEach(t => {
+                if (t.status === 'Cancelled') return;
+                
+                // 1. Main Trip Location
+                if (t.location) {
+                    placesToCheckForCountry.add(t.location);
+                    if (t.coordinates) {
+                        const key = `${t.coordinates.lat.toFixed(4)},${t.coordinates.lng.toFixed(4)}`;
+                        if (!processedPlaceKeys.has(key)) {
+                            finalPlaces.push({ lat: t.coordinates.lat, lng: t.coordinates.lng, name: t.location });
+                            processedPlaceKeys.add(key);
+                        }
+                    } else {
+                        placesToCheckForCoords.add(t.location);
+                    }
+                }
+
+                // 2. Transports
+                t.transports?.forEach(tr => {
+                    // Countries
+                    if (tr.origin) placesToCheckForCountry.add(tr.origin);
+                    if (tr.destination) placesToCheckForCountry.add(tr.destination);
+                    
+                    // Cities (Use explicit Lat/Lng if available from transport data)
+                    if (tr.originLat && tr.originLng) {
+                        const key = `${tr.originLat.toFixed(4)},${tr.originLng.toFixed(4)}`;
+                        if (!processedPlaceKeys.has(key)) {
+                            finalPlaces.push({ lat: tr.originLat, lng: tr.originLng, name: tr.origin });
+                            processedPlaceKeys.add(key);
+                        }
+                    } else if (tr.origin) {
+                        placesToCheckForCoords.add(tr.origin);
+                    }
+
+                    if (tr.destLat && tr.destLng) {
+                        const key = `${tr.destLat.toFixed(4)},${tr.destLng.toFixed(4)}`;
+                        if (!processedPlaceKeys.has(key)) {
+                            finalPlaces.push({ lat: tr.destLat, lng: tr.destLng, name: tr.destination });
+                            processedPlaceKeys.add(key);
+                        }
+                    } else if (tr.destination) {
+                        placesToCheckForCoords.add(tr.destination);
+                    }
+                });
+
+                // 3. Locations (Route Manager)
+                t.locations?.forEach(l => {
+                    placesToCheckForCountry.add(l.name);
+                    if (l.coordinates) {
+                        const key = `${l.coordinates.lat.toFixed(4)},${l.coordinates.lng.toFixed(4)}`;
+                        if (!processedPlaceKeys.has(key)) {
+                            finalPlaces.push({ lat: l.coordinates.lat, lng: l.coordinates.lng, name: l.name });
+                            processedPlaceKeys.add(key);
+                        }
+                    } else {
+                        placesToCheckForCoords.add(l.name);
+                    }
+                });
+
+                // 4. Accommodations
+                t.accommodations?.forEach(a => {
+                    // Usually we have full address, might be noisy for map country check but resolvePlaceName handles it
+                    placesToCheckForCountry.add(a.address);
+                    // For coords, full address is good
+                    placesToCheckForCoords.add(a.address);
+                });
+            });
+
+            // Resolve Countries
+            for (const place of Array.from(placesToCheckForCountry)) {
+                let code = '';
+                if (placeDetailsCache.has(place)) {
+                    code = placeDetailsCache.get(place).countryCode;
+                } else {
+                    const res = await resolvePlaceName(place);
+                    if (res && res.countryCode) code = res.countryCode;
+                }
+                if (code && code.length === 2) countryCodes.add(code.toUpperCase());
+            }
+
+            // Resolve Coords for missing items
+            for (const place of Array.from(placesToCheckForCoords)) {
+                let coords = coordinateCache.get(place);
+                
+                if (!coords) {
+                    // Try to fetch
+                    const res = await getCoordinates(place);
+                    if (res) {
+                        coords = { lat: res.lat, lng: res.lng };
+                        coordinateCache.set(place, coords);
+                        coordsDirty = true;
+                        // Throttle
+                        await new Promise(r => setTimeout(r, 100));
+                    }
+                }
+
+                if (coords) {
+                    const key = `${coords.lat.toFixed(4)},${coords.lng.toFixed(4)}`;
+                    if (!processedPlaceKeys.has(key)) {
+                        finalPlaces.push({ lat: coords.lat, lng: coords.lng, name: place });
+                        processedPlaceKeys.add(key);
+                    }
+                }
+            }
+
+            if (coordsDirty) saveCoordCache(coordinateCache);
+
+            setVisitedCountryCodes(Array.from(countryCodes));
+            setVisitedPlaces(finalPlaces);
+        };
+
+        if (trips.length > 0) processGeoData();
+    }, [trips]);
 
     // Derived Data
     const years = useMemo(() => {
@@ -120,6 +279,31 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                 {/* Filters & Toggles */}
                 <div className="flex flex-col gap-3 w-full xl:w-auto relative z-10">
                     <div className="flex flex-col md:flex-row items-center gap-3">
+                        
+                        {/* View Mode Toggle */}
+                        <div className="flex p-1 bg-gray-100 dark:bg-black/30 rounded-2xl border border-gray-200 dark:border-white/5 w-full md:w-auto">
+                            <button 
+                                onClick={() => setViewMode('network')}
+                                className={`flex-1 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                                    viewMode === 'network' 
+                                    ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-white shadow-sm' 
+                                    : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+                                }`}
+                            >
+                                <span className="material-icons-outlined text-sm">hub</span> Flight Network
+                            </button>
+                            <button 
+                                onClick={() => setViewMode('scratch')}
+                                className={`flex-1 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                                    viewMode === 'scratch' 
+                                    ? 'bg-white dark:bg-gray-700 text-amber-600 dark:text-amber-400 shadow-sm' 
+                                    : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+                                }`}
+                            >
+                                <span className="material-icons-outlined text-sm">flag</span> Scratch Map
+                            </button>
+                        </div>
+
                         <div className="flex items-center p-1 bg-gray-100 dark:bg-black/30 rounded-2xl border border-gray-200 dark:border-white/5 w-full md:w-auto">
                             <select 
                                 value={yearFilter}
@@ -147,49 +331,48 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                             </div>
                         </div>
 
-                        <div className="flex gap-2 w-full md:w-auto">
-                            {/* 2D/3D Toggle */}
-                            <div className="flex p-1 bg-gray-100 dark:bg-black/30 rounded-2xl border border-gray-200 dark:border-white/5">
+                        {viewMode === 'network' && (
+                            <div className="flex gap-2 w-full md:w-auto">
                                 <button 
-                                    onClick={() => setMapType('2D')}
-                                    className={`px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase transition-all ${mapType === '2D' ? 'bg-white dark:bg-gray-700 shadow text-blue-600 dark:text-white' : 'text-gray-400 hover:text-gray-600'}`}
-                                >
-                                    2D
-                                </button>
-                                <button 
-                                    onClick={() => setMapType('3D')}
-                                    className={`px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase transition-all ${mapType === '3D' ? 'bg-white dark:bg-gray-700 shadow text-purple-600 dark:text-white' : 'text-gray-400 hover:text-gray-600'}`}
-                                >
-                                    3D
-                                </button>
-                            </div>
-
-                            <button 
-                                onClick={() => setAnimateRoutes(!animateRoutes)}
-                                className={`flex items-center justify-center gap-2 px-3 py-2 rounded-2xl border transition-all ${
-                                    animateRoutes 
-                                    ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-400' 
-                                    : 'bg-transparent border-gray-200 dark:border-white/10 text-gray-400'
-                                }`}
-                                title="Toggle Animation"
-                            >
-                                <span className="material-icons-outlined text-lg">{animateRoutes ? 'blur_on' : 'blur_off'}</span>
-                            </button>
-                            
-                            {mapType === '2D' && (
-                                <button 
-                                    onClick={() => setShowFrequencyWeight(!showFrequencyWeight)}
+                                    onClick={() => setAnimateRoutes(!animateRoutes)}
                                     className={`flex items-center justify-center gap-2 px-3 py-2 rounded-2xl border transition-all ${
-                                        showFrequencyWeight 
-                                        ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-900/50 text-blue-700 dark:text-blue-400' 
+                                        animateRoutes 
+                                        ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-400' 
                                         : 'bg-transparent border-gray-200 dark:border-white/10 text-gray-400'
                                     }`}
-                                    title="Toggle Route Frequency Weight"
+                                    title="Toggle Animation"
                                 >
-                                    <span className="material-icons-outlined text-lg">line_weight</span>
+                                    <span className="material-icons-outlined text-lg">{animateRoutes ? 'blur_on' : 'blur_off'}</span>
                                 </button>
-                            )}
-                        </div>
+                                
+                                {mapType === '2D' && (
+                                    <>
+                                        <button 
+                                            onClick={() => setShowFrequencyWeight(!showFrequencyWeight)}
+                                            className={`flex items-center justify-center gap-2 px-3 py-2 rounded-2xl border transition-all ${
+                                                showFrequencyWeight 
+                                                ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-900/50 text-blue-700 dark:text-blue-400' 
+                                                : 'bg-transparent border-gray-200 dark:border-white/10 text-gray-400'
+                                            }`}
+                                            title="Toggle Route Frequency Weight"
+                                        >
+                                            <span className="material-icons-outlined text-lg">line_weight</span>
+                                        </button>
+                                        <button 
+                                            onClick={() => setShowCountries(!showCountries)}
+                                            className={`flex items-center justify-center gap-2 px-3 py-2 rounded-2xl border transition-all ${
+                                                showCountries
+                                                ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-900/50 text-amber-700 dark:text-amber-400' 
+                                                : 'bg-transparent border-gray-200 dark:border-white/10 text-gray-400'
+                                            }`}
+                                            title="Highlight Visited Countries"
+                                        >
+                                            <span className="material-icons-outlined text-lg">public_off</span>
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex flex-col md:flex-row gap-3">
@@ -242,6 +425,10 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                             onTripClick={onTripClick} 
                             showFrequencyWeight={showFrequencyWeight}
                             animateRoutes={animateRoutes}
+                            visitedCountries={visitedCountryCodes}
+                            showCountries={showCountries}
+                            viewMode={viewMode}
+                            visitedPlaces={visitedPlaces}
                         />
                     ) : (
                         <ExpeditionMap3D
@@ -252,6 +439,24 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                         />
                     )}
                     
+                    {/* Floating 2D/3D Toggle in Bottom Corner */}
+                    <div className="absolute bottom-6 left-6 z-[5000]">
+                        <div className="flex p-1 bg-white/90 dark:bg-black/80 backdrop-blur rounded-2xl border border-gray-200 dark:border-white/10 shadow-lg">
+                            <button 
+                                onClick={() => setMapType('2D')}
+                                className={`px-4 py-2 rounded-xl text-xs font-bold uppercase transition-all ${mapType === '2D' ? 'bg-blue-600 text-white shadow' : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white'}`}
+                            >
+                                2D Map
+                            </button>
+                            <button 
+                                onClick={() => setMapType('3D')}
+                                className={`px-4 py-2 rounded-xl text-xs font-bold uppercase transition-all ${mapType === '3D' ? 'bg-purple-600 text-white shadow' : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white'}`}
+                            >
+                                3D Globe
+                            </button>
+                        </div>
+                    </div>
+
                     {trips.length === 0 && (
                         <div className="absolute inset-0 flex items-center justify-center z-[500] pointer-events-none">
                             <div className="bg-black/80 backdrop-blur-md p-8 rounded-3xl border border-white/10 text-center">

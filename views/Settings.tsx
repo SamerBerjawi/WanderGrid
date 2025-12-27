@@ -187,13 +187,14 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
               setRestoreStatus('importing');
               await dataService.importFullState(content);
               setRestoreStatus('success');
+              
+              // Clear current session to force re-login with restored users
+              localStorage.removeItem('wandergrid_session_user');
+
               setTimeout(() => {
                   setIsRestoreModalOpen(false);
-                  refreshData();
-                  // Force theme update if it changed
-                  dataService.getWorkspaceSettings().then(s => {
-                      if (onThemeChange) onThemeChange(s.theme);
-                  });
+                  // Full reload to ensure all in-memory caches (geo/maps) are reset
+                  window.location.reload();
               }, 1000);
           } catch (err) {
               console.error(err);

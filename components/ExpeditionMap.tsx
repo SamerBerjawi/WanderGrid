@@ -3,12 +3,17 @@ import React, { useEffect, useRef, useMemo, useState } from 'react';
 import L from 'leaflet';
 import { Trip, Transport } from '../types';
 import html2canvas from 'html2canvas';
+import { getRegion } from '../services/geocoding';
 
 interface ExpeditionMapProps {
     trips: Trip[];
     onTripClick?: (tripId: string) => void;
     showFrequencyWeight?: boolean;
     animateRoutes?: boolean;
+    visitedCountries?: string[]; // ISO-2 Country Codes
+    showCountries?: boolean;
+    viewMode?: 'network' | 'scratch';
+    visitedPlaces?: { lat: number; lng: number; name: string }[];
 }
 
 // Leaflet default icon fix
@@ -18,6 +23,24 @@ L.Icon.Default.mergeOptions({
     iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
+
+// Region Color Mapping (Matching Dashboard Styles)
+const REGION_HEX_COLORS: Record<string, string> = {
+    'North America': '#3b82f6', // blue-500
+    'Central America': '#14b8a6', // teal-500
+    'South America': '#10b981', // emerald-500
+    'Northern Europe': '#0ea5e9', // sky-500
+    'Western Europe': '#6366f1', // indigo-500
+    'Southern Europe': '#f97316', // orange-500
+    'Eastern Europe': '#f43f5e', // rose-500
+    'North Africa': '#d97706', // amber-600
+    'Sub-Saharan Africa': '#eab308', // yellow-500
+    'East Asia': '#ef4444', // red-500
+    'Southeast Asia': '#84cc16', // lime-500
+    'South & West Asia': '#f59e0b', // amber-500
+    'Oceania': '#06b6d4', // cyan-500
+    'Unknown': '#64748b' // slate-500
+};
 
 // Custom Hook to detect Dark Mode changes from Tailwind class on HTML element
 const useDarkMode = () => {
@@ -122,13 +145,19 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
     trips, 
     onTripClick, 
     showFrequencyWeight = true, 
-    animateRoutes = true 
+    animateRoutes = true,
+    visitedCountries = [],
+    showCountries = false,
+    viewMode = 'network',
+    visitedPlaces = []
 }) => {
     const mapContainer = useRef<HTMLDivElement>(null);
     const mapInstance = useRef<L.Map | null>(null);
     const tileLayerRef = useRef<L.TileLayer | null>(null);
+    const geoJsonLayerRef = useRef<L.GeoJSON | null>(null);
     const [isScreenshotting, setIsScreenshotting] = useState(false);
     const [activeLayer, setActiveLayer] = useState<LayerType>('standard');
+    const [geoJsonData, setGeoJsonData] = useState<any>(null);
     const isDark = useDarkMode();
 
     // Pre-calculate frequencies
@@ -144,6 +173,14 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
         });
         return counts;
     }, [trips]);
+
+    // Load GeoJSON once
+    useEffect(() => {
+        fetch('https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson')
+            .then(r => r.json())
+            .then(data => setGeoJsonData(data))
+            .catch(e => console.warn("Failed to load country shapes", e));
+    }, []);
 
     useEffect(() => {
         if (!mapContainer.current || mapInstance.current) return;
@@ -205,17 +242,83 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
         tileLayerRef.current = layer;
     }, [isDark, activeLayer]);
 
+    // Handle Map Content (Flights, Markers, GeoJSON)
     useEffect(() => {
         if (!mapInstance.current) return;
         const map = mapInstance.current;
 
-        // Clear existing layers
+        // Clean up old layers except tiles
         map.eachLayer((layer) => {
-            if (layer instanceof L.Marker || layer instanceof L.Polyline || layer instanceof L.CircleMarker) {
+            if (layer instanceof L.Marker || layer instanceof L.Polyline || layer instanceof L.CircleMarker || layer instanceof L.GeoJSON) {
                 map.removeLayer(layer);
             }
         });
 
+        // 1. Render Countries (Layer Logic)
+        const shouldShowCountries = showCountries || viewMode === 'scratch';
+        
+        if (shouldShowCountries && geoJsonData) {
+            geoJsonLayerRef.current = L.geoJSON(geoJsonData, {
+                style: (feature) => {
+                    const iso = feature?.properties?.ISO_A2 || feature?.properties?.ISO_A2_EH;
+                    const isVisited = visitedCountries.includes(iso);
+                    const region = getRegion(iso);
+                    const regionColor = REGION_HEX_COLORS[region] || REGION_HEX_COLORS['Unknown'];
+                    
+                    if (viewMode === 'scratch') {
+                        // Scratch Map Style (Regional Colors)
+                        return {
+                            color: isDark ? '#222' : '#e5e5e5', // Border color
+                            weight: 1,
+                            fillColor: isVisited ? regionColor : (isDark ? '#111' : '#f8fafc'), 
+                            fillOpacity: isVisited ? 0.8 : 0.5,
+                            className: isVisited ? 'transition-all duration-500' : ''
+                        };
+                    } else {
+                        // Standard Highlight Style
+                        return {
+                            color: isDark ? '#333' : '#ddd',
+                            weight: 1,
+                            fillColor: isVisited ? (isDark ? '#3b82f6' : '#60a5fa') : 'transparent',
+                            fillOpacity: isVisited ? 0.3 : 0,
+                            className: isVisited ? 'transition-all duration-500' : ''
+                        };
+                    }
+                }
+            }).addTo(map);
+        }
+
+        // 2. SCRATCH MAP MARKERS
+        if (viewMode === 'scratch') {
+            const bounds = L.latLngBounds([]);
+            
+            visitedPlaces.forEach(place => {
+                const marker = L.circleMarker([place.lat, place.lng], {
+                    radius: 4,
+                    fillColor: isDark ? '#ffffff' : '#000000',
+                    color: isDark ? '#000000' : '#ffffff',
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 1
+                }).addTo(map);
+                
+                marker.bindTooltip(place.name, {
+                    direction: 'top',
+                    className: 'bg-black/90 text-white border border-white/20 shadow-xl text-xs font-bold px-3 py-1.5 rounded-lg'
+                });
+                
+                bounds.extend([place.lat, place.lng]);
+            });
+
+            if (visitedPlaces.length > 0) {
+                map.fitBounds(bounds, { padding: [50, 50], maxZoom: 6 });
+            } else {
+                map.setView([20, 0], 2);
+            }
+            return; // Stop here for scratch mode
+        }
+
+        // 3. NETWORK MAP LOGIC
         const bounds = L.latLngBounds([]);
         let hasPoints = false;
 
@@ -229,38 +332,31 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                         const end = L.latLng(t.destLat, t.destLng);
                         
                         const curvedPath = getCurvePoints(start, end);
-
                         const key = getRouteKey(t.originLat, t.originLng, t.destLat, t.destLng);
                         const freq = routeFrequencies.get(key) || 1;
-                        
-                        // Weight Logic
-                        const dynamicWeight = showFrequencyWeight 
-                            ? Math.min(10, 2 + ((freq - 1) * 1))
-                            : 2;
+                        const dynamicWeight = showFrequencyWeight ? Math.min(10, 2 + ((freq - 1) * 1)) : 2;
 
-                        // 1. STATIC TRACK (The base line)
-                        // This creates the subtle path connection even when the "pulse" isn't there
+                        // Static Track
                         const trackLine = L.polyline(curvedPath, {
                             color: color, 
-                            weight: 1 + (dynamicWeight * 0.2), // Thinner than flow
+                            weight: 1 + (dynamicWeight * 0.2), 
                             opacity: (isDark || activeLayer === 'satellite') ? 0.3 : 0.4,
                             className: `flight-path-track ${className}`,
                             interactive: false
                         }).addTo(map);
 
-                        // 2. ANIMATED FLOW (The moving dash)
+                        // Animated Flow
                         let flowLine: L.Polyline | null = null;
                         if (animateRoutes) {
                             flowLine = L.polyline(curvedPath, {
                                 color: color,
                                 weight: dynamicWeight,
-                                opacity: 1, // High opacity for glow
+                                opacity: 1,
                                 className: `flight-path-flow ${className}`,
                                 interactive: false,
                                 lineCap: 'round'
                             }).addTo(map);
                         } else {
-                            // Solid line if animation disabled
                             flowLine = L.polyline(curvedPath, {
                                 color: color,
                                 weight: dynamicWeight,
@@ -269,7 +365,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                             }).addTo(map);
                         }
 
-                        // 3. INVISIBLE INTERACTION LAYER (Hit area)
+                        // Interaction Line
                         const hitLine = L.polyline(curvedPath, {
                             color: 'transparent',
                             weight: Math.max(15, dynamicWeight + 10), 
@@ -277,75 +373,46 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                             interactive: true
                         }).addTo(map);
 
-                        // Tooltip on Hover
                         hitLine.bindTooltip(`
                             <div class="font-sans p-1">
                                 <div class="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">${trip.name}</div>
                                 <div class="font-bold text-sm text-white">${t.origin} <span class="text-gray-500">→</span> ${t.destination}</div>
                                 <div class="text-[10px] text-gray-400 mt-1">${t.provider} • ${new Date(t.departureDate).toLocaleDateString()}</div>
                             </div>
-                        `, {
-                            sticky: true,
-                            direction: 'top',
-                            className: 'bg-black/90 text-white border border-white/20 shadow-xl rounded-xl backdrop-blur-md px-0 py-0'
-                        });
+                        `, { sticky: true, direction: 'top', className: 'bg-black/90 text-white border border-white/20 shadow-xl rounded-xl backdrop-blur-md px-0 py-0' });
 
-                        hitLine.bindPopup(`
-                            <div class="p-2">
-                                <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">${trip.status} Trip</div>
-                                <div class="font-bold text-sm text-white">${t.origin} <span class="text-gray-500">→</span> ${t.destination}</div>
-                                <div class="text-xs opacity-70 text-gray-300">${t.provider}</div>
-                                <div class="text-[10px] text-gray-500 mt-1">${new Date(t.departureDate).toLocaleDateString()}</div>
-                            </div>
-                        `);
-
-                        // Hover Effects
                         hitLine.on('mouseover', () => {
-                            // Highlight the flow line
-                            if (flowLine && flowLine.getElement()) {
+                            if (flowLine?.getElement()) {
                                 flowLine.getElement()?.classList.add('flight-path-selected');
                                 flowLine.bringToFront();
                             }
-                            // Also highlight track slightly
-                            if (trackLine && trackLine.getElement()) {
-                                trackLine.setStyle({ opacity: 0.5 });
-                            }
+                            if (trackLine?.getElement()) trackLine.setStyle({ opacity: 0.5 });
                         });
                         
                         hitLine.on('mouseout', () => {
-                            if (flowLine && flowLine.getElement()) {
-                                flowLine.getElement()?.classList.remove('flight-path-selected');
-                            }
-                            if (trackLine && trackLine.getElement()) {
-                                trackLine.setStyle({ opacity: (isDark || activeLayer === 'satellite') ? 0.3 : 0.4 });
-                            }
+                            if (flowLine?.getElement()) flowLine.getElement()?.classList.remove('flight-path-selected');
+                            if (trackLine?.getElement()) trackLine.setStyle({ opacity: (isDark || activeLayer === 'satellite') ? 0.3 : 0.4 });
                         });
 
-                        hitLine.on('click', () => {
-                            if (onTripClick) onTripClick(trip.id);
-                        });
+                        hitLine.on('click', () => onTripClick && onTripClick(trip.id));
 
-                        // Origin Dot
+                        // CITY MARKERS
                         L.circleMarker(start, {
-                            radius: 2, 
+                            radius: 3, 
                             fillColor: color,
                             color: 'transparent',
-                            fillOpacity: 0.5
+                            fillOpacity: 0.8
                         }).addTo(map);
 
-                        // Destination Dot
                         const destMarker = L.circleMarker(end, {
-                            radius: 3, 
+                            radius: 4, 
                             fillColor: (isDark || activeLayer === 'satellite') ? '#000' : '#fff', 
                             color: color, 
                             weight: 2,
                             fillOpacity: 1
                         }).addTo(map);
 
-                        destMarker.on('click', () => {
-                            if (onTripClick) onTripClick(trip.id);
-                        });
-                        
+                        destMarker.on('click', () => onTripClick && onTripClick(trip.id));
                         destMarker.bindTooltip(trip.name, { 
                             permanent: false, 
                             direction: 'top',
@@ -359,9 +426,8 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                     }
                 });
             } else if (trip.coordinates) {
-                // Fallback for trips without transport data
+                // Trip without transport
                 const point = L.latLng(trip.coordinates.lat, trip.coordinates.lng);
-                
                 L.circleMarker(point, {
                     radius: 5,
                     fillColor: (isDark || activeLayer === 'satellite') ? '#000' : '#fff',
@@ -380,14 +446,13 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
             }
         });
 
-        // Fit initial bounds if points exist
         if (hasPoints) {
             map.fitBounds(bounds, { padding: [80, 80], maxZoom: 6 });
         } else {
             map.setView([20, 0], 2);
         }
 
-    }, [trips, onTripClick, routeFrequencies, showFrequencyWeight, animateRoutes, isDark, activeLayer]);
+    }, [trips, onTripClick, routeFrequencies, showFrequencyWeight, animateRoutes, isDark, activeLayer, showCountries, visitedCountries, geoJsonData, viewMode, visitedPlaces]);
 
     const handleZoomIn = () => mapInstance.current?.zoomIn();
     const handleZoomOut = () => mapInstance.current?.zoomOut();
@@ -395,31 +460,33 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
     const handleFitBounds = () => {
         if (!mapInstance.current) return;
         const bounds = L.latLngBounds([]);
-        let hasPoints = false;
-        trips.forEach(trip => {
-            if (trip.transports) {
-                trip.transports.forEach(t => {
-                    if (t.originLat && t.originLng) bounds.extend([t.originLat, t.originLng]);
-                    if (t.destLat && t.destLng) bounds.extend([t.destLat, t.destLng]);
-                });
-                hasPoints = true;
-            } else if (trip.coordinates) {
-                bounds.extend([trip.coordinates.lat, trip.coordinates.lng]);
-                hasPoints = true;
-            }
-        });
-        if (hasPoints) {
-            mapInstance.current.fitBounds(bounds, { padding: [80, 80], maxZoom: 6 });
+        
+        if (viewMode === 'scratch' && visitedPlaces.length > 0) {
+            visitedPlaces.forEach(p => bounds.extend([p.lat, p.lng]));
         } else {
-            mapInstance.current.setView([20, 0], 2);
+            let hasPoints = false;
+            trips.forEach(trip => {
+                if (trip.transports) {
+                    trip.transports.forEach(t => {
+                        if (t.originLat && t.originLng) bounds.extend([t.originLat, t.originLng]);
+                        if (t.destLat && t.destLng) bounds.extend([t.destLat, t.destLng]);
+                    });
+                    hasPoints = true;
+                } else if (trip.coordinates) {
+                    bounds.extend([trip.coordinates.lat, trip.coordinates.lng]);
+                    hasPoints = true;
+                }
+            });
+            if (!hasPoints) return;
         }
+        
+        mapInstance.current.fitBounds(bounds, { padding: [80, 80], maxZoom: 6 });
     };
 
     const handleScreenshot = async () => {
         if (!mapContainer.current) return;
         setIsScreenshotting(true);
         try {
-            // Wait a tick to ensure state is rendered if we had loading indicators
             await new Promise(r => setTimeout(r, 100));
             const canvas = await html2canvas(mapContainer.current, {
                 useCORS: true,

@@ -363,3 +363,69 @@ export async function resolvePlaceName(query: string): Promise<{ city: string, c
 
     return { city: query, country: 'Unknown', displayName: query };
 }
+
+// --- Regions ---
+
+const COUNTRY_REGION_MAP: Record<string, string> = {
+    // North America
+    'US': 'North America', 'CA': 'North America', 'MX': 'North America',
+
+    // Central America & Caribbean
+    'CR': 'Central America', 'CU': 'Central America', 'JM': 'Central America', 
+    'BS': 'Central America', 'DO': 'Central America', 'PA': 'Central America',
+    'GT': 'Central America', 'BZ': 'Central America', 'HN': 'Central America',
+
+    // South America
+    'BR': 'South America', 'AR': 'South America', 'CL': 'South America', 
+    'CO': 'South America', 'PE': 'South America', 'EC': 'South America',
+    'UY': 'South America', 'PY': 'South America', 'BO': 'South America',
+
+    // Northern Europe
+    'NO': 'Northern Europe', 'SE': 'Northern Europe', 'DK': 'Northern Europe', 
+    'FI': 'Northern Europe', 'IS': 'Northern Europe', 'EE': 'Northern Europe',
+    'LV': 'Northern Europe', 'LT': 'Northern Europe',
+
+    // Western Europe
+    'GB': 'Western Europe', 'UK': 'Western Europe', 'FR': 'Western Europe', 
+    'DE': 'Western Europe', 'BE': 'Western Europe', 'NL': 'Western Europe', 
+    'CH': 'Western Europe', 'AT': 'Western Europe', 'IE': 'Western Europe',
+    'LU': 'Western Europe',
+
+    // Southern Europe
+    'IT': 'Southern Europe', 'ES': 'Southern Europe', 'PT': 'Southern Europe', 
+    'GR': 'Southern Europe', 'HR': 'Southern Europe', 'SI': 'Southern Europe',
+    'MT': 'Southern Europe', 'CY': 'Southern Europe',
+
+    // Eastern Europe
+    'PL': 'Eastern Europe', 'CZ': 'Eastern Europe', 'HU': 'Eastern Europe', 
+    'RU': 'Eastern Europe', 'RO': 'Eastern Europe', 'BG': 'Eastern Europe',
+    'SK': 'Eastern Europe', 'UA': 'Eastern Europe', 'RS': 'Eastern Europe',
+
+    // East Asia
+    'JP': 'East Asia', 'CN': 'East Asia', 'KR': 'East Asia', 'TW': 'East Asia', 
+    'HK': 'East Asia', 'MO': 'East Asia',
+
+    // Southeast Asia
+    'TH': 'Southeast Asia', 'VN': 'Southeast Asia', 'ID': 'Southeast Asia', 
+    'MY': 'Southeast Asia', 'SG': 'Southeast Asia', 'PH': 'Southeast Asia',
+    'KH': 'Southeast Asia', 'LA': 'Southeast Asia', 'MM': 'Southeast Asia',
+
+    // South & West Asia
+    'IN': 'South & West Asia', 'MV': 'South & West Asia', 'LK': 'South & West Asia',
+    'NP': 'South & West Asia', 'AE': 'South & West Asia', 'SA': 'South & West Asia', 
+    'IL': 'South & West Asia', 'QA': 'South & West Asia', 'TR': 'South & West Asia',
+    'JO': 'South & West Asia', 'LB': 'South & West Asia',
+
+    // North Africa
+    'EG': 'North Africa', 'MA': 'North Africa', 'TN': 'North Africa', 'DZ': 'North Africa',
+
+    // Sub-Saharan Africa
+    'ZA': 'Sub-Saharan Africa', 'KE': 'Sub-Saharan Africa', 'TZ': 'Sub-Saharan Africa', 
+    'GH': 'Sub-Saharan Africa', 'NG': 'Sub-Saharan Africa', 'MU': 'Sub-Saharan Africa', 
+    'SC': 'Sub-Saharan Africa', 'ZW': 'Sub-Saharan Africa', 'NA': 'Sub-Saharan Africa',
+
+    // Oceania
+    'AU': 'Oceania', 'NZ': 'Oceania', 'FJ': 'Oceania', 'PF': 'Oceania', 'PG': 'Oceania'
+};
+
+export const getRegion = (code: string) => COUNTRY_REGION_MAP[code] || 'Unknown';
