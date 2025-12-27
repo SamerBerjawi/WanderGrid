@@ -51,6 +51,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
   const [isImportVerifyOpen, setIsImportVerifyOpen] = useState(false);
   const [proposedTrips, setProposedTrips] = useState<Trip[]>([]);
   const [selectedTripIds, setSelectedTripIds] = useState<Set<string>>(new Set());
+  const [importFilters, setImportFilters] = useState({ search: '', minDate: '', maxDate: '' });
 
   useEffect(() => {
     refreshData();
@@ -222,8 +223,8 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
 
           if (candidates.length > 0) {
               setProposedTrips(candidates);
-              // Select all by default
               setSelectedTripIds(new Set(candidates.map(t => t.id)));
+              setImportFilters({ search: '', minDate: '', maxDate: '' });
               setIsImportVerifyOpen(true);
           } else {
               alert("No valid trips found in file.");
@@ -264,6 +265,27 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
       document.body.removeChild(a);
   };
 
+  const filteredImportCandidates = useMemo(() => {
+        return proposedTrips.filter(t => {
+            const searchLower = importFilters.search.toLowerCase();
+            const matchesSearch = !searchLower || 
+                t.name.toLowerCase().includes(searchLower) ||
+                t.transports?.some(tr => 
+                    tr.provider.toLowerCase().includes(searchLower) || 
+                    tr.identifier.toLowerCase().includes(searchLower) ||
+                    tr.origin.toLowerCase().includes(searchLower) ||
+                    tr.destination.toLowerCase().includes(searchLower)
+                );
+
+            const start = new Date(t.startDate);
+            const end = new Date(t.endDate);
+            const matchesMin = !importFilters.minDate || end >= new Date(importFilters.minDate);
+            const matchesMax = !importFilters.maxDate || start <= new Date(importFilters.maxDate);
+
+            return matchesSearch && matchesMin && matchesMax;
+        });
+    }, [proposedTrips, importFilters]);
+
   const toggleImportSelection = (id: string) => { 
       const newSet = new Set(selectedTripIds);
       if (newSet.has(id)) newSet.delete(id);
@@ -272,11 +294,16 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
   };
 
   const toggleAllImportSelection = () => { 
-      if (selectedTripIds.size === proposedTrips.length) {
-          setSelectedTripIds(new Set());
+      const filteredIds = filteredImportCandidates.map(t => t.id);
+      const allSelected = filteredIds.every(id => selectedTripIds.has(id));
+      
+      const newSet = new Set(selectedTripIds);
+      if (allSelected) {
+          filteredIds.forEach(id => newSet.delete(id));
       } else {
-          setSelectedTripIds(new Set(proposedTrips.map(t => t.id)));
+          filteredIds.forEach(id => newSet.add(id));
       }
+      setSelectedTripIds(newSet);
   };
 
   if (loading) return <div className="p-8 text-gray-400 animate-pulse">Initializing Systems...</div>;
@@ -593,17 +620,41 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
        {/* Import Verification Modal */}
        <Modal isOpen={isImportVerifyOpen} onClose={() => setIsImportVerifyOpen(false)} title="Verify Flight Import" maxWidth="max-w-2xl">
             <div className="space-y-6">
+                {/* Filter Bar */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
+                    <Input 
+                        placeholder="Search Airline / City..." 
+                        value={importFilters.search} 
+                        onChange={e => setImportFilters({...importFilters, search: e.target.value})}
+                        className="!py-2 !text-xs"
+                    />
+                    <Input 
+                        type="date" 
+                        placeholder="From"
+                        value={importFilters.minDate}
+                        onChange={e => setImportFilters({...importFilters, minDate: e.target.value})}
+                        className="!py-2 !text-xs"
+                    />
+                    <Input 
+                        type="date" 
+                        placeholder="To"
+                        value={importFilters.maxDate}
+                        onChange={e => setImportFilters({...importFilters, maxDate: e.target.value})}
+                        className="!py-2 !text-xs"
+                    />
+                </div>
+
                 <div className="flex justify-between items-center bg-gray-50 dark:bg-white/5 p-4 rounded-xl border border-gray-100 dark:border-white/5">
                     <span className="text-sm font-bold text-gray-700 dark:text-gray-200">
-                        Found {proposedTrips.length} Trips
+                        Showing {filteredImportCandidates.length} of {proposedTrips.length} Trips
                     </span>
                     <button onClick={toggleAllImportSelection} className="text-xs font-bold text-blue-500 hover:underline uppercase tracking-wider">
-                        {selectedTripIds.size === proposedTrips.length ? 'Deselect All' : 'Select All'}
+                        {filteredImportCandidates.every(t => selectedTripIds.has(t.id)) && filteredImportCandidates.length > 0 ? 'Deselect All' : 'Select All'}
                     </button>
                 </div>
                 
                 <div className="max-h-[400px] overflow-y-auto custom-scrollbar space-y-3">
-                    {proposedTrips.map(trip => (
+                    {filteredImportCandidates.map(trip => (
                         <div key={trip.id} onClick={() => toggleImportSelection(trip.id)} className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all ${selectedTripIds.has(trip.id) ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/10 dark:border-blue-800' : 'bg-white border-gray-100 dark:bg-gray-800 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5'}`}>
                             <div className={`w-5 h-5 rounded border flex items-center justify-center ${selectedTripIds.has(trip.id) ? 'bg-blue-500 border-blue-500' : 'bg-white border-gray-300'}`}>
                                 {selectedTripIds.has(trip.id) && <span className="material-icons-outlined text-white text-xs">check</span>}
@@ -614,6 +665,9 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                             </div>
                         </div>
                     ))}
+                    {filteredImportCandidates.length === 0 && (
+                        <div className="text-center py-8 text-gray-400 text-xs italic">No trips match your filters</div>
+                    )}
                 </div>
 
                 <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-white/5">

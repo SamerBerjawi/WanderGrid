@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { Card, Button, Badge, Tabs, Modal, Input, Autocomplete, TimeInput } from '../components/ui';
 import { TransportConfigurator } from '../components/FlightConfigurator';
@@ -52,6 +53,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     // Import State
     const [importPreview, setImportPreview] = useState<{ open: boolean, candidates: ImportCandidate[] }>({ open: false, candidates: [] });
     const [expandedCandidateId, setExpandedCandidateId] = useState<string | null>(null);
+    const [importFilters, setImportFilters] = useState({ search: '', minDate: '', maxDate: '' });
     const importInputRef = useRef<HTMLInputElement>(null);
 
     // Editing State
@@ -221,6 +223,8 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                     selected: false
                 })).sort((a, b) => b.confidence - a.confidence);
                 if (candidates.length > 0 && candidates[0].confidence > 80) candidates[0].selected = true;
+                
+                setImportFilters({ search: '', minDate: '', maxDate: '' });
                 setImportPreview({ open: true, candidates });
             } else {
                 alert("No valid flights found in file.");
@@ -254,6 +258,46 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         setImportPreview(prev => ({
             ...prev,
             candidates: prev.candidates.map(c => c.trip.id === tripId ? { ...c, selected: !c.selected } : c)
+        }));
+    };
+
+    const filteredCandidates = useMemo(() => {
+        return importPreview.candidates.filter(c => {
+            const t = c.trip;
+            const searchLower = importFilters.search.toLowerCase();
+            
+            // Text Search
+            const matchesSearch = !searchLower || 
+                t.name.toLowerCase().includes(searchLower) ||
+                t.transports?.some(tr => 
+                    tr.provider.toLowerCase().includes(searchLower) || 
+                    tr.identifier.toLowerCase().includes(searchLower) ||
+                    tr.origin.toLowerCase().includes(searchLower) ||
+                    tr.destination.toLowerCase().includes(searchLower)
+                );
+
+            // Date Range
+            const start = new Date(t.startDate);
+            const end = new Date(t.endDate);
+            const matchesMin = !importFilters.minDate || end >= new Date(importFilters.minDate);
+            const matchesMax = !importFilters.maxDate || start <= new Date(importFilters.maxDate);
+
+            return matchesSearch && matchesMin && matchesMax;
+        });
+    }, [importPreview.candidates, importFilters]);
+
+    const toggleAllFiltered = () => {
+        const allSelected = filteredCandidates.every(c => c.selected);
+        const idsToToggle = new Set(filteredCandidates.map(c => c.trip.id));
+        
+        setImportPreview(prev => ({
+            ...prev,
+            candidates: prev.candidates.map(c => {
+                if (idsToToggle.has(c.trip.id)) {
+                    return { ...c, selected: !allSelected };
+                }
+                return c;
+            })
         }));
     };
 
@@ -1371,11 +1415,43 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 <div className="space-y-6">
                     <div className="bg-gradient-to-br from-blue-500/10 to-indigo-500/10 p-5 rounded-2xl border border-blue-500/20 flex items-start gap-4">
                         <div className="w-12 h-12 rounded-xl bg-blue-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/20"><span className="material-icons-outlined text-2xl">smart_toy</span></div>
-                        <div><h4 className="font-black text-gray-900 dark:text-white text-lg">AI Flight Analysis</h4><p className="text-sm text-gray-600 dark:text-gray-300 mt-1 leading-relaxed">We detected <strong>{importPreview.candidates.length} potential trips</strong> in your file.</p></div>
+                        <div><h4 className="font-black text-gray-900 dark:text-white text-lg">AI Flight Analysis</h4><p className="text-sm text-gray-600 dark:text-gray-300 mt-1 leading-relaxed">We detected <strong>{importPreview.candidates.length} potential trip groups</strong>. Select the ones you wish to import.</p></div>
                     </div>
-                    <div className="flex justify-between items-center px-1"><span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Detected Itineraries</span><div className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded-lg">{selectedCount} Selected</div></div>
+                    
+                    {/* Filter Bar */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
+                        <Input 
+                            placeholder="Search Airline / City..." 
+                            value={importFilters.search} 
+                            onChange={e => setImportFilters({...importFilters, search: e.target.value})}
+                            className="!py-2 !text-xs"
+                        />
+                        <Input 
+                            type="date" 
+                            placeholder="From"
+                            value={importFilters.minDate}
+                            onChange={e => setImportFilters({...importFilters, minDate: e.target.value})}
+                            className="!py-2 !text-xs"
+                        />
+                        <Input 
+                            type="date" 
+                            placeholder="To"
+                            value={importFilters.maxDate}
+                            onChange={e => setImportFilters({...importFilters, maxDate: e.target.value})}
+                            className="!py-2 !text-xs"
+                        />
+                    </div>
+
+                    <div className="flex justify-between items-center px-1">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Showing {filteredCandidates.length} of {importPreview.candidates.length}</span>
+                        <div className="flex items-center gap-2">
+                            <button onClick={toggleAllFiltered} className="text-[10px] font-bold text-gray-500 hover:text-blue-500 uppercase tracking-widest underline">Toggle All</button>
+                            <div className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded-lg">{filteredCandidates.filter(c => c.selected).length} Selected</div>
+                        </div>
+                    </div>
+
                     <div className="space-y-4 max-h-[50vh] overflow-y-auto custom-scrollbar p-1">
-                        {importPreview.candidates.map((candidate, idx) => {
+                        {filteredCandidates.map((candidate, idx) => {
                             const isSelected = candidate.selected;
                             const isExpanded = expandedCandidateId === candidate.trip.id;
                             return (
@@ -1388,6 +1464,9 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                 </div>
                             );
                         })}
+                        {filteredCandidates.length === 0 && (
+                            <div className="text-center py-8 text-gray-400 text-xs italic">No flights match your filters</div>
+                        )}
                     </div>
                     <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-white/5"><Button variant="ghost" className="flex-1" onClick={() => setImportPreview({ open: false, candidates: [] })}>Cancel</Button><Button variant="primary" className="flex-1 shadow-lg shadow-blue-500/20" onClick={confirmImportFlights} disabled={selectedCount === 0}>Import {selectedCount} Trips</Button></div>
                 </div>

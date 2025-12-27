@@ -292,7 +292,8 @@ const groupTransportsIntoTrips = (transports: Transport[], userId: string): Trip
         trips.push(analyzeAndStructureTrip(currentBatch, userId));
     }
 
-    return trips;
+    // Explicitly sort groupings by start date before returning
+    return trips.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
 };
 
 // --- Public API ---
