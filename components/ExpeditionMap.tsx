@@ -88,10 +88,14 @@ const getCurvePoints = (start: L.LatLng, end: L.LatLng): L.LatLng[] => {
 };
 
 // Helper to determine styling
-const getStatusStyle = (trip: Trip, isDark: boolean) => {
+const getStatusStyle = (trip: Trip, isDark: boolean, activeLayer: string) => {
     const today = new Date();
     today.setHours(0,0,0,0);
     const endDate = new Date(trip.endDate);
+    
+    // Adjust colors based on map layer for visibility
+    const isSatellite = activeLayer === 'satellite';
+    const baseWhite = isSatellite ? '#ffffff' : (isDark ? '#ffffff' : '#475569');
     
     // Determine base class suffix for colors defined in CSS
     if (endDate < today) {
@@ -105,13 +109,14 @@ const getStatusStyle = (trip: Trip, isDark: boolean) => {
             return { color: '#10b981', className: 'flight-path-green' }; 
         case 'Planning':
         default:
-            // Dark Mode: White, Light Mode: Slate-600
             return { 
-                color: isDark ? '#ffffff' : '#475569', 
-                className: isDark ? 'flight-path-white' : 'flight-path-dark' 
+                color: baseWhite, 
+                className: isSatellite || isDark ? 'flight-path-white' : 'flight-path-dark' 
             }; 
     }
 };
+
+type LayerType = 'standard' | 'satellite' | 'topography';
 
 export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({ 
     trips, 
@@ -123,6 +128,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
     const mapInstance = useRef<L.Map | null>(null);
     const tileLayerRef = useRef<L.TileLayer | null>(null);
     const [isScreenshotting, setIsScreenshotting] = useState(false);
+    const [activeLayer, setActiveLayer] = useState<LayerType>('standard');
     const isDark = useDarkMode();
 
     // Pre-calculate frequencies
@@ -173,19 +179,31 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
             map.removeLayer(tileLayerRef.current);
         }
 
-        const tileUrl = isDark 
-            ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-            : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+        let tileUrl = '';
+        let attribution = '';
+
+        if (activeLayer === 'satellite') {
+            tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+            attribution = '&copy; Esri';
+        } else if (activeLayer === 'topography') {
+            tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}';
+            attribution = '&copy; Esri';
+        } else {
+            tileUrl = isDark 
+                ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+                : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+            attribution = '&copy; OpenStreetMap contributors &copy; CARTO';
+        }
 
         const layer = L.tileLayer(tileUrl, {
-            attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+            attribution,
             subdomains: 'abcd',
             maxZoom: 19,
             noWrap: false 
         }).addTo(map);
 
         tileLayerRef.current = layer;
-    }, [isDark]);
+    }, [isDark, activeLayer]);
 
     useEffect(() => {
         if (!mapInstance.current) return;
@@ -202,7 +220,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
         let hasPoints = false;
 
         trips.forEach(trip => {
-            const { color, className } = getStatusStyle(trip, isDark);
+            const { color, className } = getStatusStyle(trip, isDark, activeLayer);
 
             if (trip.transports && trip.transports.length > 0) {
                 trip.transports.forEach(t => {
@@ -225,7 +243,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                         const trackLine = L.polyline(curvedPath, {
                             color: color, 
                             weight: 1 + (dynamicWeight * 0.2), // Thinner than flow
-                            opacity: isDark ? 0.2 : 0.4,
+                            opacity: (isDark || activeLayer === 'satellite') ? 0.3 : 0.4,
                             className: `flight-path-track ${className}`,
                             interactive: false
                         }).addTo(map);
@@ -299,7 +317,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                                 flowLine.getElement()?.classList.remove('flight-path-selected');
                             }
                             if (trackLine && trackLine.getElement()) {
-                                trackLine.setStyle({ opacity: isDark ? 0.2 : 0.4 });
+                                trackLine.setStyle({ opacity: (isDark || activeLayer === 'satellite') ? 0.3 : 0.4 });
                             }
                         });
 
@@ -318,7 +336,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                         // Destination Dot
                         const destMarker = L.circleMarker(end, {
                             radius: 3, 
-                            fillColor: isDark ? '#000' : '#fff', 
+                            fillColor: (isDark || activeLayer === 'satellite') ? '#000' : '#fff', 
                             color: color, 
                             weight: 2,
                             fillOpacity: 1
@@ -346,7 +364,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                 
                 L.circleMarker(point, {
                     radius: 5,
-                    fillColor: isDark ? '#000' : '#fff',
+                    fillColor: (isDark || activeLayer === 'satellite') ? '#000' : '#fff',
                     color: color,
                     weight: 2,
                     fillOpacity: 1
@@ -369,7 +387,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
             map.setView([20, 0], 2);
         }
 
-    }, [trips, onTripClick, routeFrequencies, showFrequencyWeight, animateRoutes, isDark]);
+    }, [trips, onTripClick, routeFrequencies, showFrequencyWeight, animateRoutes, isDark, activeLayer]);
 
     const handleZoomIn = () => mapInstance.current?.zoomIn();
     const handleZoomOut = () => mapInstance.current?.zoomOut();
@@ -425,9 +443,34 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
         <div className={`relative w-full h-full group overflow-hidden isolation-auto ${isDark ? 'bg-[#0a0a0a]' : 'bg-slate-50'}`}>
             <div ref={mapContainer} className={`w-full h-full z-0 ${isDark ? 'bg-[#0a0a0a]' : 'bg-slate-50'}`} />
             
-            {/* Control Bar - High Z-Index to avoid clipping by map tiles or overlays */}
-            <div className="absolute bottom-12 right-12 flex flex-col gap-3 z-[5000]">
+            {/* Control Bar - Top Left */}
+            <div className="absolute top-6 left-6 flex flex-col gap-3 z-[5000]">
                 
+                {/* Layer Control */}
+                <div className={`flex flex-col rounded-2xl border shadow-2xl overflow-hidden ${isDark ? 'bg-white/10 backdrop-blur-md border-white/20' : 'bg-white/80 backdrop-blur-md border-slate-200'}`}>
+                    <button 
+                        onClick={() => setActiveLayer('standard')} 
+                        className={`w-10 h-10 flex items-center justify-center transition-colors border-b ${isDark ? 'border-white/10' : 'border-slate-100'} ${activeLayer === 'standard' ? 'text-blue-500 bg-white/20' : isDark ? 'text-white hover:bg-white/20' : 'text-slate-600 hover:bg-slate-100'}`}
+                        title="Standard View"
+                    >
+                        <span className="material-icons-outlined text-lg">map</span>
+                    </button>
+                    <button 
+                        onClick={() => setActiveLayer('satellite')} 
+                        className={`w-10 h-10 flex items-center justify-center transition-colors border-b ${isDark ? 'border-white/10' : 'border-slate-100'} ${activeLayer === 'satellite' ? 'text-blue-500 bg-white/20' : isDark ? 'text-white hover:bg-white/20' : 'text-slate-600 hover:bg-slate-100'}`}
+                        title="Satellite View"
+                    >
+                        <span className="material-icons-outlined text-lg">satellite_alt</span>
+                    </button>
+                    <button 
+                        onClick={() => setActiveLayer('topography')} 
+                        className={`w-10 h-10 flex items-center justify-center transition-colors ${activeLayer === 'topography' ? 'text-blue-500 bg-white/20' : isDark ? 'text-white hover:bg-white/20' : 'text-slate-600 hover:bg-slate-100'}`}
+                        title="Topography View"
+                    >
+                        <span className="material-icons-outlined text-lg">terrain</span>
+                    </button>
+                </div>
+
                 <div className={`flex flex-col rounded-2xl border shadow-2xl overflow-hidden ${isDark ? 'bg-white/10 backdrop-blur-md border-white/20' : 'bg-white/80 backdrop-blur-md border-slate-200'}`}>
                     <button 
                         onClick={handleZoomIn} 

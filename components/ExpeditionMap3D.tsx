@@ -45,21 +45,24 @@ const useDarkMode = () => {
 };
 
 // Helper to determine styling
-const getStatusColor = (trip: Trip, isDark: boolean) => {
+const getStatusColor = (trip: Trip, isDark: boolean, activeLayer: string) => {
     const today = new Date(Date.now());
     today.setHours(0,0,0,0);
     const endDate = new Date(trip.endDate);
     
     if (endDate < today) return '#3b82f6'; // Blue (Past)
     if (trip.status === 'Upcoming') return '#10b981'; // Green
-    // Dark: White, Light: Dark Slate/Blue
-    return isDark ? '#ffffff' : '#334155'; // White (Planning) vs Dark Slate
+    
+    // Adjust logic for satellite mode (white is best)
+    const isSatellite = activeLayer === 'satellite' || activeLayer === 'night';
+    return isSatellite || isDark ? '#ffffff' : '#334155'; // White (Planning) vs Dark Slate
 };
 
 export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({ trips, onTripClick, animateRoutes = true }) => {
     const globeEl = useRef<any>(null);
     const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
     const containerRef = useRef<HTMLDivElement>(null);
+    const [activeLayer, setActiveLayer] = useState<'standard' | 'night' | 'satellite'>('standard');
     const isDark = useDarkMode();
 
     // Prepare Data
@@ -68,7 +71,7 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({ trips, onTripC
         const pointMap = new Map<string, PointData>();
 
         trips.forEach(trip => {
-            const color = getStatusColor(trip, isDark);
+            const color = getStatusColor(trip, isDark, activeLayer);
 
             if (trip.transports && trip.transports.length > 0) {
                 trip.transports.forEach(t => {
@@ -90,12 +93,15 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({ trips, onTripC
                         const originKey = `${t.originLat.toFixed(3)},${t.originLng.toFixed(3)}`;
                         const destKey = `${t.destLat.toFixed(3)},${t.destLng.toFixed(3)}`;
 
+                        // Determine point color visibility
+                        const ptColor = (isDark || activeLayer !== 'standard') ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.6)';
+
                         if (!pointMap.has(originKey)) {
                             pointMap.set(originKey, {
                                 lat: t.originLat,
                                 lng: t.originLng,
                                 name: t.origin,
-                                color: isDark ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.6)',
+                                color: ptColor,
                                 radius: 0.3
                             });
                         }
@@ -104,7 +110,7 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({ trips, onTripC
                                 lat: t.destLat,
                                 lng: t.destLng,
                                 name: t.destination,
-                                color: isDark ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.6)',
+                                color: ptColor,
                                 radius: 0.3
                             });
                         }
@@ -126,7 +132,7 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({ trips, onTripC
         });
 
         return { arcs: arcList, points: Array.from(pointMap.values()) };
-    }, [trips, isDark]);
+    }, [trips, isDark, activeLayer]);
 
     // Resize Observer
     useEffect(() => {
@@ -156,16 +162,24 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({ trips, onTripC
         }
     }, []);
 
+    const getGlobeImage = () => {
+        if (activeLayer === 'satellite') return "//unpkg.com/three-globe/example/img/earth-blue-marble.jpg";
+        if (activeLayer === 'night') return "//unpkg.com/three-globe/example/img/earth-night.jpg";
+        
+        // Standard follows theme
+        return isDark ? "//unpkg.com/three-globe/example/img/earth-night.jpg" : "//unpkg.com/three-globe/example/img/earth-day.jpg";
+    };
+
     return (
         <div ref={containerRef} className={`w-full h-full overflow-hidden relative ${isDark ? 'bg-black' : 'bg-slate-50'}`}>
             <Globe
                 ref={globeEl}
                 width={dimensions.width}
                 height={dimensions.height}
-                globeImageUrl={isDark ? "//unpkg.com/three-globe/example/img/earth-night.jpg" : "//unpkg.com/three-globe/example/img/earth-day.jpg"}
+                globeImageUrl={getGlobeImage()}
                 bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
                 backgroundColor={isDark ? "#000000" : "#f8fafc"}
-                atmosphereColor={isDark ? "#3a228a" : "#ffffff"}
+                atmosphereColor={isDark || activeLayer !== 'standard' ? "#3a228a" : "#ffffff"}
                 atmosphereAltitude={0.15}
                 
                 // Arcs
@@ -207,6 +221,33 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({ trips, onTripC
             <div className="absolute bottom-6 left-6 pointer-events-none">
                 <div className={`text-[10px] font-mono px-2 py-1 rounded ${isDark ? 'text-gray-500 bg-black/50' : 'text-slate-500 bg-white/50'}`}>
                     3D Visualization • {arcs.length} Routes
+                </div>
+            </div>
+
+            {/* Layer Controls - Top Left */}
+            <div className="absolute top-6 left-6 flex flex-col gap-3 z-[5000]">
+                <div className={`flex flex-col rounded-2xl border shadow-2xl overflow-hidden ${isDark ? 'bg-white/10 backdrop-blur-md border-white/20' : 'bg-white/80 backdrop-blur-md border-slate-200'}`}>
+                    <button 
+                        onClick={() => setActiveLayer('standard')} 
+                        className={`w-10 h-10 flex items-center justify-center transition-colors border-b ${isDark ? 'border-white/10' : 'border-slate-100'} ${activeLayer === 'standard' ? 'text-blue-500 bg-white/20' : isDark ? 'text-white hover:bg-white/20' : 'text-slate-600 hover:bg-slate-100'}`}
+                        title="Standard View"
+                    >
+                        <span className="material-icons-outlined text-lg">public</span>
+                    </button>
+                    <button 
+                        onClick={() => setActiveLayer('night')} 
+                        className={`w-10 h-10 flex items-center justify-center transition-colors border-b ${isDark ? 'border-white/10' : 'border-slate-100'} ${activeLayer === 'night' ? 'text-blue-500 bg-white/20' : isDark ? 'text-white hover:bg-white/20' : 'text-slate-600 hover:bg-slate-100'}`}
+                        title="Night View"
+                    >
+                        <span className="material-icons-outlined text-lg">nights_stay</span>
+                    </button>
+                    <button 
+                        onClick={() => setActiveLayer('satellite')} 
+                        className={`w-10 h-10 flex items-center justify-center transition-colors ${activeLayer === 'satellite' ? 'text-blue-500 bg-white/20' : isDark ? 'text-white hover:bg-white/20' : 'text-slate-600 hover:bg-slate-100'}`}
+                        title="Satellite View"
+                    >
+                        <span className="material-icons-outlined text-lg">satellite_alt</span>
+                    </button>
                 </div>
             </div>
         </div>
