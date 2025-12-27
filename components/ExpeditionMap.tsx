@@ -158,6 +158,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
     const [isScreenshotting, setIsScreenshotting] = useState(false);
     const [activeLayer, setActiveLayer] = useState<LayerType>('standard');
     const [geoJsonData, setGeoJsonData] = useState<any>(null);
+    const [showCityMarkers, setShowCityMarkers] = useState(true);
     const isDark = useDarkMode();
 
     // Pre-calculate frequencies
@@ -292,21 +293,25 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
         if (viewMode === 'scratch') {
             const bounds = L.latLngBounds([]);
             
-            visitedPlaces.forEach(place => {
-                const marker = L.circleMarker([place.lat, place.lng], {
-                    radius: 4,
-                    fillColor: isDark ? '#ffffff' : '#000000',
-                    color: isDark ? '#000000' : '#ffffff',
-                    weight: 1,
-                    opacity: 1,
-                    fillOpacity: 1
-                }).addTo(map);
-                
-                marker.bindTooltip(place.name, {
-                    direction: 'top',
-                    className: 'bg-black/90 text-white border border-white/20 shadow-xl text-xs font-bold px-3 py-1.5 rounded-lg'
+            if (showCityMarkers) {
+                visitedPlaces.forEach(place => {
+                    const marker = L.circleMarker([place.lat, place.lng], {
+                        radius: 4,
+                        fillColor: isDark ? '#ffffff' : '#000000',
+                        color: isDark ? '#000000' : '#ffffff',
+                        weight: 1,
+                        opacity: 1,
+                        fillOpacity: 1
+                    }).addTo(map);
+                    
+                    marker.bindTooltip(place.name, {
+                        direction: 'top',
+                        className: 'bg-black/90 text-white border border-white/20 shadow-xl text-xs font-bold px-3 py-1.5 rounded-lg'
+                    });
                 });
-                
+            }
+            
+            visitedPlaces.forEach(place => {
                 bounds.extend([place.lat, place.lng]);
             });
 
@@ -452,7 +457,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
             map.setView([20, 0], 2);
         }
 
-    }, [trips, onTripClick, routeFrequencies, showFrequencyWeight, animateRoutes, isDark, activeLayer, showCountries, visitedCountries, geoJsonData, viewMode, visitedPlaces]);
+    }, [trips, onTripClick, routeFrequencies, showFrequencyWeight, animateRoutes, isDark, activeLayer, showCountries, visitedCountries, geoJsonData, viewMode, visitedPlaces, showCityMarkers]);
 
     const handleZoomIn = () => mapInstance.current?.zoomIn();
     const handleZoomOut = () => mapInstance.current?.zoomOut();
@@ -575,6 +580,16 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                         <span className="material-icons-outlined text-lg group-hover/shot:scale-110 transition-transform">photo_camera</span>
                     )}
                 </button>
+
+                {viewMode === 'scratch' && (
+                   <button 
+                       onClick={() => setShowCityMarkers(!showCityMarkers)} 
+                       className={`w-10 h-10 rounded-2xl border shadow-2xl flex items-center justify-center transition-colors ${showCityMarkers ? (isDark ? 'bg-white/20 text-white border-white/20' : 'bg-blue-50 text-blue-600 border-blue-200') : (isDark ? 'bg-white/10 text-white/50 border-white/20 hover:text-white' : 'bg-white/80 text-slate-400 border-slate-200 hover:text-slate-600')}`}
+                       title={showCityMarkers ? "Hide City Markers" : "Show City Markers"}
+                   >
+                       <span className="material-icons-outlined text-lg">location_city</span>
+                   </button>
+               )}
 
             </div>
         </div>
