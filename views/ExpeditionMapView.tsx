@@ -164,7 +164,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                 });
             });
 
-            // Resolve Countries
+            // Resolve Countries First (Fast update)
             for (const place of Array.from(placesToCheckForCountry)) {
                 let code = '';
                 if (placeDetailsCache.has(place)) {
@@ -175,8 +175,11 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                 }
                 if (code && code.length === 2) countryCodes.add(code.toUpperCase());
             }
+            
+            // UPDATE COUNTRIES IMMEDIATELY
+            setVisitedCountryCodes(Array.from(countryCodes));
 
-            // Resolve Coords for missing items
+            // Resolve Coords for missing items (Slower update)
             for (const place of Array.from(placesToCheckForCoords)) {
                 let coords = coordinateCache.get(place);
                 
@@ -203,7 +206,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
 
             if (coordsDirty) saveCoordCache(coordinateCache);
 
-            setVisitedCountryCodes(Array.from(countryCodes));
+            // UPDATE CITY DOTS LATER
             setVisitedPlaces(finalPlaces);
         };
 

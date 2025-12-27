@@ -24,6 +24,9 @@ L.Icon.Default.mergeOptions({
     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
+// Module-level cache for GeoJSON to prevent re-fetching during session
+let cachedGeoJson: any = null;
+
 // Region Color Mapping (Matching Dashboard Styles)
 const REGION_HEX_COLORS: Record<string, string> = {
     'North America': '#3b82f6', // blue-500
@@ -157,7 +160,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
     const geoJsonLayerRef = useRef<L.GeoJSON | null>(null);
     const [isScreenshotting, setIsScreenshotting] = useState(false);
     const [activeLayer, setActiveLayer] = useState<LayerType>('standard');
-    const [geoJsonData, setGeoJsonData] = useState<any>(null);
+    const [geoJsonData, setGeoJsonData] = useState<any>(cachedGeoJson);
     const [showCityMarkers, setShowCityMarkers] = useState(true);
     const isDark = useDarkMode();
 
@@ -177,9 +180,17 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
 
     // Load GeoJSON once
     useEffect(() => {
+        if (cachedGeoJson) {
+            setGeoJsonData(cachedGeoJson);
+            return;
+        }
+
         fetch('https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson')
             .then(r => r.json())
-            .then(data => setGeoJsonData(data))
+            .then(data => {
+                cachedGeoJson = data;
+                setGeoJsonData(data);
+            })
             .catch(e => console.warn("Failed to load country shapes", e));
     }, []);
 
