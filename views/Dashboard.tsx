@@ -691,33 +691,81 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
             </button>
         </div>
 
-        <Card noPadding className="rounded-[2.5rem] overflow-hidden shadow-2xl border border-gray-200/50 dark:border-white/5">
-            <div className="p-6 border-b border-gray-100 dark:border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 bg-white/50 dark:bg-white/5 backdrop-blur-xl sticky top-0 z-20">
-                <div className="flex items-center gap-4">
-                    <div className="flex bg-gray-100 dark:bg-black/40 rounded-2xl p-1">
-                        <button onClick={() => handleNavigate(-1)} className="p-2 hover:bg-white dark:hover:bg-gray-800 rounded-xl transition-all shadow-sm"><span className="material-icons-outlined text-sm">chevron_left</span></button>
-                        <button onClick={() => setViewDate(new Date())} className="px-4 text-xs font-bold uppercase tracking-wider hover:text-blue-500 transition-colors">Today</button>
-                        <button onClick={() => handleNavigate(1)} className="p-2 hover:bg-white dark:hover:bg-gray-800 rounded-xl transition-all shadow-sm"><span className="material-icons-outlined text-sm">chevron_right</span></button>
+        <Card noPadding className="rounded-[2.5rem] overflow-hidden shadow-2xl border border-gray-200/50 dark:border-white/5 bg-white/40 dark:bg-gray-900/40 backdrop-blur-3xl">
+            {/* Glassmorphic Header */}
+            <div className="px-8 py-6 border-b border-white/20 dark:border-white/5 flex flex-col xl:flex-row justify-between items-center gap-6 bg-white/40 dark:bg-white/5 backdrop-blur-2xl sticky top-0 z-30 transition-all">
+                
+                {/* Left: Navigation & Title */}
+                <div className="flex flex-col sm:flex-row items-center gap-6 w-full xl:w-auto">
+                    {/* Navigation Pill */}
+                    <div className="flex items-center bg-white/80 dark:bg-black/40 rounded-full p-1 border border-gray-200/50 dark:border-white/10 shadow-sm backdrop-blur-md">
+                        <button 
+                            onClick={() => handleNavigate(-1)} 
+                            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-gray-400 transition-all active:scale-90"
+                        >
+                            <span className="material-icons-outlined text-sm">chevron_left</span>
+                        </button>
+                        <button 
+                            onClick={() => setViewDate(new Date())} 
+                            className="px-5 text-[10px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                        >
+                            Today
+                        </button>
+                        <button 
+                            onClick={() => handleNavigate(1)} 
+                            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-gray-400 transition-all active:scale-90"
+                        >
+                            <span className="material-icons-outlined text-sm">chevron_right</span>
+                        </button>
                     </div>
-                    <div className="flex items-baseline gap-2">
-                        <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">{getCalendarTitle()}</h2>
+
+                    {/* Title Group */}
+                    <div className="flex items-baseline gap-3">
+                        <h2 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 tracking-tight drop-shadow-sm min-w-[100px] text-center sm:text-left">
+                            {getCalendarTitle() || <span className="opacity-50">Overview</span>}
+                        </h2>
                         <div className="relative group">
-                             <select value={activeYear} onChange={(e) => { const newDate = new Date(viewDate); newDate.setFullYear(parseInt(e.target.value)); setViewDate(newDate); }} className="appearance-none bg-transparent text-2xl font-black text-gray-400 hover:text-blue-500 cursor-pointer outline-none pr-6 transition-colors">
+                            <select 
+                                value={activeYear} 
+                                onChange={(e) => { const newDate = new Date(viewDate); newDate.setFullYear(parseInt(e.target.value)); setViewDate(newDate); }} 
+                                className="appearance-none bg-transparent text-4xl font-black text-gray-200 dark:text-gray-700 hover:text-blue-500 dark:hover:text-blue-500 cursor-pointer outline-none pr-0 transition-colors"
+                            >
                                 {yearRange.map(y => <option key={y} value={y}>{y}</option>)}
                             </select>
-                            <span className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 material-icons-outlined text-sm opacity-50 group-hover:opacity-100 transition-opacity">expand_more</span>
                         </div>
                     </div>
                 </div>
-                <div className="flex gap-2">
-                    <Button variant="primary" size="sm" icon={<span className="material-icons-outlined text-sm">add</span>} onClick={handleOpenRequest}>Book Time Off</Button>
-                    <div className="flex bg-gray-100 dark:bg-black/40 rounded-2xl p-1">
-                        <button onClick={() => setCalendarView('month')} className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${calendarView === 'month' ? 'bg-white shadow text-blue-600 dark:bg-gray-800 dark:text-white' : 'text-gray-500'}`}>Month</button>
-                        <button onClick={() => setCalendarView('year')} className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${calendarView === 'year' ? 'bg-white shadow text-blue-600 dark:bg-gray-800 dark:text-white' : 'text-gray-500'}`}>Year</button>
+
+                {/* Right: Actions */}
+                <div className="flex items-center gap-3 w-full xl:w-auto justify-center xl:justify-end">
+                    {/* View Toggle */}
+                    <div className="flex bg-gray-100/50 dark:bg-black/20 rounded-2xl p-1.5 border border-white/20 dark:border-white/5 backdrop-blur-md">
+                        {['month', 'year'].map((v) => (
+                            <button 
+                                key={v}
+                                onClick={() => setCalendarView(v as any)} 
+                                className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                                    calendarView === v 
+                                    ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-lg shadow-blue-500/10 scale-105 ring-1 ring-black/5 dark:ring-white/10' 
+                                    : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-white/50 dark:hover:bg-white/5'
+                                }`}
+                            >
+                                {v}
+                            </button>
+                        ))}
                     </div>
+
+                    {/* CTA */}
+                    <button 
+                        onClick={handleOpenRequest}
+                        className="flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-xl shadow-blue-500/30 hover:shadow-blue-500/50 hover:scale-105 active:scale-95 transition-all font-bold text-sm border-t border-white/20"
+                    >
+                        <span className="material-icons-outlined text-lg">add_circle</span>
+                        <span className="hidden sm:inline">Book Time Off</span>
+                    </button>
                 </div>
             </div>
-            <div className="p-6 bg-white dark:bg-gray-900/50 min-h-[600px]">
+            <div className="p-6 bg-white/60 dark:bg-gray-900/60 min-h-[600px] backdrop-blur-md">
                 {calendarView === 'month' && renderMonthView()}
                 {calendarView === 'year' && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -726,7 +774,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                             const daysInMonth = new Date(activeYear, i + 1, 0).getDate();
                             const startDay = monthDate.getDay() === 0 ? 6 : monthDate.getDay() - 1;
                             return (
-                                <div key={i} className="bg-gray-50/50 dark:bg-white/5 rounded-2xl p-4 border border-gray-100 dark:border-white/5">
+                                <div key={i} className="bg-gray-50/50 dark:bg-white/5 rounded-2xl p-4 border border-gray-100 dark:border-white/5 hover:border-blue-200 dark:hover:border-blue-800 transition-colors">
                                     <h4 className="text-sm font-black text-gray-900 dark:text-white mb-3 uppercase tracking-widest cursor-pointer hover:text-blue-500 transition-colors" onClick={() => { const newDate = new Date(viewDate); newDate.setMonth(i); setViewDate(newDate); setCalendarView('month'); }}>{monthDate.toLocaleString('default', { month: 'long' })}</h4>
                                     <div className="grid grid-cols-7 gap-1">{Array.from({ length: startDay }).map((_, k) => <div key={k} />)}{Array.from({ length: daysInMonth }).map((_, d) => renderDayCell(new Date(activeYear, i, d + 1), 'h-8', false, 'compact'))}</div>
                                 </div>
