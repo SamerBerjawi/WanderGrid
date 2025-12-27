@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { ExpeditionMap3D } from '../components/ExpeditionMap3D';
 import { dataService } from '../services/mockDb';
-import { Trip } from '../types';
+import { Trip, Transport } from '../types';
 import { resolvePlaceName, calculateDistance } from '../services/geocoding';
 import { Tabs } from '../components/ui';
 
@@ -18,6 +18,14 @@ interface VisitedCountry {
     tripCount: number;
     lastVisit: Date;
     region: string; // New field
+}
+
+interface ExtremeFlight {
+    distance: number;
+    origin: string;
+    destination: string;
+    carrier: string;
+    date: string;
 }
 
 const LEVEL_THRESHOLDS = [
@@ -231,7 +239,7 @@ const getFlagEmoji = (countryCode: string) => {
 
 // --- Statistics Components ---
 const StatCard: React.FC<{ title: string; value: string | number; subtitle?: string; icon: string; color?: string }> = ({ title, value, subtitle, icon, color = 'blue' }) => (
-    <div className={`p-6 rounded-[2rem] bg-white dark:bg-gray-800 border border-gray-100 dark:border-white/5 shadow-sm flex items-center gap-5 relative overflow-hidden group`}>
+    <div className={`p-6 rounded-[2rem] bg-white dark:bg-gray-800 border border-gray-100 dark:border-white/5 shadow-sm flex items-center gap-5 relative overflow-hidden group hover:shadow-lg transition-all`}>
         <div className={`absolute right-0 top-0 w-32 h-32 bg-${color}-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/3 transition-all group-hover:bg-${color}-500/10`} />
         <div className={`w-14 h-14 rounded-2xl bg-${color}-50 dark:bg-${color}-900/20 text-${color}-600 dark:text-${color}-400 flex items-center justify-center text-3xl shadow-sm`}>
             <span className="material-icons-outlined">{icon}</span>
@@ -243,6 +251,94 @@ const StatCard: React.FC<{ title: string; value: string | number; subtitle?: str
         </div>
     </div>
 );
+
+const ExtremeFlightCard: React.FC<{ type: 'Longest' | 'Shortest'; flight: ExtremeFlight | null; color: string }> = ({ type, flight, color }) => {
+    if (!flight) return null;
+    return (
+        <div className={`p-6 rounded-[2rem] bg-white dark:bg-gray-800 border border-gray-100 dark:border-white/5 shadow-sm hover:shadow-lg transition-all relative overflow-hidden group`}>
+            <div className={`absolute top-0 right-0 w-40 h-40 bg-${color}-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 transition-all group-hover:bg-${color}-500/10`} />
+            
+            <div className="flex justify-between items-start relative z-10">
+                <div className={`p-3 rounded-2xl bg-${color}-50 dark:bg-${color}-900/20 text-${color}-600 dark:text-${color}-400`}>
+                    <span className="material-icons-outlined text-xl">{type === 'Longest' ? 'public' : 'short_text'}</span>
+                </div>
+                <div className="text-right">
+                    <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{type} Flight</div>
+                    <div className={`text-2xl font-black text-${color}-600 dark:text-${color}-400`}>{flight.distance.toLocaleString()} km</div>
+                </div>
+            </div>
+
+            <div className="mt-6 relative z-10">
+                <div className="flex justify-between items-center mb-2">
+                    <span className="text-3xl font-black text-gray-900 dark:text-white">{flight.origin}</span>
+                    <div className="flex-1 mx-4 relative h-0.5 bg-gray-200 dark:bg-white/10">
+                        <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-1 bg-white dark:bg-gray-800`}>
+                            <span className="material-icons-outlined text-gray-300 text-xs transform rotate-90">flight</span>
+                        </div>
+                    </div>
+                    <span className="text-3xl font-black text-gray-900 dark:text-white">{flight.destination}</span>
+                </div>
+                <div className="flex justify-between text-xs font-bold text-gray-500 dark:text-gray-400">
+                    <span>{flight.carrier}</span>
+                    <span>{new Date(flight.date).getFullYear()}</span>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const DonutChart: React.FC<{ data: { label: string; value: number; color: string }[]; title: string }> = ({ data, title }) => {
+    const total = data.reduce((sum, item) => sum + item.value, 0);
+    if (total === 0) return null;
+
+    let cumulativePercent = 0;
+
+    return (
+        <div className="p-6 rounded-[2rem] bg-white dark:bg-gray-800 border border-gray-100 dark:border-white/5 shadow-sm flex flex-col items-center">
+            <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6 w-full text-left">{title}</h4>
+            <div className="relative w-40 h-40">
+                <svg viewBox="0 0 100 100" className="transform -rotate-90 w-full h-full">
+                    {data.map((item, idx) => {
+                        const percent = item.value / total;
+                        const dashArray = `${percent * 314} 314`; // 2 * PI * r (approx 314 for r=50)
+                        const offset = -(cumulativePercent * 314);
+                        cumulativePercent += percent;
+                        
+                        return (
+                            <circle 
+                                key={idx}
+                                cx="50" 
+                                cy="50" 
+                                r="40" 
+                                fill="transparent" 
+                                strokeWidth="12" 
+                                stroke={item.color} 
+                                strokeDasharray={dashArray} 
+                                strokeDashoffset={offset} 
+                                className="transition-all duration-1000 ease-out" 
+                            />
+                        );
+                    })}
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-2xl font-black text-gray-900 dark:text-white">{total}</span>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase">Flights</span>
+                </div>
+            </div>
+            <div className="w-full mt-6 space-y-2">
+                {data.map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-center text-xs">
+                        <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }}></span>
+                            <span className="font-bold text-gray-600 dark:text-gray-300">{item.label}</span>
+                        </div>
+                        <span className="font-bold text-gray-900 dark:text-white">{Math.round((item.value / total) * 100)}%</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
 
 const TopList: React.FC<{ title: string; items: { label: string; sub?: string; count: number; code?: string }[]; icon: string; color: string }> = ({ title, items, icon, color }) => {
     if (items.length === 0) return null;
@@ -428,13 +524,45 @@ export const Gamification: React.FC<GamificationProps> = ({ onTripClick }) => {
             if (trip.location && !['Time Off', 'Remote', 'Trip', 'Vacation'].includes(trip.location)) tripPlaces.add(trip.location);
             trip.accommodations?.forEach(a => tripPlaces.add(a.address));
             
-            // Simplified transport logic for mapping (we already have cache populated)
-            if (trip.transports) {
-                 trip.transports.forEach(t => {
-                     // Simple heuristic: Destination is a place visited if not skipped by detailed logic earlier
-                     // For mapping stats, checking all destinations is usually acceptable approx
-                     if (placesToResolve.has(t.destination)) tripPlaces.add(t.destination);
-                 });
+            // Robust layover detection per trip
+            if (trip.transports && trip.transports.length > 0) {
+                const sortedTransports = [...trip.transports].sort((a, b) => {
+                    const da = new Date(`${a.departureDate}T${a.departureTime || '00:00'}`).getTime();
+                    const db = new Date(`${b.departureDate}T${b.departureTime || '00:00'}`).getTime();
+                    return da - db;
+                });
+                const tripOrigin = sortedTransports[0].origin.trim().toLowerCase();
+                
+                for (let i = 0; i < sortedTransports.length; i++) {
+                    const current = sortedTransports[i];
+                    const next = sortedTransports[i+1];
+                    const dest = current.destination;
+                    const destNorm = dest.trim().toLowerCase();
+                    
+                    // Skip if returning to trip origin
+                    if (destNorm === tripOrigin) continue;
+                    
+                    // Check if layover
+                    let isLayover = false;
+                    if (next) {
+                        const nextOriginNorm = next.origin.trim().toLowerCase();
+                        if (destNorm === nextOriginNorm) {
+                            const arrT = new Date(`${current.arrivalDate}T${current.arrivalTime || '00:00'}`).getTime();
+                            const depT = new Date(`${next.departureDate}T${next.departureTime || '00:00'}`).getTime();
+                            if (!isNaN(arrT) && !isNaN(depT)) {
+                                // If gap is less than 24 hours, consider it a layover
+                                if ((depT - arrT) / 3600000 < 24) isLayover = true;
+                            } else {
+                                // Fallback: if data is incomplete but sequential, assume transit
+                                isLayover = true;
+                            }
+                        }
+                    }
+                    
+                    if (!isLayover) {
+                        tripPlaces.add(dest);
+                    }
+                }
             }
 
             for (const place of tripPlaces) {
@@ -478,8 +606,6 @@ export const Gamification: React.FC<GamificationProps> = ({ onTripClick }) => {
 
     // Calculate Detailed Flight Stats
     const stats = useMemo(() => {
-        // Use all trips (including upcoming) for the Flight Log to show full picture? 
-        // Or just past trips? Let's use all 'valid' trips (Past + Upcoming) for the analytics tab to be more useful.
         const activeTrips = trips.filter(t => t.status !== 'Planning' && t.status !== 'Cancelled');
         
         let totalFlights = 0;
@@ -490,6 +616,13 @@ export const Gamification: React.FC<GamificationProps> = ({ onTripClick }) => {
         const airlines = new Map<string, number>();
         const aircraft = new Map<string, number>();
         const routes = new Map<string, number>();
+        
+        // New Stats
+        const seatCounts: Record<string, number> = { Window: 0, Aisle: 0, Middle: 0 };
+        const classCounts: Record<string, number> = { Economy: 0, Premium: 0, Business: 0, First: 0 };
+        const monthCounts = new Array(12).fill(0);
+        let longestFlight: ExtremeFlight | null = null;
+        let shortestFlight: ExtremeFlight | null = null;
 
         activeTrips.forEach(t => {
             if (t.transports) {
@@ -502,6 +635,34 @@ export const Gamification: React.FC<GamificationProps> = ({ onTripClick }) => {
                             dist = calculateDistance(tr.originLat, tr.originLng, tr.destLat, tr.destLng);
                         }
                         totalDist += dist;
+
+                        // Extremes Logic
+                        const flightInfo: ExtremeFlight = {
+                            distance: dist,
+                            origin: tr.origin,
+                            destination: tr.destination,
+                            carrier: tr.provider,
+                            date: tr.departureDate
+                        };
+
+                        if (!longestFlight || dist > longestFlight.distance) longestFlight = flightInfo;
+                        if (!shortestFlight || (dist > 0 && dist < shortestFlight.distance)) shortestFlight = flightInfo;
+
+                        // Preference Logic
+                        if (tr.seatType) seatCounts[tr.seatType] = (seatCounts[tr.seatType] || 0) + 1;
+                        if (tr.travelClass) {
+                            const cls = tr.travelClass.toLowerCase();
+                            if (cls.includes('economy')) classCounts['Economy']++;
+                            else if (cls.includes('premium')) classCounts['Premium']++;
+                            else if (cls.includes('business')) classCounts['Business']++;
+                            else if (cls.includes('first')) classCounts['First']++;
+                        }
+
+                        // Seasonality
+                        if (tr.departureDate) {
+                            const d = new Date(tr.departureDate);
+                            if (!isNaN(d.getTime())) monthCounts[d.getMonth()]++;
+                        }
 
                         if (tr.departureDate && tr.departureTime && tr.arrivalDate && tr.arrivalTime) {
                             const start = new Date(`${tr.departureDate}T${tr.departureTime}`);
@@ -537,7 +698,21 @@ export const Gamification: React.FC<GamificationProps> = ({ onTripClick }) => {
             topAircraft,
             topRoutes,
             earthCircumnavigations: (totalDist / 40075).toFixed(1),
-            daysInAir: (totalDurationMinutes / (60 * 24)).toFixed(1)
+            daysInAir: (totalDurationMinutes / (60 * 24)).toFixed(1),
+            longestFlight,
+            shortestFlight,
+            seatCounts: [
+                { label: 'Window', value: seatCounts.Window, color: '#3b82f6' },
+                { label: 'Aisle', value: seatCounts.Aisle, color: '#8b5cf6' },
+                { label: 'Middle', value: seatCounts.Middle, color: '#94a3b8' }
+            ].filter(x => x.value > 0),
+            classCounts: [
+                { label: 'Economy', value: classCounts.Economy, color: '#64748b' },
+                { label: 'Premium', value: classCounts.Premium, color: '#0ea5e9' },
+                { label: 'Business', value: classCounts.Business, color: '#f59e0b' },
+                { label: 'First', value: classCounts.First, color: '#a855f7' }
+            ].filter(x => x.value > 0),
+            monthCounts
         };
     }, [trips]);
 
@@ -703,6 +878,7 @@ export const Gamification: React.FC<GamificationProps> = ({ onTripClick }) => {
 
                 {activeTab === 'analytics' && (
                     <div className="space-y-8 animate-fade-in">
+                        {/* Summary Metrics */}
                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
                             <StatCard 
                                 title="Total Flights" 
@@ -733,6 +909,46 @@ export const Gamification: React.FC<GamificationProps> = ({ onTripClick }) => {
                             />
                         </div>
 
+                        {/* Extremes & Distribution */}
+                        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+                            <div className="xl:col-span-2 flex flex-col gap-6">
+                                <ExtremeFlightCard type="Longest" flight={stats.longestFlight} color="indigo" />
+                                <ExtremeFlightCard type="Shortest" flight={stats.shortestFlight} color="rose" />
+                            </div>
+                            <div className="xl:col-span-2 grid grid-cols-2 gap-6">
+                                <DonutChart title="Seat Preference" data={stats.seatCounts} />
+                                <DonutChart title="Cabin Class" data={stats.classCounts} />
+                            </div>
+                        </div>
+
+                        {/* Seasonality Chart */}
+                        <div className="p-8 rounded-[2rem] bg-white dark:bg-gray-800 border border-gray-100 dark:border-white/5 shadow-sm">
+                            <h4 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-widest mb-6">Flight Frequency by Month</h4>
+                            <div className="flex items-end justify-between h-40 gap-2">
+                                {stats.monthCounts.map((count, i) => {
+                                    const max = Math.max(...stats.monthCounts, 1);
+                                    const height = (count / max) * 100;
+                                    const monthName = new Date(0, i).toLocaleString('default', { month: 'short' });
+                                    
+                                    return (
+                                        <div key={i} className="flex-1 flex flex-col items-center gap-2 group cursor-help">
+                                            <div className="w-full bg-gray-100 dark:bg-white/5 rounded-t-lg relative flex items-end overflow-hidden h-full">
+                                                <div 
+                                                    className="w-full bg-gradient-to-t from-blue-500 to-indigo-500 opacity-80 group-hover:opacity-100 transition-all duration-500 rounded-t-lg" 
+                                                    style={{ height: `${height}%` }}
+                                                />
+                                                <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    {count}
+                                                </div>
+                                            </div>
+                                            <span className="text-[9px] font-bold text-gray-400 uppercase">{monthName}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Top Lists Grid */}
                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 h-[500px]">
                             <TopList title="Top Airports" items={stats.topAirports} icon="flight_land" color="blue" />
                             <TopList title="Top Airlines" items={stats.topAirlines} icon="airlines" color="indigo" />
