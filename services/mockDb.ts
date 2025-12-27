@@ -291,11 +291,11 @@ class DataService {
     return Promise.resolve([...this.trips]);
   }
 
-  async addTrip(trip: Trip): Promise<void> {
+  async addTrip(trip: Trip): Promise<Trip> {
     const intelligentTrip = await this.processGeocoding(trip);
     this.trips.push(intelligentTrip);
     this.saveToStorage();
-    return Promise.resolve();
+    return Promise.resolve(intelligentTrip);
   }
 
   // Generate a unique signature for duplicate detection
@@ -376,14 +376,14 @@ class DataService {
     return Promise.resolve();
   }
 
-  async updateTrip(trip: Trip): Promise<void> {
+  async updateTrip(trip: Trip): Promise<Trip> {
     const intelligentTrip = await this.processGeocoding(trip);
     const index = this.trips.findIndex(t => t.id === intelligentTrip.id);
     if (index !== -1) {
         this.trips[index] = { ...intelligentTrip };
         this.saveToStorage();
     }
-    return Promise.resolve();
+    return Promise.resolve(intelligentTrip);
   }
 
   async deleteTrip(id: string): Promise<void> {

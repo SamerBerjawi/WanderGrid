@@ -1,6 +1,6 @@
-
 import React, { useEffect, useState, useRef, useMemo } from 'react';
-import { Card, Button, Badge, Tabs, Modal, Input, Autocomplete, TimeInput } from '../components/ui';
+// Added missing Select import
+import { Card, Button, Badge, Tabs, Modal, Input, Autocomplete, TimeInput, Select } from '../components/ui';
 import { TransportConfigurator } from '../components/FlightConfigurator';
 import { AccommodationConfigurator } from '../components/AccommodationConfigurator';
 import { LocationManager } from '../components/LocationManager';
@@ -53,7 +53,13 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     // Import State
     const [importPreview, setImportPreview] = useState<{ open: boolean, candidates: ImportCandidate[] }>({ open: false, candidates: [] });
     const [expandedCandidateId, setExpandedCandidateId] = useState<string | null>(null);
-    const [importFilters, setImportFilters] = useState({ search: '', minDate: '', maxDate: '' });
+    const [importFilters, setImportFilters] = useState({ 
+        search: '', 
+        minDate: '', 
+        maxDate: '', 
+        minConfidence: '0',
+        airline: ''
+    });
     const importInputRef = useRef<HTMLInputElement>(null);
 
     // Editing State
@@ -142,7 +148,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         detectPlaces();
     }, [trip]);
 
-    // ... (Helper functions remain same: calculateRelevance, handleUpdateTrip, etc.) ...
     const calculateRelevance = (currentTrip: Trip, candidateTrip: Trip): number => {
         let points = 0;
         const cStartDate = new Date(currentTrip.startDate).getTime();
@@ -202,7 +207,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         setEditingTransports(null);
     };
 
-    // ... (Import logic) ...
     const handleImportFlights = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file || !trip) return;
@@ -224,7 +228,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 })).sort((a, b) => b.confidence - a.confidence);
                 if (candidates.length > 0 && candidates[0].confidence > 80) candidates[0].selected = true;
                 
-                setImportFilters({ search: '', minDate: '', maxDate: '' });
+                setImportFilters({ search: '', minDate: '', maxDate: '', minConfidence: '0', airline: '' });
                 setImportPreview({ open: true, candidates });
             } else {
                 alert("No valid flights found in file.");
@@ -265,24 +269,22 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         return importPreview.candidates.filter(c => {
             const t = c.trip;
             const searchLower = importFilters.search.toLowerCase();
+            const airlineLower = importFilters.airline.toLowerCase();
             
-            // Text Search
             const matchesSearch = !searchLower || 
                 t.name.toLowerCase().includes(searchLower) ||
-                t.transports?.some(tr => 
-                    tr.provider.toLowerCase().includes(searchLower) || 
-                    tr.identifier.toLowerCase().includes(searchLower) ||
-                    tr.origin.toLowerCase().includes(searchLower) ||
-                    tr.destination.toLowerCase().includes(searchLower)
-                );
+                t.location.toLowerCase().includes(searchLower);
 
-            // Date Range
+            const matchesAirline = !airlineLower ||
+                t.transports?.some(tr => tr.provider.toLowerCase().includes(airlineLower));
+
             const start = new Date(t.startDate);
             const end = new Date(t.endDate);
             const matchesMin = !importFilters.minDate || end >= new Date(importFilters.minDate);
             const matchesMax = !importFilters.maxDate || start <= new Date(importFilters.maxDate);
+            const matchesConf = c.confidence >= parseInt(importFilters.minConfidence);
 
-            return matchesSearch && matchesMin && matchesMax;
+            return matchesSearch && matchesAirline && matchesMin && matchesMax && matchesConf;
         });
     }, [importPreview.candidates, importFilters]);
 
@@ -379,7 +381,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         setIsLeaveModalOpen(false);
     };
 
-    // ... (Helpers: formatCurrency, formatTime, etc.) ...
     const openTransportModal = (transportSet?: Transport[], date?: string) => {
         setEditingTransports(transportSet || null);
         setSelectedDateForModal(date || null);
@@ -467,7 +468,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     const getClassColor = (cls?: string) => {
         const c = (cls || '').toLowerCase();
         if (c.includes('first')) return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50';
-        if (c.includes('business')) return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 border border-purple-200 dark:border-purple-900/50';
+        if (c.includes('business')) return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 border border-purple-200 dark:border-amber-900/50';
         if (c.includes('economy+')) return 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/50';
         return 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-900/30';
     };
@@ -489,7 +490,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     const getTypeStyles = (type: string) => {
         switch(type) {
             case 'Transport': return 'bg-blue-50 dark:bg-blue-900/10 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800';
-            case 'Accommodation': return 'bg-amber-50 dark:bg-amber-900/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800';
+            case 'Accommodation': return 'bg-amber-50 dark:bg-amber-900/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-border-800';
             case 'Reservation': return 'bg-orange-50 dark:bg-orange-900/10 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800';
             case 'Tour': return 'bg-emerald-50 dark:bg-emerald-900/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800';
             case 'Activity': 
@@ -518,12 +519,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     const duration = Math.ceil((new Date(trip.endDate).getTime() - new Date(trip.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1;
     const costPerPerson = trip.participants.length > 0 ? totalCost / trip.participants.length : 0;
     const costPerDay = duration > 0 ? totalCost / duration : 0;
-
-    // Find highest expense
-    let highestExpense = { name: '', cost: 0, type: '' };
-    trip.transports?.forEach(t => { if((t.cost || 0) > highestExpense.cost) highestExpense = { name: t.provider, cost: t.cost || 0, type: 'Transport' } });
-    trip.accommodations?.forEach(a => { if((a.cost || 0) > highestExpense.cost) highestExpense = { name: a.name, cost: a.cost || 0, type: 'Accommodation' } });
-    trip.activities?.forEach(a => { if((a.cost || 0) > highestExpense.cost) highestExpense = { name: a.title, cost: a.cost || 0, type: 'Activity' } });
 
     // Group by Itinerary ID
     const transportGroups = (trip.transports || []).reduce((groups, t) => {
@@ -654,27 +649,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                             <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Planned Items</span>
                         </div>
                     </div>
-                    {(visitedPlaces.length > 0) && (
-                        <div className="p-5 rounded-2xl bg-white/50 dark:bg-white/5 border border-white/20 dark:border-white/5 backdrop-blur-md">
-                            <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-3 flex items-center gap-2"><span className="material-icons-outlined text-sm">public</span> Expedition Footprint</h4>
-                            <div className="space-y-3">
-                                {uniqueCountries.size > 0 && (
-                                    <div className="flex flex-wrap gap-2">
-                                        {Array.from(uniqueCountries).map(country => (
-                                            <span key={country} className="px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-900/30 text-[10px] font-black uppercase tracking-wider flex items-center gap-1"><span className="material-icons-outlined text-sm">flag</span> {country}</span>
-                                        ))}
-                                    </div>
-                                )}
-                                <div className="flex flex-wrap gap-2">
-                                    {visitedPlaces.map((place, idx) => (
-                                        <div key={idx} className="px-3 py-1 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-white/10 text-xs font-bold text-gray-600 dark:text-gray-300 shadow-sm flex items-center gap-1.5">
-                                            <span className={`material-icons-outlined text-[10px] ${place.source === 'Transport' ? 'text-blue-500' : place.source === 'Accommodation' ? 'text-amber-500' : 'text-purple-500'}`}>{place.source === 'Transport' ? 'flight_land' : place.source === 'Accommodation' ? 'hotel' : 'place'}</span>{place.displayName}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    )}
                 </div>
             </div>
 
@@ -912,7 +886,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                     <button onClick={() => openTransportModal(items)} className="text-gray-300 hover:text-orange-500 transition-colors"><span className="material-icons-outlined">edit</span></button>
                                                 </div>
                                                 <div className="p-5 grid grid-cols-2 gap-6 relative">
-                                                    <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white dark:bg-gray-800 rounded-full border border-gray-100 dark:border-white/10 flex items-center justify-center z-10 shadow-sm"><span className="material-icons-outlined text-gray-400 text-sm">key</span></div>
+                                                    <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white dark:bg-gray-800 rounded-full border border-gray-100 dark:border-white/5 flex items-center justify-center z-10 shadow-sm"><span className="material-icons-outlined text-gray-400 text-sm">key</span></div>
                                                     <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[1px] h-full bg-dashed border-l border-dashed border-gray-200 dark:border-white/10 z-0"></div>
                                                     <div className="space-y-1"><span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block">Pickup</span><div className="font-bold text-gray-900 dark:text-white text-sm">{car.pickupLocation}</div><div className="text-xs text-gray-500">{new Date(car.departureDate).toLocaleDateString()}</div><div className="text-xs font-mono text-gray-400">{formatTime(car.departureTime)}</div></div>
                                                     <div className="space-y-1 text-right"><span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block">Dropoff</span><div className="font-bold text-gray-900 dark:text-white text-sm">{car.dropoffLocation}</div><div className="text-xs text-gray-500">{new Date(car.arrivalDate).toLocaleDateString()}</div><div className="text-xs font-mono text-gray-400">{formatTime(car.arrivalTime)}</div></div>
@@ -1411,64 +1385,190 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 </div>
             </Modal>
 
-            <Modal isOpen={importPreview.open} onClose={() => setImportPreview({ open: false, candidates: [] })} title="Flight Import Analysis" maxWidth="max-w-3xl">
+            <Modal isOpen={importPreview.open} onClose={() => setImportPreview({ open: false, candidates: [] })} title="AI Flight Analysis" maxWidth="max-w-4xl">
                 <div className="space-y-6">
-                    <div className="bg-gradient-to-br from-blue-500/10 to-indigo-500/10 p-5 rounded-2xl border border-blue-500/20 flex items-start gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-blue-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/20"><span className="material-icons-outlined text-2xl">smart_toy</span></div>
-                        <div><h4 className="font-black text-gray-900 dark:text-white text-lg">AI Flight Analysis</h4><p className="text-sm text-gray-600 dark:text-gray-300 mt-1 leading-relaxed">We detected <strong>{importPreview.candidates.length} potential trip groups</strong>. Select the ones you wish to import.</p></div>
+                    <div className="bg-gradient-to-br from-blue-500/10 to-indigo-500/10 p-6 rounded-3xl border border-blue-500/20 flex items-start gap-6">
+                        <div className="w-16 h-16 rounded-2xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xl shadow-blue-500/20">
+                            <span className="material-icons-outlined text-3xl">smart_toy</span>
+                        </div>
+                        <div>
+                            <h4 className="font-black text-gray-900 dark:text-white text-xl">Discovery Uplink</h4>
+                            <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 leading-relaxed">
+                                We've analyzed the import file and matched it against this trip's parameters. 
+                                Found <strong>{importPreview.candidates.length} potential groupings</strong>.
+                            </p>
+                        </div>
                     </div>
                     
-                    {/* Filter Bar */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
-                        <Input 
-                            placeholder="Search Airline / City..." 
-                            value={importFilters.search} 
-                            onChange={e => setImportFilters({...importFilters, search: e.target.value})}
-                            className="!py-2 !text-xs"
-                        />
-                        <Input 
-                            type="date" 
-                            placeholder="From"
-                            value={importFilters.minDate}
-                            onChange={e => setImportFilters({...importFilters, minDate: e.target.value})}
-                            className="!py-2 !text-xs"
-                        />
-                        <Input 
-                            type="date" 
-                            placeholder="To"
-                            value={importFilters.maxDate}
-                            onChange={e => setImportFilters({...importFilters, maxDate: e.target.value})}
-                            className="!py-2 !text-xs"
-                        />
-                    </div>
-
-                    <div className="flex justify-between items-center px-1">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Showing {filteredCandidates.length} of {importPreview.candidates.length}</span>
-                        <div className="flex items-center gap-2">
-                            <button onClick={toggleAllFiltered} className="text-[10px] font-bold text-gray-500 hover:text-blue-500 uppercase tracking-widest underline">Toggle All</button>
-                            <div className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded-lg">{filteredCandidates.filter(c => c.selected).length} Selected</div>
+                    {/* Granular Filters */}
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-3 p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
+                        <div className="md:col-span-4">
+                            <Input 
+                                placeholder="Search Airline or City..." 
+                                value={importFilters.search} 
+                                onChange={e => setImportFilters({...importFilters, search: e.target.value})}
+                                className="!py-2 !text-xs"
+                                rightElement={<span className="material-icons-outlined text-gray-400 text-[14px] mr-2">search</span>}
+                            />
+                        </div>
+                        <div className="md:col-span-3">
+                            <Select 
+                                value={importFilters.minConfidence}
+                                onChange={e => setImportFilters({...importFilters, minConfidence: e.target.value})}
+                                options={[
+                                    { label: 'Any Match', value: '0' },
+                                    { label: 'High Confidence (70%+)', value: '70' },
+                                    { label: 'Perfect Match (90%+)', value: '90' }
+                                ]}
+                                className="!py-2 !text-xs font-bold"
+                            />
+                        </div>
+                        <div className="md:col-span-5 grid grid-cols-2 gap-2">
+                            <Input 
+                                type="date" 
+                                value={importFilters.minDate}
+                                onChange={e => setImportFilters({...importFilters, minDate: e.target.value})}
+                                className="!py-1.5 !text-[10px]"
+                                label="From"
+                            />
+                            <Input 
+                                type="date" 
+                                value={importFilters.maxDate}
+                                onChange={e => setImportFilters({...importFilters, maxDate: e.target.value})}
+                                className="!py-1.5 !text-[10px]"
+                                label="To"
+                            />
                         </div>
                     </div>
 
-                    <div className="space-y-4 max-h-[50vh] overflow-y-auto custom-scrollbar p-1">
-                        {filteredCandidates.map((candidate, idx) => {
+                    <div className="flex justify-between items-center px-1">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                            Analyzing {filteredCandidates.length} of {importPreview.candidates.length} Segments
+                        </span>
+                        <div className="flex items-center gap-3">
+                            <button onClick={toggleAllFiltered} className="text-[10px] font-black text-blue-500 hover:text-blue-600 uppercase tracking-widest underline underline-offset-4 decoration-2">
+                                {filteredCandidates.every(c => c.selected) && filteredCandidates.length > 0 ? 'Deselect All' : 'Select All Filtered'}
+                            </button>
+                            <Badge color="blue" className="!px-3 !py-1 !rounded-lg border-2 !text-[10px]">{selectedCount} Selected</Badge>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4 max-h-[500px] overflow-y-auto custom-scrollbar p-1">
+                        {filteredCandidates.map((candidate) => {
                             const isSelected = candidate.selected;
                             const isExpanded = expandedCandidateId === candidate.trip.id;
+                            const carriers = Array.from(new Set(candidate.trip.transports?.map(t => t.provider) || []));
+                            const stops = candidate.trip.transports ? [candidate.trip.transports[0].origin, ...candidate.trip.transports.map(t => t.destination)] : [];
+
                             return (
-                                <div key={candidate.trip.id} className={`relative rounded-3xl border transition-all duration-300 overflow-hidden ${isSelected ? 'bg-white dark:bg-gray-800 border-blue-500 ring-2 ring-blue-500 shadow-xl z-10' : 'bg-white dark:bg-gray-800/50 border-gray-200 dark:border-white/10 hover:border-blue-300 dark:hover:border-blue-700'}`}>
-                                    <div className="p-5 flex items-start gap-4 cursor-pointer" onClick={() => toggleCandidateSelection(candidate.trip.id)}>
-                                        <div className={`mt-1 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${isSelected ? 'bg-blue-500 border-blue-500' : 'bg-transparent border-gray-300 dark:border-gray-600'}`}>{isSelected && <span className="material-icons-outlined text-white text-sm">check</span>}</div>
-                                        <div className="flex-1"><div className="pr-20"><h4 className="font-bold text-lg text-gray-900 dark:text-white leading-tight">{candidate.trip.name}</h4><div className="flex flex-wrap items-center gap-3 mt-2 text-xs font-medium text-gray-500 dark:text-gray-400"><span className="flex items-center gap-1 bg-gray-100 dark:bg-white/10 px-2 py-1 rounded-lg"><span className="material-icons-outlined text-sm">calendar_today</span>{new Date(candidate.trip.startDate).toLocaleDateString()} - {new Date(candidate.trip.endDate).toLocaleDateString()}</span><span className="flex items-center gap-1 bg-gray-100 dark:bg-white/10 px-2 py-1 rounded-lg"><span className="material-icons-outlined text-sm">flight</span>{candidate.trip.transports?.length} Flights</span></div></div></div>
+                                <div 
+                                    key={candidate.trip.id} 
+                                    className={`relative rounded-[2rem] border transition-all duration-300 overflow-hidden ${
+                                        isSelected 
+                                        ? 'bg-blue-50/50 border-blue-500 ring-2 ring-blue-500 dark:bg-blue-900/10 dark:border-blue-700 shadow-xl z-10' 
+                                        : 'bg-white dark:bg-gray-800/50 border-gray-100 dark:border-white/10 hover:border-blue-300 dark:hover:border-blue-700'
+                                    }`}
+                                >
+                                    <div className="p-6 flex items-start gap-5 cursor-pointer" onClick={() => toggleCandidateSelection(candidate.trip.id)}>
+                                        <div className={`mt-1 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-blue-600 border-blue-600 shadow-lg scale-110' : 'bg-transparent border-gray-300 dark:border-gray-600'}`}>
+                                            {isSelected && <span className="material-icons-outlined text-white text-sm">check</span>}
+                                        </div>
+                                        <div className="flex-1 space-y-4">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <h4 className="font-black text-lg text-gray-900 dark:text-white leading-tight">{candidate.trip.name}</h4>
+                                                    <div className="flex items-center gap-2 mt-2">
+                                                        <Badge color={candidate.confidence > 80 ? 'green' : candidate.confidence > 50 ? 'amber' : 'gray'} className="!px-2 !py-0.5 !text-[9px]">
+                                                            {candidate.confidence}% Match
+                                                        </Badge>
+                                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
+                                                            <span className="material-icons-outlined text-[10px]">flight</span> {candidate.trip.transports?.length} Legs
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <div className="text-xs font-bold text-gray-700 dark:text-gray-200">
+                                                        {new Date(candidate.trip.startDate).toLocaleDateString(undefined, {month:'short', day:'numeric'})} – {new Date(candidate.trip.endDate).toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'})}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Route Visualizer */}
+                                            <div className="flex items-center gap-3 overflow-x-auto no-scrollbar py-1">
+                                                {stops.map((s, idx) => (
+                                                    <React.Fragment key={idx}>
+                                                        <span className="px-2 py-1 bg-white dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-lg text-xs font-mono font-black text-gray-700 dark:text-gray-200 shadow-sm">{s}</span>
+                                                        {idx < stops.length - 1 && <span className="material-icons-outlined text-xs text-gray-300">arrow_forward</span>}
+                                                    </React.Fragment>
+                                                ))}
+                                            </div>
+
+                                            {/* Carrier Badges */}
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {carriers.map((c, i) => (
+                                                    <span key={i} className="px-2 py-0.5 rounded-md bg-blue-500/5 text-[9px] font-black uppercase text-blue-600 dark:text-blue-400 border border-blue-500/10">{c}</span>
+                                                ))}
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="border-t border-gray-100 dark:border-white/5"><button onClick={(e) => { e.stopPropagation(); setExpandedCandidateId(isExpanded ? null : candidate.trip.id); }} className="w-full flex items-center justify-center py-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">{isExpanded ? 'Hide Details' : 'Show Flights'} <span className="material-icons-outlined text-sm ml-1">{isExpanded ? 'expand_less' : 'expand_more'}</span></button>{isExpanded && (<div className="bg-gray-50/50 dark:bg-black/20 p-4 space-y-2 animate-fade-in">{candidate.trip.transports?.map((t, i) => (<div key={i} className="flex items-center justify-between text-xs bg-white dark:bg-white/5 p-3 rounded-xl border border-gray-100 dark:border-white/5"><div className="flex items-center gap-3"><div className="font-mono font-bold text-gray-500 dark:text-gray-400 w-16">{t.provider.substring(0, 10)}</div><div className="flex items-center gap-2 font-bold text-gray-800 dark:text-white"><span>{t.origin}</span><span className="material-icons-outlined text-[10px] text-gray-400">arrow_forward</span><span>{t.destination}</span></div></div><div className="text-gray-500">{new Date(t.departureDate).toLocaleDateString()}</div></div>))}</div>)}</div>
+                                    
+                                    <div className="border-t border-gray-50 dark:border-white/5">
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); setExpandedCandidateId(isExpanded ? null : candidate.trip.id); }} 
+                                            className="w-full flex items-center justify-center py-2 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-blue-500 hover:bg-gray-50 dark:hover:bg-white/5 transition-all"
+                                        >
+                                            {isExpanded ? 'Hide Segment Details' : 'Verify Individual Legs'} 
+                                            <span className="material-icons-outlined text-sm ml-1 transform transition-transform" style={{ transform: isExpanded ? 'rotate(180deg)' : 'none' }}>expand_more</span>
+                                        </button>
+                                        {isExpanded && (
+                                            <div className="bg-gray-50/50 dark:bg-black/20 p-5 space-y-3 animate-fade-in border-t border-gray-100 dark:border-white/5">
+                                                {candidate.trip.transports?.map((t, i) => (
+                                                    <div key={i} className="flex items-center justify-between text-xs bg-white dark:bg-gray-900 p-4 rounded-2xl border border-gray-100 dark:border-white/10 shadow-sm group/leg">
+                                                        <div className="flex items-center gap-5">
+                                                            <div className="text-right min-w-[50px]">
+                                                                <div className="font-black text-gray-800 dark:text-white">{t.departureTime}</div>
+                                                                <div className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">{new Date(t.departureDate).toLocaleDateString(undefined, {month:'short', day:'numeric'})}</div>
+                                                            </div>
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="font-mono font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-lg">{t.origin}</span>
+                                                                <span className="material-icons-outlined text-[10px] text-gray-300">arrow_forward</span>
+                                                                <span className="font-mono font-black text-gray-800 dark:text-gray-200">{t.destination}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="text-right">
+                                                                <div className="font-bold text-gray-500 dark:text-gray-400">{t.provider}</div>
+                                                                <div className="text-[9px] font-mono text-gray-400 uppercase">{t.identifier}</div>
+                                                            </div>
+                                                            {t.travelClass && <Badge color="gray" className="!text-[8px] !px-1.5">{t.travelClass}</Badge>}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             );
                         })}
                         {filteredCandidates.length === 0 && (
-                            <div className="text-center py-8 text-gray-400 text-xs italic">No flights match your filters</div>
+                            <div className="text-center py-20 bg-gray-50/50 dark:bg-white/5 rounded-[2.5rem] border-2 border-dashed border-gray-200 dark:border-white/10">
+                                <span className="material-icons-outlined text-gray-200 text-6xl">travel_explore</span>
+                                <p className="text-gray-400 text-sm font-bold mt-4 uppercase tracking-[0.3em]">No matching segments detected</p>
+                            </div>
                         )}
                     </div>
-                    <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-white/5"><Button variant="ghost" className="flex-1" onClick={() => setImportPreview({ open: false, candidates: [] })}>Cancel</Button><Button variant="primary" className="flex-1 shadow-lg shadow-blue-500/20" onClick={confirmImportFlights} disabled={selectedCount === 0}>Import {selectedCount} Trips</Button></div>
+                    
+                    <div className="flex gap-4 pt-4 border-t border-gray-100 dark:border-white/5">
+                        <Button variant="ghost" className="flex-1 !rounded-2xl" onClick={() => setImportPreview({ open: false, candidates: [] })}>Discard All</Button>
+                        <Button 
+                            variant="primary" 
+                            className="flex-1 !rounded-2xl shadow-xl shadow-blue-500/20" 
+                            onClick={confirmImportFlights} 
+                            disabled={selectedCount === 0}
+                        >
+                            Import {selectedCount} Selected
+                        </Button>
+                    </div>
                 </div>
             </Modal>
 

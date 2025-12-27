@@ -51,7 +51,13 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
   const [isImportVerifyOpen, setIsImportVerifyOpen] = useState(false);
   const [proposedTrips, setProposedTrips] = useState<Trip[]>([]);
   const [selectedTripIds, setSelectedTripIds] = useState<Set<string>>(new Set());
-  const [importFilters, setImportFilters] = useState({ search: '', minDate: '', maxDate: '' });
+  const [importFilters, setImportFilters] = useState({ 
+    search: '', 
+    minDate: '', 
+    maxDate: '', 
+    minLegs: '0',
+    carrierSearch: ''
+  });
 
   useEffect(() => {
     refreshData();
@@ -224,7 +230,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
           if (candidates.length > 0) {
               setProposedTrips(candidates);
               setSelectedTripIds(new Set(candidates.map(t => t.id)));
-              setImportFilters({ search: '', minDate: '', maxDate: '' });
+              setImportFilters({ search: '', minDate: '', maxDate: '', minLegs: '0', carrierSearch: '' });
               setIsImportVerifyOpen(true);
           } else {
               alert("No valid trips found in file.");
@@ -268,21 +274,26 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
   const filteredImportCandidates = useMemo(() => {
         return proposedTrips.filter(t => {
             const searchLower = importFilters.search.toLowerCase();
+            const carrierLower = importFilters.carrierSearch.toLowerCase();
+            
             const matchesSearch = !searchLower || 
                 t.name.toLowerCase().includes(searchLower) ||
+                t.location.toLowerCase().includes(searchLower);
+
+            const matchesCarrier = !carrierLower ||
                 t.transports?.some(tr => 
-                    tr.provider.toLowerCase().includes(searchLower) || 
-                    tr.identifier.toLowerCase().includes(searchLower) ||
-                    tr.origin.toLowerCase().includes(searchLower) ||
-                    tr.destination.toLowerCase().includes(searchLower)
+                    tr.provider.toLowerCase().includes(carrierLower) || 
+                    tr.identifier.toLowerCase().includes(carrierLower)
                 );
 
             const start = new Date(t.startDate);
             const end = new Date(t.endDate);
             const matchesMin = !importFilters.minDate || end >= new Date(importFilters.minDate);
             const matchesMax = !importFilters.maxDate || start <= new Date(importFilters.maxDate);
+            
+            const matchesLegs = (t.transports?.length || 0) >= parseInt(importFilters.minLegs);
 
-            return matchesSearch && matchesMin && matchesMax;
+            return matchesSearch && matchesCarrier && matchesMin && matchesMax && matchesLegs;
         });
     }, [proposedTrips, importFilters]);
 
@@ -504,31 +515,67 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
 
             <div className="xl:col-span-4 space-y-8">
                 {/* Data Operations Card */}
-                <Card noPadding className="rounded-[2rem]">
-                    <div className="p-8 border-b border-gray-100 dark:border-white/5">
+                <Card noPadding className="rounded-[2rem] border-white/50 dark:border-white/10 shadow-2xl">
+                    <div className="p-8 border-b border-gray-100 dark:border-white/5 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-white/5 dark:to-transparent">
                         <h3 className="text-2xl font-black text-gray-900 dark:text-white leading-none">Data Operations</h3>
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-2">Import, Export & Backup</p>
+                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-2">Persistence & Migration</p>
                     </div>
                     
-                    <div className="p-6 space-y-6">
+                    <div className="p-6 space-y-8">
                         {/* Backup Section */}
-                        <div className="space-y-3">
-                            <h4 className="text-xs font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest">System Backup</h4>
-                            <div className="grid grid-cols-2 gap-3">
-                                <Button onClick={handleExport} variant="secondary" className="h-12 border-dashed" icon={<span className="material-icons-outlined">download</span>}>Backup JSON</Button>
-                                <Button onClick={handleImportTrigger} variant="secondary" className="h-12 border-dashed" icon={<span className="material-icons-outlined">upload</span>}>Restore JSON</Button>
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center">
+                                    <span className="material-icons-outlined text-sm">settings_backup_restore</span>
+                                </div>
+                                <h4 className="text-sm font-black text-gray-800 dark:text-white uppercase tracking-widest">Database Lifecycle</h4>
+                            </div>
+
+                            <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30">
+                                <div className="flex items-start gap-3">
+                                    <span className="material-icons-outlined text-amber-500 mt-0.5">warning</span>
+                                    <div className="space-y-1">
+                                        <p className="text-xs font-bold text-amber-800 dark:text-amber-200">System Caution</p>
+                                        <p className="text-[10px] text-amber-700/70 dark:text-amber-300/60 leading-relaxed font-medium">Restoring from a backup will overwrite all current users, trips, and workspace settings. Ensure you have a recent export.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-3">
+                                <Button 
+                                    onClick={handleExport} 
+                                    variant="primary" 
+                                    className="h-14 !rounded-2xl shadow-lg shadow-blue-500/20" 
+                                    icon={<span className="material-icons-outlined">download</span>}
+                                >
+                                    Generate Backup JSON
+                                </Button>
+                                <Button 
+                                    onClick={handleImportTrigger} 
+                                    variant="danger" 
+                                    className="h-14 !rounded-2xl border-dashed border-2 bg-transparent hover:bg-rose-50 dark:hover:bg-rose-900/10" 
+                                    icon={<span className="material-icons-outlined">upload</span>}
+                                >
+                                    Overwrite & Restore
+                                </Button>
                                 <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleFileSelect} />
                             </div>
                         </div>
 
                         {/* Flight Data Section */}
-                        <div className="space-y-3">
-                            <h4 className="text-xs font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest">Flight Data</h4>
+                        <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-white/5">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-600 flex items-center justify-center">
+                                    <span className="material-icons-outlined text-sm">flight</span>
+                                </div>
+                                <h4 className="text-sm font-black text-gray-800 dark:text-white uppercase tracking-widest">External Flight Data</h4>
+                            </div>
+
                             <div className="grid grid-cols-2 gap-3">
-                                <Button onClick={() => flightJsonInputRef.current?.click()} variant="ghost" className="bg-gray-50 dark:bg-white/5 h-10 text-xs">Import JSON</Button>
-                                <Button onClick={() => flightCsvInputRef.current?.click()} variant="ghost" className="bg-gray-50 dark:bg-white/5 h-10 text-xs">Import CSV</Button>
-                                <Button onClick={() => handleFlightExport('json')} variant="ghost" className="bg-gray-50 dark:bg-white/5 h-10 text-xs text-gray-400">Export JSON</Button>
-                                <Button onClick={() => handleFlightExport('csv')} variant="ghost" className="bg-gray-50 dark:bg-white/5 h-10 text-xs text-gray-400">Export CSV</Button>
+                                <Button onClick={() => flightJsonInputRef.current?.click()} variant="ghost" className="bg-gray-50 dark:bg-white/5 h-12 text-[10px] font-black uppercase tracking-wider !rounded-xl">Import JSON</Button>
+                                <Button onClick={() => flightCsvInputRef.current?.click()} variant="ghost" className="bg-gray-50 dark:bg-white/5 h-12 text-[10px] font-black uppercase tracking-wider !rounded-xl">Import CSV</Button>
+                                <Button onClick={() => handleFlightExport('json')} variant="ghost" className="bg-transparent h-10 text-[9px] font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">Export JSON</Button>
+                                <Button onClick={() => handleFlightExport('csv')} variant="ghost" className="bg-transparent h-10 text-[9px] font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">Export CSV</Button>
                                 
                                 <input type="file" ref={flightJsonInputRef} className="hidden" accept=".json" onChange={(e) => handleFlightImport(e, 'json')} />
                                 <input type="file" ref={flightCsvInputRef} className="hidden" accept=".csv" onChange={(e) => handleFlightImport(e, 'csv')} />
@@ -588,7 +635,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
        {/* Restore Modal */}
        <Modal isOpen={isRestoreModalOpen} onClose={() => setIsRestoreModalOpen(false)} title="System Restore">
             <div className="text-center space-y-6">
-                <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto text-blue-500 animate-pulse">
+                <div className="w-16 h-16 bg-rose-50 dark:bg-rose-900/20 rounded-full flex items-center justify-center mx-auto text-rose-500 animate-pulse">
                     <span className="material-icons-outlined text-3xl">history</span>
                 </div>
                 <div>
@@ -605,74 +652,146 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                 <div className="flex gap-3 pt-2">
                     <Button variant="ghost" className="flex-1" onClick={() => setIsRestoreModalOpen(false)}>Cancel</Button>
                     <Button 
-                        variant="primary" 
-                        className="flex-1" 
+                        variant="danger" 
+                        className="flex-1 shadow-lg shadow-rose-500/20" 
                         onClick={handleConfirmRestore} 
                         isLoading={restoreStatus === 'reading' || restoreStatus === 'importing'}
                         disabled={restoreStatus === 'success'}
                     >
-                        {restoreStatus === 'success' ? 'Restored!' : 'Proceed'}
+                        {restoreStatus === 'success' ? 'Restored!' : 'Proceed with Overwrite'}
                     </Button>
                 </div>
             </div>
        </Modal>
 
        {/* Import Verification Modal */}
-       <Modal isOpen={isImportVerifyOpen} onClose={() => setIsImportVerifyOpen(false)} title="Verify Flight Import" maxWidth="max-w-2xl">
+       <Modal isOpen={isImportVerifyOpen} onClose={() => setIsImportVerifyOpen(false)} title="Verify Flight Import" maxWidth="max-w-3xl">
             <div className="space-y-6">
-                {/* Filter Bar */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
-                    <Input 
-                        placeholder="Search Airline / City..." 
-                        value={importFilters.search} 
-                        onChange={e => setImportFilters({...importFilters, search: e.target.value})}
-                        className="!py-2 !text-xs"
-                    />
-                    <Input 
-                        type="date" 
-                        placeholder="From"
-                        value={importFilters.minDate}
-                        onChange={e => setImportFilters({...importFilters, minDate: e.target.value})}
-                        className="!py-2 !text-xs"
-                    />
-                    <Input 
-                        type="date" 
-                        placeholder="To"
-                        value={importFilters.maxDate}
-                        onChange={e => setImportFilters({...importFilters, maxDate: e.target.value})}
-                        className="!py-2 !text-xs"
-                    />
+                {/* Advanced Filter Bar */}
+                <div className="space-y-3 p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <Input 
+                            placeholder="Search Airline, Location..." 
+                            value={importFilters.search} 
+                            onChange={e => setImportFilters({...importFilters, search: e.target.value})}
+                            className="!py-2 !text-xs"
+                            rightElement={<span className="material-icons-outlined text-gray-400 text-xs mr-2">travel_explore</span>}
+                        />
+                        <Input 
+                            placeholder="Filter by Carrier (e.g. Delta, AF)..." 
+                            value={importFilters.carrierSearch} 
+                            onChange={e => setImportFilters({...importFilters, carrierSearch: e.target.value})}
+                            className="!py-2 !text-xs"
+                            rightElement={<span className="material-icons-outlined text-gray-400 text-xs mr-2">airlines</span>}
+                        />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                        <Input 
+                            type="date" 
+                            label="Earliest Trip"
+                            value={importFilters.minDate}
+                            onChange={e => setImportFilters({...importFilters, minDate: e.target.value})}
+                            className="!py-2 !text-xs"
+                        />
+                        <Input 
+                            type="date" 
+                            label="Latest Trip"
+                            value={importFilters.maxDate}
+                            onChange={e => setImportFilters({...importFilters, maxDate: e.target.value})}
+                            className="!py-2 !text-xs"
+                        />
+                        <Select 
+                            label="Min Legs"
+                            value={importFilters.minLegs}
+                            onChange={e => setImportFilters({...importFilters, minLegs: e.target.value})}
+                            options={[
+                                { label: 'Any Leg Count', value: '0' },
+                                { label: 'Multi-Leg Only (2+)', value: '2' },
+                                { label: 'Long Tours (4+)', value: '4' }
+                            ]}
+                            className="!py-2 !text-xs"
+                        />
+                    </div>
                 </div>
 
                 <div className="flex justify-between items-center bg-gray-50 dark:bg-white/5 p-4 rounded-xl border border-gray-100 dark:border-white/5">
-                    <span className="text-sm font-bold text-gray-700 dark:text-gray-200">
-                        Showing {filteredImportCandidates.length} of {proposedTrips.length} Trips
+                    <span className="text-xs font-black uppercase tracking-widest text-gray-500">
+                        {filteredImportCandidates.length} of {proposedTrips.length} Results
                     </span>
-                    <button onClick={toggleAllImportSelection} className="text-xs font-bold text-blue-500 hover:underline uppercase tracking-wider">
-                        {filteredImportCandidates.every(t => selectedTripIds.has(t.id)) && filteredImportCandidates.length > 0 ? 'Deselect All' : 'Select All'}
+                    <button onClick={toggleAllImportSelection} className="text-[10px] font-black text-blue-500 hover:text-blue-600 uppercase tracking-widest underline underline-offset-4">
+                        {filteredImportCandidates.every(t => selectedTripIds.has(t.id)) && filteredImportCandidates.length > 0 ? 'Deselect All' : 'Select All Filtered'}
                     </button>
                 </div>
                 
-                <div className="max-h-[400px] overflow-y-auto custom-scrollbar space-y-3">
-                    {filteredImportCandidates.map(trip => (
-                        <div key={trip.id} onClick={() => toggleImportSelection(trip.id)} className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all ${selectedTripIds.has(trip.id) ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/10 dark:border-blue-800' : 'bg-white border-gray-100 dark:bg-gray-800 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5'}`}>
-                            <div className={`w-5 h-5 rounded border flex items-center justify-center ${selectedTripIds.has(trip.id) ? 'bg-blue-500 border-blue-500' : 'bg-white border-gray-300'}`}>
-                                {selectedTripIds.has(trip.id) && <span className="material-icons-outlined text-white text-xs">check</span>}
+                <div className="max-h-[450px] overflow-y-auto custom-scrollbar space-y-3 p-1">
+                    {filteredImportCandidates.map(trip => {
+                        const isSelected = selectedTripIds.has(trip.id);
+                        const carriers = Array.from(new Set(trip.transports?.map(t => t.provider) || []));
+                        const iatas = trip.transports ? [trip.transports[0].origin, ...trip.transports.map(t => t.destination)] : [];
+
+                        return (
+                            <div 
+                                key={trip.id} 
+                                onClick={() => toggleImportSelection(trip.id)} 
+                                className={`flex items-start gap-4 p-5 rounded-3xl border cursor-pointer transition-all ${
+                                    isSelected 
+                                    ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700 shadow-lg' 
+                                    : 'bg-white border-gray-100 dark:bg-gray-800 dark:border-white/10 hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-md'
+                                }`}
+                            >
+                                <div className={`mt-1 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${isSelected ? 'bg-blue-500 border-blue-500 shadow-md' : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600'}`}>
+                                    {isSelected && <span className="material-icons-outlined text-white text-sm">check</span>}
+                                </div>
+                                <div className="flex-1 space-y-3">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <h4 className="font-black text-base text-gray-900 dark:text-white leading-none">{trip.name}</h4>
+                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1.5 flex items-center gap-2">
+                                                <span className="material-icons-outlined text-[10px]">calendar_today</span>
+                                                {new Date(trip.startDate).toLocaleDateString()} – {new Date(trip.endDate).toLocaleDateString()}
+                                            </p>
+                                        </div>
+                                        <Badge color="blue" className="!px-2 !py-0.5">{trip.transports?.length} Legs</Badge>
+                                    </div>
+
+                                    {/* Visual Route */}
+                                    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+                                        {iatas.map((code, idx) => (
+                                            <React.Fragment key={idx}>
+                                                <span className="text-[10px] font-mono font-black bg-gray-100 dark:bg-white/5 px-2 py-1 rounded-md text-gray-700 dark:text-gray-200">{code}</span>
+                                                {idx < iatas.length - 1 && <span className="material-icons-outlined text-[10px] text-gray-300">arrow_forward</span>}
+                                            </React.Fragment>
+                                        ))}
+                                    </div>
+
+                                    {/* Carriers List */}
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {carriers.map((c, idx) => (
+                                            <span key={idx} className="text-[9px] font-black uppercase tracking-wider bg-gray-50 dark:bg-black/20 text-gray-500 px-2 py-0.5 rounded border border-gray-100 dark:border-white/5">{c}</span>
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
-                            <div className="flex-1">
-                                <h4 className="font-bold text-sm text-gray-900 dark:text-white">{trip.name}</h4>
-                                <p className="text-xs text-gray-500 mt-0.5">{new Date(trip.startDate).toLocaleDateString()} - {new Date(trip.endDate).toLocaleDateString()} • {trip.transports?.length} Flights</p>
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                     {filteredImportCandidates.length === 0 && (
-                        <div className="text-center py-8 text-gray-400 text-xs italic">No trips match your filters</div>
+                        <div className="text-center py-16 bg-gray-50/50 dark:bg-white/5 rounded-3xl border border-dashed border-gray-200 dark:border-white/10">
+                            <span className="material-icons-outlined text-gray-300 text-5xl">manage_search</span>
+                            <p className="text-gray-400 text-sm font-bold mt-4 uppercase tracking-[0.2em]">No matches found</p>
+                        </div>
                     )}
                 </div>
 
                 <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-white/5">
-                    <Button variant="ghost" className="flex-1" onClick={() => setIsImportVerifyOpen(false)}>Discard</Button>
-                    <Button variant="primary" className="flex-1" onClick={handleConfirmFlightImport} disabled={selectedTripIds.size === 0}>Import {selectedTripIds.size} Trips</Button>
+                    <Button variant="ghost" className="flex-1 !rounded-2xl" onClick={() => setIsImportVerifyOpen(false)}>Discard Selection</Button>
+                    <Button 
+                        variant="primary" 
+                        className="flex-1 !rounded-2xl shadow-xl shadow-blue-500/20" 
+                        onClick={handleConfirmFlightImport} 
+                        disabled={selectedTripIds.size === 0}
+                    >
+                        Commit {selectedTripIds.size} Journeys
+                    </Button>
                 </div>
             </div>
        </Modal>

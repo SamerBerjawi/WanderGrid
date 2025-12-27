@@ -27,7 +27,11 @@ const getEntitlementTextClass = (color?: string) => {
     return map[color || 'gray'] || 'text-gray-600';
 };
 
-export const TimeOff: React.FC = () => {
+interface TimeOffProps {
+    onTripClick?: (tripId: string) => void;
+}
+
+export const TimeOff: React.FC<TimeOffProps> = ({ onTripClick }) => {
     const [trips, setTrips] = useState<Trip[]>([]);
     const [users, setUsers] = useState<User[]>([]);
     const [entitlements, setEntitlements] = useState<EntitlementType[]>([]);
@@ -173,13 +177,20 @@ export const TimeOff: React.FC = () => {
     };
 
     const handleSubmitRequest = async (tripData: Trip) => {
+        let savedTrip: Trip;
         if (tripData.id && trips.some(t => t.id === tripData.id)) {
-            await dataService.updateTrip(tripData);
+            savedTrip = await dataService.updateTrip(tripData);
         } else {
-            await dataService.addTrip(tripData);
+            savedTrip = await dataService.addTrip(tripData);
         }
+        
         refreshData();
         setIsRequestModalOpen(false);
+
+        // Workflow: If user checked "Traveling" (implied by having a specific location), go to details
+        if (onTripClick && savedTrip && savedTrip.location && savedTrip.location !== 'Time Off' && savedTrip.location !== 'Remote') {
+            onTripClick(savedTrip.id);
+        }
     };
 
     const handleDeleteRequest = async (tripId: string) => {

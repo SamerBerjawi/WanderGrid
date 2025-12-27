@@ -1,9 +1,10 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { Button, Badge, Input, Select } from '../components/ui';
+import { Button, Badge, Input, Select, Modal } from '../components/ui';
 import { TripModal } from '../components/TripModal';
+import { LeaveRequestModal } from '../components/LeaveRequestModal';
 import { dataService } from '../services/mockDb';
-import { Trip, User, WorkspaceSettings } from '../types';
+import { Trip, User, WorkspaceSettings, EntitlementType, PublicHoliday } from '../types';
 
 interface VacationPlannerProps {
     onTripClick?: (tripId: string) => void;
@@ -13,6 +14,8 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
     const [trips, setTrips] = useState<Trip[]>([]);
     const [users, setUsers] = useState<User[]>([]);
     const [settings, setSettings] = useState<WorkspaceSettings | null>(null);
+    const [entitlements, setEntitlements] = useState<EntitlementType[]>([]);
+    const [holidays, setHolidays] = useState<PublicHoliday[]>([]);
     const [activeTab, setActiveTab] = useState<'Planned' | 'Confirmed' | 'History'>('Planned');
     
     const [isCreateTripOpen, setIsCreateTripOpen] = useState(false);
@@ -27,6 +30,11 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
     const [searchQuery, setSearchQuery] = useState('');
     const [filterYear, setFilterYear] = useState<string>('all');
 
+    // Post-Trip Workflow State
+    const [pendingTrip, setPendingTrip] = useState<Trip | null>(null);
+    const [showPostTripPrompt, setShowPostTripPrompt] = useState(false);
+    const [isTimeOffModalOpen, setIsTimeOffModalOpen] = useState(false);
+
     useEffect(() => {
         refreshData();
     }, []);
@@ -35,11 +43,16 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
         Promise.all([
             dataService.getTrips(), 
             dataService.getUsers(),
-            dataService.getWorkspaceSettings()
-        ]).then(([t, u, s]) => {
+            dataService.getWorkspaceSettings(),
+            dataService.getEntitlementTypes(),
+            dataService.getSavedConfigs()
+        ]).then(([t, u, s, ents, configs]) => {
             setTrips(t);
             setUsers(u);
             setSettings(s);
+            setEntitlements(ents);
+            const flatHolidays = configs.flatMap(c => c.holidays.map(h => ({ ...h, configId: c.id })));
+            setHolidays(flatHolidays);
         });
     };
 
@@ -50,13 +63,35 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
 
     // --- Trip Handlers ---
     const handleSaveTrip = async (tripData: Trip) => {
+        let savedTrip: Trip;
         if (tripData.id && trips.some(t => t.id === tripData.id)) {
-            await dataService.updateTrip(tripData);
+            savedTrip = await dataService.updateTrip(tripData);
         } else {
-            await dataService.addTrip(tripData);
+            savedTrip = await dataService.addTrip(tripData);
         }
+        
         refreshData();
         setEditingTrip(null);
+        setIsCreateTripOpen(false);
+
+        // Workflow Trigger: If newly created (or updated to have dates), prompt for Time Off
+        if (!tripData.entitlementId && savedTrip) {
+            setPendingTrip(savedTrip);
+            setShowPostTripPrompt(true);
+        }
+    };
+
+    const handleConfirmBookTimeOff = () => {
+        setShowPostTripPrompt(false);
+        setIsTimeOffModalOpen(true);
+    };
+
+    const handleTimeOffSubmit = async (tripData: Trip) => {
+        // This is effectively an update to the trip we just created
+        await dataService.updateTrip(tripData);
+        refreshData();
+        setIsTimeOffModalOpen(false);
+        setPendingTrip(null);
     };
 
     const handleDeleteTrip = async (tripId: string) => {
@@ -506,6 +541,40 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                 users={users}
                 initialData={editingTrip}
             />
+
+            {/* Post-Creation Prompt Modal */}
+            <Modal isOpen={showPostTripPrompt} onClose={() => setShowPostTripPrompt(false)} title="Trip Successfully Created!">
+                <div className="text-center space-y-6">
+                    <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-600 animate-bounce">
+                        <span className="material-icons-outlined text-4xl">flight_takeoff</span>
+                    </div>
+                    <div>
+                        <h4 className="text-xl font-bold text-gray-900 dark:text-white">Adventure Awaits!</h4>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                            "{pendingTrip?.name}" has been added to your planner. Would you like to deduct this from your annual leave balance now?
+                        </p>
+                    </div>
+                    <div className="flex gap-3 pt-2">
+                        <Button variant="ghost" className="flex-1" onClick={() => setShowPostTripPrompt(false)}>Maybe Later</Button>
+                        <Button variant="primary" className="flex-1" onClick={handleConfirmBookTimeOff}>Yes, Book Time Off</Button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Time Off Modal linked to Trip */}
+            {pendingTrip && (
+                <LeaveRequestModal
+                    isOpen={isTimeOffModalOpen}
+                    onClose={() => setIsTimeOffModalOpen(false)}
+                    onSubmit={handleTimeOffSubmit}
+                    initialData={pendingTrip}
+                    users={users}
+                    entitlements={entitlements}
+                    trips={trips}
+                    holidays={holidays}
+                    workspaceConfig={settings}
+                />
+            )}
         </div>
     );
 };
