@@ -88,6 +88,8 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
   const handleCreateUser = () => {
       setEditingUser({ 
           name: '', 
+          email: '',
+          password: '',
           role: 'Partner', 
           leaveBalance: 0, 
           takenLeave: 0, 
@@ -101,7 +103,11 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
   };
 
   const handleEditUser = (u: User) => { 
-      setEditingUser({...u}); 
+      setEditingUser({
+          ...u,
+          email: u.email ?? '',
+          password: u.password ?? ''
+      }); 
       setIsEditingUser(true); 
   };
 
@@ -111,11 +117,13 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
           await dataService.updateUser(editingUser as User);
       } else {
           // New User
+          const email = editingUser.email?.trim();
+          const password = editingUser.password?.trim();
           const newUser: User = {
               ...editingUser,
               id: Math.random().toString(36).substr(2, 9),
-              email: `${editingUser.name?.toLowerCase().replace(/\s/g, '.')}@wandergrid.local`, // Mock email
-              password: 'password', // Mock password
+              email: email || `${editingUser.name?.toLowerCase().replace(/\s/g, '.')}@wandergrid.local`, // Mock email
+              password: password || 'password', // Mock password
           } as User;
           await dataService.addUser(newUser);
       }
@@ -610,6 +618,8 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
             <div className="space-y-6">
                 <div className="space-y-4 animate-fade-in">
                     <Input label="Identity: Name" className="!rounded-2xl" value={editingUser.name || ''} onChange={e => setEditingUser({...editingUser, name: e.target.value})} />
+                    <Input label="Access Email" type="email" className="!rounded-2xl" value={editingUser.email || ''} onChange={e => setEditingUser({...editingUser, email: e.target.value})} />
+                    <Input label="Access Password" type="password" className="!rounded-2xl" value={editingUser.password || ''} onChange={e => setEditingUser({...editingUser, password: e.target.value})} />
                     <Select label="Clearance Level" className="!rounded-2xl" value={editingUser.role || 'Partner'} onChange={e => setEditingUser({...editingUser, role: e.target.value as any})} options={[{ label: 'Partner', value: 'Partner' }, { label: 'Child', value: 'Child' }, { label: 'Admin', value: 'Admin' }]} />
                 </div>
                 <div className="flex gap-3 pt-6 border-t border-gray-100 dark:border-white/5">
