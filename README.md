@@ -51,9 +51,12 @@ WanderGrid is a privacy-focused, full-stack application designed for digital nom
 4.  The app defaults to **LocalStorage Mode** if the API is unreachable, saving all data to your browser.
 
 ### Production Self-Host (Docker)
-1.  Configure `docker-compose.yml` with your PostgreSQL credentials.
-2.  Run `docker-compose up -d`.
-3.  The app will automatically switch to **API Mode** and persist data to the database.
+1.  Configure `backend_files/docker-compose.yml` with your PostgreSQL credentials.
+2.  (Optional) Set deployment overrides for NAS installs:
+    *   `APP_PORT` to change the host port (e.g., `APP_PORT=6125` maps `6125 -> 3000`).
+    *   `POSTGRES_DATA_DIR` to store data outside the repo (e.g., `POSTGRES_DATA_DIR=/volume1/docker/wandergrid`).
+3.  Run `docker-compose up -d` inside `backend_files`.
+4.  The app will automatically switch to **API Mode** and persist data to the database.
 
 ## 🔑 Configuration
 Navigate to the **Settings** view to:
