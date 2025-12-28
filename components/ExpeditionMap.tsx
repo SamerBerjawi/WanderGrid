@@ -3,7 +3,6 @@ import React, { useEffect, useRef, useMemo, useState } from 'react';
 import L from 'leaflet';
 import { Trip, Transport } from '../types';
 import html2canvas from 'html2canvas';
-import { getRegion } from '../services/geocoding';
 
 interface ExpeditionMapProps {
     trips: Trip[];
@@ -27,22 +26,90 @@ L.Icon.Default.mergeOptions({
 // Module-level cache for GeoJSON to prevent re-fetching during session
 let cachedGeoJson: any = null;
 
-// Region Color Mapping (Matching Dashboard Styles)
-const REGION_HEX_COLORS: Record<string, string> = {
-    'North America': '#3b82f6', // blue-500
-    'Central America': '#14b8a6', // teal-500
-    'South America': '#10b981', // emerald-500
-    'Northern Europe': '#0ea5e9', // sky-500
-    'Western Europe': '#6366f1', // indigo-500
-    'Southern Europe': '#f97316', // orange-500
-    'Eastern Europe': '#f43f5e', // rose-500
-    'North Africa': '#d97706', // amber-600
-    'Sub-Saharan Africa': '#eab308', // yellow-500
-    'East Asia': '#ef4444', // red-500
-    'Southeast Asia': '#84cc16', // lime-500
-    'South & West Asia': '#f59e0b', // amber-500
-    'Oceania': '#06b6d4', // cyan-500
-    'Unknown': '#64748b' // slate-500
+// --- Gradient Color Logic (Vibrant Edition) ---
+
+const COLOR_POLES = [
+    { lat: 55, lng: -100, color: [0, 122, 255] },    // NA: Vivid Blue (Apple Blue)
+    { lat: -15, lng: -60, color: [0, 200, 83] },     // SA: Vivid Emerald
+    { lat: 10, lng: 20, color: [255, 179, 0] },      // Africa: Vivid Amber/Gold
+    { lat: 50, lng: 15, color: [124, 58, 237] },     // Europe: Vivid Violet
+    { lat: 35, lng: 105, color: [255, 23, 68] },     // Asia: Vivid Red
+    { lat: -25, lng: 135, color: [0, 229, 255] },    // Oceania: Vivid Cyan
+];
+
+const getGeoGradientColor = (lat: number, lng: number): string => {
+    let totalWeight = 0;
+    let r = 0, g = 0, b = 0;
+
+    for (const pole of COLOR_POLES) {
+        const dLat = lat - pole.lat;
+        const dLng = lng - pole.lng;
+        // Euclidean distance squared in lat/lng degree space
+        const distSq = dLat * dLat + dLng * dLng;
+        
+        // Inverse Distance Weighting with Sharpening
+        // Lower smoothing constant (800) + Power of 1.5 makes colors "stick" to their regions better
+        // before blending, resulting in more vibrant core colors.
+        const weight = 1 / Math.pow(distSq + 800, 1.5); 
+        
+        totalWeight += weight;
+        r += pole.color[0] * weight;
+        g += pole.color[1] * weight;
+        b += pole.color[2] * weight;
+    }
+
+    r = Math.min(255, Math.max(0, Math.round(r / totalWeight)));
+    g = Math.min(255, Math.max(0, Math.round(g / totalWeight)));
+    b = Math.min(255, Math.max(0, Math.round(b / totalWeight)));
+
+    return `rgb(${r}, ${g}, ${b})`;
+};
+
+const getFeatureCenter = (feature: any): { lat: number, lng: number } => {
+    // Try Natural Earth label props first (most accurate for visual center)
+    if (feature.properties?.LABEL_Y !== undefined && feature.properties?.LABEL_X !== undefined) {
+        return { lat: feature.properties.LABEL_Y, lng: feature.properties.LABEL_X };
+    }
+    
+    // Fallback: Quick centroid estimation
+    let coords = feature.geometry.coordinates;
+    
+    // Handle Polygon vs MultiPolygon
+    if (feature.geometry.type === 'MultiPolygon') {
+        // Find largest polygon by finding the one with most points (heuristic)
+        let maxPoints = 0;
+        let bestPoly = coords[0];
+        for (const poly of coords) {
+            if (poly[0].length > maxPoints) {
+                maxPoints = poly[0].length;
+                bestPoly = poly;
+            }
+        }
+        coords = bestPoly;
+    } else if (feature.geometry.type === 'Polygon') {
+        // coords is already the polygon rings
+    } else {
+        return { lat: 0, lng: 0 };
+    }
+    
+    // Ring 0 is outer boundary
+    const ring = coords[0];
+    if (!ring || ring.length === 0) return { lat: 0, lng: 0 };
+
+    let minX = 180, maxX = -180, minY = 90, maxY = -90;
+    
+    // Sampling for speed on complex coastlines
+    const step = Math.max(1, Math.floor(ring.length / 50));
+    
+    for(let i=0; i<ring.length; i+=step) {
+        const [lng, lat] = ring[i];
+        if (lng < minX) minX = lng;
+        if (lng > maxX) maxX = lng;
+        if (lat < minY) minY = lat;
+        if (lat > maxY) maxY = lat;
+    }
+    
+    return { lat: (minY + maxY) / 2, lng: (minX + maxX) / 2 };
 };
 
 // Custom Hook to detect Dark Mode changes from Tailwind class on HTML element
@@ -267,32 +334,40 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
         });
 
         // 1. Render Countries (Layer Logic)
-        const shouldShowCountries = showCountries || viewMode === 'scratch';
+        const shouldShowCountries = showCountries || viewMode === 'scratch' || viewMode === 'network'; // Always check visited in network mode now
         
         if (shouldShowCountries && geoJsonData) {
             geoJsonLayerRef.current = L.geoJSON(geoJsonData, {
                 style: (feature) => {
                     const iso = feature?.properties?.ISO_A2 || feature?.properties?.ISO_A2_EH;
                     const isVisited = visitedCountries.includes(iso);
-                    const region = getRegion(iso);
-                    const regionColor = REGION_HEX_COLORS[region] || REGION_HEX_COLORS['Unknown'];
                     
+                    // Determine Gradient Color for this country
+                    let gradientColor = '#333';
+                    if (isVisited) {
+                        const center = getFeatureCenter(feature);
+                        gradientColor = getGeoGradientColor(center.lat, center.lng);
+                    }
+
                     if (viewMode === 'scratch') {
-                        // Scratch Map Style (Regional Colors)
+                        // SCRATCH MODE: High Opacity, Vibrant
+                        let fillColor = isDark ? '#09090b' : '#f8fafc'; // Darker unvisited
+                        
                         return {
                             color: isDark ? '#222' : '#e5e5e5', // Border color
                             weight: 1,
-                            fillColor: isVisited ? regionColor : (isDark ? '#111' : '#f8fafc'), 
-                            fillOpacity: isVisited ? 0.8 : 0.5,
+                            fillColor: isVisited ? gradientColor : fillColor, 
+                            fillOpacity: isVisited ? 0.6 : 0.5,
                             className: isVisited ? 'transition-all duration-500' : ''
                         };
                     } else {
-                        // Standard Highlight Style
+                        // NETWORK MODE: Low Opacity, Subtle Gradient
+                        // We use the same gradient logic but with much lower opacity to let lines shine
                         return {
                             color: isDark ? '#333' : '#ddd',
                             weight: 1,
-                            fillColor: isVisited ? (isDark ? '#3b82f6' : '#60a5fa') : 'transparent',
-                            fillOpacity: isVisited ? 0.3 : 0,
+                            fillColor: isVisited ? gradientColor : 'transparent',
+                            fillOpacity: isVisited ? 0.4 : 0, // Subtle glow
                             className: isVisited ? 'transition-all duration-500' : ''
                         };
                     }
