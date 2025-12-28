@@ -2,7 +2,9 @@ version: '3.8'
 
 services:
   app:
-    build: ./backend_files
+    build:
+      context: .
+      dockerfile: backend_files/Dockerfile
     container_name: wandergrid_app
     restart: unless-stopped
     ports:
