@@ -1,79 +1,66 @@
-# WanderGrid v0.2
 
-A private, self-hosted Vacation & Leave Management System designed for families, digital nomads, and small teams to track expeditions, holidays, and time off with precision and style.
+# WanderGrid
 
-## ✨ Features
+**The Ultimate Self-Hosted Expedition & Leave Management System.**
 
-### 🧠 AI-Powered Intelligence (Gemini)
-- **Smart Autocomplete**: Context-aware destination, hotel, and activity suggestions powered by Google Gemini.
-- **Distance Estimation**: Automatic calculation of travel distances (km) between cities or pickup/drop-off points to estimate travel duration.
+WanderGrid is a privacy-focused, full-stack application designed for digital nomads, remote teams, and travel enthusiasts. It seamlessly blends professional leave management policies with high-fidelity travel logistics and gamified exploration tracking.
 
-### 🌍 Dashboard Command Center
-- **Visual Overview**: At-a-glance view of team members, leave balances, and consumption via interactive donut charts.
-- **Calendar System**: Seamlessly switch between Year, Month, and Week views to visualize schedules.
-- **Drag-to-Book**: Intuitive drag-and-drop selection on the calendar to initiate leave requests instantly.
-- **Upcoming Intel**: "Next Trip" indicators and countdowns.
+## 🚀 Key Capabilities
 
-### ✈️ Expedition Logistics & Planning
-- **Transport Configurator**: Detailed itinerary builder supporting Multi-City, Round Trip, and One-Way journeys. Tracks classes, seat types, and specific flight numbers.
-- **Accommodation Tracker**: Manage hotel, Airbnb, or villa stays with automated cost-per-night calculations and check-in/out logic.
-- **Route Manager**: Visual timeline of locations during a trip to handle complex multi-leg journeys.
-- **Activity Scheduler**: Day-by-day planning for reservations and tours with cost tracking.
+### 🗺️ Immersive Geospatial Intelligence
+*   **3D Interactive Globe**: Visualize your travel history and upcoming routes on a stunning 3D earth with Day, Night, and Satellite modes.
+*   **Network & Scratch Maps**: Toggle between flight network visualizations (Arc lines) and "scratch-map" style country highlighting.
+*   **Smart Geocoding**: Integrated OpenStreetMap/Nominatim support with robust local caching for fast, offline-capable location resolution.
 
-### 📅 Advanced Leave Management
-- **Flexible Booking**: Support for Full Days, AM/PM Half-Days, and custom start/end splits (e.g., start a trip on Friday PM).
-- **Cross-Year Intelligence**: Automatically detects and handles bookings that span across fiscal years, splitting allocations correctly between the two periods.
-- **Multi-Category Allocation**: Split a single trip across multiple leave types (e.g., 2 days Annual + 3 days Unpaid) within the same request.
-- **Smart Validation**: Real-time checking of balances to prevent overdrafts.
-- **Emoji Markers**: Visual icon picker with categories for tagging trips.
+### ✈️ Expedition Logistics Core
+*   **Flight Command Center**: Import flight data from CSV/JSON or manual entry. Supports Round-Trip, One-Way, and complex Multi-City itineraries.
+*   **Live Flight Tracking**: Real-time status updates via AviationStack integration (Active, Landed, Delayed, Diverted).
+*   **Smart Itinerary**: Automatic grouping of individual flight segments into cohesive Trips based on temporal logic and location continuity.
+*   **Asset Management**: Track Accommodations (Hotels, Airbnbs) and Activities with detailed budget analysis and per-night cost tracking.
 
-### ⚙️ Policy & Rule Engine
-- **Custom Entitlements**: Create unlimited leave categories (Annual, Sick, Sabbatical, etc.) with custom color coding.
-- **Accrual Logic**: Configure accrual frequencies (Lump Sum, Monthly, Yearly).
-- **Carry-Over Rules**: Robust support for carrying over unused days with configurable expiry logic (Fixed Date, Rolling Months, or Permanent).
-- **Unlimited Allowance**: Toggle specific categories to bypass balance checks.
+### ⏳ Advanced Time-Off Engine
+*   **Granular Policy Engine**: Define custom leave types (Annual, Sick, Sabbatical, Lieu) with specific accrual rules, carry-over logic, and expiry dates.
+*   **Fiscal Year Management**: Flexible handling of cross-year leave requests and automated balance initialization for new years.
+*   **Visual Calendar**: Drag-and-drop planning view supporting AM/PM splits, custom duration logic, and weekend/holiday masking.
+*   **Public Holidays**: Automated import of statutory holidays for 100+ countries via Nager.Date with custom weekend shifting rules.
 
-### 🔌 External Integrations
-- **Nager.Date**: Automated public holiday importation for over 100+ countries.
-- **Brandfetch**: Auto-discovery of brand logos for airlines, car rental agencies, and hotels to beautify your itinerary.
-- **AviationStack**: Real-time flight schedule lookups to populate departure/arrival times automatically.
+### 🏆 Gamification & Analytics
+*   **Traveler Rank**: Level up from "Backyard Explorer" to "Citizen of the World" based on unique countries visited.
+*   **Passport Stamps**: Beautifully rendered digital stamps for every country visited, grouped by region.
+*   **Flight Log**: Deep analytics on distance flown, time in air, top airports, favorite airlines, and seat preferences.
 
-### 👥 User & Identity Management
-- **Role-Based Access**: Distinguish between Partners (Executive), Children, and Admins.
-- **Per-User Configuration**: Unique policy overrides, working patterns, and holiday calendars for each individual.
-- **Fiscal Year Management**: Initialize new fiscal years per user, with options to replicate previous protocols.
+## 🛠️ Technical Stack
 
-### 🎨 UI/UX Excellence
-- **Glassmorphism Design**: Modern, clean interface with frosted glass effects and refined typography.
-- **Theme Engine**: Built-in Light, Dark, and Auto (System) modes.
-- **Responsive**: Fluid layout adapting to different screen sizes.
+*   **Frontend**: React 19, TypeScript, Tailwind CSS
+*   **Visualization**: React Globe GL, Leaflet, Custom SVG Charts
+*   **State & Persistence**: Hybrid Architecture.
+    *   **Mode A (Demo)**: Zero-config LocalStorage (MockDB) for instant usage.
+    *   **Mode B (Prod)**: Dockerized Node.js/PostgreSQL backend for persistent self-hosting.
+*   **Integrations**:
+    *   **AviationStack**: Real-time flight data.
+    *   **Brandfetch**: Automatic logo retrieval for airlines and hotels.
+    *   **OpenStreetMap**: Geocoding and reverse lookup.
+    *   **Nager.Date**: Public holiday registry.
 
-### 💾 Data Sovereignty
-- **Self-Hosted Ready**: Designed to run locally.
-- **Backup & Restore**: One-click export of the entire database state to JSON for safekeeping or migration.
-- **Import**: Restore system state from previous backups.
+## 📦 Deployment
 
-## 🛠️ Tech Stack
-- **Frontend**: React 19, TypeScript, Tailwind CSS
-- **AI**: Google GenAI SDK (Gemini models)
-- **Icons**: Material Icons Outlined
-- **State/Persistence**: LocalStorage (Mock Service) for instant setup, adaptable to SQLite/Postgres.
+### Rapid Local Demo (No Backend)
+1.  Clone the repository.
+2.  Install dependencies: `npm install`
+3.  Start the dev server: `npm start`
+4.  The app defaults to **LocalStorage Mode** if the API is unreachable, saving all data to your browser.
 
-## 🚀 Getting Started
+### Production Self-Host (Docker)
+1.  Configure `docker-compose.yml` with your PostgreSQL credentials.
+2.  Run `docker-compose up -d`.
+3.  The app will automatically switch to **API Mode** and persist data to the database.
 
-1. **Clone & Install**:
-   ```bash
-   npm install
-   ```
+## 🔑 Configuration
+Navigate to the **Settings** view to:
+*   Set your Workspace currency and theme.
+*   Input API Keys for **AviationStack** and **Brandfetch** to unlock live tracking and logos.
+*   Manage users, entitlements, and import/export data backups.
 
-2. **Environment Setup**:
-   - The app uses `process.env.API_KEY` for Google Gemini features. Ensure this is configured in your build environment.
+---
 
-3. **Run**:
-   ```bash
-   npm start
-   ```
-
-4. **In-App Configuration**:
-   - Navigate to **Settings** to configure your Workspace.
-   - Add API Keys for **AviationStack** and **Brandfetch** to unlock full logistical features.
+*Private. Powerful. Yours.*
