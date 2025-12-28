@@ -283,29 +283,55 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                 <div className="flex flex-col gap-3 w-full xl:w-auto relative z-10">
                     <div className="flex flex-col md:flex-row items-center gap-3">
                         
-                        {/* View Mode Toggle */}
+                        {/* Map Type Toggle (2D/3D) */}
                         <div className="flex p-1 bg-gray-100 dark:bg-black/30 rounded-2xl border border-gray-200 dark:border-white/5 w-full md:w-auto">
                             <button 
-                                onClick={() => setViewMode('network')}
+                                onClick={() => setMapType('2D')}
                                 className={`flex-1 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
-                                    viewMode === 'network' 
+                                    mapType === '2D' 
                                     ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-white shadow-sm' 
                                     : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
                                 }`}
                             >
-                                <span className="material-icons-outlined text-sm">hub</span> Flight Network
+                                <span className="material-icons-outlined text-sm">map</span> 2D
                             </button>
                             <button 
-                                onClick={() => setViewMode('scratch')}
+                                onClick={() => setMapType('3D')}
                                 className={`flex-1 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
-                                    viewMode === 'scratch' 
-                                    ? 'bg-white dark:bg-gray-700 text-amber-600 dark:text-amber-400 shadow-sm' 
+                                    mapType === '3D' 
+                                    ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-white shadow-sm' 
                                     : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
                                 }`}
                             >
-                                <span className="material-icons-outlined text-sm">flag</span> Scratch Map
+                                <span className="material-icons-outlined text-sm">public</span> 3D
                             </button>
                         </div>
+
+                        {/* View Mode Toggle (Network/Scratch) - Only for 2D */}
+                        {mapType === '2D' && (
+                            <div className="flex p-1 bg-gray-100 dark:bg-black/30 rounded-2xl border border-gray-200 dark:border-white/5 w-full md:w-auto">
+                                <button 
+                                    onClick={() => setViewMode('network')}
+                                    className={`flex-1 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                                        viewMode === 'network' 
+                                        ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-white shadow-sm' 
+                                        : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+                                    }`}
+                                >
+                                    <span className="material-icons-outlined text-sm">hub</span> Network
+                                </button>
+                                <button 
+                                    onClick={() => setViewMode('scratch')}
+                                    className={`flex-1 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                                        viewMode === 'scratch' 
+                                        ? 'bg-white dark:bg-gray-700 text-amber-600 dark:text-amber-400 shadow-sm' 
+                                        : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+                                    }`}
+                                >
+                                    <span className="material-icons-outlined text-sm">flag</span> Scratch
+                                </button>
+                            </div>
+                        )}
 
                         <div className="flex items-center p-1 bg-gray-100 dark:bg-black/30 rounded-2xl border border-gray-200 dark:border-white/5 w-full md:w-auto">
                             <select 
@@ -334,7 +360,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                             </div>
                         </div>
 
-                        {viewMode === 'network' && (
+                        {viewMode === 'network' && mapType === '2D' && (
                             <div className="flex gap-2 w-full md:w-auto">
                                 <button 
                                     onClick={() => setAnimateRoutes(!animateRoutes)}
@@ -348,32 +374,28 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                     <span className="material-icons-outlined text-lg">{animateRoutes ? 'blur_on' : 'blur_off'}</span>
                                 </button>
                                 
-                                {mapType === '2D' && (
-                                    <>
-                                        <button 
-                                            onClick={() => setShowFrequencyWeight(!showFrequencyWeight)}
-                                            className={`flex items-center justify-center gap-2 px-3 py-2 rounded-2xl border transition-all ${
-                                                showFrequencyWeight 
-                                                ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-900/50 text-blue-700 dark:text-blue-400' 
-                                                : 'bg-transparent border-gray-200 dark:border-white/10 text-gray-400'
-                                            }`}
-                                            title="Toggle Route Frequency Weight"
-                                        >
-                                            <span className="material-icons-outlined text-lg">line_weight</span>
-                                        </button>
-                                        <button 
-                                            onClick={() => setShowCountries(!showCountries)}
-                                            className={`flex items-center justify-center gap-2 px-3 py-2 rounded-2xl border transition-all ${
-                                                showCountries
-                                                ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-900/50 text-amber-700 dark:text-amber-400' 
-                                                : 'bg-transparent border-gray-200 dark:border-white/10 text-gray-400'
-                                            }`}
-                                            title="Highlight Visited Countries"
-                                        >
-                                            <span className="material-icons-outlined text-lg">public_off</span>
-                                        </button>
-                                    </>
-                                )}
+                                <button 
+                                    onClick={() => setShowFrequencyWeight(!showFrequencyWeight)}
+                                    className={`flex items-center justify-center gap-2 px-3 py-2 rounded-2xl border transition-all ${
+                                        showFrequencyWeight 
+                                        ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-900/50 text-blue-700 dark:text-blue-400' 
+                                        : 'bg-transparent border-gray-200 dark:border-white/10 text-gray-400'
+                                    }`}
+                                    title="Toggle Route Frequency Weight"
+                                >
+                                    <span className="material-icons-outlined text-lg">line_weight</span>
+                                </button>
+                                <button 
+                                    onClick={() => setShowCountries(!showCountries)}
+                                    className={`flex items-center justify-center gap-2 px-3 py-2 rounded-2xl border transition-all ${
+                                        showCountries
+                                        ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-900/50 text-amber-700 dark:text-amber-400' 
+                                        : 'bg-transparent border-gray-200 dark:border-white/10 text-gray-400'
+                                    }`}
+                                    title="Highlight Visited Countries"
+                                >
+                                    <span className="material-icons-outlined text-lg">public_off</span>
+                                </button>
                             </div>
                         )}
                     </div>
@@ -442,24 +464,6 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                         />
                     )}
                     
-                    {/* Floating 2D/3D Toggle in Bottom Corner */}
-                    <div className="absolute bottom-6 left-6 z-[5000]">
-                        <div className="flex p-1 bg-white/90 dark:bg-black/80 backdrop-blur rounded-2xl border border-gray-200 dark:border-white/10 shadow-lg">
-                            <button 
-                                onClick={() => setMapType('2D')}
-                                className={`px-4 py-2 rounded-xl text-xs font-bold uppercase transition-all ${mapType === '2D' ? 'bg-blue-600 text-white shadow' : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white'}`}
-                            >
-                                2D Map
-                            </button>
-                            <button 
-                                onClick={() => setMapType('3D')}
-                                className={`px-4 py-2 rounded-xl text-xs font-bold uppercase transition-all ${mapType === '3D' ? 'bg-purple-600 text-white shadow' : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white'}`}
-                            >
-                                3D Globe
-                            </button>
-                        </div>
-                    </div>
-
                     {trips.length === 0 && (
                         <div className="absolute inset-0 flex items-center justify-center z-[500] pointer-events-none">
                             <div className="bg-black/80 backdrop-blur-md p-8 rounded-3xl border border-white/10 text-center">

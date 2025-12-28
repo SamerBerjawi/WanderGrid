@@ -363,12 +363,14 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                     } else {
                         // NETWORK MODE: Low Opacity, Subtle Gradient
                         // We use the same gradient logic but with much lower opacity to let lines shine
+                        const shouldFill = isVisited && showCountries;
+
                         return {
                             color: isDark ? '#333' : '#ddd',
                             weight: 1,
-                            fillColor: isVisited ? gradientColor : 'transparent',
-                            fillOpacity: isVisited ? 0.4 : 0, // Subtle glow
-                            className: isVisited ? 'transition-all duration-500' : ''
+                            fillColor: shouldFill ? gradientColor : 'transparent',
+                            fillOpacity: shouldFill ? 0.4 : 0, // Subtle glow
+                            className: shouldFill ? 'transition-all duration-500' : ''
                         };
                     }
                 }
