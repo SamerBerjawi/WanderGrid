@@ -1,4 +1,5 @@
 
+
 export interface User {
   id: string;
   name: string;
@@ -86,6 +87,9 @@ export interface Transport {
   originLng?: number;
   destLat?: number;
   destLng?: number;
+  
+  // Helper for flight tracking
+  providerCode?: string; // IATA code for airline (e.g. AA)
 }
 
 export interface Accommodation {
@@ -234,4 +238,66 @@ export enum ViewState {
   TRIP_DETAIL = 'trip_detail',
   MAP = 'map',
   GAMIFICATION = 'gamification'
+}
+
+// --- Live Flight Tracking Types ---
+export interface FlightStatusResponse {
+    flight_date: string;
+    flight_status: 'scheduled' | 'active' | 'landed' | 'cancelled' | 'incident' | 'diverted';
+    departure: {
+        airport: string;
+        timezone: string;
+        iata: string;
+        icao: string;
+        terminal: string;
+        gate: string;
+        delay: number;
+        scheduled: string;
+        estimated: string;
+        actual: string;
+        estimated_runway: string;
+        actual_runway: string;
+    };
+    arrival: {
+        airport: string;
+        timezone: string;
+        iata: string;
+        icao: string;
+        terminal: string;
+        gate: string;
+        baggage: string;
+        delay: number;
+        scheduled: string;
+        estimated: string;
+        actual: string;
+        estimated_runway: string;
+        actual_runway: string;
+    };
+    airline: {
+        name: string;
+        iata: string;
+        icao: string;
+    };
+    flight: {
+        number: string;
+        iata: string;
+        icao: string;
+        codeshared: any;
+    };
+    aircraft: {
+       registration: string;
+       iata: string;
+       model: string;
+       country: string;
+    };
+    live?: {
+        updated: string;
+        latitude: number;
+        longitude: number;
+        altitude: number;
+        direction: number;
+        speed_horizontal: number;
+        speed_vertical: number;
+        is_ground: boolean;
+    };
 }

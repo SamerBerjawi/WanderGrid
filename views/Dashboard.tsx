@@ -2,8 +2,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Card, Button, Tabs } from '../components/ui';
 import { ExpeditionMap3D } from '../components/ExpeditionMap3D';
+import { FlightTrackerModal } from '../components/FlightTrackerModal';
 import { dataService } from '../services/mockDb';
-import { User, Trip, EntitlementType, PublicHoliday } from '../types';
+import { User, Trip, EntitlementType, PublicHoliday, Transport } from '../types';
 import { resolvePlaceName, calculateDistance } from '../services/geocoding';
 import { ViewState } from '../types';
 
@@ -30,6 +31,7 @@ interface ExtremeFlight {
     date: string;
 }
 
+// ... (Existing Constants: LEVEL_THRESHOLDS, REGION_STYLES, COUNTRY_REGION_MAP, getRegion, getFlagEmoji, getProgressBarColor, getEntitlementTextClass) ...
 const LEVEL_THRESHOLDS = [
     { level: 1, name: 'Backyard Explorer', countries: 0 },
     { level: 5, name: 'Wanderer', countries: 2 },
@@ -85,7 +87,11 @@ const getEntitlementTextClass = (color?: string) => {
     return map[color || 'gray'] || 'text-gray-600';
 };
 
-// --- Statistics Components ---
+// ... (StatCard, ExtremeFlightCard, DonutChart, TopList Components remain the same) ...
+// (Omitting full repetition of these UI components to focus on integration, assume they exist as before)
+// Re-declaring StatCard etc for context if needed, but assuming existing file content structure.
+// I will include them truncated for brevity in the XML replacement if needed, but will prioritize the new logic.
+
 const StatCard: React.FC<{ title: string; value: string | number; subtitle?: string; icon: string; color?: string }> = ({ title, value, subtitle, icon, color = 'blue' }) => (
     <div className={`p-6 rounded-[2rem] bg-white dark:bg-gray-800 border border-gray-100 dark:border-white/5 shadow-sm flex items-center gap-5 relative overflow-hidden group hover:shadow-lg transition-all`}>
         <div className={`absolute right-0 top-0 w-32 h-32 bg-${color}-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/3 transition-all group-hover:bg-${color}-500/10`} />
@@ -229,9 +235,38 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
   const [totalDistance, setTotalDistance] = useState(0);
   const [activeStatsTab, setActiveStatsTab] = useState('stamps');
 
+  // Flight Tracker State
+  const [isFlightTrackerOpen, setIsFlightTrackerOpen] = useState(false);
+  const [todaysFlight, setTodaysFlight] = useState<{ iata: string; origin: string; destination: string; date: string } | undefined>(undefined);
+
   useEffect(() => {
     refreshData();
   }, []);
+
+  useEffect(() => {
+      // Logic to find a flight happening "Today"
+      const today = new Date().toISOString().split('T')[0];
+      const activeTrip = trips.find(t => t.status !== 'Cancelled' && t.startDate <= today && t.endDate >= today);
+      
+      if (activeTrip && activeTrip.transports) {
+          // Find first flight today
+          const flight = activeTrip.transports
+            .filter(t => t.mode === 'Flight' && t.departureDate === today)
+            .sort((a,b) => (a.departureTime || '00:00').localeCompare(b.departureTime || '00:00'))[0];
+            
+          if (flight) {
+              const iata = flight.providerCode && flight.identifier ? `${flight.providerCode}${flight.identifier}` : flight.identifier;
+              if (iata) {
+                  setTodaysFlight({
+                      iata,
+                      origin: flight.origin,
+                      destination: flight.destination,
+                      date: today
+                  });
+              }
+          }
+      }
+  }, [trips]);
 
   const refreshData = () => {
     Promise.all([
@@ -517,6 +552,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
 
   return (
     <div className="space-y-8 animate-fade-in max-w-[1600px] mx-auto pb-12">
+        {/* Header Actions */}
+        <div className="flex justify-between items-center bg-white/40 dark:bg-gray-900/40 p-4 rounded-[2rem] backdrop-blur-xl border border-white/50 dark:border-white/5 shadow-sm">
+            <h2 className="text-2xl font-black text-gray-900 dark:text-white px-4">Command Center</h2>
+            <Button 
+                variant="primary" 
+                className="bg-sky-500 hover:bg-sky-600 shadow-sky-500/20"
+                icon={<span className="material-icons-outlined">flight</span>}
+                onClick={() => setIsFlightTrackerOpen(true)}
+            >
+                Where's my Flight?
+            </Button>
+        </div>
+
         {/* User Cards Carousel */}
         <div className="flex flex-col md:flex-row gap-6 overflow-x-auto pb-2">
             {users.map(user => (<div key={user.id} className="flex-1 min-w-[350px] max-w-2xl">{renderUserCard(user)}</div>))}
@@ -682,6 +730,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                 </div>
             )}
         </div>
+
+        <FlightTrackerModal 
+            isOpen={isFlightTrackerOpen}
+            onClose={() => setIsFlightTrackerOpen(false)}
+            suggestedFlight={todaysFlight}
+        />
     </div>
   );
 };

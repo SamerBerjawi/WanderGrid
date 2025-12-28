@@ -104,6 +104,25 @@ const deleteResource = (table) => async (req, res) => {
 
 // --- Routes ---
 
+// Proxy for AviationStack (Fixes CORS issues)
+app.get('/api/proxy/flight-status', async (req, res) => {
+    const { access_key, flight_iata } = req.query;
+    if (!access_key || !flight_iata) {
+        return res.status(400).json({ error: 'Missing access_key or flight_iata' });
+    }
+    
+    try {
+        const url = `http://api.aviationstack.com/v1/flights?access_key=${access_key}&flight_iata=${flight_iata}`;
+        // Using built-in fetch (Node 18+)
+        const response = await fetch(url);
+        const data = await response.json();
+        res.json(data);
+    } catch (err) {
+        console.error("Proxy error:", err);
+        res.status(500).json({ error: 'Failed to fetch flight data' });
+    }
+});
+
 // Users
 app.get('/api/users', getResources('users'));
 app.post('/api/users', createResource('users'));
