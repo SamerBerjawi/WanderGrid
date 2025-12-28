@@ -1,9 +1,8 @@
 
-import { User, Trip, PublicHoliday, EntitlementType, SavedConfig, WorkspaceSettings, CustomEvent, Transport } from '../types';
+import { User, Trip, PublicHoliday, EntitlementType, SavedConfig, WorkspaceSettings, CustomEvent } from '../types';
 import { getCoordinates } from './geocoding';
 
 const GEO_CACHE_KEY = 'wandergrid_geo_cache_v2';
-const COORD_CACHE_KEY = 'wandergrid_coord_cache';
 
 const DEFAULT_WORKSPACE_SETTINGS: WorkspaceSettings = {
   orgName: 'WanderGrid Workspace',
@@ -24,10 +23,9 @@ export interface ImportState {
 
 // --- API Service with LocalStorage Fallback ---
 class DataService {
-  // Import State Tracking
   private _importState: ImportState = { status: '', progress: 0, isActive: false };
   private _importListeners: ((state: ImportState) => void)[] = [];
-  private _useApi: boolean = true; // Optimistically try API first
+  private _useApi: boolean = true; 
 
   constructor() {}
 
@@ -68,7 +66,7 @@ class DataService {
 
   public subscribeToImport(listener: (state: ImportState) => void): () => void {
       this._importListeners.push(listener);
-      listener(this._importState); // Send current state immediately
+      listener(this._importState); 
       return () => {
           this._importListeners = this._importListeners.filter(l => l !== listener);
       };
@@ -86,21 +84,19 @@ class DataService {
       }
 
       try {
-          // Attempt API Call
           const res = await fetch(`/api${endpoint}`, {
               headers: { 'Content-Type': 'application/json' },
               ...options
           });
           
           if (!res.ok) {
-              // If 404 (Route not found), assume backend is missing/misconfigured and switch to local
               if (res.status === 404) throw new Error("API Route Not Found");
               throw new Error(`API Error: ${res.statusText}`);
           }
           return await res.json();
       } catch (e) {
-          console.warn(`Backend unavailable (${endpoint}). Switching to LocalStorage mode. Error:`, e);
-          this._useApi = false; // Switch to local mode for this session
+          console.warn(`Backend unavailable (${endpoint}). Switching to LocalStorage mode.`);
+          this._useApi = false; 
           return this.localFetch<T>(endpoint, options);
       }
   }
@@ -111,8 +107,7 @@ class DataService {
       const body = options?.body ? JSON.parse(options.body as string) : null;
       const key = (k: string) => `wandergrid_${k}`;
       
-      // Simulate network delay
-      await new Promise(r => setTimeout(r, 50));
+      await new Promise(r => setTimeout(r, 20)); // Reduced latency
 
       // 1. Settings
       if (endpoint === '/settings') {
@@ -126,7 +121,7 @@ class DataService {
           }
       }
 
-      // 2. Collections (Users, Trips, Events, Entitlements, Configs)
+      // 2. Collections
       const collections = [
           { route: '/users', storage: 'users' },
           { route: '/trips', storage: 'trips' },
@@ -136,7 +131,6 @@ class DataService {
       ];
 
       for (const col of collections) {
-          // List / Create
           if (endpoint === col.route) {
               const list = JSON.parse(localStorage.getItem(key(col.storage)) || '[]');
               if (method === 'GET') {
@@ -148,7 +142,6 @@ class DataService {
                   return body as T;
               }
           }
-          // Item Operations
           if (endpoint.startsWith(`${col.route}/`)) {
               const id = endpoint.split('/')[2];
               const list = JSON.parse(localStorage.getItem(key(col.storage)) || '[]');
@@ -156,7 +149,7 @@ class DataService {
               if (method === 'PUT') {
                   const idx = list.findIndex((i: any) => i.id === id);
                   if (idx >= 0) list[idx] = body;
-                  else list.push(body); // Upsert fallback
+                  else list.push(body); 
                   localStorage.setItem(key(col.storage), JSON.stringify(list));
                   return body as T;
               }
@@ -209,11 +202,12 @@ class DataService {
     await this.fetch(`/users/${id}`, { method: 'DELETE' });
   }
 
-  // --- Trips (With Geocoding Intelligence) ---
+  // --- Trips (Optimized) ---
   
   private async processGeocoding(trip: Trip): Promise<Trip> {
       const updatedTrip = { ...trip };
       
+      // Use the cached getCoordinates which handles local storage internally
       // 1. Trip Main Location
       if (updatedTrip.location && !updatedTrip.coordinates) {
           const coords = await getCoordinates(updatedTrip.location);
@@ -224,12 +218,10 @@ class DataService {
       if (updatedTrip.transports) {
           const updatedTransports = await Promise.all(updatedTrip.transports.map(async (t) => {
               const u = { ...t };
-              // Origin
               if (u.origin && (!u.originLat || !u.originLng)) {
                   const c = await getCoordinates(u.origin);
                   if (c) { u.originLat = c.lat; u.originLng = c.lng; }
               }
-              // Destination
               if (u.destination && (!u.destLat || !u.destLng)) {
                   const c = await getCoordinates(u.destination);
                   if (c) { u.destLat = c.lat; u.destLng = c.lng; }
@@ -258,7 +250,6 @@ class DataService {
     this.updateImportState(`Analyzing ${total} trips...`, 0, true);
 
     const existingTrips = await this.getTrips();
-    // Simple dedupe signature
     const getTripSignature = (trip: Trip) => {
         if (trip.transports && trip.transports.length > 0) {
             return trip.transports.map(t => `${t.mode}|${t.provider}|${t.identifier}|${t.departureDate}`).join('||');
@@ -282,14 +273,14 @@ class DataService {
         this.updateImportState(`Importing ${i + 1}/${total}: ${trip.name}`, percent, true);
 
         try {
+            // Processing sequentially to avoid overwhelming the API if cache misses
             const intelligentTrip = await this.processGeocoding(trip);
             await this.addTrip(intelligentTrip);
             existingSignatures.add(sig); 
             addedCount++;
-            await new Promise(r => setTimeout(r, 50)); 
         } catch (e) {
             console.error(`Import error for ${trip.name}`, e);
-            await this.addTrip(trip); // Fallback to raw save
+            await this.addTrip(trip); 
             addedCount++;
         }
     }
@@ -369,31 +360,24 @@ class DataService {
     await this.fetch('/settings', { method: 'PUT', body: JSON.stringify(settings) });
   }
 
-  // --- Export/Import ---
+  // --- Export/Import (Includes Geocache) ---
   async exportFullState(): Promise<string> {
-      // Fetch caches
+      // 1. Fetch persistent cache from LocalStorage
       let geoCache: any[] = [];
       try {
           const storedGeo = localStorage.getItem(GEO_CACHE_KEY);
           if (storedGeo) geoCache = JSON.parse(storedGeo);
       } catch (e) {}
 
-      let coordCache: any[] = [];
-      try {
-          const storedCoord = localStorage.getItem(COORD_CACHE_KEY);
-          if (storedCoord) coordCache = JSON.parse(storedCoord);
-      } catch (e) {}
-
-      // Get DB State
+      // 2. Get DB State
       const dbState = await this.fetch<any>('/backup');
 
       const state = {
-          version: '3.6',
+          version: '3.7',
           timestamp: new Date().toISOString(),
           ...dbState,
           caches: {
-              geo: geoCache,
-              coord: coordCache
+              geo: geoCache
           }
       };
       return JSON.stringify(state, null, 2);
@@ -410,16 +394,19 @@ class DataService {
              throw new Error("Invalid backup file format");
           }
 
-          // Restore DB
+          // 1. Restore DB
           await this.fetch('/restore', { method: 'POST', body: JSON.stringify(state) });
 
-          // Restore Caches locally
-          if (state.caches) {
-              if (state.caches.geo && Array.isArray(state.caches.geo)) {
-                  try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(state.caches.geo)); } catch (e) {}
-              }
-              if (state.caches.coord && Array.isArray(state.caches.coord)) {
-                  try { localStorage.setItem(COORD_CACHE_KEY, JSON.stringify(state.caches.coord)); } catch (e) {}
+          // 2. Restore Cache locally
+          if (state.caches && state.caches.geo && Array.isArray(state.caches.geo)) {
+              try { 
+                  // Merge with existing to avoid data loss on partial restore
+                  const existing = JSON.parse(localStorage.getItem(GEO_CACHE_KEY) || '[]');
+                  const combined = new Map([...existing, ...state.caches.geo]); // New overrides old if dupes
+                  localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(Array.from(combined.entries()))); 
+              } catch (e) {
+                  // Fallback overwrite if merge fails
+                  localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(state.caches.geo));
               }
           }
           

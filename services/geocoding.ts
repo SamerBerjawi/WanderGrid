@@ -1,4 +1,44 @@
 
+const CACHE_KEY = 'wandergrid_geo_cache_v2';
+
+// 1. In-Memory Cache (Syncs with LocalStorage)
+let internalCache: Map<string, any> = new Map();
+let isCacheLoaded = false;
+
+// Initialize Cache from Storage
+const loadCache = () => {
+    if (isCacheLoaded) return;
+    try {
+        const stored = localStorage.getItem(CACHE_KEY);
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            // Convert array back to Map
+            internalCache = new Map(parsed);
+        }
+    } catch (e) {
+        console.warn("Failed to load geo cache", e);
+    }
+    
+    // Merge Fallback Airports into Cache if missing
+    Object.keys(FALLBACK_AIRPORTS).forEach(key => {
+        if (!internalCache.has(key)) {
+            internalCache.set(key, FALLBACK_AIRPORTS[key]);
+        }
+    });
+    
+    isCacheLoaded = true;
+};
+
+// Save Cache to Storage (Debounced could be better, but direct is safer for data integrity here)
+const saveCache = () => {
+    try {
+        const entryArray = Array.from(internalCache.entries());
+        localStorage.setItem(CACHE_KEY, JSON.stringify(entryArray));
+    } catch (e) {
+        console.warn("Failed to save geo cache (quota exceeded?)", e);
+    }
+};
+
 const FALLBACK_AIRPORTS: Record<string, any> = {
     "AMS": { "lat": "52.3086", "lon": "4.7639", "name": "Schiphol", "city": "Amsterdam", "country": "Netherlands", "tz": "Europe/Amsterdam", "iso": "NL" },
     "LHR": { "lat": "51.4706", "lon": "-0.4619", "name": "Heathrow", "city": "London", "country": "United Kingdom", "tz": "Europe/London", "iso": "GB" },
@@ -22,27 +62,8 @@ const FALLBACK_AIRPORTS: Record<string, any> = {
     "PEK": { "lat": "40.0801", "lon": "116.585", "name": "Capital Intl", "city": "Beijing", "country": "China", "tz": "Asia/Shanghai", "iso": "CN" }
 };
 
-// Initialize with fallback
-let airportCache: Record<string, any> = { ...FALLBACK_AIRPORTS };
-
-async function loadAirportData() {
-    // If we have more than the fallback, assume loaded
-    if (Object.keys(airportCache).length > 50) return;
-    
-    try {
-        const res = await fetch('https://raw.githubusercontent.com/mwgg/Airports/master/airports.json');
-        if (res.ok) {
-            const data = await res.json();
-            // Merge to preserve manual overrides if any
-            airportCache = { ...airportCache, ...data };
-        }
-    } catch (e) {
-        console.warn("Failed to load full airport dataset, using fallback cache.", e);
-    }
-}
-
-// Trigger preload
-loadAirportData();
+// Initialize
+loadCache();
 
 function toRad(value: number) {
     return (value * Math.PI) / 180;
@@ -63,166 +84,76 @@ export function calculateDistance(lat1: number, lon1: number, lat2: number, lon2
 // --- Time Zone Logic ---
 
 export function getCachedTimeZone(iata: string): string | undefined {
-    return airportCache[iata.toUpperCase()]?.tz;
+    // Check internal cache first
+    const fromCache = internalCache.get(iata.toUpperCase());
+    if (fromCache && fromCache.tz) return fromCache.tz;
+    return 'UTC';
 }
 
-// Helper: Get UTC offset in minutes for a specific TimeZone at a specific Date
+// Helper: Get UTC offset in minutes
 function getOffsetMinutes(timeZone: string, date: Date): number {
     try {
-        // Use shortOffset (e.g. "GMT-5" or "GMT+5:30")
-        const parts = new Intl.DateTimeFormat('en-US', {
-            timeZone,
-            timeZoneName: 'shortOffset',
-        }).formatToParts(date);
-        
+        const parts = new Intl.DateTimeFormat('en-US', { timeZone, timeZoneName: 'shortOffset' }).formatToParts(date);
         const offsetPart = parts.find(p => p.type === 'timeZoneName');
         if (!offsetPart) return 0;
-        
-        // Parse "GMT-5", "GMT+5:30", "UTC+1"
-        // Remove GMT/UTC prefix
         const val = offsetPart.value.replace(/^(GMT|UTC)/, '');
-        if (!val) return 0; // GMT or UTC with no offset
-        
+        if (!val) return 0;
         const sign = val.includes('-') ? -1 : 1;
         const [h, m] = val.replace('+', '').replace('-', '').split(':').map(Number);
-        
-        const hours = isNaN(h) ? 0 : h;
-        const minutes = isNaN(m) ? 0 : m;
-        
-        return sign * (hours * 60 + minutes);
-    } catch (e) {
-        console.warn("Offset Calc Error", e);
-        return 0;
-    }
+        return sign * ((isNaN(h) ? 0 : h) * 60 + (isNaN(m) ? 0 : m));
+    } catch (e) { return 0; }
 }
 
-// Helper: Convert YYYY-MM-DD + HH:mm into a UTC timestamp (Wall Time treated as UTC)
-// This avoids browser local timezone interference
 function getWallTimeAsUtc(dateStr: string, timeStr: string): number {
     const [y, m, d] = dateStr.split('-').map(Number);
     const [h, min] = timeStr.split(':').map(Number);
     return Date.UTC(y, m - 1, d, h, min, 0);
 }
 
-// Calculate duration (minutes) between two locations/times respecting TZ
-export function calculateDurationMinutes(
-    originIata: string, 
-    destIata: string, 
-    depDateStr: string, 
-    depTimeStr: string, 
-    arrDateStr: string, 
-    arrTimeStr: string
-): number {
+export function calculateDurationMinutes(originIata: string, destIata: string, depDateStr: string, depTimeStr: string, arrDateStr: string, arrTimeStr: string): number {
     if (!originIata || !destIata || !depDateStr || !depTimeStr || !arrDateStr || !arrTimeStr) return 0;
-
     const originTz = getCachedTimeZone(originIata) || 'UTC';
     const destTz = getCachedTimeZone(destIata) || 'UTC';
-
-    // 1. Get Wall Times as UTC Timestamps to measure pure wall difference
     const depWallUtc = getWallTimeAsUtc(depDateStr, depTimeStr);
     const arrWallUtc = getWallTimeAsUtc(arrDateStr, arrTimeStr);
-
     if (isNaN(depWallUtc) || isNaN(arrWallUtc)) return 0;
-
-    // 2. Get Offsets at those times
-    // We use the Wall Time as the lookup instant. This is 99% accurate unless flight is exactly during a DST jump.
     const depOffset = getOffsetMinutes(originTz, new Date(depWallUtc));
     const arrOffset = getOffsetMinutes(destTz, new Date(arrWallUtc));
-
-    // 3. Formula:
-    // UTC_Departure = Wall_Departure - Offset_Departure
-    // UTC_Arrival = Wall_Arrival - Offset_Arrival
-    // Duration = UTC_Arrival - UTC_Departure
-    //          = (Wall_Arrival - Offset_Arrival) - (Wall_Departure - Offset_Departure)
-    //          = (Wall_Arrival - Wall_Departure) - (Offset_Arrival - Offset_Departure)
-    
     const wallDiffMinutes = (arrWallUtc - depWallUtc) / 60000;
     const offsetDiffMinutes = arrOffset - depOffset;
-    
     let duration = wallDiffMinutes - offsetDiffMinutes;
-    
-    // Safety clamp
     return Math.max(0, Math.round(duration));
 }
 
-// Calculate Arrival Time given Departure, Duration and TZs
-export function calculateArrivalTime(
-    originIata: string,
-    destIata: string,
-    depDateStr: string,
-    depTimeStr: string,
-    durationMinutes: number
-): { date: string, time: string } {
+export function calculateArrivalTime(originIata: string, destIata: string, depDateStr: string, depTimeStr: string, durationMinutes: number): { date: string, time: string } {
     const originTz = getCachedTimeZone(originIata) || 'UTC';
     const destTz = getCachedTimeZone(destIata) || 'UTC';
-
-    // 1. Get Departure Wall Time as UTC Timestamp
     const depWallUtc = getWallTimeAsUtc(depDateStr, depTimeStr);
     if (isNaN(depWallUtc)) return { date: '', time: '' };
-
-    // 2. Calculate Real UTC Departure Time
     const depOffset = getOffsetMinutes(originTz, new Date(depWallUtc));
-    // Real UTC = Wall - Offset (in ms)
     const depRealUtc = depWallUtc - (depOffset * 60000);
-
-    // 3. Calculate Real UTC Arrival Time
     const arrRealUtc = depRealUtc + (durationMinutes * 60000);
-
-    // 4. Convert Real UTC Arrival to Destination Wall Time
-    // We rely on Intl to do the heavy lifting of converting a UTC timestamp to a TZ-specific string
     const arrDateObj = new Date(arrRealUtc);
-    
     try {
-        // Format to parts in the destination timezone
-        const formatter = new Intl.DateTimeFormat('en-CA', { // en-CA gives YYYY-MM-DD
-            timeZone: destTz,
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            hourCycle: 'h23' // Force 24h
-        });
-        
+        const formatter = new Intl.DateTimeFormat('en-CA', { timeZone: destTz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
         const parts = formatter.formatToParts(arrDateObj);
         const getPart = (type: string) => parts.find(p => p.type === type)?.value || '';
-        
-        const year = getPart('year');
-        const month = getPart('month');
-        const day = getPart('day');
-        const hour = getPart('hour');
-        const minute = getPart('minute');
-
-        return {
-            date: `${year}-${month}-${day}`,
-            time: `${hour}:${minute}`
-        };
-    } catch (e) {
-        console.error("Arrival Calc Error", e);
-        return { date: '', time: '' };
-    }
+        return { date: `${getPart('year')}-${getPart('month')}-${getPart('day')}`, time: `${getPart('hour')}:${getPart('minute')}` };
+    } catch (e) { return { date: '', time: '' }; }
 }
 
-// --- Search ---
+// --- Search & Resolve with Caching ---
 
 export async function searchLocations(query: string): Promise<string[]> {
     if (!query || query.length < 3) return [];
     try {
-        // Use OpenStreetMap Nominatim for search
+        // No caching for autocomplete search results as they are transient UI state
         const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=5`;
         const response = await fetch(url); 
-        
         if (!response.ok) return [];
-        
         const data = await response.json();
-        return data.map((item: any) => {
-            // Simplify display name if possible, or return full
-            return item.display_name || item.name;
-        });
-    } catch (e) {
-        console.error("Location search failed", e);
-        return [];
-    }
+        return data.map((item: any) => item.display_name || item.name);
+    } catch (e) { return []; }
 }
 
 export async function searchStations(query: string, type: 'train' | 'bus'): Promise<string[]> {
@@ -231,90 +162,81 @@ export async function searchStations(query: string, type: 'train' | 'bus'): Prom
         const suffix = type === 'train' ? 'railway station' : 'bus station';
         const q = `${query} ${suffix}`;
         const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&addressdetails=1&limit=8`;
-        const response = await fetch(url); 
-        
+        const response = await fetch(url);
         if (!response.ok) return [];
-        
         const data = await response.json();
         return data.map((item: any) => item.display_name || item.name);
-    } catch (e) {
-        console.error("Station search failed", e);
-        return [];
-    }
+    } catch (e) { return []; }
 }
 
+// Optimized Get Coordinates - READS FROM CACHE
 export async function getCoordinates(location: string): Promise<{ lat: number; lng: number; tz?: string } | undefined> {
   if (!location) return undefined;
+  loadCache(); // Ensure loaded
 
-  // 1. Fast Path: IATA Code Lookup (3 letters)
+  // 1. Check Cache (Exact match)
+  if (internalCache.has(location)) {
+      const c = internalCache.get(location);
+      return { lat: parseFloat(c.lat), lng: parseFloat(c.lon || c.lng), tz: c.tz };
+  }
+
+  // 2. Check IATA Cache
   if (location.length === 3 && /^[A-Za-z]{3}$/.test(location)) {
-      // Try cache first (including fallback)
       const code = location.toUpperCase();
-      if (airportCache[code]) {
-          const airport = airportCache[code];
-          return { lat: parseFloat(airport.lat), lng: parseFloat(airport.lon), tz: airport.tz };
-      }
-      
-      // If not in cache, try waiting for load
-      await loadAirportData(); 
-      if (airportCache[code]) {
-          const airport = airportCache[code];
+      if (internalCache.has(code)) {
+          const airport = internalCache.get(code);
           return { lat: parseFloat(airport.lat), lng: parseFloat(airport.lon), tz: airport.tz };
       }
   }
 
-  // 2. Slow Path: Nominatim Geocoding
+  // 3. Network Fetch
   try {
     const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}&limit=1`;
-    
     const response = await fetch(url);
-
-    if (!response.ok) {
-        // Log as warning rather than error to reduce noise
-        console.warn(`Geocoding HTTP error: ${response.statusText}`);
-        return undefined;
-    }
-
+    if (!response.ok) return undefined;
     const data = await response.json();
 
     if (Array.isArray(data) && data.length > 0) {
-      return {
+      const res = {
         lat: parseFloat(data[0].lat),
-        lng: parseFloat(data[0].lon)
-        // Nominatim doesn't easily return TZ without extra calls
+        lng: parseFloat(data[0].lon),
+        lon: parseFloat(data[0].lon) // Store both keys for compatibility
       };
+      
+      // Save to Cache
+      internalCache.set(location, res);
+      saveCache();
+      
+      return res;
     }
-    
     return undefined;
-  } catch (e) {
-    console.warn(`Geocoding fetch failed for ${location}`, e);
-    return undefined;
-  }
+  } catch (e) { return undefined; }
 }
 
-// Updated resolvePlaceName to fetch real country data
+// Optimized Resolve Place - READS FROM CACHE
 export async function resolvePlaceName(query: string): Promise<{ city: string, country: string, countryCode?: string, displayName: string } | null> {
     if (!query) return null;
-    
-    // 1. IATA Lookup
-    if (query.length === 3 && /^[A-Za-z]{3}$/.test(query)) {
-        const code = query.toUpperCase();
-        // Try cache immediately
-        if (airportCache[code]) {
-            const a = airportCache[code];
-            // FALLBACK_AIRPORTS usually have 'iso' added manually above, but raw mwgg/Airports doesn't.
-            // If we have iso property, use it. Otherwise rely on Country Name.
-            return { 
-                city: a.city, 
-                country: a.country, 
-                countryCode: a.iso || undefined, 
-                displayName: `${a.city}, ${a.country}` 
+    loadCache();
+
+    // 1. Check Cache (Exact string match)
+    if (internalCache.has(query)) {
+        const cached = internalCache.get(query);
+        // If the cache has full detail structure (custom saved)
+        if (cached.city && cached.country) {
+            return {
+                city: cached.city,
+                country: cached.country,
+                countryCode: cached.iso || cached.countryCode,
+                displayName: cached.name || query
             };
         }
-        // Try waiting
-        await loadAirportData();
-        if (airportCache[code]) {
-            const a = airportCache[code];
+    }
+
+    // 2. IATA Lookup
+    if (query.length === 3 && /^[A-Za-z]{3}$/.test(query)) {
+        const code = query.toUpperCase();
+        if (internalCache.has(code)) {
+            const a = internalCache.get(code);
             return { 
                 city: a.city, 
                 country: a.country, 
@@ -324,7 +246,7 @@ export async function resolvePlaceName(query: string): Promise<{ city: string, c
         }
     }
     
-    // 2. Nominatim Lookup (Detailed)
+    // 3. Network Fetch
     try {
         const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=1`;
         const res = await fetch(url);
@@ -337,19 +259,26 @@ export async function resolvePlaceName(query: string): Promise<{ city: string, c
                 const country = addr.country || '';
                 const countryCode = addr.country_code ? addr.country_code.toUpperCase() : '';
                 
-                return { 
+                const finalObj = { 
                     city, 
                     country, 
                     countryCode, 
-                    displayName: result.display_name 
+                    displayName: result.display_name,
+                    // Store coords too while we are at it
+                    lat: result.lat,
+                    lon: result.lon
                 };
+
+                // Cache it
+                internalCache.set(query, finalObj);
+                saveCache();
+
+                return finalObj;
             }
         }
-    } catch (e) {
-        console.warn("Detailed resolve failed", e);
-    }
+    } catch (e) { console.warn("Resolve failed", e); }
 
-    // 3. Fallback: Treat as City/String
+    // 4. Fallback: Parse string manually
     if (query.includes(',')) {
         const parts = query.split(',').map(s => s.trim());
         if (parts.length >= 2) {
@@ -364,67 +293,20 @@ export async function resolvePlaceName(query: string): Promise<{ city: string, c
     return { city: query, country: 'Unknown', displayName: query };
 }
 
-// --- Regions ---
-
+// Region Mappings (Static)
 const COUNTRY_REGION_MAP: Record<string, string> = {
-    // North America
     'US': 'North America', 'CA': 'North America', 'MX': 'North America',
-
-    // Central America & Caribbean
-    'CR': 'Central America', 'CU': 'Central America', 'JM': 'Central America', 
-    'BS': 'Central America', 'DO': 'Central America', 'PA': 'Central America',
-    'GT': 'Central America', 'BZ': 'Central America', 'HN': 'Central America',
-
-    // South America
-    'BR': 'South America', 'AR': 'South America', 'CL': 'South America', 
-    'CO': 'South America', 'PE': 'South America', 'EC': 'South America',
-    'UY': 'South America', 'PY': 'South America', 'BO': 'South America',
-
-    // Northern Europe
-    'NO': 'Northern Europe', 'SE': 'Northern Europe', 'DK': 'Northern Europe', 
-    'FI': 'Northern Europe', 'IS': 'Northern Europe', 'EE': 'Northern Europe',
-    'LV': 'Northern Europe', 'LT': 'Northern Europe',
-
-    // Western Europe
-    'GB': 'Western Europe', 'UK': 'Western Europe', 'FR': 'Western Europe', 
-    'DE': 'Western Europe', 'BE': 'Western Europe', 'NL': 'Western Europe', 
-    'CH': 'Western Europe', 'AT': 'Western Europe', 'IE': 'Western Europe',
-    'LU': 'Western Europe',
-
-    // Southern Europe
-    'IT': 'Southern Europe', 'ES': 'Southern Europe', 'PT': 'Southern Europe', 
-    'GR': 'Southern Europe', 'HR': 'Southern Europe', 'SI': 'Southern Europe',
-    'MT': 'Southern Europe', 'CY': 'Southern Europe',
-
-    // Eastern Europe
-    'PL': 'Eastern Europe', 'CZ': 'Eastern Europe', 'HU': 'Eastern Europe', 
-    'RU': 'Eastern Europe', 'RO': 'Eastern Europe', 'BG': 'Eastern Europe',
-    'SK': 'Eastern Europe', 'UA': 'Eastern Europe', 'RS': 'Eastern Europe',
-
-    // East Asia
-    'JP': 'East Asia', 'CN': 'East Asia', 'KR': 'East Asia', 'TW': 'East Asia', 
-    'HK': 'East Asia', 'MO': 'East Asia',
-
-    // Southeast Asia
-    'TH': 'Southeast Asia', 'VN': 'Southeast Asia', 'ID': 'Southeast Asia', 
-    'MY': 'Southeast Asia', 'SG': 'Southeast Asia', 'PH': 'Southeast Asia',
-    'KH': 'Southeast Asia', 'LA': 'Southeast Asia', 'MM': 'Southeast Asia',
-
-    // South & West Asia
-    'IN': 'South & West Asia', 'MV': 'South & West Asia', 'LK': 'South & West Asia',
-    'NP': 'South & West Asia', 'AE': 'South & West Asia', 'SA': 'South & West Asia', 
-    'IL': 'South & West Asia', 'QA': 'South & West Asia', 'TR': 'South & West Asia',
-    'JO': 'South & West Asia', 'LB': 'South & West Asia',
-
-    // North Africa
+    'CR': 'Central America', 'CU': 'Central America', 'JM': 'Central America', 'BS': 'Central America', 'DO': 'Central America', 'PA': 'Central America', 'GT': 'Central America', 'BZ': 'Central America', 'HN': 'Central America',
+    'BR': 'South America', 'AR': 'South America', 'CL': 'South America', 'CO': 'South America', 'PE': 'South America', 'EC': 'South America', 'UY': 'South America', 'PY': 'South America', 'BO': 'South America',
+    'NO': 'Northern Europe', 'SE': 'Northern Europe', 'DK': 'Northern Europe', 'FI': 'Northern Europe', 'IS': 'Northern Europe', 'EE': 'Northern Europe', 'LV': 'Northern Europe', 'LT': 'Northern Europe',
+    'GB': 'Western Europe', 'UK': 'Western Europe', 'FR': 'Western Europe', 'DE': 'Western Europe', 'BE': 'Western Europe', 'NL': 'Western Europe', 'CH': 'Western Europe', 'AT': 'Western Europe', 'IE': 'Western Europe', 'LU': 'Western Europe',
+    'IT': 'Southern Europe', 'ES': 'Southern Europe', 'PT': 'Southern Europe', 'GR': 'Southern Europe', 'HR': 'Southern Europe', 'SI': 'Southern Europe', 'MT': 'Southern Europe', 'CY': 'Southern Europe',
+    'PL': 'Eastern Europe', 'CZ': 'Eastern Europe', 'HU': 'Eastern Europe', 'RU': 'Eastern Europe', 'RO': 'Eastern Europe', 'BG': 'Eastern Europe', 'SK': 'Eastern Europe', 'UA': 'Eastern Europe', 'RS': 'Eastern Europe',
+    'JP': 'East Asia', 'CN': 'East Asia', 'KR': 'East Asia', 'TW': 'East Asia', 'HK': 'East Asia', 'MO': 'East Asia',
+    'TH': 'Southeast Asia', 'VN': 'Southeast Asia', 'ID': 'Southeast Asia', 'MY': 'Southeast Asia', 'SG': 'Southeast Asia', 'PH': 'Southeast Asia', 'KH': 'Southeast Asia', 'LA': 'Southeast Asia', 'MM': 'Southeast Asia',
+    'IN': 'South & West Asia', 'MV': 'South & West Asia', 'LK': 'South & West Asia', 'NP': 'South & West Asia', 'AE': 'South & West Asia', 'SA': 'South & West Asia', 'IL': 'South & West Asia', 'QA': 'South & West Asia', 'TR': 'South & West Asia', 'JO': 'South & West Asia', 'LB': 'South & West Asia',
     'EG': 'North Africa', 'MA': 'North Africa', 'TN': 'North Africa', 'DZ': 'North Africa',
-
-    // Sub-Saharan Africa
-    'ZA': 'Sub-Saharan Africa', 'KE': 'Sub-Saharan Africa', 'TZ': 'Sub-Saharan Africa', 
-    'GH': 'Sub-Saharan Africa', 'NG': 'Sub-Saharan Africa', 'MU': 'Sub-Saharan Africa', 
-    'SC': 'Sub-Saharan Africa', 'ZW': 'Sub-Saharan Africa', 'NA': 'Sub-Saharan Africa',
-
-    // Oceania
+    'ZA': 'Sub-Saharan Africa', 'KE': 'Sub-Saharan Africa', 'TZ': 'Sub-Saharan Africa', 'GH': 'Sub-Saharan Africa', 'NG': 'Sub-Saharan Africa', 'MU': 'Sub-Saharan Africa', 'SC': 'Sub-Saharan Africa', 'ZW': 'Sub-Saharan Africa', 'NA': 'Sub-Saharan Africa',
     'AU': 'Oceania', 'NZ': 'Oceania', 'FJ': 'Oceania', 'PF': 'Oceania', 'PG': 'Oceania'
 };
 
