@@ -3,17 +3,29 @@ version: '3.8'
 services:
   app:
     build: .
-    container_name: wandergrid
+    container_name: wandergrid_app
     restart: unless-stopped
     ports:
-      - "6923:3000"
-    volumes:
-      - ./data:/app/data
+      - "3000:3000"
     environment:
       - NODE_ENV=production
       - PORT=3000
-      - DATABASE_URL=sqlite:/app/data/database.db
-      - API_KEY=${API_KEY} # Gemini API Key
+      - DATABASE_URL=postgres://wandergrid:wandergrid_password@db:5432/wandergrid
+    depends_on:
+      - db
+    networks:
+      - wandergrid-net
+
+  db:
+    image: postgres:15-alpine
+    container_name: wandergrid_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: wandergrid
+      POSTGRES_PASSWORD: wandergrid_password
+      POSTGRES_DB: wandergrid
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
     networks:
       - wandergrid-net
 

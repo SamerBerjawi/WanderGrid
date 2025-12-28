@@ -1,77 +1,16 @@
 
-import { User, Trip, PublicHoliday, EntitlementType, SavedConfig, EntitlementRule, WorkspaceSettings, CustomEvent, Transport } from '../types';
+import { User, Trip, PublicHoliday, EntitlementType, SavedConfig, WorkspaceSettings, CustomEvent, Transport } from '../types';
 import { getCoordinates } from './geocoding';
 
-const STORAGE_KEY = 'wandergrid_app_data';
 const GEO_CACHE_KEY = 'wandergrid_geo_cache_v2';
 const COORD_CACHE_KEY = 'wandergrid_coord_cache';
-
-// --- Default Data (Clean Slate) ---
-const DEFAULT_USERS: User[] = [
-  { 
-    id: '1', 
-    name: 'Admin User', 
-    email: 'admin@wandergrid.app',
-    password: 'password', // Default mock password
-    role: 'Admin', 
-    leaveBalance: 0, 
-    takenLeave: 0, 
-    allowance: 0, 
-    lieuBalance: 0, 
-    holidayConfigIds: [],
-    policies: [],
-    activeYears: [new Date().getFullYear()]
-  }
-];
-
-const DEFAULT_TRIPS: Trip[] = [];
-const DEFAULT_CUSTOM_EVENTS: CustomEvent[] = [];
-
-// Entitlements are now just Categories (Definitions)
-const DEFAULT_ENTITLEMENTS: EntitlementType[] = [
-  { 
-    id: 'e1', 
-    name: 'Annual Holiday', 
-    category: 'Annual', 
-    color: 'blue',
-    accrual: { period: 'yearly', amount: 20 },
-    carryOver: { enabled: true, maxDays: 5, expiryType: 'months', expiryValue: 3 }
-  },
-  { 
-    id: 'e2', 
-    name: 'Days in Lieu', 
-    category: 'Lieu', 
-    color: 'green',
-    accrual: { period: 'lump_sum', amount: 0 },
-    carryOver: { enabled: false, maxDays: 0, expiryType: 'none' }
-  },
-  { 
-    id: 'e3', 
-    name: 'Seniority Days', 
-    category: 'Seniority', 
-    color: 'purple',
-    accrual: { period: 'yearly', amount: 1 },
-    carryOver: { enabled: false, maxDays: 0, expiryType: 'none' }
-  },
-  { 
-    id: 'e4', 
-    name: 'Sick Leave', 
-    category: 'Sick', 
-    isUnlimited: true, 
-    color: 'amber',
-    accrual: { period: 'lump_sum', amount: 0 },
-    carryOver: { enabled: false, maxDays: 0, expiryType: 'none' }
-  },
-];
-
-const DEFAULT_SAVED_CONFIGS: SavedConfig[] = [];
 
 const DEFAULT_WORKSPACE_SETTINGS: WorkspaceSettings = {
   orgName: 'WanderGrid Workspace',
   currency: 'USD',
   dateFormat: 'MM/DD/YYYY',
   autoSync: false,
-  theme: 'dark', // Changed default to dark
+  theme: 'dark',
   workingDays: [1, 2, 3, 4, 5],
   aviationStackApiKey: '',
   brandfetchApiKey: ''
@@ -83,111 +22,25 @@ export interface ImportState {
     isActive: boolean;
 }
 
-// --- State Management ---
+// --- API Service with LocalStorage Fallback ---
 class DataService {
-  private users: User[] = [];
-  private trips: Trip[] = [];
-  private customEvents: CustomEvent[] = [];
-  private entitlements: EntitlementType[] = [];
-  private savedConfigs: SavedConfig[] = [];
-  private workspaceSettings: WorkspaceSettings = DEFAULT_WORKSPACE_SETTINGS;
-
   // Import State Tracking
   private _importState: ImportState = { status: '', progress: 0, isActive: false };
   private _importListeners: ((state: ImportState) => void)[] = [];
+  private _useApi: boolean = true; // Optimistically try API first
 
-  constructor() {
-    this.loadFromStorage();
-  }
-
-  private loadFromStorage() {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const data = JSON.parse(stored);
-        this.users = Array.isArray(data.users) ? data.users : DEFAULT_USERS;
-        
-        // Migration logic for trips
-        this.trips = (Array.isArray(data.trips) ? data.trips : DEFAULT_TRIPS).map((t: any) => {
-            // Migrate legacy flights to transports
-            let transports: Transport[] = t.transports || [];
-            if (!transports.length && t.flights && t.flights.length > 0) {
-                transports = t.flights.map((f: any) => ({
-                    ...f,
-                    mode: 'Flight',
-                    provider: f.airline || '',
-                    identifier: f.flightNumber || '',
-                }));
-            }
-
-            return {
-                ...t,
-                transports: transports,
-                accommodations: t.accommodations || [],
-                activities: t.activities || [],
-                locations: t.locations || [], // Initialize locations
-                coordinates: t.coordinates || undefined
-            };
-        });
-
-        this.customEvents = Array.isArray(data.customEvents) ? data.customEvents : DEFAULT_CUSTOM_EVENTS;
-        this.entitlements = Array.isArray(data.entitlements) ? data.entitlements : DEFAULT_ENTITLEMENTS;
-        this.savedConfigs = Array.isArray(data.savedConfigs) ? data.savedConfigs : DEFAULT_SAVED_CONFIGS;
-        
-        // Robust merge for settings
-        this.workspaceSettings = { ...DEFAULT_WORKSPACE_SETTINGS, ...(data.workspaceSettings || {}) };
-
-        // Ensure activeYears exists on users loaded from old backups
-        this.users = this.users.map(u => ({
-            ...u,
-            activeYears: u.activeYears || [new Date().getFullYear()]
-        }));
-
-      } else {
-        this.resetToDefaults();
-      }
-    } catch (e) {
-      console.error("Failed to load app data from storage", e);
-      this.resetToDefaults();
-    }
-  }
-
-  private saveToStorage() {
-    try {
-      const data = {
-        users: this.users,
-        trips: this.trips,
-        customEvents: this.customEvents,
-        entitlements: this.entitlements,
-        savedConfigs: this.savedConfigs,
-        workspaceSettings: this.workspaceSettings,
-        timestamp: new Date().toISOString()
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    } catch (e) {
-      console.error("Failed to save app data to storage", e);
-      throw new Error("Failed to save data to local storage. Quota may be exceeded.");
-    }
-  }
-
-  private resetToDefaults() {
-    this.users = [...DEFAULT_USERS];
-    this.trips = [...DEFAULT_TRIPS];
-    this.customEvents = [...DEFAULT_CUSTOM_EVENTS];
-    this.entitlements = [...DEFAULT_ENTITLEMENTS];
-    this.savedConfigs = [...DEFAULT_SAVED_CONFIGS];
-    this.workspaceSettings = { ...DEFAULT_WORKSPACE_SETTINGS };
-    this.saveToStorage();
-  }
+  constructor() {}
 
   // --- Auth ---
   async login(email: string, pass: string): Promise<User | null> {
-    const user = this.users.find(u => u.email === email && u.password === pass);
-    return Promise.resolve(user || null);
+    const users = await this.getUsers();
+    const user = users.find(u => u.email === email && u.password === pass);
+    return user || null;
   }
 
   async register(name: string, email: string, pass: string): Promise<User> {
-    const exists = this.users.find(u => u.email === email);
+    const users = await this.getUsers();
+    const exists = users.find(u => u.email === email);
     if (exists) throw new Error("User already exists");
 
     const newUser: User = {
@@ -226,34 +79,134 @@ class DataService {
       this._importListeners.forEach(listener => listener(this._importState));
   }
 
+  // --- Generic Fetch with Fallback ---
+  private async fetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
+      if (!this._useApi) {
+          return this.localFetch<T>(endpoint, options);
+      }
+
+      try {
+          // Attempt API Call
+          const res = await fetch(`/api${endpoint}`, {
+              headers: { 'Content-Type': 'application/json' },
+              ...options
+          });
+          
+          if (!res.ok) {
+              // If 404 (Route not found), assume backend is missing/misconfigured and switch to local
+              if (res.status === 404) throw new Error("API Route Not Found");
+              throw new Error(`API Error: ${res.statusText}`);
+          }
+          return await res.json();
+      } catch (e) {
+          console.warn(`Backend unavailable (${endpoint}). Switching to LocalStorage mode. Error:`, e);
+          this._useApi = false; // Switch to local mode for this session
+          return this.localFetch<T>(endpoint, options);
+      }
+  }
+
+  // --- LocalStorage Implementation ---
+  private async localFetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
+      const method = options?.method || 'GET';
+      const body = options?.body ? JSON.parse(options.body as string) : null;
+      const key = (k: string) => `wandergrid_${k}`;
+      
+      // Simulate network delay
+      await new Promise(r => setTimeout(r, 50));
+
+      // 1. Settings
+      if (endpoint === '/settings') {
+          if (method === 'GET') {
+              const s = localStorage.getItem(key('settings'));
+              return (s ? JSON.parse(s) : {}) as T;
+          }
+          if (method === 'PUT') {
+              localStorage.setItem(key('settings'), JSON.stringify(body));
+              return body as T;
+          }
+      }
+
+      // 2. Collections (Users, Trips, Events, Entitlements, Configs)
+      const collections = [
+          { route: '/users', storage: 'users' },
+          { route: '/trips', storage: 'trips' },
+          { route: '/events', storage: 'events' },
+          { route: '/entitlements', storage: 'entitlements' },
+          { route: '/configs', storage: 'configs' }
+      ];
+
+      for (const col of collections) {
+          // List / Create
+          if (endpoint === col.route) {
+              const list = JSON.parse(localStorage.getItem(key(col.storage)) || '[]');
+              if (method === 'GET') {
+                  return list as T;
+              }
+              if (method === 'POST') {
+                  list.push(body);
+                  localStorage.setItem(key(col.storage), JSON.stringify(list));
+                  return body as T;
+              }
+          }
+          // Item Operations
+          if (endpoint.startsWith(`${col.route}/`)) {
+              const id = endpoint.split('/')[2];
+              const list = JSON.parse(localStorage.getItem(key(col.storage)) || '[]');
+              
+              if (method === 'PUT') {
+                  const idx = list.findIndex((i: any) => i.id === id);
+                  if (idx >= 0) list[idx] = body;
+                  else list.push(body); // Upsert fallback
+                  localStorage.setItem(key(col.storage), JSON.stringify(list));
+                  return body as T;
+              }
+              
+              if (method === 'DELETE') {
+                  const newList = list.filter((i: any) => i.id !== id);
+                  localStorage.setItem(key(col.storage), JSON.stringify(newList));
+                  return { success: true } as unknown as T;
+              }
+          }
+      }
+
+      // 3. Backup/Restore
+      if (endpoint === '/backup') {
+          const backup: any = { workspaceSettings: {} };
+          collections.forEach(c => {
+              backup[c.storage] = JSON.parse(localStorage.getItem(key(c.storage)) || '[]');
+          });
+          const s = localStorage.getItem(key('settings'));
+          if (s) backup.workspaceSettings = JSON.parse(s);
+          return backup as T;
+      }
+
+      if (endpoint === '/restore') {
+          const data = body;
+          collections.forEach(c => {
+              if (data[c.storage]) localStorage.setItem(key(c.storage), JSON.stringify(data[c.storage]));
+          });
+          if (data.workspaceSettings) localStorage.setItem(key('settings'), JSON.stringify(data.workspaceSettings));
+          return { success: true } as unknown as T;
+      }
+
+      throw new Error(`Local Mock: Route not found ${endpoint}`);
+  }
+
   // --- Users ---
   async getUsers(): Promise<User[]> {
-    return Promise.resolve([...this.users]);
+    return this.fetch<User[]>('/users');
   }
 
   async updateUser(user: User): Promise<void> {
-    const index = this.users.findIndex(u => u.id === user.id);
-    if (index !== -1) {
-      this.users[index] = { ...user };
-      this.saveToStorage();
-    }
-    return Promise.resolve();
+    await this.fetch(`/users/${user.id}`, { method: 'PUT', body: JSON.stringify(user) });
   }
   
   async addUser(user: User): Promise<void> {
-    this.users.push({ ...user });
-    this.saveToStorage();
-    return Promise.resolve();
+    await this.fetch('/users', { method: 'POST', body: JSON.stringify(user) });
   }
   
   async deleteUser(id: string): Promise<void> {
-    this.users = this.users.filter(u => u.id !== id);
-    this.trips = this.trips.map(trip => ({
-        ...trip,
-        participants: trip.participants.filter(pId => pId !== id)
-    })).filter(trip => trip.participants.length > 0);
-    this.saveToStorage();
-    return Promise.resolve();
+    await this.fetch(`/users/${id}`, { method: 'DELETE' });
   }
 
   // --- Trips (With Geocoding Intelligence) ---
@@ -290,226 +243,154 @@ class DataService {
   }
 
   async getTrips(): Promise<Trip[]> {
-    return Promise.resolve([...this.trips]);
+    return this.fetch<Trip[]>('/trips');
   }
 
   async addTrip(trip: Trip): Promise<Trip> {
     const intelligentTrip = await this.processGeocoding(trip);
-    this.trips.push(intelligentTrip);
-    this.saveToStorage();
-    return Promise.resolve(intelligentTrip);
-  }
-
-  // Generate a unique signature for duplicate detection
-  private getTripSignature(trip: Trip): string {
-      // For flight imports, transport details are the best identifier
-      if (trip.transports && trip.transports.length > 0) {
-          // Sort transports by departure date to ensure consistency
-          const sorted = [...trip.transports].sort((a,b) => {
-              const dA = a.departureDate || '';
-              const dB = b.departureDate || '';
-              return dA.localeCompare(dB);
-          });
-          // Signature: Provider + FlightNum + Date
-          return sorted.map(t => `${t.mode}|${t.provider}|${t.identifier}|${t.departureDate}`).join('||');
-      }
-      // Fallback for manual trips: Name + Dates
-      return `${trip.name}|${trip.startDate}|${trip.endDate}|${trip.location}`;
+    return this.fetch<Trip>('/trips', { method: 'POST', body: JSON.stringify(intelligentTrip) });
   }
 
   async addTrips(newTrips: Trip[]): Promise<void> {
-    if (this._importState.isActive) return; // Prevent concurrent imports
+    if (this._importState.isActive) return;
 
     const total = newTrips.length;
     this.updateImportState(`Analyzing ${total} trips...`, 0, true);
 
-    const existingSignatures = new Set(this.trips.map(t => this.getTripSignature(t)));
+    const existingTrips = await this.getTrips();
+    // Simple dedupe signature
+    const getTripSignature = (trip: Trip) => {
+        if (trip.transports && trip.transports.length > 0) {
+            return trip.transports.map(t => `${t.mode}|${t.provider}|${t.identifier}|${t.departureDate}`).join('||');
+        }
+        return `${trip.name}|${trip.startDate}|${trip.endDate}`;
+    };
+
+    const existingSignatures = new Set(existingTrips.map(t => getTripSignature(t)));
     let addedCount = 0;
 
     for (let i = 0; i < total; i++) {
         const trip = newTrips[i];
-        const sig = this.getTripSignature(trip);
+        const sig = getTripSignature(trip);
         const percent = Math.round(((i + 1) / total) * 100);
         
-        // 1. Check Duplicate
         if (existingSignatures.has(sig)) {
-            console.warn(`Duplicate trip skipped: ${trip.name} (${trip.startDate})`);
             this.updateImportState(`Skipping duplicate: ${trip.name}`, percent, true);
             continue;
         }
 
         this.updateImportState(`Importing ${i + 1}/${total}: ${trip.name}`, percent, true);
 
-        // 2. Geocode & Add (Sequential to respect API limits if using OSM)
         try {
-            // If using OSM Nominatim, we need to be polite. 
-            // However, with IATA lookup optimization, many calls will be instant.
-            
             const intelligentTrip = await this.processGeocoding(trip);
-            this.trips.push(intelligentTrip);
-            
-            // Add to signatures immediately to prevent duplicates within the same import batch
+            await this.addTrip(intelligentTrip);
             existingSignatures.add(sig); 
             addedCount++;
-            
-            // Small throttle to be safe if mixing IATA and Nominatim calls
-            await new Promise(r => setTimeout(r, 200)); 
+            await new Promise(r => setTimeout(r, 50)); 
         } catch (e) {
-            console.error(`Geocoding failed for ${trip.name}, saving raw data.`, e);
-            this.trips.push(trip);
-            existingSignatures.add(sig);
+            console.error(`Import error for ${trip.name}`, e);
+            await this.addTrip(trip); // Fallback to raw save
             addedCount++;
         }
     }
-
-    if (addedCount > 0) {
-        this.saveToStorage();
-    }
     
     this.updateImportState(`Successfully imported ${addedCount} trips.`, 100, false);
-    
-    // Clear status after 3 seconds
     setTimeout(() => {
         if (!this._importState.isActive) {
             this.updateImportState('', 0, false);
         }
     }, 3000);
-
-    return Promise.resolve();
   }
 
   async updateTrip(trip: Trip): Promise<Trip> {
     const intelligentTrip = await this.processGeocoding(trip);
-    const index = this.trips.findIndex(t => t.id === intelligentTrip.id);
-    if (index !== -1) {
-        this.trips[index] = { ...intelligentTrip };
-        this.saveToStorage();
-    }
-    return Promise.resolve(intelligentTrip);
+    return this.fetch<Trip>(`/trips/${trip.id}`, { method: 'PUT', body: JSON.stringify(intelligentTrip) });
   }
 
   async deleteTrip(id: string): Promise<void> {
-    this.trips = this.trips.filter(t => t.id !== id);
-    this.saveToStorage();
-    return Promise.resolve();
+    await this.fetch(`/trips/${id}`, { method: 'DELETE' });
   }
 
   // --- Events ---
   async getCustomEvents(): Promise<CustomEvent[]> {
-    return Promise.resolve([...this.customEvents]);
+    return this.fetch<CustomEvent[]>('/events');
   }
 
   async addCustomEvent(event: CustomEvent): Promise<void> {
-    this.customEvents.push({ ...event });
-    this.saveToStorage();
-    return Promise.resolve();
+    await this.fetch('/events', { method: 'POST', body: JSON.stringify(event) });
   }
 
   async deleteCustomEvent(id: string): Promise<void> {
-    this.customEvents = this.customEvents.filter(e => e.id !== id);
-    this.saveToStorage();
-    return Promise.resolve();
+    await this.fetch(`/events/${id}`, { method: 'DELETE' });
   }
 
   // --- Public Holidays ---
   async getPublicHolidays(countryCode: string): Promise<PublicHoliday[]> {
-    const configHolidays = this.savedConfigs
+    const configs = await this.getSavedConfigs();
+    const configHolidays = configs
         .filter(c => c.countryCode === countryCode)
         .flatMap(c => c.holidays);
-    return Promise.resolve(configHolidays);
+    return configHolidays;
   }
 
   // --- Entitlements ---
   async getEntitlementTypes(): Promise<EntitlementType[]> {
-    return Promise.resolve([...this.entitlements]);
+    return this.fetch<EntitlementType[]>('/entitlements');
   }
 
   async saveEntitlementType(entitlement: EntitlementType): Promise<void> {
-    const index = this.entitlements.findIndex(e => e.id === entitlement.id);
-    if (index >= 0) {
-        this.entitlements[index] = { ...entitlement };
-    } else {
-        this.entitlements.push({ ...entitlement });
-    }
-    this.saveToStorage();
-    return Promise.resolve();
+    await this.fetch(`/entitlements/${entitlement.id}`, { method: 'PUT', body: JSON.stringify(entitlement) });
   }
 
   async deleteEntitlementType(id: string): Promise<void> {
-    this.entitlements = this.entitlements.filter(e => e.id !== id);
-    this.users = this.users.map(user => ({
-        ...user,
-        policies: (user.policies || []).filter(p => p.entitlementId !== id)
-    }));
-    this.trips = this.trips.map(trip => {
-        const updatedAllocations = (trip.allocations || []).filter(a => a.entitlementId !== id);
-        return {
-            ...trip,
-            entitlementId: trip.entitlementId === id ? undefined : trip.entitlementId,
-            allocations: updatedAllocations.length > 0 ? updatedAllocations : undefined
-        };
-    });
-    this.saveToStorage();
-    return Promise.resolve();
+    await this.fetch(`/entitlements/${id}`, { method: 'DELETE' });
   }
 
   // --- Configs ---
   async getSavedConfigs(): Promise<SavedConfig[]> {
-      return Promise.resolve([...this.savedConfigs]);
+      return this.fetch<SavedConfig[]>('/configs');
   }
 
   async saveConfig(config: SavedConfig): Promise<void> {
-      const index = this.savedConfigs.findIndex(c => c.id === config.id);
-      if (index >= 0) {
-          this.savedConfigs[index] = { ...config };
-      } else {
-          this.savedConfigs.push({ ...config });
-      }
-      this.saveToStorage();
-      return Promise.resolve();
+      await this.fetch(`/configs/${config.id}`, { method: 'PUT', body: JSON.stringify(config) });
   }
 
   async deleteConfig(id: string): Promise<void> {
-      this.savedConfigs = this.savedConfigs.filter(c => c.id !== id);
-      this.saveToStorage();
-      return Promise.resolve();
+      await this.fetch(`/configs/${id}`, { method: 'DELETE' });
   }
 
   // --- Settings ---
   async getWorkspaceSettings(): Promise<WorkspaceSettings> {
-    return Promise.resolve({ ...this.workspaceSettings });
+    const settings = await this.fetch<WorkspaceSettings>('/settings');
+    return { ...DEFAULT_WORKSPACE_SETTINGS, ...settings };
   }
 
   async updateWorkspaceSettings(settings: WorkspaceSettings): Promise<void> {
-    this.workspaceSettings = { ...settings };
-    this.saveToStorage();
-    return Promise.resolve();
+    await this.fetch('/settings', { method: 'PUT', body: JSON.stringify(settings) });
   }
 
   // --- Export/Import ---
   async exportFullState(): Promise<string> {
-      // Capture intelligent caches to persist expensive API results
+      // Fetch caches
       let geoCache: any[] = [];
       try {
           const storedGeo = localStorage.getItem(GEO_CACHE_KEY);
           if (storedGeo) geoCache = JSON.parse(storedGeo);
-      } catch (e) { console.warn("Failed to read geo cache", e); }
+      } catch (e) {}
 
       let coordCache: any[] = [];
       try {
           const storedCoord = localStorage.getItem(COORD_CACHE_KEY);
           if (storedCoord) coordCache = JSON.parse(storedCoord);
-      } catch (e) { console.warn("Failed to read coord cache", e); }
+      } catch (e) {}
+
+      // Get DB State
+      const dbState = await this.fetch<any>('/backup');
 
       const state = {
-          version: '3.4', // Updated for Cache Support
+          version: '3.6',
           timestamp: new Date().toISOString(),
-          users: this.users,
-          trips: this.trips,
-          customEvents: this.customEvents,
-          entitlements: this.entitlements,
-          savedConfigs: this.savedConfigs,
-          workspaceSettings: this.workspaceSettings,
+          ...dbState,
           caches: {
               geo: geoCache,
               coord: coordCache
@@ -526,45 +407,21 @@ class DataService {
           const state = JSON.parse(cleanString);
           
           if (!state || typeof state !== 'object') {
-             throw new Error("Invalid backup file format: Root must be an object");
+             throw new Error("Invalid backup file format");
           }
 
-          this.users = (Array.isArray(state.users) ? state.users : []).map((u: any) => ({
-            ...u,
-            activeYears: u.activeYears || [new Date().getFullYear()], 
-            policies: u.policies || []
-          }));
+          // Restore DB
+          await this.fetch('/restore', { method: 'POST', body: JSON.stringify(state) });
 
-          this.trips = (Array.isArray(state.trips) ? state.trips : []).map((t: any) => ({
-              ...t,
-              transports: t.transports || t.flights?.map((f:any) => ({...f, mode: 'Flight', provider: f.airline, identifier: f.flightNumber})) || [],
-              accommodations: t.accommodations || [], 
-              activities: t.activities || [],
-              locations: t.locations || [],
-              coordinates: t.coordinates || undefined
-          }));
-
-          this.customEvents = Array.isArray(state.customEvents) ? state.customEvents : [];
-          this.entitlements = Array.isArray(state.entitlements) ? state.entitlements : [];
-          this.savedConfigs = Array.isArray(state.savedConfigs) ? state.savedConfigs : [];
-          
-          this.workspaceSettings = { ...DEFAULT_WORKSPACE_SETTINGS, ...(state.workspaceSettings || {}) };
-
-          // Restore Caches if present
+          // Restore Caches locally
           if (state.caches) {
               if (state.caches.geo && Array.isArray(state.caches.geo)) {
-                  try {
-                      localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(state.caches.geo));
-                  } catch (e) { console.error("Failed to restore geo cache", e); }
+                  try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(state.caches.geo)); } catch (e) {}
               }
               if (state.caches.coord && Array.isArray(state.caches.coord)) {
-                  try {
-                      localStorage.setItem(COORD_CACHE_KEY, JSON.stringify(state.caches.coord));
-                  } catch (e) { console.error("Failed to restore coord cache", e); }
+                  try { localStorage.setItem(COORD_CACHE_KEY, JSON.stringify(state.caches.coord)); } catch (e) {}
               }
           }
-
-          this.saveToStorage();
           
           return Promise.resolve();
       } catch (e) {
