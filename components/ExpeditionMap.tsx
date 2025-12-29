@@ -229,6 +229,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
     const [activeLayer, setActiveLayer] = useState<LayerType>('standard');
     const [geoJsonData, setGeoJsonData] = useState<any>(cachedGeoJson);
     const [showCityMarkers, setShowCityMarkers] = useState(true);
+    const [showLandSeaRoutes, setShowLandSeaRoutes] = useState(false);
     const isDark = useDarkMode();
 
     // Pre-calculate frequencies
@@ -416,21 +417,62 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
         let hasPoints = false;
 
         trips.forEach(trip => {
-            const { color, className } = getStatusStyle(trip, isDark, activeLayer);
+            const flightStyle = getStatusStyle(trip, isDark, activeLayer);
 
             if (trip.transports && trip.transports.length > 0) {
                 trip.transports.forEach(t => {
                     if (t.originLat && t.originLng && t.destLat && t.destLng) {
-                        const start = L.latLng(t.originLat, t.originLng);
-                        const end = L.latLng(t.destLat, t.destLng);
                         
-                        const curvedPath = getCurvePoints(start, end);
+                        // Check Mode and Filter
+                        const isFlight = t.mode === 'Flight';
+                        const isLand = ['Car Rental', 'Personal Car', 'Bus', 'Train'].includes(t.mode);
+                        const isSea = t.mode === 'Cruise';
+
+                        if (!isFlight && !showLandSeaRoutes) return;
+
+                        let color = flightStyle.color;
+                        let className = flightStyle.className;
+
+                        if (isLand) {
+                            color = '#f59e0b'; // Amber
+                            className = 'flight-path-land';
+                        } else if (isSea) {
+                            color = '#06b6d4'; // Cyan
+                            className = 'flight-path-sea';
+                        }
+
+                        // Determine the path points
+                        const pathPoints: L.LatLng[] = [];
+                        pathPoints.push(L.latLng(t.originLat, t.originLng));
+                        
+                        if (t.waypoints && t.waypoints.length > 0) {
+                            t.waypoints.forEach(wp => {
+                                if (wp.coordinates) {
+                                    pathPoints.push(L.latLng(wp.coordinates.lat, wp.coordinates.lng));
+                                }
+                            });
+                        }
+                        
+                        pathPoints.push(L.latLng(t.destLat, t.destLng));
+
+                        // Generate curve for each segment
+                        const fullCurvedPath: L.LatLng[] = [];
+                        
+                        for (let i = 0; i < pathPoints.length - 1; i++) {
+                            const p1 = pathPoints[i];
+                            const p2 = pathPoints[i+1];
+                            const segmentCurve = getCurvePoints(p1, p2);
+                            // Avoid duplicating points
+                            if (i > 0) segmentCurve.shift();
+                            fullCurvedPath.push(...segmentCurve);
+                        }
+
                         const key = getRouteKey(t.originLat, t.originLng, t.destLat, t.destLng);
                         const freq = routeFrequencies.get(key) || 1;
                         const dynamicWeight = showFrequencyWeight ? Math.min(10, 2 + ((freq - 1) * 1)) : 2;
 
                         // Static Track
-                        const trackLine = L.polyline(curvedPath, {
+                        const trackLine = L.polyline(fullCurvedPath, {
                             color: color, 
                             weight: 1 + (dynamicWeight * 0.2), 
                             opacity: (isDark || activeLayer === 'satellite') ? 0.3 : 0.4,
@@ -441,7 +483,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                         // Animated Flow
                         let flowLine: L.Polyline | null = null;
                         if (animateRoutes) {
-                            flowLine = L.polyline(curvedPath, {
+                            flowLine = L.polyline(fullCurvedPath, {
                                 color: color,
                                 weight: dynamicWeight,
                                 opacity: 1,
@@ -450,7 +492,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                                 lineCap: 'round'
                             }).addTo(map);
                         } else {
-                            flowLine = L.polyline(curvedPath, {
+                            flowLine = L.polyline(fullCurvedPath, {
                                 color: color,
                                 weight: dynamicWeight,
                                 opacity: 0.8,
@@ -459,17 +501,23 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                         }
 
                         // Interaction Line
-                        const hitLine = L.polyline(curvedPath, {
+                        const hitLine = L.polyline(fullCurvedPath, {
                             color: 'transparent',
                             weight: Math.max(15, dynamicWeight + 10), 
                             opacity: 0,
                             interactive: true
                         }).addTo(map);
 
+                        // Tooltip logic
+                        let routeLabel = `${t.origin} → ${t.destination}`;
+                        if (t.waypoints && t.waypoints.length > 0) {
+                            routeLabel = `${t.origin} → ${t.waypoints.length} Stops → ${t.destination}`;
+                        }
+
                         hitLine.bindTooltip(`
                             <div class="font-sans p-1">
                                 <div class="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">${trip.name}</div>
-                                <div class="font-bold text-sm text-white">${t.origin} <span class="text-gray-500">→</span> ${t.destination}</div>
+                                <div class="font-bold text-sm text-white">${routeLabel}</div>
                                 <div class="text-[10px] text-gray-400 mt-1">${t.provider} • ${new Date(t.departureDate).toLocaleDateString()}</div>
                             </div>
                         `, { sticky: true, direction: 'top', className: 'bg-black/90 text-white border border-white/20 shadow-xl rounded-xl backdrop-blur-md px-0 py-0' });
@@ -489,39 +537,30 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
 
                         hitLine.on('click', () => onTripClick && onTripClick(trip.id));
 
-                        // CITY MARKERS
+                        // CITY MARKERS (Start, End, and Waypoints)
                         if (showCityMarkers) {
-                            L.circleMarker(start, {
-                                radius: 3, 
-                                fillColor: color,
-                                color: 'transparent',
-                                fillOpacity: 0.8
-                            }).addTo(map);
-
-                            const destMarker = L.circleMarker(end, {
-                                radius: 4, 
-                                fillColor: (isDark || activeLayer === 'satellite') ? '#000' : '#fff', 
-                                color: color, 
-                                weight: 2,
-                                fillOpacity: 1
-                            }).addTo(map);
-
-                            destMarker.on('click', () => onTripClick && onTripClick(trip.id));
-                            destMarker.bindTooltip(trip.name, { 
-                                permanent: false, 
-                                direction: 'top',
-                                offset: [0, -5],
-                                className: 'bg-black/90 text-white border border-white/20 shadow-xl text-xs font-bold px-3 py-1.5 rounded-lg'
+                            pathPoints.forEach((pt, idx) => {
+                                const isEndpoint = idx === 0 || idx === pathPoints.length - 1;
+                                const radius = isEndpoint ? 4 : 2; // Smaller radius for intermediate stops
+                                
+                                L.circleMarker(pt, {
+                                    radius: radius, 
+                                    fillColor: isEndpoint ? ((isDark || activeLayer === 'satellite') ? '#000' : '#fff') : color, 
+                                    color: color, 
+                                    weight: 2,
+                                    fillOpacity: 1
+                                }).addTo(map)
+                                .on('click', () => onTripClick && onTripClick(trip.id));
                             });
                         }
                         
-                        bounds.extend(start);
-                        bounds.extend(end);
+                        pathPoints.forEach(pt => bounds.extend(pt));
                         hasPoints = true;
                     }
                 });
             } else if (trip.coordinates) {
                 // Trip without transport
+                const { color } = getStatusStyle(trip, isDark, activeLayer);
                 const point = L.latLng(trip.coordinates.lat, trip.coordinates.lng);
                 
                 if (showCityMarkers) {
@@ -550,7 +589,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
             map.setView([20, 0], 2);
         }
 
-    }, [trips, onTripClick, routeFrequencies, showFrequencyWeight, animateRoutes, isDark, activeLayer, showCountries, visitedCountries, geoJsonData, viewMode, visitedPlaces, showCityMarkers]);
+    }, [trips, onTripClick, routeFrequencies, showFrequencyWeight, animateRoutes, isDark, activeLayer, showCountries, visitedCountries, geoJsonData, viewMode, visitedPlaces, showCityMarkers, showLandSeaRoutes]);
 
     const handleZoomIn = () => mapInstance.current?.zoomIn();
     const handleZoomOut = () => mapInstance.current?.zoomOut();
@@ -568,6 +607,9 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                     trip.transports.forEach(t => {
                         if (t.originLat && t.originLng) bounds.extend([t.originLat, t.originLng]);
                         if (t.destLat && t.destLng) bounds.extend([t.destLat, t.destLng]);
+                        t.waypoints?.forEach(wp => {
+                            if (wp.coordinates) bounds.extend([wp.coordinates.lat, wp.coordinates.lng]);
+                        });
                     });
                     hasPoints = true;
                 } else if (trip.coordinates) {
@@ -660,6 +702,16 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                 >
                     <span className="material-icons-outlined text-lg group-hover/fit:scale-110 transition-transform">center_focus_strong</span>
                 </button>
+
+                {(viewMode === 'network') && (
+                    <button 
+                        onClick={() => setShowLandSeaRoutes(!showLandSeaRoutes)}
+                        className={`w-10 h-10 rounded-2xl border shadow-2xl flex items-center justify-center transition-colors ${showLandSeaRoutes ? (isDark ? 'bg-white/20 text-white border-white/20' : 'bg-blue-50 text-blue-600 border-blue-200') : (isDark ? 'bg-white/10 text-white/50 border-white/20 hover:text-white' : 'bg-white/80 text-slate-400 border-slate-200 hover:text-slate-600')}`}
+                        title={showLandSeaRoutes ? "Hide Land/Sea Routes" : "Show Land/Sea Routes"}
+                    >
+                        <span className="material-icons-outlined text-lg">commute</span>
+                    </button>
+                )}
 
                 <button 
                     onClick={handleScreenshot} 

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button, Input, Select, Autocomplete, Badge, TimeInput } from './ui';
-import { Transport, TransportMode } from '../types';
+import { Transport, TransportMode, RoadTripWaypoint } from '../types';
 import { dataService } from '../services/mockDb';
 import { getCoordinates, calculateDistance, calculateDurationMinutes, calculateArrivalTime, searchLocations, searchStations } from '../services/geocoding';
 
@@ -55,6 +55,7 @@ interface CarForm {
     sameDropoff: boolean;
     distance?: number;
     logoUrl?: string;
+    stops: RoadTripWaypoint[];
 }
 
 interface AirportData {
@@ -111,6 +112,14 @@ const TRANSPORT_MODES: { mode: TransportMode; label: string; icon: string }[] = 
     { mode: 'Cruise', label: 'Cruise', icon: 'directions_boat' },
     { mode: 'Car Rental', label: 'Rental', icon: 'key' },
     { mode: 'Personal Car', label: 'My Car', icon: 'directions_car' },
+];
+
+const STOP_TYPES = [
+    { value: 'Stop', label: 'Quick Stop', icon: 'place' },
+    { value: 'Food', label: 'Food & Drink', icon: 'restaurant' },
+    { value: 'Sightseeing', label: 'Sightseeing', icon: 'photo_camera' },
+    { value: 'Lodging', label: 'Overnight', icon: 'hotel' },
+    { value: 'Fuel', label: 'Fuel/Charge', icon: 'local_gas_station' },
 ];
 
 const DurationInput: React.FC<{ minutes: number; onChange: (m: number) => void; onAutoCalc?: () => void; canAutoCalc?: boolean }> = ({ minutes, onChange, onAutoCalc, canAutoCalc }) => {
@@ -208,7 +217,8 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
         website: undefined,
         sameDropoff: true,
         distance: undefined,
-        logoUrl: undefined
+        logoUrl: undefined,
+        stops: []
     });
 
     const getSimpleDiffMinutes = (d1: string, t1: string, d2: string, t2: string) => {
@@ -301,7 +311,8 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                     website: first.website,
                     sameDropoff: isSame,
                     distance: first.distance,
-                    logoUrl: first.logoUrl
+                    logoUrl: first.logoUrl,
+                    stops: first.waypoints || []
                 });
             } else {
                 setTripType(first.type);
@@ -593,6 +604,61 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
         });
     };
 
+    const handleAddStop = () => {
+        setCarForm(prev => ({
+            ...prev,
+            stops: [...prev.stops, { id: Math.random().toString(), name: '', type: 'Stop', notes: '' }]
+        }));
+    };
+
+    const handleRemoveStop = (id: string) => {
+        setCarForm(prev => ({
+            ...prev,
+            stops: prev.stops.filter(s => s.id !== id)
+        }));
+    };
+
+    const handleUpdateStop = (id: string, field: keyof RoadTripWaypoint, value: any) => {
+        setCarForm(prev => ({
+            ...prev,
+            stops: prev.stops.map(s => s.id === id ? { ...s, [field]: value } : s)
+        }));
+    };
+
+    const estimateRoadTripDistance = async () => {
+        if (!carForm.pickupLocation) return;
+        setIsEstimatingDistance('car');
+        try {
+            const points = [
+                carForm.pickupLocation,
+                ...carForm.stops.map(s => s.name).filter(Boolean),
+                carForm.sameDropoff ? carForm.pickupLocation : carForm.dropoffLocation
+            ].filter(Boolean);
+
+            if (points.length < 2) return;
+
+            let totalDist = 0;
+            for (let i = 0; i < points.length - 1; i++) {
+                const start = points[i];
+                const end = points[i+1];
+                const c1 = await getCoordinates(start);
+                const c2 = await getCoordinates(end);
+                
+                if (c1 && c2) {
+                    // Haversine
+                    const dist = calculateDistance(c1.lat, c1.lng, c2.lat, c2.lng);
+                    // Road Factor approximation 1.4x straight line
+                    totalDist += dist * 1.4;
+                }
+            }
+            updateCar('distance', Math.round(totalDist));
+        } catch (e) {
+            console.error("Road trip distance failed", e);
+        } finally {
+            setIsEstimatingDistance(null);
+        }
+    };
+
     const handleEstimateCarDuration = () => {
         if (!carForm.distance) return;
         const mins = calculateDurationFromDistance(carForm.distance, mode);
@@ -675,7 +741,8 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                 reason: 'Personal',
                 distance: carForm.distance,
                 duration: carForm.duration,
-                logoUrl: carForm.logoUrl
+                logoUrl: carForm.logoUrl,
+                waypoints: carForm.stops
             };
             onSave([t]);
         } else {
@@ -876,32 +943,106 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
             {isCar ? (
                 // --- PRIVATE TRANSPORT FORM ---
                 <div className="space-y-6 bg-gray-50 dark:bg-white/5 p-6 rounded-3xl border border-gray-100 dark:border-white/5 animate-fade-in">
-                    {/* ... (Car Form Inputs - same as before) ... */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <Autocomplete 
-                            label={mode === 'Car Rental' ? "Pickup Location" : "Start Location"} 
-                            placeholder="Airport, City or Station" 
-                            value={carForm.pickupLocation} 
-                            onChange={val => updateCar('pickupLocation', val)}
-                            fetchSuggestions={fetchCarLocationSuggestions}
-                        />
-                        {!carForm.sameDropoff && (
+                    
+                    {/* Route Planner Section */}
+                    <div className="relative pl-8 border-l-2 border-dashed border-gray-200 dark:border-white/10 space-y-6">
+                        {/* Start Point */}
+                        <div className="relative">
+                            <div className="absolute -left-[41px] top-3 w-6 h-6 rounded-full border-4 border-white dark:border-gray-800 bg-emerald-500 shadow-sm z-10" />
                             <Autocomplete 
-                                label={mode === 'Car Rental' ? "Drop-off Location" : "Destination"} 
+                                label={mode === 'Car Rental' ? "Pickup Location" : "Start Location"} 
                                 placeholder="Airport, City or Station" 
-                                value={carForm.dropoffLocation} 
-                                onChange={val => updateCar('dropoffLocation', val)}
+                                value={carForm.pickupLocation} 
+                                onChange={val => updateCar('pickupLocation', val)}
                                 fetchSuggestions={fetchCarLocationSuggestions}
                             />
-                        )}
-                        {mode === 'Car Rental' && (
-                            <div className={`md:col-span-2 flex items-center gap-2 p-3 rounded-xl bg-white dark:bg-black/20 border border-gray-200 dark:border-white/10 w-fit cursor-pointer ${carForm.sameDropoff ? 'text-blue-600 dark:text-blue-400 border-blue-200' : 'text-gray-500'}`} onClick={() => updateCar('sameDropoff', !carForm.sameDropoff)}>
-                                <div className={`w-4 h-4 rounded border flex items-center justify-center ${carForm.sameDropoff ? 'bg-blue-600 border-blue-600' : 'bg-white'}`}>
-                                    {carForm.sameDropoff && <span className="material-icons-outlined text-white text-[10px]">check</span>}
+                        </div>
+
+                        {/* Waypoints */}
+                        {carForm.stops.map((stop, index) => (
+                            <div key={stop.id} className="relative animate-fade-in">
+                                <div className="absolute -left-[39px] top-8 w-5 h-5 rounded-full bg-white dark:bg-gray-800 border-2 border-blue-400 z-10 flex items-center justify-center">
+                                    <div className="w-1.5 h-1.5 bg-blue-400 rounded-full" />
                                 </div>
-                                <span className="text-xs font-bold">Return to same location</span>
+                                
+                                <div className="bg-white dark:bg-black/20 p-3 rounded-2xl border border-gray-200 dark:border-white/10 relative group">
+                                    <button 
+                                        onClick={() => handleRemoveStop(stop.id)} 
+                                        className="absolute -right-2 -top-2 w-6 h-6 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-500 hover:text-white shadow-sm"
+                                        title="Remove Stop"
+                                    >
+                                        <span className="material-icons-outlined text-sm">close</span>
+                                    </button>
+                                    
+                                    <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                                        <div className="md:col-span-6">
+                                            <Autocomplete 
+                                                label={`Stop #${index + 1}`}
+                                                placeholder="City or Place"
+                                                value={stop.name}
+                                                onChange={val => handleUpdateStop(stop.id, 'name', val)}
+                                                fetchSuggestions={fetchCarLocationSuggestions}
+                                                className="!bg-transparent !border-0 !px-0 !py-0 !shadow-none focus:!ring-0"
+                                            />
+                                        </div>
+                                        <div className="md:col-span-3">
+                                            <Select 
+                                                label="Type"
+                                                value={stop.type} 
+                                                onChange={e => handleUpdateStop(stop.id, 'type', e.target.value)}
+                                                options={STOP_TYPES}
+                                                className="!py-1.5 !text-xs"
+                                            />
+                                        </div>
+                                        <div className="md:col-span-3">
+                                            <Input 
+                                                label="Notes" 
+                                                placeholder="Lunch, Photo op..."
+                                                value={stop.notes || ''} 
+                                                onChange={e => handleUpdateStop(stop.id, 'notes', e.target.value)}
+                                                className="!py-1.5 !text-xs"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        )}
+                        ))}
+
+                        {/* Add Stop Button */}
+                        <div className="relative h-8">
+                            <button 
+                                onClick={handleAddStop}
+                                className="absolute -left-[44px] top-0 w-8 h-8 rounded-full bg-gray-100 dark:bg-white/10 hover:bg-blue-500 hover:text-white text-gray-400 flex items-center justify-center transition-all z-10 border border-white dark:border-gray-800"
+                                title="Add Stop"
+                            >
+                                <span className="material-icons-outlined text-sm">add</span>
+                            </button>
+                            <div className="h-full flex items-center">
+                                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest pl-2 opacity-50">Add Waypoint</span>
+                            </div>
+                        </div>
+
+                        {/* End Point */}
+                        <div className="relative">
+                            <div className="absolute -left-[41px] top-3 w-6 h-6 rounded-full border-4 border-white dark:border-gray-800 bg-rose-500 shadow-sm z-10" />
+                            {!carForm.sameDropoff && (
+                                <Autocomplete 
+                                    label={mode === 'Car Rental' ? "Drop-off Location" : "Destination"} 
+                                    placeholder="Airport, City or Station" 
+                                    value={carForm.dropoffLocation} 
+                                    onChange={val => updateCar('dropoffLocation', val)}
+                                    fetchSuggestions={fetchCarLocationSuggestions}
+                                />
+                            )}
+                            {mode === 'Car Rental' && (
+                                <div className={`flex items-center gap-2 p-3 rounded-xl bg-white dark:bg-black/20 border border-gray-200 dark:border-white/10 w-fit cursor-pointer mt-2 ${carForm.sameDropoff ? 'text-blue-600 dark:text-blue-400 border-blue-200' : 'text-gray-500'}`} onClick={() => updateCar('sameDropoff', !carForm.sameDropoff)}>
+                                    <div className={`w-4 h-4 rounded border flex items-center justify-center ${carForm.sameDropoff ? 'bg-blue-600 border-blue-600' : 'bg-white'}`}>
+                                        {carForm.sameDropoff && <span className="material-icons-outlined text-white text-[10px]">check</span>}
+                                    </div>
+                                    <span className="text-xs font-bold">Return to same location</span>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200 dark:border-white/5">
@@ -919,7 +1060,12 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                         <DurationInput minutes={carForm.duration} onChange={m => updateCar('duration', m)} canAutoCalc={!!carForm.distance} onAutoCalc={handleEstimateCarDuration} />
                         <div className="relative">
                             <Input label="Distance (km)" type="number" placeholder="e.g. 450" value={carForm.distance || ''} onChange={e => updateCar('distance', parseFloat(e.target.value))} className="pr-12" />
-                            <button onClick={() => estimateDistance(carForm.pickupLocation, carForm.sameDropoff ? carForm.pickupLocation : carForm.dropoffLocation, 'Car', (val) => updateCar('distance', val), 'car')} className="absolute right-2 top-8 text-blue-500 hover:text-blue-600 disabled:opacity-50" title="Auto-Estimate Distance" disabled={isEstimatingDistance === 'car' || !carForm.pickupLocation}>
+                            <button 
+                                onClick={estimateRoadTripDistance} 
+                                className="absolute right-2 top-8 text-blue-500 hover:text-blue-600 disabled:opacity-50" 
+                                title="Auto-Estimate Route Distance" 
+                                disabled={isEstimatingDistance === 'car' || !carForm.pickupLocation}
+                            >
                                 {isEstimatingDistance === 'car' ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <span className="material-icons-outlined text-lg">timeline</span>}
                             </button>
                         </div>

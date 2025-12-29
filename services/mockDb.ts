@@ -218,17 +218,42 @@ class DataService {
       if (updatedTrip.transports) {
           const updatedTransports = await Promise.all(updatedTrip.transports.map(async (t) => {
               const u = { ...t };
+              // Origin
               if (u.origin && (!u.originLat || !u.originLng)) {
                   const c = await getCoordinates(u.origin);
                   if (c) { u.originLat = c.lat; u.originLng = c.lng; }
               }
+              // Destination
               if (u.destination && (!u.destLat || !u.destLng)) {
                   const c = await getCoordinates(u.destination);
                   if (c) { u.destLat = c.lat; u.destLng = c.lng; }
               }
+              // Waypoints
+              if (u.waypoints && u.waypoints.length > 0) {
+                  const updatedWaypoints = await Promise.all(u.waypoints.map(async (wp) => {
+                      if (!wp.coordinates && wp.name) {
+                          const c = await getCoordinates(wp.name);
+                          if (c) return { ...wp, coordinates: { lat: c.lat, lng: c.lng } };
+                      }
+                      return wp;
+                  }));
+                  u.waypoints = updatedWaypoints;
+              }
               return u;
           }));
           updatedTrip.transports = updatedTransports;
+      }
+
+      // 3. Locations (Route Plan)
+      if (updatedTrip.locations) {
+          const updatedLocations = await Promise.all(updatedTrip.locations.map(async (l) => {
+              if (l.name && !l.coordinates) {
+                  const c = await getCoordinates(l.name);
+                  if (c) return { ...l, coordinates: { lat: c.lat, lng: c.lng } };
+              }
+              return l;
+          }));
+          updatedTrip.locations = updatedLocations;
       }
 
       return updatedTrip;

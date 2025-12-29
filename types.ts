@@ -1,5 +1,4 @@
 
-
 export interface User {
   id: string;
   name: string;
@@ -49,6 +48,14 @@ export interface GeoCoordinates {
   tz?: string; // Timezone ID (e.g. "America/New_York")
 }
 
+export interface RoadTripWaypoint {
+  id: string;
+  name: string; // Location name
+  type: 'Stop' | 'Food' | 'Lodging' | 'Sightseeing' | 'Fuel';
+  notes?: string;
+  coordinates?: GeoCoordinates;
+}
+
 export interface Transport {
   id: string;
   itineraryId: string; // Grouping ID for round trips/multi-city
@@ -73,6 +80,7 @@ export interface Transport {
   pickupLocation?: string;
   dropoffLocation?: string;
   vehicleModel?: string;
+  waypoints?: RoadTripWaypoint[]; // New: For road trips
   
   website?: string;
   reason?: string; // Business/Personal
