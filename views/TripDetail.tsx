@@ -9,6 +9,7 @@ import { TripModal } from '../components/TripModal';
 import { LeaveRequestModal } from '../components/LeaveRequestModal';
 import { dataService } from '../services/mockDb';
 import { flightImporter } from '../services/flightImportExport';
+import { calendarService } from '../services/calendarExport';
 import { Trip, User, Transport, Accommodation, WorkspaceSettings, Activity, TransportMode, LocationEntry, EntitlementType, PublicHoliday, SavedConfig } from '../types';
 import { searchLocations, resolvePlaceName } from '../services/geocoding';
 
@@ -384,6 +385,12 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         setIsLeaveModalOpen(false);
     };
 
+    const handleAddToCalendar = () => {
+        if (!trip) return;
+        const icsContent = calendarService.generateIcsContent([trip], 'WanderGrid');
+        calendarService.downloadIcs(icsContent, `trip-${trip.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.ics`);
+    };
+
     const openTransportModal = (transportSet?: Transport[], date?: string) => {
         setEditingTransports(transportSet || null);
         setSelectedDateForModal(date || null);
@@ -477,7 +484,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     const getClassColor = (cls?: string) => {
         const c = (cls || '').toLowerCase();
         if (c.includes('first')) return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50';
-        if (c.includes('business')) return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 border border-purple-200 dark:border-amber-900/50';
+        if (c.includes('business')) return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 border border-purple-200 dark:border-purple-900/50';
         if (c.includes('economy+')) return 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/50';
         return 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-900/30';
     };
@@ -714,6 +721,10 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                             </div>
                         </div>
                         <div className="flex gap-2">
+                            <Button variant="secondary" onClick={() => {
+                                const ics = calendarService.generateIcsContent([trip], 'WanderGrid');
+                                calendarService.downloadIcs(ics, `trip-${trip.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.ics`);
+                            }} icon={<span className="material-icons-outlined">event</span>}>Add to Calendar</Button>
                             {(!trip.entitlementId && trip.status === 'Planning') && (
                                 <Button variant="primary" onClick={handleBookTimeOff} className="bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20" icon={<span className="material-icons-outlined">event_available</span>}>Book Time Off</Button>
                             )}
@@ -1195,197 +1206,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                 ))}
                             </div>
                         )}
-                    </div>
-                </div>
-            )}
-
-            {activeTab === 'budget' && (
-                <div className="space-y-8 animate-fade-in">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        {/* Donut Chart Card */}
-                        <div className="lg:col-span-1 bg-white dark:bg-gray-800 rounded-[2.5rem] p-8 border border-gray-100 dark:border-white/5 shadow-xl flex flex-col items-center justify-center relative overflow-hidden">
-                            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-amber-500 to-purple-500" />
-                            <h3 className="text-lg font-black text-gray-900 dark:text-white mb-8">Expense Composition</h3>
-                            
-                            {/* Custom Donut Chart */}
-                            <div className="relative w-64 h-64">
-                                <svg viewBox="0 0 100 100" className="transform -rotate-90 w-full h-full">
-                                    {/* Calculations for SVG paths */}
-                                    {(() => {
-                                        const r = 40;
-                                        const c = 2 * Math.PI * r;
-                                        const tPct = totalCost > 0 ? transportCost / totalCost : 0;
-                                        const sPct = totalCost > 0 ? stayCost / totalCost : 0;
-                                        const aPct = totalCost > 0 ? activityCost / totalCost : 0;
-                                        
-                                        return (
-                                            <>
-                                                <circle cx="50" cy="50" r={r} fill="transparent" strokeWidth="12" className="stroke-gray-100 dark:stroke-white/5" />
-                                                {tPct > 0 && <circle cx="50" cy="50" r={r} fill="transparent" strokeWidth="12" strokeDasharray={`${tPct * c} ${c}`} strokeDashoffset="0" className="stroke-blue-500 transition-all duration-1000 ease-out" strokeLinecap="round" />}
-                                                {sPct > 0 && <circle cx="50" cy="50" r={r} fill="transparent" strokeWidth="12" strokeDasharray={`${sPct * c} ${c}`} strokeDashoffset={-(tPct * c)} className="stroke-amber-500 transition-all duration-1000 ease-out" strokeLinecap="round" />}
-                                                {aPct > 0 && <circle cx="50" cy="50" r={r} fill="transparent" strokeWidth="12" strokeDasharray={`${aPct * c} ${c}`} strokeDashoffset={-((tPct + sPct) * c)} className="stroke-purple-500 transition-all duration-1000 ease-out" strokeLinecap="round" />}
-                                            </>
-                                        );
-                                    })()}
-                                </svg>
-                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Expenses</span>
-                                    <span className="text-3xl font-black text-gray-800 dark:text-white">{totalCost > 0 ? 'Analysis' : '0'}</span>
-                                </div>
-                            </div>
-
-                            {/* Legend */}
-                            <div className="w-full mt-8 space-y-3">
-                                <div className="flex justify-between items-center text-xs">
-                                    <div className="flex items-center gap-2">
-                                        <span className="w-3 h-3 rounded-full bg-blue-500"></span>
-                                        <span className="font-bold text-gray-600 dark:text-gray-300">Transport</span>
-                                    </div>
-                                    <span className="font-mono font-bold text-gray-900 dark:text-white">{formatCurrency(transportCost)}</span>
-                                </div>
-                                <div className="flex justify-between items-center text-xs">
-                                    <div className="flex items-center gap-2">
-                                        <span className="w-3 h-3 rounded-full bg-amber-500"></span>
-                                        <span className="font-bold text-gray-600 dark:text-gray-300">Accommodation</span>
-                                    </div>
-                                    <span className="font-mono font-bold text-gray-900 dark:text-white">{formatCurrency(stayCost)}</span>
-                                </div>
-                                <div className="flex justify-between items-center text-xs">
-                                    <div className="flex items-center gap-2">
-                                        <span className="w-3 h-3 rounded-full bg-purple-500"></span>
-                                        <span className="font-bold text-gray-600 dark:text-gray-300">Activities</span>
-                                    </div>
-                                    <span className="font-mono font-bold text-gray-900 dark:text-white">{formatCurrency(activityCost)}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Stats & Insights */}
-                        <div className="lg:col-span-2 space-y-6">
-                            {/* Key Metrics Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="p-6 bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-white/5 shadow-sm hover:shadow-md transition-all">
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <div className="p-2 bg-emerald-100 text-emerald-600 rounded-xl dark:bg-emerald-900/30 dark:text-emerald-400"><span className="material-icons-outlined text-lg">group</span></div>
-                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Cost Per Person</span>
-                                    </div>
-                                    <span className="text-2xl font-black text-gray-900 dark:text-white">{formatCurrency(costPerPerson)}</span>
-                                </div>
-                                <div className="p-6 bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-white/5 shadow-sm hover:shadow-md transition-all">
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <div className="p-2 bg-blue-100 text-blue-600 rounded-xl dark:bg-blue-900/30 dark:text-blue-400"><span className="material-icons-outlined text-lg">today</span></div>
-                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Daily Average</span>
-                                    </div>
-                                    <span className="text-2xl font-black text-gray-900 dark:text-white">{formatCurrency(costPerDay)}</span>
-                                </div>
-                                {(() => {
-                                    // Identify highest single expense item
-                                    let maxItem = { name: 'None', cost: 0, icon: 'paid' };
-                                    trip.transports?.forEach(t => { if((t.cost||0) > maxItem.cost) maxItem = { name: t.provider, cost: t.cost||0, icon: 'flight' } });
-                                    trip.accommodations?.forEach(a => { if((a.cost||0) > maxItem.cost) maxItem = { name: a.name, cost: a.cost||0, icon: 'hotel' } });
-                                    
-                                    return (
-                                        <div className="p-6 bg-white dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-white/5 shadow-sm hover:shadow-md transition-all">
-                                            <div className="flex items-center gap-3 mb-2">
-                                                <div className="p-2 bg-rose-100 text-rose-600 rounded-xl dark:bg-rose-900/30 dark:text-rose-400"><span className="material-icons-outlined text-lg">trending_up</span></div>
-                                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Highest Item</span>
-                                            </div>
-                                            <span className="text-lg font-black text-gray-900 dark:text-white truncate block" title={maxItem.name}>{maxItem.name}</span>
-                                            <span className="text-xs font-bold text-rose-500">{formatCurrency(maxItem.cost)}</span>
-                                        </div>
-                                    );
-                                })()}
-                            </div>
-
-                            {/* Category Cards (Horizontal Bars) */}
-                            <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] p-8 border border-gray-100 dark:border-white/5 shadow-lg space-y-6">
-                                <h4 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-widest mb-2">Category Breakdown</h4>
-                                
-                                {/* Transport */}
-                                <div>
-                                    <div className="flex justify-between items-end mb-2">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg flex items-center justify-center"><span className="material-icons-outlined text-sm">commute</span></div>
-                                            <div>
-                                                <div className="text-xs font-bold text-gray-900 dark:text-white">Transportation</div>
-                                                <div className="text-[10px] text-gray-400">{trip.transports?.length || 0} Bookings</div>
-                                            </div>
-                                        </div>
-                                        <span className="font-black text-gray-900 dark:text-white">{formatCurrency(transportCost)}</span>
-                                    </div>
-                                    <div className="h-2 w-full bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden">
-                                        <div className="h-full bg-blue-500 rounded-full" style={{ width: `${totalCost > 0 ? (transportCost/totalCost)*100 : 0}%` }} />
-                                    </div>
-                                </div>
-
-                                {/* Accommodation */}
-                                <div>
-                                    <div className="flex justify-between items-end mb-2">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-lg flex items-center justify-center"><span className="material-icons-outlined text-sm">hotel</span></div>
-                                            <div>
-                                                <div className="text-xs font-bold text-gray-900 dark:text-white">Accommodation</div>
-                                                <div className="text-[10px] text-gray-400">{duration - 1} Nights • Avg {formatCurrency(stayCost / (duration - 1 || 1))}/night</div>
-                                            </div>
-                                        </div>
-                                        <span className="font-black text-gray-900 dark:text-white">{formatCurrency(stayCost)}</span>
-                                    </div>
-                                    <div className="h-2 w-full bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden">
-                                        <div className="h-full bg-amber-500 rounded-full" style={{ width: `${totalCost > 0 ? (stayCost/totalCost)*100 : 0}%` }} />
-                                    </div>
-                                </div>
-
-                                {/* Activities */}
-                                <div>
-                                    <div className="flex justify-between items-end mb-2">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-lg flex items-center justify-center"><span className="material-icons-outlined text-sm">local_activity</span></div>
-                                            <div>
-                                                <div className="text-xs font-bold text-gray-900 dark:text-white">Activities</div>
-                                                <div className="text-[10px] text-gray-400">{trip.activities?.length || 0} Events</div>
-                                            </div>
-                                        </div>
-                                        <span className="font-black text-gray-900 dark:text-white">{formatCurrency(activityCost)}</span>
-                                    </div>
-                                    <div className="h-2 w-full bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden">
-                                        <div className="h-full bg-purple-500 rounded-full" style={{ width: `${totalCost > 0 ? (activityCost/totalCost)*100 : 0}%` }} />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Itemized Ledger */}
-                    <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-100 dark:border-white/5 shadow-sm overflow-hidden">
-                        <div className="p-8 border-b border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-white/5">
-                            <h4 className="text-lg font-black text-gray-900 dark:text-white">Transaction Ledger</h4>
-                        </div>
-                        <div className="divide-y divide-gray-100 dark:divide-white/5">
-                            {/* Combined & Sorted Items */}
-                            {[
-                                ...(trip.transports || []).map(t => ({ ...t, cat: 'Transport', icon: getTransportIcon(t.mode), color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400' })),
-                                ...(trip.accommodations || []).map(a => ({ ...a, cat: 'Accommodation', provider: a.name, icon: 'hotel', color: 'text-amber-600 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400' })),
-                                ...(trip.activities || []).map(a => ({ ...a, cat: 'Activity', provider: a.title, icon: 'local_activity', color: 'text-purple-600 bg-purple-50 dark:bg-purple-900/20 dark:text-purple-400' }))
-                            ].sort((a,b) => (b.cost || 0) - (a.cost || 0)).map((item, i) => (
-                                <div key={i} className="p-5 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
-                                    <div className="flex items-center gap-5">
-                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${item.color}`}>
-                                            <span className="material-icons-outlined text-xl">{item.icon}</span>
-                                        </div>
-                                        <div>
-                                            <p className="font-bold text-gray-900 dark:text-white text-sm">{item.provider}</p>
-                                            <p className="text-xs text-gray-500 font-medium">{item.cat}</p>
-                                        </div>
-                                    </div>
-                                    <span className={`font-mono font-bold text-sm ${!item.cost ? 'text-gray-300' : 'text-gray-900 dark:text-white'}`}>
-                                        {item.cost ? formatCurrency(item.cost) : '-'}
-                                    </span>
-                                </div>
-                            ))}
-                            {[...(trip.transports||[]), ...(trip.accommodations||[]), ...(trip.activities||[])].length === 0 && (
-                                <div className="p-8 text-center text-xs text-gray-400 font-bold uppercase tracking-widest">No expenses recorded</div>
-                            )}
-                        </div>
                     </div>
                 </div>
             )}
