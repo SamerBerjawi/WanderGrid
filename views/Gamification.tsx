@@ -397,11 +397,7 @@ export const Gamification: React.FC<GamificationProps> = ({ onTripClick }) => {
                                         <div className={`px-2 py-1 rounded-lg border text-[10px] font-mono font-bold ${style.badge} ${style.border}`}>{country.code}</div>
                                     </div>
                                     <h3 className={`text-xl font-black mb-1 leading-tight ${style.text}`}>{country.name}</h3>
-                                    <p className={`text-xs font-bold uppercase tracking-widest mb-4 opacity-60 ${style.text}`}>{country.region} • {country.lastVisit.getFullYear()}</p>
-                                    <div className="flex flex-wrap gap-1.5">
-                                        {Array.from(country.cities).slice(0, 5).map(city => (<span key={city} className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border ${style.accent} ${style.text} ${style.border} bg-opacity-50`}>{city}</span>))}
-                                        {country.cities.size > 5 && (<span className={`px-2 py-1 rounded-md text-[10px] font-bold ${style.accent} ${style.text}`}>+{country.cities.size - 5}</span>)}
-                                    </div>
+                                    <p className={`text-xs font-bold uppercase tracking-widest opacity-60 ${style.text}`}>{country.region} • {country.lastVisit.getFullYear()}</p>
                                 </div>
                             </div>
                         );
