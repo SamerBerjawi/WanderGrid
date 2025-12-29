@@ -85,9 +85,9 @@ export function calculateDistance(lat1: number, lon1: number, lat2: number, lon2
 
 export function getCachedTimeZone(iata: string): string | undefined {
     // Check internal cache first
-    const fromCache = internalCache.get(iata.toUpperCase());
+    const fromCache = internalCache.get(iata.toUpperCase()) || internalCache.get(iata);
     if (fromCache && fromCache.tz) return fromCache.tz;
-    return 'UTC';
+    return undefined;
 }
 
 // Helper: Get UTC offset in minutes
@@ -169,23 +169,40 @@ export async function searchStations(query: string, type: 'train' | 'bus'): Prom
     } catch (e) { return []; }
 }
 
-// Optimized Get Coordinates - READS FROM CACHE
+// Optimized Get Coordinates - READS FROM CACHE & FETCHES TZ
 export async function getCoordinates(location: string): Promise<{ lat: number; lng: number; tz?: string } | undefined> {
   if (!location) return undefined;
   loadCache(); // Ensure loaded
 
-  // 1. Check Cache (Exact match)
+  // 1. Check Cache
   if (internalCache.has(location)) {
       const c = internalCache.get(location);
-      return { lat: parseFloat(c.lat), lng: parseFloat(c.lon || c.lng), tz: c.tz };
+      // If valid coords but missing TZ, we might want to refresh, but for now rely on cache speed.
+      // If needed, we can do a background refresh.
+      if (c.lat && c.lng) {
+          if (!c.tz) {
+              // Trigger TZ fetch only if missing
+              fetchTzForCoords(parseFloat(c.lat), parseFloat(c.lon || c.lng)).then(tz => {
+                  if (tz) {
+                      c.tz = tz;
+                      internalCache.set(location, c);
+                      if (location.length === 3) internalCache.set(location.toUpperCase(), c);
+                      saveCache();
+                  }
+              });
+          }
+          return { lat: parseFloat(c.lat), lng: parseFloat(c.lon || c.lng), tz: c.tz };
+      }
   }
 
   // 2. Check IATA Cache
   if (location.length === 3 && /^[A-Za-z]{3}$/.test(location)) {
       const code = location.toUpperCase();
       if (internalCache.has(code)) {
-          const airport = internalCache.get(code);
-          return { lat: parseFloat(airport.lat), lng: parseFloat(airport.lon), tz: airport.tz };
+          const c = internalCache.get(code);
+          if (c.lat && c.lng) {
+             return { lat: parseFloat(c.lat), lng: parseFloat(c.lon || c.lng), tz: c.tz };
+          }
       }
   }
 
@@ -197,20 +214,42 @@ export async function getCoordinates(location: string): Promise<{ lat: number; l
     const data = await response.json();
 
     if (Array.isArray(data) && data.length > 0) {
+      const lat = parseFloat(data[0].lat);
+      const lng = parseFloat(data[0].lon);
+      
+      const tz = await fetchTzForCoords(lat, lng);
+
       const res = {
-        lat: parseFloat(data[0].lat),
-        lng: parseFloat(data[0].lon),
-        lon: parseFloat(data[0].lon) // Store both keys for compatibility
+        lat,
+        lng,
+        lon: lng, // Store both keys for compatibility
+        tz: tz || 'UTC'
       };
       
       // Save to Cache
       internalCache.set(location, res);
+      if (location.length === 3 && /^[A-Za-z]{3}$/.test(location)) {
+          internalCache.set(location.toUpperCase(), res);
+      }
       saveCache();
       
       return res;
     }
     return undefined;
   } catch (e) { return undefined; }
+}
+
+async function fetchTzForCoords(lat: number, lng: number): Promise<string | undefined> {
+    try {
+        const tzRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true&timezone=auto`);
+        if (tzRes.ok) {
+            const tzData = await tzRes.json();
+            if (tzData.timezone) return tzData.timezone;
+        }
+    } catch (e) {
+        console.warn("Timezone fetch failed", e);
+    }
+    return undefined;
 }
 
 // Optimized Resolve Place - READS FROM CACHE
@@ -294,6 +333,7 @@ export async function resolvePlaceName(query: string): Promise<{ city: string, c
 }
 
 // Region Mappings (Static)
+// ... (Region map constant remains the same)
 const COUNTRY_REGION_MAP: Record<string, string> = {
     'US': 'North America', 'CA': 'North America', 'MX': 'North America',
     'CR': 'Central America', 'CU': 'Central America', 'JM': 'Central America', 'BS': 'Central America', 'DO': 'Central America', 'PA': 'Central America', 'GT': 'Central America', 'BZ': 'Central America', 'HN': 'Central America',

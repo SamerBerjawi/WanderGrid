@@ -1,11 +1,11 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { Button, Input, Select, Autocomplete, Badge, TimeInput } from './ui';
 import { Transport, TransportMode } from '../types';
 import { dataService } from '../services/mockDb';
 import { getCoordinates, calculateDistance, calculateDurationMinutes, calculateArrivalTime, searchLocations, searchStations } from '../services/geocoding';
 
+// ... (Interfaces remain unchanged)
 interface TransportConfiguratorProps {
     initialData?: Transport[];
     onSave: (transports: Transport[]) => void;
@@ -392,7 +392,6 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
     const handleTripTypeChange = (type: TripType) => {
         setTripType(type);
         if (type === 'One-Way') {
-            // Reset to a single outbound segment for One-Way
             const existingFirst = segments[0];
             const first: SegmentForm = existingFirst 
                 ? { ...existingFirst, section: 'outbound' as const }
@@ -417,7 +416,6 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                 };
             setSegments([first, second]);
         } else {
-            // Multi-city
             if (segments.length < 2) {
                 setSegments([...segments, { id: Math.random().toString(), ...DEFAULT_SEGMENT }]);
             }
@@ -488,6 +486,29 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
             if (field === 'destination') newSegments[1].origin = value;
         }
         setSegments(newSegments);
+
+        // Async Check for TimeZone correction
+        if ((field === 'origin' || field === 'destination') && value && (value as string).length >= 3 && mode === 'Flight') {
+            getCoordinates(value as string).then(() => {
+                setSegments(currentSegments => {
+                    const fresh = [...currentSegments];
+                    const seg = fresh[index];
+                    if (seg && seg.origin && seg.destination && seg.date && seg.arrivalDate) {
+                        const newDur = calculateDurationMinutes(
+                            seg.origin, seg.destination, 
+                            seg.date, seg.time, 
+                            seg.arrivalDate, seg.arrivalTime
+                        );
+                        // Only update if discrepancy > 1 min to prevent jitter
+                        if (Math.abs(newDur - seg.duration) > 1) {
+                            fresh[index] = { ...seg, duration: newDur };
+                            return fresh;
+                        }
+                    }
+                    return currentSegments;
+                });
+            });
+        }
     };
 
     const handleEstimateDuration = (index: number) => {
