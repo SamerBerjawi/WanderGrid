@@ -490,28 +490,30 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                         hitLine.on('click', () => onTripClick && onTripClick(trip.id));
 
                         // CITY MARKERS
-                        L.circleMarker(start, {
-                            radius: 3, 
-                            fillColor: color,
-                            color: 'transparent',
-                            fillOpacity: 0.8
-                        }).addTo(map);
+                        if (showCityMarkers) {
+                            L.circleMarker(start, {
+                                radius: 3, 
+                                fillColor: color,
+                                color: 'transparent',
+                                fillOpacity: 0.8
+                            }).addTo(map);
 
-                        const destMarker = L.circleMarker(end, {
-                            radius: 4, 
-                            fillColor: (isDark || activeLayer === 'satellite') ? '#000' : '#fff', 
-                            color: color, 
-                            weight: 2,
-                            fillOpacity: 1
-                        }).addTo(map);
+                            const destMarker = L.circleMarker(end, {
+                                radius: 4, 
+                                fillColor: (isDark || activeLayer === 'satellite') ? '#000' : '#fff', 
+                                color: color, 
+                                weight: 2,
+                                fillOpacity: 1
+                            }).addTo(map);
 
-                        destMarker.on('click', () => onTripClick && onTripClick(trip.id));
-                        destMarker.bindTooltip(trip.name, { 
-                            permanent: false, 
-                            direction: 'top',
-                            offset: [0, -5],
-                            className: 'bg-black/90 text-white border border-white/20 shadow-xl text-xs font-bold px-3 py-1.5 rounded-lg'
-                        });
+                            destMarker.on('click', () => onTripClick && onTripClick(trip.id));
+                            destMarker.bindTooltip(trip.name, { 
+                                permanent: false, 
+                                direction: 'top',
+                                offset: [0, -5],
+                                className: 'bg-black/90 text-white border border-white/20 shadow-xl text-xs font-bold px-3 py-1.5 rounded-lg'
+                            });
+                        }
                         
                         bounds.extend(start);
                         bounds.extend(end);
@@ -521,18 +523,21 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
             } else if (trip.coordinates) {
                 // Trip without transport
                 const point = L.latLng(trip.coordinates.lat, trip.coordinates.lng);
-                L.circleMarker(point, {
-                    radius: 5,
-                    fillColor: (isDark || activeLayer === 'satellite') ? '#000' : '#fff',
-                    color: color,
-                    weight: 2,
-                    fillOpacity: 1
-                }).addTo(map)
-                .bindTooltip(trip.name, { 
-                    direction: 'top', 
-                    className: 'bg-black/90 text-white border border-white/20 shadow-xl text-xs font-bold px-3 py-1.5 rounded-lg' 
-                })
-                .on('click', () => onTripClick && onTripClick(trip.id));
+                
+                if (showCityMarkers) {
+                    L.circleMarker(point, {
+                        radius: 5,
+                        fillColor: (isDark || activeLayer === 'satellite') ? '#000' : '#fff',
+                        color: color,
+                        weight: 2,
+                        fillOpacity: 1
+                    }).addTo(map)
+                    .bindTooltip(trip.name, { 
+                        direction: 'top', 
+                        className: 'bg-black/90 text-white border border-white/20 shadow-xl text-xs font-bold px-3 py-1.5 rounded-lg' 
+                    })
+                    .on('click', () => onTripClick && onTripClick(trip.id));
+                }
 
                 bounds.extend(point);
                 hasPoints = true;
@@ -669,7 +674,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                     )}
                 </button>
 
-                {viewMode === 'scratch' && (
+                {(viewMode === 'scratch' || viewMode === 'network') && (
                    <button 
                        onClick={() => setShowCityMarkers(!showCityMarkers)} 
                        className={`w-10 h-10 rounded-2xl border shadow-2xl flex items-center justify-center transition-colors ${showCityMarkers ? (isDark ? 'bg-white/20 text-white border-white/20' : 'bg-blue-50 text-blue-600 border-blue-200') : (isDark ? 'bg-white/10 text-white/50 border-white/20 hover:text-white' : 'bg-white/80 text-slate-400 border-slate-200 hover:text-slate-600')}`}
