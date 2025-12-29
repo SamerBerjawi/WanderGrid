@@ -14,18 +14,22 @@ import { ViewState, User } from './types';
 import { dataService } from './services/mockDb';
 
 const getUrlState = () => {
-    const path = window.location.pathname;
-    if (path === '/settings') return { view: ViewState.SETTINGS };
-    if (path === '/time-off') return { view: ViewState.TIME_OFF };
-    if (path === '/planner') return { view: ViewState.PLANNER };
-    if (path === '/map') return { view: ViewState.MAP };
-    if (path === '/gamification') return { view: ViewState.GAMIFICATION };
-    
-    const userMatch = path.match(/^\/user\/([^/]+)$/);
-    if (userMatch) return { view: ViewState.USER_DETAIL, userId: userMatch[1] };
+    try {
+        const path = window.location.pathname;
+        if (path === '/settings') return { view: ViewState.SETTINGS };
+        if (path === '/time-off') return { view: ViewState.TIME_OFF };
+        if (path === '/planner') return { view: ViewState.PLANNER };
+        if (path === '/map') return { view: ViewState.MAP };
+        if (path === '/gamification') return { view: ViewState.GAMIFICATION };
+        
+        const userMatch = path.match(/^\/user\/([^/]+)$/);
+        if (userMatch) return { view: ViewState.USER_DETAIL, userId: userMatch[1] };
 
-    const tripMatch = path.match(/^\/trip\/([^/]+)$/);
-    if (tripMatch) return { view: ViewState.TRIP_DETAIL, tripId: tripMatch[1] };
+        const tripMatch = path.match(/^\/trip\/([^/]+)$/);
+        if (tripMatch) return { view: ViewState.TRIP_DETAIL, tripId: tripMatch[1] };
+    } catch (e) {
+        console.warn("Failed to parse URL state", e);
+    }
 
     return { view: ViewState.DASHBOARD };
 };
@@ -54,8 +58,13 @@ export default function App() {
           default: path = '/'; break;
       }
       
-      if (window.location.pathname !== path) {
-          window.history.pushState({}, '', path);
+      try {
+          if (window.location.pathname !== path) {
+              window.history.pushState({}, '', path);
+          }
+      } catch (e) {
+          // Ignore SecurityError in sandboxed environments (like blob URLs)
+          console.debug("URL update blocked by environment, proceeding with internal navigation.");
       }
       
       setView(newView);

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 // Added missing Select import
 import { Card, Button, Badge, Tabs, Modal, Input, Autocomplete, TimeInput, Select } from '../components/ui';
@@ -39,7 +40,8 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     
     // View State
     const [activeTab, setActiveTab] = useState('planner'); 
-    const [plannerView, setPlannerView] = useState<'list' | 'table'>('list'); 
+    const [plannerView, setPlannerView] = useState<'list' | 'table' | 'calendar'>('list'); 
+    const [calendarDate, setCalendarDate] = useState(new Date());
     const [loading, setLoading] = useState(true);
 
     // Modal States
@@ -92,6 +94,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         ]).then(([tripsList, allUsers, s, ents, configs]) => {
             const t = tripsList.find(t => t.id === tripId);
             setTrip(t || null);
+            if (t) setCalendarDate(new Date(t.startDate));
             setUsers(allUsers);
             setSettings(s);
             setAllTrips(tripsList);
@@ -398,6 +401,12 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         setIsLocationModalOpen(true);
     };
 
+    const handleCalendarNavigate = (dir: number) => {
+        const newDate = new Date(calendarDate);
+        newDate.setMonth(newDate.getMonth() + dir);
+        setCalendarDate(newDate);
+    };
+
     const getCurrencySymbol = (code: string) => {
         const symbols: Record<string, string> = { 'USD': '$', 'EUR': '€', 'GBP': '£', 'AUD': 'A$', 'JPY': '¥' };
         return symbols[code] || code || '$';
@@ -597,6 +606,91 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         return items.sort((a,b) => (a.time || '23:59').localeCompare(b.time || '23:59'));
     };
 
+    const renderPlannerCalendar = () => {
+        const year = calendarDate.getFullYear();
+        const month = calendarDate.getMonth();
+        const firstDay = new Date(year, month, 1);
+        const startDay = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1; 
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        
+        const grid: React.ReactNode[] = [];
+        for (let i = 0; i < startDay; i++) grid.push(<div key={`empty-${i}`} className="min-h-[8rem] bg-gray-50/20 dark:bg-white/5 rounded-xl" />);
+        
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dateObj = new Date(year, month, d);
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const isToday = new Date().toDateString() === dateObj.toDateString();
+            const items = getAllItemsForTable(dateStr);
+            const isInTrip = dateStr >= trip.startDate && dateStr <= trip.endDate;
+            
+            grid.push(
+                <div key={d} className={`min-h-[8rem] p-2 rounded-xl border flex flex-col relative group ${
+                    isToday ? 'bg-white ring-2 ring-blue-400 dark:bg-gray-800 dark:ring-blue-600' : 
+                    isInTrip ? 'bg-white dark:bg-gray-900 border-gray-200 dark:border-white/10' : 
+                    'bg-gray-50/50 dark:bg-black/20 border-gray-100 dark:border-white/5 opacity-70'
+                }`}>
+                    <div className="flex justify-between items-start mb-1">
+                        <span className={`text-sm font-bold ${isToday ? 'text-blue-600' : isInTrip ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>{d}</span>
+                        {isInTrip && (
+                            <button onClick={() => handleOpenActivityModal(dateStr)} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-500 transition-opacity">
+                                <span className="material-icons-outlined text-sm">add_circle</span>
+                            </button>
+                        )}
+                    </div>
+                    
+                    <div className="flex-1 flex flex-col gap-1 overflow-y-auto custom-scrollbar max-h-[120px]">
+                        {items.map((item, idx) => {
+                            const styleClasses = getTypeStyles(item.type);
+                            return (
+                                <div key={idx} 
+                                    className={`text-[9px] font-bold px-1.5 py-1 rounded border flex items-center gap-1 cursor-pointer truncate ${styleClasses}`}
+                                    onClick={() => {
+                                        if (item.type === 'Transport') openTransportModal([item.ref]);
+                                        if (item.type === 'Accommodation') openAccommodationModal();
+                                        if (['Activity', 'Reservation', 'Tour'].includes(item.type)) handleOpenActivityModal(dateStr, item.ref);
+                                    }}
+                                    title={`${item.time ? formatTime(item.time) + ' - ' : ''}${item.name}`}
+                                >
+                                    <span className="material-icons-outlined text-[10px]">{item.icon}</span>
+                                    <span className="truncate">{item.time ? formatTime(item.time) : ''} {item.name}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            );
+        }
+
+        return (
+            <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-white/5 shadow-xl overflow-hidden">
+                <div className="p-4 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-gray-50/50 dark:bg-white/5">
+                    <div className="flex items-center gap-4">
+                        <button onClick={() => handleCalendarNavigate(-1)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition-colors">
+                            <span className="material-icons-outlined text-sm">chevron_left</span>
+                        </button>
+                        <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight w-32 text-center">
+                            {calendarDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                        </h3>
+                        <button onClick={() => handleCalendarNavigate(1)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition-colors">
+                            <span className="material-icons-outlined text-sm">chevron_right</span>
+                        </button>
+                    </div>
+                    <button onClick={() => setCalendarDate(new Date(trip.startDate))} className="text-xs font-bold text-blue-500 hover:underline">Reset to Start</button>
+                </div>
+                <div className="p-4">
+                    <div className="grid grid-cols-7 gap-3 mb-2">
+                        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
+                            <div key={d} className="text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">{d}</div>
+                        ))}
+                    </div>
+                    <div className="grid grid-cols-7 gap-2">
+                        {grid}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="space-y-8 animate-fade-in max-w-[1400px] mx-auto pb-12">
             <div className="relative w-full rounded-[2.5rem] bg-white dark:bg-gray-900 shadow-2xl border border-gray-100 dark:border-white/5 overflow-hidden">
@@ -660,6 +754,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                         <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
                             <button onClick={() => setPlannerView('list')} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${plannerView === 'list' ? 'bg-white shadow text-blue-600 dark:bg-gray-700 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}><span className="material-icons-outlined text-sm align-middle mr-1">view_agenda</span> List</button>
                             <button onClick={() => setPlannerView('table')} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${plannerView === 'table' ? 'bg-white shadow text-blue-600 dark:bg-gray-700 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}><span className="material-icons-outlined text-sm align-middle mr-1">table_chart</span> Table</button>
+                            <button onClick={() => setPlannerView('calendar')} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${plannerView === 'calendar' ? 'bg-white shadow text-blue-600 dark:bg-gray-700 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}><span className="material-icons-outlined text-sm align-middle mr-1">calendar_month</span> Calendar</button>
                         </div>
                     </div>
                 )}
@@ -668,7 +763,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
             {/* Content Switcher */}
             {activeTab === 'planner' && (
                 <>
-                    {plannerView === 'list' ? (
+                    {plannerView === 'calendar' ? renderPlannerCalendar() : plannerView === 'list' ? (
                         <div className="space-y-6 relative">
                             <div className="absolute left-8 top-4 bottom-4 w-0.5 bg-gray-200 dark:bg-gray-800 hidden md:block" />
                             {tripDates.map((dateStr, index) => {

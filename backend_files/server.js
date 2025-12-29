@@ -1,3 +1,4 @@
+
 const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
@@ -120,6 +121,74 @@ app.get('/api/proxy/flight-status', async (req, res) => {
     } catch (err) {
         console.error("Proxy error:", err);
         res.status(500).json({ error: 'Failed to fetch flight data' });
+    }
+});
+
+// Calendar Sync Endpoint (iCal Feed)
+app.get('/api/calendar/:userId/feed.ics', async (req, res) => {
+    const { userId } = req.params;
+    try {
+        // Query trips where userId is in the participants array
+        const { rows } = await pool.query(`
+            SELECT data FROM trips 
+            WHERE data->'participants' ? $1
+            AND (data->>'status' = 'Upcoming' OR data->>'status' = 'Past')
+        `, [userId]);
+        
+        const trips = rows.map(r => r.data);
+        
+        // --- ICS Generation Logic (Backend Version) ---
+        const now = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+        const formatDate = (dateStr) => dateStr.replace(/-/g, '');
+        const getExclusiveEndDate = (dateStr) => {
+            const date = new Date(dateStr);
+            date.setDate(date.getDate() + 1);
+            return date.toISOString().split('T')[0].replace(/-/g, '');
+        };
+
+        const events = trips.map(trip => {
+            const start = formatDate(trip.startDate);
+            const end = getExclusiveEndDate(trip.endDate);
+            const summary = `${trip.icon || '✈️'} ${trip.name}`;
+            const location = trip.location || '';
+            const uid = `${trip.id}@wandergrid.app`;
+            
+            let description = `Status: ${trip.status}\\n`;
+            if (trip.transports && trip.transports.length > 0) {
+                description += `\\nTransports:${trip.transports.map(t => `\\n- ${t.mode}: ${t.provider} (${t.departureTime})`).join('')}`;
+            }
+
+            return [
+                'BEGIN:VEVENT',
+                `UID:${uid}`,
+                `DTSTAMP:${now}`,
+                `DTSTART;VALUE=DATE:${start}`,
+                `DTEND;VALUE=DATE:${end}`,
+                `SUMMARY:${summary}`,
+                `LOCATION:${location}`,
+                `DESCRIPTION:${description}`,
+                'END:VEVENT'
+            ].join('\r\n');
+        });
+
+        const icsContent = [
+            'BEGIN:VCALENDAR',
+            'VERSION:2.0',
+            'PRODID:-//WanderGrid//Travel Calendar//EN',
+            'CALSCALE:GREGORIAN',
+            'METHOD:PUBLISH',
+            'X-WR-CALNAME:WanderGrid Trips',
+            ...events,
+            'END:VCALENDAR'
+        ].join('\r\n');
+
+        res.set('Content-Type', 'text/calendar;charset=utf-8');
+        res.set('Content-Disposition', 'inline; filename="wandergrid.ics"');
+        res.send(icsContent);
+
+    } catch (err) {
+        console.error("Calendar Feed Error", err);
+        res.status(500).send("Error generating calendar");
     }
 });
 
