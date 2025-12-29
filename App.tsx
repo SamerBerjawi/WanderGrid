@@ -13,12 +13,67 @@ import { Auth } from './views/Auth';
 import { ViewState, User } from './types';
 import { dataService } from './services/mockDb';
 
+const getUrlState = () => {
+    const path = window.location.pathname;
+    if (path === '/settings') return { view: ViewState.SETTINGS };
+    if (path === '/time-off') return { view: ViewState.TIME_OFF };
+    if (path === '/planner') return { view: ViewState.PLANNER };
+    if (path === '/map') return { view: ViewState.MAP };
+    if (path === '/gamification') return { view: ViewState.GAMIFICATION };
+    
+    const userMatch = path.match(/^\/user\/([^/]+)$/);
+    if (userMatch) return { view: ViewState.USER_DETAIL, userId: userMatch[1] };
+
+    const tripMatch = path.match(/^\/trip\/([^/]+)$/);
+    if (tripMatch) return { view: ViewState.TRIP_DETAIL, tripId: tripMatch[1] };
+
+    return { view: ViewState.DASHBOARD };
+};
+
 export default function App() {
-  const [view, setView] = useState<ViewState>(ViewState.DASHBOARD);
+  const initialState = getUrlState();
+  const [view, setView] = useState<ViewState>(initialState.view);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(initialState.userId || null);
+  const [selectedTripId, setSelectedTripId] = useState<string | null>(initialState.tripId || null);
+  
   const [theme, setTheme] = useState<'light' | 'dark' | 'auto'>('dark');
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  // Handle URL Navigation (Push State)
+  const navigate = (newView: ViewState, id?: string) => {
+      let path = '/';
+      switch(newView) {
+          case ViewState.SETTINGS: path = '/settings'; break;
+          case ViewState.TIME_OFF: path = '/time-off'; break;
+          case ViewState.PLANNER: path = '/planner'; break;
+          case ViewState.MAP: path = '/map'; break;
+          case ViewState.GAMIFICATION: path = '/gamification'; break;
+          case ViewState.USER_DETAIL: path = id ? `/user/${id}` : '/'; break;
+          case ViewState.TRIP_DETAIL: path = id ? `/trip/${id}` : '/'; break;
+          case ViewState.DASHBOARD: 
+          default: path = '/'; break;
+      }
+      
+      if (window.location.pathname !== path) {
+          window.history.pushState({}, '', path);
+      }
+      
+      setView(newView);
+      if (newView === ViewState.USER_DETAIL && id) setSelectedUserId(id);
+      if (newView === ViewState.TRIP_DETAIL && id) setSelectedTripId(id);
+  };
+
+  // Handle Browser Back/Forward
+  useEffect(() => {
+      const handlePopState = () => {
+          const state = getUrlState();
+          setView(state.view);
+          if (state.userId) setSelectedUserId(state.userId);
+          if (state.tripId) setSelectedTripId(state.tripId);
+      };
+      window.addEventListener('popstate', handlePopState);
+      return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Initialize theme from settings on mount
   useEffect(() => {
@@ -77,17 +132,15 @@ export default function App() {
   const handleLogout = () => {
       setCurrentUser(null);
       localStorage.removeItem('wandergrid_session_user');
-      setView(ViewState.DASHBOARD);
+      navigate(ViewState.DASHBOARD);
   };
 
   const handleUserClick = (userId: string) => {
-      setSelectedUserId(userId);
-      setView(ViewState.USER_DETAIL);
+      navigate(ViewState.USER_DETAIL, userId);
   };
 
   const handleTripClick = (tripId: string) => {
-      setSelectedTripId(tripId);
-      setView(ViewState.TRIP_DETAIL);
+      navigate(ViewState.TRIP_DETAIL, tripId);
   };
 
   const renderView = () => {
@@ -97,13 +150,13 @@ export default function App() {
       case ViewState.SETTINGS:
         return <Settings onThemeChange={setTheme} />;
       case ViewState.TIME_OFF:
-        return <TimeOff />;
+        return <TimeOff onTripClick={handleTripClick} />;
       case ViewState.USER_DETAIL:
-        return <UserDetail userId={selectedUserId!} onBack={() => setView(ViewState.DASHBOARD)} />;
+        return <UserDetail userId={selectedUserId!} onBack={() => navigate(ViewState.DASHBOARD)} />;
       case ViewState.PLANNER:
         return <VacationPlanner onTripClick={handleTripClick} />;
       case ViewState.TRIP_DETAIL:
-        return <TripDetail tripId={selectedTripId!} onBack={() => setView(ViewState.DASHBOARD)} />;
+        return <TripDetail tripId={selectedTripId!} onBack={() => navigate(ViewState.DASHBOARD)} />;
       case ViewState.MAP:
         return <ExpeditionMapView onTripClick={handleTripClick} />;
       case ViewState.GAMIFICATION:
@@ -137,7 +190,7 @@ export default function App() {
       />
       <Sidebar 
         currentView={view} 
-        onNavigate={setView} 
+        onNavigate={(v) => navigate(v)} 
         theme={theme}
         onThemeToggle={handleThemeChange}
         onLogout={handleLogout}

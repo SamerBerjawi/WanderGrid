@@ -7,6 +7,7 @@ import { dataService } from '../services/mockDb';
 import { User, Trip, EntitlementType, PublicHoliday } from '../types';
 import { resolvePlaceName, calculateDistance } from '../services/geocoding';
 
+// ... (Interfaces remain unchanged)
 interface DashboardProps {
     onUserClick?: (userId: string) => void;
     onTripClick?: (tripId: string) => void;
@@ -79,6 +80,8 @@ const getEntitlementTextClass = (color?: string) => {
 };
 
 // UI Components
+// ... (StatCard, ExtremeFlightCard, DonutChart, TopList remain unchanged)
+// [Assuming previous definitions are here]
 const StatCard: React.FC<{ title: string; value: string | number; subtitle?: string; icon: string; color?: string }> = ({ title, value, subtitle, icon, color = 'blue' }) => (
     <div className={`p-6 rounded-[2rem] bg-white dark:bg-gray-800 border border-gray-100 dark:border-white/5 shadow-sm flex items-center gap-5 relative overflow-hidden group hover:shadow-lg transition-all`}>
         <div className={`absolute right-0 top-0 w-32 h-32 bg-${color}-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/3 transition-all group-hover:bg-${color}-500/10`} />
@@ -201,19 +204,18 @@ const TopList: React.FC<{ title: string; items: { label: string; sub?: string; c
 };
 
 export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }) => {
+  // ... (State logic unchanged)
   const [users, setUsers] = useState<User[]>([]);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [entitlements, setEntitlements] = useState<EntitlementType[]>([]);
   const [holidays, setHolidays] = useState<PublicHoliday[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Gamification State
   const [visitedData, setVisitedData] = useState<VisitedCountry[]>([]);
   const [totalCities, setTotalCities] = useState(0);
   const [totalDistance, setTotalDistance] = useState(0);
   const [activeStatsTab, setActiveStatsTab] = useState('stamps');
 
-  // Flight Tracker State
   const [isFlightTrackerOpen, setIsFlightTrackerOpen] = useState(false);
   const [todaysFlight, setTodaysFlight] = useState<{ iata: string; origin: string; destination: string; date: string } | undefined>(undefined);
 
@@ -222,12 +224,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
   }, []);
 
   useEffect(() => {
-      // Logic to find a flight happening "Today"
       const today = new Date().toISOString().split('T')[0];
       const activeTrip = trips.find(t => t.status !== 'Cancelled' && t.startDate <= today && t.endDate >= today);
       
       if (activeTrip && activeTrip.transports) {
-          // Find first flight today
           const flight = activeTrip.transports
             .filter(t => t.mode === 'Flight' && t.departureDate === today)
             .sort((a,b) => (a.departureTime || '00:00').localeCompare(b.departureTime || '00:00'))[0];
@@ -264,26 +264,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
     });
   };
 
+  // ... (processTravelHistory, stats, level calc unchanged)
   const processTravelHistory = async (tripList: Trip[]) => {
         const countryMap = new Map<string, VisitedCountry>();
         let kmCount = 0;
         const placesToResolve = new Set<string>();
 
-        // 1. Gather all places
         for (const trip of tripList) {
-            // Distance Calculation
             if (trip.transports) {
                 for (const t of trip.transports) {
                     if (t.distance) kmCount += t.distance;
                     else if (t.originLat && t.originLng && t.destLat && t.destLng) kmCount += calculateDistance(t.originLat, t.originLng, t.destLat, t.destLng);
                 }
             }
-            // Gather Locations
             if (trip.location && !['Time Off', 'Remote', 'Trip', 'Vacation'].includes(trip.location)) placesToResolve.add(trip.location);
             trip.accommodations?.forEach(a => placesToResolve.add(a.address));
             
             if (trip.transports && trip.transports.length > 0) {
-                // ... (Logic to skip layovers and origin returns same as before) ...
                 const sortedTransports = [...trip.transports].sort((a, b) => new Date(`${a.departureDate}T${a.departureTime||'00:00'}`).getTime() - new Date(`${b.departureDate}T${b.departureTime||'00:00'}`).getTime());
                 const tripOrigin = sortedTransports[0].origin.trim().toLowerCase();
                 for (let i = 0; i < sortedTransports.length; i++) {
@@ -306,24 +303,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
             }
         }
 
-        // 2. Resolve Names using the optimized Geocoding Service
         const resolvedData = new Map<string, any>();
         const uniquePlaces = Array.from(placesToResolve);
         
-        // Parallel-ish processing handled by the service cache
         for (const place of uniquePlaces) {
             const result = await resolvePlaceName(place);
             if (result) resolvedData.set(place, result);
         }
 
-        // 3. Map to Countries
         for (const trip of tripList) {
-            // Re-identify trip places
             const tripPlaces = new Set<string>();
             if (trip.location && !['Time Off', 'Remote', 'Trip', 'Vacation'].includes(trip.location)) tripPlaces.add(trip.location);
             trip.accommodations?.forEach(a => tripPlaces.add(a.address));
-            // (Same transport logic simplified for this example)
-            trip.transports?.forEach(t => tripPlaces.add(t.destination)); // Simplified for brevity in refactor
+            trip.transports?.forEach(t => tripPlaces.add(t.destination)); 
 
             for (const place of tripPlaces) {
                 const resolved = resolvedData.get(place);
@@ -414,16 +406,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
         return Math.min(100, Math.max(0, ((currentCount - prevThreshold) / (nextThreshold - prevThreshold)) * 100));
   }, [currentLevel, nextLevel, visitedData]);
 
-  // User card logic mostly kept for context but simplified rendering below
-  // ... (Calculation functions `calculateUsedDays`, `getTotalAllowance` etc are same as before) ...
-  // Omitted for brevity in this specific file update as they don't depend on Geocoding directly, but assuming they persist.
-
   if (loading) return <div className="p-8 text-gray-400 animate-pulse">Synchronizing Dashboard...</div>;
 
   const validPastTrips = trips.filter(t => t.status !== 'Planning' && t.status !== 'Cancelled');
 
   return (
-    <div className="space-y-8 animate-fade-in max-w-[1600px] mx-auto pb-12">
+    <div className="space-y-8 animate-fade-in max-w-[100rem] mx-auto pb-12">
         {/* Header Actions */}
         <div className="flex justify-between items-center bg-white/40 dark:bg-gray-900/40 p-4 rounded-[2rem] backdrop-blur-xl border border-white/50 dark:border-white/5 shadow-sm">
             <h2 className="text-2xl font-black text-gray-900 dark:text-white px-4">Command Center</h2>
@@ -438,7 +426,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
         </div>
 
         {/* Gamification Stats */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 h-[500px]">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 h-[31.25rem]">
             <div className="xl:col-span-2 relative rounded-[2.5rem] overflow-hidden border border-gray-100 dark:border-white/5 shadow-2xl group">
                 <ExpeditionMap3D trips={validPastTrips} animateRoutes={true} onTripClick={onTripClick} />
                 <div className="absolute top-6 left-6 z-10 bg-black/40 backdrop-blur-md p-4 rounded-2xl border border-white/10 text-white">

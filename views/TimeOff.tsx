@@ -51,18 +51,17 @@ interface TimeOffProps {
 type CalendarViewType = 'week' | 'month' | 'year';
 
 export const TimeOff: React.FC<TimeOffProps> = ({ onTripClick }) => {
+    // ... (State logic unchanged)
     const [trips, setTrips] = useState<Trip[]>([]);
     const [users, setUsers] = useState<User[]>([]);
     const [entitlements, setEntitlements] = useState<EntitlementType[]>([]);
     const [holidays, setHolidays] = useState<PublicHoliday[]>([]);
     const [workspaceConfig, setWorkspaceConfig] = useState<WorkspaceSettings | null>(null);
     
-    // Filters
     const [filterUser, setFilterUser] = useState<string>('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [viewMode, setViewMode] = useState<'calendar' | 'upcoming' | 'history'>('calendar');
 
-    // Calendar State
     const [viewDate, setViewDate] = useState(new Date());
     const [calendarView, setCalendarView] = useState<CalendarViewType>('month');
     const [isDragging, setIsDragging] = useState(false);
@@ -71,10 +70,8 @@ export const TimeOff: React.FC<TimeOffProps> = ({ onTripClick }) => {
     const activeYear = viewDate.getFullYear();
     const yearRange = Array.from({ length: 11 }, (_, i) => activeYear - 5 + i);
 
-    // UI State
     const [collapsedYears, setCollapsedYears] = useState<Set<number>>(new Set());
 
-    // Modal
     const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
     const [editingTrip, setEditingTrip] = useState<Trip | undefined>(undefined);
 
@@ -110,7 +107,7 @@ export const TimeOff: React.FC<TimeOffProps> = ({ onTripClick }) => {
         });
     };
 
-    // --- Helpers ---
+    // ... (Helpers and Logic unchanged)
     const getNextMonday = (dateStr: string) => {
         const d = new Date(dateStr);
         const day = d.getDay();
@@ -156,7 +153,6 @@ export const TimeOff: React.FC<TimeOffProps> = ({ onTripClick }) => {
         return d >= start && d <= end;
     };
 
-    // --- Logic ---
     const handleOpenRequest = () => {
         setEditingTrip(undefined);
         setIsRequestModalOpen(true);
@@ -178,7 +174,6 @@ export const TimeOff: React.FC<TimeOffProps> = ({ onTripClick }) => {
         refreshData();
         setIsRequestModalOpen(false);
 
-        // Workflow: If user checked "Traveling" (implied by having a specific location), go to details
         if (onTripClick && savedTrip && savedTrip.location && savedTrip.location !== 'Time Off' && savedTrip.location !== 'Remote') {
             onTripClick(savedTrip.id);
         }
@@ -190,7 +185,6 @@ export const TimeOff: React.FC<TimeOffProps> = ({ onTripClick }) => {
         setIsRequestModalOpen(false);
     };
 
-    // Calendar Drag Logic
     const onDayMouseDown = (date: Date) => { setIsDragging(true); setSelectionStart(date); setSelectionEnd(date); };
     const onDayMouseEnter = (date: Date) => { if (isDragging) setSelectionEnd(date); };
     const handleSelectionComplete = () => {
@@ -203,7 +197,6 @@ export const TimeOff: React.FC<TimeOffProps> = ({ onTripClick }) => {
         setSelectionStart(null); setSelectionEnd(null); setIsDragging(false);
     };
 
-    // Calendar Renderers
     const getCalendarTitle = () => {
         if (calendarView === 'year') return null; 
         if (calendarView === 'month') return viewDate.toLocaleString('default', { month: 'long' });
@@ -252,7 +245,7 @@ export const TimeOff: React.FC<TimeOffProps> = ({ onTripClick }) => {
         return { holidayMap, shiftedMap };
     };
 
-    const renderDayCell = (date: Date, minHeightClass: string = 'min-h-[140px]', showDate = true, size: 'normal' | 'compact' = 'normal') => {
+    const renderDayCell = (date: Date, minHeightClass: string = 'min-h-[8.75rem]', showDate = true, size: 'normal' | 'compact' = 'normal') => {
         const isToday = isSameDay(date, new Date());
         const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
         const dayHolidays = new Map<string, string>(); 
@@ -266,7 +259,6 @@ export const TimeOff: React.FC<TimeOffProps> = ({ onTripClick }) => {
         const isActualHoliday = holidayList.some(([_, type]) => type === 'actual');
         const isShiftedHoliday = holidayList.some(([_, type]) => type === 'shifted');
         
-        // Filter trips for this day
         const dayTrips = trips.filter(t => {
             const matchesUser = filterUser === 'all' || t.participants.includes(filterUser);
             const matchesSearch = t.name.toLowerCase().includes(searchQuery.toLowerCase()) || t.location.toLowerCase().includes(searchQuery.toLowerCase());
@@ -347,12 +339,11 @@ export const TimeOff: React.FC<TimeOffProps> = ({ onTripClick }) => {
         const startDay = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
         const daysInMonth = new Date(year, month + 1, 0).getDate();
         const grid: React.ReactNode[] = [];
-        for (let i = 0; i < startDay; i++) grid.push(<div key={`empty-${i}`} className="min-h-[140px] bg-gray-50/20 dark:bg-white/5 rounded-2xl" />);
+        for (let i = 0; i < startDay; i++) grid.push(<div key={`empty-${i}`} className="min-h-[8.75rem] bg-gray-50/20 dark:bg-white/5 rounded-2xl" />);
         for (let d = 1; d <= daysInMonth; d++) grid.push(renderDayCell(new Date(year, month, d)));
         return <div className="grid grid-cols-7 gap-3">{['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (<div key={d} className="text-center py-3 text-xs font-black text-gray-400 uppercase tracking-widest">{d}</div>))}{grid}</div>;
     };
 
-    // --- List View Components (Moved from old TimeOff) ---
     const toggleYearCollapse = (year: number) => {
         const newSet = new Set(collapsedYears);
         if (newSet.has(year)) { newSet.delete(year); } else { newSet.add(year); }
@@ -417,7 +408,7 @@ export const TimeOff: React.FC<TimeOffProps> = ({ onTripClick }) => {
     };
 
     return (
-        <div className="space-y-8 animate-fade-in max-w-[1600px] mx-auto pb-12">
+        <div className="space-y-8 animate-fade-in max-w-[100rem] mx-auto pb-12">
             
             {/* Header Area */}
             <div className="flex flex-col md:flex-row justify-between items-end gap-6 bg-white/40 dark:bg-gray-900/40 p-6 rounded-[2rem] backdrop-blur-xl border border-white/50 dark:border-white/5 shadow-xl">
@@ -458,7 +449,7 @@ export const TimeOff: React.FC<TimeOffProps> = ({ onTripClick }) => {
                 ]}
             />
 
-            <div className="min-h-[600px]">
+            <div className="min-h-[37.5rem]">
                 {viewMode === 'calendar' && (
                     <Card noPadding className="rounded-[2.5rem] overflow-hidden shadow-2xl border border-gray-200/50 dark:border-white/5 bg-white/40 dark:bg-gray-900/40 backdrop-blur-3xl">
                         <div className="px-8 py-6 border-b border-white/20 dark:border-white/5 flex flex-col xl:flex-row justify-between items-center gap-6 bg-white/40 dark:bg-white/5 backdrop-blur-2xl sticky top-0 z-30 transition-all">
@@ -477,7 +468,7 @@ export const TimeOff: React.FC<TimeOffProps> = ({ onTripClick }) => {
                                 <div className="flex bg-gray-100/50 dark:bg-black/20 rounded-2xl p-1.5 border border-white/20 dark:border-white/5 backdrop-blur-md">{['month', 'year'].map((v) => (<button key={v} onClick={() => setCalendarView(v as any)} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${calendarView === v ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-lg shadow-blue-500/10 scale-105 ring-1 ring-black/5 dark:ring-white/10' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-white/50 dark:hover:bg-white/5'}`}>{v}</button>))}</div>
                             </div>
                         </div>
-                        <div className="p-6 bg-white/60 dark:bg-gray-900/60 min-h-[600px] backdrop-blur-md">
+                        <div className="p-6 bg-white/60 dark:bg-gray-900/60 min-h-[37.5rem] backdrop-blur-md">
                             {calendarView === 'month' && renderMonthView()}
                             {calendarView === 'year' && (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">{Array.from({ length: 12 }).map((_, i) => { const monthDate = new Date(activeYear, i, 1); const daysInMonth = new Date(activeYear, i + 1, 0).getDate(); const startDay = monthDate.getDay() === 0 ? 6 : monthDate.getDay() - 1; return (<div key={i} className="bg-gray-50/50 dark:bg-white/5 rounded-2xl p-4 border border-gray-100 dark:border-white/5 hover:border-blue-200 dark:hover:border-blue-800 transition-colors"><h4 className="text-sm font-black text-gray-900 dark:text-white mb-3 uppercase tracking-widest cursor-pointer hover:text-blue-500 transition-colors" onClick={() => { const newDate = new Date(viewDate); newDate.setMonth(i); setViewDate(newDate); setCalendarView('month'); }}>{monthDate.toLocaleString('default', { month: 'long' })}</h4><div className="grid grid-cols-7 gap-1">{Array.from({ length: startDay }).map((_, k) => <div key={k} />)}{Array.from({ length: daysInMonth }).map((_, d) => renderDayCell(new Date(activeYear, i, d + 1), 'h-8', false, 'compact'))}</div></div>); })}</div>

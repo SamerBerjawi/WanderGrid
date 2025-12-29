@@ -12,19 +12,18 @@ interface SettingsProps {
 }
 
 export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
+  // ... (State logic unchanged)
   const [activeTab, setActiveTab] = useState('general');
   const [users, setUsers] = useState<User[]>([]);
   const [entitlements, setEntitlements] = useState<EntitlementType[]>([]);
   const [savedConfigs, setSavedConfigs] = useState<SavedConfig[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // User Management State
   const [isDeletingMember, setIsDeletingMember] = useState<string | null>(null);
   const [memberToDelete, setMemberToDelete] = useState<User | null>(null);
   const [isEditingUser, setIsEditingUser] = useState(false);
   const [editingUser, setEditingUser] = useState<Partial<User>>({});
   
-  // Org Settings State
   const [config, setConfig] = useState<WorkspaceSettings>({
       orgName: '',
       currency: 'USD',
@@ -37,14 +36,12 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
   });
   const [isSavingOrg, setIsSavingOrg] = useState(false);
 
-  // Backup & Restore State
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [restoreStatus, setRestoreStatus] = useState<'idle' | 'reading' | 'importing' | 'success' | 'error'>('idle');
   const [restoreErrorMessage, setRestoreErrorMessage] = useState('');
 
-  // Flight Import State
   const flightJsonInputRef = useRef<HTMLInputElement>(null);
   const flightCsvInputRef = useRef<HTMLInputElement>(null);
   const [importState, setImportState] = useState<ImportState>(dataService.getImportState());
@@ -83,8 +80,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
     });
   };
 
-  // --- User Management Handlers ---
-
+  // ... (All event handlers unchanged: handleCreateUser, handleEditUser, handleSaveUser, initiateDeleteMember, handleConfirmDeleteMember, handleSaveOrgSettings, toggleWorkingDay, handleExport, handleImportTrigger, handleFileSelect, handleConfirmRestore, handleFlightImport, handleConfirmFlightImport, handleFlightExport, filteredImportCandidates, toggleImportSelection, toggleAllImportSelection)
   const handleCreateUser = () => {
       setEditingUser({ 
           name: '', 
@@ -141,8 +137,6 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
       }
   };
 
-  // --- Org Settings Handlers ---
-
   const handleSaveOrgSettings = async () => { 
       setIsSavingOrg(true);
       await dataService.updateWorkspaceSettings(config);
@@ -156,8 +150,6 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
           : [...config.workingDays, d].sort();
       setConfig({...config, workingDays: newDays});
   };
-
-  // --- Backup & Restore Handlers ---
 
   const handleExport = async () => { 
       const json = await dataService.exportFullState();
@@ -181,7 +173,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
       setRestoreStatus('idle');
       setRestoreErrorMessage('');
       setIsRestoreModalOpen(true);
-      e.target.value = ''; // Reset input
+      e.target.value = ''; 
   };
 
   const handleConfirmRestore = async () => { 
@@ -196,12 +188,10 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
               await dataService.importFullState(content);
               setRestoreStatus('success');
               
-              // Clear current session to force re-login with restored users
               localStorage.removeItem('wandergrid_session_user');
 
               setTimeout(() => {
                   setIsRestoreModalOpen(false);
-                  // Full reload to ensure all in-memory caches (geo/maps) are reset
                   window.location.reload();
               }, 1000);
           } catch (err) {
@@ -217,8 +207,6 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
       reader.readAsText(pendingFile);
   };
 
-  // --- Flight Import Handlers ---
-
   const handleFlightImport = (e: React.ChangeEvent<HTMLInputElement>, type: 'json' | 'csv') => { 
       const file = e.target.files?.[0];
       if (!file || users.length === 0) return;
@@ -226,7 +214,6 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
       const reader = new FileReader();
       reader.onload = async (evt) => {
           const content = evt.target?.result as string;
-          // Use first user as default participant for imports
           const defaultUserId = users[0].id; 
           
           let candidates: Trip[] = [];
@@ -329,7 +316,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
   if (loading) return <div className="p-8 text-gray-400 animate-pulse">Initializing Systems...</div>;
 
   return (
-    <div className="space-y-8 animate-fade-in max-w-[1400px] mx-auto pb-12 flex flex-col h-full">
+    <div className="space-y-8 animate-fade-in max-w-[87.5rem] mx-auto pb-12 flex flex-col h-full">
        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white/40 dark:bg-gray-900/40 p-6 rounded-[2rem] backdrop-blur-xl border border-white/50 dark:border-white/5 shadow-2xl shrink-0">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
@@ -610,202 +597,4 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
         </div>
       )}
       
-      {activeTab === 'policies' && <div className="h-[800px] animate-fade-in"><EntitlementsManager /></div>}
-      {activeTab === 'calendars' && <div className="h-[800px] animate-fade-in"><PublicHolidaysManager /></div>}
-       
-       {/* User Edit Modal */}
-       <Modal isOpen={isEditingUser} onClose={() => setIsEditingUser(false)} title="Member Access Control">
-            <div className="space-y-6">
-                <div className="space-y-4 animate-fade-in">
-                    <Input label="Identity: Name" className="!rounded-2xl" value={editingUser.name || ''} onChange={e => setEditingUser({...editingUser, name: e.target.value})} />
-                    <Input label="Access Email" type="email" className="!rounded-2xl" value={editingUser.email || ''} onChange={e => setEditingUser({...editingUser, email: e.target.value})} />
-                    <Input label="Access Password" type="password" className="!rounded-2xl" value={editingUser.password || ''} onChange={e => setEditingUser({...editingUser, password: e.target.value})} />
-                    <Select label="Clearance Level" className="!rounded-2xl" value={editingUser.role || 'Partner'} onChange={e => setEditingUser({...editingUser, role: e.target.value as any})} options={[{ label: 'Partner', value: 'Partner' }, { label: 'Child', value: 'Child' }, { label: 'Admin', value: 'Admin' }]} />
-                </div>
-                <div className="flex gap-3 pt-6 border-t border-gray-100 dark:border-white/5">
-                    <Button variant="ghost" className="flex-1 !rounded-2xl" onClick={() => setIsEditingUser(false)}>Discard</Button>
-                    <Button variant="primary" className="flex-1 !rounded-2xl shadow-xl shadow-blue-500/20" onClick={handleSaveUser}>Authorize Profile</Button>
-                </div>
-            </div>
-       </Modal>
-       
-       {/* User Delete Modal */}
-       <Modal isOpen={!!memberToDelete} onClose={() => setMemberToDelete(null)} title="Personnel Termination">
-            <div className="space-y-6 text-center">
-                <h4 className="text-2xl font-black text-gray-900 dark:text-white leading-none">Sever Identity?</h4>
-                <p className="text-gray-500 dark:text-gray-400 mt-3 text-sm leading-relaxed">
-                    Remove <span className="font-bold text-gray-900 dark:text-white">{memberToDelete?.name}</span> from the roster?
-                </p>
-                <div className="flex gap-3 pt-2">
-                    <Button variant="ghost" className="flex-1 !rounded-xl" onClick={() => setMemberToDelete(null)}>Cancel</Button>
-                    <Button variant="danger" className="flex-1 !rounded-xl shadow-lg shadow-rose-500/20" onClick={handleConfirmDeleteMember}>Confirm Removal</Button>
-                </div>
-            </div>
-       </Modal>
-
-       {/* Restore Modal */}
-       <Modal isOpen={isRestoreModalOpen} onClose={() => setIsRestoreModalOpen(false)} title="System Restore">
-            <div className="text-center space-y-6">
-                <div className="w-16 h-16 bg-rose-50 dark:bg-rose-900/20 rounded-full flex items-center justify-center mx-auto text-rose-500 animate-pulse">
-                    <span className="material-icons-outlined text-3xl">history</span>
-                </div>
-                <div>
-                    <h4 className="text-xl font-bold text-gray-900 dark:text-white">Confirm Overwrite</h4>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                        Restoring <strong>{pendingFile?.name}</strong> will replace all current data. This action is irreversible.
-                    </p>
-                </div>
-                {restoreStatus === 'error' && (
-                    <div className="p-3 bg-rose-50 text-rose-600 rounded-xl text-xs font-bold border border-rose-100">
-                        {restoreErrorMessage}
-                    </div>
-                )}
-                <div className="flex gap-3 pt-2">
-                    <Button variant="ghost" className="flex-1" onClick={() => setIsRestoreModalOpen(false)}>Cancel</Button>
-                    <Button 
-                        variant="danger" 
-                        className="flex-1 shadow-lg shadow-rose-500/20" 
-                        onClick={handleConfirmRestore} 
-                        isLoading={restoreStatus === 'reading' || restoreStatus === 'importing'}
-                        disabled={restoreStatus === 'success'}
-                    >
-                        {restoreStatus === 'success' ? 'Restored!' : 'Proceed with Overwrite'}
-                    </Button>
-                </div>
-            </div>
-       </Modal>
-
-       {/* Import Verification Modal */}
-       <Modal isOpen={isImportVerifyOpen} onClose={() => setIsImportVerifyOpen(false)} title="Verify Flight Import" maxWidth="max-w-3xl">
-            <div className="space-y-6">
-                {/* Advanced Filter Bar */}
-                <div className="space-y-3 p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <Input 
-                            placeholder="Search Airline, Location..." 
-                            value={importFilters.search} 
-                            onChange={e => setImportFilters({...importFilters, search: e.target.value})}
-                            className="!py-2 !text-xs"
-                            rightElement={<span className="material-icons-outlined text-gray-400 text-xs mr-2">travel_explore</span>}
-                        />
-                        <Input 
-                            placeholder="Filter by Carrier (e.g. Delta, AF)..." 
-                            value={importFilters.carrierSearch} 
-                            onChange={e => setImportFilters({...importFilters, carrierSearch: e.target.value})}
-                            className="!py-2 !text-xs"
-                            rightElement={<span className="material-icons-outlined text-gray-400 text-xs mr-2">airlines</span>}
-                        />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-                        <Input 
-                            type="date" 
-                            label="Earliest Trip"
-                            value={importFilters.minDate}
-                            onChange={e => setImportFilters({...importFilters, minDate: e.target.value})}
-                            className="!py-2 !text-xs"
-                        />
-                        <Input 
-                            type="date" 
-                            label="Latest Trip"
-                            value={importFilters.maxDate}
-                            onChange={e => setImportFilters({...importFilters, maxDate: e.target.value})}
-                            className="!py-2 !text-xs"
-                        />
-                        <Select 
-                            label="Min Legs"
-                            value={importFilters.minLegs}
-                            onChange={e => setImportFilters({...importFilters, minLegs: e.target.value})}
-                            options={[
-                                { label: 'Any Leg Count', value: '0' },
-                                { label: 'Multi-Leg Only (2+)', value: '2' },
-                                { label: 'Long Tours (4+)', value: '4' }
-                            ]}
-                            className="!py-2 !text-xs"
-                        />
-                    </div>
-                </div>
-
-                <div className="flex justify-between items-center bg-gray-50 dark:bg-white/5 p-4 rounded-xl border border-gray-100 dark:border-white/5">
-                    <span className="text-xs font-black uppercase tracking-widest text-gray-500">
-                        {filteredImportCandidates.length} of {proposedTrips.length} Results
-                    </span>
-                    <button onClick={toggleAllImportSelection} className="text-[10px] font-black text-blue-500 hover:text-blue-600 uppercase tracking-widest underline underline-offset-4">
-                        {filteredImportCandidates.every(t => selectedTripIds.has(t.id)) && filteredImportCandidates.length > 0 ? 'Deselect All' : 'Select All Filtered'}
-                    </button>
-                </div>
-                
-                <div className="max-h-[450px] overflow-y-auto custom-scrollbar space-y-3 p-1">
-                    {filteredImportCandidates.map(trip => {
-                        const isSelected = selectedTripIds.has(trip.id);
-                        const carriers = Array.from(new Set(trip.transports?.map(t => t.provider) || []));
-                        const iatas = trip.transports ? [trip.transports[0].origin, ...trip.transports.map(t => t.destination)] : [];
-
-                        return (
-                            <div 
-                                key={trip.id} 
-                                onClick={() => toggleImportSelection(trip.id)} 
-                                className={`flex items-start gap-4 p-5 rounded-3xl border cursor-pointer transition-all ${
-                                    isSelected 
-                                    ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700 shadow-lg' 
-                                    : 'bg-white border-gray-100 dark:bg-gray-800 dark:border-white/10 hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-md'
-                                }`}
-                            >
-                                <div className={`mt-1 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${isSelected ? 'bg-blue-500 border-blue-500 shadow-md' : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600'}`}>
-                                    {isSelected && <span className="material-icons-outlined text-white text-sm">check</span>}
-                                </div>
-                                <div className="flex-1 space-y-3">
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <h4 className="font-black text-base text-gray-900 dark:text-white leading-none">{trip.name}</h4>
-                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1.5 flex items-center gap-2">
-                                                <span className="material-icons-outlined text-[10px]">calendar_today</span>
-                                                {new Date(trip.startDate).toLocaleDateString()} – {new Date(trip.endDate).toLocaleDateString()}
-                                            </p>
-                                        </div>
-                                        <Badge color="blue" className="!px-2 !py-0.5">{trip.transports?.length} Legs</Badge>
-                                    </div>
-
-                                    {/* Visual Route */}
-                                    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
-                                        {iatas.map((code, idx) => (
-                                            <React.Fragment key={idx}>
-                                                <span className="text-[10px] font-mono font-black bg-gray-100 dark:bg-white/5 px-2 py-1 rounded-md text-gray-700 dark:text-gray-200">{code}</span>
-                                                {idx < iatas.length - 1 && <span className="material-icons-outlined text-[10px] text-gray-300">arrow_forward</span>}
-                                            </React.Fragment>
-                                        ))}
-                                    </div>
-
-                                    {/* Carriers List */}
-                                    <div className="flex flex-wrap gap-1.5">
-                                        {carriers.map((c, idx) => (
-                                            <span key={idx} className="text-[9px] font-black uppercase tracking-wider bg-gray-50 dark:bg-black/20 text-gray-500 px-2 py-0.5 rounded border border-gray-100 dark:border-white/5">{c}</span>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })}
-                    {filteredImportCandidates.length === 0 && (
-                        <div className="text-center py-16 bg-gray-50/50 dark:bg-white/5 rounded-3xl border border-dashed border-gray-200 dark:border-white/10">
-                            <span className="material-icons-outlined text-gray-300 text-5xl">manage_search</span>
-                            <p className="text-gray-400 text-sm font-bold mt-4 uppercase tracking-[0.2em]">No matches found</p>
-                        </div>
-                    )}
-                </div>
-
-                <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-white/5">
-                    <Button variant="ghost" className="flex-1 !rounded-2xl" onClick={() => setIsImportVerifyOpen(false)}>Discard Selection</Button>
-                    <Button 
-                        variant="primary" 
-                        className="flex-1 !rounded-2xl shadow-xl shadow-blue-500/20" 
-                        onClick={handleConfirmFlightImport} 
-                        disabled={selectedTripIds.size === 0}
-                    >
-                        Commit {selectedTripIds.size} Journeys
-                    </Button>
-                </div>
-            </div>
-       </Modal>
-    </div>
-  );
-};
+      {activeTab === 'policies' && <div className="h-[50rem] animate-fade-in"><EntitlementsManager

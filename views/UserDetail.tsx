@@ -28,6 +28,7 @@ const getColorClasses = (color: string) => {
 };
 
 export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack }) => {
+    // ... (State and useEffect logic unchanged)
     const [user, setUser] = useState<User | null>(null);
     const [trips, setTrips] = useState<Trip[]>([]);
     const [holidays, setHolidays] = useState<PublicHoliday[]>([]);
@@ -38,10 +39,8 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack }) => {
     const [loading, setLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
-    // Fetching state
     const [availableCountries, setAvailableCountries] = useState<{label: string, value: string}[]>([]);
     
-    // Modal States
     const [editingPolicyId, setEditingPolicyId] = useState<string | null>(null);
     const [tempPolicy, setTempPolicy] = useState<UserPolicy | null>(null);
     const [tempWeekendRule, setTempWeekendRule] = useState<'monday' | 'lieu' | 'none'>('none'); 
@@ -54,7 +53,6 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack }) => {
         newCategoryColor: 'blue' as const,
     });
     
-    // Add Year State
     const [isAddYearModalOpen, setIsAddYearModalOpen] = useState(false);
     const [newYearForm, setNewYearForm] = useState({
         year: new Date().getFullYear() + 1,
@@ -62,7 +60,6 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack }) => {
         replicate: false,
     });
 
-    // Custom Holiday State
     const [isAddCustomHolidayOpen, setIsAddCustomHolidayOpen] = useState(false);
     const [customHolidayForm, setCustomHolidayForm] = useState({ name: '', date: '' });
 
@@ -142,8 +139,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack }) => {
         return activeConfig?.holidays.filter(h => h.isIncluded).length || 0;
     }, [activeConfig]);
 
-    // --- Calculation Logic ---
-
+    // ... (All calculation logic remains unchanged: getNextMonday, calculateDaysForTrip, getUsedBalanceForYear, calculateCarryOverAmount, getTotalAllowanceRecursive, entitlementBreakdown)
     const getNextMonday = (dateStr: string) => {
         const d = new Date(dateStr);
         const day = d.getDay();
@@ -157,7 +153,6 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack }) => {
     const calculateDaysForTrip = (trip: Trip, year: number) => {
         if (!config || !user) return 0;
         
-        // Holiday Map for current year context
         const holidaySet = new Set<string>();
         if (activeConfig) {
             activeConfig.holidays.forEach(h => {
@@ -214,18 +209,15 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack }) => {
         trips.forEach(t => {
             if (t.status === 'Cancelled') return;
             
-            // Check if allocation overrides exist
             if (t.allocations && t.allocations.length > 0) {
                 const strictAlloc = t.allocations.find(a => a.entitlementId === entId && a.targetYear === year);
                 if (strictAlloc) {
                     used += strictAlloc.days;
                 } else {
-                    // Fallback to simple allocation if no year specified (split proportionally if crossing years)
                     const alloc = t.allocations.find(a => a.entitlementId === entId && !a.targetYear);
                     if (alloc) {
-                        const totalDur = calculateDaysForTrip(t, year); // days in THIS year
-                        // This logic is simplified; strict allocation is preferred for cross-year
-                        if (totalDur > 0) used += alloc.days; // Rough approx if not strict
+                        const totalDur = calculateDaysForTrip(t, year);
+                        if (totalDur > 0) used += alloc.days; 
                     }
                 }
             } else if (t.entitlementId === entId) {
@@ -245,24 +237,15 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack }) => {
         const used = getUsedBalanceForYear(entId, fromYear);
         const remaining = Math.max(0, totalAllowance - used);
         
-        // Check Expiry
-        if (policy.carryOver.expiryType === 'months' && policy.carryOver.expiryValue) {
-            const expiryMonth = (policy.carryOver.expiryValue as number) - 1; // 0-indexed
-            const now = new Date();
-            // If we are past the expiry month in the target year (fromYear + 1), expire it
-            // For simplicity in this view, we assume valid if viewing the target year context
-        }
-
         return Math.min(remaining, policy.carryOver.maxDays);
     };
 
     const getTotalAllowanceRecursive = (userId: string, entId: string, year: number, depth = 0): number => {
-        if (depth > 5) return 0; // Break cycles
+        if (depth > 5) return 0; 
         
         const ent = entitlements.find(e => e.id === entId);
         if (!ent) return 0;
 
-        // Base Allowance from Policy
         const policy = user?.policies?.find(p => p.entitlementId === entId && p.year === year);
         let base = 0;
         if (policy) {
@@ -272,32 +255,26 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack }) => {
             return Infinity;
         }
 
-        // Lieu Exception
         if (ent.category === 'Lieu') {
             base = user?.lieuBalance || 0;
-            // Add accrued lieu from weekends if rule active
             if (user?.holidayWeekendRule === 'lieu') {
-                 // Check holidays state for relevant year and user config
                  const accrued = holidays.filter(h => {
                      if (!h.isIncluded) return false;
                      if (!user.holidayConfigIds?.includes(h.configId || '')) return false;
                      
-                     // Ensure year match
                      const [y, m, d] = h.date.split('-').map(Number);
                      if (y !== year) return false;
                      
                      const date = new Date(y, m - 1, d);
                      const day = date.getDay();
-                     return day === 0 || day === 6; // Sunday or Saturday
+                     return day === 0 || day === 6; 
                  }).length;
                  base += accrued;
             }
         }
 
-        // Carry Over from Previous Year
         let carryOver = 0;
         const prevYear = year - 1;
-        // Find policies in prevYear that target THIS entId
         const prevPolicies = user?.policies?.filter(p => p.year === prevYear && p.carryOver.enabled) || [];
         
         prevPolicies.forEach(prevP => {
@@ -305,7 +282,6 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack }) => {
             const isTarget = prevP.carryOver.targetEntitlementId === entId;
             
             if ((targetsSelf && prevP.entitlementId === entId) || isTarget) {
-                // Calculate how much was left in that previous bucket
                 carryOver += calculateCarryOverAmount(userId, prevP.entitlementId, prevYear);
             }
         });
@@ -321,9 +297,8 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack }) => {
             const total = getTotalAllowanceRecursive(user.id, p.entitlementId, selectedYear);
             const used = getUsedBalanceForYear(p.entitlementId, selectedYear);
             
-            // Calculate components for display
             const base = p.accrual.amount;
-            const carryOver = total - base; // Simplified visualization
+            const carryOver = total - base; 
 
             return {
                 id: p.entitlementId,
@@ -344,8 +319,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack }) => {
 
     const totalAllowance = entitlementBreakdown.reduce((sum, item) => sum + (item.allowance === Infinity ? 0 : item.allowance), 0);
 
-    // --- Actions ---
-
+    // ... (Actions unchanged: openAddYearModal, handleInitializeYear, handleWeekendRuleChange, openCreateProtocol, handleCreateProtocol, openPolicyEditor, savePolicy, togglePolicyActive, handleAddCustomHoliday, handleDeleteCustomHoliday, toggleHolidayInclusion, formatHolidayDate)
     const openAddYearModal = () => {
         setNewYearForm({ year: selectedYear + 1, countryCode: activeConfig?.countryCode || 'BE', replicate: true });
         setIsAddYearModalOpen(true);
@@ -355,12 +329,10 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack }) => {
         if (!user) return;
         const year = newYearForm.year;
         
-        // 1. Fetch/Create Holiday Config
         let configId = `${newYearForm.countryCode}-${year}`;
         const existingConfig = allSavedConfigs.find(c => c.id === configId);
         
         if (!existingConfig) {
-            // Fetch and save
             try {
                 const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/${newYearForm.countryCode}`);
                 if (res.ok) {
@@ -389,14 +361,11 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack }) => {
             } catch (e) { console.error("Holiday fetch failed", e); }
         }
 
-        // 2. Create Policies
         let newPolicies: UserPolicy[] = [];
         if (newYearForm.replicate) {
-            // Copy from selectedYear
             const sourcePolicies = user.policies?.filter(p => p.year === selectedYear) || [];
             newPolicies = sourcePolicies.map(p => ({ ...p, year }));
         } else {
-            // Create fresh defaults based on Entitlements
             newPolicies = entitlements.map(ent => ({
                 entitlementId: ent.id,
                 year,
@@ -493,11 +462,9 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack }) => {
             configId: activeConfig.id
         };
         
-        // We need to update the SavedConfig in DB
         const updatedConfig = { ...activeConfig, holidays: [...activeConfig.holidays, newHoliday] };
         await dataService.saveConfig(updatedConfig);
         
-        // Refresh local state
         const idx = allSavedConfigs.findIndex(c => c.id === updatedConfig.id);
         const newConfigs = [...allSavedConfigs];
         newConfigs[idx] = updatedConfig;
@@ -526,7 +493,6 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack }) => {
         const updatedConfig = { ...activeConfig, holidays: updatedHolidays };
         await dataService.saveConfig(updatedConfig);
         
-        // Refresh local state
         const idx = allSavedConfigs.findIndex(c => c.id === updatedConfig.id);
         const newConfigs = [...allSavedConfigs];
         newConfigs[idx] = updatedConfig;
@@ -544,7 +510,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack }) => {
     const uniqueCountries = availableCountries.length > 0 ? availableCountries : [{ label: 'Belgium', value: 'BE' }, { label: 'US', value: 'US' }];
 
     return (
-        <div className="space-y-8 animate-fade-in max-w-[1600px] mx-auto pb-12">
+        <div className="space-y-8 animate-fade-in max-w-[100rem] mx-auto pb-12">
             
             {/* HERO CARD */}
             <div className="relative w-full rounded-[2.5rem] bg-white dark:bg-gray-900 shadow-2xl border border-gray-100 dark:border-white/5 overflow-hidden group">
@@ -661,7 +627,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack }) => {
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-                <Card noPadding className="xl:col-span-5 rounded-[2rem] flex flex-col h-[600px]">
+                <Card noPadding className="xl:col-span-5 rounded-[2rem] flex flex-col h-[37.5rem]">
                     <div className="p-6 border-b border-gray-100 dark:border-white/5 bg-amber-500/5 flex justify-between items-center shrink-0">
                         <div>
                             <h3 className="text-lg font-black text-gray-900 dark:text-white leading-none">Regional Statutory</h3>
@@ -752,7 +718,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack }) => {
                     )}
                 </Card>
 
-                <Card noPadding className="xl:col-span-7 rounded-[2rem] flex flex-col h-[600px]">
+                <Card noPadding className="xl:col-span-7 rounded-[2rem] flex flex-col h-[37.5rem]">
                     <div className="p-6 border-b border-gray-100 dark:border-white/5 bg-blue-500/5 flex justify-between items-center shrink-0">
                         <div>
                             <h3 className="text-lg font-black text-gray-900 dark:text-white leading-none">Protocol Matrix</h3>

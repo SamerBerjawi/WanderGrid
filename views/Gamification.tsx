@@ -6,6 +6,7 @@ import { Trip } from '../types';
 import { resolvePlaceName, calculateDistance } from '../services/geocoding';
 import { Tabs } from '../components/ui';
 
+// ... (Interfaces, REGION_STYLES, and helper functions remain unchanged)
 interface GamificationProps {
     onTripClick?: (tripId: string) => void;
 }
@@ -337,8 +338,8 @@ export const Gamification: React.FC<GamificationProps> = ({ onTripClick }) => {
   if (loading) return <div className="p-8 text-gray-400 animate-pulse">Consulting the Archives...</div>;
 
   return (
-    <div className="space-y-8 animate-fade-in max-w-[1600px] mx-auto pb-12">
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 h-[500px]">
+    <div className="space-y-8 animate-fade-in max-w-[100rem] mx-auto pb-12">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 h-[31.25rem]">
             <div className="xl:col-span-2 relative rounded-[2.5rem] overflow-hidden border border-gray-100 dark:border-white/5 shadow-2xl group">
                 <ExpeditionMap3D trips={pastTrips} animateRoutes={true} />
                 <div className="absolute top-6 left-6 z-10 bg-black/40 backdrop-blur-md p-4 rounded-2xl border border-white/10 text-white">
