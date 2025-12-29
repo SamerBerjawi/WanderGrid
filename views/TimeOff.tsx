@@ -107,7 +107,6 @@ export const TimeOff: React.FC<TimeOffProps> = ({ onTripClick }) => {
         });
     };
 
-    // ... (Helpers and Logic unchanged)
     const getNextMonday = (dateStr: string) => {
         const d = new Date(dateStr);
         const day = d.getDay();
@@ -299,6 +298,14 @@ export const TimeOff: React.FC<TimeOffProps> = ({ onTripClick }) => {
               </div>
             );
         }
+
+        const getDailyWeight = (trip: Trip) => {
+             if (!isWorkingDay || isActualHoliday || isShiftedHoliday) return 0;
+             if (trip.excludedDates?.includes(dateKey)) return 0;
+             const portion = getDayPortion(date, trip);
+             return portion === 'Full' ? 1 : 0.5;
+        };
+
         return (
           <div key={dateKey} title={holidayNames || undefined} onMouseDown={() => onDayMouseDown(date)} onMouseEnter={() => onDayMouseEnter(date)} className={`relative ${minHeightClass} rounded-2xl border transition-all hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-xl group flex flex-col overflow-hidden cursor-pointer ${cellBackground} ${borderColor}`}>
               <div className="absolute top-2 right-3 z-20 pointer-events-none"><span className={`text-sm font-bold ${isToday ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'} ${(!isWorkingDay && !isActualHoliday && !isShiftedHoliday) ? 'opacity-50' : ''}`}>{date.getDate()}</span></div>
@@ -308,7 +315,16 @@ export const TimeOff: React.FC<TimeOffProps> = ({ onTripClick }) => {
                       fullDayTrips.map((trip) => {
                           const ent = entitlements.find(e => e.id === trip.entitlementId);
                           const styleClass = getCategoryClasses(ent?.color, true);
-                          return <div key={trip.id} onClick={(e) => { e.stopPropagation(); handleEditRequest(trip); }} className={`flex-1 flex flex-col justify-center px-3 py-1 w-full cursor-pointer hover:brightness-95 transition-all ${styleClass}`}><div className="font-bold text-xs truncate leading-tight"><span className="mr-1">{trip.icon}</span>{trip.name}</div><div className="text-[9px] opacity-80 uppercase tracking-wider font-bold">{ent?.name || 'Event'}</div></div>;
+                          const weight = getDailyWeight(trip);
+                          return (
+                            <div key={trip.id} onClick={(e) => { e.stopPropagation(); handleEditRequest(trip); }} className={`flex-1 flex flex-col justify-center px-3 py-1 w-full cursor-pointer hover:brightness-95 transition-all ${styleClass}`}>
+                                <div className="flex justify-between items-start">
+                                    <div className="font-bold text-xs truncate leading-tight mr-1"><span className="mr-1">{trip.icon}</span>{trip.name}</div>
+                                    {weight > 0 && <span className="text-[9px] font-black bg-white/20 px-1.5 rounded flex-shrink-0">{weight}</span>}
+                                </div>
+                                <div className="text-[9px] opacity-80 uppercase tracking-wider font-bold mt-0.5">{ent?.name || 'Event'}</div>
+                            </div>
+                          );
                       })
                   ) : (
                       <>
@@ -316,14 +332,30 @@ export const TimeOff: React.FC<TimeOffProps> = ({ onTripClick }) => {
                               {amTrips.length > 0 ? amTrips.map(trip => {
                                   const ent = entitlements.find(e => e.id === trip.entitlementId);
                                   const styleClass = getCategoryClasses(ent?.color, true);
-                                  return <div key={trip.id} onClick={(e) => { e.stopPropagation(); handleEditRequest(trip); }} className={`flex-1 flex flex-col justify-center px-3 py-0.5 w-full cursor-pointer hover:brightness-95 transition-all ${styleClass}`}><div className="font-bold text-[10px] truncate leading-tight flex items-center gap-1"><span>{trip.icon}</span><span>{trip.name}</span></div></div>;
+                                  const weight = getDailyWeight(trip);
+                                  return (
+                                    <div key={trip.id} onClick={(e) => { e.stopPropagation(); handleEditRequest(trip); }} className={`flex-1 flex flex-col justify-center px-3 py-0.5 w-full cursor-pointer hover:brightness-95 transition-all ${styleClass}`}>
+                                        <div className="flex justify-between items-center">
+                                            <div className="font-bold text-[10px] truncate leading-tight flex items-center gap-1"><span>{trip.icon}</span><span>{trip.name}</span></div>
+                                            {weight > 0 && <span className="text-[8px] font-black bg-white/20 px-1 rounded ml-1 flex-shrink-0">{weight}</span>}
+                                        </div>
+                                    </div>
+                                  );
                               }) : null}
                           </div>
                           <div className="flex-1 w-full flex flex-col min-h-0">
                               {pmTrips.length > 0 ? pmTrips.map(trip => {
                                   const ent = entitlements.find(e => e.id === trip.entitlementId);
                                   const styleClass = getCategoryClasses(ent?.color, true);
-                                  return <div key={trip.id} onClick={(e) => { e.stopPropagation(); handleEditRequest(trip); }} className={`flex-1 flex flex-col justify-center px-3 py-0.5 w-full cursor-pointer hover:brightness-95 transition-all ${styleClass}`}><div className="font-bold text-[10px] truncate leading-tight flex items-center gap-1"><span>{trip.icon}</span><span>{trip.name}</span></div></div>;
+                                  const weight = getDailyWeight(trip);
+                                  return (
+                                    <div key={trip.id} onClick={(e) => { e.stopPropagation(); handleEditRequest(trip); }} className={`flex-1 flex flex-col justify-center px-3 py-0.5 w-full cursor-pointer hover:brightness-95 transition-all ${styleClass}`}>
+                                        <div className="flex justify-between items-center">
+                                            <div className="font-bold text-[10px] truncate leading-tight flex items-center gap-1"><span>{trip.icon}</span><span>{trip.name}</span></div>
+                                            {weight > 0 && <span className="text-[8px] font-black bg-white/20 px-1 rounded ml-1 flex-shrink-0">{weight}</span>}
+                                        </div>
+                                    </div>
+                                  );
                               }) : null}
                           </div>
                       </>
