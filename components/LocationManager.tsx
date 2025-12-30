@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { Button, Input, Autocomplete, Badge } from './ui';
+import React, { useState, useEffect, useRef } from 'react';
+import { Button, Input, Autocomplete } from './ui';
 import { LocationEntry, Transport, TransportMode } from '../types';
 import { searchLocations, getCoordinates, calculateDistance } from '../services/geocoding';
 
@@ -13,20 +13,24 @@ interface RouteManagerProps {
     defaultEndDate: string;
 }
 
+type StopReason = 'Stop' | 'Overnight' | 'Sightseeing' | 'Food' | 'Fuel' | 'Activity';
+
 interface RouteStop {
     id: string;
     name: string;
-    date: string;
-    endDate?: string;
+    date: string; // Arrival Date (or Start Date for Origin)
+    endDate?: string; // Departure Date
     type: 'Start' | 'Stop' | 'End';
-    isLocked?: boolean; // Derived from fixed tickets (Flight, Train, etc)
+    reason: StopReason;
+    isLocked?: boolean; // Derived from fixed tickets
+    isDateLinked?: boolean; // If true, Arrival matches prev Departure
     
     // Transport TO the NEXT stop
     transportToNext?: {
         mode: TransportMode;
         duration: number; // minutes
         distance: number; // km
-        isLocked?: boolean; // Derived from fixed tickets
+        isLocked?: boolean; 
         refId?: string;
     };
 }
@@ -40,6 +44,15 @@ const TRANSPORT_MODES: { mode: TransportMode; label: string; icon: string; speed
     { mode: 'Cruise', label: 'Ship', icon: 'directions_boat', speed: 30 },
 ];
 
+const REASON_ICONS: Record<StopReason, string> = {
+    'Stop': 'place',
+    'Overnight': 'hotel',
+    'Sightseeing': 'photo_camera',
+    'Food': 'restaurant',
+    'Fuel': 'local_gas_station',
+    'Activity': 'hiking'
+};
+
 export const LocationManager: React.FC<RouteManagerProps> = ({ 
     locations, 
     transports, 
@@ -50,19 +63,17 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
 }) => {
     const [route, setRoute] = useState<RouteStop[]>([]);
     const [loadingCalc, setLoadingCalc] = useState<number | null>(null);
+    const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
 
     useEffect(() => {
         initializeRoute();
     }, []);
 
     const initializeRoute = () => {
-        // 1. Identify Anchors (Fixed Tickets) vs Flexible Connectors
         const anchors = transports.filter(t => 
             ['Flight', 'Train', 'Bus', 'Cruise'].includes(t.mode)
         ).sort((a,b) => new Date(a.departureDate).getTime() - new Date(b.departureDate).getTime());
 
-        // 2. Build a Lookup Map for Existing Flexible Transports (to persist choices)
-        // Key: "Origin|Destination" -> Transport Object
         const flexibleTransportsMap = new Map<string, Transport>();
         transports.filter(t => 
             ['Car Rental', 'Personal Car'].includes(t.mode) && !t.itineraryId?.startsWith('fixed-')
@@ -70,61 +81,47 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
             flexibleTransportsMap.set(`${t.origin}|${t.destination}`, t);
         });
 
-        // 3. Collect Migrated Waypoints from legacy format if necessary
         const carTransportsWithWaypoints = transports.filter(t => 
             ['Car Rental', 'Personal Car'].includes(t.mode) && t.waypoints && t.waypoints.length > 0
         );
 
         let stops: RouteStop[] = [];
 
-        // Helper: Create a stop object
         const createStop = (base: Partial<RouteStop>): RouteStop => ({
             id: base.id || Math.random().toString(36).substr(2, 9),
             name: base.name || '',
             date: base.date || defaultStartDate,
-            endDate: base.endDate,
+            endDate: base.endDate || base.date || defaultStartDate,
             type: base.type || 'Stop',
+            reason: base.reason || 'Stop',
             isLocked: base.isLocked || false,
+            isDateLinked: base.isDateLinked !== undefined ? base.isDateLinked : true,
             transportToNext: base.transportToNext
         });
 
         if (anchors.length === 0) {
-            // SCENARIO A: No Fixed Tickets (Pure Road Trip / Flexible)
-            
-            // Seed Start
             stops.push(createStop({
                 id: 'start',
                 name: locations.length > 0 ? locations[0].name : '',
-                type: 'Start'
+                type: 'Start',
+                reason: 'Stop'
             }));
 
-            // Add Locations
-            locations.forEach(l => {
+            locations.forEach((l, idx) => {
                 if (l.name !== stops[0].name) {
                     stops.push(createStop({
                         id: l.id,
                         name: l.name,
                         date: l.startDate,
-                        endDate: l.endDate
+                        endDate: l.endDate,
+                        reason: 'Overnight'
                     }));
                 }
             });
 
-            // Ensure End
-            const lastLocation = locations[locations.length - 1];
-            const lastDate = lastLocation ? lastLocation.endDate : defaultEndDate;
-            
-            // Only add separate end node if dates/locations distinct enough implies a final leg
-            // For MVP simplicity in Road Trip, we just list the stops. The last stop is the end.
-            // But if there is an explicit return trip or separate end location logic, we'd add it.
-            // Here we ensure the last item is marked End.
             if (stops.length > 0) stops[stops.length - 1].type = 'End';
-
         } else {
-            // SCENARIO B: Hybrid (Flights + Road Trip Gaps)
-            
             anchors.forEach((t, idx) => {
-                // Add Origin (Departure)
                 stops.push(createStop({
                     id: `origin-${t.id}`,
                     name: t.origin,
@@ -140,7 +137,6 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                     }
                 }));
 
-                // Add Destination (Arrival)
                 stops.push(createStop({
                     id: `dest-${t.id}`,
                     name: t.destination,
@@ -150,34 +146,25 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                 }));
             });
 
-            // Inject User Locations into Gaps
-            // This logic puts locations that don't match anchor names into the flow based on date
-            // Note: This is a simplified merge sort
             const anchorPoints = new Set(stops.map(s => s.name));
             locations.forEach(l => {
-                // Determine insertion index based on date
-                // Rough logic: Find the first stop that starts AFTER this location, insert before it
                 if (!anchorPoints.has(l.name)) {
-                    // Create stop
-                    const newStop = createStop({
+                    stops.push(createStop({
                         id: l.id,
                         name: l.name,
                         date: l.startDate,
-                        endDate: l.endDate
-                    });
-                    stops.push(newStop);
+                        endDate: l.endDate,
+                        reason: 'Overnight'
+                    }));
                 }
             });
 
-            // Re-sort by date
             stops.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
             
-            // Fix types
             if (stops.length > 0) stops[0].type = 'Start';
             if (stops.length > 1) stops[stops.length - 1].type = 'End';
         }
 
-        // 4. Inject Migrated Waypoints
         if (carTransportsWithWaypoints.length > 0) {
             carTransportsWithWaypoints.forEach(car => {
                 car.waypoints?.forEach((wp, i) => {
@@ -185,23 +172,20 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                         id: `migrated-${car.id}-${i}`,
                         name: wp.name,
                         date: car.departureDate,
-                        type: 'Stop'
+                        type: 'Stop',
+                        reason: 'Sightseeing'
                     }));
                 });
             });
             stops.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         }
 
-        // 5. HYDRATE CONNECTIONS (The Fix)
-        // Loop through stops and fill transportToNext for non-locked items
         for (let i = 0; i < stops.length - 1; i++) {
             const current = stops[i];
             const next = stops[i+1];
 
-            // If it's already a locked transport (Flight etc), skip
             if (current.transportToNext && current.transportToNext.isLocked) continue;
 
-            // Check if we have a saved choice for this segment
             const key = `${current.name}|${next.name}`;
             const existing = flexibleTransportsMap.get(key);
 
@@ -213,7 +197,6 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                     isLocked: false
                 };
             } else {
-                // Default
                 current.transportToNext = {
                     mode: 'Car Rental',
                     duration: 0,
@@ -223,28 +206,51 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
             }
         }
         
-        // Remove transport from last node
         if (stops.length > 0) delete stops[stops.length - 1].transportToNext;
+
+        // Auto-link logic check
+        for (let i = 1; i < stops.length; i++) {
+            const prev = stops[i-1];
+            const curr = stops[i];
+            // If arrival matches prev departure, link it visually
+            if (curr.date === (prev.endDate || prev.date)) {
+                curr.isDateLinked = true;
+            } else {
+                curr.isDateLinked = false;
+            }
+        }
 
         setRoute(stops);
     };
 
     const handleAddStop = (index: number) => {
         const prev = route[index];
-        
-        let newDate = prev.date;
-        if (prev.endDate) newDate = prev.endDate;
+        let newDate = prev.endDate || prev.date;
 
         const newStop: RouteStop = {
             id: Math.random().toString(36).substr(2, 9),
             name: '',
             date: newDate,
+            endDate: newDate,
             type: 'Stop',
+            reason: 'Stop',
+            isDateLinked: true,
             transportToNext: { mode: 'Car Rental', duration: 0, distance: 0 }
         };
 
         const newRoute = [...route];
         newRoute.splice(index + 1, 0, newStop);
+        
+        // Re-evaluate End type
+        if (index === route.length - 1) {
+            newRoute[index].type = 'Stop';
+            if (!newRoute[index].transportToNext) {
+                newRoute[index].transportToNext = { mode: 'Car Rental', duration: 0, distance: 0 };
+            }
+            newStop.type = 'End';
+            delete newStop.transportToNext;
+        }
+
         setRoute(newRoute);
     };
 
@@ -252,9 +258,8 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
         const newRoute = [...route];
         newRoute.splice(index, 1);
         
-        // Re-link dates if needed or adjust types
-        if (index === 0 && newRoute.length > 0) newRoute[0].type = 'Start';
-        if (index === route.length - 1 && newRoute.length > 0) {
+        if (newRoute.length > 0) {
+            newRoute[0].type = 'Start';
             newRoute[newRoute.length - 1].type = 'End';
             delete newRoute[newRoute.length - 1].transportToNext;
         }
@@ -262,9 +267,76 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
         setRoute(newRoute);
     };
 
+    const handleMoveStop = (index: number, direction: -1 | 1) => {
+        if (index + direction < 0 || index + direction >= route.length) return;
+        const newRoute = [...route];
+        const temp = newRoute[index];
+        newRoute[index] = newRoute[index + direction];
+        newRoute[index + direction] = temp;
+        
+        // Fix Types after move
+        newRoute.forEach((s, i) => {
+            if (i === 0) s.type = 'Start';
+            else if (i === newRoute.length - 1) s.type = 'End';
+            else s.type = 'Stop';
+            
+            // Fix transport links
+            if (i === newRoute.length - 1) delete s.transportToNext;
+            else if (!s.transportToNext) s.transportToNext = { mode: 'Car Rental', duration: 0, distance: 0 };
+        });
+
+        setRoute(newRoute);
+    };
+
+    const handleDragStart = (e: React.DragEvent, index: number) => {
+        setDraggedItemIndex(index);
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragOver = (e: React.DragEvent, index: number) => {
+        e.preventDefault();
+        if (draggedItemIndex === null || draggedItemIndex === index) return;
+        
+        // Optimistic Reorder (Visual)
+        const newRoute = [...route];
+        const item = newRoute[draggedItemIndex];
+        newRoute.splice(draggedItemIndex, 1);
+        newRoute.splice(index, 0, item);
+        
+        setDraggedItemIndex(index);
+        setRoute(newRoute);
+    };
+
+    const handleDragEnd = () => {
+        setDraggedItemIndex(null);
+        // Fix types logic final pass
+        const newRoute = [...route];
+        newRoute.forEach((s, i) => {
+            if (i === 0) s.type = 'Start';
+            else if (i === newRoute.length - 1) {
+                s.type = 'End';
+                delete s.transportToNext;
+            } else {
+                s.type = 'Stop';
+                if (!s.transportToNext) s.transportToNext = { mode: 'Car Rental', duration: 0, distance: 0 };
+            }
+        });
+        setRoute(newRoute);
+    };
+
     const updateStop = (index: number, field: keyof RouteStop, value: any) => {
         const newRoute = [...route];
-        newRoute[index] = { ...newRoute[index], [field]: value };
+        const prev = newRoute[index];
+        newRoute[index] = { ...prev, [field]: value };
+        
+        // If updating Departure Date, auto-sync next Arrival if linked
+        if (field === 'endDate') {
+            const nextIndex = index + 1;
+            if (nextIndex < newRoute.length && newRoute[nextIndex].isDateLinked) {
+                newRoute[nextIndex].date = value;
+            }
+        }
+
         setRoute(newRoute);
     };
 
@@ -288,11 +360,9 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
             
             if (c1 && c2) {
                 const dist = calculateDistance(c1.lat, c1.lng, c2.lat, c2.lng);
-                const roadDist = Math.round(dist * 1.3); // Road factor
-                
+                const roadDist = Math.round(dist * 1.3); 
                 const modeDef = TRANSPORT_MODES.find(m => m.mode === start.transportToNext?.mode) || TRANSPORT_MODES[0];
-                const speed = modeDef.speed;
-                const duration = Math.round((roadDist / speed) * 60);
+                const duration = Math.round((roadDist / modeDef.speed) * 60);
 
                 const newRoute = [...route];
                 if (newRoute[index].transportToNext) {
@@ -304,32 +374,23 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                 }
                 setRoute(newRoute);
             }
-        } catch (e) {
-            console.error("Auto calc failed", e);
-        } finally {
-            setLoadingCalc(null);
-        }
+        } catch (e) { console.error(e); } 
+        finally { setLoadingCalc(null); }
     };
 
     const handleSave = () => {
-        // 1. Generate Locations
-        const newLocations: LocationEntry[] = route.map(r => {
-            return {
-                id: r.id.startsWith('origin-') || r.id.startsWith('dest-') || r.id.startsWith('migrated-') ? Math.random().toString(36).substr(2, 9) : r.id, 
-                name: r.name,
-                startDate: r.date,
-                endDate: r.endDate || r.date,
-                description: 'Route Stop'
-            };
-        }).filter(l => l.name);
+        const newLocations: LocationEntry[] = route.map(r => ({
+            id: r.id.startsWith('origin') || r.id.startsWith('dest') || r.id.startsWith('migrated') ? Math.random().toString(36).substr(2, 9) : r.id, 
+            name: r.name,
+            startDate: r.date,
+            endDate: r.endDate || r.date,
+            description: r.reason
+        })).filter(l => l.name);
 
-        // 2. Generate Transports (Only for non-locked segments)
         const generatedTransports: Transport[] = [];
-        
         route.forEach((r, idx) => {
             if (r.transportToNext && !r.transportToNext.isLocked && route[idx+1]) {
                 const next = route[idx+1];
-                // Always save even if 0 dist/duration to persist the *Connection* and *Mode*
                 if (r.name && next.name) {
                     generatedTransports.push({
                         id: Math.random().toString(36).substr(2, 9),
@@ -352,7 +413,6 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                 }
             }
         });
-
         onSave(newLocations, generatedTransports);
     };
 
@@ -396,197 +456,228 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
             </div>
 
             {/* Timeline */}
-            <div className="p-8 max-w-5xl mx-auto w-full relative space-y-0">
-                <div className="absolute left-[27px] top-12 bottom-12 w-0.5 bg-gradient-to-b from-blue-500/0 via-gray-300 dark:via-white/10 to-blue-500/0 z-0"></div>
-
+            <div className="p-8 max-w-7xl mx-auto w-full relative space-y-0">
+                
                 {route.map((stop, index) => {
                     const isLast = index === route.length - 1;
                     const nextStop = route[index + 1];
                     const isFlight = stop.transportToNext?.isLocked;
+                    const isLinked = stop.isDateLinked;
 
                     return (
-                        <div key={stop.id} className="relative group">
-                            
-                            {/* Stop Node */}
-                            <div className="relative z-10 flex gap-6 items-start">
-                                {/* Marker */}
-                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 border-4 shadow-xl transition-transform duration-300 group-hover:scale-110 ${
-                                    stop.isLocked 
-                                    ? 'bg-blue-600 border-white dark:border-gray-900 text-white' 
-                                    : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-white/10 text-gray-400 group-hover:text-blue-500'
-                                }`}>
-                                    <span className="font-black text-lg">{index + 1}</span>
+                        <div 
+                            key={stop.id} 
+                            className="relative group mb-2"
+                            draggable={!stop.isLocked}
+                            onDragStart={(e) => handleDragStart(e, index)}
+                            onDragOver={(e) => handleDragOver(e, index)}
+                            onDragEnd={handleDragEnd}
+                        >
+                            {/* Connector Line (Vertical) */}
+                            {!isLast && (
+                                <div className="absolute left-[39px] top-14 bottom-[-8px] w-0.5 z-0 bg-gradient-to-b from-gray-200 via-gray-300 to-gray-200 dark:from-white/10 dark:via-white/20 dark:to-white/10"></div>
+                            )}
+
+                            {/* Stop Card */}
+                            <div className={`relative z-10 flex gap-4 items-center bg-white dark:bg-gray-800 border rounded-2xl p-2 pr-4 transition-all ${
+                                draggedItemIndex === index 
+                                ? 'opacity-50 border-blue-400 border-dashed scale-95' 
+                                : 'border-gray-200 dark:border-white/10 shadow-sm hover:shadow-md'
+                            }`}>
+                                {/* Drag Handle & Order */}
+                                <div className="flex flex-col items-center justify-center gap-1 w-12 shrink-0 cursor-grab active:cursor-grabbing text-gray-300 hover:text-blue-500">
+                                    {!stop.isLocked && <span className="material-icons-outlined text-lg">drag_indicator</span>}
+                                    <span className="text-[10px] font-black">{index + 1}</span>
                                 </div>
 
-                                {/* Content Card */}
-                                <div className="flex-1 bg-white/60 dark:bg-gray-800/60 backdrop-blur-xl border border-gray-200/50 dark:border-white/5 p-5 rounded-[1.5rem] shadow-sm hover:shadow-lg transition-all relative">
-                                    {!stop.isLocked && (
-                                        <button 
-                                            onClick={() => handleRemoveStop(index)}
-                                            className="absolute top-4 right-4 text-gray-300 hover:text-rose-500 transition-colors p-1"
-                                        >
-                                            <span className="material-icons-outlined text-lg">close</span>
-                                        </button>
-                                    )}
+                                {/* Reorder Arrows (Manual) */}
+                                {!stop.isLocked && (
+                                    <div className="flex flex-col gap-1 -ml-2 mr-2">
+                                        <button onClick={() => handleMoveStop(index, -1)} disabled={index===0} className="w-5 h-5 flex items-center justify-center rounded bg-gray-50 dark:bg-white/5 hover:bg-blue-50 text-gray-400 hover:text-blue-600 disabled:opacity-20"><span className="material-icons-outlined text-sm">keyboard_arrow_up</span></button>
+                                        <button onClick={() => handleMoveStop(index, 1)} disabled={isLast} className="w-5 h-5 flex items-center justify-center rounded bg-gray-50 dark:bg-white/5 hover:bg-blue-50 text-gray-400 hover:text-blue-600 disabled:opacity-20"><span className="material-icons-outlined text-sm">keyboard_arrow_down</span></button>
+                                    </div>
+                                )}
 
-                                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-                                        <div className="md:col-span-6">
-                                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">{stop.type === 'Start' ? 'Origin' : stop.type === 'End' ? 'Final Destination' : 'Stopover'}</label>
+                                {/* Arrival Section (Left) */}
+                                <div className="w-40 border-r border-gray-100 dark:border-white/5 pr-4 flex flex-col justify-center h-full relative">
+                                    {stop.type !== 'Start' && (
+                                        <>
+                                            <div className="flex justify-between items-center mb-1">
+                                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Arrival</label>
+                                                {!stop.isLocked && (
+                                                    <button 
+                                                        onClick={() => updateStop(index, 'isDateLinked', !stop.isDateLinked)}
+                                                        className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${stop.isDateLinked ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-300 text-transparent'}`}
+                                                        title="Link to Previous Departure"
+                                                    >
+                                                        <span className="material-icons-outlined text-[10px] font-bold">link</span>
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <Input 
+                                                type="date" 
+                                                value={stop.date} 
+                                                onChange={e => updateStop(index, 'date', e.target.value)} 
+                                                disabled={stop.isLocked || stop.isDateLinked}
+                                                className={`!py-1.5 !text-xs !font-bold !bg-gray-50 dark:!bg-black/20 !border-transparent ${stop.isDateLinked ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                            />
+                                        </>
+                                    )}
+                                </div>
+
+                                {/* Center: Location & Reason */}
+                                <div className="flex-1 flex flex-col gap-2 min-w-[200px]">
+                                    <div className="flex justify-between items-start">
+                                        <div className="flex-1">
                                             {stop.isLocked ? (
-                                                <div className="text-xl font-black text-gray-900 dark:text-white truncate">{stop.name}</div>
+                                                <div className="text-lg font-black text-gray-900 dark:text-white">{stop.name}</div>
                                             ) : (
                                                 <Autocomplete 
                                                     value={stop.name}
                                                     onChange={val => updateStop(index, 'name', val)}
                                                     fetchSuggestions={fetchLocationSuggestions}
                                                     placeholder="Search Location..."
-                                                    className="!bg-transparent !border-none !p-0 !text-xl !font-black !text-gray-900 dark:!text-white placeholder:text-gray-300"
+                                                    className="!bg-transparent !border-none !p-0 !text-lg !font-black !text-gray-900 dark:!text-white placeholder:text-gray-300"
                                                 />
                                             )}
                                         </div>
-                                        <div className="md:col-span-3">
-                                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Arrival</label>
+                                        {!stop.isLocked && (
+                                            <button onClick={() => handleRemoveStop(index)} className="text-gray-300 hover:text-rose-500 p-1"><span className="material-icons-outlined text-lg">close</span></button>
+                                        )}
+                                    </div>
+                                    
+                                    {/* Reason Selector */}
+                                    {stop.type !== 'Start' && stop.type !== 'End' && !stop.isLocked && (
+                                        <div className="flex gap-1 overflow-x-auto no-scrollbar">
+                                            {(Object.keys(REASON_ICONS) as StopReason[]).map(r => (
+                                                <button
+                                                    key={r}
+                                                    onClick={() => updateStop(index, 'reason', r)}
+                                                    className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border transition-all ${
+                                                        stop.reason === r 
+                                                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm' 
+                                                        : 'bg-white dark:bg-white/5 text-gray-500 border-gray-200 dark:border-white/10 hover:bg-gray-50'
+                                                    }`}
+                                                >
+                                                    <span className="material-icons-outlined text-[12px]">{REASON_ICONS[r]}</span>
+                                                    {r}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Departure Section (Right) */}
+                                <div className="w-40 border-l border-gray-100 dark:border-white/5 pl-4 flex flex-col justify-center h-full">
+                                    {stop.type !== 'End' && (
+                                        <>
+                                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Departure</label>
                                             <Input 
                                                 type="date" 
-                                                value={stop.date} 
-                                                onChange={e => updateStop(index, 'date', e.target.value)} 
+                                                value={stop.endDate || stop.date} 
+                                                min={stop.date}
+                                                onChange={e => updateStop(index, 'endDate', e.target.value)} 
+                                                className="!py-1.5 !text-xs !font-bold !bg-gray-50 dark:!bg-black/20 !border-transparent"
                                                 disabled={stop.isLocked}
-                                                className="!bg-gray-50/50 dark:!bg-white/5 !border-transparent !text-xs !font-bold !py-2 !rounded-xl"
                                             />
-                                        </div>
-                                        <div className="md:col-span-3">
-                                            {(stop.type === 'Stop' || (stop.type === 'Start' && stop.endDate)) && !stop.isLocked && (
-                                                <>
-                                                    <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">Departure</label>
-                                                    <Input 
-                                                        type="date" 
-                                                        value={stop.endDate || stop.date} 
-                                                        min={stop.date}
-                                                        onChange={e => updateStop(index, 'endDate', e.target.value)} 
-                                                        className="!bg-gray-50/50 dark:!bg-white/5 !border-transparent !text-xs !font-bold !py-2 !rounded-xl"
-                                                    />
-                                                </>
-                                            )}
-                                        </div>
-                                    </div>
+                                        </>
+                                    )}
                                 </div>
                             </div>
 
-                            {/* Transport Connector (Edge) */}
+                            {/* Transport Connector (Below Card) */}
                             {!isLast && stop.transportToNext && (
-                                <div className="pl-[27px] ml-[27px] py-6 relative z-0">
-                                    <div className="ml-10">
-                                        {isFlight ? (
-                                            // Flight Locked Card
-                                            <div className="flex items-center gap-4 p-3 rounded-2xl bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 w-fit">
-                                                <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-md">
-                                                    <span className="material-icons-outlined text-sm">flight</span>
-                                                </div>
-                                                <div>
-                                                    <div className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-300 tracking-wider">Booked Flight</div>
-                                                    <div className="text-xs font-bold text-gray-600 dark:text-gray-300">{formatDuration(stop.transportToNext.duration)} • {stop.transportToNext.distance} km</div>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            // Editable Transport Card
-                                            <div className="p-4 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-white/10 shadow-sm flex flex-col md:flex-row gap-6 items-center w-full relative">
-                                                
-                                                {/* Dashed Line Connector Visual */}
-                                                <div className="absolute -left-[30px] top-1/2 -translate-y-1/2 w-[30px] border-t-2 border-dashed border-gray-300 dark:border-white/20"></div>
-
-                                                {/* Mode Selector */}
-                                                <div className="flex p-1 bg-gray-100 dark:bg-black/30 rounded-xl overflow-x-auto max-w-full no-scrollbar">
-                                                    {TRANSPORT_MODES.map(m => {
-                                                        const isActive = stop.transportToNext?.mode === m.mode;
-                                                        return (
-                                                            <button
-                                                                key={m.mode}
-                                                                onClick={() => updateTransport(index, 'mode', m.mode)}
-                                                                className={`group/btn relative px-3 py-2 rounded-lg flex items-center gap-2 transition-all ${
-                                                                    isActive 
-                                                                    ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-white shadow-sm' 
-                                                                    : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-                                                                }`}
-                                                                title={m.label}
-                                                            >
-                                                                <span className="material-icons-outlined text-lg">{m.icon}</span>
-                                                                {isActive && <span className="text-[10px] font-black uppercase tracking-wider hidden sm:inline-block">{m.label}</span>}
-                                                            </button>
-                                                        )
-                                                    })}
-                                                </div>
-
-                                                <div className="h-8 w-px bg-gray-200 dark:bg-white/10 hidden md:block"></div>
-
-                                                {/* Stats Inputs */}
-                                                <div className="flex gap-3 items-center">
-                                                    <div className="relative group/input">
-                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 material-icons-outlined text-gray-400 text-sm">schedule</span>
-                                                        <input 
-                                                            type="number"
-                                                            value={stop.transportToNext.duration}
-                                                            onChange={e => updateTransport(index, 'duration', parseInt(e.target.value))}
-                                                            className="w-20 pl-8 pr-2 py-2 bg-gray-50 dark:bg-white/5 border border-transparent hover:border-gray-200 dark:hover:border-white/10 rounded-xl text-xs font-bold text-gray-700 dark:text-white text-center outline-none transition-all focus:bg-white dark:focus:bg-black/40 focus:ring-2 focus:ring-blue-500/20"
-                                                        />
-                                                        <span className="absolute -bottom-4 left-0 w-full text-[8px] text-center font-black uppercase text-gray-300 opacity-0 group-hover/input:opacity-100 transition-opacity">Mins</span>
-                                                    </div>
-                                                    <div className="relative group/input">
-                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 material-icons-outlined text-gray-400 text-sm">straighten</span>
-                                                        <input 
-                                                            type="number"
-                                                            value={stop.transportToNext.distance}
-                                                            onChange={e => updateTransport(index, 'distance', parseInt(e.target.value))}
-                                                            className="w-20 pl-8 pr-2 py-2 bg-gray-50 dark:bg-white/5 border border-transparent hover:border-gray-200 dark:hover:border-white/10 rounded-xl text-xs font-bold text-gray-700 dark:text-white text-center outline-none transition-all focus:bg-white dark:focus:bg-black/40 focus:ring-2 focus:ring-blue-500/20"
-                                                        />
-                                                        <span className="absolute -bottom-4 left-0 w-full text-[8px] text-center font-black uppercase text-gray-300 opacity-0 group-hover/input:opacity-100 transition-opacity">Km</span>
-                                                    </div>
-                                                    
-                                                    <button 
-                                                        onClick={() => handleAutoCalc(index)}
-                                                        disabled={loadingCalc === index}
-                                                        className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 hover:scale-105 transition-all flex items-center justify-center dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/40"
-                                                        title="Auto-Calculate"
+                                <div className="pl-20 pr-4 py-2">
+                                    {isFlight ? (
+                                        <div className="flex items-center gap-3 p-2 bg-blue-50/50 dark:bg-blue-900/10 rounded-lg border border-blue-100 dark:border-blue-900/30 w-fit text-xs font-bold text-blue-800 dark:text-blue-300">
+                                            <span className="material-icons-outlined text-sm">flight</span>
+                                            <span>Flight: {formatDuration(stop.transportToNext.duration)}</span>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-4 bg-gray-50 dark:bg-white/5 p-2 rounded-xl border border-gray-200 dark:border-white/10 shadow-inner">
+                                            {/* Mode Select */}
+                                            <div className="flex gap-1">
+                                                {TRANSPORT_MODES.map(m => (
+                                                    <button
+                                                        key={m.mode}
+                                                        onClick={() => updateTransport(index, 'mode', m.mode)}
+                                                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+                                                            stop.transportToNext?.mode === m.mode 
+                                                            ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-white shadow-sm ring-1 ring-black/5' 
+                                                            : 'text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10'
+                                                        }`}
+                                                        title={m.label}
                                                     >
-                                                        {loadingCalc === index ? (
-                                                            <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                                                        ) : (
-                                                            <span className="material-icons-outlined text-lg">bolt</span>
-                                                        )}
+                                                        <span className="material-icons-outlined text-lg">{m.icon}</span>
                                                     </button>
-                                                </div>
+                                                ))}
                                             </div>
-                                        )}
-                                    </div>
+                                            
+                                            <div className="h-6 w-px bg-gray-300 dark:bg-white/10"></div>
 
-                                    {/* Insert Stop Button (Hover State) */}
-                                    <div className="absolute left-[38px] bottom-0 w-8 h-8 -ml-4 -mb-4 z-20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:scale-110">
-                                        <button 
-                                            onClick={() => handleAddStop(index)}
-                                            className="w-full h-full rounded-full bg-white dark:bg-gray-800 border-2 border-dashed border-gray-300 hover:border-blue-500 text-gray-400 hover:text-blue-500 shadow-sm flex items-center justify-center"
-                                            title="Insert Stop Here"
-                                        >
-                                            <span className="material-icons-outlined text-sm">add</span>
-                                        </button>
-                                    </div>
+                                            {/* Metrics */}
+                                            <div className="flex gap-2 items-center">
+                                                <div className="relative group/input">
+                                                    <input 
+                                                        type="number"
+                                                        value={stop.transportToNext.duration}
+                                                        onChange={e => updateTransport(index, 'duration', parseInt(e.target.value))}
+                                                        className="w-16 pl-2 pr-1 py-1 bg-white dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg text-xs font-bold text-center"
+                                                        placeholder="min"
+                                                    />
+                                                    <span className="absolute -top-3 left-0 w-full text-center text-[8px] font-black uppercase text-gray-400">Mins</span>
+                                                </div>
+                                                <div className="relative group/input">
+                                                    <input 
+                                                        type="number"
+                                                        value={stop.transportToNext.distance}
+                                                        onChange={e => updateTransport(index, 'distance', parseInt(e.target.value))}
+                                                        className="w-16 pl-2 pr-1 py-1 bg-white dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-lg text-xs font-bold text-center"
+                                                        placeholder="km"
+                                                    />
+                                                    <span className="absolute -top-3 left-0 w-full text-center text-[8px] font-black uppercase text-gray-400">Km</span>
+                                                </div>
+                                                <button 
+                                                    onClick={() => handleAutoCalc(index)}
+                                                    disabled={loadingCalc === index}
+                                                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-300 transition-colors"
+                                                    title="Auto Calc"
+                                                >
+                                                    {loadingCalc === index ? <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"/> : <span className="material-icons-outlined text-sm">bolt</span>}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Add Stop Button (Hover Zone) */}
+                            {!isLast && (
+                                <div className="absolute left-[20px] bottom-[-16px] z-20 w-10 h-10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button 
+                                        onClick={() => handleAddStop(index)}
+                                        className="w-6 h-6 rounded-full bg-blue-500 text-white shadow-lg flex items-center justify-center hover:scale-110 transition-transform"
+                                        title="Insert Stop"
+                                    >
+                                        <span className="material-icons-outlined text-sm">add</span>
+                                    </button>
                                 </div>
                             )}
                         </div>
                     );
                 })}
 
-                {/* Add Destination Button */}
-                <div className="pl-[68px] pt-4">
+                <div className="pt-4 flex justify-center">
                     <button 
                         onClick={() => handleAddStop(route.length - 1)}
-                        className="flex items-center gap-3 px-6 py-4 rounded-2xl border-2 border-dashed border-gray-200 dark:border-white/10 text-gray-400 hover:text-blue-500 hover:border-blue-300 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-all w-full md:w-auto"
+                        className="flex items-center gap-2 px-6 py-3 rounded-full bg-gray-100 dark:bg-white/5 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-300 font-bold uppercase tracking-widest text-xs transition-all border border-dashed border-gray-300 dark:border-white/10 hover:border-blue-300"
                     >
-                        <span className="material-icons-outlined text-xl">add_location_alt</span>
-                        <span className="font-bold uppercase tracking-widest text-xs">Append Destination</span>
+                        <span className="material-icons-outlined text-sm">add_location_alt</span>
+                        Append Destination
                     </button>
                 </div>
             </div>
 
-            {/* Footer */}
             <div className="fixed bottom-6 right-6 z-40 flex gap-3">
                 <Button variant="ghost" onClick={onCancel} className="bg-white/80 dark:bg-gray-900/80 backdrop-blur shadow-lg border border-gray-200 dark:border-white/10">Revert</Button>
                 <Button variant="primary" onClick={handleSave} className="shadow-2xl shadow-blue-500/30 !px-8">Save Optimization</Button>
