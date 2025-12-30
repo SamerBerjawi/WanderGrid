@@ -26,13 +26,6 @@ interface ImportCandidate {
     selected: boolean;
 }
 
-interface DetectedPlace {
-    city: string;
-    country: string;
-    displayName: string;
-    source: 'Transport' | 'Accommodation' | 'Location';
-}
-
 interface ChatMessage {
     role: 'user' | 'model';
     text: string;
@@ -106,14 +99,6 @@ const NomadGuide: React.FC<{ trip: Trip }> = ({ trip }) => {
     const [loading, setLoading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    };
-
-    useEffect(() => {
-        scrollToBottom();
-    }, [messages]);
-
     useEffect(() => {
         if (messages.length === 0) {
             setMessages([{ role: 'model', text: `Hi! I'm your NomadGuide for **${trip.name}**. I know your itinerary for ${trip.location}. Ask me about local food, hidden gems, or packing tips!` }]);
@@ -138,6 +123,7 @@ const NomadGuide: React.FC<{ trip: Trip }> = ({ trip }) => {
             }
 
             const ai = new GoogleGenAI({ apiKey });
+            
             const context = `
                 You are NomadGuide, an expert travel assistant.
                 Current Trip Context:
@@ -268,16 +254,8 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     const [editingTransports, setEditingTransports] = useState<Transport[] | null>(null);
     const [editingAccommodations, setEditingAccommodations] = useState<Accommodation[] | null>(null);
     
-    // Maps / Geocoding
-    const [visitedPlaces, setVisitedPlaces] = useState<DetectedPlace[]>([]);
-    const [uniqueCountries, setUniqueCountries] = useState<Set<string>>(new Set());
-    const [openMenuDate, setOpenMenuDate] = useState<string | null>(null);
-
     useEffect(() => {
         loadData();
-        const handleClickOutside = () => setOpenMenuDate(null);
-        document.addEventListener('click', handleClickOutside);
-        return () => document.removeEventListener('click', handleClickOutside);
     }, [tripId]);
 
     const loadData = () => {
@@ -301,52 +279,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
             setLoading(false);
         });
     };
-
-    useEffect(() => {
-        const detectPlaces = async () => {
-            if (!trip) return;
-            const detected: DetectedPlace[] = [];
-            const processedKeys = new Set<string>();
-
-            const addPlace = async (query: string, source: DetectedPlace['source']) => {
-                if (!query) return;
-                const details = await resolvePlaceName(query);
-                if (details) {
-                    const key = details.displayName.toLowerCase();
-                    if (!processedKeys.has(key)) {
-                        detected.push({ ...details, source });
-                        processedKeys.add(key);
-                    }
-                }
-            };
-
-            if (trip.transports) {
-                for (const t of trip.transports) {
-                    const dest = t.mode === 'Car Rental' || t.mode === 'Personal Car' 
-                        ? (t.dropoffLocation || t.destination) 
-                        : t.destination;
-                    await addPlace(dest, 'Transport');
-                }
-            }
-            if (trip.locations) {
-                for (const l of trip.locations) {
-                    await addPlace(l.name, 'Location');
-                }
-            }
-            if (trip.accommodations) {
-                for (const a of trip.accommodations) {
-                    await addPlace(a.address, 'Accommodation');
-                }
-            }
-            setVisitedPlaces(detected);
-            const countries = new Set<string>();
-            detected.forEach(p => {
-                if (p.country) countries.add(p.country);
-            });
-            setUniqueCountries(countries);
-        };
-        detectPlaces();
-    }, [trip]);
 
     const calculateRelevance = (currentTrip: Trip, candidateTrip: Trip): number => {
         let points = 0;
@@ -639,7 +571,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         switch(mode) {
             case 'Train': return 'train';
             case 'Bus': return 'directions_bus';
-            case 'Car Rental': return 'car_rental';
+            case 'Car Rental': return 'key';
             case 'Personal Car': return 'directions_car';
             case 'Cruise': return 'directions_boat';
             default: return 'flight_takeoff';
@@ -1001,6 +933,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 <>
                     {plannerView === 'calendar' ? renderPlannerCalendar() : plannerView === 'list' ? (
                         <div className="space-y-6 relative">
+                            {/* ... (Existing List View Render - Keep exact same structure) ... */}
                             <div className="absolute left-8 top-4 bottom-4 w-0.5 bg-gray-200 dark:bg-gray-800 hidden md:block" />
                             {tripDates.map((dateStr, index) => {
                                 const dateObj = new Date(dateStr); 
@@ -1157,16 +1090,17 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 </>
             )}
 
+            {/* ITINERARY (BOOKINGS) TAB - NEW DESIGN */}
             {activeTab === 'itinerary' && (
                 <div className="space-y-12 animate-fade-in">
-                    {/* Transports */}
+                    {/* Transport Section */}
                     <div className="space-y-6">
                         <div className="flex justify-between items-center">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center">
-                                    <span className="material-icons-outlined">commute</span>
+                                <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                                    <span className="material-icons-outlined text-xl">commute</span>
                                 </div>
-                                <h3 className="text-xl font-black text-gray-900 dark:text-white">Transportation</h3>
+                                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Transportation</h3>
                             </div>
                             <div className="flex gap-2">
                                 <div className="relative">
@@ -1177,221 +1111,292 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                         accept=".json,.csv"
                                         onChange={handleImportFlights}
                                     />
-                                    <Button size="sm" variant="ghost" className="border-dashed border-2 text-gray-500 hover:text-blue-500 hover:border-blue-200 hover:bg-blue-50 dark:hover:bg-blue-900/10" onClick={() => importInputRef.current?.click()}>
-                                        <span className="material-icons-outlined text-sm mr-1">upload_file</span> Import
+                                    <Button 
+                                        size="sm" 
+                                        variant="ghost" 
+                                        className="border-dashed border-2 text-gray-400 hover:text-white hover:border-gray-500" 
+                                        onClick={() => importInputRef.current?.click()}
+                                    >
+                                        <span className="material-icons-outlined text-sm mr-2">upload_file</span> 
+                                        Import
                                     </Button>
                                 </div>
-                                <Button size="sm" variant="secondary" onClick={() => openTransportModal()}>+ Add Booking</Button>
+                                <Button size="sm" variant="secondary" onClick={() => openTransportModal()}>
+                                    + Add Booking
+                                </Button>
                             </div>
                         </div>
 
                         {Object.keys(transportGroups).length === 0 ? (
-                            <div className="p-12 text-center border-2 border-dashed border-gray-200 dark:border-white/10 rounded-3xl">
-                                <span className="material-icons-outlined text-4xl text-gray-300 mb-2">flight</span>
-                                <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">No transport bookings yet</p>
+                            <div className="p-12 text-center border-2 border-dashed border-gray-800 rounded-3xl">
+                                <span className="material-icons-outlined text-4xl text-gray-600 mb-2">flight</span>
+                                <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">No transport bookings yet</p>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 gap-4">
-                                {Object.entries(transportGroups).map(([id, group]) => (
-                                    <div key={id} className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-white/5 overflow-hidden shadow-sm hover:shadow-md transition-all">
-                                        <div className="p-4 bg-gray-50/50 dark:bg-black/20 border-b border-gray-100 dark:border-white/5 flex justify-between items-center">
-                                            <div className="flex items-center gap-3">
-                                                <Badge color="blue">{group[0].type}</Badge>
-                                                <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">{group.length} Leg{group.length > 1 ? 's' : ''}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <button onClick={() => openTransportModal(group)} className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"><span className="material-icons-outlined text-lg">edit</span></button>
-                                            </div>
-                                        </div>
-                                        <div className="divide-y divide-gray-100 dark:divide-white/5">
-                                            {group.map((t, idx) => (
-                                                <div key={t.id} className="p-5 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
-                                                    <div className="flex items-center gap-6">
-                                                        <div className="text-center w-16">
-                                                            <div className="text-xs font-bold text-gray-400 uppercase mb-1">{t.mode}</div>
-                                                            <span className="material-icons-outlined text-2xl text-gray-600 dark:text-gray-300">{getTransportIcon(t.mode)}</span>
-                                                        </div>
-                                                        <div>
-                                                            <div className="flex items-center gap-3 mb-1">
-                                                                <span className="text-lg font-black text-gray-900 dark:text-white">{t.origin}</span>
-                                                                <span className="material-icons-outlined text-gray-300 text-sm">arrow_forward</span>
-                                                                <span className="text-lg font-black text-gray-900 dark:text-white">{t.destination}</span>
-                                                            </div>
-                                                            <div className="text-xs text-gray-500 font-medium flex gap-3">
-                                                                <span>{new Date(t.departureDate).toLocaleDateString()}</span>
-                                                                <span>•</span>
-                                                                <span>{t.provider} {t.identifier}</span>
-                                                                {t.seatNumber && <span>• Seat {t.seatNumber}</span>}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <div className="text-sm font-bold text-gray-900 dark:text-white">{formatTime(t.departureTime)}</div>
-                                                        <div className="text-xs text-gray-400 font-medium">{t.duration ? `${Math.floor(t.duration/60)}h ${t.duration%60}m` : '-'}</div>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Accommodations */}
-                    <div className="space-y-6">
-                        <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center">
-                                    <span className="material-icons-outlined">hotel</span>
-                                </div>
-                                <h3 className="text-xl font-black text-gray-900 dark:text-white">Accommodation</h3>
-                            </div>
-                            <Button size="sm" variant="secondary" onClick={() => openAccommodationModal()}>+ Add Stay</Button>
-                        </div>
-
-                        {(!trip.accommodations || trip.accommodations.length === 0) ? (
-                            <div className="p-12 text-center border-2 border-dashed border-gray-200 dark:border-white/10 rounded-3xl">
-                                <span className="material-icons-outlined text-4xl text-gray-300 mb-2">apartment</span>
-                                <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">No accommodations booked</p>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {trip.accommodations.map((stay) => {
-                                    const nights = calculateNights(stay.checkInDate, stay.checkOutDate);
+                            <div className="grid grid-cols-1 gap-6">
+                                {Object.entries(transportGroups).map(([id, group]) => {
+                                    const first = group[0];
                                     return (
-                                        <div key={stay.id} className="group bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-white/5 p-6 shadow-sm hover:shadow-lg transition-all relative">
-                                            <button onClick={() => openAccommodationModal(stay.checkInDate)} className="absolute top-4 right-4 p-2 text-gray-300 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-white/10 rounded-xl transition-all opacity-0 group-hover:opacity-100">
-                                                <span className="material-icons-outlined">edit</span>
-                                            </button>
-                                            <div className="flex items-start gap-4 mb-4">
-                                                <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex items-center justify-center text-2xl">
-                                                    {stay.logoUrl ? <img src={stay.logoUrl} className="w-full h-full object-cover rounded-2xl" /> : <span className="material-icons-outlined">hotel</span>}
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-bold text-lg text-gray-900 dark:text-white leading-tight">{stay.name}</h4>
-                                                    <p className="text-xs text-gray-500 mt-1">{stay.type} • {nights} Night{nights !== 1 ? 's' : ''}</p>
-                                                </div>
-                                            </div>
-                                            <div className="flex justify-between items-center text-xs font-bold text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-black/20 p-3 rounded-xl">
-                                                <div>
-                                                    <div className="text-[9px] text-gray-400 uppercase tracking-wider mb-0.5">Check In</div>
-                                                    <div>{new Date(stay.checkInDate).toLocaleDateString(undefined, {month:'short', day:'numeric'})} <span className="text-gray-400 font-normal">at {formatTime(stay.checkInTime)}</span></div>
+                                        <div key={id} className="bg-[#1c1c1e] rounded-3xl overflow-hidden border border-white/5 shadow-lg">
+                                            {/* Header */}
+                                            <div className="p-5 flex justify-between items-start border-b border-white/5">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center overflow-hidden">
+                                                        {first.logoUrl ? (
+                                                            <img src={first.logoUrl} className="w-full h-full object-contain p-1" />
+                                                        ) : (
+                                                            <span className="material-icons-outlined text-black">{getTransportIcon(first.mode)}</span>
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="font-bold text-white text-lg">{first.provider}</h4>
+                                                        <div className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                                                            <span>{first.identifier}</span>
+                                                            <span className="w-1 h-1 rounded-full bg-gray-600"></span>
+                                                            <span>{first.type}</span>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                                 <div className="text-right">
-                                                    <div className="text-[9px] text-gray-400 uppercase tracking-wider mb-0.5">Check Out</div>
-                                                    <div>{new Date(stay.checkOutDate).toLocaleDateString(undefined, {month:'short', day:'numeric'})} <span className="text-gray-400 font-normal">at {formatTime(stay.checkOutTime)}</span></div>
+                                                    <div className="text-xl font-bold text-white">{formatCurrency(group.reduce((acc, t) => acc + (t.cost || 0), 0))}</div>
+                                                    <button onClick={() => openTransportModal(group)} className="text-[10px] font-bold text-blue-400 hover:text-blue-300 uppercase tracking-widest mt-1">
+                                                        Edit Details
+                                                    </button>
                                                 </div>
                                             </div>
-                                            {stay.address && (
-                                                <div className="mt-4 flex items-center gap-2 text-xs text-gray-400">
-                                                    <span className="material-icons-outlined text-sm">place</span>
-                                                    <span className="truncate">{stay.address}</span>
-                                                </div>
-                                            )}
+
+                                            {/* Legs */}
+                                            <div className="p-6 space-y-8">
+                                                {group.map((t, idx) => {
+                                                    const isReturn = idx > 0 && t.origin === group[idx-1].destination; 
+                                                    return (
+                                                        <React.Fragment key={t.id}>
+                                                            {/* Divider if return */}
+                                                            {idx > 0 && (
+                                                                <div className="flex items-center gap-4 py-2">
+                                                                    <div className="h-px bg-white/10 flex-1"></div>
+                                                                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Return Journey • {Math.ceil((new Date(t.departureDate).getTime() - new Date(group[idx-1].arrivalDate).getTime()) / (86400000))} Days Later</span>
+                                                                    <div className="h-px bg-white/10 flex-1"></div>
+                                                                </div>
+                                                            )}
+
+                                                            <div className="flex items-center gap-6">
+                                                                {/* Time Col */}
+                                                                <div className="w-24 text-right">
+                                                                    <div className="text-xl font-bold text-white">{formatTime(t.departureTime)}</div>
+                                                                    <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mt-1">{calculateDuration(t)}</div>
+                                                                    <div className="text-lg font-bold text-gray-400 mt-2">{formatTime(t.arrivalTime)}</div>
+                                                                </div>
+
+                                                                {/* Timeline Graphic */}
+                                                                <div className="flex flex-col items-center self-stretch py-1">
+                                                                    <div className="w-3 h-3 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]"></div>
+                                                                    <div className="w-0.5 flex-1 bg-gradient-to-b from-blue-500/50 to-gray-700/50 my-1"></div>
+                                                                    <div className="w-2 h-2 rounded-full border-2 border-gray-600 bg-[#1c1c1e]"></div>
+                                                                </div>
+
+                                                                {/* Route Info */}
+                                                                <div className="flex-1 space-y-4">
+                                                                    <div>
+                                                                        <div className="flex items-baseline gap-2">
+                                                                            <span className="text-2xl font-bold text-white">{t.origin}</span>
+                                                                            <span className="text-xs font-bold text-gray-500">{new Date(t.departureDate).toLocaleDateString()}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div>
+                                                                        <div className="flex items-baseline gap-2">
+                                                                            <span className="text-2xl font-bold text-white">{t.destination}</span>
+                                                                            <span className="text-xs font-bold text-gray-500">{new Date(t.arrivalDate).toLocaleDateString()}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Badges */}
+                                                                <div className="flex flex-col gap-2 items-end">
+                                                                    <div className="px-2 py-1 rounded bg-[#2c2c2e] border border-white/5 text-[10px] font-bold text-blue-400 uppercase tracking-wider">
+                                                                        {t.travelClass || 'Economy'}
+                                                                    </div>
+                                                                    {t.seatNumber && (
+                                                                        <div className="px-2 py-1 rounded bg-[#2c2c2e] border border-white/5 text-[10px] font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1">
+                                                                            <span className="material-icons-outlined text-[10px]">event_seat</span> {t.seatNumber}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </React.Fragment>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
                                     );
                                 })}
                             </div>
                         )}
                     </div>
+
+                    {/* Accommodation Section */}
+                    <div className="space-y-6">
+                        <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center">
+                                    <span className="material-icons-outlined text-xl">hotel</span>
+                                </div>
+                                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Accommodation</h3>
+                            </div>
+                            <Button size="sm" variant="secondary" onClick={() => openAccommodationModal()}>
+                                + Add Stay
+                            </Button>
+                        </div>
+
+                        {(!trip.accommodations || trip.accommodations.length === 0) ? (
+                            <div className="p-12 text-center border-2 border-dashed border-gray-800 rounded-3xl">
+                                <span className="material-icons-outlined text-4xl text-gray-600 mb-2">apartment</span>
+                                <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">No accommodations booked</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 gap-4">
+                                {trip.accommodations.map(stay => (
+                                    <div key={stay.id} className="bg-[#1c1c1e] rounded-2xl p-5 border border-white/5 shadow-lg flex justify-between items-center group hover:bg-[#252528] transition-colors">
+                                        <div className="flex items-center gap-5">
+                                            <div className="w-16 h-16 rounded-xl bg-blue-900/30 flex items-center justify-center text-blue-400 text-2xl font-bold overflow-hidden">
+                                                {stay.logoUrl ? <img src={stay.logoUrl} className="w-full h-full object-cover" /> : stay.name.substring(0, 2).toUpperCase()}
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-white text-lg">{stay.name}</h4>
+                                                <p className="text-xs text-gray-500 mt-1">{stay.address}</p>
+                                                <div className="flex gap-2 mt-3">
+                                                    <span className="bg-[#3a3a3c] text-gray-300 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">
+                                                        {calculateNights(stay.checkInDate, stay.checkOutDate)} Nights
+                                                    </span>
+                                                    <span className="bg-[#3a3a3c] text-gray-300 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">
+                                                        {new Date(stay.checkInDate).toLocaleDateString(undefined, {day:'numeric', month:'short'}).toUpperCase()} - {new Date(stay.checkOutDate).toLocaleDateString(undefined, {day:'numeric', month:'short'}).toUpperCase()}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-6">
+                                            {stay.cost && <div className="text-lg font-bold text-emerald-400">{formatCurrency(stay.cost)}</div>}
+                                            <button onClick={() => openAccommodationModal()} className="text-gray-500 hover:text-white transition-colors">
+                                                <span className="material-icons-outlined">edit</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
 
-            {/* Budget Tab */}
+            {/* BUDGET TAB - NEW DESIGN */}
             {activeTab === 'budget' && (
                 <div className="space-y-8 animate-fade-in">
+                    
+                    {/* Summary Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="p-6 rounded-[2rem] bg-emerald-500 text-white shadow-xl shadow-emerald-500/20 relative overflow-hidden">
-                            <div className="absolute -right-4 -top-4 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
-                            <div className="relative z-10">
-                                <p className="text-xs font-bold text-emerald-100 uppercase tracking-widest mb-1">Total Estimated Cost</p>
-                                <h2 className="text-4xl font-black">{formatCurrency(totalCost)}</h2>
-                                <div className="mt-4 flex items-center gap-2 text-sm font-medium text-emerald-100">
-                                    <span className="bg-white/20 px-2 py-1 rounded-lg">{formatCurrency(costPerDay)} / day</span>
-                                    <span>•</span>
-                                    <span className="bg-white/20 px-2 py-1 rounded-lg">{formatCurrency(costPerPerson)} / person</span>
-                                </div>
-                            </div>
+                        {/* Total Cost Card (Emerald Gradient) */}
+                        <div className="p-8 rounded-[2rem] bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-2xl relative overflow-hidden group">
+                            <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/20 rounded-full blur-3xl group-hover:scale-110 transition-transform"></div>
+                            <p className="text-xs font-bold text-emerald-100 uppercase tracking-widest mb-2">Total Trip Cost</p>
+                            <h2 className="text-5xl font-black tracking-tight">{formatCurrency(totalCost)}</h2>
                         </div>
-                        
-                        <div className="md:col-span-2 p-6 rounded-[2rem] bg-white dark:bg-gray-800 border border-gray-100 dark:border-white/5 flex items-center justify-around">
-                            <div className="text-center">
-                                <div className="w-12 h-12 mx-auto bg-blue-100 dark:bg-blue-900/20 text-blue-600 rounded-2xl flex items-center justify-center mb-3">
-                                    <span className="material-icons-outlined">flight</span>
-                                </div>
-                                <div className="text-2xl font-black text-gray-900 dark:text-white">{formatCurrency(transportCost)}</div>
-                                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Transport</div>
-                            </div>
-                            <div className="w-px h-16 bg-gray-100 dark:bg-white/5" />
-                            <div className="text-center">
-                                <div className="w-12 h-12 mx-auto bg-amber-100 dark:bg-amber-900/20 text-amber-600 rounded-2xl flex items-center justify-center mb-3">
-                                    <span className="material-icons-outlined">hotel</span>
-                                </div>
-                                <div className="text-2xl font-black text-gray-900 dark:text-white">{formatCurrency(stayCost)}</div>
-                                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Accommodation</div>
-                            </div>
-                            <div className="w-px h-16 bg-gray-100 dark:bg-white/5" />
-                            <div className="text-center">
-                                <div className="w-12 h-12 mx-auto bg-purple-100 dark:bg-purple-900/20 text-purple-600 rounded-2xl flex items-center justify-center mb-3">
-                                    <span className="material-icons-outlined">local_activity</span>
-                                </div>
-                                <div className="text-2xl font-black text-gray-900 dark:text-white">{formatCurrency(activityCost)}</div>
-                                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Activities</div>
-                            </div>
+
+                        {/* Cost Per Person */}
+                        <div className="p-8 rounded-[2rem] bg-[#1c1c1e] border border-white/5 shadow-xl relative">
+                            <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Cost Per Person</p>
+                            <h2 className="text-4xl font-black text-white">{formatCurrency(costPerPerson)}</h2>
+                            <p className="text-xs text-gray-500 mt-2">{trip.participants.length} Travelers</p>
+                        </div>
+
+                        {/* Daily Average */}
+                        <div className="p-8 rounded-[2rem] bg-[#1c1c1e] border border-white/5 shadow-xl relative">
+                            <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Daily Average</p>
+                            <h2 className="text-4xl font-black text-white">{formatCurrency(costPerDay)}</h2>
+                            <p className="text-xs text-gray-500 mt-2">{duration} Days</p>
                         </div>
                     </div>
 
-                    <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-white/5 overflow-hidden">
-                        <div className="p-6 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/5">
-                            <h3 className="text-lg font-black text-gray-900 dark:text-white">Expense Line Items</h3>
+                    {/* Lower Section Grid */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        {/* Donut Chart Section */}
+                        <div className="lg:col-span-1 bg-[#1c1c1e] rounded-[2.5rem] p-8 border border-white/5 shadow-xl flex flex-col items-center justify-center relative">
+                            <h4 className="absolute top-8 left-8 text-xs font-black text-gray-500 uppercase tracking-widest">Expense Distribution</h4>
+                            
+                            <div className="relative w-64 h-64 mt-4">
+                                <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
+                                    {/* Background Circle */}
+                                    <circle cx="50" cy="50" r="40" fill="transparent" stroke="#2c2c2e" strokeWidth="12" />
+                                    
+                                    {/* Segments - Simplified visualization logic */}
+                                    <circle cx="50" cy="50" r="40" fill="transparent" stroke="#3b82f6" strokeWidth="12" 
+                                        strokeDasharray={`${(transportCost/totalCost)*251} 251`} className="transition-all duration-1000" />
+                                </svg>
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <span className="text-3xl font-black text-white">100%</span>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-4 mt-8">
+                                <div className="flex items-center gap-2">
+                                    <span className="w-3 h-3 rounded-full bg-blue-500"></span>
+                                    <span className="text-xs font-bold text-gray-400">Transport</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="w-3 h-3 rounded-full bg-amber-500"></span>
+                                    <span className="text-xs font-bold text-gray-400">Stays</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="w-3 h-3 rounded-full bg-purple-500"></span>
+                                    <span className="text-xs font-bold text-gray-400">Activities</span>
+                                </div>
+                            </div>
                         </div>
-                        <div className="divide-y divide-gray-100 dark:divide-white/5">
-                            {(trip.transports || []).filter(t => (t.cost||0) > 0).map(t => (
-                                <div key={t.id} className="p-4 flex justify-between items-center hover:bg-gray-50 dark:hover:bg-white/5">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/10 text-blue-500 flex items-center justify-center">
-                                            <span className="material-icons-outlined">{getTransportIcon(t.mode)}</span>
-                                        </div>
-                                        <div>
-                                            <div className="font-bold text-sm text-gray-900 dark:text-white">{t.provider}</div>
-                                            <div className="text-xs text-gray-500">{t.origin} → {t.destination}</div>
-                                        </div>
+
+                        {/* Itemized List Section */}
+                        <div className="lg:col-span-2 space-y-4">
+                            <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-4">Itemized Expenses</h4>
+                            
+                            {/* Transportation Row */}
+                            <div className="bg-[#1c1c1e] p-6 rounded-3xl border border-white/5 flex items-center justify-between group hover:border-white/10 transition-all">
+                                <div className="flex items-center gap-5">
+                                    <div className="w-12 h-12 rounded-2xl bg-blue-900/30 text-blue-500 flex items-center justify-center">
+                                        <span className="material-icons-outlined text-2xl">flight</span>
                                     </div>
-                                    <div className="font-mono font-bold text-gray-900 dark:text-white">{formatCurrency(t.cost || 0)}</div>
-                                </div>
-                            ))}
-                            {(trip.accommodations || []).filter(a => (a.cost||0) > 0).map(a => (
-                                <div key={a.id} className="p-4 flex justify-between items-center hover:bg-gray-50 dark:hover:bg-white/5">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/10 text-amber-500 flex items-center justify-center">
-                                            <span className="material-icons-outlined">hotel</span>
-                                        </div>
-                                        <div>
-                                            <div className="font-bold text-sm text-gray-900 dark:text-white">{a.name}</div>
-                                            <div className="text-xs text-gray-500">{calculateNights(a.checkInDate, a.checkOutDate)} Nights</div>
-                                        </div>
+                                    <div>
+                                        <h4 className="font-bold text-white text-lg">Transportation</h4>
+                                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">{trip.transports?.length || 0} Bookings</p>
                                     </div>
-                                    <div className="font-mono font-bold text-gray-900 dark:text-white">{formatCurrency(a.cost || 0)}</div>
                                 </div>
-                            ))}
-                            {(trip.activities || []).filter(a => (a.cost||0) > 0).map(a => (
-                                <div key={a.id} className="p-4 flex justify-between items-center hover:bg-gray-50 dark:hover:bg-white/5">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-900/10 text-purple-500 flex items-center justify-center">
-                                            <span className="material-icons-outlined">local_activity</span>
-                                        </div>
-                                        <div>
-                                            <div className="font-bold text-sm text-gray-900 dark:text-white">{a.title}</div>
-                                            <div className="text-xs text-gray-500">{new Date(a.date).toLocaleDateString()}</div>
-                                        </div>
+                                <div className="text-xl font-bold text-white">{formatCurrency(transportCost)}</div>
+                            </div>
+
+                            {/* Accommodation Row */}
+                            <div className="bg-[#1c1c1e] p-6 rounded-3xl border border-white/5 flex items-center justify-between group hover:border-white/10 transition-all">
+                                <div className="flex items-center gap-5">
+                                    <div className="w-12 h-12 rounded-2xl bg-amber-900/30 text-amber-500 flex items-center justify-center">
+                                        <span className="material-icons-outlined text-2xl">hotel</span>
                                     </div>
-                                    <div className="font-mono font-bold text-gray-900 dark:text-white">{formatCurrency(a.cost || 0)}</div>
+                                    <div>
+                                        <h4 className="font-bold text-white text-lg">Accommodation</h4>
+                                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">{trip.accommodations?.length || 0} Properties</p>
+                                    </div>
                                 </div>
-                            ))}
-                            {(totalCost === 0) && (
-                                <div className="p-8 text-center text-gray-400 text-xs font-bold uppercase tracking-widest">No expenses recorded</div>
-                            )}
+                                <div className="text-xl font-bold text-white">{formatCurrency(stayCost)}</div>
+                            </div>
+
+                            {/* Activities Row */}
+                            <div className="bg-[#1c1c1e] p-6 rounded-3xl border border-white/5 flex items-center justify-between group hover:border-white/10 transition-all">
+                                <div className="flex items-center gap-5">
+                                    <div className="w-12 h-12 rounded-2xl bg-purple-900/30 text-purple-500 flex items-center justify-center">
+                                        <span className="material-icons-outlined text-2xl">local_activity</span>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-white text-lg">Activities & Tours</h4>
+                                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">{trip.activities?.length || 0} Items</p>
+                                    </div>
+                                </div>
+                                <div className="text-xl font-bold text-white">{formatCurrency(activityCost)}</div>
+                            </div>
                         </div>
                     </div>
                 </div>
