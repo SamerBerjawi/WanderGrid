@@ -138,6 +138,13 @@ export interface LocationEntry {
     coordinates?: GeoCoordinates;
 }
 
+export interface PackingItem {
+    id: string;
+    text: string;
+    category: string;
+    isChecked: boolean;
+}
+
 export interface Trip {
   id: string;
   name: string;
@@ -163,6 +170,7 @@ export interface Trip {
   accommodations?: Accommodation[];
   activities?: Activity[];
   locations?: LocationEntry[]; // Visual route planner entries
+  packingList?: PackingItem[]; // Smart Gear List
 
   // Map Data
   coordinates?: GeoCoordinates;
@@ -235,6 +243,8 @@ export interface WorkspaceSettings {
     workingDays: number[]; // 0=Sun, 1=Mon...
     aviationStackApiKey?: string;
     brandfetchApiKey?: string;
+    googleGeminiApiKey?: string; // AI Key
+    masterPackingList?: PackingItem[]; // Global packing list template
 }
 
 export enum ViewState {

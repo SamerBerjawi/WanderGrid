@@ -1,8 +1,28 @@
 
-import { User, Trip, PublicHoliday, EntitlementType, SavedConfig, WorkspaceSettings, CustomEvent } from '../types';
+import { User, Trip, PublicHoliday, EntitlementType, SavedConfig, WorkspaceSettings, CustomEvent, PackingItem } from '../types';
 import { getCoordinates } from './geocoding';
 
 const GEO_CACHE_KEY = 'wandergrid_geo_cache_v2';
+
+const DEFAULT_MASTER_LIST: PackingItem[] = [
+    { id: 'm1', text: 'Passport / ID', category: 'Documents', isChecked: false },
+    { id: 'm2', text: 'Boarding Passes', category: 'Documents', isChecked: false },
+    { id: 'm3', text: 'Wallet & Cash', category: 'Misc', isChecked: false },
+    { id: 'm4', text: 'Phone Charger', category: 'Electronics', isChecked: false },
+    { id: 'm5', text: 'Power Bank', category: 'Electronics', isChecked: false },
+    { id: 'm6', text: 'Travel Adapter', category: 'Electronics', isChecked: false },
+    { id: 'm7', text: 'Headphones', category: 'Electronics', isChecked: false },
+    { id: 'm8', text: 'Toothbrush & Paste', category: 'Toiletries', isChecked: false },
+    { id: 'm9', text: 'Deodorant', category: 'Toiletries', isChecked: false },
+    { id: 'm10', text: 'Sunscreen', category: 'Health', isChecked: false },
+    { id: 'm11', text: 'Medication', category: 'Health', isChecked: false },
+    { id: 'm12', text: 'Underwear', category: 'Clothing', isChecked: false },
+    { id: 'm13', text: 'Socks', category: 'Clothing', isChecked: false },
+    { id: 'm14', text: 'T-Shirts', category: 'Clothing', isChecked: false },
+    { id: 'm15', text: 'Pajamas', category: 'Clothing', isChecked: false },
+    { id: 'm16', text: 'Jacket / Hoodie', category: 'Clothing', isChecked: false },
+    { id: 'm17', text: 'Sunglasses', category: 'Misc', isChecked: false },
+];
 
 const DEFAULT_WORKSPACE_SETTINGS: WorkspaceSettings = {
   orgName: 'WanderGrid Workspace',
@@ -12,7 +32,9 @@ const DEFAULT_WORKSPACE_SETTINGS: WorkspaceSettings = {
   theme: 'dark',
   workingDays: [1, 2, 3, 4, 5],
   aviationStackApiKey: '',
-  brandfetchApiKey: ''
+  brandfetchApiKey: '',
+  googleGeminiApiKey: '',
+  masterPackingList: DEFAULT_MASTER_LIST
 };
 
 export interface ImportState {
@@ -113,7 +135,8 @@ class DataService {
       if (endpoint === '/settings') {
           if (method === 'GET') {
               const s = localStorage.getItem(key('settings'));
-              return (s ? JSON.parse(s) : {}) as T;
+              // Merge with default to ensure new fields like masterPackingList exist
+              return s ? { ...DEFAULT_WORKSPACE_SETTINGS, ...JSON.parse(s) } : { ...DEFAULT_WORKSPACE_SETTINGS };
           }
           if (method === 'PUT') {
               localStorage.setItem(key('settings'), JSON.stringify(body));
@@ -170,6 +193,7 @@ class DataService {
           });
           const s = localStorage.getItem(key('settings'));
           if (s) backup.workspaceSettings = JSON.parse(s);
+          else backup.workspaceSettings = DEFAULT_WORKSPACE_SETTINGS;
           return backup as T;
       }
 
@@ -378,6 +402,7 @@ class DataService {
   // --- Settings ---
   async getWorkspaceSettings(): Promise<WorkspaceSettings> {
     const settings = await this.fetch<WorkspaceSettings>('/settings');
+    // Ensure new fields are populated if missing from DB
     return { ...DEFAULT_WORKSPACE_SETTINGS, ...settings };
   }
 

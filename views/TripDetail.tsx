@@ -7,11 +7,13 @@ import { AccommodationConfigurator } from '../components/AccommodationConfigurat
 import { LocationManager } from '../components/LocationManager';
 import { TripModal } from '../components/TripModal';
 import { LeaveRequestModal } from '../components/LeaveRequestModal';
+import { PackingList } from '../components/PackingList';
 import { dataService } from '../services/mockDb';
 import { flightImporter } from '../services/flightImportExport';
 import { calendarService } from '../services/calendarExport';
-import { Trip, User, Transport, Accommodation, WorkspaceSettings, Activity, TransportMode, LocationEntry, EntitlementType, PublicHoliday, SavedConfig } from '../types';
-import { searchLocations, resolvePlaceName } from '../services/geocoding';
+import { Trip, User, Transport, Accommodation, WorkspaceSettings, Activity, TransportMode, LocationEntry, EntitlementType, PublicHoliday, SavedConfig, PackingItem } from '../types';
+import { searchLocations, resolvePlaceName, getCoordinates } from '../services/geocoding';
+import { GoogleGenAI } from "@google/genai";
 
 interface TripDetailProps {
     tripId: string;
@@ -30,6 +32,203 @@ interface DetectedPlace {
     displayName: string;
     source: 'Transport' | 'Accommodation' | 'Location';
 }
+
+interface ChatMessage {
+    role: 'user' | 'model';
+    text: string;
+}
+
+const WeatherWidget: React.FC<{ location: string, coordinates?: { lat: number, lng: number } }> = ({ location, coordinates }) => {
+    const [weather, setWeather] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchWeather = async () => {
+            let lat = coordinates?.lat;
+            let lng = coordinates?.lng;
+
+            if (!lat || !lng) {
+                const coords = await getCoordinates(location);
+                if (coords) {
+                    lat = coords.lat;
+                    lng = coords.lng;
+                }
+            }
+
+            if (lat && lng) {
+                try {
+                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto`);
+                    const data = await res.json();
+                    setWeather(data);
+                } catch (e) {
+                    console.error("Weather fetch failed", e);
+                }
+            }
+            setLoading(false);
+        };
+        fetchWeather();
+    }, [location, coordinates]);
+
+    const getWeatherIcon = (code: number) => {
+        if (code <= 1) return 'wb_sunny';
+        if (code <= 3) return 'partly_cloudy_day';
+        if (code <= 48) return 'foggy';
+        if (code <= 67) return 'rainy';
+        if (code <= 77) return 'ac_unit';
+        if (code <= 82) return 'rainy';
+        if (code <= 99) return 'thunderstorm';
+        return 'cloud';
+    };
+
+    if (loading) return <div className="animate-pulse h-20 w-32 bg-gray-100 dark:bg-white/5 rounded-2xl"></div>;
+    if (!weather || !weather.current_weather) return null;
+
+    return (
+        <div className="p-4 rounded-2xl bg-gradient-to-br from-sky-400 to-blue-600 text-white shadow-lg shadow-blue-500/20 border border-white/10 flex items-center gap-4">
+            <div className="flex flex-col items-center">
+                <span className="material-icons-outlined text-3xl drop-shadow-md">{getWeatherIcon(weather.current_weather.weathercode)}</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest opacity-80 mt-1">Now</span>
+            </div>
+            <div>
+                <div className="text-3xl font-black leading-none">{Math.round(weather.current_weather.temperature)}°</div>
+                <div className="text-xs font-medium opacity-90 flex gap-2 mt-1">
+                    <span>H: {Math.round(weather.daily.temperature_2m_max[0])}°</span>
+                    <span>L: {Math.round(weather.daily.temperature_2m_min[0])}°</span>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const NomadGuide: React.FC<{ trip: Trip }> = ({ trip }) => {
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const [input, setInput] = useState('');
+    const [loading, setLoading] = useState(false);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
+
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages]);
+
+    // Initial greeting
+    useEffect(() => {
+        if (messages.length === 0) {
+            setMessages([{ role: 'model', text: `Hi! I'm your NomadGuide for **${trip.name}**. I know your itinerary for ${trip.location}. Ask me about local food, hidden gems, or packing tips!` }]);
+        }
+    }, [trip]);
+
+    const handleSend = async () => {
+        if (!input.trim()) return;
+        const userMsg = input;
+        setInput('');
+        setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+        setLoading(true);
+
+        try {
+            const settings = await dataService.getWorkspaceSettings();
+            const apiKey = settings.googleGeminiApiKey || process.env.API_KEY;
+            
+            if (!apiKey) {
+                setMessages(prev => [...prev, { role: 'model', text: "Please configure Google Gemini API Key in Settings." }]);
+                setLoading(false);
+                return;
+            }
+
+            const ai = new GoogleGenAI({ apiKey });
+            
+            // Build Context
+            const context = `
+                You are NomadGuide, an expert travel assistant.
+                Current Trip Context:
+                - Destination: ${trip.location}
+                - Dates: ${trip.startDate} to ${trip.endDate}
+                - Travelers: ${trip.participants.length}
+                - Itinerary Items: ${trip.transports?.length || 0} flights, ${trip.activities?.length || 0} activities.
+                
+                Answer the user's question concisely and helpfully. Focus on travel advice, logistics, and local recommendations.
+                Format with Markdown.
+            `;
+
+            const response = await ai.models.generateContent({
+                model: 'gemini-3-flash-preview',
+                contents: [
+                    { role: 'user', parts: [{ text: context }] }, // Context Injection
+                    ...messages.map(m => ({ role: m.role, parts: [{ text: m.text }] })),
+                    { role: 'user', parts: [{ text: userMsg }] }
+                ]
+            });
+
+            const text = response.text || "I couldn't retrieve that info right now.";
+            setMessages(prev => [...prev, { role: 'model', text }]);
+        } catch (e) {
+            setMessages(prev => [...prev, { role: 'model', text: "Connection error. Please check your API key." }]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="flex flex-col h-[600px] bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-white/5 shadow-xl overflow-hidden">
+            <div className="p-6 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/5 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white shadow-lg">
+                    <span className="material-icons-outlined text-2xl">auto_awesome</span>
+                </div>
+                <div>
+                    <h3 className="text-lg font-black text-gray-900 dark:text-white">NomadGuide AI</h3>
+                    <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Real-time Intelligence</p>
+                </div>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar bg-dots-pattern">
+                {messages.map((m, i) => (
+                    <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed shadow-sm ${
+                            m.role === 'user' 
+                            ? 'bg-blue-600 text-white rounded-tr-sm' 
+                            : 'bg-white dark:bg-gray-800 border border-gray-100 dark:border-white/10 text-gray-800 dark:text-gray-200 rounded-tl-sm'
+                        }`}>
+                            <div dangerouslySetInnerHTML={{ __html: m.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>') }} />
+                        </div>
+                    </div>
+                ))}
+                {loading && (
+                    <div className="flex justify-start">
+                        <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl rounded-tl-sm border border-gray-100 dark:border-white/10 shadow-sm flex gap-2">
+                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
+                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-75" />
+                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-150" />
+                        </div>
+                    </div>
+                )}
+                <div ref={messagesEndRef} />
+            </div>
+
+            <div className="p-4 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-white/5">
+                <div className="relative">
+                    <input 
+                        type="text" 
+                        value={input}
+                        onChange={e => setInput(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleSend()}
+                        placeholder="Ask about local weather, food, or packing..."
+                        className="w-full pl-6 pr-14 py-4 rounded-2xl bg-gray-100 dark:bg-black/30 border-transparent focus:bg-white dark:focus:bg-black/50 border focus:border-purple-500 outline-none transition-all text-gray-900 dark:text-white placeholder-gray-500"
+                    />
+                    <button 
+                        onClick={handleSend}
+                        disabled={!input.trim() || loading}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-purple-600 hover:bg-purple-700 text-white rounded-xl flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <span className="material-icons-outlined text-lg">send</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     const [trip, setTrip] = useState<Trip | null>(null);
@@ -189,6 +388,13 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         await dataService.updateTrip(finalTrip);
         setTrip(finalTrip);
         setIsEditTripOpen(false);
+    };
+
+    const handleUpdatePackingList = async (items: PackingItem[]) => {
+        if (!trip) return;
+        const updatedTrip = { ...trip, packingList: items };
+        await dataService.updateTrip(updatedTrip);
+        setTrip(updatedTrip);
     };
 
     const handleDeleteTrip = async (id: string) => {
@@ -722,15 +928,18 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                 </div>
                             </div>
                         </div>
-                        <div className="flex gap-2">
-                            <Button variant="secondary" onClick={() => {
-                                const ics = calendarService.generateIcsContent([trip], 'WanderGrid');
-                                calendarService.downloadIcs(ics, `trip-${trip.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.ics`);
-                            }} icon={<span className="material-icons-outlined">event</span>}>Add to Calendar</Button>
-                            {(!trip.entitlementId && trip.status === 'Planning') && (
-                                <Button variant="primary" onClick={handleBookTimeOff} className="bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20" icon={<span className="material-icons-outlined">event_available</span>}>Book Time Off</Button>
-                            )}
-                            <Button variant="secondary" onClick={() => setIsEditTripOpen(true)} icon={<span className="material-icons-outlined">edit</span>}>Edit Details</Button>
+                        <div className="flex items-center gap-2">
+                            <WeatherWidget location={trip.location} coordinates={trip.coordinates} />
+                            <div className="flex gap-2">
+                                <Button variant="secondary" onClick={() => {
+                                    const ics = calendarService.generateIcsContent([trip], 'WanderGrid');
+                                    calendarService.downloadIcs(ics, `trip-${trip.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.ics`);
+                                }} icon={<span className="material-icons-outlined">event</span>}>Add to Calendar</Button>
+                                {(!trip.entitlementId && trip.status === 'Planning') && (
+                                    <Button variant="primary" onClick={handleBookTimeOff} className="bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20" icon={<span className="material-icons-outlined">event_available</span>}>Book Time Off</Button>
+                                )}
+                                <Button variant="secondary" onClick={() => setIsEditTripOpen(true)} icon={<span className="material-icons-outlined">edit</span>}>Edit Details</Button>
+                            </div>
                         </div>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -765,7 +974,9 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                         { id: 'planner', label: 'Daily Planner', icon: <span className="material-icons-outlined">calendar_view_day</span> }, 
                         { id: 'route', label: 'Route', icon: <span className="material-icons-outlined">alt_route</span> },
                         { id: 'itinerary', label: 'Bookings', icon: <span className="material-icons-outlined">commute</span> }, 
-                        { id: 'budget', label: 'Cost Breakdown', icon: <span className="material-icons-outlined">receipt_long</span> }
+                        { id: 'budget', label: 'Cost Breakdown', icon: <span className="material-icons-outlined">receipt_long</span> },
+                        { id: 'packing', label: 'Gear', icon: <span className="material-icons-outlined">backpack</span> },
+                        { id: 'intel', label: 'AI Guide', icon: <span className="material-icons-outlined">auto_awesome</span> }
                     ]} 
                     activeTab={activeTab} 
                     onChange={setActiveTab} 
@@ -782,6 +993,21 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
             </div>
 
             {/* Content Switcher */}
+            {activeTab === 'intel' && (
+                <div className="animate-fade-in">
+                    <NomadGuide trip={trip} />
+                </div>
+            )}
+
+            {activeTab === 'packing' && (
+                <div className="animate-fade-in">
+                    <PackingList 
+                        trip={trip} 
+                        onUpdate={handleUpdatePackingList}
+                    />
+                </div>
+            )}
+
             {activeTab === 'route' && (
                 <LocationManager 
                     key={trip.id + trip.locations?.length}
@@ -955,7 +1181,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
             )}
 
             {activeTab === 'itinerary' && (
-                <div className="space-y-12">
+                <div className="space-y-12 animate-fade-in">
                     {/* TRANSPORT SECTION */}
                     <div>
                         <div className="flex justify-between items-center mb-6">
@@ -1158,6 +1384,161 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                             }
                             </div>
                         )}
+                    </div>
+
+                    {/* ACCOMMODATION SECTION */}
+                    <div>
+                        <div className="flex justify-between items-center mb-6">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center">
+                                    <span className="material-icons-outlined">hotel</span>
+                                </div>
+                                <h3 className="text-xl font-black text-gray-900 dark:text-white">Accommodation</h3>
+                            </div>
+                            <Button size="sm" variant="secondary" onClick={() => openAccommodationModal()}>+ Add Stay</Button>
+                        </div>
+
+                        {!trip.accommodations || trip.accommodations.length === 0 ? (
+                            <div className="text-center py-12 bg-gray-50 dark:bg-white/5 rounded-3xl border border-dashed border-gray-200 dark:border-white/10">
+                                <span className="material-icons-outlined text-4xl text-gray-300">night_shelter</span>
+                                <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-2">No stays booked yet</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {trip.accommodations.map((acc) => {
+                                    const nights = calculateNights(acc.checkInDate, acc.checkOutDate);
+                                    return (
+                                        <div key={acc.id} className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-100 dark:border-white/5 flex gap-4 hover:shadow-lg transition-all">
+                                            <div className="w-14 h-14 bg-amber-100 dark:bg-amber-900/30 rounded-xl flex items-center justify-center shrink-0 overflow-hidden">
+                                                {acc.logoUrl ? <img src={acc.logoUrl} className="w-full h-full object-cover"/> : <span className="material-icons-outlined text-amber-600 dark:text-amber-400 text-2xl">hotel</span>}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex justify-between items-start">
+                                                    <h4 className="font-bold text-gray-900 dark:text-white text-sm truncate pr-2">{acc.name}</h4>
+                                                    {acc.cost && <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatCurrency(acc.cost)}</span>}
+                                                </div>
+                                                <p className="text-[10px] text-gray-500 truncate mt-0.5">{acc.address}</p>
+                                                <div className="flex gap-2 mt-2">
+                                                    <span className="px-2 py-1 bg-gray-100 dark:bg-white/10 rounded-md text-[9px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
+                                                        {nights} Night{nights !== 1 && 's'}
+                                                    </span>
+                                                    <span className="px-2 py-1 bg-gray-100 dark:bg-white/10 rounded-md text-[9px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
+                                                        {new Date(acc.checkInDate).toLocaleDateString(undefined, {month:'short', day:'numeric'})} - {new Date(acc.checkOutDate).toLocaleDateString(undefined, {month:'short', day:'numeric'})}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <button onClick={() => openAccommodationModal()} className="self-center p-2 text-gray-300 hover:text-blue-500 transition-colors">
+                                                <span className="material-icons-outlined">edit</span>
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'budget' && (
+                <div className="space-y-8 animate-fade-in">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="p-6 rounded-[2rem] bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-xl shadow-emerald-500/20">
+                            <div className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-2">Total Trip Cost</div>
+                            <div className="text-4xl font-black">{formatCurrency(totalCost)}</div>
+                        </div>
+                        <div className="p-6 rounded-[2rem] bg-white dark:bg-gray-800 border border-gray-100 dark:border-white/5 shadow-sm">
+                            <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Cost Per Person</div>
+                            <div className="text-4xl font-black text-gray-900 dark:text-white">{formatCurrency(costPerPerson)}</div>
+                            <div className="text-xs font-bold text-gray-400 mt-1">{trip.participants.length} Travelers</div>
+                        </div>
+                        <div className="p-6 rounded-[2rem] bg-white dark:bg-gray-800 border border-gray-100 dark:border-white/5 shadow-sm">
+                            <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Daily Average</div>
+                            <div className="text-4xl font-black text-gray-900 dark:text-white">{formatCurrency(costPerDay)}</div>
+                            <div className="text-xs font-bold text-gray-400 mt-1">{duration} Days</div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="lg:col-span-1 p-8 bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-100 dark:border-white/5 flex flex-col items-center justify-center">
+                            <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-8 w-full text-center">Expense Distribution</h4>
+                            <div className="relative w-48 h-48">
+                                <svg viewBox="0 0 100 100" className="transform -rotate-90 w-full h-full">
+                                    {[
+                                        { value: transportCost, color: '#3b82f6' }, // Blue
+                                        { value: stayCost, color: '#f59e0b' },      // Amber
+                                        { value: activityCost, color: '#8b5cf6' }    // Purple
+                                    ].reduce((acc, item, idx) => {
+                                        const total = transportCost + stayCost + activityCost;
+                                        if (total === 0) return acc;
+                                        const percent = item.value / total;
+                                        const dashArray = `${percent * 314} 314`;
+                                        const offset = -(acc.cumulative * 314);
+                                        
+                                        acc.elements.push(
+                                            <circle key={idx} cx="50" cy="50" r="40" fill="transparent" strokeWidth="12" stroke={item.color} strokeDasharray={dashArray} strokeDashoffset={offset} className="transition-all duration-1000 ease-out" />
+                                        );
+                                        acc.cumulative += percent;
+                                        return acc;
+                                    }, { cumulative: 0, elements: [] as React.ReactNode[] }).elements}
+                                </svg>
+                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                    <span className="text-lg font-black text-gray-900 dark:text-white">100%</span>
+                                </div>
+                            </div>
+                            <div className="flex justify-center gap-4 mt-8 w-full">
+                                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-blue-500" /><span className="text-xs font-bold text-gray-600 dark:text-gray-300">Transport</span></div>
+                                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-amber-500" /><span className="text-xs font-bold text-gray-600 dark:text-gray-300">Stays</span></div>
+                                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-purple-500" /><span className="text-xs font-bold text-gray-600 dark:text-gray-300">Activities</span></div>
+                            </div>
+                        </div>
+
+                        <div className="lg:col-span-2 space-y-4">
+                            <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Itemized Expenses</h4>
+                            <div className="space-y-2">
+                                {transportCost > 0 && (
+                                    <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-white/5">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center"><span className="material-icons-outlined">flight</span></div>
+                                            <div>
+                                                <div className="font-bold text-gray-900 dark:text-white">Transportation</div>
+                                                <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{trip.transports?.length} Bookings</div>
+                                            </div>
+                                        </div>
+                                        <div className="font-black text-gray-900 dark:text-white">{formatCurrency(transportCost)}</div>
+                                    </div>
+                                )}
+                                {stayCost > 0 && (
+                                    <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-white/5">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 text-amber-600 flex items-center justify-center"><span className="material-icons-outlined">hotel</span></div>
+                                            <div>
+                                                <div className="font-bold text-gray-900 dark:text-white">Accommodation</div>
+                                                <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{trip.accommodations?.length} Properties</div>
+                                            </div>
+                                        </div>
+                                        <div className="font-black text-gray-900 dark:text-white">{formatCurrency(stayCost)}</div>
+                                    </div>
+                                )}
+                                {activityCost > 0 && (
+                                    <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-white/5">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 text-purple-600 flex items-center justify-center"><span className="material-icons-outlined">local_activity</span></div>
+                                            <div>
+                                                <div className="font-bold text-gray-900 dark:text-white">Activities & Tours</div>
+                                                <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{trip.activities?.length} Items</div>
+                                            </div>
+                                        </div>
+                                        <div className="font-black text-gray-900 dark:text-white">{formatCurrency(activityCost)}</div>
+                                    </div>
+                                )}
+                                {totalCost === 0 && (
+                                    <div className="p-12 text-center border-2 border-dashed border-gray-200 dark:border-white/10 rounded-3xl">
+                                        <span className="material-icons-outlined text-4xl text-gray-300">attach_money</span>
+                                        <p className="text-gray-400 font-bold uppercase tracking-widest mt-2 text-xs">No costs recorded</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
