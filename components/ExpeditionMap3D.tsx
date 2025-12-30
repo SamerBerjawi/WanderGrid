@@ -76,48 +76,67 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({ trips, onTripC
             if (trip.transports && trip.transports.length > 0) {
                 trip.transports.forEach(t => {
                     if (t.originLat && t.originLng && t.destLat && t.destLng) {
-                        // Arcs
-                        arcList.push({
-                            startLat: t.originLat,
-                            startLng: t.originLng,
-                            endLat: t.destLat,
-                            endLng: t.destLng,
-                            color: color,
-                            name: `${t.origin} → ${t.destination}`,
-                            tripId: trip.id,
-                            tripName: trip.name,
-                            status: trip.status
-                        });
-
-                        // Points (Unique by lat/lng roughly)
+                        
+                        // Construct path segments including waypoints
+                        const segments = [];
+                        const startPoint = { lat: t.originLat, lng: t.originLng, name: t.origin };
+                        
+                        let currentStart = startPoint;
+                        
+                        // Add point for Origin
                         const originKey = `${t.originLat.toFixed(3)},${t.originLng.toFixed(3)}`;
-                        const destKey = `${t.destLat.toFixed(3)},${t.destLng.toFixed(3)}`;
-
-                        // Determine point color visibility
                         const ptColor = (isDark || activeLayer !== 'standard') ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.6)';
-
+                        
                         if (!pointMap.has(originKey)) {
-                            pointMap.set(originKey, {
-                                lat: t.originLat,
-                                lng: t.originLng,
-                                name: t.origin,
-                                color: ptColor,
-                                radius: 0.3
+                            pointMap.set(originKey, { ...startPoint, color: ptColor, radius: 0.3 });
+                        }
+
+                        // Process Waypoints
+                        if (t.waypoints && t.waypoints.length > 0) {
+                            t.waypoints.forEach(wp => {
+                                if (wp.coordinates) {
+                                    const wpPoint = { lat: wp.coordinates.lat, lng: wp.coordinates.lng, name: wp.name };
+                                    segments.push({ start: currentStart, end: wpPoint });
+                                    currentStart = wpPoint;
+                                    
+                                    // Add point for Waypoint
+                                    const wpKey = `${wpPoint.lat.toFixed(3)},${wpPoint.lng.toFixed(3)}`;
+                                    if (!pointMap.has(wpKey)) {
+                                        pointMap.set(wpKey, { ...wpPoint, color: ptColor, radius: 0.2 }); // Slightly smaller radius for stops
+                                    }
+                                }
                             });
                         }
+
+                        const endPoint = { lat: t.destLat, lng: t.destLng, name: t.destination };
+                        // Add final segment to destination
+                        segments.push({ start: currentStart, end: endPoint });
+                        
+                        // Add point for Dest
+                        const destKey = `${t.destLat.toFixed(3)},${t.destLng.toFixed(3)}`;
                         if (!pointMap.has(destKey)) {
-                            pointMap.set(destKey, {
-                                lat: t.destLat,
-                                lng: t.destLng,
-                                name: t.destination,
-                                color: ptColor,
-                                radius: 0.3
-                            });
+                            pointMap.set(destKey, { ...endPoint, color: ptColor, radius: 0.3 });
                         }
+
+                        // Create Arcs from segments
+                        segments.forEach(seg => {
+                             arcList.push({
+                                startLat: seg.start.lat,
+                                startLng: seg.start.lng,
+                                endLat: seg.end.lat,
+                                endLng: seg.end.lng,
+                                color: color,
+                                name: `${seg.start.name} → ${seg.end.name}`,
+                                tripId: trip.id,
+                                tripName: trip.name,
+                                status: trip.status
+                            });
+                        });
                     }
                 });
             } else if (trip.coordinates) {
                 // Point only for trips without transport
+                const color = getStatusColor(trip, isDark, activeLayer);
                 const key = `${trip.coordinates.lat.toFixed(3)},${trip.coordinates.lng.toFixed(3)}`;
                 if (!pointMap.has(key)) {
                     pointMap.set(key, {

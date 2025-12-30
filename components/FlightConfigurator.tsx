@@ -52,7 +52,6 @@ interface CarForm {
     confirmationCode: string;
     cost?: number;
     website?: string;
-    sameDropoff: boolean;
     distance?: number;
     logoUrl?: string;
     stops: RoadTripWaypoint[];
@@ -215,11 +214,12 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
         confirmationCode: '',
         cost: undefined,
         website: undefined,
-        sameDropoff: true,
         distance: undefined,
         logoUrl: undefined,
         stops: []
     });
+
+    const [draggedStopIndex, setDraggedStopIndex] = useState<number | null>(null);
 
     const getSimpleDiffMinutes = (d1: string, t1: string, d2: string, t2: string) => {
         if (!d1 || !t1 || !d2 || !t2) return 0;
@@ -248,6 +248,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
         return Math.round((dist / speed) * 60);
     };
 
+    // ... (UseEffect hooks and other helpers remain unchanged)
     useEffect(() => {
         dataService.getWorkspaceSettings().then(s => {
             if (s.aviationStackApiKey) setApiKey(s.aviationStackApiKey);
@@ -295,10 +296,9 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
             setMode(first.mode);
             
             if (first.mode === 'Car Rental' || first.mode === 'Personal Car') {
-                const isSame = first.origin === first.destination;
                 setCarForm({
                     pickupLocation: first.pickupLocation || first.origin || '',
-                    dropoffLocation: first.dropoffLocation || first.destination || '',
+                    dropoffLocation: first.dropoffLocation || first.destination || first.pickupLocation || first.origin || '',
                     pickupDate: first.departureDate,
                     pickupTime: first.departureTime,
                     dropoffDate: first.arrivalDate,
@@ -309,7 +309,6 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                     confirmationCode: first.confirmationCode,
                     cost: first.cost,
                     website: first.website,
-                    sameDropoff: isSame,
                     distance: first.distance,
                     logoUrl: first.logoUrl,
                     stops: first.waypoints || []
@@ -557,7 +556,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
         }
 
         const newSegment: SegmentForm = {
-            id: Math.random().toString(),
+            id: Math.random().toString(36).substr(2, 9),
             ...DEFAULT_SEGMENT,
             origin: current.destination, 
             destination: next ? next.origin : (tripType === 'One-Way' ? '' : current.destination),
@@ -582,6 +581,14 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
         setCarForm(prev => {
             const updates: Partial<CarForm> = { [field]: value };
             
+            // Auto-sync Dropoff to Pickup if they were previously same/empty
+            if (field === 'pickupLocation') {
+                const isSynced = !prev.dropoffLocation || prev.dropoffLocation === prev.pickupLocation;
+                if (isSynced) {
+                    updates.dropoffLocation = value;
+                }
+            }
+
             if (field === 'pickupDate' || field === 'pickupTime') {
                 const newDate = field === 'pickupDate' ? value : prev.pickupDate;
                 const newTime = field === 'pickupTime' ? value : prev.pickupTime;
@@ -625,6 +632,30 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
         }));
     };
 
+    // Drag & Drop Handlers
+    const handleDragStart = (e: React.DragEvent, index: number) => {
+        setDraggedStopIndex(index);
+        e.dataTransfer.effectAllowed = "move";
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+    };
+
+    const handleDrop = (e: React.DragEvent, index: number) => {
+        e.preventDefault();
+        if (draggedStopIndex === null || draggedStopIndex === index) return;
+
+        const newStops = [...carForm.stops];
+        const [movedItem] = newStops.splice(draggedStopIndex, 1);
+        newStops.splice(index, 0, movedItem);
+
+        setCarForm(prev => ({ ...prev, stops: newStops }));
+        setDraggedStopIndex(null);
+    };
+
+    // ... (Remainder of functions: estimateRoadTripDistance, handleEstimateCarDuration, estimateDistance, handleFetchBrandForCar, handleFetchBrandForSegment, handleSave, fetchSuggestions..., extractIata, handleAutoFill, isCar, isValid, getClassColor, getSeatTypeIcon)
     const estimateRoadTripDistance = async () => {
         if (!carForm.pickupLocation) return;
         setIsEstimatingDistance('car');
@@ -632,7 +663,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
             const points = [
                 carForm.pickupLocation,
                 ...carForm.stops.map(s => s.name).filter(Boolean),
-                carForm.sameDropoff ? carForm.pickupLocation : carForm.dropoffLocation
+                carForm.dropoffLocation
             ].filter(Boolean);
 
             if (points.length < 2) return;
@@ -731,10 +762,10 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                 departureDate: carForm.pickupDate,
                 departureTime: carForm.pickupTime,
                 pickupLocation: carForm.pickupLocation,
-                destination: carForm.sameDropoff ? carForm.pickupLocation : carForm.dropoffLocation,
+                destination: carForm.dropoffLocation,
                 arrivalDate: carForm.dropoffDate,
                 arrivalTime: carForm.dropoffTime,
-                dropoffLocation: carForm.sameDropoff ? carForm.pickupLocation : carForm.dropoffLocation,
+                dropoffLocation: carForm.dropoffLocation,
                 vehicleModel: carForm.model,
                 cost: carForm.cost,
                 website: carForm.website,
@@ -960,21 +991,35 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
 
                         {/* Waypoints */}
                         {carForm.stops.map((stop, index) => (
-                            <div key={stop.id} className="relative animate-fade-in">
-                                <div className="absolute -left-[39px] top-8 w-5 h-5 rounded-full bg-white dark:bg-gray-800 border-2 border-blue-400 z-10 flex items-center justify-center">
-                                    <div className="w-1.5 h-1.5 bg-blue-400 rounded-full" />
+                            <div 
+                                key={stop.id} 
+                                className={`relative animate-fade-in transition-all duration-200 ${draggedStopIndex === index ? 'opacity-30' : 'opacity-100'}`}
+                                draggable
+                                onDragStart={(e) => handleDragStart(e, index)}
+                                onDragOver={handleDragOver}
+                                onDrop={(e) => handleDrop(e, index)}
+                                onDragEnd={() => setDraggedStopIndex(null)}
+                            >
+                                {/* Timeline Dot (Grab Handle) */}
+                                <div className="absolute -left-[39px] top-8 w-5 h-5 rounded-full bg-white dark:bg-gray-800 border-2 border-blue-400 z-10 flex items-center justify-center cursor-grab active:cursor-grabbing group/dot">
+                                    <div className="w-1.5 h-1.5 bg-blue-400 rounded-full group-hover/dot:scale-125 transition-transform" />
                                 </div>
                                 
-                                <div className="bg-white dark:bg-black/20 p-3 rounded-2xl border border-gray-200 dark:border-white/10 relative group">
+                                <div className="bg-white dark:bg-black/20 p-3 rounded-2xl border border-gray-200 dark:border-white/10 relative group hover:border-blue-300 dark:hover:border-blue-700 transition-colors">
+                                    {/* Drag Handle Icon inside card for clarity */}
+                                    <div className="absolute -left-3 top-1/2 -translate-y-1/2 text-gray-300 cursor-grab active:cursor-grabbing p-1 hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity hidden md:block">
+                                        <span className="material-icons-outlined text-lg">drag_indicator</span>
+                                    </div>
+
                                     <button 
                                         onClick={() => handleRemoveStop(stop.id)} 
-                                        className="absolute -right-2 -top-2 w-6 h-6 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-500 hover:text-white shadow-sm"
+                                        className="absolute -right-2 -top-2 w-6 h-6 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-500 hover:text-white shadow-sm z-20"
                                         title="Remove Stop"
                                     >
                                         <span className="material-icons-outlined text-sm">close</span>
                                     </button>
                                     
-                                    <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                                    <div className="grid grid-cols-1 md:grid-cols-12 gap-3 pl-5"> {/* Added pl-5 for drag handle space */}
                                         <div className="md:col-span-6">
                                             <Autocomplete 
                                                 label={`Stop #${index + 1}`}
@@ -1025,23 +1070,13 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                         {/* End Point */}
                         <div className="relative">
                             <div className="absolute -left-[41px] top-3 w-6 h-6 rounded-full border-4 border-white dark:border-gray-800 bg-rose-500 shadow-sm z-10" />
-                            {!carForm.sameDropoff && (
-                                <Autocomplete 
-                                    label={mode === 'Car Rental' ? "Drop-off Location" : "Destination"} 
-                                    placeholder="Airport, City or Station" 
-                                    value={carForm.dropoffLocation} 
-                                    onChange={val => updateCar('dropoffLocation', val)}
-                                    fetchSuggestions={fetchCarLocationSuggestions}
-                                />
-                            )}
-                            {mode === 'Car Rental' && (
-                                <div className={`flex items-center gap-2 p-3 rounded-xl bg-white dark:bg-black/20 border border-gray-200 dark:border-white/10 w-fit cursor-pointer mt-2 ${carForm.sameDropoff ? 'text-blue-600 dark:text-blue-400 border-blue-200' : 'text-gray-500'}`} onClick={() => updateCar('sameDropoff', !carForm.sameDropoff)}>
-                                    <div className={`w-4 h-4 rounded border flex items-center justify-center ${carForm.sameDropoff ? 'bg-blue-600 border-blue-600' : 'bg-white'}`}>
-                                        {carForm.sameDropoff && <span className="material-icons-outlined text-white text-[10px]">check</span>}
-                                    </div>
-                                    <span className="text-xs font-bold">Return to same location</span>
-                                </div>
-                            )}
+                            <Autocomplete 
+                                label={mode === 'Car Rental' ? "Drop-off Location" : "Destination"} 
+                                placeholder="Airport, City or Station" 
+                                value={carForm.dropoffLocation} 
+                                onChange={val => updateCar('dropoffLocation', val)}
+                                fetchSuggestions={fetchCarLocationSuggestions}
+                            />
                         </div>
                     </div>
 

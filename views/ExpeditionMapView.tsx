@@ -139,6 +139,21 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                     } else if (tr.destination) {
                         placesToCheckForCoords.add(tr.destination);
                     }
+
+                    // Waypoints (Stops)
+                    tr.waypoints?.forEach(wp => {
+                        if (wp.name) placesToCheckForCountry.add(wp.name);
+                        
+                        if (wp.coordinates) {
+                            const key = `${wp.coordinates.lat.toFixed(4)},${wp.coordinates.lng.toFixed(4)}`;
+                            if (!processedPlaceKeys.has(key)) {
+                                finalPlaces.push({ lat: wp.coordinates.lat, lng: wp.coordinates.lng, name: wp.name });
+                                processedPlaceKeys.add(key);
+                            }
+                        } else if (wp.name) {
+                            placesToCheckForCoords.add(wp.name);
+                        }
+                    });
                 });
 
                 // 3. Locations (Route Manager)
