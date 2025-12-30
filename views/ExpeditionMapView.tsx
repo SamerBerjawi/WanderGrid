@@ -375,7 +375,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                             </div>
                         </div>
 
-                        {viewMode === 'network' && mapType === '2D' && (
+                        {(mapType === '3D' || viewMode === 'network') && (
                             <div className="flex gap-2 w-full md:w-auto">
                                 <button 
                                     onClick={() => setAnimateRoutes(!animateRoutes)}
@@ -400,17 +400,19 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                 >
                                     <span className="material-icons-outlined text-lg">line_weight</span>
                                 </button>
-                                <button 
-                                    onClick={() => setShowCountries(!showCountries)}
-                                    className={`flex items-center justify-center gap-2 px-3 py-2 rounded-2xl border transition-all ${
-                                        showCountries
-                                        ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-900/50 text-amber-700 dark:text-amber-400' 
-                                        : 'bg-transparent border-gray-200 dark:border-white/10 text-gray-400'
-                                    }`}
-                                    title="Highlight Visited Countries"
-                                >
-                                    <span className="material-icons-outlined text-lg">public_off</span>
-                                </button>
+                                {mapType === '2D' && (
+                                    <button 
+                                        onClick={() => setShowCountries(!showCountries)}
+                                        className={`flex items-center justify-center gap-2 px-3 py-2 rounded-2xl border transition-all ${
+                                            showCountries
+                                            ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-900/50 text-amber-700 dark:text-amber-400' 
+                                            : 'bg-transparent border-gray-200 dark:border-white/10 text-gray-400'
+                                        }`}
+                                        title="Highlight Visited Countries"
+                                    >
+                                        <span className="material-icons-outlined text-lg">public_off</span>
+                                    </button>
+                                )}
                             </div>
                         )}
                     </div>
@@ -476,6 +478,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                             trips={filteredTrips}
                             onTripClick={onTripClick}
                             animateRoutes={animateRoutes}
+                            showFrequencyWeight={showFrequencyWeight}
                         />
                     )}
                     

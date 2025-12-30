@@ -7,6 +7,7 @@ interface ExpeditionMap3DProps {
     trips: Trip[];
     onTripClick?: (tripId: string) => void;
     animateRoutes?: boolean;
+    showFrequencyWeight?: boolean;
 }
 
 interface ArcData {
@@ -19,6 +20,7 @@ interface ArcData {
     tripId: string;
     tripName: string;
     status: string;
+    alt: number; // Altitude for 3D visualization
 }
 
 interface PointData {
@@ -58,7 +60,45 @@ const getStatusColor = (trip: Trip, isDark: boolean, activeLayer: string) => {
     return isSatellite || isDark ? '#ffffff' : '#334155'; // White (Planning) vs Dark Slate
 };
 
-export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({ trips, onTripClick, animateRoutes = true }) => {
+const getModeColor = (mode: string, baseColor: string) => {
+    if (['Car Rental', 'Personal Car', 'Bus', 'Train'].includes(mode)) return '#f59e0b'; // Amber for Land
+    if (mode === 'Cruise') return '#06b6d4'; // Cyan for Sea
+    return baseColor;
+};
+
+// Route Key Helper
+const getRouteKey = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+    const p1 = `${lat1.toFixed(2)},${lng1.toFixed(2)}`;
+    const p2 = `${lat2.toFixed(2)},${lng2.toFixed(2)}`;
+    return p1 < p2 ? `${p1}|${p2}` : `${p2}|${p1}`;
+};
+
+// Hex to RGBA Helper
+const hexToRgba = (hex: string, alpha: number) => {
+    // Handle short hex
+    if (hex.length === 4) {
+        hex = `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`;
+    }
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+// Great Circle Distance (Angle in Radians) for Altitude Scaling
+const getGreatCircleAngle = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+    const toRad = (n: number) => n * Math.PI / 180;
+    const phi1 = toRad(lat1);
+    const phi2 = toRad(lat2);
+    const dPhi = toRad(lat2 - lat1);
+    const dLambda = toRad(lng2 - lng1);
+    const a = Math.sin(dPhi/2) * Math.sin(dPhi/2) +
+              Math.cos(phi1) * Math.cos(phi2) *
+              Math.sin(dLambda/2) * Math.sin(dLambda/2);
+    return 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+};
+
+export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({ trips, onTripClick, animateRoutes = true, showFrequencyWeight = true }) => {
     const globeEl = useRef<any>(null);
     const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
     const containerRef = useRef<HTMLDivElement>(null);
@@ -69,12 +109,43 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({ trips, onTripC
     const { arcs, points } = useMemo(() => {
         const arcList: ArcData[] = [];
         const pointMap = new Map<string, PointData>();
+        const routeFrequencies = new Map<string, number>();
 
+        // 1. Calculate Frequencies
         trips.forEach(trip => {
-            const color = getStatusColor(trip, isDark, activeLayer);
+            trip.transports?.forEach(t => {
+                if (t.originLat && t.originLng && t.destLat && t.destLng) {
+                    // Check segments including waypoints
+                    let currentLat = t.originLat;
+                    let currentLng = t.originLng;
+                    
+                    const pointsToCheck = [];
+                    if (t.waypoints) {
+                        t.waypoints.forEach(wp => {
+                            if (wp.coordinates) pointsToCheck.push({ lat: wp.coordinates.lat, lng: wp.coordinates.lng });
+                        });
+                    }
+                    pointsToCheck.push({ lat: t.destLat, lng: t.destLng });
+
+                    pointsToCheck.forEach(pt => {
+                        const key = getRouteKey(currentLat, currentLng, pt.lat, pt.lng);
+                        routeFrequencies.set(key, (routeFrequencies.get(key) || 0) + 1);
+                        currentLat = pt.lat;
+                        currentLng = pt.lng;
+                    });
+                }
+            });
+        });
+
+        // 2. Build Arcs and Points
+        trips.forEach(trip => {
+            const statusColor = getStatusColor(trip, isDark, activeLayer);
 
             if (trip.transports && trip.transports.length > 0) {
                 trip.transports.forEach(t => {
+                    const modeColor = getModeColor(t.mode, statusColor);
+                    const isSurface = ['Car Rental', 'Personal Car', 'Bus', 'Train', 'Cruise'].includes(t.mode);
+
                     if (t.originLat && t.originLng && t.destLat && t.destLng) {
                         
                         // Construct path segments including waypoints
@@ -120,16 +191,34 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({ trips, onTripC
 
                         // Create Arcs from segments
                         segments.forEach(seg => {
+                             const key = getRouteKey(seg.start.lat, seg.start.lng, seg.end.lat, seg.end.lng);
+                             const freq = routeFrequencies.get(key) || 1;
+                             
+                             // Calculate opacity based on frequency if enabled
+                             let finalColor = modeColor;
+                             if (showFrequencyWeight) {
+                                 // Base opacity 0.4, max 1.0. Scale logarithmically or linearly.
+                                 const opacity = Math.min(1, 0.4 + (Math.log(freq) * 0.3));
+                                 finalColor = hexToRgba(modeColor, opacity);
+                             }
+
+                             // Calculate Altitude
+                             // Surface routes get 0 (flat), Flights scale based on distance
+                             const angularDist = getGreatCircleAngle(seg.start.lat, seg.start.lng, seg.end.lat, seg.end.lng);
+                             // Use very small non-zero for surface to prevent z-fighting with the globe surface mesh
+                             const alt = isSurface ? 0.001 : (angularDist * 0.4); 
+
                              arcList.push({
                                 startLat: seg.start.lat,
                                 startLng: seg.start.lng,
                                 endLat: seg.end.lat,
                                 endLng: seg.end.lng,
-                                color: color,
+                                color: finalColor,
                                 name: `${seg.start.name} → ${seg.end.name}`,
                                 tripId: trip.id,
                                 tripName: trip.name,
-                                status: trip.status
+                                status: trip.status,
+                                alt: alt
                             });
                         });
                     }
@@ -151,7 +240,7 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({ trips, onTripC
         });
 
         return { arcs: arcList, points: Array.from(pointMap.values()) };
-    }, [trips, isDark, activeLayer]);
+    }, [trips, isDark, activeLayer, showFrequencyWeight]);
 
     // Resize Observer
     useEffect(() => {
@@ -211,8 +300,8 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({ trips, onTripC
                 arcDashLength={animateRoutes ? 0.4 : 1}
                 arcDashGap={animateRoutes ? 0.2 : 0}
                 arcDashAnimateTime={animateRoutes ? 2000 : 0}
-                arcStroke={0.5}
-                arcAltitudeAutoScale={0.4}
+                arcStroke={showFrequencyWeight ? 0.5 : 0.2}
+                arcAltitude="alt"
                 
                 // Points
                 pointsData={points}
