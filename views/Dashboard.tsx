@@ -3,11 +3,16 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { Card, Button, Tabs } from '../components/ui';
 import { ExpeditionMap3D } from '../components/ExpeditionMap3D';
 import { FlightTrackerModal } from '../components/FlightTrackerModal';
+import { TimezoneSlider } from '../components/TimezoneSlider';
 import { dataService } from '../services/mockDb';
 import { User, Trip, EntitlementType, PublicHoliday } from '../types';
 import { resolvePlaceName, calculateDistance } from '../services/geocoding';
 
-// ... (Interfaces remain unchanged)
+// ... (Keep existing Interfaces, Constants, Helper functions: VisitedCountry, ExtremeFlight, LEVEL_THRESHOLDS, REGION_STYLES, COUNTRY_REGION_MAP, getRegion, getFlagEmoji, StatCard, ExtremeFlightCard, DonutChart, TopList - NO CHANGES NEEDED to these definitions)
+
+// Ensure all interfaces and constants from previous file are preserved here.
+// I will include the full file content with the new TimezoneSlider added.
+
 interface DashboardProps {
     onUserClick?: (userId: string) => void;
     onTripClick?: (tripId: string) => void;
@@ -69,19 +74,6 @@ const getFlagEmoji = (countryCode: string) => {
   return String.fromCodePoint(...codePoints);
 };
 
-const getProgressBarColor = (color: string) => {
-    const map: Record<string, string> = { blue: 'bg-blue-500', green: 'bg-emerald-500', amber: 'bg-amber-500', purple: 'bg-purple-500', red: 'bg-rose-500', indigo: 'bg-indigo-500', gray: 'bg-gray-500', pink: 'bg-pink-500', teal: 'bg-teal-500', cyan: 'bg-cyan-500' };
-    return map[color] || 'bg-blue-500';
-};
-
-const getEntitlementTextClass = (color?: string) => {
-    const map: any = { blue: 'text-blue-600 dark:text-blue-400', green: 'text-emerald-600 dark:text-emerald-400', amber: 'text-amber-600 dark:text-amber-400', purple: 'text-purple-600 dark:text-purple-400', red: 'text-rose-600 dark:text-rose-400', indigo: 'text-indigo-600 dark:text-indigo-400', gray: 'text-gray-600 dark:text-gray-400', pink: 'text-pink-600 dark:text-pink-400', teal: 'text-teal-600 dark:text-teal-400', cyan: 'text-cyan-600 dark:text-cyan-400' };
-    return map[color || 'gray'] || 'text-gray-600';
-};
-
-// UI Components
-// ... (StatCard, ExtremeFlightCard, DonutChart, TopList remain unchanged)
-// [Assuming previous definitions are here]
 const StatCard: React.FC<{ title: string; value: string | number; subtitle?: string; icon: string; color?: string }> = ({ title, value, subtitle, icon, color = 'blue' }) => (
     <div className={`p-6 rounded-[2rem] bg-white dark:bg-gray-800 border border-gray-100 dark:border-white/5 shadow-sm flex items-center gap-5 relative overflow-hidden group hover:shadow-lg transition-all`}>
         <div className={`absolute right-0 top-0 w-32 h-32 bg-${color}-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/3 transition-all group-hover:bg-${color}-500/10`} />
@@ -204,7 +196,6 @@ const TopList: React.FC<{ title: string; items: { label: string; sub?: string; c
 };
 
 export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }) => {
-  // ... (State logic unchanged)
   const [users, setUsers] = useState<User[]>([]);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [entitlements, setEntitlements] = useState<EntitlementType[]>([]);
@@ -264,7 +255,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
     });
   };
 
-  // ... (processTravelHistory, stats, level calc unchanged)
   const processTravelHistory = async (tripList: Trip[]) => {
         const countryMap = new Map<string, VisitedCountry>();
         let kmCount = 0;
@@ -437,7 +427,65 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                 </div>
             </div>
 
-            <div className="xl:col-span-1 bg-white dark:bg-gray-900 rounded-[2.5rem] p-8 border border-gray-100 dark:border-white/5 shadow-xl flex flex-col justify-between relative overflow-hidden">
+            <div className="xl:col-span-1">
+                <TimezoneSlider />
+            </div>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+             <div className="xl:col-span-2">
+                <Tabs 
+                    activeTab={activeStatsTab} 
+                    onChange={setActiveStatsTab} 
+                    tabs={[
+                        { id: 'stamps', label: 'Passport Stamps', icon: <span className="material-icons-outlined">verified</span> },
+                        { id: 'analytics', label: 'Flight Log', icon: <span className="material-icons-outlined">data_usage</span> }
+                    ]}
+                />
+
+                {activeStatsTab === 'stamps' && (
+                    <div className="space-y-6 animate-fade-in mt-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {visitedData.map((country) => {
+                                const style = REGION_STYLES[country.region] || REGION_STYLES['Unknown'];
+                                return (
+                                    <div key={country.name} className={`group relative rounded-3xl p-6 border shadow-sm hover:shadow-xl transition-all hover:-translate-y-1 overflow-hidden ${style.bg} ${style.border}`}>
+                                        <div className="relative z-10">
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div className="text-4xl filter drop-shadow-md">{country.flag}</div>
+                                                <div className={`px-2 py-1 rounded-lg border text-[10px] font-mono font-bold ${style.badge} ${style.border}`}>{country.code}</div>
+                                            </div>
+                                            <h3 className={`text-xl font-black mb-1 leading-tight ${style.text}`}>{country.name}</h3>
+                                            <p className={`text-xs font-bold uppercase tracking-widest opacity-60 ${style.text}`}>{country.region} • {country.lastVisit.getFullYear()}</p>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                {activeStatsTab === 'analytics' && (
+                    <div className="space-y-8 animate-fade-in mt-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <StatCard title="Total Flights" value={stats.totalFlights} icon="flight_takeoff" color="blue" />
+                            <StatCard title="Distance Flown" value={`${(stats.totalDistance / 1000).toFixed(1)}k km`} subtitle={`${stats.earthCircumnavigations}x around Earth`} icon="public" color="emerald" />
+                            <StatCard title="Time in Air" value={`${stats.totalDurationHours}h`} subtitle={`${stats.daysInAir} Days`} icon="schedule" color="purple" />
+                            <StatCard title="Top Airport" value={stats.topAirports[0]?.label || '-'} subtitle={`${stats.topAirports[0]?.count || 0} Visits`} icon="location_on" color="amber" />
+                        </div>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <ExtremeFlightCard type="Longest" flight={stats.longestFlight} color="indigo" />
+                            <ExtremeFlightCard type="Shortest" flight={stats.shortestFlight} color="rose" />
+                        </div>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <DonutChart title="Seat Preference" data={stats.seatCounts} />
+                            <DonutChart title="Cabin Class" data={stats.classCounts} />
+                        </div>
+                    </div>
+                )}
+             </div>
+
+             <div className="xl:col-span-1 bg-white dark:bg-gray-900 rounded-[2.5rem] p-8 border border-gray-100 dark:border-white/5 shadow-xl flex flex-col justify-between relative overflow-hidden h-fit">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-[80px] pointer-events-none -translate-y-1/2 translate-x-1/2" />
                 
                 <div>
@@ -452,7 +500,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                     </div>
                 </div>
 
-                <div className="space-y-6 relative z-10">
+                <div className="space-y-6 relative z-10 mt-12">
                     <div className="grid grid-cols-2 gap-4">
                         <div className="p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
                             <div className="text-blue-500 mb-1"><span className="material-icons-outlined text-2xl">public</span></div>
@@ -480,58 +528,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                 </div>
             </div>
         </div>
-
-        <Tabs 
-            activeTab={activeStatsTab} 
-            onChange={setActiveStatsTab} 
-            tabs={[
-                { id: 'stamps', label: 'Passport Stamps', icon: <span className="material-icons-outlined">verified</span> },
-                { id: 'analytics', label: 'Flight Log', icon: <span className="material-icons-outlined">data_usage</span> }
-            ]}
-        />
-
-        {activeStatsTab === 'stamps' && (
-            <div className="space-y-6 animate-fade-in">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {visitedData.map((country) => {
-                        const style = REGION_STYLES[country.region] || REGION_STYLES['Unknown'];
-                        return (
-                            <div key={country.name} className={`group relative rounded-3xl p-6 border shadow-sm hover:shadow-xl transition-all hover:-translate-y-1 overflow-hidden ${style.bg} ${style.border}`}>
-                                <div className="relative z-10">
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div className="text-4xl filter drop-shadow-md">{country.flag}</div>
-                                        <div className={`px-2 py-1 rounded-lg border text-[10px] font-mono font-bold ${style.badge} ${style.border}`}>{country.code}</div>
-                                    </div>
-                                    <h3 className={`text-xl font-black mb-1 leading-tight ${style.text}`}>{country.name}</h3>
-                                    <p className={`text-xs font-bold uppercase tracking-widest opacity-60 ${style.text}`}>{country.region} • {country.lastVisit.getFullYear()}</p>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-            </div>
-        )}
-
-        {activeStatsTab === 'analytics' && (
-            <div className="space-y-8 animate-fade-in">
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-                    <StatCard title="Total Flights" value={stats.totalFlights} icon="flight_takeoff" color="blue" />
-                    <StatCard title="Distance Flown" value={`${(stats.totalDistance / 1000).toFixed(1)}k km`} subtitle={`${stats.earthCircumnavigations}x around Earth`} icon="public" color="emerald" />
-                    <StatCard title="Time in Air" value={`${stats.totalDurationHours}h`} subtitle={`${stats.daysInAir} Days`} icon="schedule" color="purple" />
-                    <StatCard title="Top Airport" value={stats.topAirports[0]?.label || '-'} subtitle={`${stats.topAirports[0]?.count || 0} Visits`} icon="location_on" color="amber" />
-                </div>
-                <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-                    <div className="xl:col-span-2 flex flex-col gap-6">
-                        <ExtremeFlightCard type="Longest" flight={stats.longestFlight} color="indigo" />
-                        <ExtremeFlightCard type="Shortest" flight={stats.shortestFlight} color="rose" />
-                    </div>
-                    <div className="xl:col-span-2 grid grid-cols-2 gap-6">
-                        <DonutChart title="Seat Preference" data={stats.seatCounts} />
-                        <DonutChart title="Cabin Class" data={stats.classCounts} />
-                    </div>
-                </div>
-            </div>
-        )}
 
         <FlightTrackerModal 
             isOpen={isFlightTrackerOpen}
