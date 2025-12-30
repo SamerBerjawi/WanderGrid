@@ -49,7 +49,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     const [isTransportModalOpen, setIsTransportModalOpen] = useState(false);
     const [isAccommodationModalOpen, setIsAccommodationModalOpen] = useState(false);
     const [isEditTripOpen, setIsEditTripOpen] = useState(false);
-    const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+    // Removed isLocationModalOpen
     const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
     const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
     
@@ -333,12 +333,19 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         setIsAccommodationModalOpen(false);
     };
 
-    const handleSaveLocations = async (items: LocationEntry[]) => {
+    // Updated Route Save Handler (Merged)
+    const handleSaveRoute = async (items: LocationEntry[], generatedTransports: Transport[]) => {
         if (!trip) return;
-        const updatedTrip = { ...trip, locations: items };
+        
+        const existingTicketedTransports = (trip.transports || []).filter(t => 
+            t.mode === 'Flight' || t.mode === 'Train' || t.mode === 'Cruise' || t.mode === 'Bus'
+        );
+        
+        const finalTransports = [...existingTicketedTransports, ...generatedTransports];
+
+        const updatedTrip = { ...trip, locations: items, transports: finalTransports };
         await dataService.updateTrip(updatedTrip);
         setTrip(updatedTrip);
-        setIsLocationModalOpen(false);
     };
 
     const handleOpenActivityModal = (dateStr: string, existingActivity?: Activity) => {
@@ -401,11 +408,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         setEditingAccommodations(trip?.accommodations || []);
         setSelectedDateForModal(date || null);
         setIsAccommodationModalOpen(true);
-    };
-
-    const openLocationModal = (date?: string) => {
-        setSelectedDateForModal(date || null);
-        setIsLocationModalOpen(true);
     };
 
     const handleCalendarNavigate = (dir: number) => {
@@ -758,10 +760,18 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
             </div>
 
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                <Tabs tabs={[{ id: 'planner', label: 'Daily Planner', icon: <span className="material-icons-outlined">calendar_view_day</span> }, { id: 'itinerary', label: 'Bookings', icon: <span className="material-icons-outlined">commute</span> }, { id: 'budget', label: 'Cost Breakdown', icon: <span className="material-icons-outlined">receipt_long</span> }]} activeTab={activeTab} onChange={setActiveTab} />
+                <Tabs 
+                    tabs={[
+                        { id: 'planner', label: 'Daily Planner', icon: <span className="material-icons-outlined">calendar_view_day</span> }, 
+                        { id: 'route', label: 'Route', icon: <span className="material-icons-outlined">alt_route</span> },
+                        { id: 'itinerary', label: 'Bookings', icon: <span className="material-icons-outlined">commute</span> }, 
+                        { id: 'budget', label: 'Cost Breakdown', icon: <span className="material-icons-outlined">receipt_long</span> }
+                    ]} 
+                    activeTab={activeTab} 
+                    onChange={setActiveTab} 
+                />
                 {activeTab === 'planner' && (
                     <div className="flex gap-2">
-                        <Button variant="secondary" size="sm" onClick={() => setIsLocationModalOpen(true)} className="hidden md:flex"><span className="material-icons-outlined text-sm mr-2">map</span> Manage Route</Button>
                         <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
                             <button onClick={() => setPlannerView('list')} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${plannerView === 'list' ? 'bg-white shadow text-blue-600 dark:bg-gray-700 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}><span className="material-icons-outlined text-sm align-middle mr-1">view_agenda</span> List</button>
                             <button onClick={() => setPlannerView('table')} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${plannerView === 'table' ? 'bg-white shadow text-blue-600 dark:bg-gray-700 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}><span className="material-icons-outlined text-sm align-middle mr-1">table_chart</span> Table</button>
@@ -772,6 +782,18 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
             </div>
 
             {/* Content Switcher */}
+            {activeTab === 'route' && (
+                <LocationManager 
+                    key={trip.id + trip.locations?.length}
+                    locations={trip.locations || []}
+                    transports={trip.transports || []}
+                    onSave={handleSaveRoute}
+                    onCancel={() => loadData()}
+                    defaultStartDate={trip.startDate}
+                    defaultEndDate={trip.endDate}
+                />
+            )}
+
             {activeTab === 'planner' && (
                 <>
                     {plannerView === 'calendar' ? renderPlannerCalendar() : plannerView === 'list' ? (
@@ -916,7 +938,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                             <td className="px-6 py-4"><div className="flex flex-col"><span className="text-sm font-bold text-gray-800 dark:text-gray-200 font-mono tracking-tight">{formatTime(item.time)}</span>{item.isDropoff && <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Arrive</span>}</div></td>
                                                             <td className="px-6 py-4"><div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-[10px] font-bold uppercase tracking-wide ${styleClasses}`}><span className="material-icons-outlined text-sm">{item.icon}</span><span>{item.subType || item.type}</span></div></td>
                                                             <td className="px-6 py-4"><div><p className="font-bold text-gray-900 dark:text-white text-sm leading-snug">{item.name}</p>{item.meta && (<p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1.5 font-medium opacity-80">{item.type === 'Transport' && !item.isDropoff && <span className="material-icons-outlined text-[10px]">schedule</span>}{item.meta}</p>)}</div></td>
-                                                            <td className="px-6 py-4"><div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400 font-medium max-w-[180px]">{item.location ? (<><span className="material-icons-outlined text-[14px] opacity-60 shrink-0">place</span><span className="truncate" title={item.location}>{item.location}</span></>) : (<span className="opacity-30">-</span>)}</div></td>
+                                                            <td className="px-6 py-4"><div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400 font-medium max-w-[180px]">{item.location ? (<><span className="material-icons-outlined text-sm opacity-60 shrink-0">place</span><span className="truncate" title={item.location}>{item.location}</span></>) : (<span className="opacity-30">-</span>)}</div></td>
                                                             <td className="px-6 py-4 text-right">{item.cost ? (<span className="font-bold text-gray-900 dark:text-white text-sm tabular-nums tracking-tight">{formatCurrency(item.cost)}</span>) : (<span className="text-gray-300 dark:text-gray-600 text-xs font-mono">-</span>)}</td>
                                                             <td className="px-6 py-4 text-right"><button onClick={() => { if (item.type === 'Transport') openTransportModal([item.ref]); if (item.type === 'Accommodation') openAccommodationModal(); if (item.type === 'Activity' || item.type === 'Reservation' || item.type === 'Tour') handleOpenActivityModal(dateStr, item.ref); }} className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all opacity-0 group-hover:opacity-100"><span className="material-icons-outlined text-lg">edit_note</span></button></td>
                                                         </tr>
@@ -1137,76 +1159,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                             </div>
                         )}
                     </div>
-
-                    {/* ACCOMMODATION SECTION */}
-                    <div>
-                        <div className="flex justify-between items-center mb-6">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center">
-                                    <span className="material-icons-outlined">hotel</span>
-                                </div>
-                                <h3 className="text-xl font-black text-gray-900 dark:text-white">Accommodations</h3>
-                            </div>
-                            <Button size="sm" variant="secondary" onClick={() => openAccommodationModal()}>+ Add Stay</Button>
-                        </div>
-
-                        {(!trip.accommodations || trip.accommodations.length === 0) ? (
-                            <div className="text-center py-12 bg-gray-50 dark:bg-white/5 rounded-3xl border border-dashed border-gray-200 dark:border-white/10">
-                                <span className="material-icons-outlined text-4xl text-gray-300">night_shelter</span>
-                                <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-2">No accommodations booked</p>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                {trip.accommodations.map((stay, idx) => (
-                                    <div key={idx} className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-white/5 shadow-sm hover:shadow-xl transition-all overflow-hidden flex flex-col border-l-4 border-l-amber-500">
-                                        <div className="p-5 flex gap-5">
-                                            <div className="w-24 h-24 rounded-2xl bg-amber-50 dark:bg-amber-900/10 flex items-center justify-center shrink-0 overflow-hidden shadow-inner shadow-amber-500/20 relative">
-                                                {stay.logoUrl ? (
-                                                    <img src={stay.logoUrl} className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <span className="material-icons-outlined text-4xl text-amber-400 opacity-50">{stay.type === 'Hotel' ? 'apartment' : 'house'}</span>
-                                                )}
-                                                <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[9px] font-bold text-center py-0.5 backdrop-blur-sm">
-                                                    {calculateNights(stay.checkInDate, stay.checkOutDate)} Nights
-                                                </div>
-                                            </div>
-
-                                            <div className="flex-1 flex flex-col justify-between">
-                                                <div>
-                                                    <div className="flex justify-between items-start">
-                                                        <h4 className="font-black text-lg text-gray-900 dark:text-white leading-tight line-clamp-1">{stay.name}</h4>
-                                                        <button onClick={() => openAccommodationModal()} className="text-gray-300 hover:text-amber-500 transition-colors -mt-1 -mr-1 p-1"><span className="material-icons-outlined text-lg">edit</span></button>
-                                                    </div>
-                                                    <p className="text-xs font-medium text-gray-500 mt-1 flex items-center gap-1 line-clamp-1">
-                                                        <span className="material-icons-outlined text-xs">location_on</span> {stay.address}
-                                                    </p>
-                                                </div>
-
-                                                <div className="flex gap-4 mt-3">
-                                                    <div className="bg-gray-50 dark:bg-white/5 px-3 py-2 rounded-xl flex-1 text-center border border-gray-100 dark:border-white/5">
-                                                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block">Check-In</span>
-                                                        <span className="font-bold text-xs text-gray-800 dark:text-gray-200">{new Date(stay.checkInDate).toLocaleDateString(undefined, {month:'short', day:'numeric'})}</span>
-                                                    </div>
-                                                    <div className="bg-gray-50 dark:bg-white/5 px-3 py-2 rounded-xl flex-1 text-center border border-gray-100 dark:border-white/5">
-                                                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block">Check-Out</span>
-                                                        <span className="font-bold text-xs text-gray-800 dark:text-gray-200">{new Date(stay.checkOutDate).toLocaleDateString(undefined, {month:'short', day:'numeric'})}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="bg-amber-50/50 dark:bg-amber-900/10 px-5 py-3 flex justify-between items-center border-t border-amber-100/50 dark:border-white/5">
-                                            <div className="flex gap-3">
-                                                {stay.confirmationCode && <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded">Ref: {stay.confirmationCode}</span>}
-                                                {stay.website && <a href={stay.website.startsWith('http') ? stay.website : `https://${stay.website}`} target="_blank" className="text-[10px] font-bold text-blue-500 hover:underline flex items-center gap-1">Website <span className="material-icons-outlined text-[10px]">open_in_new</span></a>}
-                                            </div>
-                                            {stay.cost && <span className="font-black text-emerald-600 dark:text-emerald-400 text-sm">{formatCurrency(stay.cost)}</span>}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
                 </div>
             )}
 
@@ -1227,16 +1179,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                     onSave={handleSaveAccommodations}
                     onDelete={handleDeleteAccommodations}
                     onCancel={() => setIsAccommodationModalOpen(false)}
-                    defaultStartDate={selectedDateForModal || trip.startDate}
-                    defaultEndDate={selectedDateForModal || trip.endDate}
-                />
-            </Modal>
-
-            <Modal isOpen={isLocationModalOpen} onClose={() => setIsLocationModalOpen(false)} title="Route Management">
-                <LocationManager 
-                    locations={trip.locations || []}
-                    onSave={handleSaveLocations}
-                    onCancel={() => setIsLocationModalOpen(false)}
                     defaultStartDate={selectedDateForModal || trip.startDate}
                     defaultEndDate={selectedDateForModal || trip.endDate}
                 />

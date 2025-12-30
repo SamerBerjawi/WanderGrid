@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button, Input, Select, Autocomplete, Badge, TimeInput } from './ui';
-import { Transport, TransportMode, RoadTripWaypoint } from '../types';
+import { Transport, TransportMode } from '../types';
 import { dataService } from '../services/mockDb';
 import { getCoordinates, calculateDistance, calculateDurationMinutes, calculateArrivalTime, searchLocations, searchStations } from '../services/geocoding';
 
@@ -54,7 +54,6 @@ interface CarForm {
     website?: string;
     distance?: number;
     logoUrl?: string;
-    stops: RoadTripWaypoint[];
 }
 
 interface AirportData {
@@ -111,14 +110,6 @@ const TRANSPORT_MODES: { mode: TransportMode; label: string; icon: string }[] = 
     { mode: 'Cruise', label: 'Cruise', icon: 'directions_boat' },
     { mode: 'Car Rental', label: 'Rental', icon: 'key' },
     { mode: 'Personal Car', label: 'My Car', icon: 'directions_car' },
-];
-
-const STOP_TYPES = [
-    { value: 'Stop', label: 'Quick Stop', icon: 'place' },
-    { value: 'Food', label: 'Food & Drink', icon: 'restaurant' },
-    { value: 'Sightseeing', label: 'Sightseeing', icon: 'photo_camera' },
-    { value: 'Lodging', label: 'Overnight', icon: 'hotel' },
-    { value: 'Fuel', label: 'Fuel/Charge', icon: 'local_gas_station' },
 ];
 
 const DurationInput: React.FC<{ minutes: number; onChange: (m: number) => void; onAutoCalc?: () => void; canAutoCalc?: boolean }> = ({ minutes, onChange, onAutoCalc, canAutoCalc }) => {
@@ -215,11 +206,8 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
         cost: undefined,
         website: undefined,
         distance: undefined,
-        logoUrl: undefined,
-        stops: []
+        logoUrl: undefined
     });
-
-    const [draggedStopIndex, setDraggedStopIndex] = useState<number | null>(null);
 
     const getSimpleDiffMinutes = (d1: string, t1: string, d2: string, t2: string) => {
         if (!d1 || !t1 || !d2 || !t2) return 0;
@@ -248,7 +236,6 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
         return Math.round((dist / speed) * 60);
     };
 
-    // ... (UseEffect hooks and other helpers remain unchanged)
     useEffect(() => {
         dataService.getWorkspaceSettings().then(s => {
             if (s.aviationStackApiKey) setApiKey(s.aviationStackApiKey);
@@ -310,8 +297,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                     cost: first.cost,
                     website: first.website,
                     distance: first.distance,
-                    logoUrl: first.logoUrl,
-                    stops: first.waypoints || []
+                    logoUrl: first.logoUrl
                 });
             } else {
                 setTripType(first.type);
@@ -611,78 +597,19 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
         });
     };
 
-    const handleAddStop = () => {
-        setCarForm(prev => ({
-            ...prev,
-            stops: [...prev.stops, { id: Math.random().toString(), name: '', type: 'Stop', notes: '' }]
-        }));
-    };
-
-    const handleRemoveStop = (id: string) => {
-        setCarForm(prev => ({
-            ...prev,
-            stops: prev.stops.filter(s => s.id !== id)
-        }));
-    };
-
-    const handleUpdateStop = (id: string, field: keyof RoadTripWaypoint, value: any) => {
-        setCarForm(prev => ({
-            ...prev,
-            stops: prev.stops.map(s => s.id === id ? { ...s, [field]: value } : s)
-        }));
-    };
-
-    // Drag & Drop Handlers
-    const handleDragStart = (e: React.DragEvent, index: number) => {
-        setDraggedStopIndex(index);
-        e.dataTransfer.effectAllowed = "move";
-    };
-
-    const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = "move";
-    };
-
-    const handleDrop = (e: React.DragEvent, index: number) => {
-        e.preventDefault();
-        if (draggedStopIndex === null || draggedStopIndex === index) return;
-
-        const newStops = [...carForm.stops];
-        const [movedItem] = newStops.splice(draggedStopIndex, 1);
-        newStops.splice(index, 0, movedItem);
-
-        setCarForm(prev => ({ ...prev, stops: newStops }));
-        setDraggedStopIndex(null);
-    };
-
-    // ... (Remainder of functions: estimateRoadTripDistance, handleEstimateCarDuration, estimateDistance, handleFetchBrandForCar, handleFetchBrandForSegment, handleSave, fetchSuggestions..., extractIata, handleAutoFill, isCar, isValid, getClassColor, getSeatTypeIcon)
     const estimateRoadTripDistance = async () => {
-        if (!carForm.pickupLocation) return;
+        if (!carForm.pickupLocation || !carForm.dropoffLocation) return;
         setIsEstimatingDistance('car');
         try {
-            const points = [
-                carForm.pickupLocation,
-                ...carForm.stops.map(s => s.name).filter(Boolean),
-                carForm.dropoffLocation
-            ].filter(Boolean);
-
-            if (points.length < 2) return;
-
-            let totalDist = 0;
-            for (let i = 0; i < points.length - 1; i++) {
-                const start = points[i];
-                const end = points[i+1];
-                const c1 = await getCoordinates(start);
-                const c2 = await getCoordinates(end);
-                
-                if (c1 && c2) {
-                    // Haversine
-                    const dist = calculateDistance(c1.lat, c1.lng, c2.lat, c2.lng);
-                    // Road Factor approximation 1.4x straight line
-                    totalDist += dist * 1.4;
-                }
+            const c1 = await getCoordinates(carForm.pickupLocation);
+            const c2 = await getCoordinates(carForm.dropoffLocation);
+            
+            if (c1 && c2) {
+                // Haversine
+                const dist = calculateDistance(c1.lat, c1.lng, c2.lat, c2.lng);
+                // Road Factor approximation 1.4x straight line
+                updateCar('distance', Math.round(dist * 1.4));
             }
-            updateCar('distance', Math.round(totalDist));
         } catch (e) {
             console.error("Road trip distance failed", e);
         } finally {
@@ -772,8 +699,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                 reason: 'Personal',
                 distance: carForm.distance,
                 duration: carForm.duration,
-                logoUrl: carForm.logoUrl,
-                waypoints: carForm.stops
+                logoUrl: carForm.logoUrl
             };
             onSave([t]);
         } else {
@@ -975,7 +901,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                 // --- PRIVATE TRANSPORT FORM ---
                 <div className="space-y-6 bg-gray-50 dark:bg-white/5 p-6 rounded-3xl border border-gray-100 dark:border-white/5 animate-fade-in">
                     
-                    {/* Route Planner Section */}
+                    {/* Simplified Route Config (Waypoints moved to Route Hub) */}
                     <div className="relative pl-8 border-l-2 border-dashed border-gray-200 dark:border-white/10 space-y-6">
                         {/* Start Point */}
                         <div className="relative">
@@ -987,84 +913,6 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                 onChange={val => updateCar('pickupLocation', val)}
                                 fetchSuggestions={fetchCarLocationSuggestions}
                             />
-                        </div>
-
-                        {/* Waypoints */}
-                        {carForm.stops.map((stop, index) => (
-                            <div 
-                                key={stop.id} 
-                                className={`relative animate-fade-in transition-all duration-200 ${draggedStopIndex === index ? 'opacity-30' : 'opacity-100'}`}
-                                draggable
-                                onDragStart={(e) => handleDragStart(e, index)}
-                                onDragOver={handleDragOver}
-                                onDrop={(e) => handleDrop(e, index)}
-                                onDragEnd={() => setDraggedStopIndex(null)}
-                            >
-                                {/* Timeline Dot (Grab Handle) */}
-                                <div className="absolute -left-[39px] top-8 w-5 h-5 rounded-full bg-white dark:bg-gray-800 border-2 border-blue-400 z-10 flex items-center justify-center cursor-grab active:cursor-grabbing group/dot">
-                                    <div className="w-1.5 h-1.5 bg-blue-400 rounded-full group-hover/dot:scale-125 transition-transform" />
-                                </div>
-                                
-                                <div className="bg-white dark:bg-black/20 p-3 rounded-2xl border border-gray-200 dark:border-white/10 relative group hover:border-blue-300 dark:hover:border-blue-700 transition-colors">
-                                    {/* Drag Handle Icon inside card for clarity */}
-                                    <div className="absolute -left-3 top-1/2 -translate-y-1/2 text-gray-300 cursor-grab active:cursor-grabbing p-1 hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity hidden md:block">
-                                        <span className="material-icons-outlined text-lg">drag_indicator</span>
-                                    </div>
-
-                                    <button 
-                                        onClick={() => handleRemoveStop(stop.id)} 
-                                        className="absolute -right-2 -top-2 w-6 h-6 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-500 hover:text-white shadow-sm z-20"
-                                        title="Remove Stop"
-                                    >
-                                        <span className="material-icons-outlined text-sm">close</span>
-                                    </button>
-                                    
-                                    <div className="grid grid-cols-1 md:grid-cols-12 gap-3 pl-5"> {/* Added pl-5 for drag handle space */}
-                                        <div className="md:col-span-6">
-                                            <Autocomplete 
-                                                label={`Stop #${index + 1}`}
-                                                placeholder="City or Place"
-                                                value={stop.name}
-                                                onChange={val => handleUpdateStop(stop.id, 'name', val)}
-                                                fetchSuggestions={fetchCarLocationSuggestions}
-                                                className="!bg-transparent !border-0 !px-0 !py-0 !shadow-none focus:!ring-0"
-                                            />
-                                        </div>
-                                        <div className="md:col-span-3">
-                                            <Select 
-                                                label="Type"
-                                                value={stop.type} 
-                                                onChange={e => handleUpdateStop(stop.id, 'type', e.target.value)}
-                                                options={STOP_TYPES}
-                                                className="!py-1.5 !text-xs"
-                                            />
-                                        </div>
-                                        <div className="md:col-span-3">
-                                            <Input 
-                                                label="Notes" 
-                                                placeholder="Lunch, Photo op..."
-                                                value={stop.notes || ''} 
-                                                onChange={e => handleUpdateStop(stop.id, 'notes', e.target.value)}
-                                                className="!py-1.5 !text-xs"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-
-                        {/* Add Stop Button */}
-                        <div className="relative h-8">
-                            <button 
-                                onClick={handleAddStop}
-                                className="absolute -left-[44px] top-0 w-8 h-8 rounded-full bg-gray-100 dark:bg-white/10 hover:bg-blue-500 hover:text-white text-gray-400 flex items-center justify-center transition-all z-10 border border-white dark:border-gray-800"
-                                title="Add Stop"
-                            >
-                                <span className="material-icons-outlined text-sm">add</span>
-                            </button>
-                            <div className="h-full flex items-center">
-                                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest pl-2 opacity-50">Add Waypoint</span>
-                            </div>
                         </div>
 
                         {/* End Point */}
@@ -1099,7 +947,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                 onClick={estimateRoadTripDistance} 
                                 className="absolute right-2 top-8 text-blue-500 hover:text-blue-600 disabled:opacity-50" 
                                 title="Auto-Estimate Route Distance" 
-                                disabled={isEstimatingDistance === 'car' || !carForm.pickupLocation}
+                                disabled={isEstimatingDistance === 'car' || !carForm.pickupLocation || !carForm.dropoffLocation}
                             >
                                 {isEstimatingDistance === 'car' ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <span className="material-icons-outlined text-lg">timeline</span>}
                             </button>
@@ -1120,7 +968,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                     />
                                     {carForm.logoUrl && (
                                         <div className="absolute top-8 right-12 w-8 h-8 rounded-lg overflow-hidden border border-gray-200 shadow-sm bg-white">
-                                            <img src={carForm.logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                                            <img src={carForm.logoUrl} alt="Logo" className="w-full h-full object-cover" />
                                         </div>
                                     )}
                                 </div>
