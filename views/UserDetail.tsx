@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Card, Button, Badge, Input, Select, Modal } from '../components/ui';
 import { dataService } from '../services/mockDb';
 import { User, Trip, PublicHoliday, EntitlementType, WorkspaceSettings, SavedConfig, UserPolicy, CarryOverExpiryType, AccrualPeriod } from '../types';
@@ -60,11 +60,16 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack }) => {
 
     const [isAddCustomHolidayOpen, setIsAddCustomHolidayOpen] = useState(false);
     const [customHolidayForm, setCustomHolidayForm] = useState({ name: '', date: '' });
+    const daysCacheRef = useRef(new Map<string, number>());
 
     useEffect(() => {
         loadData();
         fetchCountries();
     }, [userId]);
+
+    useEffect(() => {
+        daysCacheRef.current.clear();
+    }, [config, user, activeConfig, trips]);
 
     const fetchCountries = () => {
         fetch('https://date.nager.at/api/v3/AvailableCountries')
@@ -149,6 +154,10 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack }) => {
 
     const calculateDaysForTrip = (trip: Trip, year: number) => {
         if (!config || !user) return 0;
+        const cacheKey = `${trip.id}-${year}`;
+        if (daysCacheRef.current.has(cacheKey)) {
+            return daysCacheRef.current.get(cacheKey) || 0;
+        }
         
         const holidaySet = new Set<string>();
         if (activeConfig) {
@@ -198,6 +207,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack }) => {
             }
             current.setDate(current.getDate() + 1);
         }
+        daysCacheRef.current.set(cacheKey, days);
         return days;
     };
 

@@ -7,6 +7,8 @@ import { TimezoneSlider } from '../components/TimezoneSlider';
 import { dataService } from '../services/mockDb';
 import { User, Trip, EntitlementType, PublicHoliday } from '../types';
 import { resolvePlaceName, calculateDistance } from '../services/geocoding';
+import { getRegion, getFlagEmoji } from '../services/geoData';
+import { REGION_STYLES } from './regionStyles';
 
 interface DashboardProps {
     onUserClick?: (userId: string) => void;
@@ -40,33 +42,74 @@ const LEVEL_THRESHOLDS = [
     { level: 50, name: 'Citizen of the World', countries: 30 },
 ];
 
-const REGION_STYLES: Record<string, { bg: string, border: string, text: string, icon: string, accent: string, badge: string }> = {
-    'North America': { bg: 'bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/20', border: 'border-blue-100 dark:border-blue-500/30', text: 'text-blue-900 dark:text-blue-100', icon: 'text-blue-500 dark:text-blue-400', accent: 'bg-blue-100 dark:bg-blue-500/20', badge: 'bg-white/60 dark:bg-black/20 text-blue-700 dark:text-blue-300' },
-    'Central America': { bg: 'bg-gradient-to-br from-teal-50 to-cyan-100 dark:from-teal-900/30 dark:to-cyan-900/20', border: 'border-teal-100 dark:border-teal-500/30', text: 'text-teal-900 dark:text-teal-100', icon: 'text-teal-500 dark:text-teal-400', accent: 'bg-teal-100 dark:bg-teal-500/20', badge: 'bg-white/60 dark:bg-black/20 text-teal-700 dark:text-teal-300' },
-    'South America': { bg: 'bg-gradient-to-br from-emerald-50 to-green-100 dark:from-emerald-900/30 dark:to-green-900/20', border: 'border-emerald-100 dark:border-emerald-500/30', text: 'text-emerald-900 dark:text-emerald-100', icon: 'text-emerald-500 dark:text-emerald-400', accent: 'bg-emerald-100 dark:bg-emerald-500/20', badge: 'bg-white/60 dark:bg-black/20 text-emerald-700 dark:text-emerald-300' },
-    'Northern Europe': { bg: 'bg-gradient-to-br from-sky-50 to-slate-100 dark:from-sky-900/30 dark:to-slate-800', border: 'border-sky-100 dark:border-sky-500/30', text: 'text-slate-900 dark:text-white', icon: 'text-sky-500 dark:text-sky-400', accent: 'bg-sky-100 dark:bg-sky-500/20', badge: 'bg-white/60 dark:bg-black/20 text-sky-700 dark:text-sky-300' },
-    'Western Europe': { bg: 'bg-gradient-to-br from-indigo-50 to-violet-100 dark:from-indigo-900/30 dark:to-violet-900/20', border: 'border-indigo-100 dark:border-indigo-500/30', text: 'text-indigo-900 dark:text-indigo-100', icon: 'text-indigo-500 dark:text-indigo-400', accent: 'bg-indigo-100 dark:bg-indigo-500/20', badge: 'bg-white/60 dark:bg-black/20 text-indigo-700 dark:text-indigo-300' },
-    'Southern Europe': { bg: 'bg-gradient-to-br from-orange-50 to-amber-100 dark:from-orange-900/30 dark:to-amber-900/20', border: 'border-orange-100 dark:border-orange-500/30', text: 'text-orange-900 dark:text-orange-100', icon: 'text-orange-500 dark:text-orange-400', accent: 'bg-orange-100 dark:bg-orange-500/20', badge: 'bg-white/60 dark:bg-black/20 text-orange-700 dark:text-orange-300' },
-    'Eastern Europe': { bg: 'bg-gradient-to-br from-rose-50 to-pink-100 dark:from-rose-900/30 dark:to-pink-900/20', border: 'border-rose-100 dark:border-rose-500/30', text: 'text-rose-900 dark:text-rose-100', icon: 'text-rose-500 dark:text-rose-400', accent: 'bg-rose-100 dark:bg-rose-500/20', badge: 'bg-white/60 dark:bg-black/20 text-rose-700 dark:text-rose-300' },
-    'North Africa': { bg: 'bg-gradient-to-br from-stone-50 to-orange-100 dark:from-stone-800 dark:to-orange-900/20', border: 'border-stone-200 dark:border-orange-500/30', text: 'text-stone-900 dark:text-stone-100', icon: 'text-orange-600 dark:text-orange-400', accent: 'bg-orange-100 dark:bg-orange-500/20', badge: 'bg-white/60 dark:bg-black/20 text-stone-700 dark:text-stone-300' },
-    'Sub-Saharan Africa': { bg: 'bg-gradient-to-br from-yellow-50 to-lime-100 dark:from-yellow-900/30 dark:to-lime-900/20', border: 'border-yellow-100 dark:border-yellow-500/30', text: 'text-yellow-900 dark:text-yellow-100', icon: 'text-yellow-600 dark:text-yellow-400', accent: 'bg-yellow-100 dark:bg-yellow-500/20', badge: 'bg-white/60 dark:bg-black/20 text-yellow-800 dark:text-yellow-300' },
-    'East Asia': { bg: 'bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/30 dark:to-red-900/20', border: 'border-red-100 dark:border-red-500/30', text: 'text-red-900 dark:text-red-100', icon: 'text-red-500 dark:text-red-400', accent: 'bg-red-100 dark:bg-red-500/20', badge: 'bg-white/60 dark:bg-black/20 text-red-700 dark:text-red-300' },
-    'Southeast Asia': { bg: 'bg-gradient-to-br from-lime-50 to-emerald-100 dark:from-lime-900/30 dark:to-emerald-900/20', border: 'border-emerald-100 dark:border-emerald-500/30', text: 'text-emerald-900 dark:text-emerald-100', icon: 'text-emerald-500 dark:text-emerald-400', accent: 'bg-emerald-100 dark:bg-emerald-500/20', badge: 'bg-white/60 dark:bg-black/20 text-emerald-700 dark:text-emerald-300' },
-    'South & West Asia': { bg: 'bg-gradient-to-br from-amber-50 to-yellow-100 dark:from-amber-900/30 dark:to-yellow-900/20', border: 'border-amber-100 dark:border-amber-500/30', text: 'text-amber-900 dark:text-amber-100', icon: 'text-amber-600 dark:text-amber-400', accent: 'bg-amber-100 dark:bg-amber-500/20', badge: 'bg-white/60 dark:bg-black/20 text-amber-700 dark:text-amber-300' },
-    'Oceania': { bg: 'bg-gradient-to-br from-cyan-50 to-sky-100 dark:from-cyan-900/30 dark:to-sky-900/20', border: 'border-cyan-100 dark:border-cyan-500/30', text: 'text-cyan-900 dark:text-cyan-100', icon: 'text-cyan-500 dark:text-cyan-400', accent: 'bg-cyan-100 dark:bg-cyan-500/20', badge: 'bg-white/60 dark:bg-black/20 text-cyan-700 dark:text-cyan-300' },
-    'Unknown': { bg: 'bg-gradient-to-br from-gray-50 to-slate-100 dark:from-gray-800 dark:to-slate-800', border: 'border-gray-200 dark:border-white/5', text: 'text-gray-900 dark:text-white', icon: 'text-gray-400', accent: 'bg-gray-100 dark:bg-white/10', badge: 'bg-white dark:bg-white/5 text-gray-500 dark:text-gray-400' }
+const DASHBOARD_CACHE_KEY = 'wandergrid_dashboard_cache_v1';
+const GEO_CONCURRENCY_LIMIT = 6;
+
+const hashString = (value: string) => {
+    let hash = 0;
+    for (let i = 0; i < value.length; i += 1) {
+        hash = ((hash << 5) - hash) + value.charCodeAt(i);
+        hash |= 0;
+    }
+    return hash.toString(36);
 };
 
-const COUNTRY_REGION_MAP: Record<string, string> = {
-    'US': 'North America', 'CA': 'North America', 'MX': 'North America', 'CR': 'Central America', 'CU': 'Central America', 'JM': 'Central America', 'BS': 'Central America', 'DO': 'Central America', 'PA': 'Central America', 'GT': 'Central America', 'BZ': 'Central America', 'HN': 'Central America', 'BR': 'South America', 'AR': 'South America', 'CL': 'South America', 'CO': 'South America', 'PE': 'South America', 'EC': 'South America', 'UY': 'South America', 'PY': 'South America', 'BO': 'South America', 'NO': 'Northern Europe', 'SE': 'Northern Europe', 'DK': 'Northern Europe', 'FI': 'Northern Europe', 'IS': 'Northern Europe', 'EE': 'Northern Europe', 'LV': 'Northern Europe', 'LT': 'Northern Europe', 'GB': 'Western Europe', 'FR': 'Western Europe', 'DE': 'Western Europe', 'BE': 'Western Europe', 'NL': 'Western Europe', 'CH': 'Western Europe', 'AT': 'Western Europe', 'IE': 'Western Europe', 'LU': 'Western Europe', 'IT': 'Southern Europe', 'ES': 'Southern Europe', 'PT': 'Southern Europe', 'GR': 'Southern Europe', 'HR': 'Southern Europe', 'SI': 'Southern Europe', 'MT': 'Southern Europe', 'CY': 'Southern Europe', 'PL': 'Eastern Europe', 'CZ': 'Eastern Europe', 'HU': 'Eastern Europe', 'RU': 'Eastern Europe', 'RO': 'Eastern Europe', 'BG': 'Eastern Europe', 'SK': 'Eastern Europe', 'UA': 'Eastern Europe', 'RS': 'Eastern Europe', 'JP': 'East Asia', 'CN': 'East Asia', 'KR': 'East Asia', 'TW': 'East Asia', 'HK': 'East Asia', 'MO': 'East Asia', 'TH': 'Southeast Asia', 'VN': 'Southeast Asia', 'ID': 'Southeast Asia', 'MY': 'Southeast Asia', 'SG': 'Southeast Asia', 'PH': 'Southeast Asia', 'KH': 'Southeast Asia', 'LA': 'Southeast Asia', 'MM': 'Southeast Asia', 'IN': 'South & West Asia', 'MV': 'South & West Asia', 'LK': 'South & West Asia', 'NP': 'South & West Asia', 'AE': 'South & West Asia', 'SA': 'South & West Asia', 'IL': 'South & West Asia', 'QA': 'South & West Asia', 'TR': 'South & West Asia', 'JO': 'South & West Asia', 'LB': 'South & West Asia', 'EG': 'North Africa', 'MA': 'North Africa', 'TN': 'North Africa', 'DZ': 'North Africa', 'ZA': 'Sub-Saharan Africa', 'KE': 'Sub-Saharan Africa', 'TZ': 'Sub-Saharan Africa', 'GH': 'Sub-Saharan Africa', 'NG': 'Sub-Saharan Africa', 'MU': 'Sub-Saharan Africa', 'SC': 'Sub-Saharan Africa', 'ZW': 'Sub-Saharan Africa', 'NA': 'Sub-Saharan Africa', 'AU': 'Oceania', 'NZ': 'Oceania', 'FJ': 'Oceania', 'PF': 'Oceania', 'PG': 'Oceania'
+const getTripsVersion = (tripList: Trip[]) => {
+    const signature = tripList.map(trip => {
+        const transports = trip.transports?.map(t => `${t.origin}-${t.destination}-${t.departureDate}`).join(',') || '';
+        const accommodations = trip.accommodations?.map(a => a.address).join(',') || '';
+        return [
+            trip.id,
+            trip.status,
+            trip.startDate,
+            trip.endDate,
+            trip.location,
+            transports,
+            accommodations
+        ].join('|');
+    }).join('||');
+    return hashString(signature);
 };
 
-const getRegion = (code: string) => COUNTRY_REGION_MAP[code] || 'Unknown';
+const serializeVisitedData = (data: VisitedCountry[]) => data.map(entry => ({
+    ...entry,
+    cities: Array.from(entry.cities),
+    lastVisit: entry.lastVisit.toISOString()
+}));
 
-const getFlagEmoji = (countryCode: string) => {
-  if (!countryCode || countryCode.length !== 2) return '🏳️';
-  const codePoints = countryCode.toUpperCase().split('').map(char =>  127397 + char.charCodeAt(0));
-  return String.fromCodePoint(...codePoints);
+const deserializeVisitedData = (data: Array<Omit<VisitedCountry, 'cities' | 'lastVisit'> & { cities: string[]; lastVisit: string }>) =>
+    data.map(entry => ({
+        ...entry,
+        cities: new Set(entry.cities),
+        lastVisit: new Date(entry.lastVisit)
+    }));
+
+const runAfterFirstPaint = (fn: () => void) => {
+    if (typeof window === 'undefined') return;
+    if ('requestIdleCallback' in window) {
+        (window as Window & { requestIdleCallback: (cb: () => void) => number }).requestIdleCallback(fn);
+        return;
+    }
+    setTimeout(fn, 0);
+};
+
+const mapWithConcurrency = async <T, R>(
+    items: T[],
+    worker: (item: T) => Promise<R>,
+    concurrency: number
+) => {
+    const results: R[] = new Array(items.length);
+    let index = 0;
+    const runner = async () => {
+        while (index < items.length) {
+            const current = index;
+            index += 1;
+            results[current] = await worker(items[current]);
+        }
+    };
+    const runners = Array.from({ length: Math.min(concurrency, items.length) }, runner);
+    await Promise.all(runners);
+    return results;
 };
 
 const StatCard: React.FC<{ title: string; value: string | number; subtitle?: string; icon: string; color?: string }> = ({ title, value, subtitle, icon, color = 'blue' }) => (
@@ -231,8 +274,31 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
       setTrips(t);
       setHolidays(configs.flatMap(c => c.holidays.map(h => ({ ...h, configId: c.id }))));
       setEntitlements(ents);
-      await processTravelHistory(t.filter(trip => trip.status !== 'Planning' && trip.status !== 'Cancelled'));
+      const activeTrips = t.filter(trip => trip.status !== 'Planning' && trip.status !== 'Cancelled');
+      const version = getTripsVersion(activeTrips);
+      const cachedRaw = localStorage.getItem(DASHBOARD_CACHE_KEY);
+      if (cachedRaw) {
+          try {
+              const cached = JSON.parse(cachedRaw);
+              if (cached.version === version) {
+                  setVisitedData(deserializeVisitedData(cached.visitedData));
+                  setTotalCities(cached.totalCities);
+                  setTotalDistance(cached.totalDistance);
+                  setLoading(false);
+                  return;
+              }
+          } catch (e) {}
+      }
       setLoading(false);
+      runAfterFirstPaint(async () => {
+          const processed = await processTravelHistory(activeTrips);
+          localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify({
+              version,
+              totalCities: processed.totalCities,
+              totalDistance: processed.totalDistance,
+              visitedData: serializeVisitedData(processed.visitedData)
+          }));
+      });
     });
   };
 
@@ -254,7 +320,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
 
         // Optimized batch resolution
         const uniquePlaces = Array.from(placesToResolve);
-        const resolvedResults = await Promise.all(uniquePlaces.map(p => resolvePlaceName(p)));
+        const resolvedResults = await mapWithConcurrency(uniquePlaces, resolvePlaceName, GEO_CONCURRENCY_LIMIT);
         const resolvedData = new Map<string, any>();
         uniquePlaces.forEach((p, i) => { if (resolvedResults[i]) resolvedData.set(p, resolvedResults[i]); });
 
@@ -281,7 +347,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
 
         let totalC = 0; const finalized: VisitedCountry[] = [];
         countryMap.forEach(val => { totalC += val.cities.size; finalized.push(val); });
-        setTotalCities(totalC); setTotalDistance(Math.round(kmCount)); setVisitedData(finalized.sort((a, b) => a.name.localeCompare(b.name)));
+        const totalDistance = Math.round(kmCount);
+        const visitedData = finalized.sort((a, b) => a.name.localeCompare(b.name));
+        setTotalCities(totalC);
+        setTotalDistance(totalDistance);
+        setVisitedData(visitedData);
+        return { totalCities: totalC, totalDistance, visitedData };
   };
 
   const stats = useMemo(() => {

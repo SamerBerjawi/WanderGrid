@@ -6,6 +6,8 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const FLIGHT_CACHE_TTL_MS = 5 * 60 * 1000;
+const flightCache = new Map();
 
 // Database Connection
 const pool = new Pool({
@@ -107,16 +109,28 @@ const deleteResource = (table) => async (req, res) => {
 
 // Proxy for AviationStack (Fixes CORS issues)
 app.get('/api/proxy/flight-status', async (req, res) => {
-    const { access_key, flight_iata } = req.query;
+    const { access_key, flight_iata, flight_date } = req.query;
     if (!access_key || !flight_iata) {
         return res.status(400).json({ error: 'Missing access_key or flight_iata' });
     }
+
+    const cacheKey = `${flight_iata}:${flight_date || 'latest'}`;
+    const cached = flightCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+        res.set('X-Cache', 'HIT');
+        res.set('Cache-Control', `public, max-age=${Math.floor(FLIGHT_CACHE_TTL_MS / 1000)}`);
+        return res.json(cached.data);
+    }
     
     try {
-        const url = `http://api.aviationstack.com/v1/flights?access_key=${access_key}&flight_iata=${flight_iata}`;
+        const dateParam = flight_date ? `&flight_date=${flight_date}` : '';
+        const url = `http://api.aviationstack.com/v1/flights?access_key=${access_key}&flight_iata=${flight_iata}${dateParam}`;
         // Using built-in fetch (Node 18+)
         const response = await fetch(url);
         const data = await response.json();
+        flightCache.set(cacheKey, { data, expiresAt: Date.now() + FLIGHT_CACHE_TTL_MS });
+        res.set('X-Cache', 'MISS');
+        res.set('Cache-Control', `public, max-age=${Math.floor(FLIGHT_CACHE_TTL_MS / 1000)}`);
         res.json(data);
     } catch (err) {
         console.error("Proxy error:", err);

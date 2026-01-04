@@ -243,6 +243,41 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
             setCurrencySymbol(getCurrencySymbol(s.currency));
         });
 
+        const airportsCacheKey = 'wandergrid_airports_cache_v1';
+        const airlinesCacheKey = 'wandergrid_airlines_cache_v1';
+
+        const loadCachedAirports = () => {
+            try {
+                const cached = localStorage.getItem(airportsCacheKey);
+                if (!cached) return null;
+                const parsed = JSON.parse(cached) as AirportData[];
+                return Array.isArray(parsed) ? parsed : null;
+            } catch (e) {
+                return null;
+            }
+        };
+
+        const loadCachedAirlines = () => {
+            try {
+                const cached = localStorage.getItem(airlinesCacheKey);
+                if (!cached) return null;
+                const parsed = JSON.parse(cached) as AirlineData[];
+                return Array.isArray(parsed) ? parsed : null;
+            } catch (e) {
+                return null;
+            }
+        };
+
+        const cachedAirports = loadCachedAirports();
+        if (cachedAirports && cachedAirports.length > 0) {
+            setAirportList(cachedAirports);
+        }
+
+        const cachedAirlines = loadCachedAirlines();
+        if (cachedAirlines && cachedAirlines.length > 0) {
+            setAirlineList(cachedAirlines);
+        }
+
         fetch('https://raw.githubusercontent.com/mwgg/Airports/master/airports.json')
             .then(res => res.json())
             .then(data => {
@@ -255,8 +290,11 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                         country: details.country
                     }));
                 setAirportList(list);
+                localStorage.setItem(airportsCacheKey, JSON.stringify(list));
             })
-            .catch(e => console.error("Failed to load airports", e));
+            .catch(e => {
+                if (!cachedAirports) console.error("Failed to load airports", e);
+            });
 
         fetch('https://raw.githubusercontent.com/dlubom/iata_code_fetcher/main/carrier_data_full_processed.jsonl')
             .then(res => res.text())
@@ -270,11 +308,16 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                             iata: d.iata || '',
                             icao: d.icao || ''
                         };
-                    } catch { return null; }
+                    } catch {
+                        return null;
+                    }
                 }).filter(x => x && x.name && x.iata) as AirlineData[];
                 setAirlineList(list);
+                localStorage.setItem(airlinesCacheKey, JSON.stringify(list));
             })
-            .catch(e => console.error("Failed to load airlines", e));
+            .catch(e => {
+                if (!cachedAirlines) console.error("Failed to load airlines", e);
+            });
     }, []);
 
     useEffect(() => {

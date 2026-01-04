@@ -1,7 +1,12 @@
+import { COUNTRY_REGION_MAP } from './geoData';
+
 const CACHE_KEY = 'wandergrid_geo_cache_v2';
+const GEO_DB_NAME = 'wandergrid_geo_db';
+const GEO_STORE_NAME = 'geo_entries';
 
 let internalCache: Map<string, any> = new Map();
 let isCacheLoaded = false;
+let isIndexedDbLoaded = false;
 
 const loadCache = () => {
     if (isCacheLoaded) return;
@@ -14,12 +19,66 @@ const loadCache = () => {
         if (!internalCache.has(key)) internalCache.set(key, STATIC_GEO_DATA[key]);
     });
     isCacheLoaded = true;
+    if (!isIndexedDbLoaded) {
+        isIndexedDbLoaded = true;
+        void hydrateCacheFromIndexedDb();
+    }
 };
 
 const saveCache = () => {
     try {
         localStorage.setItem(CACHE_KEY, JSON.stringify(Array.from(internalCache.entries())));
     } catch (e) {}
+    void persistCacheToIndexedDb();
+};
+
+const openGeoDb = (): Promise<IDBDatabase | null> => new Promise((resolve) => {
+    if (!('indexedDB' in window)) {
+        resolve(null);
+        return;
+    }
+    const request = indexedDB.open(GEO_DB_NAME, 1);
+    request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains(GEO_STORE_NAME)) {
+            db.createObjectStore(GEO_STORE_NAME, { keyPath: 'key' });
+        }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => resolve(null);
+});
+
+const hydrateCacheFromIndexedDb = async () => {
+    const db = await openGeoDb();
+    if (!db) return;
+    await new Promise<void>((resolve) => {
+        const tx = db.transaction(GEO_STORE_NAME, 'readonly');
+        const store = tx.objectStore(GEO_STORE_NAME);
+        const request = store.getAll();
+        request.onsuccess = () => {
+            request.result.forEach((entry: { key: string; value: any }) => {
+                if (!internalCache.has(entry.key)) internalCache.set(entry.key, entry.value);
+            });
+            resolve();
+        };
+        request.onerror = () => resolve();
+    });
+    db.close();
+};
+
+const persistCacheToIndexedDb = async () => {
+    const db = await openGeoDb();
+    if (!db) return;
+    await new Promise<void>((resolve) => {
+        const tx = db.transaction(GEO_STORE_NAME, 'readwrite');
+        const store = tx.objectStore(GEO_STORE_NAME);
+        internalCache.forEach((value, key) => {
+            store.put({ key, value });
+        });
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => resolve();
+    });
+    db.close();
 };
 
 const STATIC_GEO_DATA: Record<string, any> = {
@@ -195,7 +254,3 @@ export async function resolvePlaceName(query: string): Promise<{ city: string, c
 }
 
 export const getRegion = (code: string) => COUNTRY_REGION_MAP[code] || 'Unknown';
-
-const COUNTRY_REGION_MAP: Record<string, string> = {
-    'US': 'North America', 'CA': 'North America', 'MX': 'North America', 'CR': 'Central America', 'CU': 'Central America', 'JM': 'Central America', 'BS': 'Central America', 'DO': 'Central America', 'PA': 'Central America', 'GT': 'Central America', 'BZ': 'Central America', 'HN': 'Central America', 'BR': 'South America', 'AR': 'South America', 'CL': 'South America', 'CO': 'South America', 'PE': 'South America', 'EC': 'South America', 'UY': 'South America', 'PY': 'South America', 'BO': 'South America', 'NO': 'Northern Europe', 'SE': 'Northern Europe', 'DK': 'Northern Europe', 'FI': 'Northern Europe', 'IS': 'Northern Europe', 'EE': 'Northern Europe', 'LV': 'Northern Europe', 'LT': 'Northern Europe', 'GB': 'Western Europe', 'FR': 'Western Europe', 'DE': 'Western Europe', 'BE': 'Western Europe', 'NL': 'Western Europe', 'CH': 'Western Europe', 'AT': 'Western Europe', 'IE': 'Western Europe', 'LU': 'Western Europe', 'IT': 'Southern Europe', 'ES': 'Southern Europe', 'PT': 'Southern Europe', 'GR': 'Southern Europe', 'HR': 'Southern Europe', 'SI': 'Southern Europe', 'MT': 'Southern Europe', 'CY': 'Southern Europe', 'PL': 'Eastern Europe', 'CZ': 'Eastern Europe', 'HU': 'Eastern Europe', 'RU': 'Eastern Europe', 'RO': 'Eastern Europe', 'BG': 'Eastern Europe', 'SK': 'Eastern Europe', 'UA': 'Eastern Europe', 'RS': 'Eastern Europe', 'JP': 'East Asia', 'CN': 'East Asia', 'KR': 'East Asia', 'TW': 'East Asia', 'HK': 'East Asia', 'MO': 'East Asia', 'TH': 'Southeast Asia', 'VN': 'Southeast Asia', 'ID': 'Southeast Asia', 'MY': 'Southeast Asia', 'SG': 'Southeast Asia', 'PH': 'Southeast Asia', 'KH': 'Southeast Asia', 'LA': 'Southeast Asia', 'MM': 'Southeast Asia', 'IN': 'South & West Asia', 'MV': 'South & West Asia', 'LK': 'South & West Asia', 'NP': 'South & West Asia', 'AE': 'South & West Asia', 'SA': 'South & West Asia', 'IL': 'South & West Asia', 'QA': 'South & West Asia', 'TR': 'South & West Asia', 'JO': 'South & West Asia', 'LB': 'South & West Asia', 'EG': 'North Africa', 'MA': 'North Africa', 'TN': 'North Africa', 'DZ': 'North Africa', 'ZA': 'Sub-Saharan Africa', 'KE': 'Sub-Saharan Africa', 'TZ': 'Sub-Saharan Africa', 'GH': 'Sub-Saharan Africa', 'NG': 'Sub-Saharan Africa', 'MU': 'Sub-Saharan Africa', 'SC': 'Sub-Saharan Africa', 'ZW': 'Sub-Saharan Africa', 'NA': 'Sub-Saharan Africa', 'AU': 'Oceania', 'NZ': 'Oceania', 'FJ': 'Oceania', 'PF': 'Oceania', 'PG': 'Oceania'
-};
