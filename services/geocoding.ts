@@ -175,7 +175,7 @@ export async function resolvePlaceName(query: string): Promise<{ city: string, c
     if (!query) return null;
     loadCache();
     const cached = internalCache.get(query) || internalCache.get(query.toUpperCase());
-    if (cached?.city) return { city: cached.city, country: cached.country, countryCode: countryCode || cached.iso, displayName: cached.name || query };
+    if (cached?.city) return { city: cached.city, country: cached.country, countryCode: cached.countryCode || cached.iso, displayName: cached.name || query };
 
     try {
         const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=1`);
