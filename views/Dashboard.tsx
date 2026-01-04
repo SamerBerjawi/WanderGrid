@@ -8,11 +8,6 @@ import { dataService } from '../services/mockDb';
 import { User, Trip, EntitlementType, PublicHoliday } from '../types';
 import { resolvePlaceName, calculateDistance } from '../services/geocoding';
 
-// ... (Keep existing Interfaces, Constants, Helper functions: VisitedCountry, ExtremeFlight, LEVEL_THRESHOLDS, REGION_STYLES, COUNTRY_REGION_MAP, getRegion, getFlagEmoji, StatCard, ExtremeFlightCard, DonutChart, TopList - NO CHANGES NEEDED to these definitions)
-
-// Ensure all interfaces and constants from previous file are preserved here.
-// I will include the full file content with the new TimezoneSlider added.
-
 interface DashboardProps {
     onUserClick?: (userId: string) => void;
     onTripClick?: (tripId: string) => void;
@@ -63,7 +58,7 @@ const REGION_STYLES: Record<string, { bg: string, border: string, text: string, 
 };
 
 const COUNTRY_REGION_MAP: Record<string, string> = {
-    'US': 'North America', 'CA': 'North America', 'MX': 'North America', 'CR': 'Central America', 'CU': 'Central America', 'JM': 'Central America', 'BS': 'Central America', 'DO': 'Central America', 'PA': 'Central America', 'GT': 'Central America', 'BZ': 'Central America', 'HN': 'Central America', 'BR': 'South America', 'AR': 'South America', 'CL': 'South America', 'CO': 'South America', 'PE': 'South America', 'EC': 'South America', 'UY': 'South America', 'PY': 'South America', 'BO': 'South America', 'NO': 'Northern Europe', 'SE': 'Northern Europe', 'DK': 'Northern Europe', 'FI': 'Northern Europe', 'IS': 'Northern Europe', 'EE': 'Northern Europe', 'LV': 'Northern Europe', 'LT': 'Northern Europe', 'GB': 'Western Europe', 'UK': 'Western Europe', 'FR': 'Western Europe', 'DE': 'Western Europe', 'BE': 'Western Europe', 'NL': 'Western Europe', 'CH': 'Western Europe', 'AT': 'Western Europe', 'IE': 'Western Europe', 'LU': 'Western Europe', 'IT': 'Southern Europe', 'ES': 'Southern Europe', 'PT': 'Southern Europe', 'GR': 'Southern Europe', 'HR': 'Southern Europe', 'SI': 'Southern Europe', 'MT': 'Southern Europe', 'CY': 'Southern Europe', 'PL': 'Eastern Europe', 'CZ': 'Eastern Europe', 'HU': 'Eastern Europe', 'RU': 'Eastern Europe', 'RO': 'Eastern Europe', 'BG': 'Eastern Europe', 'SK': 'Eastern Europe', 'UA': 'Eastern Europe', 'RS': 'Eastern Europe', 'JP': 'East Asia', 'CN': 'East Asia', 'KR': 'East Asia', 'TW': 'East Asia', 'HK': 'East Asia', 'MO': 'East Asia', 'TH': 'Southeast Asia', 'VN': 'Southeast Asia', 'ID': 'Southeast Asia', 'MY': 'Southeast Asia', 'SG': 'Southeast Asia', 'PH': 'Southeast Asia', 'KH': 'Southeast Asia', 'LA': 'Southeast Asia', 'MM': 'Southeast Asia', 'IN': 'South & West Asia', 'MV': 'South & West Asia', 'LK': 'South & West Asia', 'NP': 'South & West Asia', 'AE': 'South & West Asia', 'SA': 'South & West Asia', 'IL': 'South & West Asia', 'QA': 'South & West Asia', 'TR': 'South & West Asia', 'JO': 'South & West Asia', 'LB': 'South & West Asia', 'EG': 'North Africa', 'MA': 'North Africa', 'TN': 'North Africa', 'DZ': 'North Africa', 'ZA': 'Sub-Saharan Africa', 'KE': 'Sub-Saharan Africa', 'TZ': 'Sub-Saharan Africa', 'GH': 'Sub-Saharan Africa', 'NG': 'Sub-Saharan Africa', 'MU': 'Sub-Saharan Africa', 'SC': 'Sub-Saharan Africa', 'ZW': 'Sub-Saharan Africa', 'NA': 'Sub-Saharan Africa', 'AU': 'Oceania', 'NZ': 'Oceania', 'FJ': 'Oceania', 'PF': 'Oceania', 'PG': 'Oceania'
+    'US': 'North America', 'CA': 'North America', 'MX': 'North America', 'CR': 'Central America', 'CU': 'Central America', 'JM': 'Central America', 'BS': 'Central America', 'DO': 'Central America', 'PA': 'Central America', 'GT': 'Central America', 'BZ': 'Central America', 'HN': 'Central America', 'BR': 'South America', 'AR': 'South America', 'CL': 'South America', 'CO': 'South America', 'PE': 'South America', 'EC': 'South America', 'UY': 'South America', 'PY': 'South America', 'BO': 'South America', 'NO': 'Northern Europe', 'SE': 'Northern Europe', 'DK': 'Northern Europe', 'FI': 'Northern Europe', 'IS': 'Northern Europe', 'EE': 'Northern Europe', 'LV': 'Northern Europe', 'LT': 'Northern Europe', 'GB': 'Western Europe', 'FR': 'Western Europe', 'DE': 'Western Europe', 'BE': 'Western Europe', 'NL': 'Western Europe', 'CH': 'Western Europe', 'AT': 'Western Europe', 'IE': 'Western Europe', 'LU': 'Western Europe', 'IT': 'Southern Europe', 'ES': 'Southern Europe', 'PT': 'Southern Europe', 'GR': 'Southern Europe', 'HR': 'Southern Europe', 'SI': 'Southern Europe', 'MT': 'Southern Europe', 'CY': 'Southern Europe', 'PL': 'Eastern Europe', 'CZ': 'Eastern Europe', 'HU': 'Eastern Europe', 'RU': 'Eastern Europe', 'RO': 'Eastern Europe', 'BG': 'Eastern Europe', 'SK': 'Eastern Europe', 'UA': 'Eastern Europe', 'RS': 'Eastern Europe', 'JP': 'East Asia', 'CN': 'East Asia', 'KR': 'East Asia', 'TW': 'East Asia', 'HK': 'East Asia', 'MO': 'East Asia', 'TH': 'Southeast Asia', 'VN': 'Southeast Asia', 'ID': 'Southeast Asia', 'MY': 'Southeast Asia', 'SG': 'Southeast Asia', 'PH': 'Southeast Asia', 'KH': 'Southeast Asia', 'LA': 'Southeast Asia', 'MM': 'Southeast Asia', 'IN': 'South & West Asia', 'MV': 'South & West Asia', 'LK': 'South & West Asia', 'NP': 'South & West Asia', 'AE': 'South & West Asia', 'SA': 'South & West Asia', 'IL': 'South & West Asia', 'QA': 'South & West Asia', 'TR': 'South & West Asia', 'JO': 'South & West Asia', 'LB': 'South & West Asia', 'EG': 'North Africa', 'MA': 'North Africa', 'TN': 'North Africa', 'DZ': 'North Africa', 'ZA': 'Sub-Saharan Africa', 'KE': 'Sub-Saharan Africa', 'TZ': 'Sub-Saharan Africa', 'GH': 'Sub-Saharan Africa', 'NG': 'Sub-Saharan Africa', 'MU': 'Sub-Saharan Africa', 'SC': 'Sub-Saharan Africa', 'ZW': 'Sub-Saharan Africa', 'NA': 'Sub-Saharan Africa', 'AU': 'Oceania', 'NZ': 'Oceania', 'FJ': 'Oceania', 'PF': 'Oceania', 'PG': 'Oceania'
 };
 
 const getRegion = (code: string) => COUNTRY_REGION_MAP[code] || 'Unknown';
@@ -217,40 +212,26 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
   useEffect(() => {
       const today = new Date().toISOString().split('T')[0];
       const activeTrip = trips.find(t => t.status !== 'Cancelled' && t.startDate <= today && t.endDate >= today);
-      
-      if (activeTrip && activeTrip.transports) {
+      if (activeTrip?.transports) {
           const flight = activeTrip.transports
             .filter(t => t.mode === 'Flight' && t.departureDate === today)
             .sort((a,b) => (a.departureTime || '00:00').localeCompare(b.departureTime || '00:00'))[0];
-            
           if (flight) {
               const iata = flight.providerCode && flight.identifier ? `${flight.providerCode}${flight.identifier}` : flight.identifier;
-              if (iata) {
-                  setTodaysFlight({
-                      iata,
-                      origin: flight.origin,
-                      destination: flight.destination,
-                      date: today
-                  });
-              }
+              if (iata) setTodaysFlight({ iata, origin: flight.origin, destination: flight.destination, date: today });
           }
       }
   }, [trips]);
 
   const refreshData = () => {
     Promise.all([
-      dataService.getUsers(), dataService.getTrips(), dataService.getSavedConfigs(),
-      dataService.getEntitlementTypes()
+      dataService.getUsers(), dataService.getTrips(), dataService.getSavedConfigs(), dataService.getEntitlementTypes()
     ]).then(async ([u, t, configs, ents]) => {
       setUsers(u);
       setTrips(t);
-      const allHolidays = configs.flatMap(c => c.holidays.map(h => ({ ...h, configId: c.id })));
-      setHolidays(allHolidays);
+      setHolidays(configs.flatMap(c => c.holidays.map(h => ({ ...h, configId: c.id }))));
       setEntitlements(ents);
-      
-      const validTrips = t.filter(trip => trip.status !== 'Planning' && trip.status !== 'Cancelled');
-      await processTravelHistory(validTrips);
-      
+      await processTravelHistory(t.filter(trip => trip.status !== 'Planning' && trip.status !== 'Cancelled'));
       setLoading(false);
     });
   };
@@ -260,280 +241,121 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
         let kmCount = 0;
         const placesToResolve = new Set<string>();
 
-        for (const trip of tripList) {
+        tripList.forEach(trip => {
             if (trip.transports) {
-                for (const t of trip.transports) {
-                    if (t.distance) kmCount += t.distance;
-                    else if (t.originLat && t.originLng && t.destLat && t.destLng) kmCount += calculateDistance(t.originLat, t.originLng, t.destLat, t.destLng);
-                }
+                trip.transports.forEach(t => {
+                    kmCount += t.distance || (t.originLat && t.originLng && t.destLat && t.destLng ? calculateDistance(t.originLat, t.originLng, t.destLat, t.destLng) : 0);
+                    placesToResolve.add(t.destination);
+                });
             }
             if (trip.location && !['Time Off', 'Remote', 'Trip', 'Vacation'].includes(trip.location)) placesToResolve.add(trip.location);
             trip.accommodations?.forEach(a => placesToResolve.add(a.address));
-            
-            if (trip.transports && trip.transports.length > 0) {
-                const sortedTransports = [...trip.transports].sort((a, b) => new Date(`${a.departureDate}T${a.departureTime||'00:00'}`).getTime() - new Date(`${b.departureDate}T${b.departureTime||'00:00'}`).getTime());
-                const tripOrigin = sortedTransports[0].origin.trim().toLowerCase();
-                for (let i = 0; i < sortedTransports.length; i++) {
-                    const current = sortedTransports[i];
-                    const next = sortedTransports[i+1];
-                    const dest = current.destination;
-                    const destNorm = dest.trim().toLowerCase();
-                    if (destNorm === tripOrigin) continue;
-                    let isLayover = false;
-                    if (next) {
-                        const nextOriginNorm = next.origin.trim().toLowerCase();
-                        if (destNorm === nextOriginNorm) {
-                            const arrT = new Date(`${current.arrivalDate}T${current.arrivalTime||'00:00'}`).getTime();
-                            const depT = new Date(`${next.departureDate}T${next.departureTime||'00:00'}`).getTime();
-                            if (!isNaN(arrT) && !isNaN(depT) && (depT - arrT) / 3600000 < 24) isLayover = true;
-                        }
-                    }
-                    if (!isLayover) placesToResolve.add(dest);
-                }
-            }
-        }
+        });
 
-        const resolvedData = new Map<string, any>();
+        // Optimized batch resolution
         const uniquePlaces = Array.from(placesToResolve);
-        
-        for (const place of uniquePlaces) {
-            const result = await resolvePlaceName(place);
-            if (result) resolvedData.set(place, result);
-        }
+        const resolvedResults = await Promise.all(uniquePlaces.map(p => resolvePlaceName(p)));
+        const resolvedData = new Map<string, any>();
+        uniquePlaces.forEach((p, i) => { if (resolvedResults[i]) resolvedData.set(p, resolvedResults[i]); });
 
-        for (const trip of tripList) {
+        tripList.forEach(trip => {
             const tripPlaces = new Set<string>();
-            if (trip.location && !['Time Off', 'Remote', 'Trip', 'Vacation'].includes(trip.location)) tripPlaces.add(trip.location);
+            if (trip.location && !['Time Off', 'Remote'].includes(trip.location)) tripPlaces.add(trip.location);
             trip.accommodations?.forEach(a => tripPlaces.add(a.address));
             trip.transports?.forEach(t => tripPlaces.add(t.destination)); 
 
-            for (const place of tripPlaces) {
+            tripPlaces.forEach(place => {
                 const resolved = resolvedData.get(place);
-                if (resolved && resolved.country && resolved.country !== 'Unknown') {
+                if (resolved?.country && resolved.country !== 'Unknown') {
                     const countryKey = resolved.countryCode || resolved.country;
                     if (!countryMap.has(countryKey)) {
-                        countryMap.set(countryKey, {
-                            code: resolved.countryCode || 'XX', name: resolved.country, cities: new Set(), flag: resolved.countryCode ? getFlagEmoji(resolved.countryCode) : '🏳️', tripCount: 0, lastVisit: new Date(trip.endDate), region: getRegion(resolved.countryCode || 'XX')
-                        });
+                        countryMap.set(countryKey, { code: resolved.countryCode || 'XX', name: resolved.country, cities: new Set(), flag: resolved.countryCode ? getFlagEmoji(resolved.countryCode) : '🏳️', tripCount: 0, lastVisit: new Date(trip.endDate), region: getRegion(resolved.countryCode || 'XX') });
                     }
                     const entry = countryMap.get(countryKey)!;
                     entry.cities.add(resolved.city);
                     const tripEnd = new Date(trip.endDate);
                     if (tripEnd > entry.lastVisit) entry.lastVisit = tripEnd;
                 }
-            }
-        }
+            });
+        });
 
-        const finalized: VisitedCountry[] = [];
-        let totalC = 0;
-        countryMap.forEach((val) => { totalC += val.cities.size; finalized.push(val); });
-        setTotalCities(totalC);
-        setTotalDistance(Math.round(kmCount));
-        setVisitedData(finalized.sort((a, b) => a.name.localeCompare(b.name)));
+        let totalC = 0; const finalized: VisitedCountry[] = [];
+        countryMap.forEach(val => { totalC += val.cities.size; finalized.push(val); });
+        setTotalCities(totalC); setTotalDistance(Math.round(kmCount)); setVisitedData(finalized.sort((a, b) => a.name.localeCompare(b.name)));
   };
 
   const stats = useMemo(() => {
         const activeTrips = trips.filter(t => t.status !== 'Planning' && t.status !== 'Cancelled');
-        let totalFlights = 0; let totalDist = 0; let totalDurationMinutes = 0;
-        const airports = new Map<string, number>(); const airlines = new Map<string, number>(); const aircraft = new Map<string, number>(); const routes = new Map<string, number>();
-        const seatCounts: Record<string, number> = { Window: 0, Aisle: 0, Middle: 0 };
-        const classCounts: Record<string, number> = { Economy: 0, Premium: 0, Business: 0, First: 0 };
-        const monthCounts = new Array(12).fill(0);
-        let longestFlight: ExtremeFlight | null = null;
-        let shortestFlight: ExtremeFlight | null = null;
+        let totalFlights = 0, totalDist = 0, totalDurationMinutes = 0;
+        const airports = new Map<string, number>(), airlines = new Map<string, number>(), aircraft = new Map<string, number>(), routes = new Map<string, number>();
+        const seatCounts: any = { Window: 0, Aisle: 0, Middle: 0 }, classCounts: any = { Economy: 0, Premium: 0, Business: 0, First: 0 };
+        let longestFlight: ExtremeFlight | null = null, shortestFlight: ExtremeFlight | null = null;
 
         activeTrips.forEach(t => {
-            if (t.transports) {
-                t.transports.forEach(tr => {
-                    if (tr.mode === 'Flight') {
-                        totalFlights++;
-                        let dist = tr.distance || 0;
-                        if (!dist && tr.originLat && tr.originLng && tr.destLat && tr.destLng) dist = calculateDistance(tr.originLat, tr.originLng, tr.destLat, tr.destLng);
-                        totalDist += dist;
-                        const flightInfo: ExtremeFlight = { distance: dist, origin: tr.origin, destination: tr.destination, carrier: tr.provider, date: tr.departureDate };
-                        if (!longestFlight || dist > longestFlight.distance) longestFlight = flightInfo;
-                        if (!shortestFlight || (dist > 0 && dist < shortestFlight.distance)) shortestFlight = flightInfo;
-                        if (tr.seatType) seatCounts[tr.seatType] = (seatCounts[tr.seatType] || 0) + 1;
-                        if (tr.travelClass) { const cls = tr.travelClass.toLowerCase(); if (cls.includes('economy')) classCounts['Economy']++; else if (cls.includes('premium')) classCounts['Premium']++; else if (cls.includes('business')) classCounts['Business']++; else if (cls.includes('first')) classCounts['First']++; }
-                        if (tr.departureDate) { const d = new Date(tr.departureDate); if (!isNaN(d.getTime())) monthCounts[d.getMonth()]++; }
-                        if (tr.departureDate && tr.departureTime && tr.arrivalDate && tr.arrivalTime) { const start = new Date(`${tr.departureDate}T${tr.departureTime}`); const end = new Date(`${tr.arrivalDate}T${tr.arrivalTime}`); const diff = (end.getTime() - start.getTime()) / 60000; if (diff > 0) totalDurationMinutes += diff; }
-                        if (tr.origin) airports.set(tr.origin, (airports.get(tr.origin) || 0) + 1);
-                        if (tr.destination) airports.set(tr.destination, (airports.get(tr.destination) || 0) + 1);
-                        if (tr.provider) airlines.set(tr.provider, (airlines.get(tr.provider) || 0) + 1);
-                        if (tr.vehicleModel) aircraft.set(tr.vehicleModel, (aircraft.get(tr.vehicleModel) || 0) + 1);
-                        if (tr.origin && tr.destination) { const key = `${tr.origin} → ${tr.destination}`; routes.set(key, (routes.get(key) || 0) + 1); }
-                    }
-                });
-            }
+            t.transports?.forEach(tr => {
+                if (tr.mode === 'Flight') {
+                    totalFlights++;
+                    let dist = tr.distance || (tr.originLat && tr.originLng && tr.destLat && tr.destLng ? calculateDistance(tr.originLat, tr.originLng, tr.destLat, tr.destLng) : 0);
+                    totalDist += dist;
+                    const flightInfo = { distance: dist, origin: tr.origin, destination: tr.destination, carrier: tr.provider, date: tr.departureDate };
+                    if (!longestFlight || dist > longestFlight.distance) longestFlight = flightInfo;
+                    if (!shortestFlight || (dist > 0 && dist < shortestFlight.distance)) shortestFlight = flightInfo;
+                    if (tr.seatType) seatCounts[tr.seatType]++;
+                    if (tr.travelClass) { const cls = tr.travelClass.toLowerCase(); if (cls.includes('economy')) classCounts['Economy']++; else if (cls.includes('premium')) classCounts['Premium']++; else if (cls.includes('business')) classCounts['Business']++; else if (cls.includes('first')) classCounts['First']++; }
+                    if (tr.departureDate && tr.departureTime && tr.arrivalDate && tr.arrivalTime) { const diff = (new Date(`${tr.arrivalDate}T${tr.arrivalTime}`).getTime() - new Date(`${tr.departureDate}T${tr.departureTime}`).getTime()) / 60000; if (diff > 0) totalDurationMinutes += diff; }
+                    if (tr.origin) airports.set(tr.origin, (airports.get(tr.origin) || 0) + 1);
+                    if (tr.destination) airports.set(tr.destination, (airports.get(tr.destination) || 0) + 1);
+                    if (tr.provider) airlines.set(tr.provider, (airlines.get(tr.provider) || 0) + 1);
+                    if (tr.vehicleModel) aircraft.set(tr.vehicleModel, (aircraft.get(tr.vehicleModel) || 0) + 1);
+                    if (tr.origin && tr.destination) { const key = `${tr.origin} → ${tr.destination}`; routes.set(key, (routes.get(key) || 0) + 1); }
+                }
+            });
         });
 
-        const topAirports = Array.from(airports.entries()).sort((a, b) => b[1] - a[1]).map(([code, count]) => ({ label: code, count, code }));
-        const topAirlines = Array.from(airlines.entries()).sort((a, b) => b[1] - a[1]).map(([name, count]) => ({ label: name, count }));
-        const topAircraft = Array.from(aircraft.entries()).sort((a, b) => b[1] - a[1]).map(([model, count]) => ({ label: model, count }));
-        const topRoutes = Array.from(routes.entries()).sort((a, b) => b[1] - a[1]).map(([key, count]) => { const [o, d] = key.split(' → '); return { label: key, count, code: `${o}-${d}` }; });
-
-        return {
-            totalFlights, totalDistance: Math.round(totalDist), totalDurationHours: Math.round(totalDurationMinutes / 60), topAirports, topAirlines, topAircraft, topRoutes, earthCircumnavigations: (totalDist / 40075).toFixed(1), daysInAir: (totalDurationMinutes / (60 * 24)).toFixed(1), longestFlight, shortestFlight, seatCounts: [{ label: 'Window', value: seatCounts.Window, color: '#3b82f6' }, { label: 'Aisle', value: seatCounts.Aisle, color: '#8b5cf6' }, { label: 'Middle', value: seatCounts.Middle, color: '#94a3b8' }].filter(x => x.value > 0), classCounts: [{ label: 'Economy', value: classCounts.Economy, color: '#64748b' }, { label: 'Premium', value: classCounts.Premium, color: '#0ea5e9' }, { label: 'Business', value: classCounts.Business, color: '#f59e0b' }, { label: 'First', value: classCounts.First, color: '#a855f7' }].filter(x => x.value > 0), monthCounts
-        };
+        return { totalFlights, totalDistance: Math.round(totalDist), totalDurationHours: Math.round(totalDurationMinutes / 60), topAirports: Array.from(airports.entries()).sort((a,b)=>b[1]-a[1]).map(([l,c])=>({label:l,count:c,code:l})), topAirlines: Array.from(airlines.entries()).sort((a,b)=>b[1]-a[1]).map(([l,c])=>({label:l,count:c})), earthCircumnavigations: (totalDist / 40075).toFixed(1), daysInAir: (totalDurationMinutes / 1440).toFixed(1), longestFlight, shortestFlight, seatCounts: [{ label: 'Window', value: seatCounts.Window, color: '#3b82f6' }, { label: 'Aisle', value: seatCounts.Aisle, color: '#8b5cf6' }, { label: 'Middle', value: seatCounts.Middle, color: '#94a3b8' }].filter(x => x.value > 0), classCounts: [{ label: 'Economy', value: classCounts.Economy, color: '#64748b' }, { label: 'Premium', value: classCounts.Premium, color: '#0ea5e9' }, { label: 'Business', value: classCounts.Business, color: '#f59e0b' }, { label: 'First', value: classCounts.First, color: '#a855f7' }].filter(x => x.value > 0) };
   }, [trips]);
 
   const currentLevel = useMemo(() => {
         const count = visitedData.length;
-        const lvl = [...LEVEL_THRESHOLDS].reverse().find(t => count >= t.countries);
-        return lvl || LEVEL_THRESHOLDS[0];
+        return [...LEVEL_THRESHOLDS].reverse().find(t => count >= t.countries) || LEVEL_THRESHOLDS[0];
   }, [visitedData]);
 
-  const nextLevel = useMemo(() => {
-        const idx = LEVEL_THRESHOLDS.findIndex(t => t.name === currentLevel.name);
-        return LEVEL_THRESHOLDS[idx + 1];
-  }, [currentLevel]);
-
-  const progressToNext = useMemo(() => {
-        if (!nextLevel) return 100;
-        const currentCount = visitedData.length;
-        const prevThreshold = currentLevel.countries;
-        const nextThreshold = nextLevel.countries;
-        return Math.min(100, Math.max(0, ((currentCount - prevThreshold) / (nextThreshold - prevThreshold)) * 100));
-  }, [currentLevel, nextLevel, visitedData]);
-
-  if (loading) return <div className="p-8 text-gray-400 animate-pulse">Synchronizing Dashboard...</div>;
-
-  const validPastTrips = trips.filter(t => t.status !== 'Planning' && t.status !== 'Cancelled');
+  const nextLevel = LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.findIndex(t => t.name === currentLevel.name) + 1];
+  const progressToNext = nextLevel ? Math.min(100, Math.max(0, ((visitedData.length - currentLevel.countries) / (nextLevel.countries - currentLevel.countries)) * 100)) : 100;
 
   return (
     <div className="space-y-8 animate-fade-in max-w-[100rem] mx-auto pb-12">
-        {/* Header Actions */}
         <div className="flex justify-between items-center bg-white/40 dark:bg-gray-900/40 p-4 rounded-[2rem] backdrop-blur-xl border border-white/50 dark:border-white/5 shadow-sm">
             <h2 className="text-2xl font-black text-gray-900 dark:text-white px-4">Command Center</h2>
-            <Button 
-                variant="primary" 
-                className="bg-sky-500 hover:bg-sky-600 shadow-sky-500/20"
-                icon={<span className="material-icons-outlined">flight</span>}
-                onClick={() => setIsFlightTrackerOpen(true)}
-            >
-                Where's my Flight?
-            </Button>
+            <Button variant="primary" className="bg-sky-500 hover:bg-sky-600 shadow-sky-500/20" icon={<span className="material-icons-outlined">flight</span>} onClick={() => setIsFlightTrackerOpen(true)}>Where's my Flight?</Button>
         </div>
-
-        {/* Gamification Stats */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 h-[31.25rem]">
             <div className="xl:col-span-2 relative rounded-[2.5rem] overflow-hidden border border-gray-100 dark:border-white/5 shadow-2xl group">
-                <ExpeditionMap3D trips={validPastTrips} animateRoutes={true} onTripClick={onTripClick} />
-                <div className="absolute top-6 left-6 z-10 bg-black/40 backdrop-blur-md p-4 rounded-2xl border border-white/10 text-white">
-                    <h2 className="text-2xl font-black tracking-tight">World Exploration</h2>
-                    <p className="text-xs font-bold text-gray-300 uppercase tracking-widest mt-1">
-                        {visitedData.length} Countries • {totalCities} Cities
-                    </p>
-                </div>
+                <ExpeditionMap3D trips={trips.filter(t => t.status !== 'Planning' && t.status !== 'Cancelled')} animateRoutes={true} onTripClick={onTripClick} />
+                <div className="absolute top-6 left-6 z-10 bg-black/40 backdrop-blur-md p-4 rounded-2xl border border-white/10 text-white"><h2 className="text-2xl font-black tracking-tight">World Exploration</h2><p className="text-xs font-bold text-gray-300 uppercase tracking-widest mt-1">{visitedData.length} Countries • {totalCities} Cities</p></div>
             </div>
-
-            <div className="xl:col-span-1">
-                <TimezoneSlider />
-            </div>
+            <div className="xl:col-span-1"><TimezoneSlider /></div>
         </div>
-
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
              <div className="xl:col-span-2">
-                <Tabs 
-                    activeTab={activeStatsTab} 
-                    onChange={setActiveStatsTab} 
-                    tabs={[
-                        { id: 'stamps', label: 'Passport Stamps', icon: <span className="material-icons-outlined">verified</span> },
-                        { id: 'analytics', label: 'Flight Log', icon: <span className="material-icons-outlined">data_usage</span> }
-                    ]}
-                />
-
-                {activeStatsTab === 'stamps' && (
-                    <div className="space-y-6 animate-fade-in mt-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {visitedData.map((country) => {
-                                const style = REGION_STYLES[country.region] || REGION_STYLES['Unknown'];
-                                return (
-                                    <div key={country.name} className={`group relative rounded-3xl p-6 border shadow-sm hover:shadow-xl transition-all hover:-translate-y-1 overflow-hidden ${style.bg} ${style.border}`}>
-                                        <div className="relative z-10">
-                                            <div className="flex justify-between items-start mb-4">
-                                                <div className="text-4xl filter drop-shadow-md">{country.flag}</div>
-                                                <div className={`px-2 py-1 rounded-lg border text-[10px] font-mono font-bold ${style.badge} ${style.border}`}>{country.code}</div>
-                                            </div>
-                                            <h3 className={`text-xl font-black mb-1 leading-tight ${style.text}`}>{country.name}</h3>
-                                            <p className={`text-xs font-bold uppercase tracking-widest opacity-60 ${style.text}`}>{country.region} • {country.lastVisit.getFullYear()}</p>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
-
-                {activeStatsTab === 'analytics' && (
+                <Tabs activeTab={activeStatsTab} onChange={setActiveStatsTab} tabs={[{ id: 'stamps', label: 'Passport Stamps', icon: <span className="material-icons-outlined">verified</span> },{ id: 'analytics', label: 'Flight Log', icon: <span className="material-icons-outlined">data_usage</span> }]} />
+                {activeStatsTab === 'stamps' ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">{visitedData.map(c => { const s = REGION_STYLES[c.region] || REGION_STYLES['Unknown']; return (<div key={c.name} className={`group relative rounded-3xl p-6 border shadow-sm hover:shadow-xl transition-all hover:-translate-y-1 overflow-hidden ${s.bg} ${s.border}`}><div className="relative z-10"><div className="flex justify-between items-start mb-4"><div className="text-4xl filter drop-shadow-md">{c.flag}</div><div className={`px-2 py-1 rounded-lg border text-[10px] font-mono font-bold ${s.badge} ${s.border}`}>{c.code}</div></div><h3 className={`text-xl font-black mb-1 leading-tight ${s.text}`}>{c.name}</h3><p className={`text-xs font-bold uppercase tracking-widest opacity-60 ${s.text}`}>{c.region} • {c.lastVisit.getFullYear()}</p></div></div>); })}</div>
+                ) : (
                     <div className="space-y-8 animate-fade-in mt-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <StatCard title="Total Flights" value={stats.totalFlights} icon="flight_takeoff" color="blue" />
-                            <StatCard title="Distance Flown" value={`${(stats.totalDistance / 1000).toFixed(1)}k km`} subtitle={`${stats.earthCircumnavigations}x around Earth`} icon="public" color="emerald" />
-                            <StatCard title="Time in Air" value={`${stats.totalDurationHours}h`} subtitle={`${stats.daysInAir} Days`} icon="schedule" color="purple" />
-                            <StatCard title="Top Airport" value={stats.topAirports[0]?.label || '-'} subtitle={`${stats.topAirports[0]?.count || 0} Visits`} icon="location_on" color="amber" />
-                        </div>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <ExtremeFlightCard type="Longest" flight={stats.longestFlight} color="indigo" />
-                            <ExtremeFlightCard type="Shortest" flight={stats.shortestFlight} color="rose" />
-                        </div>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <DonutChart title="Seat Preference" data={stats.seatCounts} />
-                            <DonutChart title="Cabin Class" data={stats.classCounts} />
-                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6"><StatCard title="Total Flights" value={stats.totalFlights} icon="flight_takeoff" color="blue" /><StatCard title="Distance" value={`${(stats.totalDistance / 1000).toFixed(1)}k km`} subtitle={`${stats.earthCircumnavigations}x Earth`} icon="public" color="emerald" /><StatCard title="Air Time" value={`${stats.totalDurationHours}h`} subtitle={`${stats.daysInAir} Days`} icon="schedule" color="purple" /><StatCard title="Top Airport" value={stats.topAirports[0]?.label || '-'} subtitle={`${stats.topAirports[0]?.count || 0} Visits`} icon="location_on" color="amber" /></div>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6"><ExtremeFlightCard type="Longest" flight={stats.longestFlight} color="indigo" /><ExtremeFlightCard type="Shortest" flight={stats.shortestFlight} color="rose" /></div>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6"><DonutChart title="Seat Preference" data={stats.seatCounts} /><DonutChart title="Cabin Class" data={stats.classCounts} /></div>
                     </div>
                 )}
              </div>
-
              <div className="xl:col-span-1 bg-white dark:bg-gray-900 rounded-[2.5rem] p-8 border border-gray-100 dark:border-white/5 shadow-xl flex flex-col justify-between relative overflow-hidden h-fit">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-[80px] pointer-events-none -translate-y-1/2 translate-x-1/2" />
-                
-                <div>
-                    <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest">Traveler Rank</h3>
-                    <h1 className="text-4xl lg:text-5xl font-black text-gray-900 dark:text-white mt-2 mb-1 tracking-tight leading-none">
-                        {currentLevel.name}
-                    </h1>
-                    <div className="flex items-center gap-2 mt-2">
-                        <div className="px-3 py-1 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-black uppercase tracking-wider border border-amber-200 dark:border-amber-900/50">
-                            Level {currentLevel.level}
-                        </div>
-                    </div>
-                </div>
-
-                <div className="space-y-6 relative z-10 mt-12">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
-                            <div className="text-blue-500 mb-1"><span className="material-icons-outlined text-2xl">public</span></div>
-                            <div className="text-2xl font-black text-gray-900 dark:text-white">{visitedData.length}</div>
-                            <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Countries</div>
-                        </div>
-                        <div className="p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
-                            <div className="text-purple-500 mb-1"><span className="material-icons-outlined text-2xl">flight_takeoff</span></div>
-                            <div className="text-2xl font-black text-gray-900 dark:text-white">{Math.round(totalDistance).toLocaleString()}</div>
-                            <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Km Traveled</div>
-                        </div>
-                    </div>
-
-                    {nextLevel && (
-                        <div>
-                            <div className="flex justify-between items-end mb-2">
-                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Progress</span>
-                                <span className="text-xs font-bold text-amber-500">{Math.round(progressToNext)}%</span>
-                            </div>
-                            <div className="h-3 w-full bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden">
-                                <div className="h-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all duration-1000 ease-out rounded-full relative" style={{ width: `${progressToNext}%` }} />
-                            </div>
-                        </div>
-                    )}
-                </div>
+                <div><h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest">Traveler Rank</h3><h1 className="text-4xl lg:text-5xl font-black text-gray-900 dark:text-white mt-2 mb-1 tracking-tight leading-none">{currentLevel.name}</h1><div className="flex items-center gap-2 mt-2"><div className="px-3 py-1 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-black uppercase tracking-wider border border-amber-200 dark:border-amber-900/50">Level {currentLevel.level}</div></div></div>
+                <div className="space-y-6 relative z-10 mt-12"><div className="grid grid-cols-2 gap-4"><div className="p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5"><div className="text-blue-500 mb-1"><span className="material-icons-outlined text-2xl">public</span></div><div className="text-2xl font-black text-gray-900 dark:text-white">{visitedData.length}</div><div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Countries</div></div><div className="p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5"><div className="text-purple-500 mb-1"><span className="material-icons-outlined text-2xl">flight_takeoff</span></div><div className="text-2xl font-black text-gray-900 dark:text-white">{Math.round(totalDistance).toLocaleString()}</div><div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Km Traveled</div></div></div>{nextLevel && (<div><div className="flex justify-between items-end mb-2"><span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Progress</span><span className="text-xs font-bold text-amber-500">{Math.round(progressToNext)}%</span></div><div className="h-3 w-full bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden"><div className="h-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all duration-1000 ease-out rounded-full relative" style={{ width: `${progressToNext}%` }} /></div></div>)}</div>
             </div>
         </div>
-
-        <FlightTrackerModal 
-            isOpen={isFlightTrackerOpen}
-            onClose={() => setIsFlightTrackerOpen(false)}
-            suggestedFlight={todaysFlight}
-        />
+        <FlightTrackerModal isOpen={isFlightTrackerOpen} onClose={() => setIsFlightTrackerOpen(false)} suggestedFlight={todaysFlight} />
     </div>
   );
 };

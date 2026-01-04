@@ -1,17 +1,19 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { Sidebar } from './components/Sidebar';
-import { Dashboard } from './views/Dashboard';
-import { Settings } from './views/Settings';
-import { TimeOff } from './views/TimeOff';
-import { UserDetail } from './views/UserDetail';
-import { VacationPlanner } from './views/VacationPlanner';
-import { TripDetail } from './views/TripDetail';
-import { ExpeditionMapView } from './views/ExpeditionMapView';
-import { Gamification } from './views/Gamification';
-import { Auth } from './views/Auth';
 import { ViewState, User } from './types';
 import { dataService } from './services/mockDb';
+
+// Lazy load views to split the bundle and improve performance
+const Dashboard = lazy(() => import('./views/Dashboard').then(m => ({ default: m.Dashboard })));
+const Settings = lazy(() => import('./views/Settings').then(m => ({ default: m.Settings })));
+const TimeOff = lazy(() => import('./views/TimeOff').then(m => ({ default: m.TimeOff })));
+const UserDetail = lazy(() => import('./views/UserDetail').then(m => ({ default: m.UserDetail })));
+const VacationPlanner = lazy(() => import('./views/VacationPlanner').then(m => ({ default: m.VacationPlanner })));
+const TripDetail = lazy(() => import('./views/TripDetail').then(m => ({ default: m.TripDetail })));
+const ExpeditionMapView = lazy(() => import('./views/ExpeditionMapView').then(m => ({ default: m.ExpeditionMapView })));
+const Gamification = lazy(() => import('./views/Gamification').then(m => ({ default: m.Gamification })));
+const Auth = lazy(() => import('./views/Auth').then(m => ({ default: m.Auth })));
 
 const getUrlState = () => {
     try {
@@ -33,6 +35,14 @@ const getUrlState = () => {
 
     return { view: ViewState.DASHBOARD };
 };
+
+// Beautiful loading state for lazy components
+const ViewLoader = () => (
+    <div className="w-full h-full flex flex-col items-center justify-center space-y-4 animate-fade-in">
+        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-400">Loading Module...</p>
+    </div>
+);
 
 export default function App() {
   const initialState = getUrlState();
@@ -63,8 +73,7 @@ export default function App() {
               window.history.pushState({}, '', path);
           }
       } catch (e) {
-          // Ignore SecurityError in sandboxed environments (like blob URLs)
-          console.debug("URL update blocked by environment, proceeding with internal navigation.");
+          console.debug("URL update blocked by environment.");
       }
       
       setView(newView);
@@ -72,7 +81,6 @@ export default function App() {
       if (newView === ViewState.TRIP_DETAIL && id) setSelectedTripId(id);
   };
 
-  // Handle Browser Back/Forward
   useEffect(() => {
       const handlePopState = () => {
           const state = getUrlState();
@@ -84,20 +92,17 @@ export default function App() {
       return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  // Initialize theme from settings on mount
   useEffect(() => {
     dataService.getWorkspaceSettings().then(settings => {
       setTheme(settings.theme);
     });
     
-    // Check for existing session (simplified for mock)
     const storedUser = localStorage.getItem('wandergrid_session_user');
     if (storedUser) {
         setCurrentUser(JSON.parse(storedUser));
     }
   }, []);
 
-  // Theme Management Logic
   useEffect(() => {
     const root = document.documentElement;
     const applyTheme = (currentTheme: 'light' | 'dark' | 'auto') => {
@@ -106,7 +111,6 @@ export default function App() {
         } else if (currentTheme === 'light') {
             root.classList.remove('dark');
         } else {
-            // Auto
             if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
                 root.classList.add('dark');
             } else {
@@ -127,7 +131,6 @@ export default function App() {
 
   const handleThemeChange = (newTheme: 'light' | 'dark' | 'auto') => {
       setTheme(newTheme);
-      // Persist to DB
       dataService.getWorkspaceSettings().then(s => {
           dataService.updateWorkspaceSettings({ ...s, theme: newTheme });
       });
@@ -184,7 +187,9 @@ export default function App() {
                 }}
             />
             <div className="w-full h-full relative z-10">
-                <Auth onLogin={handleLogin} />
+                <Suspense fallback={<ViewLoader />}>
+                    <Auth onLogin={handleLogin} />
+                </Suspense>
             </div>
         </div>
       );
@@ -206,7 +211,9 @@ export default function App() {
         currentUser={currentUser}
       />
       <main className="flex-1 h-full overflow-y-auto relative z-10 p-8 custom-scrollbar">
-        {renderView()}
+        <Suspense fallback={<ViewLoader />}>
+            {renderView()}
+        </Suspense>
       </main>
     </div>
   );

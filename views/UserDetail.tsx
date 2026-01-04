@@ -224,74 +224,73 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack }) => {
         return used;
     };
 
-    const calculateCarryOverAmount = (userId: string, entId: string, fromYear: number) => {
-        const policy = user?.policies?.find(p => p.entitlementId === entId && p.year === fromYear);
-        if (!policy || !policy.carryOver.enabled) return 0;
-
-        const totalAllowance = getTotalAllowanceRecursive(userId, entId, fromYear);
-        if (totalAllowance === Infinity) return 0;
-
-        const used = getUsedBalanceForYear(entId, fromYear);
-        const remaining = Math.max(0, totalAllowance - used);
-        
-        return Math.min(remaining, policy.carryOver.maxDays);
-    };
-
-    const getTotalAllowanceRecursive = (userId: string, entId: string, year: number, depth = 0): number => {
-        if (depth > 5) return 0; 
-        
-        const ent = entitlements.find(e => e.id === entId);
-        if (!ent) return 0;
-
-        const policy = user?.policies?.find(p => p.entitlementId === entId && p.year === year);
-        let base = 0;
-        if (policy) {
-            if (policy.isUnlimited) return Infinity;
-            base = policy.accrual.amount;
-        } else if (ent.isUnlimited) {
-            return Infinity;
-        }
-
-        if (ent.category === 'Lieu') {
-            base = user?.lieuBalance || 0;
-            if (user?.holidayWeekendRule === 'lieu') {
-                 const accrued = holidays.filter(h => {
-                     if (!h.isIncluded) return false;
-                     if (!user.holidayConfigIds?.includes(h.configId || '')) return false;
-                     
-                     const [y, m, d] = h.date.split('-').map(Number);
-                     if (y !== year) return false;
-                     
-                     const date = new Date(y, m - 1, d);
-                     const day = date.getDay();
-                     return day === 0 || day === 6; 
-                 }).length;
-                 base += accrued;
-            }
-        }
-
-        let carryOver = 0;
-        const prevYear = year - 1;
-        const prevPolicies = user?.policies?.filter(p => p.year === prevYear && p.carryOver.enabled) || [];
-        
-        prevPolicies.forEach(prevP => {
-            const targetsSelf = !prevP.carryOver.targetEntitlementId || prevP.carryOver.targetEntitlementId === prevP.entitlementId;
-            const isTarget = prevP.carryOver.targetEntitlementId === entId;
-            
-            if ((targetsSelf && prevP.entitlementId === entId) || isTarget) {
-                carryOver += calculateCarryOverAmount(userId, prevP.entitlementId, prevYear);
-            }
-        });
-
-        return base + carryOver;
-    };
-
     const entitlementBreakdown = useMemo(() => {
         if (!user) return [];
         
+        // Cache for recursive results within a single calculation pass to prevent O(E * Y) duplication
+        const balanceCache = new Map<string, number>();
+
+        const getTotalAllowanceRecursive = (entId: string, year: number, depth = 0): number => {
+            const cacheKey = `${entId}-${year}`;
+            if (balanceCache.has(cacheKey)) return balanceCache.get(cacheKey)!;
+            if (depth > 5) return 0; 
+            
+            const ent = entitlements.find(e => e.id === entId);
+            if (!ent) return 0;
+
+            const policy = user?.policies?.find(p => p.entitlementId === entId && p.year === year);
+            let base = 0;
+            if (policy) {
+                if (policy.isUnlimited) return Infinity;
+                base = policy.accrual.amount;
+            } else if (ent.isUnlimited) {
+                return Infinity;
+            }
+
+            if (ent.category === 'Lieu') {
+                base = user?.lieuBalance || 0;
+                if (user?.holidayWeekendRule === 'lieu') {
+                     const accrued = holidays.filter(h => {
+                         if (!h.isIncluded) return false;
+                         if (!user.holidayConfigIds?.includes(h.configId || '')) return false;
+                         
+                         const [y, m, d] = h.date.split('-').map(Number);
+                         if (y !== year) return false;
+                         
+                         const date = new Date(y, m - 1, d);
+                         const day = date.getDay();
+                         return day === 0 || day === 6; 
+                     }).length;
+                     base += accrued;
+                }
+            }
+
+            let carryOver = 0;
+            const prevYear = year - 1;
+            const prevPolicies = user?.policies?.filter(p => p.year === prevYear && p.carryOver.enabled) || [];
+            
+            prevPolicies.forEach(prevP => {
+                const targetsSelf = !prevP.carryOver.targetEntitlementId || prevP.carryOver.targetEntitlementId === prevP.entitlementId;
+                const isTarget = prevP.carryOver.targetEntitlementId === entId;
+                
+                if ((targetsSelf && prevP.entitlementId === entId) || isTarget) {
+                    const prevTotal = getTotalAllowanceRecursive(prevP.entitlementId, prevYear, depth + 1);
+                    if (prevTotal !== Infinity) {
+                        const used = getUsedBalanceForYear(prevP.entitlementId, prevYear);
+                        const remaining = Math.max(0, prevTotal - used);
+                        carryOver += Math.min(remaining, prevP.carryOver.maxDays);
+                    }
+                }
+            });
+
+            const result = base + carryOver;
+            balanceCache.set(cacheKey, result);
+            return result;
+        };
+
         return activePolicies.map(p => {
             const ent = entitlements.find(e => e.id === p.entitlementId);
-            const total = getTotalAllowanceRecursive(user.id, p.entitlementId, selectedYear);
+            const total = getTotalAllowanceRecursive(p.entitlementId, selectedYear);
             const used = getUsedBalanceForYear(p.entitlementId, selectedYear);
             
             const base = p.accrual.amount;
@@ -984,7 +983,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack }) => {
                                                 label="Expiry Deadline Mode" 
                                                 className="!rounded-2xl"
                                                 value={tempPolicy.carryOver.expiryType} 
-                                                onChange={e => setTempPolicy({...tempPolicy, carryOver: { ...tempPolicy.carryOver, expiryType: e.target.value as CarryOverExpiryType }})} 
+                                                onChange={e => updateCarryOverExpiryType(e.target.value as CarryOverExpiryType)} 
                                                 options={[{label: 'Permanent Persistence', value: 'none'}, {label: 'Months from Jan 1st', value: 'months'}, {label: 'Fixed Monthly/Day', value: 'fixed_date'}]} 
                                             />
                                             {tempPolicy.carryOver.expiryType !== 'none' && (
@@ -1015,4 +1014,16 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack }) => {
             </Modal>
         </div>
     );
+
+    function updateCarryOverExpiryType(type: CarryOverExpiryType) {
+        if (!tempPolicy) return;
+        setTempPolicy({
+            ...tempPolicy,
+            carryOver: {
+                ...tempPolicy.carryOver,
+                expiryType: type,
+                expiryValue: type === 'months' ? 3 : type === 'fixed_date' ? '03-31' : undefined
+            }
+        });
+    }
 };

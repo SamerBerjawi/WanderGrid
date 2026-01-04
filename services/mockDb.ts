@@ -43,7 +43,6 @@ export interface ImportState {
     isActive: boolean;
 }
 
-// --- API Service with LocalStorage Fallback ---
 class DataService {
   private _importState: ImportState = { status: '', progress: 0, isActive: false };
   private _importListeners: ((state: ImportState) => void)[] = [];
@@ -51,7 +50,6 @@ class DataService {
 
   constructor() {}
 
-  // --- Auth ---
   async login(email: string, pass: string): Promise<User | null> {
     const users = await this.getUsers();
     const user = users.find(u => u.email === email && u.password === pass);
@@ -81,7 +79,6 @@ class DataService {
     return newUser;
   }
 
-  // --- Import State Management ---
   public getImportState(): ImportState {
       return { ...this._importState };
   }
@@ -99,7 +96,6 @@ class DataService {
       this._importListeners.forEach(listener => listener(this._importState));
   }
 
-  // --- Generic Fetch with Fallback ---
   private async fetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
       if (!this._useApi) {
           return this.localFetch<T>(endpoint, options);
@@ -123,19 +119,16 @@ class DataService {
       }
   }
 
-  // --- LocalStorage Implementation ---
   private async localFetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
       const method = options?.method || 'GET';
       const body = options?.body ? JSON.parse(options.body as string) : null;
       const key = (k: string) => `wandergrid_${k}`;
       
-      await new Promise(r => setTimeout(r, 20)); // Reduced latency
+      // Removed artificial timeout for instant response
 
-      // 1. Settings
       if (endpoint === '/settings') {
           if (method === 'GET') {
               const s = localStorage.getItem(key('settings'));
-              // Merge with default to ensure new fields like masterPackingList exist
               return s ? { ...DEFAULT_WORKSPACE_SETTINGS, ...JSON.parse(s) } : { ...DEFAULT_WORKSPACE_SETTINGS };
           }
           if (method === 'PUT') {
@@ -144,7 +137,6 @@ class DataService {
           }
       }
 
-      // 2. Collections
       const collections = [
           { route: '/users', storage: 'users' },
           { route: '/trips', storage: 'trips' },
@@ -156,9 +148,7 @@ class DataService {
       for (const col of collections) {
           if (endpoint === col.route) {
               const list = JSON.parse(localStorage.getItem(key(col.storage)) || '[]');
-              if (method === 'GET') {
-                  return list as T;
-              }
+              if (method === 'GET') return list as T;
               if (method === 'POST') {
                   list.push(body);
                   localStorage.setItem(key(col.storage), JSON.stringify(list));
@@ -168,7 +158,6 @@ class DataService {
           if (endpoint.startsWith(`${col.route}/`)) {
               const id = endpoint.split('/')[2];
               const list = JSON.parse(localStorage.getItem(key(col.storage)) || '[]');
-              
               if (method === 'PUT') {
                   const idx = list.findIndex((i: any) => i.id === id);
                   if (idx >= 0) list[idx] = body;
@@ -176,7 +165,6 @@ class DataService {
                   localStorage.setItem(key(col.storage), JSON.stringify(list));
                   return body as T;
               }
-              
               if (method === 'DELETE') {
                   const newList = list.filter((i: any) => i.id !== id);
                   localStorage.setItem(key(col.storage), JSON.stringify(newList));
@@ -185,15 +173,11 @@ class DataService {
           }
       }
 
-      // 3. Backup/Restore
       if (endpoint === '/backup') {
           const backup: any = { workspaceSettings: {} };
-          collections.forEach(c => {
-              backup[c.storage] = JSON.parse(localStorage.getItem(key(c.storage)) || '[]');
-          });
+          collections.forEach(c => backup[c.storage] = JSON.parse(localStorage.getItem(key(c.storage)) || '[]'));
           const s = localStorage.getItem(key('settings'));
-          if (s) backup.workspaceSettings = JSON.parse(s);
-          else backup.workspaceSettings = DEFAULT_WORKSPACE_SETTINGS;
+          backup.workspaceSettings = s ? JSON.parse(s) : DEFAULT_WORKSPACE_SETTINGS;
           return backup as T;
       }
 
@@ -209,50 +193,28 @@ class DataService {
       throw new Error(`Local Mock: Route not found ${endpoint}`);
   }
 
-  // --- Users ---
-  async getUsers(): Promise<User[]> {
-    return this.fetch<User[]>('/users');
-  }
+  async getUsers(): Promise<User[]> { return this.fetch<User[]>('/users'); }
+  async updateUser(user: User): Promise<void> { await this.fetch(`/users/${user.id}`, { method: 'PUT', body: JSON.stringify(user) }); }
+  async addUser(user: User): Promise<void> { await this.fetch('/users', { method: 'POST', body: JSON.stringify(user) }); }
+  async deleteUser(id: string): Promise<void> { await this.fetch(`/users/${id}`, { method: 'DELETE' }); }
 
-  async updateUser(user: User): Promise<void> {
-    await this.fetch(`/users/${user.id}`, { method: 'PUT', body: JSON.stringify(user) });
-  }
-  
-  async addUser(user: User): Promise<void> {
-    await this.fetch('/users', { method: 'POST', body: JSON.stringify(user) });
-  }
-  
-  async deleteUser(id: string): Promise<void> {
-    await this.fetch(`/users/${id}`, { method: 'DELETE' });
-  }
-
-  // --- Trips (Optimized) ---
-  
   private async processGeocoding(trip: Trip): Promise<Trip> {
       const updatedTrip = { ...trip };
-      
-      // Use the cached getCoordinates which handles local storage internally
-      // 1. Trip Main Location
       if (updatedTrip.location && !updatedTrip.coordinates) {
           const coords = await getCoordinates(updatedTrip.location);
           if (coords) updatedTrip.coordinates = coords;
       }
-
-      // 2. Transports
       if (updatedTrip.transports) {
           const updatedTransports = await Promise.all(updatedTrip.transports.map(async (t) => {
               const u = { ...t };
-              // Origin
               if (u.origin && (!u.originLat || !u.originLng)) {
                   const c = await getCoordinates(u.origin);
                   if (c) { u.originLat = c.lat; u.originLng = c.lng; }
               }
-              // Destination
               if (u.destination && (!u.destLat || !u.destLng)) {
                   const c = await getCoordinates(u.destination);
                   if (c) { u.destLat = c.lat; u.destLng = c.lng; }
               }
-              // Waypoints
               if (u.waypoints && u.waypoints.length > 0) {
                   const updatedWaypoints = await Promise.all(u.waypoints.map(async (wp) => {
                       if (!wp.coordinates && wp.name) {
@@ -267,8 +229,6 @@ class DataService {
           }));
           updatedTrip.transports = updatedTransports;
       }
-
-      // 3. Locations (Route Plan)
       if (updatedTrip.locations) {
           const updatedLocations = await Promise.all(updatedTrip.locations.map(async (l) => {
               if (l.name && !l.coordinates) {
@@ -279,14 +239,10 @@ class DataService {
           }));
           updatedTrip.locations = updatedLocations;
       }
-
       return updatedTrip;
   }
 
-  async getTrips(): Promise<Trip[]> {
-    return this.fetch<Trip[]>('/trips');
-  }
-
+  async getTrips(): Promise<Trip[]> { return this.fetch<Trip[]>('/trips'); }
   async addTrip(trip: Trip): Promise<Trip> {
     const intelligentTrip = await this.processGeocoding(trip);
     return this.fetch<Trip>('/trips', { method: 'POST', body: JSON.stringify(intelligentTrip) });
@@ -294,10 +250,8 @@ class DataService {
 
   async addTrips(newTrips: Trip[]): Promise<void> {
     if (this._importState.isActive) return;
-
     const total = newTrips.length;
     this.updateImportState(`Analyzing ${total} trips...`, 0, true);
-
     const existingTrips = await this.getTrips();
     const getTripSignature = (trip: Trip) => {
         if (trip.transports && trip.transports.length > 0) {
@@ -305,41 +259,26 @@ class DataService {
         }
         return `${trip.name}|${trip.startDate}|${trip.endDate}`;
     };
-
     const existingSignatures = new Set(existingTrips.map(t => getTripSignature(t)));
     let addedCount = 0;
-
     for (let i = 0; i < total; i++) {
         const trip = newTrips[i];
         const sig = getTripSignature(trip);
         const percent = Math.round(((i + 1) / total) * 100);
-        
-        if (existingSignatures.has(sig)) {
-            this.updateImportState(`Skipping duplicate: ${trip.name}`, percent, true);
-            continue;
-        }
-
+        if (existingSignatures.has(sig)) continue;
         this.updateImportState(`Importing ${i + 1}/${total}: ${trip.name}`, percent, true);
-
         try {
-            // Processing sequentially to avoid overwhelming the API if cache misses
             const intelligentTrip = await this.processGeocoding(trip);
             await this.addTrip(intelligentTrip);
             existingSignatures.add(sig); 
             addedCount++;
         } catch (e) {
-            console.error(`Import error for ${trip.name}`, e);
             await this.addTrip(trip); 
             addedCount++;
         }
     }
-    
     this.updateImportState(`Successfully imported ${addedCount} trips.`, 100, false);
-    setTimeout(() => {
-        if (!this._importState.isActive) {
-            this.updateImportState('', 0, false);
-        }
-    }, 3000);
+    setTimeout(() => { if (!this._importState.isActive) this.updateImportState('', 0, false); }, 3000);
   }
 
   async updateTrip(trip: Trip): Promise<Trip> {
@@ -347,125 +286,44 @@ class DataService {
     return this.fetch<Trip>(`/trips/${trip.id}`, { method: 'PUT', body: JSON.stringify(intelligentTrip) });
   }
 
-  async deleteTrip(id: string): Promise<void> {
-    await this.fetch(`/trips/${id}`, { method: 'DELETE' });
-  }
-
-  // --- Events ---
-  async getCustomEvents(): Promise<CustomEvent[]> {
-    return this.fetch<CustomEvent[]>('/events');
-  }
-
-  async addCustomEvent(event: CustomEvent): Promise<void> {
-    await this.fetch('/events', { method: 'POST', body: JSON.stringify(event) });
-  }
-
-  async deleteCustomEvent(id: string): Promise<void> {
-    await this.fetch(`/events/${id}`, { method: 'DELETE' });
-  }
-
-  // --- Public Holidays ---
+  async deleteTrip(id: string): Promise<void> { await this.fetch(`/trips/${id}`, { method: 'DELETE' }); }
+  async getCustomEvents(): Promise<CustomEvent[]> { return this.fetch<CustomEvent[]>('/events'); }
+  async addCustomEvent(event: CustomEvent): Promise<void> { await this.fetch('/events', { method: 'POST', body: JSON.stringify(event) }); }
+  async deleteCustomEvent(id: string): Promise<void> { await this.fetch(`/events/${id}`, { method: 'DELETE' }); }
   async getPublicHolidays(countryCode: string): Promise<PublicHoliday[]> {
     const configs = await this.getSavedConfigs();
-    const configHolidays = configs
-        .filter(c => c.countryCode === countryCode)
-        .flatMap(c => c.holidays);
-    return configHolidays;
+    return configs.filter(c => c.countryCode === countryCode).flatMap(c => c.holidays);
   }
-
-  // --- Entitlements ---
-  async getEntitlementTypes(): Promise<EntitlementType[]> {
-    return this.fetch<EntitlementType[]>('/entitlements');
-  }
-
-  async saveEntitlementType(entitlement: EntitlementType): Promise<void> {
-    await this.fetch(`/entitlements/${entitlement.id}`, { method: 'PUT', body: JSON.stringify(entitlement) });
-  }
-
-  async deleteEntitlementType(id: string): Promise<void> {
-    await this.fetch(`/entitlements/${id}`, { method: 'DELETE' });
-  }
-
-  // --- Configs ---
-  async getSavedConfigs(): Promise<SavedConfig[]> {
-      return this.fetch<SavedConfig[]>('/configs');
-  }
-
-  async saveConfig(config: SavedConfig): Promise<void> {
-      await this.fetch(`/configs/${config.id}`, { method: 'PUT', body: JSON.stringify(config) });
-  }
-
-  async deleteConfig(id: string): Promise<void> {
-      await this.fetch(`/configs/${id}`, { method: 'DELETE' });
-  }
-
-  // --- Settings ---
+  async getEntitlementTypes(): Promise<EntitlementType[]> { return this.fetch<EntitlementType[]>('/entitlements'); }
+  async saveEntitlementType(entitlement: EntitlementType): Promise<void> { await this.fetch(`/entitlements/${entitlement.id}`, { method: 'PUT', body: JSON.stringify(entitlement) }); }
+  async deleteEntitlementType(id: string): Promise<void> { await this.fetch(`/entitlements/${id}`, { method: 'DELETE' }); }
+  async getSavedConfigs(): Promise<SavedConfig[]> { return this.fetch<SavedConfig[]>('/configs'); }
+  async saveConfig(config: SavedConfig): Promise<void> { await this.fetch(`/configs/${config.id}`, { method: 'PUT', body: JSON.stringify(config) }); }
+  async deleteConfig(id: string): Promise<void> { await this.fetch(`/configs/${id}`, { method: 'DELETE' }); }
   async getWorkspaceSettings(): Promise<WorkspaceSettings> {
     const settings = await this.fetch<WorkspaceSettings>('/settings');
-    // Ensure new fields are populated if missing from DB
     return { ...DEFAULT_WORKSPACE_SETTINGS, ...settings };
   }
-
-  async updateWorkspaceSettings(settings: WorkspaceSettings): Promise<void> {
-    await this.fetch('/settings', { method: 'PUT', body: JSON.stringify(settings) });
-  }
-
-  // --- Export/Import (Includes Geocache) ---
+  async updateWorkspaceSettings(settings: WorkspaceSettings): Promise<void> { await this.fetch('/settings', { method: 'PUT', body: JSON.stringify(settings) }); }
   async exportFullState(): Promise<string> {
-      // 1. Fetch persistent cache from LocalStorage
       let geoCache: any[] = [];
       try {
           const storedGeo = localStorage.getItem(GEO_CACHE_KEY);
           if (storedGeo) geoCache = JSON.parse(storedGeo);
       } catch (e) {}
-
-      // 2. Get DB State
       const dbState = await this.fetch<any>('/backup');
-
-      const state = {
-          version: '3.7',
-          timestamp: new Date().toISOString(),
-          ...dbState,
-          caches: {
-              geo: geoCache
-          }
-      };
+      const state = { version: '3.7', timestamp: new Date().toISOString(), ...dbState, caches: { geo: geoCache } };
       return JSON.stringify(state, null, 2);
   }
-
   async importFullState(jsonString: string): Promise<void> {
       try {
-          const cleanString = jsonString.trim().replace(/^\uFEFF/, '');
-          if (!cleanString) throw new Error("File is empty");
-
-          const state = JSON.parse(cleanString);
-          
-          if (!state || typeof state !== 'object') {
-             throw new Error("Invalid backup file format");
-          }
-
-          // 1. Restore DB
+          const state = JSON.parse(jsonString.trim().replace(/^\uFEFF/, ''));
           await this.fetch('/restore', { method: 'POST', body: JSON.stringify(state) });
-
-          // 2. Restore Cache locally
-          if (state.caches && state.caches.geo && Array.isArray(state.caches.geo)) {
-              try { 
-                  // Merge with existing to avoid data loss on partial restore
-                  const existing = JSON.parse(localStorage.getItem(GEO_CACHE_KEY) || '[]');
-                  const combined = new Map([...existing, ...state.caches.geo]); // New overrides old if dupes
-                  localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(Array.from(combined.entries()))); 
-              } catch (e) {
-                  // Fallback overwrite if merge fails
-                  localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(state.caches.geo));
-              }
+          if (state.caches?.geo && Array.isArray(state.caches.geo)) {
+              localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(state.caches.geo));
           }
-          
           return Promise.resolve();
-      } catch (e) {
-          console.error("Import failed details:", e);
-          const msg = e instanceof Error ? e.message : "Unknown error during parsing";
-          return Promise.reject(new Error(msg));
-      }
+      } catch (e) { return Promise.reject(e); }
   }
 }
 
