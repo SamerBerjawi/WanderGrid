@@ -199,10 +199,11 @@ export default function App() {
       />
       <Sidebar 
         currentView={view} 
-        onNavigate={(v) => navigate(v)} 
+        onNavigate={(v, id) => navigate(v, id)} 
         theme={theme}
         onThemeToggle={handleThemeChange}
         onLogout={handleLogout}
+        currentUser={currentUser}
       />
       <main className="flex-1 h-full overflow-y-auto relative z-10 p-8 custom-scrollbar">
         {renderView()}

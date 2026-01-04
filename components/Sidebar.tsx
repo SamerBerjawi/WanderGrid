@@ -1,17 +1,18 @@
 
 import React, { useEffect, useState } from 'react';
-import { ViewState, Trip } from '../types';
+import { ViewState, Trip, User } from '../types';
 import { dataService } from '../services/mockDb';
 
 interface SidebarProps {
   currentView: ViewState;
-  onNavigate: (view: ViewState) => void;
+  onNavigate: (view: ViewState, id?: string) => void;
   theme: 'light' | 'dark' | 'auto';
   onThemeToggle: (theme: 'light' | 'dark' | 'auto') => void;
   onLogout?: () => void;
+  currentUser: User | null;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme, onThemeToggle, onLogout }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme, onThemeToggle, onLogout, currentUser }) => {
   const [nextTrip, setNextTrip] = useState<Trip | null>(null);
   const [daysUntil, setDaysUntil] = useState<number>(0);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -53,8 +54,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
   ];
 
   const handleThemeCycle = () => {
-      // Toggle only between light and dark.
-      // If current is dark, go light. If light (or auto), go dark.
       const nextTheme = theme === 'dark' ? 'light' : 'dark';
       onThemeToggle(nextTheme);
   };
@@ -110,6 +109,33 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
       </div>
 
       <div className={`mt-auto pb-8 pt-0 animate-fade-in flex flex-col gap-3 ${isCollapsed ? 'px-3 items-center' : 'px-8'}`}>
+        
+        {/* User Profile Quick Access */}
+        {currentUser && (
+            <button 
+                onClick={() => onNavigate(ViewState.USER_DETAIL, currentUser.id)}
+                className={`group flex items-center gap-3 p-3 rounded-2xl transition-all border ${
+                    currentView === ViewState.USER_DETAIL 
+                    ? 'bg-white border-blue-200 shadow-sm dark:bg-white/10 dark:border-blue-500/30' 
+                    : 'bg-white/40 border-gray-100/50 dark:bg-gray-800/40 dark:border-white/5 hover:border-gray-200 dark:hover:border-white/10'
+                } ${isCollapsed ? 'justify-center w-12 h-12 p-0' : 'w-full'}`}
+                title={isCollapsed ? `Profile: ${currentUser.name}` : undefined}
+            >
+                <div className={`shrink-0 w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black text-white shadow-sm transition-transform group-hover:scale-110 ${currentUser.role === 'Partner' ? 'bg-gradient-to-br from-blue-500 to-indigo-600' : 'bg-gradient-to-br from-emerald-500 to-teal-600'}`}>
+                    {currentUser.name.charAt(0)}
+                </div>
+                {!isCollapsed && (
+                    <div className="flex-1 text-left overflow-hidden">
+                        <p className="text-xs font-black text-gray-800 dark:text-gray-200 truncate leading-none">{currentUser.name}</p>
+                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">My Identity</p>
+                    </div>
+                )}
+                {!isCollapsed && (
+                    <span className="material-icons-outlined text-gray-300 group-hover:text-blue-500 transition-colors text-sm">settings_account_box</span>
+                )}
+            </button>
+        )}
+
         {!isCollapsed ? (
              nextTrip ? (
               <div className="p-5 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-purple-500/30 border border-white/10">

@@ -944,7 +944,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
 
                                 return (
                                     <div key={dateStr} className="relative md:pl-20 group">
-                                        <div className="hidden md:flex absolute left-0 top-0 w-16 h-16 bg-white dark:bg-gray-900 border-4 border-gray-100 dark:border-gray-800 rounded-2xl items-center justify-center flex-col z-10 shadow-sm">
+                                        <div className="hidden md:flex absolute left-0 top-0 w-16 h-16 bg-white dark:bg-gray-900 border-4 border-gray-100 dark:border-border-800 rounded-2xl items-center justify-center flex-col z-10 shadow-sm">
                                             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{dateObj.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' })}</span>
                                             <span className="text-xl font-black text-gray-800 dark:text-white leading-none">{dateObj.getUTCDate()}</span>
                                             <span className="text-[8px] font-bold text-gray-400 uppercase tracking-tighter mt-0.5">Day {index + 1}</span>
@@ -983,14 +983,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                 </div>
                                             ))}
                                             {dayStay && (
-                                                <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all">
-                                                    <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-lg shadow-amber-500/30"><span className="material-icons-outlined">hotel</span></div>
-                                                    <div className="flex-1">
-                                                        <h4 className="font-bold text-gray-900 dark:text-white text-sm">{dayStay.name}</h4>
-                                                        <p className="text-[10px] text-amber-600 dark:text-amber-300 font-bold uppercase tracking-wider">{dayStay.checkInDate === dateStr ? 'Check-In' : 'Overnight Stay'}</p>
-                                                    </div>
-                                                    <button onClick={() => openAccommodationModal()} className="text-gray-400 hover:text-amber-500"><span className="material-icons-outlined text-sm">edit</span></button>
-                                                </div>
+                                                <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all"><div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-lg shadow-amber-500/30"><span className="material-icons-outlined">hotel</span></div><div className="flex-1"><h4 className="font-bold text-gray-900 dark:text-white text-sm">{dayStay.name}</h4><p className="text-[10px] text-amber-600 dark:text-amber-300 font-bold uppercase tracking-wider">{dayStay.checkInDate === dateStr ? 'Check-In' : 'Overnight Stay'}</p></div><button onClick={() => openAccommodationModal()} className="text-gray-400 hover:text-amber-500"><span className="material-icons-outlined text-sm">edit</span></button></div>
                                             )}
                                             {dayActivities.length > 0 && dayActivities.map(item => {
                                                 const isRes = item.type === 'Reservation';
@@ -1134,7 +1127,8 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 gap-6">
-                                {Object.entries(transportGroups).map(([id, group]) => {
+                                {/* Fix: Explicitly type group as Transport[] to resolve reduce, map, and function call errors */}
+                                {Object.entries(transportGroups).map(([id, group]: [string, Transport[]]) => {
                                     const first = group[0];
                                     return (
                                         <div key={id} className="bg-[#1c1c1e] rounded-3xl overflow-hidden border border-white/5 shadow-lg">
