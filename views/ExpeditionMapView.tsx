@@ -26,6 +26,36 @@ const useDarkMode = () => {
     return isDark;
 };
 
+const GEO_CONCURRENCY_LIMIT = 6;
+
+const runAfterFirstPaint = (fn: () => void) => {
+    if (typeof window === 'undefined') return;
+    if ('requestIdleCallback' in window) {
+        (window as Window & { requestIdleCallback: (cb: () => void) => number }).requestIdleCallback(fn);
+        return;
+    }
+    setTimeout(fn, 0);
+};
+
+const mapWithConcurrency = async <T, R>(
+    items: T[],
+    worker: (item: T) => Promise<R>,
+    concurrency: number
+) => {
+    const results: R[] = new Array(items.length);
+    let index = 0;
+    const runner = async () => {
+        while (index < items.length) {
+            const current = index;
+            index += 1;
+            results[current] = await worker(items[current]);
+        }
+    };
+    const runners = Array.from({ length: Math.min(concurrency, items.length) }, runner);
+    await Promise.all(runners);
+    return results;
+};
+
 // Coordinate Cache to prevent excessive API calls
 const COORD_CACHE_KEY = 'wandergrid_coord_cache';
 let coordCache: Map<string, { lat: number, lng: number }> | null = null;
@@ -180,44 +210,45 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
             });
 
             // Resolve Countries First (Fast update)
-            for (const place of Array.from(placesToCheckForCountry)) {
-                let code = '';
+            const countryPlaces = Array.from(placesToCheckForCountry);
+            const countryResults = await mapWithConcurrency(countryPlaces, async (place) => {
                 if (placeDetailsCache.has(place)) {
-                    code = placeDetailsCache.get(place).countryCode;
-                } else {
-                    const res = await resolvePlaceName(place);
-                    if (res && res.countryCode) code = res.countryCode;
+                    return placeDetailsCache.get(place).countryCode as string | undefined;
                 }
+                const res = await resolvePlaceName(place);
+                return res?.countryCode;
+            }, GEO_CONCURRENCY_LIMIT);
+
+            countryResults.forEach((code) => {
                 if (code && code.length === 2) countryCodes.add(code.toUpperCase());
-            }
+            });
             
             // UPDATE COUNTRIES IMMEDIATELY
             setVisitedCountryCodes(Array.from(countryCodes));
 
             // Resolve Coords for missing items (Slower update)
-            for (const place of Array.from(placesToCheckForCoords)) {
+            const coordPlaces = Array.from(placesToCheckForCoords);
+            const coordResults = await mapWithConcurrency(coordPlaces, async (place) => {
                 let coords = coordinateCache.get(place);
-                
                 if (!coords) {
-                    // Try to fetch
                     const res = await getCoordinates(place);
                     if (res) {
                         coords = { lat: res.lat, lng: res.lng };
                         coordinateCache.set(place, coords);
                         coordsDirty = true;
-                        // Throttle
-                        await new Promise(r => setTimeout(r, 100));
                     }
                 }
+                return { place, coords };
+            }, GEO_CONCURRENCY_LIMIT);
 
-                if (coords) {
-                    const key = `${coords.lat.toFixed(4)},${coords.lng.toFixed(4)}`;
-                    if (!processedPlaceKeys.has(key)) {
-                        finalPlaces.push({ lat: coords.lat, lng: coords.lng, name: place });
-                        processedPlaceKeys.add(key);
-                    }
+            coordResults.forEach(({ place, coords }) => {
+                if (!coords) return;
+                const key = `${coords.lat.toFixed(4)},${coords.lng.toFixed(4)}`;
+                if (!processedPlaceKeys.has(key)) {
+                    finalPlaces.push({ lat: coords.lat, lng: coords.lng, name: place });
+                    processedPlaceKeys.add(key);
                 }
-            }
+            });
 
             if (coordsDirty) saveCoordCache(coordinateCache);
 
@@ -225,7 +256,11 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
             setVisitedPlaces(finalPlaces);
         };
 
-        if (trips.length > 0) processGeoData();
+        if (trips.length > 0) {
+            runAfterFirstPaint(() => {
+                void processGeoData();
+            });
+        }
     }, [trips]);
 
     // Derived Data
