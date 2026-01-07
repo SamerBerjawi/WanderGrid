@@ -102,10 +102,17 @@ class DataService {
       }
 
       try {
+          // Add timeout to prevent hanging if backend is unresponsive
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 2000); // 2s timeout for rapid failover
+
           const res = await fetch(`/api${endpoint}`, {
               headers: { 'Content-Type': 'application/json' },
+              signal: controller.signal,
               ...options
           });
+          
+          clearTimeout(timeoutId);
           
           if (!res.ok) {
               if (res.status === 404) throw new Error("API Route Not Found");
@@ -124,8 +131,6 @@ class DataService {
       const body = options?.body ? JSON.parse(options.body as string) : null;
       const key = (k: string) => `wandergrid_${k}`;
       
-      // Removed artificial timeout for instant response
-
       if (endpoint === '/settings') {
           if (method === 'GET') {
               const s = localStorage.getItem(key('settings'));

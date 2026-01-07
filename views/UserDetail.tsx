@@ -62,51 +62,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack }) => {
     const [customHolidayForm, setCustomHolidayForm] = useState({ name: '', date: '' });
     const daysCacheRef = useRef(new Map<string, number>());
 
-    useEffect(() => {
-        loadData();
-        fetchCountries();
-    }, [userId]);
-
-    useEffect(() => {
-        daysCacheRef.current.clear();
-    }, [config, user, activeConfig, trips]);
-
-    const fetchCountries = () => {
-        fetch('https://date.nager.at/api/v3/AvailableCountries')
-            .then(res => res.json())
-            .then(data => setAvailableCountries(data.map((c:any) => ({ label: c.name, value: c.countryCode }))))
-            .catch(() => setAvailableCountries([{label: 'Belgium', value: 'BE'}, {label: 'US', value: 'US'}]));
-    };
-
-    const loadData = () => {
-        setLoading(true);
-        Promise.all([
-            dataService.getUsers(),
-            dataService.getTrips(),
-            dataService.getSavedConfigs(),
-            dataService.getEntitlementTypes(),
-            dataService.getWorkspaceSettings()
-        ]).then(([users, allTrips, configs, ents, settings]) => {
-            const foundUser = users.find(u => u.id === userId);
-            setUser(foundUser || null);
-            setTrips(allTrips.filter(t => t.participants.includes(userId)));
-            setAllSavedConfigs(configs);
-            setEntitlements(ents);
-            setConfig(settings);
-            
-            const flatHolidays = configs.flatMap(c => c.holidays.map(h => ({ ...h, configId: c.id })));
-            setHolidays(flatHolidays);
-            
-            setLoading(false);
-        });
-    };
-
-    const handleSaveUserConfig = async (updatedUser: User) => {
-        setIsSaving(true);
-        await dataService.updateUser(updatedUser);
-        setUser(updatedUser);
-        setTimeout(() => setIsSaving(false), 500);
-    };
+    // -- COMPUTED VALUES (Moved Up to avoid ReferenceError) --
 
     const visibleYears = useMemo(() => {
         if (!user) return [new Date().getFullYear()];
@@ -141,6 +97,67 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack }) => {
     const holidayCount = useMemo(() => {
         return activeConfig?.holidays.filter(h => h.isIncluded).length || 0;
     }, [activeConfig]);
+
+    // -- EFFECTS --
+
+    useEffect(() => {
+        loadData();
+        fetchCountries();
+    }, [userId]);
+
+    useEffect(() => {
+        daysCacheRef.current.clear();
+    }, [config, user, activeConfig, trips]);
+
+    const fetchCountries = () => {
+        // Add timeout to prevent hanging on slow network
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), 5000);
+
+        fetch('https://date.nager.at/api/v3/AvailableCountries', { signal: controller.signal })
+            .then(res => res.json())
+            .then(data => {
+                clearTimeout(id);
+                setAvailableCountries(data.map((c:any) => ({ label: c.name, value: c.countryCode })));
+            })
+            .catch(() => {
+                clearTimeout(id);
+                setAvailableCountries([{label: 'Belgium', value: 'BE'}, {label: 'US', value: 'US'}]);
+            });
+    };
+
+    const loadData = () => {
+        setLoading(true);
+        Promise.all([
+            dataService.getUsers(),
+            dataService.getTrips(),
+            dataService.getSavedConfigs(),
+            dataService.getEntitlementTypes(),
+            dataService.getWorkspaceSettings()
+        ]).then(([users, allTrips, configs, ents, settings]) => {
+            const foundUser = users.find(u => u.id === userId);
+            setUser(foundUser || null);
+            setTrips(allTrips.filter(t => t.participants.includes(userId)));
+            setAllSavedConfigs(configs);
+            setEntitlements(ents);
+            setConfig(settings);
+            
+            const flatHolidays = configs.flatMap(c => c.holidays.map(h => ({ ...h, configId: c.id })));
+            setHolidays(flatHolidays);
+            
+            setLoading(false);
+        }).catch(err => {
+            console.error("Failed to load data", err);
+            setLoading(false); // Ensure UI unblocks even on error
+        });
+    };
+
+    const handleSaveUserConfig = async (updatedUser: User) => {
+        setIsSaving(true);
+        await dataService.updateUser(updatedUser);
+        setUser(updatedUser);
+        setTimeout(() => setIsSaving(false), 500);
+    };
 
     const getNextMonday = (dateStr: string) => {
         const d = new Date(dateStr);
