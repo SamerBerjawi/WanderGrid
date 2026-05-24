@@ -35,6 +35,7 @@ export const TripModal: React.FC<TripModalProps> = ({ isOpen, onClose, onSubmit,
     const [endDate, setEndDate] = useState('');
     const [icon, setIcon] = useState('✈️');
     const [participants, setParticipants] = useState<string[]>([]);
+    const [privacy, setPrivacy] = useState<'Private' | 'Public'>('Private');
     const [isLoading, setIsLoading] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -61,6 +62,7 @@ export const TripModal: React.FC<TripModalProps> = ({ isOpen, onClose, onSubmit,
                 setEndDate(initialData.endDate);
                 setIcon(initialData.icon || '✈️');
                 setParticipants(initialData.participants);
+                setPrivacy(initialData.privacy || 'Private');
             } else {
                 setName('');
                 setLocation('');
@@ -68,6 +70,7 @@ export const TripModal: React.FC<TripModalProps> = ({ isOpen, onClose, onSubmit,
                 setEndDate('');
                 setIcon('✈️');
                 setParticipants(users.length > 0 ? [users[0].id] : []);
+                setPrivacy('Private');
             }
         }
     }, [isOpen, initialData, users]);
@@ -163,7 +166,8 @@ export const TripModal: React.FC<TripModalProps> = ({ isOpen, onClose, onSubmit,
             icon,
             entitlementId: initialData?.entitlementId, 
             allocations: initialData?.allocations, 
-            transports: initialData?.transports || []
+            transports: initialData?.transports || [],
+            privacy
         };
 
         await onSubmit(tripData);
@@ -343,6 +347,32 @@ export const TripModal: React.FC<TripModalProps> = ({ isOpen, onClose, onSubmit,
                                 </button>
                             );
                         })}
+                    </div>
+                </div>
+
+                {/* Privacy Setting Section */}
+                <div className="space-y-2 pt-4 border-t border-gray-100 dark:border-white/5">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                         <div className="space-y-0.5">
+                             <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase ml-1">Privacy Control & Shared Status</label>
+                             <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium ml-1">Defines flight visibility. Public logs are queryable across rosters without exposing private items.</p>
+                         </div>
+                         <div className="flex bg-gray-100 dark:bg-white/5 p-1 rounded-xl gap-1 shrink-0 self-start md:self-auto">
+                             <button
+                                 type="button"
+                                 onClick={() => setPrivacy('Private')}
+                                 className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-black transition-all ${privacy === 'Private' ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300'}`}
+                             >
+                                 <span className="material-icons-outlined text-sm">lock</span> Private
+                             </button>
+                             <button
+                                 type="button"
+                                 onClick={() => setPrivacy('Public')}
+                                 className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-black transition-all ${privacy === 'Public' ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300'}`}
+                             >
+                                 <span className="material-icons-outlined text-sm">public</span> Public Flight
+                             </button>
+                         </div>
                     </div>
                 </div>
 

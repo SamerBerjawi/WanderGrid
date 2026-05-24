@@ -491,7 +491,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                         <div 
                             key={stop.id} 
                             className="relative group mb-8" // Increased margin from mb-4 to mb-8
-                            draggable={!stop.isLocked}
+                            draggable={true}
                             onDragStart={(e) => handleDragStart(e, index)}
                             onDragOver={(e) => handleDragOver(e, index)}
                             onDragEnd={handleDragEnd}
@@ -510,7 +510,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                                 <div className="flex gap-4 items-start">
                                     {/* Drag Handle & Order */}
                                     <div className="flex flex-col items-center justify-start gap-1 w-12 shrink-0 pt-2 cursor-grab active:cursor-grabbing text-gray-300 hover:text-blue-500">
-                                        {!stop.isLocked && <span className="material-icons-outlined text-lg">drag_indicator</span>}
+                                        <span className="material-icons-outlined text-lg">drag_indicator</span>
                                         <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs border-2 ${stop.type === 'Start' ? 'border-emerald-500 text-emerald-500' : stop.type === 'End' ? 'border-rose-500 text-rose-500' : 'border-gray-300 text-gray-400 dark:border-gray-600'}`}>
                                             {index + 1}
                                         </div>
@@ -520,29 +520,24 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                                     <div className="flex-1 space-y-4">
                                         {/* Row 1: Location & Controls */}
                                         <div className="flex justify-between items-start">
-                                            <div className="flex-1">
-                                                {stop.isLocked ? (
-                                                    <div className="text-xl font-black text-gray-900 dark:text-white">{stop.name}</div>
-                                                ) : (
-                                                    <Autocomplete 
-                                                        value={stop.name}
-                                                        onChange={val => updateStop(index, 'name', val)}
-                                                        fetchSuggestions={fetchLocationSuggestions}
-                                                        placeholder="Search Location..."
-                                                        className="!bg-transparent !border-none !p-0 !text-xl !font-black !text-gray-900 dark:!text-white placeholder:text-gray-300"
-                                                    />
+                                            <div className="flex-1 flex gap-2 items-center">
+                                                <Autocomplete 
+                                                    value={stop.name}
+                                                    onChange={val => updateStop(index, 'name', val)}
+                                                    fetchSuggestions={fetchLocationSuggestions}
+                                                    placeholder="Search Location..."
+                                                    className="!bg-transparent !border-none !p-0 !text-xl !font-black !text-gray-900 dark:!text-white placeholder:text-gray-300 flex-1"
+                                                />
+                                                {stop.isLocked && (
+                                                    <span className="text-[9px] bg-sky-100 dark:bg-sky-950/40 text-sky-800 dark:text-sky-300 font-black uppercase tracking-widest px-2 py-0.5 rounded-md border border-sky-200 dark:border-sky-800/20 shrink-0">Booked Stop</span>
                                                 )}
                                             </div>
                                             <div className="flex gap-2">
-                                                {!stop.isLocked && (
-                                                    <>
-                                                        <div className="flex bg-gray-100 dark:bg-white/5 rounded-lg p-0.5">
-                                                            <button onClick={() => handleMoveStop(index, -1)} disabled={index===0} className="w-6 h-6 flex items-center justify-center rounded hover:bg-white dark:hover:bg-gray-700 text-gray-400 hover:text-blue-600 disabled:opacity-20 transition-all"><span className="material-icons-outlined text-sm">keyboard_arrow_up</span></button>
-                                                            <button onClick={() => handleMoveStop(index, 1)} disabled={isLast} className="w-6 h-6 flex items-center justify-center rounded hover:bg-white dark:hover:bg-gray-700 text-gray-400 hover:text-blue-600 disabled:opacity-20 transition-all"><span className="material-icons-outlined text-sm">keyboard_arrow_down</span></button>
-                                                        </div>
-                                                        <button onClick={() => handleRemoveStop(index)} className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-all"><span className="material-icons-outlined text-lg">close</span></button>
-                                                    </>
-                                                )}
+                                                <div className="flex bg-gray-100 dark:bg-white/5 rounded-lg p-0.5">
+                                                    <button onClick={() => handleMoveStop(index, -1)} disabled={index===0} className="w-6 h-6 flex items-center justify-center rounded hover:bg-white dark:hover:bg-gray-700 text-gray-400 hover:text-blue-600 disabled:opacity-20 transition-all"><span className="material-icons-outlined text-sm">keyboard_arrow_up</span></button>
+                                                    <button onClick={() => handleMoveStop(index, 1)} disabled={isLast} className="w-6 h-6 flex items-center justify-center rounded hover:bg-white dark:hover:bg-gray-700 text-gray-400 hover:text-blue-600 disabled:opacity-20 transition-all"><span className="material-icons-outlined text-sm">keyboard_arrow_down</span></button>
+                                                </div>
+                                                <button onClick={() => handleRemoveStop(index)} className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-all"><span className="material-icons-outlined text-lg">close</span></button>
                                             </div>
                                         </div>
 
@@ -552,21 +547,19 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                                                 <div className="flex-1">
                                                     <div className="flex justify-between items-center mb-1">
                                                         <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Arrival</label>
-                                                        {!stop.isLocked && (
-                                                            <button 
-                                                                onClick={() => updateStop(index, 'isDateLinked', !stop.isDateLinked)}
-                                                                className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider border transition-all ${stop.isDateLinked ? 'bg-blue-100 border-blue-200 text-blue-700' : 'bg-white border-gray-200 text-gray-400'}`}
-                                                                title="Link to Previous Departure"
-                                                            >
-                                                                <span className="material-icons-outlined text-[10px]">link</span> {stop.isDateLinked ? 'Linked' : 'Unlinked'}
-                                                            </button>
-                                                        )}
+                                                        <button 
+                                                            onClick={() => updateStop(index, 'isDateLinked', !stop.isDateLinked)}
+                                                            className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider border transition-all ${stop.isDateLinked ? 'bg-blue-100 border-blue-200 text-blue-700' : 'bg-white border-gray-200 text-gray-400'}`}
+                                                            title="Link to Previous Departure"
+                                                        >
+                                                            <span className="material-icons-outlined text-[10px]">link</span> {stop.isDateLinked ? 'Linked' : 'Unlinked'}
+                                                        </button>
                                                     </div>
                                                     <Input 
                                                         type="date" 
                                                         value={stop.date} 
                                                         onChange={e => updateStop(index, 'date', e.target.value)} 
-                                                        disabled={stop.isLocked || stop.isDateLinked}
+                                                        disabled={stop.isDateLinked}
                                                         className={`!py-1.5 !text-xs !font-bold !bg-white dark:!bg-black/20 !border-gray-200 dark:!border-white/10 ${stop.isDateLinked ? 'opacity-60 cursor-not-allowed' : ''}`}
                                                     />
                                                 </div>
@@ -585,14 +578,13 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                                                         min={stop.date}
                                                         onChange={e => updateStop(index, 'endDate', e.target.value)} 
                                                         className="!py-1.5 !text-xs !font-bold !bg-white dark:!bg-black/20 !border-gray-200 dark:!border-white/10"
-                                                        disabled={stop.isLocked}
                                                     />
                                                 </div>
                                             )}
                                         </div>
 
                                         {/* Row 3: Purpose Pills */}
-                                        {stop.type !== 'Start' && stop.type !== 'End' && !stop.isLocked && (
+                                        {stop.type !== 'Start' && stop.type !== 'End' && (
                                             <div>
                                                 <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-2 block">Stopover Reason</label>
                                                 <div className="flex flex-wrap gap-2">

@@ -9,6 +9,8 @@ interface ExpeditionMap3DProps {
     animateRoutes?: boolean;
     showFrequencyWeight?: boolean;
     autoPlay?: boolean; // Cinematic Mode Trigger
+    activeLayer?: 'standard' | 'night' | 'satellite';
+    onActiveLayerChange?: (layer: 'standard' | 'night' | 'satellite') => void;
 }
 
 interface ArcData {
@@ -86,12 +88,42 @@ const getGreatCircleAngle = (lat1: number, lng1: number, lat2: number, lng2: num
     return 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 };
 
-export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({ trips, onTripClick, animateRoutes = true, showFrequencyWeight = true, autoPlay = false }) => {
+export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({ 
+    trips, 
+    onTripClick, 
+    animateRoutes = true, 
+    showFrequencyWeight = true, 
+    autoPlay = false,
+    activeLayer: activeLayerProp,
+    onActiveLayerChange
+}) => {
     const globeEl = useRef<any>(null);
     const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
     const containerRef = useRef<HTMLDivElement>(null);
-    const [activeLayer, setActiveLayer] = useState<'standard' | 'night' | 'satellite'>('standard');
+    const [localActiveLayer, setLocalActiveLayer] = useState<'standard' | 'night' | 'satellite'>('standard');
+    
+    const activeLayer = activeLayerProp !== undefined ? activeLayerProp : localActiveLayer;
+    
+    useEffect(() => {
+        if (activeLayerProp !== undefined) {
+            setLocalActiveLayer(activeLayerProp);
+        }
+    }, [activeLayerProp]);
+
+    const setActiveLayer = (val: 'standard' | 'night' | 'satellite') => {
+        setLocalActiveLayer(val);
+        if (onActiveLayerChange) onActiveLayerChange(val);
+    };
+
     const isDark = useDarkMode();
+    
+    // Custom Globe Controls States
+    const [autoRotate, setAutoRotate] = useState(true);
+    const [autoRotateSpeed, setAutoRotateSpeed] = useState(0.5);
+    const [showGraticules, setShowGraticules] = useState(false);
+    const [atmosphereAltitude, setAtmosphereAltitude] = useState(0.15);
+    const [showAtmosphere, setShowAtmosphere] = useState(true);
+    const [showControlsPanel, setShowControlsPanel] = useState(false);
     
     // Cinematic State
     const [currentLegLabel, setCurrentLegLabel] = useState<string>('');
@@ -203,14 +235,35 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({ trips, onTripC
         return () => resizeObserver.disconnect();
     }, []);
 
-    // Initial Setup
+    // Control Updates for AutoRotate
     useEffect(() => {
         if (globeEl.current) {
-            globeEl.current.controls().autoRotate = !autoPlay;
-            globeEl.current.controls().autoRotateSpeed = 0.5;
-            if (!autoPlay) globeEl.current.pointOfView({ lat: 20, lng: 0, altitude: 2.5 });
+            globeEl.current.controls().autoRotate = autoPlay ? false : autoRotate;
+            globeEl.current.controls().autoRotateSpeed = autoRotateSpeed;
+        }
+    }, [autoPlay, autoRotate, autoRotateSpeed]);
+
+    // Initial Camera Placement
+    useEffect(() => {
+        if (globeEl.current && !autoPlay) {
+            globeEl.current.pointOfView({ lat: 20, lng: 0, altitude: 2.5 });
         }
     }, [autoPlay]);
+
+    // Fly to region helper
+    const flyToRegion = (lat: number, lng: number, altitude: number) => {
+        if (globeEl.current) {
+            setAutoRotate(false); // Pause so they can look
+            globeEl.current.pointOfView({ lat, lng, altitude }, 3000);
+        }
+    };
+
+    const REGION_PRESETS = [
+        { name: '🌎 Americas', lat: 15, lng: -90, altitude: 2.0 },
+        { name: '🇪🇺 Europe & Africa', lat: 30, lng: 15, altitude: 2.0 },
+        { name: '🌏 Asia & India', lat: 30, lng: 90, altitude: 2.0 },
+        { name: '🐨 Oceania', lat: -25, lng: 135, altitude: 2.0 },
+    ];
 
     // Cinematic Sequence Logic
     useEffect(() => {
@@ -252,9 +305,9 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({ trips, onTripC
     }, [autoPlay, sequentialPoints]);
 
     const getGlobeImage = () => {
-        if (activeLayer === 'satellite') return "//unpkg.com/three-globe/example/img/earth-blue-marble.jpg";
-        if (activeLayer === 'night') return "//unpkg.com/three-globe/example/img/earth-night.jpg";
-        return isDark ? "//unpkg.com/three-globe/example/img/earth-night.jpg" : "//unpkg.com/three-globe/example/img/earth-day.jpg";
+        if (activeLayer === 'satellite') return "https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg";
+        if (activeLayer === 'night') return "https://unpkg.com/three-globe/example/img/earth-night.jpg";
+        return isDark ? "https://unpkg.com/three-globe/example/img/earth-night.jpg" : "https://unpkg.com/three-globe/example/img/earth-day.jpg";
     };
 
     return (
@@ -264,14 +317,17 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({ trips, onTripC
                 width={dimensions.width}
                 height={dimensions.height}
                 globeImageUrl={getGlobeImage()}
-                bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
+                bumpImageUrl="https://unpkg.com/three-globe/example/img/earth-topology.png"
                 backgroundColor={isDark ? "#000000" : "#f8fafc"}
+                showAtmosphere={showAtmosphere}
                 atmosphereColor={isDark || activeLayer !== 'standard' ? "#3a228a" : "#ffffff"}
-                atmosphereAltitude={0.15}
+                atmosphereAltitude={atmosphereAltitude}
+                showGraticules={showGraticules}
                 arcsData={arcs}
                 arcStartLat="startLat" arcStartLng="startLng" arcEndLat="endLat" arcEndLng="endLng"
                 arcColor="color" arcDashLength={animateRoutes ? 0.4 : 1} arcDashGap={animateRoutes ? 0.2 : 0}
                 arcDashAnimateTime={animateRoutes ? 2000 : 0} arcStroke={showFrequencyWeight ? 0.5 : 0.2} arcAltitude="alt"
+                arcResolution={128}
                 pointsData={points} pointLat="lat" pointLng="lng" pointColor="color" pointRadius="radius" pointAltitude={0.01} pointResolution={2}
                 onArcClick={(arc: any) => onTripClick && onTripClick(arc.tripId)}
                 arcLabel={(arc: any) => `<div style="background: rgba(0,0,0,0.8); color: white; padding: 4px 8px; border-radius: 4px; font-family: sans-serif; font-size: 12px; border: 1px solid rgba(255,255,255,0.2);"><strong>${arc.tripName}</strong><br/>${arc.name}</div>`}
@@ -306,6 +362,113 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({ trips, onTripC
                             </button>
                         ))}
                     </div>
+                </div>
+            )}
+
+            {/* Customizable Sidebar Controls Header on the Right side */}
+            {!autoPlay && (
+                <div className="absolute top-6 right-6 flex flex-col items-end gap-3 z-[5000]">
+                    <button
+                        onClick={() => setShowControlsPanel(!showControlsPanel)}
+                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 shadow-2xl ${showControlsPanel ? 'bg-blue-600 text-white rotate-45' : isDark ? 'bg-[#1e293b]/90 text-white hover:bg-slate-800' : 'bg-white/90 text-slate-700 hover:bg-slate-100'} border ${isDark ? 'border-white/10' : 'border-slate-200'}`}
+                        title="Globe Controls"
+                    >
+                        <span className="material-icons-outlined text-lg">{showControlsPanel ? 'close' : 'tune'}</span>
+                    </button>
+
+                    {showControlsPanel && (
+                        <div className={`p-5 rounded-2xl border shadow-2xl flex flex-col gap-5 w-72 text-xs transition-all duration-300 animate-fade-in ${isDark ? 'bg-[#0f172a]/95 backdrop-blur-md border-white/10 text-white' : 'bg-white/95 backdrop-blur-md border-slate-200 text-slate-800'}`}>
+                            <div className="flex items-center gap-2 border-b pb-2.5 border-slate-700/20 dark:border-white/10">
+                                <span className="material-icons-outlined text-blue-500 text-base">explore</span>
+                                <span className="font-bold uppercase tracking-wider text-[11px]">3D Globe Customization</span>
+                            </div>
+
+                            {/* Rotation control */}
+                            <div className="flex flex-col gap-2">
+                                <div className="flex items-center justify-between">
+                                    <span className="font-medium text-slate-400 dark:text-slate-300">Continuous Auto-Spin</span>
+                                    <button 
+                                        onClick={() => setAutoRotate(!autoRotate)}
+                                        className={`w-11 h-6 px-1 rounded-full transition-all flex items-center ${autoRotate ? 'bg-blue-500 justify-end' : 'bg-slate-600/40 dark:bg-slate-800/60 justify-start'}`}
+                                    >
+                                        <div className="w-4 h-4 bg-white rounded-full shadow-md" />
+                                    </button>
+                                </div>
+                                {autoRotate && (
+                                    <div className="flex flex-col gap-1 mt-1 pl-1">
+                                        <div className="flex justify-between text-[10px] text-slate-400">
+                                            <span>Spin Velocity</span>
+                                            <span>{autoRotateSpeed.toFixed(1)}x</span>
+                                        </div>
+                                        <input 
+                                            type="range"
+                                            min="0.1"
+                                            max="3"
+                                            step="0.1"
+                                            value={autoRotateSpeed}
+                                            onChange={(e) => setAutoRotateSpeed(parseFloat(e.target.value))}
+                                            className="w-full h-1 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Shading/Atmosphere overlay toggles */}
+                            <div className="flex flex-col gap-2.5 border-t border-b py-3 border-slate-700/10 dark:border-white/10">
+                                <div className="flex items-center justify-between">
+                                    <span className="font-medium text-slate-400 dark:text-slate-300">Atmosphere Shield Glow</span>
+                                    <button 
+                                        onClick={() => setShowAtmosphere(!showAtmosphere)}
+                                        className={`w-8 h-4 rounded-full transition-all duration-200 relative ${showAtmosphere ? 'bg-blue-500' : 'bg-slate-600/30'}`}
+                                    >
+                                        <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow-md transition-all ${showAtmosphere ? 'right-0.5' : 'left-0.5'}`} />
+                                    </button>
+                                </div>
+                                {showAtmosphere && (
+                                    <div className="flex flex-col gap-1 pl-1">
+                                        <div className="flex justify-between text-[10px] text-slate-400">
+                                            <span>Glow Altitude</span>
+                                            <span>{(atmosphereAltitude * 100).toFixed(0)}%</span>
+                                        </div>
+                                        <input 
+                                            type="range"
+                                            min="0.05"
+                                            max="0.30"
+                                            step="0.01"
+                                            value={atmosphereAltitude}
+                                            onChange={(e) => setAtmosphereAltitude(parseFloat(e.target.value))}
+                                            className="w-full h-1 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                                        />
+                                    </div>
+                                )}
+                                <div className="flex items-center justify-between mt-1">
+                                    <span className="font-medium text-slate-400 dark:text-slate-300">Grid Overlay (Graticules)</span>
+                                    <button 
+                                        onClick={() => setShowGraticules(!showGraticules)}
+                                        className={`w-8 h-4 rounded-full transition-all duration-200 relative ${showGraticules ? 'bg-blue-500' : 'bg-slate-600/30'}`}
+                                    >
+                                        <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow-md transition-all ${showGraticules ? 'right-0.5' : 'left-0.5'}`} />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Camera Presets / Fly to preset */}
+                            <div className="flex flex-col gap-2">
+                                <span className="font-semibold text-[10px] uppercase tracking-wider text-slate-400">Region Snap-to-Fly</span>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {REGION_PRESETS.map((preset) => (
+                                        <button
+                                            key={preset.name}
+                                            onClick={() => flyToRegion(preset.lat, preset.lng, preset.altitude)}
+                                            className={`p-2 py-1.5 rounded-xl border font-semibold text-left truncate transition-all flex items-center gap-1 ${isDark ? 'bg-white/5 border-white/5 text-slate-300 hover:bg-slate-800/80 hover:text-white' : 'bg-slate-50 border-slate-100 text-slate-600 hover:bg-slate-100/80 hover:text-slate-800'}`}
+                                        >
+                                            <span className="text-[10px] md:text-xs truncate">{preset.name}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

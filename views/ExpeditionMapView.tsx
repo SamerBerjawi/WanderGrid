@@ -6,6 +6,7 @@ import { dataService } from '../services/mockDb';
 import { Trip } from '../types';
 import { Input, MultiSelect } from '../components/ui';
 import { resolvePlaceName, getCoordinates } from '../services/geocoding';
+import { runAfterFirstPaint, mapWithConcurrency } from '../services/utils';
 
 interface ExpeditionMapViewProps {
     onTripClick: (tripId: string) => void;
@@ -27,34 +28,6 @@ const useDarkMode = () => {
 };
 
 const GEO_CONCURRENCY_LIMIT = 6;
-
-const runAfterFirstPaint = (fn: () => void) => {
-    if (typeof window === 'undefined') return;
-    if ('requestIdleCallback' in window) {
-        (window as Window & { requestIdleCallback: (cb: () => void) => number }).requestIdleCallback(fn);
-        return;
-    }
-    setTimeout(fn, 0);
-};
-
-const mapWithConcurrency = async <T, R>(
-    items: T[],
-    worker: (item: T) => Promise<R>,
-    concurrency: number
-) => {
-    const results: R[] = new Array(items.length);
-    let index = 0;
-    const runner = async () => {
-        while (index < items.length) {
-            const current = index;
-            index += 1;
-            results[current] = await worker(items[current]);
-        }
-    };
-    const runners = Array.from({ length: Math.min(concurrency, items.length) }, runner);
-    await Promise.all(runners);
-    return results;
-};
 
 // Coordinate Cache to prevent excessive API calls
 const COORD_CACHE_KEY = 'wandergrid_coord_cache';
@@ -89,6 +62,16 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
     const [showFrequencyWeight, setShowFrequencyWeight] = useState(true);
     const [animateRoutes, setAnimateRoutes] = useState(true);
     const [showCountries, setShowCountries] = useState(false); 
+    const [activeLayer, setActiveLayer] = useState<'standard' | 'satellite' | 'topography' | 'terrain' | 'hillshade'>('standard');
+    const [clusterMode, setClusterMode] = useState<boolean>(true);
+    const [isCollapsed, setIsCollapsed] = useState(true);
+
+    // AirTrail Visual Customizations
+    const [hideAirportCircles, setHideAirportCircles] = useState(false);
+    const [airportCircleSize, setAirportCircleSize] = useState(6);
+    const [proportionalArcThickness, setProportionalArcThickness] = useState(true);
+    const [showAviationCharts, setShowAviationCharts] = useState(false);
+    const [showAviationPanel, setShowAviationPanel] = useState(false);
 
     // Data for Highlights
     const [visitedCountryCodes, setVisitedCountryCodes] = useState<string[]>([]);
@@ -314,23 +297,32 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
         <div className="flex flex-col h-full w-full gap-6">
             
             {/* HERO HEADER */}
-            <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] p-6 shadow-xl border border-gray-100 dark:border-white/5 flex flex-col xl:flex-row items-start justify-between gap-6 shrink-0 relative overflow-visible z-20">
+            <div className="bg-white dark:bg-gray-900 rounded-[1.5rem] md:rounded-[2.5rem] p-4 md:p-6 shadow-xl border border-gray-100 dark:border-white/5 flex flex-col xl:flex-row items-stretch xl:items-start justify-between gap-4 md:gap-6 shrink-0 relative overflow-visible z-20">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-500/5 to-purple-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
 
-                <div className="flex flex-col md:flex-row items-center gap-8 w-full xl:w-auto relative z-10 xl:py-2">
-                    <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 rounded-[1.5rem] bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
-                            <span className="material-icons-outlined text-3xl">public</span>
+                <div className="flex items-center justify-between gap-4 w-full xl:w-auto relative z-10">
+                    <div className="flex items-center gap-3 md:gap-4">
+                        <div className="w-12 h-12 md:w-16 md:h-16 rounded-[1.2rem] md:rounded-[1.5rem] bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30 shrink-0">
+                            <span className="material-icons-outlined text-2xl md:text-3xl">public</span>
                         </div>
                         <div>
-                            <h2 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight leading-none">Global Ops</h2>
-                            <p className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mt-1.5">Expedition Logistics</p>
+                            <h2 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white tracking-tight leading-none">Global Ops</h2>
+                            <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mt-1 md:mt-1.5 leading-none">Expedition Logistics</p>
                         </div>
                     </div>
+
+                    {/* Toggle Collapse Button for Mobile / Tablet */}
+                    <button 
+                        onClick={() => setIsCollapsed(!isCollapsed)}
+                        className="xl:hidden flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-300 font-bold text-xs hover:bg-gray-200 dark:hover:bg-white/10 transition-colors"
+                    >
+                        <span className="material-icons-outlined text-sm">{isCollapsed ? 'filter_list' : 'expand_less'}</span>
+                        {isCollapsed ? 'Filters' : 'Collapse'}
+                    </button>
                 </div>
 
                 {/* Filters & Toggles */}
-                <div className="flex flex-col gap-3 w-full xl:w-auto relative z-10">
+                <div className={`xl:flex flex-col gap-3 w-full xl:w-auto relative z-10 transition-all duration-300 ${isCollapsed ? 'hidden' : 'flex'}`}>
                     <div className="flex flex-col md:flex-row items-center gap-3">
                         
                         {/* Map Type Toggle (2D/3D) */}
@@ -448,9 +440,83 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                         <span className="material-icons-outlined text-lg">public_off</span>
                                     </button>
                                 )}
+                                
+                                <button 
+                                    onClick={() => setShowAviationPanel(!showAviationPanel)}
+                                    className={`flex items-center justify-center gap-2 px-3 py-2 rounded-2xl border transition-all ${
+                                        showAviationPanel 
+                                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' 
+                                        : 'bg-transparent border-gray-200 dark:border-white/10 text-gray-400 hover:text-gray-600 dark:hover:text-white'
+                                    }`}
+                                    title="AirTrail Map Layer Customizer"
+                                >
+                                    <span className="material-icons-outlined text-lg">settings</span>
+                                </button>
                             </div>
                         )}
                     </div>
+
+                    {showAviationPanel && (
+                        <div className="w-full bg-gray-50/50 dark:bg-white/5 border border-gray-200/50 dark:border-white/10 rounded-3xl p-5 grid grid-cols-1 md:grid-cols-4 gap-6 animate-fade-in mb-3">
+                            <div className="space-y-2">
+                                <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest block">Airport Indicators</span>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <label className="flex items-center gap-2.5 cursor-pointer">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={hideAirportCircles} 
+                                            onChange={e => setHideAirportCircles(e.target.checked)} 
+                                            className="rounded text-indigo-600 dark:bg-gray-800"
+                                        />
+                                        <span className="text-xs font-bold text-gray-600 dark:text-gray-300">Hide Core Airport Circles</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest block">Indicator Diameter ({airportCircleSize}px)</span>
+                                <input 
+                                    type="range"
+                                    min="2"
+                                    max="14"
+                                    value={airportCircleSize}
+                                    disabled={hideAirportCircles}
+                                    onChange={e => setAirportCircleSize(parseInt(e.target.value))}
+                                    className="w-full accent-indigo-600 disabled:opacity-30"
+                                />
+                            </div>
+
+                            <div className="space-y-1">
+                                <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest block">Vessel Flow Routing</span>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <label className="flex items-center gap-2.5 cursor-pointer">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={proportionalArcThickness} 
+                                            onChange={e => setProportionalArcThickness(e.target.checked)} 
+                                            className="rounded text-indigo-600 dark:bg-gray-800"
+                                        />
+                                        <span className="text-xs font-bold text-gray-600 dark:text-gray-300">Proportional Route Weights</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div className="space-y-1">
+                                <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest block">Aeronautical Layer</span>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <label className="flex items-center gap-2.5 cursor-pointer">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={showAviationCharts} 
+                                            onChange={e => setShowAviationCharts(e.target.checked)} 
+                                            className="rounded text-indigo-600 dark:bg-gray-800"
+                                        />
+                                        <span className="text-xs font-bold text-gray-600 dark:text-gray-300">openAIP Airways Overlay</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="flex flex-col md:flex-row gap-3">
                         <div className="flex gap-2 w-full md:w-auto min-w-[300px]">
@@ -506,6 +572,13 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                             showCountries={showCountries}
                             viewMode={viewMode}
                             visitedPlaces={visitedPlaces}
+                            activeLayer={activeLayer}
+                            onChangeActiveLayer={setActiveLayer}
+                            clusterMode={clusterMode}
+                            hideAirportCircles={hideAirportCircles}
+                            airportCircleSize={airportCircleSize}
+                            proportionalArcThickness={proportionalArcThickness}
+                            showAviationCharts={showAviationCharts}
                         />
                     ) : (
                         <ExpeditionMap3D
@@ -514,6 +587,14 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                             onTripClick={onTripClick}
                             animateRoutes={animateRoutes}
                             showFrequencyWeight={showFrequencyWeight}
+                            activeLayer={activeLayer === 'topography' ? 'night' : (activeLayer === 'standard' ? 'standard' : 'satellite')}
+                            onActiveLayerChange={(layer: 'standard' | 'night' | 'satellite') => {
+                                if (layer === 'night') {
+                                    setActiveLayer('topography');
+                                } else {
+                                    setActiveLayer(layer);
+                                }
+                            }}
                         />
                     )}
                     

@@ -18,9 +18,14 @@ const DEFAULT_LOCATIONS = [
 
 export const TimezoneSlider: React.FC = () => {
     const [locations, setLocations] = useState<TimezoneLocation[]>([]);
-    const [sliderValue, setSliderValue] = useState(14); // 2 PM default reference
+    const [sliderValue, setSliderValue] = useState(() => {
+        const now = new Date();
+        return now.getHours() + now.getMinutes() / 60;
+    });
     const [newCity, setNewCity] = useState('');
     const [isAdding, setIsAdding] = useState(false);
+
+    const localOffset = useMemo(() => -(new Date().getTimezoneOffset() / 60), []);
 
     useEffect(() => {
         // Initialize with defaults + calculated offsets
@@ -29,7 +34,17 @@ export const TimezoneSlider: React.FC = () => {
                 const offset = getOffset(loc.timezone);
                 return { ...loc, offset };
             }));
-            setLocations(enriched);
+            
+            // Add user's local timezone as the first location if not present
+            const userTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            const userOffset = getOffset(userTz);
+            const userLoc = { id: 'local', name: 'Local Time', timezone: userTz, offset: userOffset };
+            
+            if (!enriched.find(l => l.timezone === userTz)) {
+                setLocations([userLoc, ...enriched]);
+            } else {
+                setLocations(enriched);
+            }
         };
         init();
     }, []);
@@ -75,26 +90,28 @@ export const TimezoneSlider: React.FC = () => {
     // We base the slider on UTC time (0-24) for easier calculation, but display relative to the first location (Home Base)
     // Actually, simpler: Slider represents UTC Hour.
     
-    const renderHourBlock = (utcHour: number, offset: number) => {
-        const localHour = (utcHour + offset + 24) % 24;
-        const isBusiness = localHour >= 9 && localHour < 18;
-        const isNight = localHour >= 22 || localHour < 7;
+    const renderHourBlock = (localHour: number, offset: number) => {
+        const utc = localHour - localOffset;
+        const locHour = (utc + offset + 2400) % 24;
+        const isBusiness = locHour >= 9 && locHour < 18;
+        const isNight = locHour >= 22 || locHour < 7;
         
         let bgClass = 'bg-gray-100 dark:bg-white/5'; // Transition/Personal
         if (isBusiness) bgClass = 'bg-emerald-400 dark:bg-emerald-600';
         if (isNight) bgClass = 'bg-slate-300 dark:bg-slate-700 opacity-50';
 
         return (
-            <div key={utcHour} className={`flex-1 h-8 first:rounded-l-lg last:rounded-r-lg mx-[1px] relative group ${bgClass}`}>
+            <div key={localHour} className={`flex-1 h-8 first:rounded-l-lg last:rounded-r-lg mx-[1px] relative group ${bgClass}`}>
                 <div className="hidden group-hover:flex absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-black text-white text-[10px] rounded whitespace-nowrap z-10">
-                    {Math.floor(localHour)}:00
+                    {Math.floor(locHour)}:00
                 </div>
             </div>
         );
     };
 
-    const formatLocalTime = (utcSlider: number, offset: number) => {
-        const local = (utcSlider + offset + 24) % 24;
+    const formatLocalTime = (localSlider: number, offset: number) => {
+        const utc = localSlider - localOffset;
+        const local = (utc + offset + 2400) % 24;
         const h = Math.floor(local);
         const m = Math.floor((local - h) * 60);
         const ampm = h >= 12 ? 'PM' : 'AM';
@@ -110,7 +127,8 @@ export const TimezoneSlider: React.FC = () => {
         for(let h=0; h<24; h++) {
             let isGood = true;
             for(const loc of locations) {
-                const localH = (h + loc.offset + 24) % 24;
+                const utc = h - localOffset;
+                const localH = (utc + loc.offset + 2400) % 24;
                 if (localH < 9 || localH >= 18) { // Strict business hours
                     isGood = false;
                     break;
@@ -119,7 +137,7 @@ export const TimezoneSlider: React.FC = () => {
             if (isGood) map[h] = 1;
         }
         return map;
-    }, [locations]);
+    }, [locations, localOffset]);
 
     return (
         <Card noPadding className="rounded-[2.5rem] border-white/50 dark:border-white/10 shadow-2xl overflow-hidden flex flex-col h-full">
@@ -157,7 +175,7 @@ export const TimezoneSlider: React.FC = () => {
                         style={{ left: `calc(${(sliderValue / 24) * 100}% + 120px)` }} // Offset for label width approx
                     >
                         <div className="absolute -top-1 -translate-x-1/2 bg-rose-500 text-white text-[9px] font-bold px-1.5 rounded">
-                            UTC {Math.floor(sliderValue)}:00
+                            Local {Math.floor(sliderValue)}:00
                         </div>
                     </div>
 

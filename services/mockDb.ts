@@ -48,7 +48,14 @@ class DataService {
   private _importListeners: ((state: ImportState) => void)[] = [];
   private _useApi: boolean = true; 
 
-  constructor() {}
+  constructor() {
+      try {
+          const apiStatus = localStorage.getItem('wandergrid_api_status');
+          if (apiStatus === 'unavailable') {
+              this._useApi = false;
+          }
+      } catch (e) {}
+  }
 
   async login(email: string, pass: string): Promise<User | null> {
     const users = await this.getUsers();
@@ -120,7 +127,17 @@ class DataService {
           }
           return await res.json();
       } catch (e) {
-          console.warn(`Backend unavailable (${endpoint}). Switching to LocalStorage mode.`);
+          let alreadyWarned = false;
+          try {
+              alreadyWarned = localStorage.getItem('wandergrid_api_status') === 'unavailable';
+          } catch(err) {}
+
+          if (!alreadyWarned) {
+              console.warn(`Backend unavailable (${endpoint}). Switching to LocalStorage mode.`);
+              try {
+                  localStorage.setItem('wandergrid_api_status', 'unavailable');
+              } catch (err) {}
+          }
           this._useApi = false; 
           return this.localFetch<T>(endpoint, options);
       }
@@ -247,9 +264,51 @@ class DataService {
       return updatedTrip;
   }
 
-  async getTrips(): Promise<Trip[]> { return this.fetch<Trip[]>('/trips'); }
+  async getTrips(): Promise<Trip[]> { 
+    const allTrips = await this.fetch<Trip[]>('/trips'); 
+    
+    let loggedInUser: any = null;
+    try {
+      const stored = localStorage.getItem('wandergrid_session_user');
+      if (stored) loggedInUser = JSON.parse(stored);
+    } catch (e) {}
+
+    if (!loggedInUser) {
+      return allTrips.filter(t => t.privacy === 'Public');
+    }
+
+    if (loggedInUser.role === 'Admin') {
+      return allTrips;
+    }
+
+    return allTrips.filter(t => 
+      t.participants.includes(loggedInUser.id) || 
+      t.privacy === 'Public'
+    );
+  }
+
   async addTrip(trip: Trip): Promise<Trip> {
     const intelligentTrip = await this.processGeocoding(trip);
+    
+    let loggedInUser: any = null;
+    try {
+      const stored = localStorage.getItem('wandergrid_session_user');
+      if (stored) loggedInUser = JSON.parse(stored);
+    } catch (e) {}
+
+    if (loggedInUser) {
+      if (!intelligentTrip.participants) {
+        intelligentTrip.participants = [];
+      }
+      if (!intelligentTrip.participants.includes(loggedInUser.id)) {
+        intelligentTrip.participants.push(loggedInUser.id);
+      }
+    }
+
+    if (!intelligentTrip.privacy) {
+      intelligentTrip.privacy = 'Private'; // Default to maximum privacy
+    }
+
     return this.fetch<Trip>('/trips', { method: 'POST', body: JSON.stringify(intelligentTrip) });
   }
 
@@ -327,6 +386,8 @@ class DataService {
           if (state.caches?.geo && Array.isArray(state.caches.geo)) {
               localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(state.caches.geo));
           }
+          // Clear dashboard cached stats on import to avoid stale states
+          localStorage.removeItem('wandergrid_dashboard_cache_v1');
           return Promise.resolve();
       } catch (e) { return Promise.reject(e); }
   }

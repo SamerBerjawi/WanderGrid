@@ -2,7 +2,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Button, Badge, Input, Select, Modal } from '../components/ui';
 import { TripModal } from '../components/TripModal';
-import { LeaveRequestModal } from '../components/LeaveRequestModal';
 import { dataService } from '../services/mockDb';
 import { Trip, User, WorkspaceSettings, EntitlementType, PublicHoliday } from '../types';
 
@@ -33,7 +32,6 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
     // Post-Trip Workflow State
     const [pendingTrip, setPendingTrip] = useState<Trip | null>(null);
     const [showPostTripPrompt, setShowPostTripPrompt] = useState(false);
-    const [isTimeOffModalOpen, setIsTimeOffModalOpen] = useState(false);
 
     useEffect(() => {
         refreshData();
@@ -73,26 +71,9 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
         refreshData();
         setEditingTrip(null);
         setIsCreateTripOpen(false);
-
-        // Workflow Trigger: If newly created (or updated to have dates), prompt for Time Off
-        if (!tripData.entitlementId && savedTrip) {
-            setPendingTrip(savedTrip);
-            setShowPostTripPrompt(true);
-        }
     };
 
-    const handleConfirmBookTimeOff = () => {
-        setShowPostTripPrompt(false);
-        setIsTimeOffModalOpen(true);
-    };
 
-    const handleTimeOffSubmit = async (tripData: Trip) => {
-        // This is effectively an update to the trip we just created
-        await dataService.updateTrip(tripData);
-        refreshData();
-        setIsTimeOffModalOpen(false);
-        setPendingTrip(null);
-    };
 
     const handleDeleteTrip = async (tripId: string) => {
         await dataService.deleteTrip(tripId);
@@ -270,16 +251,49 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
             : years.sort((a, b) => a - b);
     }, [timelineTripsByYear, activeTab]);
 
+    const estimatedBudgetPlanned = useMemo(() => {
+        return plannedTrips.reduce((sum, t) => {
+            const fCost = t.transports?.reduce((s, tr) => s + (tr.cost || 0), 0) || 0;
+            const aCost = t.accommodations?.reduce((s, ac) => s + (ac.cost || 0), 0) || 0;
+            return sum + fCost + aCost;
+        }, 0);
+    }, [plannedTrips]);
+
+    const estimatedBudgetConfirmed = useMemo(() => {
+        return confirmedTrips.reduce((sum, t) => {
+            const fCost = t.transports?.reduce((s, tr) => s + (tr.cost || 0), 0) || 0;
+            const aCost = t.accommodations?.reduce((s, ac) => s + (ac.cost || 0), 0) || 0;
+            return sum + fCost + aCost;
+        }, 0);
+    }, [confirmedTrips]);
+
+    const nextTripCountdown = useMemo(() => {
+        if (confirmedTrips.length === 0) return null;
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const next = confirmedTrips[0];
+        const diffTime = new Date(next.startDate).getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return {
+            name: next.name,
+            days: diffDays > 0 ? diffDays : 0,
+            location: next.location,
+            icon: next.icon || '✈️'
+        };
+    }, [confirmedTrips]);
+
     const renderTripCard = (trip: Trip) => {
         const days = Math.ceil((new Date(trip.endDate).getTime() - new Date(trip.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1;
         const transportCount = trip.transports?.length || 0;
         const accommodationCount = trip.accommodations?.length || 0;
+        const activityCount = trip.activities?.length || 0;
         
         const transportCost = trip.transports?.reduce((sum, f) => sum + (f.cost || 0), 0) || 0;
         const stayCost = trip.accommodations?.reduce((sum, a) => sum + (a.cost || 0), 0) || 0;
         const totalCost = transportCost + stayCost;
 
         const isSelected = selectedTripIds.has(trip.id);
+        const locationsArray = trip.locations || [];
 
         return (
             <div 
@@ -289,81 +303,134 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                     else if (onTripClick) onTripClick(trip.id);
                     else handleEditTrip(trip);
                 }}
-                className={`group relative bg-white dark:bg-gray-900 rounded-[2.5rem] border shadow-lg overflow-hidden flex flex-col hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 cursor-pointer ${
+                className={`group relative bg-white dark:bg-gray-900 rounded-[2rem] border shadow-md hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 cursor-pointer overflow-hidden flex flex-col ${
                     isSelectionMode && isSelected 
-                    ? 'border-blue-500 ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-black transform scale-[1.02]' 
+                    ? 'border-blue-500 ring-2 ring-blue-500/50 dark:ring-offset-black transform scale-[1.01]' 
                     : 'border-gray-100 dark:border-white/5'
                 }`}
             >
                     {isSelectionMode && (
-                        <div className={`absolute top-4 right-4 z-20 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-blue-500 border-blue-500' : 'bg-white border-gray-300 dark:bg-gray-800'}`}>
-                            {isSelected && <span className="material-icons-outlined text-white text-sm">check</span>}
+                        <div className={`absolute top-5 right-5 z-20 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-blue-500 border-blue-500 text-white' : 'bg-white border-gray-300 dark:bg-gray-800'}`}>
+                            {isSelected && <span className="material-icons-outlined text-sm">check</span>}
                         </div>
                     )}
 
-                    <div className="p-8 pb-6 flex justify-between items-start relative z-10 pointer-events-none">
-                        <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-white/5 text-4xl flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform">
+                    {/* Left Accent Bar depending on Status */}
+                    <div className={`absolute left-0 top-0 bottom-0 w-1.5 z-10 ${
+                        trip.status === 'Planning' ? 'bg-amber-500' :
+                        trip.status === 'Upcoming' ? 'bg-emerald-500' : 'bg-purple-500'
+                    }`} />
+
+                    <div className="p-6 pb-4 flex justify-between items-start relative z-10">
+                        <div className="flex items-center gap-4 min-w-0">
+                            <div className="w-12 h-12 rounded-xl bg-gray-50 dark:bg-white/5 text-2xl flex items-center justify-center shadow-inner shrink-0 group-hover:scale-105 transition-transform duration-300">
                                 {trip.icon || '✈️'}
                             </div>
-                            <div>
-                                <h3 className="text-xl font-black text-gray-900 dark:text-white leading-tight group-hover:text-blue-500 transition-colors line-clamp-1">{trip.name}</h3>
-                                <div className="text-xs font-bold text-gray-400 mt-2 flex items-center gap-1">
-                                    <span className="material-icons-outlined text-xs">location_on</span>
-                                    {trip.location || 'Remote'}
+                            <div className="min-w-0">
+                                <h3 className="text-base font-black text-gray-900 dark:text-white leading-tight group-hover:text-blue-500 transition-colors truncate">{trip.name}</h3>
+                                <div className="text-xs font-bold text-gray-400 mt-1 flex items-center gap-2">
+                                    <div className="flex items-center gap-1 min-w-0 pr-2 border-r border-gray-200 dark:border-white/10">
+                                        <span className="material-icons-outlined text-[11px] text-gray-300">location_on</span>
+                                        <span className="truncate max-w-[120px]">{trip.location || 'Remote'}</span>
+                                    </div>
+                                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider leading-none shrink-0 ${
+                                        trip.privacy === 'Public' 
+                                        ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30' 
+                                        : 'bg-gray-50 text-gray-400 dark:bg-white/5 dark:text-gray-400'
+                                    }`}>
+                                        <span className="material-icons-outlined text-[10px]">{trip.privacy === 'Public' ? 'public' : 'lock'}</span>
+                                        {trip.privacy || 'Private'}
+                                    </span>
                                 </div>
                             </div>
                         </div>
                         {!isSelectionMode && (
-                            <div className="pointer-events-auto">
-                                <button onClick={(e) => { e.stopPropagation(); handleEditTrip(trip); }} className="p-2 text-gray-300 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all">
-                                    <span className="material-icons-outlined text-lg">edit</span>
+                            <div className="shrink-0 ml-2">
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); handleEditTrip(trip); }} 
+                                    className="p-1.5 text-gray-300 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-gray-50 dark:hover:bg-white/5 rounded-lg transition-all"
+                                    title="Edit Trip Settings"
+                                >
+                                    <span className="material-icons-outlined text-base">edit</span>
                                 </button>
                             </div>
                         )}
                     </div>
 
-                    <div className="px-8 pb-4 relative z-10 pointer-events-none">
-                        <div className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-white/5 p-3 rounded-xl border border-gray-100 dark:border-white/5">
-                            <span className="material-icons-outlined text-sm">calendar_today</span>
+                    {/* Flight & Travel Timeline */}
+                    <div className="px-6 pb-4 relative z-10">
+                        <div className="flex items-center gap-2 text-[11px] font-bold text-gray-500 dark:text-gray-400 bg-gray-50/50 dark:bg-black/10 p-2.5 rounded-xl border border-gray-100 dark:border-white/5">
+                            <span className="material-icons-outlined text-xs text-blue-500">calendar_today</span>
                             <span>{new Date(trip.startDate).toLocaleDateString(undefined, {month:'short', day:'numeric'})} - {new Date(trip.endDate).toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'})}</span>
-                            <span className="w-1 h-1 rounded-full bg-gray-300 mx-1"/>
-                            <span>{days} Days</span>
+                            <span className="text-blue-600 dark:text-blue-400 ml-auto font-black shrink-0">{days} Days</span>
                         </div>
+
+                        {/* Stoppovers Summary Indicator */}
+                        {locationsArray.length > 0 ? (
+                            <div className="mt-3">
+                                <div className="text-[10px] font-black uppercase text-gray-400 tracking-wider flex items-center gap-1.5">
+                                    <span className="material-icons-outlined text-[11px] text-amber-500">alt_route</span>
+                                    <span>Route Matrix ({locationsArray.length} stops)</span>
+                                </div>
+                                <div className="mt-2 flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
+                                    {locationsArray.slice(0, 3).map((loc, idx) => (
+                                        <React.Fragment key={idx}>
+                                            {idx > 0 && <span className="text-gray-300 dark:text-gray-750 text-[9px] font-black shrink-0">→</span>}
+                                            <span className="text-[9px] font-black text-gray-500 dark:text-gray-300 bg-gray-100 dark:bg-white/5 px-2 py-0.5 rounded-md truncate max-w-[85px]" title={loc.name}>
+                                                {loc.name}
+                                            </span>
+                                        </React.Fragment>
+                                    ))}
+                                    {locationsArray.length > 3 && (
+                                        <span className="text-[9px] font-bold text-blue-500 bg-blue-50 dark:bg-blue-900/10 px-1.5 py-0.5 rounded shrink-0">
+                                            +{locationsArray.length - 3}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="mt-4 text-[10px] font-bold text-gray-400/80 italic flex items-center gap-1">
+                                <span className="material-icons-outlined text-xs">info_outline</span>
+                                <span>No stops defined in route planner</span>
+                            </div>
+                        )}
                     </div>
 
-                    <div className="mt-auto bg-gray-50/50 dark:bg-black/20 border-t border-gray-100 dark:border-white/5 p-6 relative z-10">
-                        <div className="flex justify-between items-center mb-4">
-                            <div className="flex gap-4">
-                                <div className="flex flex-col">
-                                    <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Transport</span>
-                                    <span className="text-lg font-black text-gray-800 dark:text-white">{transportCount}</span>
-                                </div>
-                                <div className="flex flex-col">
-                                    <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Stays</span>
-                                    <span className="text-lg font-black text-gray-800 dark:text-white">{accommodationCount}</span>
-                                </div>
+                    <div className="mt-auto bg-gray-50/50 dark:bg-black/15 border-t border-gray-100 dark:border-white/5 p-4 relative z-10">
+                        <div className="grid grid-cols-3 gap-2 text-center mb-4">
+                            <div className="bg-white dark:bg-gray-900 p-2 rounded-xl border border-gray-100 dark:border-white/5">
+                                <span className="text-[9px] font-bold uppercase text-gray-400 block tracking-tight">Transport</span>
+                                <span className="text-sm font-black text-gray-800 dark:text-white mt-0.5 block">{transportCount}</span>
                             </div>
-                            <div className="text-right">
-                                <span className="text-[10px] font-black uppercase text-emerald-500 tracking-widest">Est. Cost</span>
-                                <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">{formatCurrency(totalCost)}</div>
+                            <div className="bg-white dark:bg-gray-900 p-2 rounded-xl border border-gray-100 dark:border-white/5">
+                                <span className="text-[9px] font-bold uppercase text-gray-400 block tracking-tight">Stays</span>
+                                <span className="text-sm font-black text-gray-800 dark:text-white mt-0.5 block">{accommodationCount}</span>
                             </div>
+                            <div className="bg-white dark:bg-gray-900 p-2 rounded-xl border border-gray-100 dark:border-white/5">
+                                <span className="text-[9px] font-bold uppercase text-gray-400 block tracking-tight">Activities</span>
+                                <span className="text-sm font-black text-gray-800 dark:text-white mt-0.5 block">{activityCount}</span>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-between items-center mb-3">
+                            <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Estimated Cost</span>
+                            <span className="text-base font-black text-emerald-600 dark:text-emerald-400">{formatCurrency(totalCost)}</span>
                         </div>
 
                         {!isSelectionMode && (
                             <div className="flex gap-2 pointer-events-auto">
                                 {activeTab === 'Planned' ? (
-                                    <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleUpdateStatus(trip, 'Upcoming'); }} className="flex-1 !text-emerald-600 hover:!bg-emerald-50 border-emerald-100 dark:border-emerald-900/30 dark:bg-emerald-900/10" icon={<span className="material-icons-outlined text-sm">check_circle</span>}>
+                                    <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleUpdateStatus(trip, 'Upcoming'); }} className="flex-1 !text-emerald-600 hover:!bg-emerald-50 border-emerald-100 dark:border-emerald-900/30 dark:bg-emerald-900/10 text-xs font-bold" icon={<span className="material-icons-outlined text-sm">check_circle</span>}>
                                         Confirm
                                     </Button>
                                 ) : (
-                                    <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleUpdateStatus(trip, 'Planning'); }} className="flex-1 !text-amber-600 hover:!bg-amber-50 border-amber-100 dark:border-amber-900/30 dark:bg-amber-900/10" icon={<span className="material-icons-outlined text-sm">undo</span>}>
+                                    <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); handleUpdateStatus(trip, 'Planning'); }} className="flex-1 !text-amber-600 hover:!bg-amber-50 border-amber-100 dark:border-amber-900/30 dark:bg-amber-900/10 text-xs font-bold" icon={<span className="material-icons-outlined text-sm">undo</span>}>
                                             Revert
                                     </Button>
                                 )}
                                 {onTripClick && (
-                                <Button size="sm" variant="primary" onClick={(e) => { e.stopPropagation(); onTripClick(trip.id); }} className="flex-1 shadow-none" icon={<span className="material-icons-outlined text-sm">visibility</span>}>
-                                        Details
+                                <Button size="sm" variant="primary" onClick={(e) => { e.stopPropagation(); onTripClick(trip.id); }} className="flex-1 shadow-none text-xs font-bold" icon={<span className="material-icons-outlined text-sm">visibility</span>}>
+                                        Manage
                                 </Button>
                                 )}
                             </div>
@@ -378,8 +445,8 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
             
             <header className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 bg-white/40 dark:bg-gray-900/40 p-6 rounded-[2rem] backdrop-blur-xl border border-white/50 dark:border-white/5 shadow-xl">
                 <div className="space-y-1">
-                    <h2 className="text-4xl font-black text-gray-900 dark:text-white tracking-tight">Vacation Planner</h2>
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Logistics, flights, and itineraries.</p>
+                    <h2 className="text-4xl font-black text-gray-900 dark:text-white tracking-tight">Route Planner</h2>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Logistics, transport lines, and dynamic global itineraries.</p>
                 </div>
                 
                 <div className="flex flex-col md:flex-row gap-4 w-full xl:w-auto">
@@ -389,7 +456,7 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                             <span className="material-icons-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">search</span>
                             <input 
                                 type="text"
-                                placeholder="Search trips..."
+                                placeholder="Search trip names, stops..."
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
                                 className="w-full bg-transparent pl-10 pr-4 py-2 text-sm font-medium outline-none text-gray-800 dark:text-white placeholder-gray-400"
@@ -431,7 +498,7 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                                 onClick={toggleSelectionMode}
                                 icon={<span className="material-icons-outlined">checklist</span>}
                             >
-                                Select
+                                Batch Merge
                             </Button>
                             <Button 
                                 variant="primary" 
@@ -445,6 +512,57 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                     )}
                 </div>
             </header>
+
+            {/* Bento Dashboard Metrics */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-fade-in">
+                {/* Card 1: Upcoming Trips */}
+                <div className="bg-white dark:bg-gray-900 rounded-[2rem] p-6 border border-gray-100 dark:border-white/5 shadow-md flex items-center gap-4 relative overflow-hidden group hover:shadow-lg transition-all duration-300">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl translate-x-1/2 -translate-y-1/2 pointer-events-none group-hover:scale-125 transition-transform duration-500" />
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/20 text-emerald-500 dark:text-emerald-400 flex items-center justify-center text-2xl shadow-inner shrink-0">
+                        <span className="material-icons-outlined">flight_takeoff</span>
+                    </div>
+                    <div>
+                        <div className="text-2xl font-black text-gray-900 dark:text-white leading-tight">{confirmedTrips.length}</div>
+                        <div className="text-[10px] font-bold uppercase text-gray-400 tracking-wider mt-1">Upcoming Trips</div>
+                    </div>
+                </div>
+
+                {/* Card 2: Past Trips */}
+                <div className="bg-white dark:bg-gray-900 rounded-[2rem] p-6 border border-gray-100 dark:border-white/5 shadow-md flex items-center gap-4 relative overflow-hidden group hover:shadow-lg transition-all duration-300">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full blur-2xl translate-x-1/2 -translate-y-1/2 pointer-events-none group-hover:scale-125 transition-transform duration-500" />
+                    <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-950/20 text-purple-500 dark:text-purple-400 flex items-center justify-center text-2xl shadow-inner shrink-0">
+                        <span className="material-icons-outlined">history</span>
+                    </div>
+                    <div>
+                        <div className="text-2xl font-black text-gray-900 dark:text-white leading-tight">{historyTrips.length}</div>
+                        <div className="text-[10px] font-bold uppercase text-gray-400 tracking-wider mt-1">Past Trips</div>
+                    </div>
+                </div>
+
+                {/* Card 3: Planned Trips */}
+                <div className="bg-white dark:bg-gray-900 rounded-[2rem] p-6 border border-gray-100 dark:border-white/5 shadow-md flex items-center gap-4 relative overflow-hidden group hover:shadow-lg transition-all duration-300">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl translate-x-1/2 -translate-y-1/2 pointer-events-none group-hover:scale-125 transition-transform duration-500" />
+                    <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/20 text-amber-500 dark:text-amber-400 flex items-center justify-center text-2xl shadow-inner shrink-0">
+                        <span className="material-icons-outlined">calendar_today</span>
+                    </div>
+                    <div>
+                        <div className="text-2xl font-black text-gray-900 dark:text-white leading-tight">{plannedTrips.length}</div>
+                        <div className="text-[10px] font-bold uppercase text-gray-400 tracking-wider mt-1">Planned Trips</div>
+                    </div>
+                </div>
+
+                {/* Card 4: Projected Financial Balance */}
+                <div className="bg-white dark:bg-gray-900 rounded-[2rem] p-6 border border-gray-100 dark:border-white/5 shadow-md flex items-center gap-4 relative overflow-hidden group hover:shadow-lg transition-all duration-300">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-sky-500/5 rounded-full blur-2xl translate-x-1/2 -translate-y-1/2 pointer-events-none group-hover:scale-125 transition-transform duration-500" />
+                    <div className="w-12 h-12 rounded-2xl bg-sky-50 dark:bg-sky-950/20 text-sky-500 dark:text-sky-400 flex items-center justify-center text-2xl shadow-inner shrink-0">
+                        <span className="material-icons-outlined">account_balance_wallet</span>
+                    </div>
+                    <div>
+                        <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 leading-tight">{formatCurrency(estimatedBudgetPlanned + estimatedBudgetConfirmed)}</div>
+                        <div className="text-[10px] font-bold uppercase text-gray-400 tracking-wider mt-1">Total Estimated</div>
+                    </div>
+                </div>
+            </div>
 
             {/* Tabs */}
             <div className="flex border-b border-gray-200 dark:border-white/10">
@@ -476,12 +594,12 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                     {/* Add New Card Stub */}
                     <button 
                         onClick={() => { setEditingTrip(null); setIsCreateTripOpen(true); }}
-                        className="group min-h-[300px] rounded-[2.5rem] border-2 border-dashed border-gray-200 dark:border-white/10 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-white/5 flex flex-col items-center justify-center gap-4 transition-all duration-300"
+                        className="group min-h-[350px] rounded-[2rem] border-2 border-dashed border-gray-200 dark:border-white/10 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/5 dark:hover:bg-white/5 flex flex-col items-center justify-center gap-4 transition-all duration-300"
                     >
-                        <div className="w-20 h-20 rounded-full bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-gray-600 group-hover:bg-blue-500 group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-sm group-hover:shadow-blue-500/30 group-hover:scale-110">
-                            <span className="material-icons-outlined text-4xl">add</span>
+                        <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-white/5 text-gray-300 dark:text-gray-600 group-hover:bg-blue-500 group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-sm group-hover:shadow-blue-500/30 group-hover:scale-110">
+                            <span className="material-icons-outlined text-3xl">add</span>
                         </div>
-                        <span className="font-bold text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 uppercase tracking-widest text-xs">Plan New Adventure</span>
+                        <span className="font-bold text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 uppercase tracking-widest text-[10px]">Plan New Expedition</span>
                     </button>
                 </div>
             ) : (
@@ -521,7 +639,7 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                                         <h3 className="text-2xl font-black text-gray-900 dark:text-white opacity-40 group-hover:opacity-100 transition-opacity">{year}</h3>
                                         <div className="h-px bg-gray-100 dark:bg-white/5 flex-1" />
                                     </div>
-
+ 
                                     <div className={`grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 transition-all duration-500 ease-in-out origin-top ${isCollapsed ? 'opacity-0 scale-y-0 h-0 overflow-hidden' : 'opacity-100 scale-y-100 h-auto'}`}>
                                         {timelineTripsByYear[year].map(trip => renderTripCard(trip))}
                                     </div>
@@ -542,39 +660,7 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                 initialData={editingTrip}
             />
 
-            {/* Post-Creation Prompt Modal */}
-            <Modal isOpen={showPostTripPrompt} onClose={() => setShowPostTripPrompt(false)} title="Trip Successfully Created!">
-                <div className="text-center space-y-6">
-                    <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-600 animate-bounce">
-                        <span className="material-icons-outlined text-4xl">flight_takeoff</span>
-                    </div>
-                    <div>
-                        <h4 className="text-xl font-bold text-gray-900 dark:text-white">Adventure Awaits!</h4>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                            "{pendingTrip?.name}" has been added to your planner. Would you like to deduct this from your annual leave balance now?
-                        </p>
-                    </div>
-                    <div className="flex gap-3 pt-2">
-                        <Button variant="ghost" className="flex-1" onClick={() => setShowPostTripPrompt(false)}>Maybe Later</Button>
-                        <Button variant="primary" className="flex-1" onClick={handleConfirmBookTimeOff}>Yes, Book Time Off</Button>
-                    </div>
-                </div>
-            </Modal>
 
-            {/* Time Off Modal linked to Trip */}
-            {pendingTrip && (
-                <LeaveRequestModal
-                    isOpen={isTimeOffModalOpen}
-                    onClose={() => setIsTimeOffModalOpen(false)}
-                    onSubmit={handleTimeOffSubmit}
-                    initialData={pendingTrip}
-                    users={users}
-                    entitlements={entitlements}
-                    trips={trips}
-                    holidays={holidays}
-                    workspaceConfig={settings}
-                />
-            )}
         </div>
     );
 };

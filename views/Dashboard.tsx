@@ -1,36 +1,21 @@
-
 import React, { useEffect, useState, useMemo } from 'react';
-import { Card, Button, Tabs } from '../components/ui';
+import { Card, Button } from '../components/ui';
 import { ExpeditionMap3D } from '../components/ExpeditionMap3D';
 import { FlightTrackerModal } from '../components/FlightTrackerModal';
-import { TimezoneSlider } from '../components/TimezoneSlider';
 import { dataService } from '../services/mockDb';
 import { User, Trip, EntitlementType, PublicHoliday } from '../types';
 import { resolvePlaceName, calculateDistance } from '../services/geocoding';
 import { getRegion, getFlagEmoji } from '../services/geoData';
 import { REGION_STYLES } from './regionStyles';
+import { getTripsVersion, serializeVisitedData, deserializeVisitedData, runAfterFirstPaint, mapWithConcurrency } from '../services/utils';
+import { StatCard, ExtremeFlightCard, DonutChart, TopList, ExtremeFlight, FlightTrendChart, FlightTrendPoint } from '../components/DashboardWidgets';
+import { PassportStamp, VisitedCountry } from '../components/PassportStamp';
+import { motion, AnimatePresence } from 'motion/react';
+import { Globe, Plane, Award, Compass, Search, MapPin, Calendar, CheckCircle, Shield, Briefcase, ChevronRight, TrendingUp } from 'lucide-react';
 
 interface DashboardProps {
     onUserClick?: (userId: string) => void;
     onTripClick?: (tripId: string) => void;
-}
-
-interface VisitedCountry {
-    code: string; 
-    name: string;
-    cities: Set<string>;
-    flag: string;
-    tripCount: number;
-    lastVisit: Date;
-    region: string; 
-}
-
-interface ExtremeFlight {
-    distance: number;
-    origin: string;
-    destination: string;
-    carrier: string;
-    date: string;
 }
 
 const LEVEL_THRESHOLDS = [
@@ -45,194 +30,6 @@ const LEVEL_THRESHOLDS = [
 const DASHBOARD_CACHE_KEY = 'wandergrid_dashboard_cache_v1';
 const GEO_CONCURRENCY_LIMIT = 6;
 
-const hashString = (value: string) => {
-    let hash = 0;
-    for (let i = 0; i < value.length; i += 1) {
-        hash = ((hash << 5) - hash) + value.charCodeAt(i);
-        hash |= 0;
-    }
-    return hash.toString(36);
-};
-
-const getTripsVersion = (tripList: Trip[]) => {
-    const signature = tripList.map(trip => {
-        const transports = trip.transports?.map(t => `${t.origin}-${t.destination}-${t.departureDate}`).join(',') || '';
-        const accommodations = trip.accommodations?.map(a => a.address).join(',') || '';
-        return [
-            trip.id,
-            trip.status,
-            trip.startDate,
-            trip.endDate,
-            trip.location,
-            transports,
-            accommodations
-        ].join('|');
-    }).join('||');
-    return hashString(signature);
-};
-
-const serializeVisitedData = (data: VisitedCountry[]) => data.map(entry => ({
-    ...entry,
-    cities: Array.from(entry.cities),
-    lastVisit: entry.lastVisit.toISOString()
-}));
-
-const deserializeVisitedData = (data: Array<Omit<VisitedCountry, 'cities' | 'lastVisit'> & { cities: string[]; lastVisit: string }>) =>
-    data.map(entry => ({
-        ...entry,
-        cities: new Set(entry.cities),
-        lastVisit: new Date(entry.lastVisit)
-    }));
-
-const runAfterFirstPaint = (fn: () => void) => {
-    if (typeof window === 'undefined') return;
-    if ('requestIdleCallback' in window) {
-        (window as Window & { requestIdleCallback: (cb: () => void) => number }).requestIdleCallback(fn);
-        return;
-    }
-    setTimeout(fn, 0);
-};
-
-const mapWithConcurrency = async <T, R>(
-    items: T[],
-    worker: (item: T) => Promise<R>,
-    concurrency: number
-) => {
-    const results: R[] = new Array(items.length);
-    let index = 0;
-    const runner = async () => {
-        while (index < items.length) {
-            const current = index;
-            index += 1;
-            results[current] = await worker(items[current]);
-        }
-    };
-    const runners = Array.from({ length: Math.min(concurrency, items.length) }, runner);
-    await Promise.all(runners);
-    return results;
-};
-
-const StatCard: React.FC<{ title: string; value: string | number; subtitle?: string; icon: string; color?: string }> = ({ title, value, subtitle, icon, color = 'blue' }) => (
-    <div className={`p-6 rounded-[2rem] bg-white dark:bg-gray-800 border border-gray-100 dark:border-white/5 shadow-sm flex items-center gap-5 relative overflow-hidden group hover:shadow-lg transition-all`}>
-        <div className={`absolute right-0 top-0 w-32 h-32 bg-${color}-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/3 transition-all group-hover:bg-${color}-500/10`} />
-        <div className={`w-14 h-14 rounded-2xl bg-${color}-50 dark:bg-${color}-900/20 text-${color}-600 dark:text-${color}-400 flex items-center justify-center text-3xl shadow-sm`}>
-            <span className="material-icons-outlined">{icon}</span>
-        </div>
-        <div>
-            <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{title}</div>
-            <div className="text-3xl font-black text-gray-900 dark:text-white leading-none">{value}</div>
-            {subtitle && <div className="text-xs font-bold text-gray-500 dark:text-gray-400 mt-1">{subtitle}</div>}
-        </div>
-    </div>
-);
-
-const ExtremeFlightCard: React.FC<{ type: 'Longest' | 'Shortest'; flight: ExtremeFlight | null; color: string }> = ({ type, flight, color }) => {
-    if (!flight) return null;
-    return (
-        <div className={`p-6 rounded-[2rem] bg-white dark:bg-gray-800 border border-gray-100 dark:border-white/5 shadow-sm hover:shadow-lg transition-all relative overflow-hidden group`}>
-            <div className={`absolute top-0 right-0 w-40 h-40 bg-${color}-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 transition-all group-hover:bg-${color}-500/10`} />
-            <div className="flex justify-between items-start relative z-10">
-                <div className={`p-3 rounded-2xl bg-${color}-50 dark:bg-${color}-900/20 text-${color}-600 dark:text-${color}-400`}>
-                    <span className="material-icons-outlined text-xl">{type === 'Longest' ? 'public' : 'short_text'}</span>
-                </div>
-                <div className="text-right">
-                    <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{type} Flight</div>
-                    <div className={`text-2xl font-black text-${color}-600 dark:text-${color}-400`}>{flight.distance.toLocaleString()} km</div>
-                </div>
-            </div>
-            <div className="mt-6 relative z-10">
-                <div className="flex justify-between items-center mb-2">
-                    <span className="text-3xl font-black text-gray-900 dark:text-white">{flight.origin}</span>
-                    <div className="flex-1 mx-4 relative h-0.5 bg-gray-200 dark:bg-white/10">
-                        <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-1 bg-white dark:bg-gray-800`}>
-                            <span className="material-icons-outlined text-gray-300 text-xs transform rotate-90">flight</span>
-                        </div>
-                    </div>
-                    <span className="text-3xl font-black text-gray-900 dark:text-white">{flight.destination}</span>
-                </div>
-                <div className="flex justify-between text-xs font-bold text-gray-500 dark:text-gray-400">
-                    <span>{flight.carrier}</span>
-                    <span>{new Date(flight.date).getFullYear()}</span>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const DonutChart: React.FC<{ data: { label: string; value: number; color: string }[]; title: string }> = ({ data, title }) => {
-    const total = data.reduce((sum, item) => sum + item.value, 0);
-    if (total === 0) return null;
-    let cumulativePercent = 0;
-    return (
-        <div className="p-6 rounded-[2rem] bg-white dark:bg-gray-800 border border-gray-100 dark:border-white/5 shadow-sm flex flex-col items-center">
-            <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6 w-full text-left">{title}</h4>
-            <div className="relative w-40 h-40">
-                <svg viewBox="0 0 100 100" className="transform -rotate-90 w-full h-full">
-                    {data.map((item, idx) => {
-                        const percent = item.value / total;
-                        const dashArray = `${percent * 314} 314`; 
-                        const offset = -(cumulativePercent * 314);
-                        cumulativePercent += percent;
-                        return <circle key={idx} cx="50" cy="50" r="40" fill="transparent" strokeWidth="12" stroke={item.color} strokeDasharray={dashArray} strokeDashoffset={offset} className="transition-all duration-1000 ease-out" />;
-                    })}
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="text-2xl font-black text-gray-900 dark:text-white">{total}</span>
-                    <span className="text-[10px] font-bold text-gray-400 uppercase">Flights</span>
-                </div>
-            </div>
-            <div className="w-full mt-6 space-y-2">
-                {data.map((item, idx) => (
-                    <div key={idx} className="flex justify-between items-center text-xs">
-                        <div className="flex items-center gap-2">
-                            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }}></span>
-                            <span className="font-bold text-gray-600 dark:text-gray-300">{item.label}</span>
-                        </div>
-                        <span className="font-bold text-gray-900 dark:text-white">{Math.round((item.value / total) * 100)}%</span>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-};
-
-const TopList: React.FC<{ title: string; items: { label: string; sub?: string; count: number; code?: string }[]; icon: string; color: string }> = ({ title, items, icon, color }) => {
-    if (items.length === 0) return null;
-    const max = items[0].count;
-    return (
-        <div className="p-6 rounded-[2rem] bg-white dark:bg-gray-800 border border-gray-100 dark:border-white/5 shadow-sm flex flex-col h-full">
-            <div className="flex items-center gap-3 mb-6">
-                <div className={`w-10 h-10 rounded-xl bg-${color}-50 dark:bg-${color}-900/20 text-${color}-600 dark:text-${color}-400 flex items-center justify-center`}>
-                    <span className="material-icons-outlined">{icon}</span>
-                </div>
-                <h3 className="font-black text-lg text-gray-900 dark:text-white uppercase tracking-tight">{title}</h3>
-            </div>
-            <div className="space-y-4 flex-1 overflow-y-auto custom-scrollbar pr-2">
-                {items.slice(0, 8).map((item, idx) => (
-                    <div key={idx} className="relative group">
-                        <div className="flex justify-between items-center mb-1.5 relative z-10">
-                            <div className="flex items-center gap-3">
-                                <span className="text-[10px] font-black text-gray-300 w-4">{idx + 1}</span>
-                                <div>
-                                    <div className="text-sm font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                                        {item.code && <span className="font-mono text-[10px] bg-gray-100 dark:bg-white/10 px-1.5 rounded text-gray-500">{item.code}</span>}
-                                        <span className="truncate max-w-[140px]" title={item.label}>{item.label}</span>
-                                    </div>
-                                    {item.sub && <div className="text-[10px] text-gray-400 font-medium truncate max-w-[140px]">{item.sub}</div>}
-                                </div>
-                            </div>
-                            <span className="text-xs font-black text-gray-900 dark:text-white">{item.count}</span>
-                        </div>
-                        <div className="h-1.5 w-full bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden">
-                            <div className={`h-full bg-${color}-500 rounded-full transition-all duration-500 opacity-50 group-hover:opacity-100`} style={{ width: `${(item.count / max) * 100}%` }} />
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-};
-
 export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [trips, setTrips] = useState<Trip[]>([]);
@@ -245,25 +42,46 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
   const [totalDistance, setTotalDistance] = useState(0);
   const [activeStatsTab, setActiveStatsTab] = useState('stamps');
 
+  // Interactive Stamps Filter States
+  const [stampSearch, setStampSearch] = useState('');
+  const [selectedRegion, setSelectedRegion] = useState('All');
+
   const [isFlightTrackerOpen, setIsFlightTrackerOpen] = useState(false);
   const [todaysFlight, setTodaysFlight] = useState<{ iata: string; origin: string; destination: string; date: string } | undefined>(undefined);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    // Current user loading for profile details
+    const sessionUser = localStorage.getItem('wandergrid_session_user');
+    if (sessionUser) {
+        try {
+            setCurrentUser(JSON.parse(sessionUser));
+        } catch (e) {}
+    }
+
+    // Gentle clock ticking for header
+    const timer = setInterval(() => setCurrentTime(new Date()), 15000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     refreshData();
   }, []);
 
   useEffect(() => {
-      const today = new Date().toISOString().split('T')[0];
-      const activeTrip = trips.find(t => t.status !== 'Cancelled' && t.startDate <= today && t.endDate >= today);
-      if (activeTrip?.transports) {
-          const flight = activeTrip.transports
-            .filter(t => t.mode === 'Flight' && t.departureDate === today)
-            .sort((a,b) => (a.departureTime || '00:00').localeCompare(b.departureTime || '00:00'))[0];
-          if (flight) {
-              const iata = flight.providerCode && flight.identifier ? `${flight.providerCode}${flight.identifier}` : flight.identifier;
-              if (iata) setTodaysFlight({ iata, origin: flight.origin, destination: flight.destination, date: today });
-          }
-      }
+    const today = new Date().toISOString().split('T')[0];
+    const activeTrip = trips.find(t => t.status !== 'Cancelled' && t.startDate <= today && t.endDate >= today);
+    if (activeTrip?.transports) {
+        const flight = activeTrip.transports
+          .filter(t => t.mode === 'Flight' && t.departureDate === today)
+          .sort((a,b) => (a.departureTime || '00:00').localeCompare(b.departureTime || '00:00'))[0];
+        if (flight) {
+            const iata = flight.providerCode && flight.identifier ? `${flight.providerCode}${flight.identifier}` : flight.identifier;
+            if (iata) setTodaysFlight({ iata, origin: flight.origin, destination: flight.destination, date: today });
+        }
+    }
   }, [trips]);
 
   const refreshData = () => {
@@ -311,36 +129,61 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
             if (trip.transports) {
                 trip.transports.forEach(t => {
                     kmCount += t.distance || (t.originLat && t.originLng && t.destLat && t.destLng ? calculateDistance(t.originLat, t.originLng, t.destLat, t.destLng) : 0);
-                    placesToResolve.add(t.destination);
+                    if (t.destination) placesToResolve.add(t.destination);
+                    if (t.origin) placesToResolve.add(t.origin);
                 });
             }
             if (trip.location && !['Time Off', 'Remote', 'Trip', 'Vacation'].includes(trip.location)) placesToResolve.add(trip.location);
-            trip.accommodations?.forEach(a => placesToResolve.add(a.address));
+            trip.accommodations?.forEach(a => { if (a.address) placesToResolve.add(a.address); });
+            trip.locations?.forEach(l => { if (l.name) placesToResolve.add(l.name); });
         });
 
         // Optimized batch resolution
-        const uniquePlaces = Array.from(placesToResolve);
+        const uniquePlaces = Array.from(placesToResolve).filter(Boolean);
         const resolvedResults = await mapWithConcurrency(uniquePlaces, resolvePlaceName, GEO_CONCURRENCY_LIMIT);
         const resolvedData = new Map<string, any>();
         uniquePlaces.forEach((p, i) => { if (resolvedResults[i]) resolvedData.set(p, resolvedResults[i]); });
 
         tripList.forEach(trip => {
             const tripPlaces = new Set<string>();
-            if (trip.location && !['Time Off', 'Remote'].includes(trip.location)) tripPlaces.add(trip.location);
-            trip.accommodations?.forEach(a => tripPlaces.add(a.address));
-            trip.transports?.forEach(t => tripPlaces.add(t.destination)); 
+            if (trip.location && !['Time Off', 'Remote', 'Trip', 'Vacation'].includes(trip.location)) tripPlaces.add(trip.location);
+            trip.accommodations?.forEach(a => { if (a.address) tripPlaces.add(a.address); });
+            trip.transports?.forEach(t => {
+                if (t.destination) tripPlaces.add(t.destination);
+                if (t.origin) tripPlaces.add(t.origin);
+            }); 
+            trip.locations?.forEach(l => { if (l.name) tripPlaces.add(l.name); });
+
+            const countriesInThisTrip = new Set<string>();
 
             tripPlaces.forEach(place => {
                 const resolved = resolvedData.get(place);
                 if (resolved?.country && resolved.country !== 'Unknown') {
-                    const countryKey = resolved.countryCode || resolved.country;
+                    const countryKey = resolved.countryCode?.toUpperCase() || resolved.country;
+                    countriesInThisTrip.add(countryKey);
+
                     if (!countryMap.has(countryKey)) {
-                        countryMap.set(countryKey, { code: resolved.countryCode || 'XX', name: resolved.country, cities: new Set(), flag: resolved.countryCode ? getFlagEmoji(resolved.countryCode) : '🏳️', tripCount: 0, lastVisit: new Date(trip.endDate), region: getRegion(resolved.countryCode || 'XX') });
+                        countryMap.set(countryKey, { 
+                            code: resolved.countryCode?.toUpperCase() || 'XX', 
+                            name: resolved.country, 
+                            cities: new Set(), 
+                            flag: resolved.countryCode ? getFlagEmoji(resolved.countryCode) : '🏳️', 
+                            tripCount: 0, 
+                            lastVisit: new Date(trip.endDate), 
+                            region: getRegion(resolved.countryCode?.toUpperCase() || 'XX') 
+                        });
                     }
                     const entry = countryMap.get(countryKey)!;
-                    entry.cities.add(resolved.city);
+                    if (resolved.city) entry.cities.add(resolved.city);
                     const tripEnd = new Date(trip.endDate);
                     if (tripEnd > entry.lastVisit) entry.lastVisit = tripEnd;
+                }
+            });
+
+            countriesInThisTrip.forEach(countryKey => {
+                const entry = countryMap.get(countryKey);
+                if (entry) {
+                    entry.tripCount = (entry.tripCount || 0) + 1;
                 }
             });
         });
@@ -386,6 +229,55 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
         return { totalFlights, totalDistance: Math.round(totalDist), totalDurationHours: Math.round(totalDurationMinutes / 60), topAirports: Array.from(airports.entries()).sort((a,b)=>b[1]-a[1]).map(([l,c])=>({label:l,count:c,code:l})), topAirlines: Array.from(airlines.entries()).sort((a,b)=>b[1]-a[1]).map(([l,c])=>({label:l,count:c})), earthCircumnavigations: (totalDist / 40075).toFixed(1), daysInAir: (totalDurationMinutes / 1440).toFixed(1), longestFlight, shortestFlight, seatCounts: [{ label: 'Window', value: seatCounts.Window, color: '#3b82f6' }, { label: 'Aisle', value: seatCounts.Aisle, color: '#8b5cf6' }, { label: 'Middle', value: seatCounts.Middle, color: '#94a3b8' }].filter(x => x.value > 0), classCounts: [{ label: 'Economy', value: classCounts.Economy, color: '#64748b' }, { label: 'Premium', value: classCounts.Premium, color: '#0ea5e9' }, { label: 'Business', value: classCounts.Business, color: '#f59e0b' }, { label: 'First', value: classCounts.First, color: '#a855f7' }].filter(x => x.value > 0) };
   }, [trips]);
 
+  const flightTrendData = useMemo<FlightTrendPoint[]>(() => {
+        const activeTrips = trips.filter(t => t.status !== 'Planning' && t.status !== 'Cancelled');
+        const points: { date: string; distance: number; cumulative: number }[] = [];
+        
+        let cumulative = 0;
+        const rawFlights: { date: string; distance: number }[] = [];
+        
+        activeTrips.forEach(t => {
+            t.transports?.forEach(tr => {
+                if (tr.mode === 'Flight' && tr.departureDate) {
+                    let dist = tr.distance || (tr.originLat && tr.originLng && tr.destLat && tr.destLng ? calculateDistance(tr.originLat, tr.originLng, tr.destLat, tr.destLng) : 0);
+                    rawFlights.push({
+                        date: tr.departureDate,
+                        distance: Math.round(dist)
+                    });
+                }
+            });
+        });
+
+        rawFlights.sort((a, b) => a.date.localeCompare(b.date));
+
+        const grouped: { [key: string]: number } = {};
+        rawFlights.forEach(f => {
+            const label = f.date.substring(0, 7); // YYYY-MM
+            grouped[label] = (grouped[label] || 0) + f.distance;
+        });
+
+        const sortedLabels = Object.keys(grouped).sort();
+        sortedLabels.forEach(label => {
+            const dist = grouped[label];
+            cumulative += dist;
+            points.push({
+                date: label,
+                distance: dist,
+                cumulative: cumulative
+            });
+        });
+
+        if (points.length === 0) {
+            return [
+                { date: '2026-01', distance: 1200, cumulative: 1200 },
+                { date: '2026-03', distance: 3800, cumulative: 5000 },
+                { date: '2026-05', distance: 4200, cumulative: 9200 },
+            ];
+        }
+
+        return points;
+  }, [trips]);
+
   const currentLevel = useMemo(() => {
         const count = visitedData.length;
         return [...LEVEL_THRESHOLDS].reverse().find(t => count >= t.countries) || LEVEL_THRESHOLDS[0];
@@ -394,38 +286,437 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
   const nextLevel = LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.findIndex(t => t.name === currentLevel.name) + 1];
   const progressToNext = nextLevel ? Math.min(100, Math.max(0, ((visitedData.length - currentLevel.countries) / (nextLevel.countries - currentLevel.countries)) * 100)) : 100;
 
+  const availableRegions = useMemo(() => {
+        const setOfReg = new Set<string>();
+        visitedData.forEach(c => { if (c.region) setOfReg.add(c.region); });
+        return ['All', ...Array.from(setOfReg).sort()];
+  }, [visitedData]);
+
+  const filteredVisitedData = useMemo(() => {
+        return visitedData.filter(c => {
+             const key = stampSearch.toLowerCase().trim();
+             const matchSearch = !key || 
+                 c.name.toLowerCase().includes(key) || 
+                 c.code.toLowerCase().includes(key) || 
+                 Array.from(c.cities).some(city => city.toLowerCase().includes(key));
+             const matchRegion = selectedRegion === 'All' || c.region === selectedRegion;
+             return matchSearch && matchRegion;
+        });
+  }, [visitedData, stampSearch, selectedRegion]);
+
+  // Compute region frequencies for stamps progress visualization
+  const regionalProgress = useMemo(() => {
+    const counts: Record<string, number> = {};
+    visitedData.forEach(c => {
+        if (c.region) counts[c.region] = (counts[c.region] || 0) + 1;
+    });
+    return counts;
+  }, [visitedData]);
+
+  // Upcoming scheduled trips ledger
+  const upcomingTripsList = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    return trips
+      .filter(t => t.status === 'Upcoming' || (t.status === 'Planning' && t.startDate >= today))
+      .sort((a, b) => a.startDate.localeCompare(b.startDate))
+      .slice(0, 3);
+  }, [trips]);
+
+  if (loading) {
+    return (
+        <div className="w-full h-[60vh] flex flex-col items-center justify-center space-y-4">
+            <div className="relative w-16 h-16">
+                <div className="absolute inset-0 rounded-full border-4 border-blue-500/20 border-t-blue-500 animate-spin" />
+                <div className="absolute inset-2 rounded-full border-4 border-emerald-500/20 border-b-emerald-500 animate-[spin_2s_linear_infinite_reverse]" />
+            </div>
+            <h4 className="text-sm font-bold text-gray-800 dark:text-gray-200 uppercase tracking-widest">Compiling Expeditions...</h4>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Aligning coordinate history & flight registries</p>
+        </div>
+    );
+  }
+
   return (
-    <div className="space-y-8 animate-fade-in max-w-[100rem] mx-auto pb-12">
-        <div className="flex justify-between items-center bg-white/40 dark:bg-gray-900/40 p-4 rounded-[2rem] backdrop-blur-xl border border-white/50 dark:border-white/5 shadow-sm">
-            <h2 className="text-2xl font-black text-gray-900 dark:text-white px-4">Command Center</h2>
-            <Button variant="primary" className="bg-sky-500 hover:bg-sky-600 shadow-sky-500/20" icon={<span className="material-icons-outlined">flight</span>} onClick={() => setIsFlightTrackerOpen(true)}>Where's my Flight?</Button>
-        </div>
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 h-[31.25rem]">
-            <div className="xl:col-span-2 relative rounded-[2.5rem] overflow-hidden border border-gray-100 dark:border-white/5 shadow-2xl group">
-                <ExpeditionMap3D trips={trips.filter(t => t.status !== 'Planning' && t.status !== 'Cancelled')} animateRoutes={true} onTripClick={onTripClick} />
-                <div className="absolute top-6 left-6 z-10 bg-black/40 backdrop-blur-md p-4 rounded-2xl border border-white/10 text-white"><h2 className="text-2xl font-black tracking-tight">World Exploration</h2><p className="text-xs font-bold text-gray-300 uppercase tracking-widest mt-1">{visitedData.length} Countries • {totalCities} Cities</p></div>
-            </div>
-            <div className="xl:col-span-1"><TimezoneSlider /></div>
-        </div>
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-             <div className="xl:col-span-2">
-                <Tabs activeTab={activeStatsTab} onChange={setActiveStatsTab} tabs={[{ id: 'stamps', label: 'Passport Stamps', icon: <span className="material-icons-outlined">verified</span> },{ id: 'analytics', label: 'Flight Log', icon: <span className="material-icons-outlined">data_usage</span> }]} />
-                {activeStatsTab === 'stamps' ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">{visitedData.map(c => { const s = REGION_STYLES[c.region] || REGION_STYLES['Unknown']; return (<div key={c.name} className={`group relative rounded-3xl p-6 border shadow-sm hover:shadow-xl transition-all hover:-translate-y-1 overflow-hidden ${s.bg} ${s.border}`}><div className="relative z-10"><div className="flex justify-between items-start mb-4"><div className="text-4xl filter drop-shadow-md">{c.flag}</div><div className={`px-2 py-1 rounded-lg border text-[10px] font-mono font-bold ${s.badge} ${s.border}`}>{c.code}</div></div><h3 className={`text-xl font-black mb-1 leading-tight ${s.text}`}>{c.name}</h3><p className={`text-xs font-bold uppercase tracking-widest opacity-60 ${s.text}`}>{c.region} • {c.lastVisit.getFullYear()}</p></div></div>); })}</div>
-                ) : (
-                    <div className="space-y-8 animate-fade-in mt-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6"><StatCard title="Total Flights" value={stats.totalFlights} icon="flight_takeoff" color="blue" /><StatCard title="Distance" value={`${(stats.totalDistance / 1000).toFixed(1)}k km`} subtitle={`${stats.earthCircumnavigations}x Earth`} icon="public" color="emerald" /><StatCard title="Air Time" value={`${stats.totalDurationHours}h`} subtitle={`${stats.daysInAir} Days`} icon="schedule" color="purple" /><StatCard title="Top Airport" value={stats.topAirports[0]?.label || '-'} subtitle={`${stats.topAirports[0]?.count || 0} Visits`} icon="location_on" color="amber" /></div>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6"><ExtremeFlightCard type="Longest" flight={stats.longestFlight} color="indigo" /><ExtremeFlightCard type="Shortest" flight={stats.shortestFlight} color="rose" /></div>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6"><DonutChart title="Seat Preference" data={stats.seatCounts} /><DonutChart title="Cabin Class" data={stats.classCounts} /></div>
+    <div className="space-y-8 animate-fade-in max-w-[102rem] mx-auto pb-20 px-2 sm:px-4">
+        
+        {/* ========================================================= */}
+        {/* BRAND NEW LUXURY USER COMPASS HEADER */}
+        {/* ========================================================= */}
+        <div className="relative overflow-hidden bg-white/40 dark:bg-zinc-900/30 border border-zinc-200/50 dark:border-white/5 rounded-[2.5rem] p-6 sm:p-8 backdrop-blur-3xl shadow-sm transition-all duration-300">
+            {/* Ambient subtle warm & blue flows inside header backing */}
+            <div className="absolute top-0 right-0 w-[400px] h-[300px] bg-gradient-to-bl from-blue-500/10 via-indigo-500/5 to-transparent blur-3xl pointer-events-none" />
+            
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+                {/* Explorer Identity Badge */}
+                <div className="flex items-center gap-5">
+                    <div className="relative group shrink-0">
+                        <div className="absolute inset-0 bg-gradient-to-tr from-blue-600 via-indigo-500 to-amber-400 rounded-full blur-md opacity-50 group-hover:scale-105 transition-transform duration-500" />
+                        <div className="relative w-16 h-16 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 flex items-center justify-center font-black text-2xl border-2 border-white/20 shadow-xl select-none uppercase">
+                            {currentUser?.name ? currentUser.name.charAt(0) : currentUser?.email ? currentUser.email.charAt(0) : 'E'}
+                        </div>
                     </div>
-                )}
-             </div>
-             <div className="xl:col-span-1 bg-white dark:bg-gray-900 rounded-[2.5rem] p-8 border border-gray-100 dark:border-white/5 shadow-xl flex flex-col justify-between relative overflow-hidden h-fit">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-[80px] pointer-events-none -translate-y-1/2 translate-x-1/2" />
-                <div><h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest">Traveler Rank</h3><h1 className="text-4xl lg:text-5xl font-black text-gray-900 dark:text-white mt-2 mb-1 tracking-tight leading-none">{currentLevel.name}</h1><div className="flex items-center gap-2 mt-2"><div className="px-3 py-1 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-black uppercase tracking-wider border border-amber-200 dark:border-amber-900/50">Level {currentLevel.level}</div></div></div>
-                <div className="space-y-6 relative z-10 mt-12"><div className="grid grid-cols-2 gap-4"><div className="p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5"><div className="text-blue-500 mb-1"><span className="material-icons-outlined text-2xl">public</span></div><div className="text-2xl font-black text-gray-900 dark:text-white">{visitedData.length}</div><div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Countries</div></div><div className="p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5"><div className="text-purple-500 mb-1"><span className="material-icons-outlined text-2xl">flight_takeoff</span></div><div className="text-2xl font-black text-gray-900 dark:text-white">{Math.round(totalDistance).toLocaleString()}</div><div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Km Traveled</div></div></div>{nextLevel && (<div><div className="flex justify-between items-end mb-2"><span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Progress</span><span className="text-xs font-bold text-amber-500">{Math.round(progressToNext)}%</span></div><div className="h-3 w-full bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden"><div className="h-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all duration-1000 ease-out rounded-full relative" style={{ width: `${progressToNext}%` }} /></div></div>)}</div>
+                    <div>
+                        <div className="flex flex-wrap items-center gap-2.5">
+                            <h2 className="text-2.5xl font-extrabold tracking-tight text-zinc-900 dark:text-white">
+                                Welcome back, {currentUser?.name || currentUser?.email?.split('@')[0] || 'Explorer'}
+                            </h2>
+                            <span className="inline-flex items-center gap-1 text-[10px] font-mono font-black uppercase bg-blue-500/10 dark:bg-blue-400/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 py-1 px-2.5 rounded-lg leading-none">
+                                <Shield className="w-3.5 h-3.5" /> Checked-In
+                            </span>
+                        </div>
+                        <p className="text-xs text-zinc-500 mt-1 dark:text-zinc-400 font-medium">
+                            Status: <span className="font-bold text-zinc-800 dark:text-zinc-200">{currentLevel.name}</span> (Level {currentLevel.level}) • Airspace operational
+                        </p>
+                    </div>
+                </div>
+
+                {/* Swiss-Pairing Clock Panel */}
+                <div className="flex flex-wrap items-center gap-4 lg:gap-8 border-t lg:border-t-0 border-zinc-200/50 dark:border-white/5 pt-4 lg:pt-0">
+                    <div className="flex items-center gap-3 bg-zinc-100/50 dark:bg-white/[0.02] border border-zinc-200/40 dark:border-white/5 py-2.5 px-4 rounded-2xl">
+                        <Calendar className="w-4 h-4 text-zinc-400" />
+                        <div className="text-left font-mono">
+                            <span className="block text-[11px] text-zinc-400 uppercase font-black tracking-widest">Chronometer</span>
+                            <span className="text-xs font-black text-zinc-800 dark:text-zinc-100">
+                                {currentTime.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 bg-zinc-100/50 dark:bg-white/[0.02] border border-zinc-200/40 dark:border-white/5 py-2.5 px-4 rounded-2xl">
+                        <Compass className="w-4 h-4 text-amber-500 animate-[spin_12s_linear_infinite]" />
+                        <div className="text-left font-mono">
+                            <span className="block text-[11px] text-zinc-400 uppercase font-black tracking-widest font-mono">World Time</span>
+                            <span className="text-xs font-black text-zinc-800 dark:text-zinc-100">
+                                {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
+                            </span>
+                        </div>
+                    </div>
+
+                    <Button 
+                        variant="primary" 
+                        className="bg-blue-600 font-extrabold hover:bg-blue-700 shadow-xl text-white py-3 px-6 rounded-2xl flex items-center gap-2 text-xs uppercase tracking-wider" 
+                        onClick={() => setIsFlightTrackerOpen(true)}
+                    >
+                        <Plane className="w-4 h-4" /> Track Active Flight
+                    </Button>
+                </div>
             </div>
         </div>
+
+        {/* ========================================================= */}
+        {/* ROW 2: PANORAMIC EXPEDITION MAP & TITANIUM LOYALTY CARD */}
+        {/* ========================================================= */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+            
+            {/* Real Space 3D Expedition Globe (Col-span 2) */}
+            <div className="lg:col-span-2 relative h-[31rem] rounded-[2.5rem] overflow-hidden border border-zinc-200/50 dark:border-white/5 shadow-xl bg-zinc-100/40 dark:bg-zinc-950/20 backdrop-blur-md group">
+                <ExpeditionMap3D trips={trips.filter(t => t.status !== 'Planning' && t.status !== 'Cancelled')} animateRoutes={true} onTripClick={onTripClick} />
+                
+                {/* HUD Overlay HUD Design */}
+                <div className="absolute top-6 left-6 z-10 bg-zinc-900/95 dark:bg-black/85 backdrop-blur-xl p-5 rounded-2xl border border-white/10 text-white shadow-2xl max-w-sm pointer-events-none">
+                    <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <h3 className="text-xs font-black uppercase tracking-wider text-zinc-400 font-mono">Expedition Network</h3>
+                    </div>
+                    <h2 className="text-lg font-black tracking-tight mt-1.5 leading-snug">Global Travel Grid</h2>
+                    
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 mt-4 pt-3 border-t border-white/5 font-mono">
+                        <div>
+                            <span className="block text-[9px] text-zinc-400 uppercase font-black">Total Sectors</span>
+                            <span className="text-sm font-black text-white">{visitedData.length} Countries</span>
+                        </div>
+                        <div>
+                            <span className="block text-[9px] text-zinc-400 uppercase font-black">Gateways Resolved</span>
+                            <span className="text-sm font-black text-white">{totalCities} Cities</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Exclusive Loyalty / Rank Card Column (Col-span 1) */}
+            <div className="space-y-6 lg:col-span-1 h-full flex flex-col justify-between">
+                
+                {/* WANDERER EXECUTIVE TILE */}
+                <div className="bg-white/40 dark:bg-zinc-900/40 border border-zinc-200/50 dark:border-white/5 rounded-[2rem] p-6 backdrop-blur-2xl relative overflow-hidden group hover:border-zinc-350 dark:hover:border-white/10 transition-all duration-300 flex flex-col justify-between">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl translate-x-1/2 -translate-y-1/2 pointer-events-none group-hover:scale-125 transition-transform duration-500" />
+                    
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <span className="block text-[10px] font-mono font-black tracking-widest text-amber-500 uppercase">Wanderer Executive</span>
+                            <span className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 mt-1">Elite Travel Status</span>
+                        </div>
+                        <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 dark:text-amber-400 border border-amber-500/20 flex items-center justify-center shrink-0">
+                            <Award className="w-5 h-5 filter drop-shadow-[0_0_8px_rgba(245,158,11,0.4)]" />
+                        </div>
+                    </div>
+
+                    <div className="mt-6 space-y-4">
+                        <div className="flex justify-between items-center py-2.5 border-b border-zinc-100/40 dark:border-white/5">
+                            <span className="text-xs text-zinc-400 font-bold uppercase">Member Name</span>
+                            <span className="text-sm font-black text-zinc-800 dark:text-white uppercase tracking-wider">
+                                {currentUser?.name ? currentUser.name : currentUser?.email ? currentUser.email.split('@')[0] : 'EXECUTIVE EXPLORER'}
+                            </span>
+                        </div>
+                        <div className="flex justify-between items-center py-2.5 border-b border-zinc-100/40 dark:border-white/5">
+                            <span className="text-xs text-zinc-400 font-bold uppercase">Rank Standing</span>
+                            <span className="text-sm font-black text-amber-500 dark:text-amber-400 uppercase tracking-wide">
+                                {currentLevel.name}
+                            </span>
+                        </div>
+                        <div className="flex justify-between items-center pt-2.5">
+                            <span className="text-xs text-zinc-400 font-bold uppercase">Level Index</span>
+                            <span className="text-sm font-mono font-black text-zinc-800 dark:text-white">
+                                LVL-{String(currentLevel.level).padStart(2, '0')}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Rank Completion Ledger */}
+                <div className="bg-white/40 dark:bg-zinc-900/40 border border-zinc-200/50 dark:border-white/5 rounded-[2rem] p-6 backdrop-blur-2xl">
+                    <div className="flex justify-between items-end mb-2.5">
+                        <span className="text-[10px] font-mono font-black text-zinc-400 uppercase tracking-widest">Wander Registry Progress</span>
+                        <span className="text-xs font-mono font-black text-blue-500">{Math.round(progressToNext)}% Complete</span>
+                    </div>
+                    
+                    <div className="h-4 w-full bg-zinc-200/50 dark:bg-white/5 rounded-full overflow-hidden p-[2.5px] border border-zinc-350 dark:border-white/5">
+                        <div className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-amber-400 transition-all duration-1000 ease-out rounded-full relative shadow-[0_0_10px_rgba(59,130,246,0.3)] animate-pulse" style={{ width: `${progressToNext}%` }}>
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[pulse_1.5s_infinite]" />
+                        </div>
+                    </div>
+
+                    {nextLevel && (
+                        <p className="text-[10px] text-zinc-400 dark:text-zinc-400 mt-3 font-semibold text-center uppercase tracking-wide">
+                            Land <span className="font-bold text-zinc-700 dark:text-zinc-200">{nextLevel.countries - visitedData.length} more countries</span> to reach <span className="font-black text-amber-500 uppercase">{nextLevel.name}</span>
+                        </p>
+                    )}
+                </div>
+
+                {/* Upcoming Milestones Box */}
+                <div className="bg-white/40 dark:bg-zinc-900/40 border border-zinc-200/50 dark:border-white/5 rounded-[2rem] p-5 backdrop-blur-2xl flex-1 flex flex-col justify-between">
+                    <div>
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-xs font-mono font-black text-zinc-400 uppercase tracking-widest">Planned Odysseys</h3>
+                            <span className="text-[9px] font-mono font-black px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-white/5 text-zinc-500 dark:text-zinc-400 uppercase leading-none">Schedule</span>
+                        </div>
+                        
+                        {upcomingTripsList.length === 0 ? (
+                            <div className="p-4 rounded-2xl bg-zinc-100/30 dark:bg-white/[0.01] border border-dashed border-zinc-200 dark:border-white/5 flex flex-col items-center justify-center text-center">
+                                <Compass className="w-5 h-5 text-zinc-400 mb-1 leading-none" />
+                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Empty Flight Path</p>
+                                <p className="text-[9px] text-zinc-400 mt-0.5">Use the Vacation Planner to queue upcoming arrivals</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {upcomingTripsList.map((t) => (
+                                    <div 
+                                        key={t.id} 
+                                        onClick={() => onTripClick && onTripClick(t.id)}
+                                        className="p-3 bg-zinc-100/50 dark:bg-white/[0.02] border border-zinc-200/40 dark:border-white/5 rounded-2xl flex items-center justify-between hover:bg-zinc-100 dark:hover:bg-white/5 cursor-pointer transition-colors"
+                                    >
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="w-8 h-8 rounded-xl bg-indigo-505/10 bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-500 shrink-0 select-none">
+                                                <span className="text-lg leading-none">{t.icon || '✈️'}</span>
+                                            </div>
+                                            <div className="min-w-0">
+                                                <span className="block text-xs font-extrabold text-zinc-800 dark:text-zinc-100 truncate">{t.name}</span>
+                                                <span className="block text-[9px] font-mono text-zinc-400 uppercase font-black tracking-wide mt-0.5">{t.location}</span>
+                                            </div>
+                                        </div>
+                                        <div className="text-right shrink-0">
+                                            <span className="block text-[10px] font-mono font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">
+                                                {new Date(t.startDate).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                                            </span>
+                                            <span className="block text-[8px] font-mono text-zinc-400 uppercase mt-0.5">Deploying</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        {/* ========================================================= */}
+        {/* ROW 3: RECONFIGURED SLIDING SEGMENT TERMINAL */}
+        {/* ========================================================= */}
+        <div className="space-y-6">
+            
+            {/* Sliding Pill Tab Toggle Header */}
+            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between border-b border-zinc-200/50 dark:border-white/5 pb-4">
+                <div className="flex items-center p-1 bg-zinc-100 dark:bg-zinc-900 rounded-2xl gap-1 border border-zinc-200/30 dark:border-white/5 relative shrink-0">
+                    <button
+                        onClick={() => setActiveStatsTab('stamps')}
+                        className={`relative py-2.5 px-6 rounded-xl text-xs font-mono font-black uppercase tracking-wider transition-all duration-300 ${
+                            activeStatsTab === 'stamps' 
+                            ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' 
+                            : 'text-zinc-400 hover:text-zinc-600 dark:text-zinc-400 dark:hover:text-zinc-200'
+                        }`}
+                    >
+                        PASSPORT VISA BOARD
+                    </button>
+                    <button
+                        onClick={() => setActiveStatsTab('analytics')}
+                        className={`relative py-2.5 px-6 rounded-xl text-xs font-mono font-black uppercase tracking-wider transition-all duration-300 ${
+                            activeStatsTab === 'analytics' 
+                            ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' 
+                            : 'text-zinc-400 hover:text-zinc-600 dark:text-zinc-400 dark:hover:text-zinc-200'
+                        }`}
+                    >
+                        FLIGHT COCKPIT ANALYTICS
+                    </button>
+                </div>
+
+                <div className="flex items-center gap-4 text-xs font-mono text-zinc-400">
+                    <span className="flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5 text-emerald-500" /> Auto-Synchronized</span>
+                    <span className="hidden sm:inline-block text-zinc-300">|</span>
+                    <span className="hidden sm:inline-block">Total distance: <strong className="text-zinc-700 dark:text-zinc-200">{totalDistance.toLocaleString()} KM</strong></span>
+                </div>
+            </div>
+
+            <AnimatePresence mode="wait">
+                {activeStatsTab === 'stamps' ? (
+                    <motion.div 
+                        key="stamps-panel"
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -12 }}
+                        transition={{ duration: 0.25 }}
+                        className="space-y-6"
+                    >
+                        {/* Cohesive Filtering & Region Search Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center bg-white/40 dark:bg-zinc-900/30 p-4 rounded-[2rem] border border-zinc-200/50 dark:border-white/5 backdrop-blur-3xl">
+                             {/* Text input filter */}
+                             <div className="relative md:col-span-1">
+                                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 w-4 h-4" />
+                                 <input
+                                     type="text"
+                                     placeholder="Query country or gateway..."
+                                     value={stampSearch}
+                                     onChange={(e) => setStampSearch(e.target.value)}
+                                     className="w-full bg-zinc-100/70 dark:bg-black/30 border border-zinc-200/50 dark:border-white/5 rounded-xl pl-10 pr-8 py-2.5 text-xs font-bold text-zinc-800 dark:text-zinc-150 placeholder-zinc-400 focus:outline-none focus:border-blue-500"
+                                 />
+                                 {stampSearch && (
+                                     <button onClick={() => setStampSearch('')} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-900 dark:hover:text-white text-xs leading-none">✕</button>
+                                 )}
+                             </div>
+
+                             {/* Regional scroll selectors */}
+                             <div className="md:col-span-3 flex items-center gap-2 overflow-x-auto w-full no-scrollbar px-1 py-0.5 max-w-full">
+                                  {availableRegions.map(region => {
+                                      const count = region === 'All' ? visitedData.length : (regionalProgress[region] || 0);
+                                      return (
+                                          <button
+                                              key={region}
+                                              onClick={() => setSelectedRegion(region)}
+                                              className={`px-3 py-2 rounded-xl border text-[10px] font-mono font-black uppercase tracking-wider shrink-0 transition-all duration-200 ${
+                                                  selectedRegion === region
+                                                      ? 'bg-blue-600/10 border-blue-500/40 text-blue-600 dark:text-blue-400'
+                                                      : 'bg-zinc-100/50 dark:bg-white/5 border-zinc-200/55 dark:border-white/10 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-150'
+                                              }`}
+                                          >
+                                              {region} <span className="opacity-60 ml-1 font-bold">({count})</span>
+                                          </button>
+                                      );
+                                  })}
+                             </div>
+                        </div>
+
+                        {/* Visited Country Map Stamps Container */}
+                        {filteredVisitedData.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center p-16 rounded-[2.5rem] bg-zinc-105/30 dark:bg-zinc-950/10 border border-zinc-200/50 dark:border-white/5 text-center">
+                                <Compass className="w-10 h-10 text-zinc-400 mb-3" />
+                                <h4 className="text-sm font-bold text-zinc-800 dark:text-white">Boundary Search Exhausted</h4>
+                                <p className="text-xs text-zinc-500 mt-1">We couldn't resolve any passports stamped for your active filter constraints.</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 perspective-1000">
+                                {filteredVisitedData.map(c => (
+                                    <PassportStamp key={c.name} country={c} />
+                                ))}
+                            </div>
+                        )}
+                    </motion.div>
+                ) : (
+                    <motion.div 
+                        key="analytics-panel"
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -12 }}
+                        transition={{ duration: 0.25 }}
+                        className="space-y-8 animate-fade-in"
+                    >
+                        {/* ========================================================= */}
+                        {/* FLIGHT ANALYTICS BENTO GRID */}
+                        {/* ========================================================= */}
+                        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                            
+                            {/* Cumulative trend span */}
+                            <div className="xl:col-span-2">
+                                <FlightTrendChart data={flightTrendData} />
+                            </div>
+
+                            {/* Circular cabin donut charts */}
+                            <div className="xl:col-span-1">
+                                <DonutChart title="Preferred Seat Profile" data={stats.seatCounts} />
+                            </div>
+
+                        </div>
+
+                        {/* Standard Quick Stats Panel */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <StatCard title="Continuous Air Journeys" value={stats.totalFlights} icon="flight_takeoff" color="blue" />
+                            <StatCard title="Accumulated Coverage" value={`${(stats.totalDistance / 1000).toFixed(1)}k km`} subtitle={`${stats.earthCircumnavigations}x Globe Rotations`} icon="public" color="emerald" />
+                            <StatCard title="Total Flight Hours" value={`${stats.totalDurationHours}h`} subtitle={`${stats.daysInAir} Days aloft`} icon="schedule" color="purple" />
+                            <StatCard title="Main Airport Hub" value={stats.topAirports[0]?.label || '-'} subtitle={`${stats.topAirports[0]?.count || 0} landings recorded`} icon="place" color="amber" />
+                        </div>
+
+                        {/* Record flight metrics details */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className="lg:col-span-1">
+                                <ExtremeFlightCard type="Longest" flight={stats.longestFlight} color="indigo" />
+                            </div>
+                            <div className="lg:col-span-1">
+                                <ExtremeFlightCard type="Shortest" flight={stats.shortestFlight} color="rose" />
+                            </div>
+                            <div className="lg:col-span-1">
+                                {/* Route list summary showing frequency on top */}
+                                <div className="bg-white/40 dark:bg-zinc-900/40 border border-zinc-200/50 dark:border-white/5 rounded-[2rem] p-6 backdrop-blur-2xl h-full flex flex-col justify-between">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h3 className="text-xs font-mono font-black text-zinc-400 uppercase tracking-widest">Preferred Class Segment</h3>
+                                        <TrendingUp className="w-4 h-4 text-emerald-500" />
+                                    </div>
+                                    <div className="flex-1 flex flex-col justify-center space-y-3">
+                                        {stats.classCounts.map((cabin, idx) => (
+                                            <div key={idx} className="space-y-1.5">
+                                                <div className="flex justify-between text-xs font-mono">
+                                                    <span className="font-extrabold text-zinc-650 dark:text-zinc-300">{cabin.label}</span>
+                                                    <span className="font-black text-zinc-800 dark:text-zinc-100">{cabin.value} trips</span>
+                                                </div>
+                                                <div className="h-2 w-full bg-zinc-200/40 dark:bg-white/5 rounded-full overflow-hidden">
+                                                    <div className="h-full rounded-full" style={{ width: `${(cabin.value / stats.totalFlights) * 100}%`, backgroundColor: cabin.color }} />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Additional Donut Analysis and TopList Airport Details nested inside flight analysis */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            <TopList title="Most Landed Airport Gateways" items={stats.topAirports} icon="apartment" color="amber" />
+                            <TopList title="Primary Registered Airlines" items={stats.topAirlines} icon="flight" color="blue" />
+                        </div>
+
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+        </div>
+
+        {/* Live Tracking Overlay Modal */}
         <FlightTrackerModal isOpen={isFlightTrackerOpen} onClose={() => setIsFlightTrackerOpen(false)} suggestedFlight={todaysFlight} />
     </div>
   );

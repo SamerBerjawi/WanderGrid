@@ -15,65 +15,195 @@
               sans: ['Inter', 'sans-serif'],
             },
             colors: {
-              // Override gray with neutral palette for true black/grey dark mode
-              gray: {
-                50: '#fafafa',
-                100: '#f5f5f5',
-                200: '#e5e5e5',
-                300: '#d4d4d4',
-                400: '#a3a3a3',
-                500: '#737373',
-                600: '#525252',
-                700: '#404040',
-                800: '#262626',
-                900: '#171717',
-                950: '#0a0a0a',
-              },
+              gray: tailwind.colors.neutral,
               primary: {
-                50: '#f0f9ff',
-                100: '#e0f2fe',
-                500: '#0ea5e9',
-                600: '#0284c7',
-                700: '#0369a1',
+                50: 'var(--primary-50, #fef8f0)',
+                100: 'var(--primary-100, #fdeed9)',
+                200: 'var(--primary-200, #fbddb1)',
+                300: 'var(--primary-300, #faca89)',
+                400: 'var(--primary-400, #fcb045)',
+                500: 'var(--primary-500, #fa9a1d)',
+                600: 'var(--primary-600, #e78310)',
+                700: 'var(--primary-700, #c1670e)',
+                800: 'var(--primary-800, #995111)',
+                900: 'var(--primary-900, #7d4312)',
               },
-              glass: {
-                100: 'rgba(255, 255, 255, 0.1)',
-                200: 'rgba(255, 255, 255, 0.2)',
-                300: 'rgba(255, 255, 255, 0.3)',
-                dark: 'rgba(0, 0, 0, 0.6)',
-              }
+              'light-bg': '#FAFAFA',
+              'light-card': 'rgba(255, 255, 255, 0.6)',
+              'light-text': '#2D2D2D',
+              'light-text-secondary': '#404040',
+              'light-separator': 'rgba(229, 229, 229, 0.5)',
+              'light-fill': 'rgba(250, 250, 250, 0.5)',
+
+              'dark-bg': '#050505',
+              'dark-card': 'rgba(23, 23, 23, 0.6)',
+              'dark-text': '#FFFFFF',
+              'dark-text-secondary': '#D1D5DB',
+              'dark-separator': 'rgba(255, 255, 255, 0.05)',
+              'dark-fill': 'rgba(38, 38, 38, 0.4)',
+
+              'semantic-red': '#FF3B30',
+              'semantic-green': '#34C759',
+              'semantic-yellow': '#FFCC00',
+              'semantic-blue': '#007AFF',
             },
-            backdropBlur: {
-              xs: '2px',
+            boxShadow: {
+              'card': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05)',
+              'modal': '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              'neu-raised-light': '2px 2px 4px rgba(0,0,0,0.1), -2px -2px 4px rgba(255,255,255,0.8)',
+              'neu-inset-light': 'inset 2px 2px 4px rgba(0,0,0,0.05), inset -2px -2px 4px rgba(255,255,255,0.5)',
+              'neu-raised-dark': '2px 2px 4px rgba(0,0,0,0.5), -2px -2px 4px rgba(255,255,255,0.05)',
+              'neu-inset-dark': 'inset 2px 2px 4px rgba(0,0,0,0.5), inset -2px -2px 4px rgba(255,255,255,0.05)',
+            },
+            borderRadius: {
+              'xl': '16px',
+            },
+            backgroundSize: {
+              '200%': '200% 100%',
+            },
+            animation: {
+              celebrate: 'celebrate 1s ease-in-out',
+              'fade-in-up': 'fadeInUp 0.2s ease-out',
+              'bg-pan': 'bg-pan 3s linear infinite',
+            },
+            keyframes: {
+              celebrate: {
+                '0%, 100%': { transform: 'scale(1)' },
+                '25%': { 
+                  transform: 'scale(1.03)', 
+                  backgroundColor: 'rgba(52, 199, 89, 0.2)'
+                },
+              },
+              fadeInUp: {
+                  'from': { opacity: 0, transform: 'translateY(10px)' },
+                  'to': { opacity: 1, transform: 'translateY(0)' },
+              },
+              'bg-pan': {
+                '0%': { backgroundPosition: '200% center' },
+                '100%': { backgroundPosition: '0% center' },
+              }
             }
-          },
-        },
+          }
+        }
       }
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script type="importmap">
-{
-  "imports": {
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
-    "react": "https://esm.sh/react@^19.2.3",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "react-dom": "https://esm.sh/react-dom@^19.2.3",
-    "leaflet": "https://esm.sh/leaflet@1.9.4",
-    "html2canvas": "https://esm.sh/html2canvas@1.4.1",
-    "react-globe.gl": "https://esm.sh/react-globe.gl@2.27.2?external=react,react-dom",
-    "path": "https://esm.sh/path@^0.12.7",
-    "vite": "https://esm.sh/vite@^7.3.0",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
-  }
-}
-</script>
     <script type="module" src="/index.tsx"></script>
     <style>
+      :root {
+        --light-card: rgba(255, 255, 255, 0.6);
+        --dark-card: rgba(23, 23, 23, 0.6);
+      }
+      .dark {
+        --light-card: rgba(23, 23, 23, 0.6);
+      }
+      .material-symbols-filled {
+        font-variation-settings: 'FILL' 1;
+      }
+      /* Privacy Mode Styles */
+      body.privacy-mode .privacy-blur {
+        filter: blur(6px);
+        transition: filter 0.2s ease-in-out;
+        cursor: default;
+        user-select: none;
+      }
+      body.privacy-mode .privacy-blur:hover {
+        filter: none;
+        user-select: auto;
+      }
+      /* Loyalty card 3D helpers */
+      .perspective-1000 { perspective: 1000px; }
+      .transform-style-3d { transform-style: preserve-3d; }
+      .backface-hidden { backface-visibility: hidden; }
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+      /* react-grid-layout styles */
+      .react-grid-layout {
+        position: relative;
+        transition: height 200ms ease;
+      }
+      .react-grid-item {
+        transition: all 200ms ease;
+        transition-property: left, top;
+      }
+      .react-grid-item.cssTransforms {
+        transition-property: transform;
+      }
+      .react-grid-item.resizing {
+        z-index: 1;
+        will-change: width, height;
+      }
+      .react-grid-item.react-draggable-dragging {
+        transition: none;
+        z-index: 3;
+        will-change: transform;
+      }
+      .react-grid-item.dropping {
+        visibility: hidden;
+      }
+      .react-grid-placeholder {
+        background: rgba(0,0,0,0.1);
+        border-radius: 24px;
+        transition-duration: 100ms;
+        z-index: 2;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        -o-user-select: none;
+        user-select: none;
+      }
+      .dark .react-grid-placeholder {
+        background: rgba(255,255,255,0.05);
+      }
+      .react-grid-item > .react-resizable-handle {
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        bottom: 0;
+        right: 0;
+        cursor: se-resize;
+      }
+      .react-grid-item > .react-resizable-handle::after {
+        content: "";
+        position: absolute;
+        right: 8px;
+        bottom: 8px;
+        width: 5px;
+        height: 5px;
+        border-right: 2px solid rgba(0,0,0,0.4);
+        border-bottom: 2px solid rgba(0,0,0,0.4);
+      }
+      .dark .react-grid-item > .react-resizable-handle::after {
+        border-right-color: rgba(255, 255, 255, 0.4);
+        border-bottom-color: rgba(255, 255, 255, 0.4);
+      }
+
+      /* iOS Style Blur */
+      .ios-regular {
+        background-color: var(--light-card);
+        border: none; /* Subtle crisp edge */
+        border-radius: 2rem;
+        
+        /* The core iOS blur configuration */
+        -webkit-backdrop-filter: blur(5px) saturate(180%) brightness(105%);
+        backdrop-filter: blur(5px) saturate(180%) brightness(105%);
+        
+        /* Inset shadows to replicate the "Liquid Glass" rim reflection */
+        box-shadow: 
+          inset 2px 2px 1px rgba(255, 255, 255, 0.05),   /* Top-left light edge */
+          inset -2px -2px 2px rgba(0, 0, 0, 0.05),     /* Bottom-right depth */
+          0 8px 32px rgba(0, 0, 0, 0.1);                /* Soft drop shadow */
+      }
+
       html {
-        font-size: 85%; /* Scales down all rem-based UI by 15% */
+        font-size: 95%; /* Perfect scale requested by user specification */
       }
       body {
         font-family: 'Inter', sans-serif;
@@ -214,24 +344,6 @@
         pointer-events: none; /* Let clicks pass through to the line */
       }
     </style>
-    <script type="importmap">
-{
-  "imports": {
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
-    "react": "https://esm.sh/react@^19.2.3",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "react-dom": "https://esm.sh/react-dom@^19.2.3",
-    "leaflet": "https://esm.sh/leaflet@1.9.4",
-    "html2canvas": "https://esm.sh/html2canvas@1.4.1",
-    "react-globe.gl": "https://esm.sh/react-globe.gl@2.27.2?external=react,react-dom",
-    "path": "https://esm.sh/path@^0.12.7",
-    "vite": "https://esm.sh/vite@^7.3.0",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
-  }
-}
-</script>
-    <script type="module" src="/index.tsx"></script>
 </head>
   <body>
     <div id="root"></div>

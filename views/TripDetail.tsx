@@ -5,7 +5,6 @@ import { TransportConfigurator } from '../components/FlightConfigurator';
 import { AccommodationConfigurator } from '../components/AccommodationConfigurator';
 import { LocationManager } from '../components/LocationManager';
 import { TripModal } from '../components/TripModal';
-import { LeaveRequestModal } from '../components/LeaveRequestModal';
 import { PackingList } from '../components/PackingList';
 import { dataService } from '../services/mockDb';
 import { flightImporter } from '../services/flightImportExport';
@@ -14,6 +13,7 @@ import { Trip, User, Transport, Accommodation, WorkspaceSettings, Activity, Tran
 import { searchLocations, resolvePlaceName, getCoordinates } from '../services/geocoding';
 import { GoogleGenAI } from "@google/genai";
 import { ExpeditionMap3D } from '../components/ExpeditionMap3D';
+import { FlightImportWizard } from '../components/FlightImportWizard';
 
 interface TripDetailProps {
     tripId: string;
@@ -231,11 +231,11 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     const [isTransportModalOpen, setIsTransportModalOpen] = useState(false);
     const [isAccommodationModalOpen, setIsAccommodationModalOpen] = useState(false);
     const [isEditTripOpen, setIsEditTripOpen] = useState(false);
-    const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
     const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
     const [isCinematicOpen, setIsCinematicOpen] = useState(false);
     
     // Import State
+    const [isImportWizardOpen, setIsImportWizardOpen] = useState(false);
     const [importPreview, setImportPreview] = useState<{ open: boolean, candidates: ImportCandidate[] }>({ open: false, candidates: [] });
     const [expandedCandidateId, setExpandedCandidateId] = useState<string | null>(null);
     const [importFilters, setImportFilters] = useState({ 
@@ -514,17 +514,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         setActivityForm({});
     };
 
-    const handleBookTimeOff = () => setIsLeaveModalOpen(true);
 
-    const handleTimeOffSubmit = async (tripData: Trip) => {
-        if (!trip) return;
-        const mergedTrip: Trip = { ...trip, ...tripData, id: trip.id, status: 'Upcoming' };
-        await dataService.updateTrip(mergedTrip);
-        setTrip(mergedTrip);
-        const newTrips = allTrips.map(t => t.id === mergedTrip.id ? mergedTrip : t);
-        setAllTrips(newTrips);
-        setIsLeaveModalOpen(false);
-    };
 
     const handleAddToCalendar = () => {
         if (!trip) return;
@@ -843,9 +833,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                     const ics = calendarService.generateIcsContent([trip], 'WanderGrid');
                                     calendarService.downloadIcs(ics, `trip-${trip.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.ics`);
                                 }} icon={<span className="material-icons-outlined">event</span>}>Add to Calendar</Button>
-                                {(!trip.entitlementId && trip.status === 'Planning') && (
-                                    <Button variant="primary" onClick={handleBookTimeOff} className="bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20" icon={<span className="material-icons-outlined">event_available</span>}>Book Time Off</Button>
-                                )}
+
                                 <Button variant="secondary" onClick={() => setIsEditTripOpen(true)} icon={<span className="material-icons-outlined">edit</span>}>Edit Details</Button>
                             </div>
                         </div>
@@ -1096,24 +1084,15 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                 <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Transportation</h3>
                             </div>
                             <div className="flex gap-2">
-                                <div className="relative">
-                                    <input 
-                                        type="file" 
-                                        ref={importInputRef} 
-                                        className="hidden" 
-                                        accept=".json,.csv"
-                                        onChange={handleImportFlights}
-                                    />
-                                    <Button 
-                                        size="sm" 
-                                        variant="ghost" 
-                                        className="border-dashed border-2 text-gray-400 hover:text-white hover:border-gray-500" 
-                                        onClick={() => importInputRef.current?.click()}
-                                    >
-                                        <span className="material-icons-outlined text-sm mr-2">upload_file</span> 
-                                        Import
-                                    </Button>
-                                </div>
+                                <Button 
+                                    size="sm" 
+                                    variant="ghost" 
+                                    className="border-dashed border-2 text-gray-400 hover:text-white hover:border-gray-500" 
+                                    onClick={() => setIsImportWizardOpen(true)}
+                                >
+                                    <span className="material-icons-outlined text-sm mr-2">upload_file</span> 
+                                    Import
+                                </Button>
                                 <Button size="sm" variant="secondary" onClick={() => openTransportModal()}>
                                     + Add Booking
                                 </Button>
@@ -1428,17 +1407,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 initialData={trip}
             />
 
-            <LeaveRequestModal 
-                isOpen={isLeaveModalOpen}
-                onClose={() => setIsLeaveModalOpen(false)}
-                onSubmit={handleTimeOffSubmit}
-                initialData={trip}
-                users={users}
-                entitlements={entitlements}
-                trips={allTrips}
-                holidays={holidays}
-                workspaceConfig={settings}
-            />
+
 
             <Modal isOpen={isActivityModalOpen} onClose={() => setIsActivityModalOpen(false)} title={activityForm.id ? "Edit Item" : "Add Schedule Item"}>
                 <div className="space-y-6">
@@ -1531,6 +1500,15 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                    </div>
                    <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-white/5">
                        <Button variant="ghost" onClick={() => setImportPreview({ open: false, candidates: [] })}>Cancel</Button>
+                       {trip && (
+                           <FlightImportWizard 
+                               isOpen={isImportWizardOpen}
+                               onClose={() => setIsImportWizardOpen(false)}
+                               onImportComplete={loadData}
+                               users={users}
+                               existingTripId={trip.id}
+                           />
+                       )}
                        <Button variant="primary" onClick={confirmImportFlights} disabled={selectedCount === 0}>Import {selectedCount} Trips</Button>
                    </div>
                </div>

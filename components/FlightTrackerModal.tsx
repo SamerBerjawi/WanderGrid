@@ -22,10 +22,15 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
     const [flightData, setFlightData] = useState<FlightStatusResponse | null>(null);
-    const [apiKey, setApiKey] = useState('');
+    const [aviationKey, setAviationKey] = useState('');
+    const [geminiKey, setGeminiKey] = useState('');
+    const [provider, setProvider] = useState<'aviationstack' | 'adsbdb' | 'aerodatabox' | 'ai_guessing'>('ai_guessing');
 
     useEffect(() => {
-        dataService.getWorkspaceSettings().then(s => setApiKey(s.aviationStackApiKey || ''));
+        dataService.getWorkspaceSettings().then(s => {
+            setAviationKey(s.aviationStackApiKey || '');
+            setGeminiKey(s.googleGeminiApiKey || '');
+        });
         if (isOpen) {
             if (suggestedFlight) {
                 setFlightNum(suggestedFlight.iata);
@@ -48,7 +53,8 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
         setFlightData(null);
 
         try {
-            const data = await flightTracker.getFlightStatus(apiKey, iata, flightDate);
+            const activeKey = provider === 'aerodatabox' ? aviationKey : aviationKey; // Default/custom key mappings
+            const data = await flightTracker.getFlightStatus(activeKey, iata, flightDate, provider, geminiKey);
             setFlightData(data);
         } catch (e) {
             setError(e instanceof Error ? e.message : "Unknown error occurred");
@@ -77,10 +83,40 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Where's My Flight?" maxWidth="max-w-2xl">
             <div className="space-y-6">
-                {!apiKey && (
+                {/* Provider SelectorTabs */}
+                <div className="space-y-2">
+                    <label className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest block ml-1">Flight Data Engine</label>
+                    <div className="grid grid-cols-4 gap-1 p-1 bg-gray-100 dark:bg-white/5 rounded-2xl border border-gray-200/50 dark:border-white/5">
+                        {[
+                            { id: 'ai_guessing', label: 'Gemini AI', icon: 'auto_awesome' },
+                            { id: 'adsbdb', label: 'ADSBdb (Free)', icon: 'sensors' },
+                            { id: 'aviationstack', label: 'AvStack', icon: 'flight' },
+                            { id: 'aerodatabox', label: 'AeroData', icon: 'database' }
+                        ].map(p => (
+                            <button
+                                key={p.id}
+                                onClick={() => setProvider(p.id as any)}
+                                className={`flex flex-col md:flex-row items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl text-xs font-bold transition-all ${provider === p.id ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-md scale-[1.02]' : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+                            >
+                                <span className="material-icons-outlined text-sm">{p.icon}</span>
+                                <span className="hidden sm:inline">{p.label}</span>
+                                <span className="sm:hidden text-[10px]">{p.label.split(' ')[0]}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {provider === 'aviationstack' && !aviationKey && (
                     <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 text-amber-800 dark:text-amber-200 text-sm font-medium flex items-center gap-3">
                         <span className="material-icons-outlined">warning</span>
-                        <span>AviationStack API Key is missing in Settings. Flight tracking may not work.</span>
+                        <span>AviationStack API Key is missing. Standard lookup will automatically fallback to AI Flight Guessing.</span>
+                    </div>
+                )}
+                
+                {provider === 'ai_guessing' && !geminiKey && (
+                    <div className="p-4 rounded-xl bg-blue-50/50 dark:bg-blue-950/10 border border-blue-100/50 dark:border-blue-900/20 text-blue-800 dark:text-blue-300 text-xs font-semibold flex items-center gap-2">
+                        <span className="material-icons-outlined text-sm">info</span>
+                        <span>Gemini AI works in sandbox mode. Add a Gemini API Key in Settings for live pinpoint accuracy.</span>
                     </div>
                 )}
 

@@ -5,21 +5,13 @@ import { dataService, ImportState } from '../services/mockDb';
 import { flightImporter } from '../services/flightImportExport';
 import { calendarService } from '../services/calendarExport';
 import { User, WorkspaceSettings, EntitlementType, SavedConfig, Trip, PackingItem } from '../types';
-import { EntitlementsManager } from '../components/EntitlementsManager';
-import { PublicHolidaysManager } from '../components/PublicHolidaysManager';
+import { GearSettingsTab } from '../components/GearSettingsTab';
+import { WorkspaceSettingsTab } from '../components/WorkspaceSettingsTab';
+import { FlightImportWizard } from '../components/FlightImportWizard';
 
 interface SettingsProps {
     onThemeChange?: (theme: 'light' | 'dark' | 'auto') => void;
 }
-
-const CATEGORIES = [
-    { id: 'Clothing', icon: 'checkroom', color: 'blue' },
-    { id: 'Toiletries', icon: 'soap', color: 'teal' },
-    { id: 'Electronics', icon: 'cable', color: 'purple' },
-    { id: 'Documents', icon: 'description', color: 'amber' },
-    { id: 'Health', icon: 'medical_services', color: 'rose' },
-    { id: 'Misc', icon: 'category', color: 'gray' },
-];
 
 export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
   const [activeTab, setActiveTab] = useState('general');
@@ -47,29 +39,24 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
   });
   const [isSavingOrg, setIsSavingOrg] = useState(false);
 
-  // Packing List State
-  const [newItemText, setNewItemText] = useState('');
-  const [newItemCategory, setNewItemCategory] = useState('Clothing');
-
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [restoreStatus, setRestoreStatus] = useState<'idle' | 'reading' | 'importing' | 'success' | 'error'>('idle');
   const [restoreErrorMessage, setRestoreErrorMessage] = useState('');
 
-  const flightJsonInputRef = useRef<HTMLInputElement>(null);
-  const flightCsvInputRef = useRef<HTMLInputElement>(null);
   const [importState, setImportState] = useState<ImportState>(dataService.getImportState());
-  const [isImportVerifyOpen, setIsImportVerifyOpen] = useState(false);
+  const [isFlightWizardOpen, setIsFlightWizardOpen] = useState(false);
   const [proposedTrips, setProposedTrips] = useState<Trip[]>([]);
   const [selectedTripIds, setSelectedTripIds] = useState<Set<string>>(new Set());
-  const [importFilters, setImportFilters] = useState({ 
-    search: '', 
-    minDate: '', 
-    maxDate: '', 
-    minLegs: '0',
-    carrierSearch: ''
+  const [importFilters, setImportFilters] = useState({
+      search: '',
+      minDate: '',
+      maxDate: '',
+      minLegs: '0',
+      carrierSearch: ''
   });
+  const [isImportVerifyOpen, setIsImportVerifyOpen] = useState(false);
 
   useEffect(() => {
     refreshData();
@@ -165,35 +152,6 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
       setConfig({...config, workingDays: newDays});
   };
 
-  // --- Gear List Handlers ---
-  const handleAddGearItem = () => {
-      if (!newItemText.trim()) return;
-      const newItem: PackingItem = {
-          id: Math.random().toString(36).substr(2, 9),
-          text: newItemText,
-          category: newItemCategory,
-          isChecked: false
-      };
-      const updatedList = [...(config.masterPackingList || []), newItem];
-      setConfig({ ...config, masterPackingList: updatedList });
-      setNewItemText('');
-  };
-
-  const handleDeleteGearItem = (id: string) => {
-      const updatedList = (config.masterPackingList || []).filter(i => i.id !== id);
-      setConfig({ ...config, masterPackingList: updatedList });
-  };
-
-  const groupedGearItems = useMemo(() => {
-      const groups: Record<string, PackingItem[]> = {};
-      CATEGORIES.forEach(c => groups[c.id] = []);
-      (config.masterPackingList || []).forEach(i => {
-          const cat = groups[i.category] ? i.category : 'Misc';
-          groups[cat].push(i);
-      });
-      return groups;
-  }, [config.masterPackingList]);
-
   // --- Import/Export Handlers (Existing) ---
   const handleExport = async () => { 
       const json = await dataService.exportFullState();
@@ -233,6 +191,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
               setRestoreStatus('success');
               
               localStorage.removeItem('wandergrid_session_user');
+              localStorage.removeItem('wandergrid_dashboard_cache_v1');
 
               setTimeout(() => {
                   setIsRestoreModalOpen(false);
@@ -251,7 +210,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
       reader.readAsText(pendingFile);
   };
 
-  const handleFlightImport = (e: React.ChangeEvent<HTMLInputElement>, type: 'json' | 'csv') => { 
+  const handleFlightImport = (e: React.ChangeEvent<HTMLInputElement>, type: 'json' | 'csv' | 'airtrail') => { 
       const file = e.target.files?.[0];
       if (!file || users.length === 0) return;
       
@@ -263,6 +222,8 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
           let candidates: Trip[] = [];
           if (type === 'json') {
               candidates = await flightImporter.importJson(content, defaultUserId);
+          } else if (type === 'airtrail') {
+              candidates = await flightImporter.importAirTrailJson(content, defaultUserId);
           } else {
               candidates = await flightImporter.importCsv(content, defaultUserId);
           }
@@ -288,20 +249,37 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
       refreshData();
   };
 
-  const handleFlightExport = async (type: 'json' | 'csv') => { 
+  const handleFlightExport = async (type: 'json' | 'csv' | 'airtrail' | 'xlsx') => { 
       const allTrips = await dataService.getTrips();
+      
+      if (type === 'xlsx') {
+          const buffer = flightImporter.exportXlsx(allTrips);
+          const blob = new Blob([buffer], { type: 'application/octet-stream' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `flights-export.xlsx`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          return;
+      }
+
       let content = '';
       let filename = '';
       
       if (type === 'json') {
           content = flightImporter.exportJson(allTrips);
           filename = 'flights-export.json';
+      } else if (type === 'airtrail') {
+          content = flightImporter.exportAirTrailJson(allTrips);
+          filename = `airtrail-backup-${new Date().toISOString().split('T')[0]}.json`;
       } else {
           content = flightImporter.exportCsv(allTrips);
           filename = 'flights-export.csv';
       }
 
-      const blob = new Blob([content], { type: type === 'json' ? 'application/json' : 'text/csv' });
+      const blob = new Blob([content], { type: type === 'json' || type === 'airtrail' ? 'application/json' : 'text/csv' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -391,8 +369,6 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
       <Tabs 
         tabs={[
             { id: 'general', label: 'Workspace & Users', icon: <span className="material-icons-outlined">domain</span> },
-            { id: 'policies', label: 'Leave Definitions', icon: <span className="material-icons-outlined">category</span> },
-            { id: 'calendars', label: 'Public Holidays', icon: <span className="material-icons-outlined">public</span> },
             { id: 'gear', label: 'Gear & Assets', icon: <span className="material-icons-outlined">backpack</span> },
         ]}
         activeTab={activeTab}
@@ -401,434 +377,40 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
       />
 
       {activeTab === 'general' && (
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-            <div className="xl:col-span-8 space-y-8">
-                <Card noPadding className="rounded-[2rem] overflow-visible">
-                    <div className="p-8 border-b border-gray-100 dark:border-white/5 bg-gradient-to-r from-blue-500/5 to-indigo-500/5 rounded-t-[2rem]">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                            <div className="flex items-center gap-6">
-                                <div className="w-20 h-20 rounded-[2rem] bg-gradient-to-br from-blue-600 to-indigo-700 shadow-2xl flex items-center justify-center text-white text-3xl font-black rotate-3">
-                                    {config.orgName.charAt(0) || 'W'}
-                                </div>
-                                <div className="space-y-1">
-                                    <h3 className="text-2xl font-black text-gray-900 dark:text-white leading-none">Workspace Identity</h3>
-                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Global Identity & Region</p>
-                                </div>
-                            </div>
-                            <Button variant="primary" size="lg" className="!rounded-2xl shadow-xl shadow-blue-500/20" onClick={handleSaveOrgSettings} isLoading={isSavingOrg} icon={<span className="material-icons-outlined">check_circle</span>}>Commit Changes</Button>
-                        </div>
-                    </div>
-                    <div className="p-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <Input label="Workspace Name" placeholder="WanderGrid Workspace" value={config.orgName} onChange={e => setConfig({...config, orgName: e.target.value})} />
-                        <Select label="Locality: Currency" value={config.currency} onChange={e => setConfig({...config, currency: e.target.value})} options={[{ label: 'AUD', value: 'AUD' }, { label: 'EUR', value: 'EUR' }, { label: 'GBP', value: 'GBP' }, { label: 'USD', value: 'USD' }]} />
-                        <Select label="Temporal Format" value={config.dateFormat} onChange={e => setConfig({...config, dateFormat: e.target.value})} options={[{ label: 'MM/DD/YYYY', value: 'MM/DD/YYYY' }, { label: 'DD/MM/YYYY', value: 'DD/MM/YYYY' }, { label: 'YYYY-MM-DD', value: 'YYYY-MM-DD' }]} />
-                        <Select label="UI Theme" value={config.theme} onChange={e => setConfig({...config, theme: e.target.value as any})} options={[{ label: 'System Auto', value: 'auto' }, { label: 'Dark Mode', value: 'dark' }, { label: 'Light Mode', value: 'light' }]} />
-                        <div className="md:col-span-2">
-                            <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide ml-1">Operational Days</label>
-                            <div className="flex gap-2 mt-2">
-                                {['S','M','T','W','T','F','S'].map((d, i) => (
-                                    <button 
-                                        key={i} 
-                                        onClick={() => toggleWorkingDay(i)}
-                                        className={`w-10 h-10 rounded-xl font-black text-sm transition-all ${config.workingDays.includes(i) ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-gray-100 dark:bg-white/5 text-gray-400'}`}
-                                    >
-                                        {d}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div className="p-8 border-t border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-white/5 space-y-6">
-                        <h4 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-widest">System Integrations</h4>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* OpenStreetMap - Always Active */}
-                            <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-white/10 rounded-2xl">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                                        <span className="material-icons-outlined">map</span>
-                                    </div>
-                                    <div>
-                                        <h5 className="font-bold text-gray-900 dark:text-white text-sm">OpenStreetMap</h5>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400">Geocoding & Location</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 rounded-lg border border-emerald-100 dark:border-emerald-900/30">
-                                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                    <span className="text-[10px] font-black uppercase tracking-wider">Active</span>
-                                </div>
-                            </div>
-
-                            {/* Open-Meteo */}
-                            <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-white/10 rounded-2xl">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 flex items-center justify-center">
-                                        <span className="material-icons-outlined">thermostat</span>
-                                    </div>
-                                    <div>
-                                        <h5 className="font-bold text-gray-900 dark:text-white text-sm">Open-Meteo</h5>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400">Live Weather Recon</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 rounded-lg border border-emerald-100 dark:border-emerald-900/30">
-                                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                    <span className="text-[10px] font-black uppercase tracking-wider">Active</span>
-                                </div>
-                            </div>
-
-                            {/* Gemini AI */}
-                            <div className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-white/10 rounded-2xl space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center">
-                                            <span className="material-icons-outlined">auto_awesome</span>
-                                        </div>
-                                        <div>
-                                            <h5 className="font-bold text-gray-900 dark:text-white text-sm">Google Gemini</h5>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400">Generative AI Models</p>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className={`flex items-center gap-2 px-3 py-1 rounded-lg border ${isGeminiActive ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-900/30' : 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border-amber-100 dark:border-amber-900/30'}`}>
-                                        <div className={`w-2 h-2 rounded-full ${isGeminiActive ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-                                        <span className="text-[10px] font-black uppercase tracking-wider">
-                                            {hasUserKey ? 'Active (User)' : hasEnvKey ? 'Active (Env)' : 'No API Key'}
-                                        </span>
-                                    </div>
-                                </div>
-                                <Input 
-                                    placeholder="Paste Gemini API Key..." 
-                                    type="password"
-                                    value={config.googleGeminiApiKey || ''} 
-                                    onChange={e => setConfig({...config, googleGeminiApiKey: e.target.value})} 
-                                    className="!bg-gray-50 dark:!bg-black/20"
-                                />
-                            </div>
-
-                            {/* AviationStack */}
-                            <div className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-white/10 rounded-2xl space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-                                            <span className="material-icons-outlined">flight</span>
-                                        </div>
-                                        <div>
-                                            <h5 className="font-bold text-gray-900 dark:text-white text-sm">AviationStack</h5>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400">Flight Status</p>
-                                        </div>
-                                    </div>
-                                    <a 
-                                        href="https://aviationstack.com" 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
-                                        className="text-[10px] font-bold text-blue-500 hover:underline uppercase tracking-wider flex items-center gap-1"
-                                    >
-                                        Get Key <span className="material-icons-outlined text-[10px]">open_in_new</span>
-                                    </a>
-                                </div>
-                                <Input 
-                                    placeholder="Paste API Key..." 
-                                    type="password"
-                                    value={config.aviationStackApiKey || ''} 
-                                    onChange={e => setConfig({...config, aviationStackApiKey: e.target.value})} 
-                                    className="!bg-gray-50 dark:!bg-black/20"
-                                />
-                            </div>
-
-                            {/* Brandfetch */}
-                            <div className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-white/10 rounded-2xl space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-xl bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400 flex items-center justify-center">
-                                            <span className="material-icons-outlined">image</span>
-                                        </div>
-                                        <div>
-                                            <h5 className="font-bold text-gray-900 dark:text-white text-sm">Brandfetch</h5>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400">Logos & Assets</p>
-                                        </div>
-                                    </div>
-                                    <a 
-                                        href="https://brandfetch.com/developers" 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
-                                        className="text-[10px] font-bold text-blue-500 hover:underline uppercase tracking-wider flex items-center gap-1"
-                                    >
-                                        Get Key <span className="material-icons-outlined text-[10px]">open_in_new</span>
-                                    </a>
-                                </div>
-                                <Input 
-                                    placeholder="Paste API Key..." 
-                                    type="password"
-                                    value={config.brandfetchApiKey || ''} 
-                                    onChange={e => setConfig({...config, brandfetchApiKey: e.target.value})} 
-                                    className="!bg-gray-50 dark:!bg-black/20"
-                                />
-                            </div>
-                        </div>
-                    </div>
-                </Card>
-
-                <Card noPadding className="rounded-[2rem]">
-                    <div className="p-8 border-b border-gray-100 dark:border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="space-y-1">
-                            <h3 className="text-2xl font-black text-gray-900 dark:text-white leading-none">Personnel Roster</h3>
-                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Management of workspace inhabitants</p>
-                        </div>
-                        <Button variant="secondary" className="!rounded-xl border-2" icon={<span className="material-icons-outlined text-lg">person_add</span>} onClick={handleCreateUser}>Enroll New Member</Button>
-                    </div>
-
-                    <div className="p-4 space-y-3">
-                        {users.length === 0 ? (
-                            <div className="py-16 text-center">
-                                <span className="material-icons-outlined text-gray-200 dark:text-gray-800 text-6xl">person_off</span>
-                                <p className="text-gray-400 mt-4 font-bold uppercase tracking-widest text-xs">No active personnel data</p>
-                            </div>
-                        ) : (
-                            <div className="flex flex-col gap-2">
-                                {users.map(user => {
-                                    const selectedHolidays = savedConfigs.filter(c => user.holidayConfigIds?.includes(c.id));
-                                    return (
-                                        <div key={user.id} className="group relative flex flex-col lg:flex-row lg:items-center justify-between p-4 rounded-2xl bg-white border border-gray-100 dark:bg-gray-900/60 dark:border-white/5 hover:border-blue-200 dark:hover:border-blue-800 transition-all hover:shadow-xl hover:translate-x-1">
-                                            <div className="flex items-center gap-4 flex-1">
-                                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-lg font-black text-white shadow-lg transition-transform group-hover:scale-110 ${user.role === 'Partner' ? 'bg-gradient-to-br from-blue-500 to-indigo-600' : 'bg-gradient-to-br from-emerald-500 to-teal-600'}`}>
-                                                    {user.name?.charAt(0) || '?'}
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-bold text-gray-800 dark:text-white text-base leading-none">{user.name}</h4>
-                                                    <div className="flex items-center gap-2 mt-1">
-                                                        <span className={`text-[9px] font-black uppercase tracking-widest ${user.role === 'Partner' ? 'text-blue-500' : 'text-emerald-500'}`}>{user.role}</span>
-                                                        <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest px-1 border-l border-gray-300 dark:border-white/10">
-                                                            {user.policies?.length || 0} Policies • {selectedHolidays.length} Calendars
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            
-                                            <div className="flex items-center gap-1 mt-4 lg:mt-0 pl-4 border-l border-gray-100 dark:border-white/10 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button onClick={() => handleEditUser(user)} className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg"><span className="material-icons-outlined text-lg">edit</span></button>
-                                                <button onClick={() => initiateDeleteMember(user)} className="p-2 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg"><span className="material-icons-outlined text-lg">delete</span></button>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
-                </Card>
-            </div>
-
-            <div className="xl:col-span-4 space-y-8">
-                {/* Data Operations Card */}
-                <Card noPadding className="rounded-[2rem] border-white/50 dark:border-white/10 shadow-2xl">
-                    <div className="p-8 border-b border-gray-100 dark:border-white/5 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-white/5 dark:to-transparent">
-                        <h3 className="text-2xl font-black text-gray-900 dark:text-white leading-none">Data Operations</h3>
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-2">Persistence & Migration</p>
-                    </div>
-                    
-                    <div className="p-6 space-y-8">
-                        {/* Backup Section */}
-                        <div className="space-y-4">
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center">
-                                    <span className="material-icons-outlined text-sm">settings_backup_restore</span>
-                                </div>
-                                <h4 className="text-sm font-black text-gray-800 dark:text-white uppercase tracking-widest">Database Lifecycle</h4>
-                            </div>
-
-                            <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30">
-                                <div className="flex items-start gap-3">
-                                    <span className="material-icons-outlined text-amber-500 mt-0.5">warning</span>
-                                    <div className="space-y-1">
-                                        <p className="text-xs font-bold text-amber-800 dark:text-amber-200">System Caution</p>
-                                        <p className="text-[10px] text-amber-700/70 dark:text-amber-300/60 leading-relaxed font-medium">Restoring from a backup will overwrite all current users, trips, and workspace settings. Ensure you have a recent export.</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 gap-3">
-                                <Button 
-                                    onClick={handleExport} 
-                                    variant="primary" 
-                                    className="h-14 !rounded-2xl shadow-lg shadow-blue-500/20" 
-                                    icon={<span className="material-icons-outlined">download</span>}
-                                >
-                                    Generate Backup JSON
-                                </Button>
-                                <Button 
-                                    onClick={handleImportTrigger} 
-                                    variant="danger" 
-                                    className="h-14 !rounded-2xl border-dashed border-2 bg-transparent hover:bg-rose-50 dark:hover:bg-rose-900/10" 
-                                    icon={<span className="material-icons-outlined">upload</span>}
-                                >
-                                    Overwrite & Restore
-                                </Button>
-                                <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleFileSelect} />
-                            </div>
-                        </div>
-
-                        {/* Calendar Sync Section */}
-                        <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-white/5">
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-lg bg-teal-500/10 text-teal-600 flex items-center justify-center">
-                                    <span className="material-icons-outlined text-sm">event_note</span>
-                                </div>
-                                <h4 className="text-sm font-black text-gray-800 dark:text-white uppercase tracking-widest">Calendar Sync</h4>
-                            </div>
-                            
-                            <div className="grid grid-cols-1 gap-3">
-                                <Button onClick={handleCalendarExport} variant="ghost" className="bg-gray-50 dark:bg-white/5 h-12 text-[10px] font-black uppercase tracking-wider !rounded-xl">
-                                    <span className="material-icons-outlined text-sm mr-2">file_download</span> Download .ICS File
-                                </Button>
-                                <Button onClick={handleCopySubscriptionLink} variant="ghost" className="bg-gray-50 dark:bg-white/5 h-12 text-[10px] font-black uppercase tracking-wider !rounded-xl">
-                                    <span className="material-icons-outlined text-sm mr-2">rss_feed</span> Copy Sync Link
-                                </Button>
-                            </div>
-                        </div>
-
-                        {/* Flight Data Section */}
-                        <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-white/5">
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-600 flex items-center justify-center">
-                                    <span className="material-icons-outlined text-sm">flight</span>
-                                </div>
-                                <h4 className="text-sm font-black text-gray-800 dark:text-white uppercase tracking-widest">External Flight Data</h4>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
-                                <Button onClick={() => flightJsonInputRef.current?.click()} variant="ghost" className="bg-gray-50 dark:bg-white/5 h-12 text-[10px] font-black uppercase tracking-wider !rounded-xl">Import JSON</Button>
-                                <Button onClick={() => flightCsvInputRef.current?.click()} variant="ghost" className="bg-gray-50 dark:bg-white/5 h-12 text-[10px] font-black uppercase tracking-wider !rounded-xl">Import CSV</Button>
-                                <Button onClick={() => handleFlightExport('json')} variant="ghost" className="bg-transparent h-10 text-[9px] font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">Export JSON</Button>
-                                <Button onClick={() => handleFlightExport('csv')} variant="ghost" className="bg-transparent h-10 text-[9px] font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">Export CSV</Button>
-                                
-                                <input type="file" ref={flightJsonInputRef} className="hidden" accept=".json" onChange={(e) => handleFlightImport(e, 'json')} />
-                                <input type="file" ref={flightCsvInputRef} className="hidden" accept=".csv" onChange={(e) => handleFlightImport(e, 'csv')} />
-                            </div>
-                        </div>
-
-                        {/* Progress Indicator */}
-                        {importState.isActive && (
-                            <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-xl border border-blue-100 dark:border-blue-900/30">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400">Processing Import</span>
-                                    <span className="text-xs font-bold text-blue-600 dark:text-blue-400">{importState.progress}%</span>
-                                </div>
-                                <div className="h-1.5 w-full bg-blue-100 dark:bg-blue-900/30 rounded-full overflow-hidden">
-                                    <div className="h-full bg-blue-500 transition-all duration-300" style={{ width: `${importState.progress}%` }} />
-                                </div>
-                                <p className="text-[10px] text-blue-500 mt-2 truncate">{importState.status}</p>
-                            </div>
-                        )}
-                    </div>
-                </Card>
-            </div>
-        </div>
+          <WorkspaceSettingsTab 
+              config={config}
+              setConfig={setConfig}
+              handleSaveOrgSettings={handleSaveOrgSettings}
+              isSavingOrg={isSavingOrg}
+              toggleWorkingDay={toggleWorkingDay}
+              users={users}
+              savedConfigs={savedConfigs}
+              handleCreateUser={handleCreateUser}
+              handleEditUser={handleEditUser}
+              initiateDeleteMember={initiateDeleteMember}
+              handleExport={handleExport}
+              handleImportTrigger={handleImportTrigger}
+              fileInputRef={fileInputRef}
+              handleFileSelect={handleFileSelect}
+              handleCalendarExport={handleCalendarExport}
+              handleCopySubscriptionLink={handleCopySubscriptionLink}
+              onOpenFlightWizard={() => setIsFlightWizardOpen(true)}
+              handleFlightExport={handleFlightExport}
+              importState={importState}
+              isGeminiActive={isGeminiActive}
+              hasUserKey={hasUserKey}
+              hasEnvKey={hasEnvKey}
+          />
       )}
       
-      {activeTab === 'policies' && <div className="h-[50rem] animate-fade-in"><EntitlementsManager /></div>}
-      {activeTab === 'calendars' && <div className="h-[50rem] animate-fade-in"><PublicHolidaysManager /></div>}
+
       {activeTab === 'gear' && (
-          <div className="h-full animate-fade-in">
-              <Card noPadding className="rounded-[2rem] border-white/50 dark:border-white/10 shadow-2xl h-full flex flex-col">
-                  <div className="p-8 border-b border-gray-100 dark:border-white/5 bg-gradient-to-br from-cyan-500/5 to-blue-500/5 rounded-t-[2rem] shrink-0">
-                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                          <div className="flex items-center gap-4">
-                              <div className="w-16 h-16 rounded-[1.5rem] bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white shadow-xl">
-                                  <span className="material-icons-outlined text-3xl">backpack</span>
-                              </div>
-                              <div>
-                                  <h3 className="text-2xl font-black text-gray-900 dark:text-white leading-none">Master Inventory</h3>
-                                  <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-2">Standard packing configurations</p>
-                              </div>
-                          </div>
-                          <Button 
-                              variant="primary" 
-                              size="lg" 
-                              className="!rounded-2xl shadow-xl shadow-cyan-500/20" 
-                              onClick={handleSaveOrgSettings}
-                              isLoading={isSavingOrg}
-                              icon={<span className="material-icons-outlined">save</span>}
-                          >
-                              Save Master List
-                          </Button>
-                      </div>
-                  </div>
-
-                  <div className="flex-1 flex flex-col min-h-0 bg-gray-50/30 dark:bg-white/5">
-                      <div className="p-6 border-b border-gray-100 dark:border-white/5 bg-white/50 dark:bg-black/20 shrink-0">
-                          <div className="flex gap-4 items-end max-w-3xl">
-                              <div className="flex-1">
-                                  <Input 
-                                      placeholder="Add item to master list..." 
-                                      value={newItemText} 
-                                      onChange={e => setNewItemText(e.target.value)} 
-                                      onKeyDown={e => e.key === 'Enter' && handleAddGearItem()}
-                                      className="!bg-white dark:!bg-black/20 !border-transparent shadow-sm"
-                                  />
-                              </div>
-                              <div className="w-48">
-                                  <Select 
-                                      options={CATEGORIES.map(c => ({ label: c.id, value: c.id }))} 
-                                      value={newItemCategory}
-                                      onChange={e => setNewItemCategory(e.target.value)}
-                                      className="!bg-white dark:!bg-black/20 !border-transparent shadow-sm"
-                                  />
-                              </div>
-                              <Button 
-                                  onClick={handleAddGearItem} 
-                                  className="!rounded-2xl !w-12 !h-[50px] !p-0 shadow-lg" 
-                                  icon={<span className="material-icons-outlined">add</span>} 
-                              />
-                          </div>
-                      </div>
-
-                      <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                              {CATEGORIES.map(cat => {
-                                  const items = groupedGearItems[cat.id] || [];
-                                  if (items.length === 0) return null;
-
-                                  const bgMap: Record<string, string> = {
-                                      blue: 'bg-blue-50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/30',
-                                      teal: 'bg-teal-50 dark:bg-teal-900/10 border-teal-100 dark:border-teal-900/30',
-                                      purple: 'bg-purple-50 dark:bg-purple-900/10 border-purple-100 dark:border-purple-900/30',
-                                      amber: 'bg-amber-50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/30',
-                                      rose: 'bg-rose-50 dark:bg-rose-900/10 border-rose-100 dark:border-rose-900/30',
-                                      gray: 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-white/10'
-                                  };
-                                  const iconMap: Record<string, string> = {
-                                      blue: 'text-blue-500', teal: 'text-teal-500', purple: 'text-purple-500',
-                                      amber: 'text-amber-500', rose: 'text-rose-500', gray: 'text-gray-400'
-                                  };
-
-                                  return (
-                                      <div key={cat.id} className={`p-5 rounded-3xl border transition-all ${bgMap[cat.color]}`}>
-                                          <div className="flex items-center gap-3 mb-4">
-                                              <span className={`material-icons-outlined text-xl ${iconMap[cat.color]}`}>{cat.icon}</span>
-                                              <h3 className="font-black text-gray-800 dark:text-gray-200">{cat.id}</h3>
-                                              <span className="ml-auto text-xs font-bold text-gray-400 bg-white/50 dark:bg-black/20 px-2 py-1 rounded-lg">{items.length}</span>
-                                          </div>
-                                          <div className="space-y-2">
-                                              {items.map(item => (
-                                                  <div key={item.id} className="group flex items-center justify-between p-3 bg-white/60 dark:bg-black/20 rounded-xl hover:bg-white dark:hover:bg-white/5 transition-all">
-                                                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{item.text}</span>
-                                                      <button 
-                                                          onClick={() => handleDeleteGearItem(item.id)}
-                                                          className="text-gray-300 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
-                                                      >
-                                                          <span className="material-icons-outlined text-sm">close</span>
-                                                      </button>
-                                                  </div>
-                                              ))}
-                                          </div>
-                                      </div>
-                                  );
-                              })}
-                          </div>
-                      </div>
-                  </div>
-              </Card>
-          </div>
+          <GearSettingsTab 
+              config={config} 
+              setConfig={setConfig} 
+              handleSaveOrgSettings={handleSaveOrgSettings} 
+              isSavingOrg={isSavingOrg} 
+          />
       )}
 
       <Modal isOpen={isRestoreModalOpen} onClose={() => setIsRestoreModalOpen(false)} title="Restore Database">
@@ -853,14 +435,12 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
           </div>
       </Modal>
 
-      <Modal isOpen={isImportVerifyOpen} onClose={() => setIsImportVerifyOpen(false)} title="Import Flights" maxWidth="max-w-4xl">
-          <div className="p-6 text-center">
-              <span className="material-icons-outlined text-4xl text-blue-500 mb-4">flight_land</span>
-              <h3 className="text-xl font-bold">Flight Import Ready</h3>
-              <p className="text-gray-500 mt-2">Use the Vacation Planner view to manage complex imports with the new UI.</p>
-              <Button onClick={() => setIsImportVerifyOpen(false)} className="mt-4">Close</Button>
-          </div>
-      </Modal>
+      <FlightImportWizard 
+          isOpen={isFlightWizardOpen} 
+          onClose={() => setIsFlightWizardOpen(false)} 
+          onImportComplete={refreshData} 
+          users={users} 
+      />
     </div>
   );
 };

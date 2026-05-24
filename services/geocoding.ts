@@ -195,62 +195,298 @@ export function calculateArrivalTime(originIata: string, destIata: string, depDa
     };
 }
 
+// Active search abort controllers to cancel stale queries
+const activeSearchAborts = new Map<string, AbortController>();
+const searchQueriesCache = new Map<string, string[]>();
+
 export async function searchLocations(query: string): Promise<string[]> {
-    if (!query || query.length < 3) return [];
+    if (!query) return [];
+    const trimmedQuery = query.trim();
+    if (trimmedQuery.length < 2) return [];
+
+    const lowerQuery = trimmedQuery.toLowerCase();
+    
+    // Check local memory cache first for instant sub-millisecond snapping
+    if (searchQueriesCache.has(lowerQuery)) {
+        return searchQueriesCache.get(lowerQuery)!;
+    }
+
+    const suggestionsSet = new Set<string>();
+
+    // 1. Direct IATA airport code extraction & static airport name search (FAST & offline)
+    const uppercaseQuery = trimmedQuery.toUpperCase();
+    if (uppercaseQuery.length === 3 && STATIC_GEO_DATA[uppercaseQuery]) {
+        const ap = STATIC_GEO_DATA[uppercaseQuery];
+        suggestionsSet.add(`${uppercaseQuery} - ${ap.name}, ${ap.city}, ${ap.country}`);
+    }
+
+    Object.entries(STATIC_GEO_DATA).forEach(([key, ap]) => {
+        if (
+            key.toLowerCase().includes(lowerQuery) ||
+            ap.name?.toLowerCase().includes(lowerQuery) ||
+            ap.city?.toLowerCase().includes(lowerQuery) ||
+            ap.country?.toLowerCase().includes(lowerQuery)
+        ) {
+            suggestionsSet.add(`${key} - ${ap.name}, ${ap.city}, ${ap.country}`);
+        }
+    });
+
+    // 2. Offline-first local database query matching based on keywords or city name
+    LOCAL_GEO_MAP.forEach(item => {
+        const cityMatch = item.city.toLowerCase().includes(lowerQuery);
+        const countryMatch = item.country.toLowerCase().includes(lowerQuery);
+        const keywordMatch = item.keywords.some(kw => kw.includes(lowerQuery) || lowerQuery.includes(kw));
+
+        if (cityMatch || countryMatch || keywordMatch) {
+            suggestionsSet.add(`${item.city}, ${item.country}`);
+        }
+    });
+
+    // 3. Match from existing geocoding cache entries
     try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`);
-        if (!res.ok) return [];
-        const data = await res.json();
-        return data.map((item: any) => item.display_name);
-    } catch (e) { return []; }
+        internalCache.forEach((val, key) => {
+            if (key.toLowerCase().includes(lowerQuery)) {
+                if (val.city && val.country) {
+                    suggestionsSet.add(`${val.city}, ${val.country}`);
+                } else if (typeof val === 'string') {
+                    suggestionsSet.add(val);
+                } else if (val.displayName) {
+                    suggestionsSet.add(val.displayName);
+                }
+            }
+        });
+    } catch (e) {}
+
+    const localSuggestions = Array.from(suggestionsSet);
+
+    // 4. Osm/Nominatim network query matching with abort logic
+    let networkSuggestions: string[] = [];
+    if (trimmedQuery.length >= 3) {
+        try {
+            // Cancel running requests for optimal network utilization
+            if (activeSearchAborts.has('search')) {
+                activeSearchAborts.get('search')?.abort();
+            }
+            const controller = new AbortController();
+            activeSearchAborts.set('search', controller);
+
+            // Timeout request after 1.5s
+            const timerId = setTimeout(() => controller.abort(), 1500);
+
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(trimmedQuery)}&limit=6`, {
+                signal: controller.signal,
+                headers: { 'Accept-Language': 'en' }
+            });
+            clearTimeout(timerId);
+
+            if (res.ok) {
+                const data = await res.json();
+                networkSuggestions = data.map((item: any) => item.display_name);
+            }
+        } catch (e) {
+            // Graceful fallback to offline/cached results
+        }
+    }
+
+    const combined = new Set<string>();
+    localSuggestions.forEach(s => combined.add(s));
+    networkSuggestions.forEach(s => combined.add(s));
+
+    const finalResult = Array.from(combined).slice(0, 8);
+    searchQueriesCache.set(lowerQuery, finalResult);
+    return finalResult;
 }
 
 export async function searchStations(query: string, type: 'train' | 'bus'): Promise<string[]> {
     return searchLocations(`${query} ${type === 'train' ? 'railway station' : 'bus station'}`);
 }
 
-export async function getCoordinates(location: string): Promise<{ lat: number; lng: number; tz?: string } | undefined> {
+export async function getCoordinates(location: string): Promise<{ lat: number; lng: number; tz?: string; city?: string; country?: string; countryCode?: string } | undefined> {
   if (!location) return undefined;
   loadCache();
-  const cached = internalCache.get(location) || internalCache.get(location.toUpperCase());
-  if (cached?.lat) return { lat: parseFloat(cached.lat), lng: parseFloat(cached.lon || cached.lng), tz: cached.tz };
 
+  const cleanLocation = location.trim();
+
+  // A. Quick IATA token parsing
+  const iataMatch = cleanLocation.match(/^([A-Z]{3})\s*-\s*/);
+  if (iataMatch) {
+      const code = iataMatch[1];
+      if (STATIC_GEO_DATA[code]) {
+          const ap = STATIC_GEO_DATA[code];
+          return {
+              lat: parseFloat(ap.lat),
+              lng: parseFloat(ap.lon || ap.lng),
+              tz: ap.tz,
+              city: ap.city,
+              country: ap.country,
+              countryCode: ap.iso
+          };
+      }
+  }
+
+  // B. Check exact match in active cash
+  const uppercaseLoc = cleanLocation.toUpperCase();
+  const cached = internalCache.get(cleanLocation) || internalCache.get(uppercaseLoc);
+  if (cached?.lat) {
+      return { 
+          lat: parseFloat(cached.lat), 
+          lng: parseFloat(cached.lon || cached.lng), 
+          tz: cached.tz,
+          city: cached.city,
+          country: cached.country,
+          countryCode: cached.countryCode || cached.iso
+      };
+  }
+
+  // C. Direct airport lookup
+  if (STATIC_GEO_DATA[uppercaseLoc]) {
+      const ap = STATIC_GEO_DATA[uppercaseLoc];
+      return {
+          lat: parseFloat(ap.lat),
+          lng: parseFloat(ap.lon || ap.lng),
+          tz: ap.tz,
+          city: ap.city,
+          country: ap.country,
+          countryCode: ap.iso
+      };
+  }
+
+  // D. Quick local keyword map lookup
+  const lowerLoc = cleanLocation.toLowerCase();
+  const localMatch = LOCAL_GEO_MAP.find(item => item.city.toLowerCase() === lowerLoc || item.keywords.includes(lowerLoc));
+  if (localMatch) {
+      const staticMatch = Object.values(STATIC_GEO_DATA).find(ap => ap.city?.toLowerCase() === localMatch.city.toLowerCase());
+      if (staticMatch) {
+          return {
+              lat: parseFloat(staticMatch.lat),
+              lng: parseFloat(staticMatch.lon || staticMatch.lng),
+              tz: staticMatch.tz,
+              city: localMatch.city,
+              country: localMatch.country,
+              countryCode: localMatch.countryCode
+          };
+      }
+  }
+
+  // E. Live network query
   try {
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}&limit=1`);
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleanLocation)}&limit=1`, {
+        headers: { 'Accept-Language': 'en' }
+    });
     if (!res.ok) return undefined;
     const data = await res.json();
     if (data.length > 0) {
       const lat = parseFloat(data[0].lat), lng = parseFloat(data[0].lon);
       const entry = { lat, lng, lon: lng, tz: 'UTC' };
-      internalCache.set(location, entry);
+      internalCache.set(cleanLocation, entry);
       saveCache();
-      return entry;
+      return { ...entry, lat, lng };
     }
   } catch (e) {}
   return undefined;
 }
 
+export const LOCAL_GEO_MAP: Array<{ keywords: string[]; city: string; country: string; countryCode: string }> = [
+    { keywords: ['france', 'paris', 'nice', 'lyon', 'cdg', 'marseille', 'champs-elysees', 'french'], city: 'Paris', country: 'France', countryCode: 'FR' },
+    { keywords: ['united kingdom', 'uk', 'gb', 'london', 'lhr', 'heathrow', 'edinburgh', 'manchester', 'belfast', 'scotland', 'england', 'british'], city: 'London', country: 'United Kingdom', countryCode: 'GB' },
+    { keywords: ['united states', 'usa', 'us', 'new york', 'jfk', 'california', 'los angeles', 'san francisco', 'miami', 'chicago', 'hawaii', 'vegas', 'american'], city: 'New York', country: 'United States', countryCode: 'US' },
+    { keywords: ['japan', 'tokyo', 'kyoto', 'osaka', 'hnd', 'narita', 'shibuya', 'japanese'], city: 'Tokyo', country: 'Japan', countryCode: 'JP' },
+    { keywords: ['united arab emirates', 'uae', 'dubai', 'dxb', 'abu dhabi', 'emirati'], city: 'Dubai', country: 'United Arab Emirates', countryCode: 'AE' },
+    { keywords: ['italy', 'rome', 'milan', 'venice', 'florence', 'naples', 'fco', 'colosseum', 'italian'], city: 'Rome', country: 'Italy', countryCode: 'IT' },
+    { keywords: ['spain', 'madrid', 'barcelona', 'seville', 'ibiza', 'bcn', 'mallorca', 'spanish'], city: 'Barcelona', country: 'Spain', countryCode: 'ES' },
+    { keywords: ['germany', 'berlin', 'munich', 'frankfurt', 'fra', 'hamburg', 'cologne', 'german'], city: 'Berlin', country: 'Germany', countryCode: 'DE' },
+    { keywords: ['netherlands', 'amsterdam', 'schiphol', 'ams', 'rotterdam', 'dutch'], city: 'Amsterdam', country: 'Netherlands', countryCode: 'NL' },
+    { keywords: ['belgium', 'brussels', 'bruges', 'antwerp', 'belgian'], city: 'Brussels', country: 'Belgium', countryCode: 'BE' },
+    { keywords: ['singapore', 'changi', 'sin'], city: 'Singapore', country: 'Singapore', countryCode: 'SG' },
+    { keywords: ['indonesia', 'bali', 'denpasar', 'jakarta', 'ubud', 'indonesian'], city: 'Denpasar', country: 'Indonesia', countryCode: 'ID' },
+    { keywords: ['australia', 'sydney', 'melbourne', 'syd', 'brisbane', 'australian'], city: 'Sydney', country: 'Australia', countryCode: 'AU' },
+    { keywords: ['greece', 'athens', 'santorini', 'mykonos', 'greek'], city: 'Athens', country: 'Greece', countryCode: 'GR' },
+    { keywords: ['switzerland', 'zurich', 'geneva', 'basel', 'swiss'], city: 'Zurich', country: 'Switzerland', countryCode: 'CH' },
+    { keywords: ['canada', 'toronto', 'vancouver', 'montreal', 'ottawa', 'canadian'], city: 'Toronto', country: 'Canada', countryCode: 'CA' },
+    { keywords: ['thailand', 'bangkok', 'phuket', 'chiang mai', 'thai'], city: 'Bangkok', country: 'Thailand', countryCode: 'TH' },
+    { keywords: ['china', 'beijing', 'shanghai', 'shenzhen', 'chinese'], city: 'Beijing', country: 'China', countryCode: 'CN' },
+    { keywords: ['hong kong', 'hkg'], city: 'Hong Kong', country: 'Hong Kong', countryCode: 'HK' },
+    { keywords: ['south korea', 'seoul', 'icn', 'busan', 'korean'], city: 'Seoul', country: 'South Korea', countryCode: 'KR' },
+    { keywords: ['austria', 'vienna', 'salzburg', 'austrian'], city: 'Vienna', country: 'Austria', countryCode: 'AT' },
+    { keywords: ['portugal', 'lisbon', 'porto', 'algarve', 'portuguese'], city: 'Lisbon', country: 'Portugal', countryCode: 'PT' },
+    { keywords: ['turkey', 'istanbul', 'ankara', 'antalya', 'turkish'], city: 'Istanbul', country: 'Turkey', countryCode: 'TR' },
+    { keywords: ['egypt', 'cairo', 'giza', 'luxor', 'egyptian'], city: 'Cairo', country: 'Egypt', countryCode: 'EG' },
+    { keywords: ['brazil', 'rio', 'saulo', 'sao paulo', 'brazilian'], city: 'Rio de Janeiro', country: 'Brazil', countryCode: 'BR' },
+];
+
 export async function resolvePlaceName(query: string): Promise<{ city: string, country: string, countryCode?: string, displayName: string } | null> {
     if (!query) return null;
     loadCache();
-    const cached = internalCache.get(query) || internalCache.get(query.toUpperCase());
-    if (cached?.city) return { city: cached.city, country: cached.country, countryCode: cached.countryCode || cached.iso, displayName: cached.name || query };
+    
+    const cleanQuery = query.trim();
 
+    // 1. Check IATA prefixes
+    const iataMatch = cleanQuery.match(/^([A-Z]{3})\s*-\s*/);
+    if (iataMatch) {
+        const code = iataMatch[1];
+        if (STATIC_GEO_DATA[code]) {
+            const ap = STATIC_GEO_DATA[code];
+            return {
+                city: ap.city,
+                country: ap.country,
+                countryCode: ap.iso,
+                displayName: cleanQuery
+            };
+        }
+    }
+
+    const uppercaseQuery = cleanQuery.toUpperCase();
+
+    // 2. Check exact cache match
+    const cached = internalCache.get(cleanQuery) || internalCache.get(uppercaseQuery);
+    if (cached?.city) return { city: cached.city, country: cached.country, countryCode: cached.countryCode || cached.iso, displayName: cached.name || cleanQuery };
+
+    // Direct match against airports
+    if (STATIC_GEO_DATA[uppercaseQuery]) {
+        const ap = STATIC_GEO_DATA[uppercaseQuery];
+        return {
+            city: ap.city,
+            country: ap.country,
+            countryCode: ap.iso,
+            displayName: `${uppercaseQuery} - ${ap.name}, ${ap.city}`
+        };
+    }
+
+    // 3. Perform localized fallback lookup first (highly responsive!)
+    const norm = cleanQuery.toLowerCase();
+    for (const item of LOCAL_GEO_MAP) {
+        if (item.keywords.some(kw => norm.includes(kw) || kw.includes(norm))) {
+            const obj = { city: item.city, country: item.country, countryCode: item.countryCode, displayName: cleanQuery };
+            internalCache.set(cleanQuery, obj);
+            saveCache();
+            return obj;
+        }
+    }
+
+    // 4. Perform network search matching via Nominatim
     try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=1`);
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleanQuery)}&addressdetails=1&limit=1`, {
+            headers: { 'Accept-Language': 'en' }
+        });
         if (res.ok) {
             const data = await res.json();
             if (data.length > 0) {
                 const r = data[0], a = r.address || {};
-                const city = a.city || a.town || a.village || query, country = a.country || '', code = a.country_code?.toUpperCase() || '';
+                const city = a.city || a.town || a.village || cleanQuery, country = a.country || '', code = a.country_code?.toUpperCase() || '';
                 const obj = { city, country, countryCode: code, displayName: r.display_name };
-                internalCache.set(query, obj);
+                internalCache.set(cleanQuery, obj);
                 saveCache();
                 return obj;
             }
         }
     } catch (e) {}
-    return { city: query, country: 'Unknown', displayName: query };
+
+    // 5. Last-ditch: if everything failed
+    if (uppercaseQuery.length === 2 && COUNTRY_REGION_MAP[uppercaseQuery]) {
+        return { city: cleanQuery, country: uppercaseQuery, countryCode: uppercaseQuery, displayName: cleanQuery };
+    }
+
+    return { city: cleanQuery, country: 'Unknown', displayName: cleanQuery };
 }
 
 export const getRegion = (code: string) => COUNTRY_REGION_MAP[code] || 'Unknown';

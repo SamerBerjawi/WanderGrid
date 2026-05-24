@@ -428,6 +428,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [activeIndex, setActiveIndex] = useState<number>(-1);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<any>(null);
 
@@ -444,6 +445,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     onChange(val);
+    setActiveIndex(-1);
     
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     
@@ -457,6 +459,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
              setIsOpen(true);
            } else {
              setIsOpen(false);
+             setSuggestions([]);
            }
         } catch (error) {
            console.error("Autocomplete error", error);
@@ -467,6 +470,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
     } else {
       setIsOpen(false);
       setIsLoading(false);
+      setSuggestions([]);
     }
   };
 
@@ -474,6 +478,29 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
     onChange(suggestion);
     setIsOpen(false);
     setSuggestions([]);
+    setActiveIndex(-1);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isOpen || suggestions.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev + 1) % suggestions.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev - 1 + suggestions.length) % suggestions.length);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (activeIndex >= 0 && activeIndex < suggestions.length) {
+        handleSelect(suggestions[activeIndex]);
+      } else if (suggestions.length > 0) {
+        // Fallback to first suggestion if none is highlighted explicitly
+        handleSelect(suggestions[0]);
+      }
+    } else if (e.key === 'Escape') {
+      setIsOpen(false);
+    }
   };
 
   return (
@@ -487,6 +514,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
           )}
           value={value}
           onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
           placeholder={placeholder}
           type="text"
         />
@@ -499,15 +527,25 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
       
       {isOpen && suggestions.length > 0 && (
         <ul className="absolute z-50 min-w-full w-max max-w-[90vw] mt-2 bg-white/95 backdrop-blur-xl border border-white/20 shadow-2xl rounded-2xl overflow-hidden max-h-60 overflow-y-auto dark:bg-gray-900/95 dark:border-white/10 animate-fade-in left-0">
-          {suggestions.map((item, index) => (
-            <li 
-              key={index} 
-              onClick={() => handleSelect(item)}
-              className="px-4 py-3 hover:bg-blue-50 cursor-pointer text-sm font-medium text-gray-700 border-b border-gray-50 last:border-0 transition-colors dark:text-gray-200 dark:border-white/5 dark:hover:bg-white/5 whitespace-nowrap"
-            >
-              {item}
-            </li>
-          ))}
+          {suggestions.map((item, index) => {
+            const isSelected = index === activeIndex;
+            return (
+              <li 
+                key={index} 
+                onClick={() => handleSelect(item)}
+                onMouseEnter={() => setActiveIndex(index)}
+                className={cn(
+                  "px-4 py-3 cursor-pointer text-sm font-medium border-b border-gray-50 last:border-0 transition-colors dark:border-white/5 truncate max-w-[400px]",
+                  isSelected 
+                    ? "bg-blue-600 text-white dark:bg-blue-600 dark:text-white" 
+                    : "text-gray-700 hover:bg-blue-50 dark:text-gray-200 dark:hover:bg-white/5"
+                )}
+                title={item}
+              >
+                {item}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

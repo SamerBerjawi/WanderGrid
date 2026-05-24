@@ -7,6 +7,7 @@ import { resolvePlaceName, calculateDistance } from '../services/geocoding';
 import { getRegion, getFlagEmoji } from '../services/geoData';
 import { REGION_STYLES } from './regionStyles';
 import { Tabs } from '../components/ui';
+import { PassportStamp } from '../components/PassportStamp';
 
 // ... (Interfaces, REGION_STYLES, and helper functions remain unchanged)
 interface GamificationProps {
@@ -394,21 +395,9 @@ export const Gamification: React.FC<GamificationProps> = ({ onTripClick }) => {
         {activeTab === 'stamps' && (
             <div className="space-y-6 animate-fade-in">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {visitedData.map((country) => {
-                        const style = REGION_STYLES[country.region] || REGION_STYLES['Unknown'];
-                        return (
-                            <div key={country.name} className={`group relative rounded-3xl p-6 border shadow-sm hover:shadow-xl transition-all hover:-translate-y-1 overflow-hidden ${style.bg} ${style.border}`}>
-                                <div className="relative z-10">
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div className="text-4xl filter drop-shadow-md">{country.flag}</div>
-                                        <div className={`px-2 py-1 rounded-lg border text-[10px] font-mono font-bold ${style.badge} ${style.border}`}>{country.code}</div>
-                                    </div>
-                                    <h3 className={`text-xl font-black mb-1 leading-tight ${style.text}`}>{country.name}</h3>
-                                    <p className={`text-xs font-bold uppercase tracking-widest opacity-60 ${style.text}`}>{country.region} • {country.lastVisit.getFullYear()}</p>
-                                </div>
-                            </div>
-                        );
-                    })}
+                    {visitedData.map((country) => (
+                        <PassportStamp key={country.name} country={country} />
+                    ))}
                 </div>
             </div>
         )}

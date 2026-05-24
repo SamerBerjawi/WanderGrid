@@ -98,6 +98,16 @@ export interface Transport {
   
   // Helper for flight tracking
   providerCode?: string; // IATA code for airline (e.g. AA)
+
+  // AirTrail Explicit Fields
+  departureTerminal?: string;
+  departureGate?: string;
+  arrivalTerminal?: string;
+  arrivalGate?: string;
+  tailNumber?: string;
+  isApproximate?: boolean;
+  approximateYear?: number;
+  customFields?: Array<{ key: string; value: string }>;
 }
 
 export interface Accommodation {
@@ -154,6 +164,7 @@ export interface Trip {
   status: 'Planning' | 'Upcoming' | 'Past' | 'Cancelled';
   participants: string[];
   icon?: string;
+  privacy?: 'Private' | 'Public'; // New: AirTrail privacy controls
   
   // Basic Leave Request Fields (Legacy/Simple)
   entitlementId?: string; // If null, counts as 'General Event' (no balance impact)
@@ -250,12 +261,12 @@ export interface WorkspaceSettings {
 export enum ViewState {
   DASHBOARD = 'dashboard',
   SETTINGS = 'settings',
-  TIME_OFF = 'time_off',
   USER_DETAIL = 'user_detail',
   PLANNER = 'planner',
   TRIP_DETAIL = 'trip_detail',
   MAP = 'map',
-  GAMIFICATION = 'gamification'
+  GAMIFICATION = 'gamification',
+  FLIGHTS = 'flights'
 }
 
 // --- Live Flight Tracking Types ---

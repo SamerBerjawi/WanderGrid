@@ -1,5 +1,8 @@
 {
   "name": "WanderGrid v0.2",
-  "description": "A private, self-hosted Vacation & Leave Management System.",
-  "requestFramePermissions": []
+  "description": "A visually polished private trip planner, diary, and flight log system.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

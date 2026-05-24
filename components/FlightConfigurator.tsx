@@ -37,6 +37,16 @@ interface SegmentForm {
     distance?: number;
     logoUrl?: string;
     section: 'outbound' | 'return';
+    
+    // AirTrail Explicit Fields
+    departureTerminal?: string;
+    departureGate?: string;
+    arrivalTerminal?: string;
+    arrivalGate?: string;
+    tailNumber?: string;
+    isApproximate?: boolean;
+    approximateYear?: number;
+    customFields?: Array<{ key: string; value: string }>;
 }
 
 interface CarForm {
@@ -84,7 +94,15 @@ const DEFAULT_SEGMENT: Omit<SegmentForm, 'id'> = {
     seatType: 'Window',
     seatNumber: '',
     isExitRow: false,
-    section: 'outbound'
+    section: 'outbound',
+    departureTerminal: '',
+    departureGate: '',
+    arrivalTerminal: '',
+    arrivalGate: '',
+    tailNumber: '',
+    isApproximate: false,
+    approximateYear: new Date().getFullYear(),
+    customFields: []
 };
 
 const AVERAGE_SPEEDS: Record<TransportMode, number> = {
@@ -411,7 +429,15 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                         website: f.website,
                         distance: f.distance,
                         logoUrl: f.logoUrl,
-                        section
+                        section,
+                        departureTerminal: f.departureTerminal || '',
+                        departureGate: f.departureGate || '',
+                        arrivalTerminal: f.arrivalTerminal || '',
+                        arrivalGate: f.arrivalGate || '',
+                        tailNumber: f.tailNumber || '',
+                        isApproximate: f.isApproximate || false,
+                        approximateYear: f.approximateYear || new Date().getFullYear(),
+                        customFields: f.customFields || []
                     };
                 });
                 setSegments(mapped);
@@ -759,10 +785,10 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                 confirmationCode: bookingRef.toUpperCase(),
                 origin: extractIata(seg.origin),
                 destination: extractIata(seg.destination),
-                departureDate: seg.date,
-                departureTime: seg.time,
-                arrivalDate: seg.arrivalDate || seg.date,
-                arrivalTime: seg.arrivalTime || '00:00',
+                departureDate: seg.isApproximate ? `${seg.approximateYear}-01-01` : seg.date,
+                departureTime: seg.isApproximate ? '00:00' : seg.time,
+                arrivalDate: seg.isApproximate ? `${seg.approximateYear}-01-01` : (seg.arrivalDate || seg.date),
+                arrivalTime: seg.isApproximate ? '00:00' : (seg.arrivalTime || '00:00'),
                 travelClass: seg.travelClass as any,
                 seatNumber: seg.seatNumber,
                 seatType: seg.seatType as any,
@@ -772,7 +798,15 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                 website: seg.website,
                 distance: seg.distance,
                 duration: seg.duration,
-                logoUrl: seg.logoUrl
+                logoUrl: seg.logoUrl,
+                departureTerminal: seg.departureTerminal,
+                departureGate: seg.departureGate,
+                arrivalTerminal: seg.arrivalTerminal,
+                arrivalGate: seg.arrivalGate,
+                tailNumber: seg.tailNumber,
+                isApproximate: seg.isApproximate,
+                approximateYear: seg.approximateYear,
+                customFields: seg.customFields
             }));
             onSave(transports);
         }
@@ -1278,6 +1312,128 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                                     <input type="checkbox" className="hidden" checked={segment.isExitRow} onChange={e => updateSegment(index, 'isExitRow', e.target.checked)} />
                                                     <span className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase">Exit Row</span>
                                                 </label>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {mode === 'Flight' && (
+                                        <div className="md:col-span-12 space-y-4 p-4 mt-2 bg-blue-50/20 dark:bg-blue-900/10 rounded-2xl border border-blue-100/30 dark:border-blue-900/20">
+                                            <div className="flex justify-between items-center pb-2 border-b border-blue-100/30 dark:border-blue-900/20">
+                                                <h5 className="text-[11px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest flex items-center gap-1.5">
+                                                    <span className="material-icons-outlined text-sm">flight_land</span> AirTrail Flight Details (Terminal, Gate, Tail, Custom)
+                                                </h5>
+                                                
+                                                {/* Year only approximate toggle */}
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={segment.isApproximate || false} 
+                                                        onChange={e => updateSegment(index, 'isApproximate', e.target.checked)} 
+                                                        className="rounded text-blue-600"
+                                                    />
+                                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Approx Year Only</span>
+                                                </label>
+                                            </div>
+
+                                            {segment.isApproximate ? (
+                                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 animate-fade-in">
+                                                    <Input 
+                                                        label="Approximate Year" 
+                                                        type="number" 
+                                                        placeholder="e.g. 2018" 
+                                                        value={segment.approximateYear?.toString() || ''} 
+                                                        onChange={e => updateSegment(index, 'approximateYear', parseInt(e.target.value) || new Date().getFullYear())} 
+                                                    />
+                                                    <div className="md:col-span-3 flex items-center pt-6 text-xs font-bold text-gray-400">
+                                                        <span>Generates a robust travel log entry without specific seasonal and clock dates (perfect for historical diaries!).</span>
+                                                    </div>
+                                                </div>
+                                            ) : null}
+
+                                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                                                <Input 
+                                                    label="Departure Terminal" 
+                                                    placeholder="T2" 
+                                                    value={segment.departureTerminal || ''} 
+                                                    onChange={e => updateSegment(index, 'departureTerminal', e.target.value)} 
+                                                />
+                                                <Input 
+                                                    label="Departure Gate" 
+                                                    placeholder="B42" 
+                                                    value={segment.departureGate || ''} 
+                                                    onChange={e => updateSegment(index, 'departureGate', e.target.value)} 
+                                                />
+                                                <Input 
+                                                    label="Arrival Terminal" 
+                                                    placeholder="T1" 
+                                                    value={segment.arrivalTerminal || ''} 
+                                                    onChange={e => updateSegment(index, 'arrivalTerminal', e.target.value)} 
+                                                />
+                                                <Input 
+                                                    label="Arrival Gate" 
+                                                    placeholder="17" 
+                                                    value={segment.arrivalGate || ''} 
+                                                    onChange={e => updateSegment(index, 'arrivalGate', e.target.value)} 
+                                                />
+                                                <Input 
+                                                    label="Tail Registration" 
+                                                    placeholder="N709UA" 
+                                                    value={segment.tailNumber || ''} 
+                                                    onChange={e => updateSegment(index, 'tailNumber', e.target.value.toUpperCase())} 
+                                                />
+                                            </div>
+
+                                            {/* Arbitrary Custom Fields */}
+                                            <div className="space-y-2 pt-2">
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Custom Metadata Metadata</span>
+                                                    <button 
+                                                        onClick={() => {
+                                                            const currentFields = segment.customFields || [];
+                                                            updateSegment(index, 'customFields', [...currentFields, { key: '', value: '' }]);
+                                                        }}
+                                                        className="text-[10px] font-bold text-blue-500 hover:text-blue-600 flex items-center gap-1 bg-white dark:bg-gray-800 px-2.5 py-1 rounded-lg border border-gray-200 dark:border-white/10 shadow-sm"
+                                                    >
+                                                        <span className="material-icons-outlined text-xs">add</span> Add Custom Metadata Field
+                                                    </button>
+                                                </div>
+                                                {segment.customFields && segment.customFields.length > 0 && (
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200/50 dark:border-white/10">
+                                                        {segment.customFields.map((field, fIdx) => (
+                                                            <div key={fIdx} className="flex gap-2 items-center">
+                                                                <input 
+                                                                    placeholder="Label (e.g. Layover Duration)" 
+                                                                    className="flex-1 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-black/20 text-xs font-semibold"
+                                                                    value={field.key}
+                                                                    onChange={e => {
+                                                                        const updated = [...(segment.customFields || [])];
+                                                                        updated[fIdx].key = e.target.value;
+                                                                        updateSegment(index, 'customFields', updated);
+                                                                    }}
+                                                                />
+                                                                <input 
+                                                                    placeholder="Value (e.g. 2h 45m)" 
+                                                                    className="flex-1 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-black/20 text-xs font-bold"
+                                                                    value={field.value}
+                                                                    onChange={e => {
+                                                                        const updated = [...(segment.customFields || [])];
+                                                                        updated[fIdx].value = e.target.value;
+                                                                        updateSegment(index, 'customFields', updated);
+                                                                    }}
+                                                                />
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const updated = (segment.customFields || []).filter((_, i) => i !== fIdx);
+                                                                        updateSegment(index, 'customFields', updated);
+                                                                    }}
+                                                                    className="text-gray-400 hover:text-red-500 transition-colors"
+                                                                >
+                                                                    <span className="material-icons-outlined text-sm">remove_circle</span>
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     )}
