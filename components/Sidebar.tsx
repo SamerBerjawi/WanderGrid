@@ -16,6 +16,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
   const [nextTrip, setNextTrip] = useState<Trip | null>(null);
   const [daysUntil, setDaysUntil] = useState<number>(0);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isDbMode, setIsDbMode] = useState<boolean>(true);
+
+  useEffect(() => {
+    setIsDbMode(dataService.isDatabaseMode());
+  }, []);
 
   useEffect(() => {
     const today = new Date();
@@ -173,6 +178,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
                   </div>
                )
           )}
+
+          {/* Connection Mode Indicator */}
+          <div className={`flex items-center gap-4 px-4 py-2.5 rounded-2xl border bg-white/5 backdrop-blur-sm select-none text-xs font-bold leading-none ${
+              isDbMode 
+              ? 'border-emerald-500/20 text-emerald-600 dark:text-emerald-400 dark:bg-emerald-500/5' 
+              : 'border-amber-500/20 text-amber-600 dark:text-amber-400 dark:bg-amber-500/5'
+          } ${isCollapsed ? 'justify-center px-0 w-12 h-10' : 'w-full'}`}>
+              <span className="relative flex h-2 w-2">
+                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isDbMode ? 'bg-emerald-400' : 'bg-amber-400'}`}></span>
+                  <span className={`relative inline-flex rounded-full h-2 w-2 ${isDbMode ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
+              </span>
+              {!isCollapsed && (
+                  <div className="flex flex-col text-left">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wide">{isDbMode ? 'PostgreSQL Database' : 'LocalStorage Cache'}</span>
+                      <span className="text-[8px] font-medium text-gray-400 dark:text-gray-500 mt-0.5">{isDbMode ? 'Syncing with Server DB' : 'Offline / Standalone Mode'}</span>
+                  </div>
+              )}
+          </div>
 
           <button 
               onClick={handleThemeCycle}

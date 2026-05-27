@@ -122,6 +122,10 @@ class DataService {
       return { ...this._importState };
   }
 
+  public isDatabaseMode(): boolean {
+      return this._useApi;
+  }
+
   public subscribeToImport(listener: (state: ImportState) => void): () => void {
       this._importListeners.push(listener);
       listener(this._importState); 
