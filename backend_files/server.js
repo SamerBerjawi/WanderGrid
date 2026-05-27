@@ -23,56 +23,68 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'client_build')));
 
-// Initialize Database Schema
-const initDb = async () => {
-  const client = await pool.connect();
-  try {
-    // We use a generic structure where 'data' contains the JSON object
-    // and 'id' is extracted for easier lookups.
-    const tables = ['users', 'trips', 'events', 'entitlements', 'configs'];
-    
-    for (const table of tables) {
-      await client.query(`
-        CREATE TABLE IF NOT EXISTS ${table} (
-          id TEXT PRIMARY KEY,
-          data JSONB NOT NULL
-        );
-      `);
+// Initialize Database Schema with automatic retry mechanism
+const initDb = async (retries = 10, delayMs = 3000) => {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      console.log(`Connecting to database (attempt ${attempt}/${retries})...`);
+      const client = await pool.connect();
+      try {
+        // We use a generic structure where 'data' contains the JSON object
+        // and 'id' is extracted for easier lookups.
+        const tables = ['users', 'trips', 'events', 'entitlements', 'configs'];
+        
+        for (const table of tables) {
+          await client.query(`
+            CREATE TABLE IF NOT EXISTS ${table} (
+              id TEXT PRIMARY KEY,
+              data JSONB NOT NULL
+            );
+          `);
+        }
+
+        // Settings is a singleton, key-value store
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS settings (
+              key TEXT PRIMARY KEY,
+              data JSONB NOT NULL
+            );
+        `);
+
+        // Global airports database table
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS global_airports (
+              id SERIAL PRIMARY KEY,
+              iata VARCHAR(10),
+              city_name TEXT,
+              airport_name TEXT
+            );
+        `);
+        
+        // Global carriers database table
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS global_carriers (
+              id SERIAL PRIMARY KEY,
+              iata VARCHAR(10),
+              company_name TEXT,
+              country_or_territory TEXT
+            );
+        `);
+        
+        console.log('Database schema initialized successfully!');
+        return; // Connection and schema setup succeeded
+      } finally {
+        client.release();
+      }
+    } catch (err) {
+      console.error(`Database connection attempt ${attempt} failed:`, err.message);
+      if (attempt === retries) {
+        console.error('All database connection attempts exhausted. Starting server in fallback mode (or container will restart).');
+        throw err; // Re-throw to allow process/container to restart if all retries fail
+      }
+      console.log(`Waiting ${delayMs / 1000}s before retrying database connection...`);
+      await new Promise(resolve => setTimeout(resolve, delayMs));
     }
-
-    // Settings is a singleton, key-value store
-    await client.query(`
-        CREATE TABLE IF NOT EXISTS settings (
-          key TEXT PRIMARY KEY,
-          data JSONB NOT NULL
-        );
-    `);
-
-    // Global airports database table
-    await client.query(`
-        CREATE TABLE IF NOT EXISTS global_airports (
-          id SERIAL PRIMARY KEY,
-          iata VARCHAR(10),
-          city_name TEXT,
-          airport_name TEXT
-        );
-    `);
-    
-    // Global carriers database table
-    await client.query(`
-        CREATE TABLE IF NOT EXISTS global_carriers (
-          id SERIAL PRIMARY KEY,
-          iata VARCHAR(10),
-          company_name TEXT,
-          country_or_territory TEXT
-        );
-    `);
-    
-    console.log('Database schema initialized');
-  } catch (err) {
-    console.error('Error initializing database', err);
-  } finally {
-    client.release();
   }
 };
 
@@ -250,6 +262,8 @@ const loadGlobalData = async () => {
 
 initDb().then(() => {
   loadGlobalData().catch(err => console.error('Error in background data load:', err));
+}).catch(err => {
+  console.error('Failed to initialize database after multiple retries. Server can still start, but database operations will fail:', err.message);
 });
 
 // --- Generic CRUD Handlers ---
