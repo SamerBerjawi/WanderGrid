@@ -48,13 +48,11 @@ class DataService {
   private _importState: ImportState = { status: '', progress: 0, isActive: false };
   private _importListeners: ((state: ImportState) => void)[] = [];
   private _useApi: boolean = true; 
+  private _isSynced: boolean = false;
 
   constructor() {
       try {
-          const apiStatus = localStorage.getItem('wandergrid_api_status');
-          if (apiStatus === 'unavailable') {
-              this._useApi = false;
-          }
+          localStorage.removeItem('wandergrid_api_status');
       } catch (e) {}
   }
 
@@ -104,15 +102,76 @@ class DataService {
       this._importListeners.forEach(listener => listener(this._importState));
   }
 
+  private async syncLocalDataToServer() {
+      if (!this._useApi) return;
+      
+      const key = (k: string) => `wandergrid_${k}`;
+      
+      try {
+          console.log('[Sync] Checking for local data to migrate to database...');
+          
+          // 1. Sync settings
+          const localSettingsStr = localStorage.getItem(key('settings'));
+          if (localSettingsStr) {
+               const localSettings = JSON.parse(localSettingsStr);
+               const remoteSettings = await this.getWorkspaceSettings();
+               if (!remoteSettings.aviationStackApiKey && localSettings.aviationStackApiKey) {
+                   await this.updateWorkspaceSettings({ ...remoteSettings, ...localSettings });
+                   console.log('[Sync] Migrated workspace settings to server.');
+               }
+          }
+
+          // 2. Collections to sync
+          const collections = [
+              { route: '/users', storage: 'users' },
+              { route: '/trips', storage: 'trips' },
+              { route: '/events', storage: 'events' },
+              { route: '/entitlements', storage: 'entitlements' },
+              { route: '/configs', storage: 'configs' },
+              { route: '/flights', storage: 'flights' }
+          ];
+
+          for (const col of collections) {
+              const localItemsStr = localStorage.getItem(key(col.storage));
+              if (localItemsStr) {
+                  const localItems = JSON.parse(localItemsStr);
+                  if (Array.isArray(localItems) && localItems.length > 0) {
+                      console.log(`[Sync] Found ${localItems.length} local ${col.storage} items. Checking server...`);
+                      const remoteItems = await this.fetch<any[]>(col.route);
+                      const remoteIds = new Set(remoteItems.map(item => item.id));
+
+                      let migratedCount = 0;
+                      for (const item of localItems) {
+                          if (item && item.id && !remoteIds.has(item.id)) {
+                              await this.fetch(col.route, {
+                                  method: 'POST',
+                                  body: JSON.stringify(item)
+                              });
+                              migratedCount++;
+                          }
+                      }
+                      
+                      if (migratedCount > 0) {
+                          console.log(`[Sync] Successfully migrated ${migratedCount} ${col.storage} to server database.`);
+                      }
+                  }
+              }
+          }
+          console.log('[Sync] Local-to-server data migration completed.');
+      } catch (err) {
+          console.error('[Sync] Error migrating local-only data to database:', err);
+      }
+  }
+
   private async fetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
       if (!this._useApi) {
           return this.localFetch<T>(endpoint, options);
       }
 
       try {
-          // Add timeout to prevent hanging if backend is unresponsive
+          // Generous timeout (10 seconds) to tolerate database query latencies or cold starts on Cloud Run
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 2000); // 2s timeout for rapid failover
+          const timeoutId = setTimeout(() => controller.abort(), 10000);
 
           const res = await fetch(`/api${endpoint}`, {
               headers: { 'Content-Type': 'application/json' },
@@ -126,19 +185,16 @@ class DataService {
               if (res.status === 404) throw new Error("API Route Not Found");
               throw new Error(`API Error: ${res.statusText}`);
           }
+
+          // Trigger local-to-server synchronization in the background on the first successful fetch other than backup or restore
+          if (!this._isSynced && endpoint !== '/backup' && endpoint !== '/restore') {
+              this._isSynced = true;
+              this.syncLocalDataToServer().catch(err => console.error('[Sync] Error syncing local data:', err));
+          }
+
           return await res.json();
       } catch (e) {
-          let alreadyWarned = false;
-          try {
-              alreadyWarned = localStorage.getItem('wandergrid_api_status') === 'unavailable';
-          } catch(err) {}
-
-          if (!alreadyWarned) {
-              console.warn(`Backend unavailable (${endpoint}). Switching to LocalStorage mode.`);
-              try {
-                  localStorage.setItem('wandergrid_api_status', 'unavailable');
-              } catch (err) {}
-          }
+          console.warn(`Backend unavailable (${endpoint}). Switching to LocalStorage mode transiently for this session.`);
           this._useApi = false; 
           return this.localFetch<T>(endpoint, options);
       }
