@@ -32,7 +32,7 @@ const initDb = async (retries = 10, delayMs = 3000) => {
       try {
         // We use a generic structure where 'data' contains the JSON object
         // and 'id' is extracted for easier lookups.
-        const tables = ['users', 'trips', 'events', 'entitlements', 'configs'];
+        const tables = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights'];
         
         for (const table of tables) {
           await client.query(`
@@ -617,10 +617,106 @@ app.get('/api/calendar/:userId/feed.ics', async (req, res) => {
     }
 });
 
+// Health Check
+app.get('/api/health', async (req, res) => {
+    try {
+        await pool.query('SELECT 1');
+        res.json({ status: 'ok', database: 'connected' });
+    } catch (err) {
+        res.status(500).json({ status: 'error', database: 'disconnected', message: err.message });
+    }
+});
+
+// Authentication
+app.post('/api/auth/login', async (req, res) => {
+    const { email, password } = req.body;
+    if (!email || !password) {
+        return res.status(400).json({ error: 'Email and password are required' });
+    }
+    try {
+        const { rows } = await pool.query(
+            `SELECT data FROM users WHERE LOWER(data->>'email') = LOWER($1) LIMIT 1`,
+            [email.trim()]
+        );
+        if (rows.length === 0) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+        
+        const user = rows[0].data;
+        if (user.password !== password) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+        
+        res.json(user);
+    } catch (err) {
+        console.error('Login error:', err);
+        res.status(500).json({ error: 'Authentication failed' });
+    }
+});
+
+app.post('/api/auth/register', async (req, res) => {
+    const user = req.body;
+    if (!user.email || !user.password || !user.id) {
+        return res.status(400).json({ error: 'User ID, Email, and Password are required' });
+    }
+    try {
+        const { rows } = await pool.query(
+            `SELECT 1 FROM users WHERE LOWER(data->>'email') = LOWER($1) LIMIT 1`,
+            [user.email.trim()]
+        );
+        if (rows.length > 0) {
+            return res.status(400).json({ error: 'User already exists' });
+        }
+        
+        await pool.query(
+            `INSERT INTO users (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2`,
+            [user.id, JSON.stringify(user)]
+        );
+        res.status(201).json(user);
+    } catch (err) {
+        console.error('Register error:', err);
+        res.status(500).json({ error: 'Registration failed' });
+    }
+});
+
 // Users
-app.get('/api/users', getResources('users'));
+app.get('/api/users', async (req, res) => {
+    try {
+        const { rows } = await pool.query(`SELECT data FROM users`);
+        const users = rows.map(r => {
+            const u = { ...r.data };
+            delete u.password; // Strip passwords to prevent credential leaks over API
+            return u;
+        });
+        res.json(users);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.post('/api/users', createResource('users'));
-app.put('/api/users/:id', updateResource('users'));
+
+app.put('/api/users/:id', async (req, res) => {
+    const { id } = req.params;
+    const updatedUser = req.body;
+    try {
+        const { rows } = await pool.query(`SELECT data FROM users WHERE id = $1`, [id]);
+        if (rows.length > 0) {
+            const prevUser = rows[0].data;
+            if (!updatedUser.password || updatedUser.password.trim() === '') {
+                updatedUser.password = prevUser.password;
+            }
+        }
+        await pool.query(
+            `INSERT INTO users (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2`,
+            [id, JSON.stringify(updatedUser)]
+        );
+        res.json(updatedUser);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.delete('/api/users/:id', deleteResource('users'));
 
 // Trips
@@ -646,6 +742,12 @@ app.get('/api/configs', getResources('configs'));
 app.post('/api/configs', createResource('configs'));
 app.put('/api/configs/:id', updateResource('configs'));
 app.delete('/api/configs/:id', deleteResource('configs'));
+
+// Flights
+app.get('/api/flights', getResources('flights'));
+app.post('/api/flights', createResource('flights'));
+app.put('/api/flights/:id', updateResource('flights'));
+app.delete('/api/flights/:id', deleteResource('flights'));
 
 // Settings (Singleton)
 app.get('/api/settings', async (req, res) => {
@@ -673,7 +775,7 @@ app.put('/api/settings', async (req, res) => {
 // Import/Export Full State
 app.get('/api/backup', async (req, res) => {
     try {
-        const tables = ['users', 'trips', 'events', 'entitlements', 'configs'];
+        const tables = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights'];
         const backup = {};
         
         for (const table of tables) {
@@ -697,7 +799,7 @@ app.post('/api/restore', async (req, res) => {
         const data = req.body;
         
         // Clear existing
-        const tables = ['users', 'trips', 'events', 'entitlements', 'configs'];
+        const tables = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights'];
         for (const table of tables) {
             await client.query(`TRUNCATE TABLE ${table}`);
             if (data[table] && Array.isArray(data[table])) {

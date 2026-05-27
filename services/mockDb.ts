@@ -57,16 +57,27 @@ class DataService {
   }
 
   async login(email: string, pass: string): Promise<User | null> {
-    const users = await this.getUsers();
+    const isProd = import.meta.env.PROD;
+    if (this._useApi || isProd) {
+        try {
+            const user = await this.fetch<User>('/auth/login', {
+                method: 'POST',
+                body: JSON.stringify({ email, password: pass })
+            });
+            return user;
+        } catch (err) {
+            if (isProd) {
+                throw err;
+            }
+            console.warn("Server auth failed, falling back to local fallback in development:", err);
+        }
+    }
+    const users = await this.localFetch<User[]>('/users');
     const user = users.find(u => u.email === email && u.password === pass);
     return user || null;
   }
 
   async register(name: string, email: string, pass: string): Promise<User> {
-    const users = await this.getUsers();
-    const exists = users.find(u => u.email === email);
-    if (exists) throw new Error("User already exists");
-
     const newUser: User = {
         id: Math.random().toString(36).substr(2, 9),
         name,
@@ -81,7 +92,29 @@ class DataService {
         policies: [],
         holidayConfigIds: []
     };
-    await this.addUser(newUser);
+
+    const isProd = import.meta.env.PROD;
+    if (this._useApi || isProd) {
+        try {
+            const registeredUser = await this.fetch<User>('/auth/register', {
+                method: 'POST',
+                body: JSON.stringify(newUser)
+            });
+            return registeredUser;
+        } catch (err) {
+            if (isProd) {
+                throw err;
+            }
+            console.warn("Server register failed, falling back to local registration in development:", err);
+        }
+    }
+
+    const users = await this.localFetch<User[]>('/users');
+    const exists = users.find(u => u.email === email);
+    if (exists) throw new Error("User already exists");
+
+    users.push(newUser);
+    localStorage.setItem(`wandergrid_users`, JSON.stringify(users));
     return newUser;
   }
 
@@ -164,6 +197,12 @@ class DataService {
   }
 
   private async fetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
+      const isProd = import.meta.env.PROD;
+      
+      if (isProd) {
+          this._useApi = true;
+      }
+
       if (!this._useApi) {
           return this.localFetch<T>(endpoint, options);
       }
@@ -194,9 +233,16 @@ class DataService {
 
           return await res.json();
       } catch (e) {
-          console.warn(`Backend unavailable (${endpoint}). Switching to LocalStorage mode transiently for this session.`);
-          this._useApi = false; 
-          return this.localFetch<T>(endpoint, options);
+          console.warn(`Backend unavailable (${endpoint}).`, e);
+          if (isProd) {
+              // In production, NEVER fall back to local storage. Throw the error so the user is aware of backend issues.
+              throw e;
+          } else {
+              // In development, fallback to LocalStorage is still allowed
+              console.warn(`Fallback to LocalStorage active for development request: ${endpoint}`);
+              this._useApi = false;
+              return this.localFetch<T>(endpoint, options);
+          }
       }
   }
 
