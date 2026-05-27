@@ -6,14 +6,14 @@ services:
     # Replace 'username' with your lowercase GitHub username/org.
     # To run without source code, docker-compose will pull this image from GHCR.
     # If source files are present, you can build locally to update it.
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER_LOWERCASE:-username}/wandergrid:latest
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER_LOWERCASE:-samerberjawi}/wandergrid:latest
     build:
       context: .
       dockerfile: backend_files/Dockerfile
     container_name: wandergrid_app
     restart: unless-stopped
     ports:
-      - "${APP_PORT:-3000}:3000"
+      - "${APP_PORT:-4921}:3000"
     environment:
       - NODE_ENV=production
       - PORT=3000
