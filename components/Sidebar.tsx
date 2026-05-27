@@ -69,7 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
   return (
     <>
       {/* Desktop Sidebar with Crystal edge styles */}
-      <aside className={`hidden md:flex flex-shrink-0 flex-col h-full border-r border-gray-200/10 bg-white/[0.04] dark:bg-slate-950/45 backdrop-blur-2xl transition-all duration-300 relative border-t-white/10 dark:border-t-white/5 shadow-[0_8px_32px_0_rgba(0,0,0,0.15)] ${isCollapsed ? 'w-24' : 'w-72'}`}>
+      <aside className={`hidden md:flex flex-shrink-0 flex-col h-full border-r border-gray-200/10 bg-white/[0.04] dark:bg-zinc-950/25 backdrop-blur-2xl transition-all duration-300 relative border-t-white/10 dark:border-t-white/5 shadow-[0_8px_32px_0_rgba(0,0,0,0.15)] ${isCollapsed ? 'w-24' : 'w-72'}`}>
         
         <button 
            onClick={() => setIsCollapsed(!isCollapsed)}
@@ -197,7 +197,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
       </aside>
 
       {/* Mobile Bottom Navigation (Glassmorphic 2.0 / Crystal Edge) */}
-      <div className="flex md:hidden fixed bottom-0 left-0 right-0 z-50 h-20 items-center justify-around px-2 rounded-t-[2.5rem] border-t border-l border-r border-white/20 dark:border-white/10 bg-white/40 dark:bg-slate-950/55 backdrop-blur-2xl shadow-[0_-8px_32px_0_rgba(0,0,0,0.25)]">
+      <div className="flex md:hidden fixed bottom-0 left-0 right-0 z-50 h-20 items-center justify-around px-2 rounded-t-[2.5rem] border-t border-l border-r border-white/20 dark:border-white/10 bg-white/40 dark:bg-zinc-950/35 backdrop-blur-2xl shadow-[0_-8px_32px_0_rgba(0,0,0,0.25)]">
         {navItems.map((item) => {
           const isActive = currentView === item.value;
           return (

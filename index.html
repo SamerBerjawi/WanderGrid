@@ -260,7 +260,7 @@
 
       /* 1. Background Track (Static) */
       .flight-path-track {
-        stroke-opacity: 0.15;
+        stroke-opacity: 0.65 !important;
         stroke-linecap: round;
         stroke-linejoin: round;
         fill: none;
@@ -271,13 +271,12 @@
         fill: none;
         stroke-linecap: round;
         stroke-linejoin: round;
-        /* Dash pattern: [dash_length, gap_length] */
-        /* We use a long gap to create a "bullet" or "comet" effect */
-        stroke-dasharray: 12, 180; 
+        /* Repeating flowing pattern ensuring constant visibility and beautiful pacing */
+        stroke-dasharray: 10, 20; 
         stroke-dashoffset: 0;
-        animation: flow 3s linear infinite;
+        animation: flow 4s linear infinite;
         /* Neon Glow Effect */
-        filter: drop-shadow(0 0 3px currentColor) drop-shadow(0 0 6px currentColor);
+        filter: drop-shadow(0 0 2px currentColor) drop-shadow(0 0 4px currentColor);
       }
 
       /* Highlighted State (Hover) */
@@ -290,11 +289,10 @@
         stroke-dasharray: none !important;
       }
 
-      /* Animation Keyframe */
+      /* Animation Keyframe - matches the 30px combined dash+gap cycle perfectly */
       @keyframes flow {
         to {
-          /* Move backwards by the total length of dash+gap to create continuous flow */
-          stroke-dashoffset: -192; 
+          stroke-dashoffset: -30; 
         }
       }
 

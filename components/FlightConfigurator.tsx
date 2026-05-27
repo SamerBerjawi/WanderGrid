@@ -4,6 +4,7 @@ import { Button, Input, Select, Autocomplete, Badge, TimeInput } from './ui';
 import { Transport, TransportMode } from '../types';
 import { dataService } from '../services/mockDb';
 import { getCoordinates, calculateDistance, calculateDurationMinutes, calculateArrivalTime, searchLocations, searchStations } from '../services/geocoding';
+import { getAirportsByQueryLocally, getCarriersByQueryLocally } from '../utils/flightData';
 
 // ... (Interfaces remain unchanged)
 interface TransportConfiguratorProps {
@@ -260,82 +261,6 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
             if (s.brandfetchApiKey) setBrandfetchKey(s.brandfetchApiKey);
             setCurrencySymbol(getCurrencySymbol(s.currency));
         });
-
-        const airportsCacheKey = 'wandergrid_airports_cache_v1';
-        const airlinesCacheKey = 'wandergrid_airlines_cache_v1';
-
-        const loadCachedAirports = () => {
-            try {
-                const cached = localStorage.getItem(airportsCacheKey);
-                if (!cached) return null;
-                const parsed = JSON.parse(cached) as AirportData[];
-                return Array.isArray(parsed) ? parsed : null;
-            } catch (e) {
-                return null;
-            }
-        };
-
-        const loadCachedAirlines = () => {
-            try {
-                const cached = localStorage.getItem(airlinesCacheKey);
-                if (!cached) return null;
-                const parsed = JSON.parse(cached) as AirlineData[];
-                return Array.isArray(parsed) ? parsed : null;
-            } catch (e) {
-                return null;
-            }
-        };
-
-        const cachedAirports = loadCachedAirports();
-        if (cachedAirports && cachedAirports.length > 0) {
-            setAirportList(cachedAirports);
-        }
-
-        const cachedAirlines = loadCachedAirlines();
-        if (cachedAirlines && cachedAirlines.length > 0) {
-            setAirlineList(cachedAirlines);
-        }
-
-        fetch('https://raw.githubusercontent.com/mwgg/Airports/master/airports.json')
-            .then(res => res.json())
-            .then(data => {
-                const list: AirportData[] = Object.values(data)
-                    .filter((details: any) => details.iata && details.iata.length === 3) 
-                    .map((details: any) => ({
-                        iata: details.iata,
-                        name: details.name,
-                        city: details.city,
-                        country: details.country
-                    }));
-                setAirportList(list);
-                localStorage.setItem(airportsCacheKey, JSON.stringify(list));
-            })
-            .catch(e => {
-                if (!cachedAirports) console.error("Failed to load airports", e);
-            });
-
-        fetch('https://raw.githubusercontent.com/dlubom/iata_code_fetcher/main/carrier_data_full_processed.jsonl')
-            .then(res => res.text())
-            .then(text => {
-                const lines = text.split('\n').filter(line => line.trim() !== '');
-                const list: AirlineData[] = lines.map(line => {
-                    try {
-                        const d = JSON.parse(line);
-                        return {
-                            name: d.company_name || d.name || '',
-                            iata: d.iata || '',
-                            icao: d.icao || ''
-                        };
-                    } catch {
-                        return null;
-                    }
-                }).filter(x => x && x.name && x.iata) as AirlineData[];
-                setAirlineList(list);
-                localStorage.setItem(airlinesCacheKey, JSON.stringify(list));
-            })
-            .catch(e => {
-                if (!cachedAirlines) console.error("Failed to load airlines", e);
-            });
     }, []);
 
     useEffect(() => {
@@ -493,9 +418,28 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
         let updates: Partial<SegmentForm> = { [field]: value };
 
         if (field === 'provider' && mode === 'Flight') {
-            const matchedAirline = airlineList.find(a => a.name.toLowerCase() === (value as string).toLowerCase());
-            if (matchedAirline) {
-                updates.providerCode = matchedAirline.iata;
+            const trimmedValue = (value as string).trim();
+            if (trimmedValue) {
+                fetch(`/api/carriers/search?q=${encodeURIComponent(trimmedValue)}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (Array.isArray(data) && data.length > 0) {
+                            const found = data.find(c => c.company_name.toLowerCase() === trimmedValue.toLowerCase());
+                            if (found && found.iata) {
+                                setSegments(prevSegments => {
+                                    const nextSegments = [...prevSegments];
+                                    if (nextSegments[index]) {
+                                        nextSegments[index] = {
+                                            ...nextSegments[index],
+                                            providerCode: found.iata
+                                        };
+                                    }
+                                    return nextSegments;
+                                });
+                            }
+                        }
+                    })
+                    .catch(e => console.warn('Failed to resolve providerCode', e));
             }
         }
 
@@ -814,27 +758,72 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
 
     const fetchAirportSuggestions = async (query: string): Promise<string[]> => {
         if (!query || query.length < 2) return [];
-        const lower = query.toLowerCase();
-        return airportList
-            .filter(a => 
-                a.iata.toLowerCase().includes(lower) || 
-                a.city.toLowerCase().includes(lower) || 
-                a.name.toLowerCase().includes(lower)
-            )
-            .slice(0, 10)
-            .map(a => `${a.iata} - ${a.city} (${a.name})`);
+        let apiResults: any[] = [];
+        try {
+            const res = await fetch(`/api/airports/search?q=${encodeURIComponent(query)}`);
+            if (res.ok) {
+                apiResults = await res.json();
+            }
+        } catch (e) {
+            console.warn("Airport search API failed, using local dataset fallback:", e);
+        }
+        
+        const localResults = getAirportsByQueryLocally(query);
+        const seenIatas = new Set<string>();
+        const merged: any[] = [];
+        
+        if (Array.isArray(apiResults)) {
+            for (const item of apiResults) {
+                if (item.iata) {
+                    seenIatas.add(item.iata.toUpperCase());
+                    merged.push(item);
+                }
+            }
+        }
+        
+        for (const item of localResults) {
+            if (item.iata && !seenIatas.has(item.iata.toUpperCase())) {
+                merged.push(item);
+            }
+        }
+        
+        return merged.slice(0, 15).map((a: any) => `${a.iata} - ${a.city_name} (${a.airport_name})`);
     };
 
     const fetchAirlineSuggestions = async (query: string): Promise<string[]> => {
-        if (!query || query.length < 2) return [];
-        const lower = query.toLowerCase();
-        return airlineList
-            .filter(a => 
-                (a.name && a.name.toLowerCase().includes(lower)) || 
-                (a.iata && a.iata.toLowerCase().includes(lower))
-            )
-            .slice(0, 10)
-            .map(a => a.name); 
+        if (!query || query.length < 1) return [];
+        let apiResults: any[] = [];
+        try {
+            const res = await fetch(`/api/carriers/search?q=${encodeURIComponent(query)}`);
+            if (res.ok) {
+                apiResults = await res.json();
+            }
+        } catch (e) {
+            console.warn("Airline search API failed, using local dataset fallback:", e);
+        }
+
+        const localResults = getCarriersByQueryLocally(query);
+        const seenNames = new Set<string>();
+        const merged: string[] = [];
+
+        if (Array.isArray(apiResults)) {
+            for (const item of apiResults) {
+                const name = item.company_name;
+                if (name) {
+                    seenNames.add(name.toLowerCase());
+                    merged.push(name);
+                }
+            }
+        }
+
+        for (const item of localResults) {
+            const name = item.company_name;
+            if (name && !seenNames.has(name.toLowerCase())) {
+                merged.push(name);
+            }
+        }
+
+        return merged.slice(0, 15);
     };
 
     const fetchCarLocationSuggestions = async (query: string): Promise<string[]> => {

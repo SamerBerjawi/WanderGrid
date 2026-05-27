@@ -245,6 +245,13 @@ export interface EntitlementType {
   };
 }
 
+export interface Carrier {
+  id: string;
+  name: string;
+  code: string; // Used as the "provider" (e.g., "delta", "DL")
+  domain: string; // Brandfetch domain (e.g., "delta.com")
+}
+
 export interface WorkspaceSettings {
     orgName: string;
     currency: string;
@@ -256,6 +263,7 @@ export interface WorkspaceSettings {
     brandfetchApiKey?: string;
     googleGeminiApiKey?: string; // AI Key
     masterPackingList?: PackingItem[]; // Global packing list template
+    carriers?: Carrier[]; // Manageable custom carriers list
 }
 
 export enum ViewState {

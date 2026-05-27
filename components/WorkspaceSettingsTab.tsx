@@ -1,5 +1,5 @@
-import React from 'react';
-import { Card, Button, Input, Select } from './ui';
+import React, { useState } from 'react';
+import { Card, Button, Input, Select, Modal } from './ui';
 import { User, WorkspaceSettings, SavedConfig } from '../types';
 import { ImportState } from '../services/mockDb';
 
@@ -35,6 +35,20 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
     handleCalendarExport, handleCopySubscriptionLink, onOpenFlightWizard, handleFlightExport, importState,
     isGeminiActive, hasUserKey, hasEnvKey
 }) => {
+    const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+    const [resetConfirmText, setResetConfirmText] = useState('');
+
+    const handleWipeDatabase = () => {
+        if (resetConfirmText === 'DELETE') {
+            Object.keys(localStorage).forEach(key => {
+                if (key.startsWith('wandergrid_') || key === 'flightFormDraft') {
+                    localStorage.removeItem(key);
+                }
+            });
+            window.location.reload();
+        }
+    };
+
     return (
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
             <div className="xl:col-span-8 space-y-8">
@@ -284,7 +298,7 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 gap-3">
+                             <div className="grid grid-cols-1 gap-3">
                                 <Button 
                                     onClick={handleExport} 
                                     variant="primary" 
@@ -300,6 +314,14 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                                     icon={<span className="material-icons-outlined">upload</span>}
                                 >
                                     Overwrite & Restore
+                                </Button>
+                                <Button 
+                                    onClick={() => setIsResetModalOpen(true)} 
+                                    variant="danger" 
+                                    className="h-14 !rounded-2xl border-2 border-red-200 dark:border-red-900/40 bg-red-50/50 hover:bg-red-100 text-red-600 dark:bg-red-505/10 dark:text-red-400 font-bold flex items-center justify-center gap-2" 
+                                    icon={<span className="material-icons-outlined">delete_forever</span>}
+                                >
+                                    Wipe & Reset Application Data
                                 </Button>
                                 <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleFileSelect} />
                             </div>
@@ -351,10 +373,10 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                                 </Button>
                             </div>
 
-                            {/* Export / Backups Area */}
+                             {/* Export / Backups Area */}
                             <div className="space-y-3 bg-slate-50 dark:bg-slate-950/40 p-5 rounded-3xl border border-slate-200/50 dark:border-white/5">
                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Roster Exports & Backups</span>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                                     <Button 
                                         onClick={() => handleFlightExport('xlsx')} 
                                         variant="secondary" 
@@ -376,18 +398,11 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                                     >
                                         JSON Data
                                     </Button>
-                                    <Button 
-                                        onClick={() => handleFlightExport('airtrail')} 
-                                        variant="secondary" 
-                                        className="h-10 text-[10px] font-black uppercase tracking-wider !rounded-xl text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900/40"
-                                    >
-                                        AirTrail File
-                                    </Button>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Progress Indicator */}
+                         {/* Progress Indicator */}
                         {importState.isActive && (
                             <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-xl border border-blue-100 dark:border-blue-900/30">
                                 <div className="flex justify-between items-center mb-2">
@@ -403,6 +418,52 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                     </div>
                 </Card>
             </div>
+
+            <Modal isOpen={isResetModalOpen} onClose={() => { setIsResetModalOpen(false); setResetConfirmText(''); }} title="Consequences: Wipe Database">
+                <div className="space-y-6 text-left">
+                    <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30">
+                        <div className="flex items-start gap-3">
+                            <span className="material-icons-outlined text-red-500 mt-0.5">warning</span>
+                            <div className="space-y-1">
+                                <p className="text-sm font-black text-red-800 dark:text-red-400 uppercase tracking-wider">Dangerous Action</p>
+                                <p className="text-[11px] text-red-700/80 dark:text-red-350/60 leading-relaxed font-semibold">
+                                    This operation is permanent. It will irreversibly delete all listed trips, independent flights (even independent ones), user records, custom configurations, and assets.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase ml-1">Confirm deletion</label>
+                        <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-normal ml-1 mb-2">
+                            Type <span className="font-extrabold text-red-600 dark:text-red-400 select-all border border-red-200 dark:border-red-905 px-1 bg-red-50 dark:bg-black/20 rounded">DELETE</span> to unlock the wipes process.
+                        </p>
+                        <Input 
+                            placeholder="Type DELETE here" 
+                            value={resetConfirmText} 
+                            onChange={(e) => setResetConfirmText(e.target.value)} 
+                        />
+                    </div>
+
+                    <div className="flex gap-4 pt-4 border-t border-gray-100 dark:border-white/5">
+                        <Button 
+                            variant="ghost" 
+                            className="flex-1" 
+                            onClick={() => { setIsResetModalOpen(false); setResetConfirmText(''); }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button 
+                            variant="danger" 
+                            className="flex-1 bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-500/20 disabled:opacity-50 disabled:bg-gray-300 dark:disabled:bg-gray-800" 
+                            onClick={handleWipeDatabase}
+                            disabled={resetConfirmText !== 'DELETE'}
+                        >
+                            YES, WIPE DATABASE
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 };

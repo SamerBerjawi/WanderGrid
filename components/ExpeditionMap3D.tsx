@@ -11,6 +11,9 @@ interface ExpeditionMap3DProps {
     autoPlay?: boolean; // Cinematic Mode Trigger
     activeLayer?: 'standard' | 'night' | 'satellite';
     onActiveLayerChange?: (layer: 'standard' | 'night' | 'satellite') => void;
+    focusTransportCoordinates?: { lat: number; lng: number } | null;
+    showGradientRoutes?: boolean;
+    onToggleGradientRoutes?: (val: boolean) => void;
 }
 
 interface ArcData {
@@ -18,7 +21,7 @@ interface ArcData {
     startLng: number;
     endLat: number;
     endLng: number;
-    color: string;
+    color: string | string[];
     name: string;
     tripId: string;
     tripName: string;
@@ -33,6 +36,39 @@ interface PointData {
     color: string;
     radius: number;
 }
+
+// --- Geographic Region Gradient Colors (Matching ExpeditionMap 2D) ---
+const COLOR_POLES = [
+    { lat: 55, lng: -100, color: [0, 122, 255] },    // NA: Vivid Blue (Apple Blue)
+    { lat: -15, lng: -60, color: [0, 200, 83] },     // SA: Vivid Emerald
+    { lat: 10, lng: 20, color: [255, 179, 0] },      // Africa: Vivid Amber/Gold
+    { lat: 50, lng: 15, color: [124, 58, 237] },     // Europe: Vivid Violet
+    { lat: 35, lng: 105, color: [255, 23, 68] },     // Asia: Vivid Red
+    { lat: -25, lng: 135, color: [0, 229, 255] },    // Oceania: Vivid Cyan
+];
+
+const getGeoGradientColor = (lat: number, lng: number): string => {
+    let totalWeight = 0;
+    let r = 0, g = 0, b = 0;
+
+    for (const pole of COLOR_POLES) {
+        const dLat = lat - pole.lat;
+        const dLng = lng - pole.lng;
+        const distSq = dLat * dLat + dLng * dLng;
+        const weight = 1 / Math.pow(distSq + 800, 1.5); 
+        
+        totalWeight += weight;
+        r += pole.color[0] * weight;
+        g += pole.color[1] * weight;
+        b += pole.color[2] * weight;
+    }
+
+    r = Math.min(255, Math.max(0, Math.round(r / totalWeight)));
+    g = Math.min(255, Math.max(0, Math.round(g / totalWeight)));
+    b = Math.min(255, Math.max(0, Math.round(b / totalWeight)));
+
+    return `rgb(${r}, ${g}, ${b})`;
+};
 
 // Custom Hook to detect Dark Mode changes
 const useDarkMode = () => {
@@ -95,7 +131,10 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({
     showFrequencyWeight = true, 
     autoPlay = false,
     activeLayer: activeLayerProp,
-    onActiveLayerChange
+    onActiveLayerChange,
+    focusTransportCoordinates,
+    showGradientRoutes: showGradientRoutesProp,
+    onToggleGradientRoutes
 }) => {
     const globeEl = useRef<any>(null);
     const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
@@ -117,11 +156,25 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({
 
     const isDark = useDarkMode();
     
+    // Gradient Routes synchronized or local state
+    const [localShowGradientRoutes, setLocalShowGradientRoutes] = useState(() => {
+        return localStorage.getItem('wandergrid_gradient_routes') !== 'false';
+    });
+    const showGradientRoutes = showGradientRoutesProp !== undefined ? showGradientRoutesProp : localShowGradientRoutes;
+
+    const handleToggleGradientRoutes = (val: boolean) => {
+        setLocalShowGradientRoutes(val);
+        localStorage.setItem('wandergrid_gradient_routes', String(val));
+        if (onToggleGradientRoutes) {
+            onToggleGradientRoutes(val);
+        }
+    };
+
     // Custom Globe Controls States
     const [autoRotate, setAutoRotate] = useState(true);
     const [autoRotateSpeed, setAutoRotateSpeed] = useState(0.5);
     const [showGraticules, setShowGraticules] = useState(false);
-    const [atmosphereAltitude, setAtmosphereAltitude] = useState(0.15);
+    const [atmosphereAltitude, setAtmosphereAltitude] = useState(0.35);
     const [showAtmosphere, setShowAtmosphere] = useState(true);
     const [showControlsPanel, setShowControlsPanel] = useState(false);
     
@@ -203,9 +256,14 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({
                              const angularDist = getGreatCircleAngle(seg.start.lat, seg.start.lng, seg.end.lat, seg.end.lng);
                              const alt = isSurface ? 0.001 : (angularDist * 0.4); 
 
+                             // Compute high-fidelity visual gradients connecting regional color spaces
+                             const stColor = showGradientRoutes ? getGeoGradientColor(seg.start.lat, seg.start.lng) : finalColor;
+                             const edColor = showGradientRoutes ? getGeoGradientColor(seg.end.lat, seg.end.lng) : finalColor;
+                             const arcColorValue = showGradientRoutes ? [stColor, edColor] : finalColor;
+
                              arcList.push({
                                 startLat: seg.start.lat, startLng: seg.start.lng, endLat: seg.end.lat, endLng: seg.end.lng,
-                                color: finalColor, name: `${seg.start.name} → ${seg.end.name}`,
+                                color: arcColorValue, name: `${seg.start.name} → ${seg.end.name}`,
                                 tripId: trip.id, tripName: trip.name, status: trip.status, alt: alt
                             });
                         });
@@ -221,7 +279,7 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({
         });
 
         return { arcs: arcList, points: Array.from(pointMap.values()), sequentialPoints: seqPoints };
-    }, [trips, isDark, activeLayer, showFrequencyWeight]);
+    }, [trips, isDark, activeLayer, showFrequencyWeight, showGradientRoutes]);
 
     // Resize Observer
     useEffect(() => {
@@ -249,6 +307,18 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({
             globeEl.current.pointOfView({ lat: 20, lng: 0, altitude: 2.5 });
         }
     }, [autoPlay]);
+
+    // Focus camera on focusTransportCoordinates
+    useEffect(() => {
+        if (globeEl.current && focusTransportCoordinates) {
+            if (autoRotate) setAutoRotate(false);
+            globeEl.current.pointOfView({
+                lat: focusTransportCoordinates.lat,
+                lng: focusTransportCoordinates.lng,
+                altitude: 1.5
+            }, 2500);
+        }
+    }, [focusTransportCoordinates]);
 
     // Fly to region helper
     const flyToRegion = (lat: number, lng: number, altitude: number) => {
@@ -326,7 +396,7 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({
                 arcsData={arcs}
                 arcStartLat="startLat" arcStartLng="startLng" arcEndLat="endLat" arcEndLng="endLng"
                 arcColor="color" arcDashLength={animateRoutes ? 0.4 : 1} arcDashGap={animateRoutes ? 0.2 : 0}
-                arcDashAnimateTime={animateRoutes ? 2000 : 0} arcStroke={showFrequencyWeight ? 0.5 : 0.2} arcAltitude="alt"
+                arcDashAnimateTime={animateRoutes ? 2000 : 0} arcStroke={showFrequencyWeight ? 0.45 : 0.3} arcAltitude="alt"
                 arcResolution={128}
                 pointsData={points} pointLat="lat" pointLng="lng" pointColor="color" pointRadius="radius" pointAltitude={0.01} pointResolution={2}
                 onArcClick={(arc: any) => onTripClick && onTripClick(arc.tripId)}
@@ -433,7 +503,7 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({
                                         <input 
                                             type="range"
                                             min="0.05"
-                                            max="0.30"
+                                            max="0.50"
                                             step="0.01"
                                             value={atmosphereAltitude}
                                             onChange={(e) => setAtmosphereAltitude(parseFloat(e.target.value))}
@@ -448,6 +518,16 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({
                                         className={`w-8 h-4 rounded-full transition-all duration-200 relative ${showGraticules ? 'bg-blue-500' : 'bg-slate-600/30'}`}
                                     >
                                         <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow-md transition-all ${showGraticules ? 'right-0.5' : 'left-0.5'}`} />
+                                    </button>
+                                </div>
+                                <div className="flex items-center justify-between mt-1 pt-1.5 border-t border-slate-700/10 dark:border-white/5">
+                                    <span className="font-medium text-slate-400 dark:text-slate-300">Route Gradients</span>
+                                    <button 
+                                        onClick={() => handleToggleGradientRoutes(!showGradientRoutes)}
+                                        className={`w-8 h-4 rounded-full transition-all duration-200 relative ${showGradientRoutes ? 'bg-blue-500' : 'bg-slate-600/30'}`}
+                                        title="Color routes using geographical country highlighting gradients"
+                                    >
+                                        <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow-md transition-all ${showGradientRoutes ? 'right-0.5' : 'left-0.5'}`} />
                                     </button>
                                 </div>
                             </div>

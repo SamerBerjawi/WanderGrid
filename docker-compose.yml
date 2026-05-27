@@ -2,6 +2,11 @@ version: '3.8'
 
 services:
   app:
+    # Pre-built Docker Image (published by GitHub Actions) or local tag.
+    # Replace 'username' with your lowercase GitHub username/org.
+    # To run without source code, docker-compose will pull this image from GHCR.
+    # If source files are present, you can build locally to update it.
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER_LOWERCASE:-username}/wandergrid:latest
     build:
       context: .
       dockerfile: backend_files/Dockerfile

@@ -13,6 +13,7 @@ COPY metadata.json ./
 COPY components ./components
 COPY services ./services
 COPY views ./views
+COPY utils ./utils
 
 RUN npm install --no-audit --no-fund
 RUN npm run build

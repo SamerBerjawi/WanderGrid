@@ -13,6 +13,7 @@ import { Trip, User, Transport, Accommodation, WorkspaceSettings, Activity, Tran
 import { searchLocations, resolvePlaceName, getCoordinates } from '../services/geocoding';
 import { GoogleGenAI } from "@google/genai";
 import { ExpeditionMap3D } from '../components/ExpeditionMap3D';
+import { ExpeditionMap } from '../components/ExpeditionMap';
 import { FlightImportWizard } from '../components/FlightImportWizard';
 
 interface TripDetailProps {
@@ -91,6 +92,94 @@ const WeatherWidget: React.FC<{ location: string, coordinates?: { lat: number, l
             </div>
         </div>
     );
+};
+
+const getWeatherDescription = (code: number): string => {
+    if (code === 0) return "Clear sky";
+    if (code === 1) return "Mainly clear";
+    if (code === 2) return "Partly cloudy";
+    if (code === 3) return "Overcast";
+    if (code === 45 || code === 48) return "Foggy";
+    if (code === 51 || code === 53 || code === 55) return "Drizzle";
+    if (code === 56 || code === 57) return "Freezing drizzle";
+    if (code === 61 || code === 63 || code === 65) return "Rainy";
+    if (code === 66 || code === 67) return "Freezing rain";
+    if (code === 71 || code === 73 || code === 75) return "Snowy";
+    if (code === 77) return "Snow grains";
+    if (code === 80 || code === 81 || code === 82) return "Rain showers";
+    if (code === 85 || code === 86) return "Snow showers";
+    if (code === 95) return "Thunderstorm";
+    if (code === 96 || code === 99) return "Thunderstorm with hail";
+    return "Cloudy";
+};
+
+interface WeatherVibe {
+    bg: string;
+    border: string;
+    icon: string;
+    label: string;
+    pillBg: string;
+}
+
+const getWeatherVibeStyle = (code: number | undefined): WeatherVibe => {
+    if (code === undefined) return {
+        bg: "from-blue-500/[0.08] to-purple-500/[0.08] dark:from-blue-500/[0.04] dark:to-purple-500/[0.04]",
+        border: "border-gray-200/50 dark:border-white/5",
+        icon: "cloud",
+        label: "Weather loading...",
+        pillBg: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-250 dark:border-blue-500/10"
+    };
+
+    if (code <= 1) return { // Clear/Sunny
+        bg: "from-amber-400/25 via-amber-300/[0.08] to-transparent dark:from-amber-500/10 dark:via-orange-500/[0.03] dark:to-transparent",
+        border: "border-amber-200/60 dark:border-amber-500/10",
+        icon: "wb_sunny",
+        label: "Clear Sky",
+        pillBg: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200/65 dark:border-amber-500/10"
+    };
+    if (code <= 3) return { // Cloudy/Overcast
+        bg: "from-slate-400/20 via-sky-300/[0.06] to-transparent dark:from-slate-700/15 dark:via-sky-900/[0.03] dark:to-transparent",
+        border: "border-slate-200/60 dark:border-slate-500/10",
+        icon: "cloud",
+        label: code === 2 ? "Partly Cloudy" : "Overcast",
+        pillBg: "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-200/60 dark:border-slate-500/10"
+    };
+    if (code <= 48) return { // Foggy
+        bg: "from-zinc-400/15 via-teal-300/[0.06] to-transparent dark:from-zinc-700/10 dark:via-teal-950/[0.03] dark:to-transparent",
+        border: "border-zinc-300/50 dark:border-zinc-650/10",
+        icon: "foggy",
+        label: "Foggy",
+        pillBg: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-300/50 dark:border-zinc-650/10"
+    };
+    if (code <= 67 || (code >= 80 && code <= 82)) return { // Rainy/Showers
+        bg: "from-sky-500/20 via-indigo-400/[0.08] to-transparent dark:from-sky-950/25 dark:via-indigo-950/[0.05] dark:to-transparent",
+        border: "border-sky-200/60 dark:border-sky-500/10",
+        icon: "umbrella",
+        label: "Rainy",
+        pillBg: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-200/60 dark:border-sky-500/10"
+    };
+    if (code <= 77 || (code >= 85 && code <= 86)) return { // Snowy
+        bg: "from-cyan-300/20 via-slate-100/10 to-transparent dark:from-sky-900/15 dark:via-slate-800/10 dark:to-transparent",
+        border: "border-cyan-200/60 dark:border-cyan-500/10",
+        icon: "ac_unit",
+        label: "Snowy",
+        pillBg: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-200/60 dark:border-cyan-500/10"
+    };
+    if (code <= 99) return { // Thunderstorm
+        bg: "from-purple-500/20 via-fuchsia-400/[0.06] to-transparent dark:from-purple-950/25 dark:via-fuchsia-950/[0.04] dark:to-transparent",
+        border: "border-purple-200/60 dark:border-purple-550/10",
+        icon: "thunderstorm",
+        label: "Thunderstorm",
+        pillBg: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200/60 dark:border-purple-550/10"
+    };
+
+    return {
+        bg: "from-blue-500/[0.08] to-purple-500/[0.08] dark:from-blue-500/[0.04] dark:to-purple-500/[0.04]",
+        border: "border-gray-200/50 dark:border-white/5",
+        icon: "cloud",
+        label: "Cloudy",
+        pillBg: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-gray-200/50 dark:border-white/5"
+    };
 };
 
 const NomadGuide: React.FC<{ trip: Trip }> = ({ trip }) => {
@@ -257,6 +346,38 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     useEffect(() => {
         loadData();
     }, [tripId]);
+
+    const [weather, setWeather] = useState<any>(null);
+    const [weatherLoading, setWeatherLoading] = useState<boolean>(false);
+
+    useEffect(() => {
+        if (!trip) return;
+        const fetchTripWeather = async () => {
+            setWeatherLoading(true);
+            let lat = trip.coordinates?.lat;
+            let lng = trip.coordinates?.lng;
+
+            if (!lat || !lng) {
+                const coords = await getCoordinates(trip.location);
+                if (coords) {
+                    lat = coords.lat;
+                    lng = coords.lng;
+                }
+            }
+
+            if (lat && lng) {
+                try {
+                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto`);
+                    const data = await res.json();
+                    setWeather(data);
+                } catch (e) {
+                    console.error("Trip weather fetch failed", e);
+                }
+            }
+            setWeatherLoading(false);
+        };
+        fetchTripWeather();
+    }, [trip?.location, trip?.coordinates]);
 
     const loadData = () => {
         setLoading(true);
@@ -468,16 +589,30 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         setIsAccommodationModalOpen(false);
     };
 
-    const handleSaveRoute = async (items: LocationEntry[], generatedTransports: Transport[]) => {
+    const handleSaveRoute = async (items: LocationEntry[], finalTransports: Transport[]) => {
         if (!trip) return;
-        
-        const existingTicketedTransports = (trip.transports || []).filter(t => 
-            t.mode === 'Flight' || t.mode === 'Train' || t.mode === 'Cruise' || t.mode === 'Bus'
-        );
-        
-        const finalTransports = [...existingTicketedTransports, ...generatedTransports];
 
-        const updatedTrip = { ...trip, locations: items, transports: finalTransports };
+        // Preserve any transports that the route manager did NOT manage/touch
+        const finalTransportIds = new Set(finalTransports.map(t => t.id));
+        const originalTransports = trip.transports || [];
+
+        const preservedTransports = originalTransports.filter(t => {
+            // If the route manager explicitly outputted a transport with this ID, we use the new version
+            if (finalTransportIds.has(t.id)) {
+                return false;
+            }
+            // If the transport is a route-managed transport (itineraryId is 'route-gen' or 'route-booked'), 
+            // but it is NOT in the new finalTransports, it means it was deleted by the user in the route manager!
+            if (t.itineraryId === 'route-gen' || t.itineraryId === 'route-booked') {
+                return false;
+            }
+            // Keep all other manually entered bookings, independent flights, cruises, etc.
+            return true;
+        });
+
+        const mergedTransports = [...preservedTransports, ...finalTransports];
+
+        const updatedTrip = { ...trip, locations: items, transports: mergedTransports };
         await dataService.updateTrip(updatedTrip);
         setTrip(updatedTrip);
     };
@@ -804,63 +939,116 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     };
 
     return (
-        <div className="space-y-8 animate-fade-in max-w-[1400px] mx-auto pb-12">
-            <div className="relative w-full rounded-[2.5rem] bg-white dark:bg-gray-900 shadow-2xl border border-gray-100 dark:border-white/5 overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5 pointer-events-none" />
-                <div className="relative p-8 lg:p-10 flex flex-col gap-8">
-                    <div className="flex flex-col md:flex-row justify-between items-start gap-6">
-                        <div className="flex items-start gap-6">
-                            <button onClick={onBack} className="w-12 h-12 rounded-xl bg-white dark:bg-gray-800 shadow-md border border-gray-100 dark:border-white/10 flex items-center justify-center text-gray-400 hover:text-blue-500 transition-colors">
-                                <span className="material-icons-outlined text-lg">arrow_back</span>
-                            </button>
-                            <div>
-                                <div className="flex items-center gap-3 mb-2">
-                                    <span className="text-4xl">{trip.icon || '✈️'}</span>
-                                    <h1 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tight">{trip.name}</h1>
-                                </div>
-                                <div className="flex flex-wrap items-center gap-3 text-sm font-bold text-gray-500 dark:text-gray-400">
-                                    <span className="flex items-center gap-1"><span className="material-icons-outlined text-xs">location_on</span> {trip.location}</span>
-                                    <span className="w-1 h-1 rounded-full bg-gray-300"></span>
-                                    <span>{new Date(trip.startDate).toLocaleDateString(undefined, {month:'short', day:'numeric'})} - {new Date(trip.endDate).toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'})}</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <WeatherWidget location={trip.location} coordinates={trip.coordinates} />
-                            <div className="flex gap-2">
-                                <Button variant="secondary" onClick={() => setIsCinematicOpen(true)} icon={<span className="material-icons-outlined">movie_filter</span>}>Cinematic View</Button>
-                                <Button variant="secondary" onClick={() => {
-                                    const ics = calendarService.generateIcsContent([trip], 'WanderGrid');
-                                    calendarService.downloadIcs(ics, `trip-${trip.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.ics`);
-                                }} icon={<span className="material-icons-outlined">event</span>}>Add to Calendar</Button>
+        <div className="space-y-8 animate-fade-in max-w-[1400px] mx-auto pb-12 px-4 md:px-0">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+                {/* Left Card: Trip Header Info, Stats, Actions */}
+                {(() => {
+                    const vibe = getWeatherVibeStyle(weather?.current_weather?.weathercode);
+                    return (
+                        <div className={`lg:col-span-8 relative rounded-[2.5rem] bg-white dark:bg-gray-900 shadow-2xl border ${vibe.border} overflow-hidden flex flex-col justify-between transition-all duration-500`}>
+                            <div className={`absolute inset-0 bg-gradient-to-br ${vibe.bg} pointer-events-none transition-all duration-500`} />
+                            <div className="relative p-6 lg:p-8 flex flex-col gap-6 h-full justify-between">
+                                <div className="flex flex-col md:flex-row justify-between items-start gap-4">
+                                    <div className="flex items-start gap-4">
+                                        <button onClick={onBack} className="w-12 h-12 rounded-xl bg-white dark:bg-gray-800 shadow-md border border-gray-100 dark:border-white/10 flex items-center justify-center text-gray-400 hover:text-blue-500 transition-colors shrink-0">
+                                            <span className="material-icons-outlined text-lg">arrow_back</span>
+                                        </button>
+                                        <div>
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-3xl md:text-4xl">{trip.icon || '✈️'}</span>
+                                                <h1 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white tracking-tight">{trip.name}</h1>
+                                            </div>
+                                            <div className="flex flex-wrap gap-3 mt-4 items-center">
+                                                {/* Address Info block with customized address icon */}
+                                                <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50/60 dark:bg-gray-800/20 border border-gray-150 dark:border-white/5 rounded-full text-xs md:text-sm font-bold text-gray-600 dark:text-gray-350 shadow-sm">
+                                                    <span className="material-icons-outlined text-base text-blue-500">fmd_good</span>
+                                                    <span>{trip.location}</span>
+                                                </div>
 
-                                <Button variant="secondary" onClick={() => setIsEditTripOpen(true)} icon={<span className="material-icons-outlined">edit</span>}>Edit Details</Button>
+                                                {/* Date Info block with customized calendar icon */}
+                                                <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50/60 dark:bg-gray-800/20 border border-gray-150 dark:border-white/5 rounded-full text-xs md:text-sm font-bold text-gray-600 dark:text-gray-350 shadow-sm">
+                                                    <span className="material-icons-outlined text-base text-purple-500">calendar_today</span>
+                                                    <span>{new Date(trip.startDate).toLocaleDateString(undefined, {month:'short', day:'numeric'})} - {new Date(trip.endDate).toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'})}</span>
+                                                </div>
+
+                                                {/* Weather Condition Info block with customized dynamic weather icon */}
+                                                {weather && weather.current_weather && (
+                                                    <div className={`flex items-center gap-2 px-3 py-1.5 border rounded-full text-xs md:text-sm font-bold shadow-sm transition-all duration-300 ${vibe.pillBg}`}>
+                                                        <span className="material-icons-outlined text-base">{vibe.icon}</span>
+                                                        <span>
+                                                            {Math.round(weather.current_weather.temperature)}°C · {getWeatherDescription(weather.current_weather.weathercode)}
+                                                            {weather.daily && (
+                                                                <span className="opacity-80 ml-1.5 text-[11px] font-normal">
+                                                                    (H: {Math.round(weather.daily.temperature_2m_max[0])}° L: {Math.round(weather.daily.temperature_2m_min[0])}°)
+                                                                </span>
+                                                            )}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                {weatherLoading && (
+                                                    <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50/60 dark:bg-gray-800/20 border border-gray-150 dark:border-white/5 rounded-full text-xs md:text-sm font-bold text-gray-400 animate-pulse">
+                                                        <div className="w-3.5 h-3.5 rounded-full border-2 border-gray-300 border-t-purple-600 animate-spin" />
+                                                        <span>Syncing weather...</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <div className="flex flex-wrap gap-1.5 md:flex-col">
+                                            <Button size="sm" variant="secondary" onClick={() => setIsCinematicOpen(true)} icon={<span className="material-icons-outlined">movie_filter</span>}>Cinematic View</Button>
+                                            <Button size="sm" variant="secondary" onClick={() => {
+                                                const ics = calendarService.generateIcsContent([trip], 'WanderGrid');
+                                                calendarService.downloadIcs(ics, `trip-${trip.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.ics`);
+                                            }} icon={<span className="material-icons-outlined">event</span>}>ICS Calendar</Button>
+                                            <Button size="sm" variant="secondary" onClick={() => setIsEditTripOpen(true)} icon={<span className="material-icons-outlined">edit</span>}>Edit Settings</Button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Stat Cards */}
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+                                    <div className="p-3 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 rounded-2xl text-center flex flex-col justify-center">
+                                        <span className="text-lg md:text-xl font-black text-emerald-600 dark:text-emerald-450">{formatCurrency(totalCost)}</span>
+                                        <span className="text-[9px] font-black text-emerald-500/70 uppercase tracking-wider mt-0.5">Total Cost</span>
+                                    </div>
+                                    <div className="p-3 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 rounded-2xl text-center flex flex-col justify-center">
+                                        <span className="text-lg md:text-xl font-black text-blue-600 dark:text-blue-450">{duration}</span>
+                                        <span className="text-[9px] font-black text-blue-500/70 uppercase tracking-wider mt-0.5">Days Duration</span>
+                                    </div>
+                                    <div className="p-3 bg-purple-50/50 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/30 rounded-2xl text-center flex flex-col justify-center items-center">
+                                        <div className="flex -space-x-1.5 mb-0.5 justify-center">
+                                            {trip.participants.map((pid, idx) => {
+                                                const u = users.find(u => u.id === pid);
+                                                return u ? <div key={idx} className="w-5 h-5 rounded-full bg-purple-100 border-2 border-white flex items-center justify-center text-[8px] font-bold text-purple-800" title={u.name}>{u.name.charAt(0)}</div> : null;
+                                            })}
+                                        </div>
+                                        <span className="text-[9px] font-black text-purple-500/70 uppercase tracking-wider">Travelers</span>
+                                    </div>
+                                    <div className="p-3 bg-gray-50/50 dark:bg-gray-800/40 border border-gray-100 dark:border-white/5 rounded-2xl text-center flex flex-col justify-center">
+                                        <span className="text-lg md:text-xl font-black text-gray-700 dark:text-gray-300">{(trip.transports?.length || 0) + (trip.accommodations?.length || 0) + (trip.activities?.length || 0)}</span>
+                                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider mt-0.5 font-sans">Active Items</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
+                    );
+                })()}
+
+                {/* Right Card: Beautiful interactive 2D Map Overview card of the configured routes */}
+                <div className="lg:col-span-4 relative rounded-[2.5rem] bg-white dark:bg-gray-900 shadow-2xl border border-gray-100 dark:border-white/5 overflow-hidden min-h-[300px]">
+                    <div className="absolute top-4 left-4 z-10 flex items-center gap-1.5 bg-white/90 dark:bg-gray-900/90 backdrop-blur px-3 py-1.5 rounded-full border border-gray-100 dark:border-white/10 shadow-sm pointer-events-none">
+                        <span className="material-icons-outlined text-blue-500 text-sm">explore</span>
+                        <span className="text-[10px] font-black uppercase tracking-wider text-gray-700 dark:text-gray-300">Route Map Overview 2D</span>
                     </div>
-                    {/* ... (Existing Stat Cards Layout) ... */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30 flex flex-col items-center justify-center text-center">
-                            <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{formatCurrency(totalCost)}</span>
-                            <span className="text-[9px] font-bold text-emerald-500/70 uppercase tracking-widest">Total Cost</span>
-                        </div>
-                        <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 flex flex-col items-center justify-center text-center">
-                            <span className="text-2xl font-black text-blue-600 dark:text-blue-400">{duration}</span>
-                            <span className="text-[9px] font-bold text-blue-500/70 uppercase tracking-widest">Days Duration</span>
-                        </div>
-                        <div className="p-4 rounded-2xl bg-purple-50 dark:bg-purple-900/10 border border-purple-100 dark:border-purple-900/30 flex flex-col items-center justify-center text-center">
-                            <div className="flex -space-x-2 mb-1">
-                                {trip.participants.map((pid, idx) => {
-                                    const u = users.find(u => u.id === pid);
-                                    return u ? <div key={idx} className="w-6 h-6 rounded-full bg-purple-200 border-2 border-white flex items-center justify-center text-[8px] font-bold text-purple-800" title={u.name}>{u.name.charAt(0)}</div> : null;
-                                })}
-                            </div>
-                            <span className="text-[9px] font-bold text-purple-500/70 uppercase tracking-widest">{trip.participants.length} Travelers</span>
-                        </div>
-                        <div className="p-4 rounded-2xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-white/5 flex flex-col items-center justify-center text-center">
-                            <span className="text-2xl font-black text-gray-700 dark:text-gray-300">{(trip.transports?.length || 0) + (trip.accommodations?.length || 0) + (trip.activities?.length || 0)}</span>
-                            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Planned Items</span>
-                        </div>
+                    <div className="absolute inset-0 bg-[#0f0f12]">
+                        <ExpeditionMap 
+                            trips={[trip]} 
+                            animateRoutes={true} 
+                            showFrequencyWeight={true}
+                            showCityMarkers={true}
+                            viewMode="network"
+                        />
                     </div>
                 </div>
             </div>

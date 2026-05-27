@@ -9,6 +9,10 @@ const PORT = process.env.PORT || 3000;
 const FLIGHT_CACHE_TTL_MS = 5 * 60 * 1000;
 const flightCache = new Map();
 
+// Global memory caches as robust fail-safe fallbacks
+const memoryAirports = new Map();
+const memoryCarriers = new Map();
+
 // Database Connection
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -43,6 +47,26 @@ const initDb = async () => {
           data JSONB NOT NULL
         );
     `);
+
+    // Global airports database table
+    await client.query(`
+        CREATE TABLE IF NOT EXISTS global_airports (
+          id SERIAL PRIMARY KEY,
+          iata VARCHAR(10),
+          city_name TEXT,
+          airport_name TEXT
+        );
+    `);
+    
+    // Global carriers database table
+    await client.query(`
+        CREATE TABLE IF NOT EXISTS global_carriers (
+          id SERIAL PRIMARY KEY,
+          iata VARCHAR(10),
+          company_name TEXT,
+          country_or_territory TEXT
+        );
+    `);
     
     console.log('Database schema initialized');
   } catch (err) {
@@ -52,7 +76,181 @@ const initDb = async () => {
   }
 };
 
-initDb();
+const loadGlobalData = async () => {
+  // Always load memory lists from GitHub first as a fail-safe fallback
+  try {
+    console.log('Fetching & parsing global carriers dataset in server memory from GitHub...');
+    const carrierResponse = await fetch('https://raw.githubusercontent.com/dlubom/iata_code_fetcher/main/carrier_data_full_processed.jsonl');
+    if (carrierResponse.ok) {
+      const text = await carrierResponse.text();
+      const lines = text.split('\n').filter(Boolean);
+      let count = 0;
+      for (const line of lines) {
+        try {
+          const item = JSON.parse(line);
+          const iata = (item.iata || '').trim().toUpperCase();
+          if (iata) {
+            memoryCarriers.set(iata, {
+              iata,
+              company_name: item.company_name || '',
+              country_or_territory: item.country_or_territory || ''
+            });
+            count++;
+          }
+        } catch (e) {}
+      }
+      console.log(`Successfully parsed ${count} carriers into in-memory fallback cache.`);
+    }
+
+    console.log('Fetching & parsing global airports dataset in server memory from GitHub...');
+    const airResponse = await fetch('https://raw.githubusercontent.com/dlubom/iata_code_fetcher/main/airport_data_full_processed.jsonl');
+    if (airResponse.ok) {
+      const text = await airResponse.text();
+      const lines = text.split('\n').filter(Boolean);
+      let count = 0;
+      for (const line of lines) {
+        try {
+          const item = JSON.parse(line);
+          const iata = (item.iata || '').trim().toUpperCase();
+          if (iata) {
+            memoryAirports.set(iata, {
+              iata,
+              city_name: item.city_name || '',
+              airport_name: item.airport_name || ''
+            });
+            count++;
+          }
+        } catch (e) {}
+      }
+      console.log(`Successfully parsed ${count} airports into in-memory fallback cache.`);
+    }
+  } catch (err) {
+    console.warn('Failed to pre-load global datasets to server memory:', err.message);
+  }
+
+  let client;
+  try {
+    client = await pool.connect();
+    
+    // Check if airports table is empty
+    const airportsCount = await client.query('SELECT COUNT(*) FROM global_airports');
+    const countAirports = parseInt(airportsCount.rows[0].count, 10);
+    
+    if (countAirports === 0) {
+      console.log('Prepopulating global_airports from GitHub...');
+      const response = await fetch('https://raw.githubusercontent.com/dlubom/iata_code_fetcher/main/airport_data_full_processed.jsonl');
+      if (response.ok) {
+        const text = await response.text();
+        const lines = text.split('\n').filter(Boolean);
+        console.log(`Downloaded ${lines.length} airports; parsing & inserting chunks...`);
+        
+        await client.query('BEGIN');
+        const chunkSize = 500;
+        for (let i = 0; i < lines.length; i += chunkSize) {
+          const chunk = lines.slice(i, i + chunkSize);
+          const values = [];
+          const params = [];
+          
+          chunk.forEach((line, idx) => {
+            try {
+              const item = JSON.parse(line);
+              if (item.iata) {
+                const iata = item.iata.trim().toUpperCase();
+                const city = item.city_name || '';
+                const airport = item.airport_name || '';
+                values.push(`($${idx * 3 + 1}, $${idx * 3 + 2}, $${idx * 3 + 3})`);
+                params.push(iata, city, airport);
+              }
+            } catch (err) {}
+          });
+          
+          if (values.length > 0) {
+            await client.query(`
+              INSERT INTO global_airports (iata, city_name, airport_name)
+              VALUES ${values.join(', ')}
+            `, params);
+          }
+        }
+        await client.query('COMMIT');
+        
+        console.log('Creating database indexes on global_airports...');
+        await client.query('CREATE INDEX IF NOT EXISTS idx_airports_iata ON global_airports(iata)');
+        await client.query('CREATE INDEX IF NOT EXISTS idx_airports_city_name ON global_airports(city_name)');
+        await client.query('CREATE INDEX IF NOT EXISTS idx_airports_airport_name ON global_airports(airport_name)');
+        console.log('Successfully pre-populated global_airports!');
+      } else {
+        console.error('Failed to download airports file from GitHub. Status:', response.status);
+      }
+    } else {
+      console.log(`global_airports already pre-populated with ${countAirports} records.`);
+    }
+    
+    // Check if carriers table is empty
+    const carriersCount = await client.query('SELECT COUNT(*) FROM global_carriers');
+    const countCarriers = parseInt(carriersCount.rows[0].count, 10);
+    
+    if (countCarriers === 0) {
+      console.log('Prepopulating global_carriers from GitHub...');
+      const response = await fetch('https://raw.githubusercontent.com/dlubom/iata_code_fetcher/main/carrier_data_full_processed.jsonl');
+      if (response.ok) {
+        const text = await response.text();
+        const lines = text.split('\n').filter(Boolean);
+        console.log(`Downloaded ${lines.length} carriers; parsing & inserting chunks...`);
+        
+        await client.query('BEGIN');
+        const chunkSize = 500;
+        for (let i = 0; i < lines.length; i += chunkSize) {
+          const chunk = lines.slice(i, i + chunkSize);
+          const values = [];
+          const params = [];
+          
+          chunk.forEach((line, idx) => {
+            try {
+              const item = JSON.parse(line);
+              const iata = (item.iata || '').trim().toUpperCase();
+              const name = item.company_name || '';
+              const country = item.country_or_territory || '';
+              if (iata || name) {
+                values.push(`($${idx * 3 + 1}, $${idx * 3 + 2}, $${idx * 3 + 3})`);
+                params.push(iata, name, country);
+              }
+            } catch (err) {}
+          });
+          
+          if (values.length > 0) {
+            await client.query(`
+              INSERT INTO global_carriers (iata, company_name, country_or_territory)
+              VALUES ${values.join(', ')}
+            `, params);
+          }
+        }
+        await client.query('COMMIT');
+        
+        console.log('Creating database indexes on global_carriers...');
+        await client.query('CREATE INDEX IF NOT EXISTS idx_carriers_iata ON global_carriers(iata)');
+        await client.query('CREATE INDEX IF NOT EXISTS idx_carriers_company_name ON global_carriers(company_name)');
+        console.log('Successfully pre-populated global_carriers!');
+      } else {
+        console.error('Failed to download carriers file from GitHub. Status:', response.status);
+      }
+    } else {
+      console.log(`global_carriers already pre-populated with ${countCarriers} records.`);
+    }
+  } catch (err) {
+    if (client) {
+      try {
+        await client.query('ROLLBACK');
+      } catch (e) {}
+    }
+    console.error('Error pre-populating global databases:', err);
+  } finally {
+    if (client) client.release();
+  }
+};
+
+initDb().then(() => {
+  loadGlobalData().catch(err => console.error('Error in background data load:', err));
+});
 
 // --- Generic CRUD Handlers ---
 
@@ -136,6 +334,205 @@ app.get('/api/proxy/flight-status', async (req, res) => {
         console.error("Proxy error:", err);
         res.status(500).json({ error: 'Failed to fetch flight data' });
     }
+});
+
+// Proxy for AviationStack Airports (Bypasses CORS & mixed content)
+app.get('/api/proxy/airports', async (req, res) => {
+    const { access_key, iata_code, search } = req.query;
+    if (!access_key) {
+        return res.status(400).json({ error: 'Missing access_key' });
+    }
+    try {
+        let url = `http://api.aviationstack.com/v1/airports?access_key=${access_key}`;
+        if (iata_code) url += `&iata_code=${iata_code}`;
+        if (search) url += `&search=${search}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        res.json(data);
+    } catch (err) {
+         console.error("Airports proxy error:", err);
+         res.status(500).json({ error: 'Failed to fetch airport metadata' });
+    }
+});
+
+// Proxy for AviationStack Airlines (Bypasses CORS & mixed content)
+app.get('/api/proxy/airlines', async (req, res) => {
+    const { access_key, iata_code, search } = req.query;
+    if (!access_key) {
+        return res.status(400).json({ error: 'Missing access_key' });
+    }
+    try {
+        let url = `http://api.aviationstack.com/v1/airlines?access_key=${access_key}`;
+        if (iata_code) url += `&iata_code=${iata_code}`;
+        if (search) url += `&search=${search}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        res.json(data);
+    } catch (err) {
+         console.error("Airlines proxy error:", err);
+         res.status(500).json({ error: 'Failed to fetch airline metadata' });
+    }
+});
+
+// --- Global Search & Lookup Endpoints (External DB / PostgreSQL) ---
+
+// Lookup single airport by IATA code
+app.get('/api/airports/lookup/:iata', async (req, res) => {
+    const { iata } = req.params;
+    if (!iata) return res.status(400).json({ error: 'Missing IATA code' });
+    const lookupCode = iata.trim().toUpperCase();
+    
+    // 1. Try DB first
+    try {
+        const { rows } = await pool.query(
+            `SELECT iata, city_name, airport_name FROM global_airports WHERE UPPER(iata) = $1 LIMIT 1`,
+            [lookupCode]
+        );
+        if (rows.length > 0) {
+            return res.json(rows[0]);
+        }
+    } catch (err) {
+        console.warn('Database lookup failed, falling back to in-memory store:', err.message);
+    }
+
+    // 2. Try In-Memory Fallback Map
+    const cached = memoryAirports.get(lookupCode);
+    if (cached) {
+        return res.json(cached);
+    }
+
+    res.status(404).json({ error: 'Airport code not found in database or memory cache' });
+});
+
+// Lookup single carrier by IATA code
+app.get('/api/carriers/lookup/:iata', async (req, res) => {
+    const { iata } = req.params;
+    if (!iata) return res.status(400).json({ error: 'Missing IATA code' });
+    const lookupCode = iata.trim().toUpperCase();
+    
+    // 1. Try DB first
+    try {
+        const { rows } = await pool.query(
+            `SELECT iata, company_name, country_or_territory FROM global_carriers WHERE UPPER(iata) = $1 LIMIT 1`,
+            [lookupCode]
+        );
+        if (rows.length > 0) {
+            return res.json(rows[0]);
+        }
+    } catch (err) {
+        console.warn('Database carrier lookup failed, falling back to in-memory store:', err.message);
+    }
+
+    // 2. Try In-Memory Fallback Map
+    const cached = memoryCarriers.get(lookupCode);
+    if (cached) {
+        return res.json(cached);
+    }
+
+    res.status(404).json({ error: 'Carrier code not found in database or memory cache' });
+});
+
+// Search airports by query term
+app.get('/api/airports/search', async (req, res) => {
+    const q = (req.query.q || '').trim();
+    if (!q || q.length < 2) {
+        return res.json([]);
+    }
+    
+    // 1. Try DB first
+    try {
+        const searchPattern = `%${q.toLowerCase()}%`;
+        const { rows } = await pool.query(
+            `SELECT iata, city_name, airport_name 
+             FROM global_airports 
+             WHERE LOWER(iata) = LOWER($1)
+                OR LOWER(iata) LIKE $2
+                OR LOWER(city_name) LIKE $2
+                OR LOWER(airport_name) LIKE $2
+             ORDER BY 
+                CASE WHEN LOWER(iata) = LOWER($1) THEN 1
+                     WHEN LOWER(iata) LIKE $2 THEN 2
+                     WHEN LOWER(city_name) LIKE $2 THEN 3
+                     ELSE 4
+                END
+             LIMIT 15`,
+            [q, searchPattern]
+        );
+        return res.json(rows);
+    } catch (err) {
+        console.warn('Database airport search failed, searching in-memory cache:', err.message);
+    }
+
+    // 2. Try In-Memory Fallback Search
+    const lowerQuery = q.toLowerCase();
+    const results = [];
+    for (const [iata, details] of memoryAirports.entries()) {
+        const isIataMatch = iata.toLowerCase() === lowerQuery;
+        const isIataPartial = iata.toLowerCase().includes(lowerQuery);
+        const isCityMatch = (details.city_name || '').toLowerCase().includes(lowerQuery);
+        const isAirportMatch = (details.airport_name || '').toLowerCase().includes(lowerQuery);
+
+        if (isIataMatch || isIataPartial || isCityMatch || isAirportMatch) {
+            results.push({
+                iata: details.iata,
+                city_name: details.city_name,
+                airport_name: details.airport_name,
+                score: isIataMatch ? 1 : isIataPartial ? 2 : isCityMatch ? 3 : 4
+            });
+        }
+    }
+    results.sort((a,b) => a.score - b.score);
+    res.json(results.slice(0, 15).map(({score, ...rest}) => rest));
+});
+
+// Search carriers by query term
+app.get('/api/carriers/search', async (req, res) => {
+    const q = (req.query.q || '').trim();
+    if (!q || q.length < 1) {
+        return res.json([]);
+    }
+    
+    // 1. Try DB first
+    try {
+        const searchPattern = `%${q.toLowerCase()}%`;
+        const { rows } = await pool.query(
+            `SELECT iata, company_name, country_or_territory 
+             FROM global_carriers 
+             WHERE (LOWER(iata) = LOWER($1) AND iata <> '')
+                OR LOWER(iata) LIKE $2
+                OR LOWER(company_name) LIKE $2
+             ORDER BY 
+                CASE WHEN LOWER(iata) = LOWER($1) THEN 1
+                     WHEN LOWER(company_name) LIKE $2 THEN 2
+                     ELSE 3
+                END
+             LIMIT 15`,
+            [q, searchPattern]
+        );
+        return res.json(rows);
+    } catch (err) {
+        console.warn('Database carrier search failed, searching in-memory cache:', err.message);
+    }
+
+    // 2. Try In-Memory Fallback Search
+    const lowerQuery = q.toLowerCase();
+    const results = [];
+    for (const [iata, details] of memoryCarriers.entries()) {
+        const isIataMatch = iata.toLowerCase() === lowerQuery;
+        const isIataPartial = iata.toLowerCase().includes(lowerQuery);
+        const isCompanyMatch = (details.company_name || '').toLowerCase().includes(lowerQuery);
+
+        if ((isIataMatch && iata !== '') || isIataPartial || isCompanyMatch) {
+            results.push({
+                iata: details.iata,
+                company_name: details.company_name,
+                country_or_territory: details.country_or_territory,
+                score: isIataMatch ? 1 : isCompanyMatch ? 2 : 3
+            });
+        }
+    }
+    results.sort((a,b) => a.score - b.score);
+    res.json(results.slice(0, 15).map(({score, ...rest}) => rest));
 });
 
 // Calendar Sync Endpoint (iCal Feed)

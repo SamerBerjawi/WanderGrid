@@ -81,9 +81,9 @@ const VIEW_ACCENTS: Record<ViewState, { glow1: string; glow2: string; glow3: str
     glow3: 'bg-orange-500/5 dark:bg-orange-500/5'
   },
   [ViewState.FLIGHTS]: { 
-    glow1: 'bg-cyan-500/10 dark:bg-cyan-500/15', 
-    glow2: 'bg-teal-500/10 dark:bg-teal-500/15',
-    glow3: 'bg-blue-500/5 dark:bg-blue-500/5' 
+    glow1: 'bg-cyan-500/20 dark:bg-cyan-500/25', 
+    glow2: 'bg-teal-500/15 dark:bg-teal-500/20',
+    glow3: 'bg-blue-500/10 dark:bg-blue-500/10' 
   },
 };
 
@@ -197,7 +197,11 @@ export default function App() {
   };
 
   const handleTripClick = (tripId: string) => {
-      navigate(ViewState.TRIP_DETAIL, tripId);
+      if (tripId && tripId.startsWith('independent-flight-')) {
+          navigate(ViewState.FLIGHTS);
+      } else {
+          navigate(ViewState.TRIP_DETAIL, tripId);
+      }
   };
 
   const renderView = () => {
@@ -241,7 +245,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-gradient-to-br from-indigo-50/20 via-slate-100/30 to-blue-50/20 dark:from-slate-950 dark:via-[#09090c] dark:to-slate-950 transition-colors duration-700 text-gray-900 dark:text-gray-100 relative">
+    <div className="flex h-screen w-full overflow-hidden bg-gradient-to-br from-zinc-50/40 via-neutral-100/30 to-zinc-100/40 dark:from-zinc-950 dark:via-[#0c0c0f] dark:to-zinc-950 transition-colors duration-700 text-gray-900 dark:text-gray-100 relative">
       {/* Dynamic Ambient Spot Glow Filter representing current state */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
           <div className={`absolute -top-52 -left-52 w-[650px] h-[650px] rounded-full ${currentAccent.glow1} blur-[140px] animate-[pulse_12s_infinite] transition-colors duration-[1.5s]`} />

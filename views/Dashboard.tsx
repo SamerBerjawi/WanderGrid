@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Card, Button } from '../components/ui';
 import { ExpeditionMap3D } from '../components/ExpeditionMap3D';
+import { ExpeditionMap } from '../components/ExpeditionMap';
 import { FlightTrackerModal } from '../components/FlightTrackerModal';
 import { dataService } from '../services/mockDb';
 import { User, Trip, EntitlementType, PublicHoliday } from '../types';
-import { resolvePlaceName, calculateDistance } from '../services/geocoding';
+import { resolvePlaceName, calculateDistance, getCoordinates, getCoordinatesSync } from '../services/geocoding';
 import { getRegion, getFlagEmoji } from '../services/geoData';
 import { REGION_STYLES } from './regionStyles';
 import { getTripsVersion, serializeVisitedData, deserializeVisitedData, runAfterFirstPaint, mapWithConcurrency } from '../services/utils';
@@ -29,6 +30,27 @@ const LEVEL_THRESHOLDS = [
 
 const DASHBOARD_CACHE_KEY = 'wandergrid_dashboard_cache_v1';
 const GEO_CONCURRENCY_LIMIT = 6;
+const COORD_CACHE_KEY = 'wandergrid_coord_cache';
+let coordCacheInstance: Map<string, { lat: number, lng: number }> | null = null;
+
+const getCoordCache = () => {
+    if (coordCacheInstance) return coordCacheInstance;
+    try {
+        const stored = localStorage.getItem(COORD_CACHE_KEY);
+        coordCacheInstance = stored ? new Map(JSON.parse(stored)) : new Map();
+    } catch {
+        coordCacheInstance = new Map();
+    }
+    return coordCacheInstance!;
+};
+
+const saveCoordCache = (cache: Map<string, { lat: number, lng: number }>) => {
+    try {
+        localStorage.setItem(COORD_CACHE_KEY, JSON.stringify(Array.from(cache.entries())));
+    } catch (e) {
+        console.warn("Failed to save coord cache", e);
+    }
+};
 
 export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }) => {
   const [users, setUsers] = useState<User[]>([]);
@@ -49,6 +71,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
   const [isFlightTrackerOpen, setIsFlightTrackerOpen] = useState(false);
   const [todaysFlight, setTodaysFlight] = useState<{ iata: string; origin: string; destination: string; date: string } | undefined>(undefined);
   const [currentTime, setCurrentTime] = useState(new Date());
+
+  const [mapViewMode, setMapViewMode] = useState<'3d' | '2d'>(() => {
+    return (localStorage.getItem('wandergrid_map_view_mode') as '3d' | '2d') || '3d';
+  });
+  const [globalGradientRoutes, setGlobalGradientRoutes] = useState(() => {
+    return localStorage.getItem('wandergrid_gradient_routes') !== 'false';
+  });
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
@@ -86,15 +115,83 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
 
   const refreshData = () => {
     Promise.all([
-      dataService.getUsers(), dataService.getTrips(), dataService.getSavedConfigs(), dataService.getEntitlementTypes()
-    ]).then(async ([u, t, configs, ents]) => {
+      dataService.getUsers(),
+      dataService.getTrips(),
+      dataService.getSavedConfigs(),
+      dataService.getEntitlementTypes(),
+      dataService.getFlights()
+    ]).then(async ([u, t, configs, ents, flights]) => {
       setUsers(u);
-      setTrips(t);
       setHolidays(configs.flatMap(c => c.holidays.map(h => ({ ...h, configId: c.id }))));
       setEntitlements(ents);
-      const activeTrips = t.filter(trip => trip.status !== 'Planning' && trip.status !== 'Cancelled');
+
+      const coordCache = getCoordCache();
+
+      const getLocalCoordsSync = (place: string) => {
+          if (!place) return null;
+          const clean = place.trim();
+          const uppercaseLoc = clean.toUpperCase();
+          const cached = coordCache.get(clean) || coordCache.get(uppercaseLoc);
+          if (cached) return { lat: cached.lat, lng: cached.lng };
+          const syncRes = getCoordinatesSync(clean);
+          if (syncRes) {
+              coordCache.set(clean, { lat: syncRes.lat, lng: syncRes.lng });
+              return { lat: syncRes.lat, lng: syncRes.lng };
+          }
+          return null;
+      };
+
+      const processTransportsSync = (transports: any[]) => {
+          return (transports || []).map(tr => {
+              const enriched = { ...tr };
+              if (enriched.origin && (!enriched.originLat || !enriched.originLng)) {
+                  const c = getLocalCoordsSync(enriched.origin);
+                  if (c) { enriched.originLat = c.lat; enriched.originLng = c.lng; }
+              }
+              if (enriched.destination && (!enriched.destLat || !enriched.destLng)) {
+                  const c = getLocalCoordsSync(enriched.destination);
+                  if (c) { enriched.destLat = c.lat; enriched.destLng = c.lng; }
+              }
+              return enriched;
+          });
+      };
+
+      const makeSyntheticTrips = (flightsList: any[]) => {
+          return flightsList.map((flight) => {
+              const date = flight.departureDate || '';
+              const todayStr = new Date().toISOString().split('T')[0];
+              const isPast = date < todayStr;
+
+              return {
+                  id: `independent-flight-${flight.id}`,
+                  name: `Independent: ${flight.provider} ${flight.identifier || 'Flight'}`,
+                  location: `${flight.origin} ➔ ${flight.destination}`,
+                  startDate: date,
+                  endDate: flight.arrivalDate || date,
+                  status: (isPast ? 'Past' : 'Upcoming') as 'Past' | 'Upcoming',
+                  participants: [],
+                  transports: [{
+                      ...flight,
+                      mode: flight.mode || 'Flight'
+                  }],
+                  privacy: 'Public' as const,
+              };
+          });
+      };
+
+      // Create instant visual set (fast sync lookup)
+      const initialTrips = (t || []).map(trip => ({
+          ...trip,
+          transports: processTransportsSync(trip.transports)
+      }));
+      const initialFlights = processTransportsSync(flights || []);
+      const combinedState = [...initialTrips, ...makeSyntheticTrips(initialFlights)];
+      setTrips(combinedState);
+
+      const activeTrips = combinedState.filter(trip => trip.status !== 'Planning' && trip.status !== 'Cancelled');
       const version = getTripsVersion(activeTrips);
       const cachedRaw = localStorage.getItem(DASHBOARD_CACHE_KEY);
+      
       if (cachedRaw) {
           try {
               const cached = JSON.parse(cachedRaw);
@@ -103,15 +200,112 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                   setTotalCities(cached.totalCities);
                   setTotalDistance(cached.totalDistance);
                   setLoading(false);
+                  
+                  // Run background geocoding in case anything is missing
+                  runAfterFirstPaint(async () => {
+                      let coordsDirty = false;
+                      const resolveCoordsAsync = async (locName: string) => {
+                          if (!locName) return null;
+                          let c = coordCache.get(locName);
+                          if (!c) {
+                              const res = await getCoordinates(locName);
+                              if (res) {
+                                  c = { lat: res.lat, lng: res.lng };
+                                  coordCache.set(locName, c);
+                                  coordsDirty = true;
+                              }
+                          }
+                          return c;
+                      };
+
+                      let updated = false;
+                      for (const trip of combinedState) {
+                          if (trip.transports) {
+                              for (const tr of trip.transports) {
+                                  if (tr.origin && (!tr.originLat || !tr.originLng)) {
+                                      const c = await resolveCoordsAsync(tr.origin);
+                                      if (c) { tr.originLat = c.lat; tr.originLng = c.lng; updated = true; }
+                                  }
+                                  if (tr.destination && (!tr.destLat || !tr.destLng)) {
+                                      const c = await resolveCoordsAsync(tr.destination);
+                                      if (c) { tr.destLat = c.lat; tr.destLng = c.lng; updated = true; }
+                                  }
+                              }
+                          }
+                      }
+
+                      if (coordsDirty) {
+                          saveCoordCache(coordCache);
+                      }
+                      if (updated) {
+                          setTrips([...combinedState]);
+                      }
+                  });
                   return;
               }
           } catch (e) {}
       }
+
       setLoading(false);
       runAfterFirstPaint(async () => {
-          const processed = await processTravelHistory(activeTrips);
+          let coordsDirty = false;
+
+          const resolveCoordsAsync = async (locName: string) => {
+              if (!locName) return null;
+              let c = coordCache.get(locName);
+              if (!c) {
+                  const res = await getCoordinates(locName);
+                  if (res) {
+                      c = { lat: res.lat, lng: res.lng };
+                      coordCache.set(locName, c);
+                      coordsDirty = true;
+                  }
+              }
+              return c;
+          };
+
+          const asyncEnrichedFlights = await mapWithConcurrency(flights || [], async (f) => {
+              const enriched = { ...f };
+              if (enriched.origin && (!enriched.originLat || !enriched.originLng)) {
+                  const c = await resolveCoordsAsync(enriched.origin);
+                  if (c) { enriched.originLat = c.lat; enriched.originLng = c.lng; }
+              }
+              if (enriched.destination && (!enriched.destLat || !enriched.destLng)) {
+                  const c = await resolveCoordsAsync(enriched.destination);
+                  if (c) { enriched.destLat = c.lat; enriched.destLng = c.lng; }
+              }
+              return enriched;
+          }, GEO_CONCURRENCY_LIMIT);
+
+          const asyncEnrichedTrips = await mapWithConcurrency(t || [], async (trip) => {
+              if (!trip.transports) return trip;
+              const enrichedTransports = await mapWithConcurrency(trip.transports, async (tr) => {
+                  const enriched = { ...tr };
+                  if (enriched.origin && (!enriched.originLat || !enriched.originLng)) {
+                      const c = await resolveCoordsAsync(enriched.origin);
+                      if (c) { enriched.originLat = c.lat; enriched.originLng = c.lng; }
+                  }
+                  if (enriched.destination && (!enriched.destLat || !enriched.destLng)) {
+                      const c = await resolveCoordsAsync(enriched.destination);
+                      if (c) { enriched.destLat = c.lat; enriched.destLng = c.lng; }
+                  }
+                  return enriched;
+              }, GEO_CONCURRENCY_LIMIT);
+              return { ...trip, transports: enrichedTransports };
+          }, GEO_CONCURRENCY_LIMIT);
+
+          if (coordsDirty) {
+              saveCoordCache(coordCache);
+          }
+
+          const finalCombined = [...asyncEnrichedTrips, ...makeSyntheticTrips(asyncEnrichedFlights)];
+          setTrips(finalCombined);
+
+          const activeTripsFinal = finalCombined.filter(trip => trip.status !== 'Planning' && trip.status !== 'Cancelled');
+          const finalVersion = getTripsVersion(activeTripsFinal);
+          const processed = await processTravelHistory(activeTripsFinal);
           localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify({
-              version,
+              version: finalVersion,
               totalCities: processed.totalCities,
               totalDistance: processed.totalDistance,
               visitedData: serializeVisitedData(processed.visitedData)
@@ -407,29 +601,72 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
         {/* ========================================================= */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
             
-            {/* Real Space 3D Expedition Globe (Col-span 2) */}
+            {/* Real Space 3D Expedition Globe / 2D Map (Col-span 2) */}
             <div className="lg:col-span-2 relative h-[31rem] rounded-[2.5rem] overflow-hidden border border-zinc-200/50 dark:border-white/5 shadow-xl bg-zinc-100/40 dark:bg-zinc-950/20 backdrop-blur-md group">
-                <ExpeditionMap3D trips={trips.filter(t => t.status !== 'Planning' && t.status !== 'Cancelled')} animateRoutes={true} onTripClick={onTripClick} />
+                {mapViewMode === '3d' ? (
+                    <ExpeditionMap3D 
+                        trips={trips.filter(t => t.status !== 'Planning' && t.status !== 'Cancelled')} 
+                        animateRoutes={true} 
+                        onTripClick={onTripClick}
+                        showGradientRoutes={globalGradientRoutes}
+                        onToggleGradientRoutes={(val) => setGlobalGradientRoutes(val)} 
+                    />
+                ) : (
+                    <ExpeditionMap 
+                        trips={trips.filter(t => t.status !== 'Planning' && t.status !== 'Cancelled')} 
+                        animateRoutes={false} 
+                        showFrequencyWeight={false}
+                        onTripClick={onTripClick}
+                        showCountries={false}
+                        clusterMode={false}
+                        visitedCountries={visitedData.map(vd => vd.code)}
+                        showGradientRoutes={globalGradientRoutes}
+                        onToggleGradientRoutes={(val) => setGlobalGradientRoutes(val)}
+                    />
+                )}
                 
-                {/* HUD Overlay HUD Design */}
-                <div className="absolute top-6 left-6 z-10 bg-zinc-900/95 dark:bg-black/85 backdrop-blur-xl p-5 rounded-2xl border border-white/10 text-white shadow-2xl max-w-sm pointer-events-none">
-                    <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                        <h3 className="text-xs font-black uppercase tracking-wider text-zinc-400 font-mono">Expedition Network</h3>
+                {/* Visual Map Switch and Route Gradient Tactile Controller bar */}
+                <div className="absolute bottom-6 left-6 z-20 flex flex-wrap items-center gap-3">
+                    {/* View Switch: 3D Globe / 2D Map */}
+                    <div className="bg-[#1e293b]/90 dark:bg-black/85 backdrop-blur-md p-1 rounded-2xl border border-white/10 flex items-center shadow-2xl">
+                        <button
+                            onClick={() => {
+                                setMapViewMode('3d');
+                                localStorage.setItem('wandergrid_map_view_mode', '3d');
+                            }}
+                            className={`px-3 py-1.5 rounded-xl text-[11px] font-bold tracking-tight flex items-center gap-1.5 transition-all text-white ${mapViewMode === '3d' ? 'bg-blue-600 shadow-md border-white/5' : 'opacity-60 hover:opacity-100'}`}
+                        >
+                            <Globe className="w-3.5 h-3.5" /> 3D Globe
+                        </button>
+                        <button
+                            onClick={() => {
+                                setMapViewMode('2d');
+                                localStorage.setItem('wandergrid_map_view_mode', '2d');
+                            }}
+                            className={`px-3 py-1.5 rounded-xl text-[11px] font-bold tracking-tight flex items-center gap-1.5 transition-all text-white ${mapViewMode === '2d' ? 'bg-blue-600 shadow-md border-white/5' : 'opacity-60 hover:opacity-100'}`}
+                        >
+                            <span className="material-icons-outlined text-sm leading-none">map</span> 2D Map
+                        </button>
                     </div>
-                    <h2 className="text-lg font-black tracking-tight mt-1.5 leading-snug">Global Travel Grid</h2>
-                    
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 mt-4 pt-3 border-t border-white/5 font-mono">
-                        <div>
-                            <span className="block text-[9px] text-zinc-400 uppercase font-black">Total Sectors</span>
-                            <span className="text-sm font-black text-white">{visitedData.length} Countries</span>
-                        </div>
-                        <div>
-                            <span className="block text-[9px] text-zinc-400 uppercase font-black">Gateways Resolved</span>
-                            <span className="text-sm font-black text-white">{totalCities} Cities</span>
-                        </div>
+
+                    {/* Gradient Routes On / Off Switch */}
+                    <div className="bg-[#1e293b]/90 dark:bg-black/85 backdrop-blur-md px-3.5 py-1.5 rounded-2xl border border-white/10 flex items-center gap-3 shadow-2xl h-[34px]">
+                        <span className="text-[9px] font-black font-mono text-zinc-300 uppercase tracking-widest">Gradient Routes</span>
+                        <button
+                            onClick={() => {
+                                const nextVal = !globalGradientRoutes;
+                                setGlobalGradientRoutes(nextVal);
+                                localStorage.setItem('wandergrid_gradient_routes', String(nextVal));
+                            }}
+                            className={`w-8 h-4 px-0.5 rounded-full transition-all duration-200 flex items-center ${globalGradientRoutes ? 'bg-blue-500 justify-end' : 'bg-zinc-700 justify-start'}`}
+                            title="Toggles multi-color gradient routes style matching country highlights"
+                        >
+                            <div className="w-3 h-3 bg-white rounded-full shadow-md" />
+                        </button>
                     </div>
                 </div>
+                
+
             </div>
 
             {/* Exclusive Loyalty / Rank Card Column (Col-span 1) */}

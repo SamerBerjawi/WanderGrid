@@ -160,54 +160,100 @@ export const PassportStamp: React.FC<PassportStampProps> = ({ country }) => {
         } as React.CSSProperties;
     }, [tilt, flagGlow, isHovered]);
 
+    const shapeIndex = useMemo(() => {
+        let sum = 0;
+        for (let i = 0; i < country.code.length; i++) {
+            sum += country.code.charCodeAt(i);
+        }
+        return sum % 3;
+    }, [country.code]);
+
+    // Beautiful custom pastel-saturated vintage ink styles
+    const inkColorClass = useMemo(() => {
+        const colors = [
+            'text-sky-600 dark:text-sky-400 border-sky-600/60 dark:border-sky-400/60 bg-sky-50/20 dark:bg-sky-500/5',
+            'text-rose-500 dark:text-rose-400 border-rose-500/60 dark:border-rose-400/60 bg-rose-50/20 dark:bg-rose-500/5',
+            'text-emerald-600 dark:text-emerald-400 border-emerald-600/60 dark:border-emerald-400/60 bg-emerald-50/20 dark:bg-emerald-500/5',
+            'text-indigo-600 dark:text-indigo-400 border-indigo-600/60 dark:border-indigo-400/60 bg-indigo-50/20 dark:bg-indigo-500/5',
+            'text-amber-600 dark:text-amber-405 border-amber-600/60 dark:border-amber-400/60 bg-amber-50/20 dark:bg-amber-500/5',
+        ];
+        const sum = country.code.charCodeAt(0) + (country.code.charCodeAt(1) || 0);
+        return colors[sum % colors.length];
+    }, [country.code]);
+
     return (
         <div 
             id={`passport-stamp-${country.code}`}
             style={dynamicStyle} 
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
-            className="group relative bg-white/70 dark:bg-gray-900/60 backdrop-blur-md rounded-2xl border-2 border-dashed border-gray-300 dark:border-white/10 hover:border-solid p-6 flex flex-col justify-between items-center h-[13.5rem] w-full min-w-0 hover:scale-[1.03] transition-all duration-300 overflow-hidden select-none"
+            className="group relative bg-white/70 dark:bg-zinc-900/60 backdrop-blur-md rounded-[2.5rem] border border-zinc-200/50 dark:border-white/5 p-6 flex flex-col justify-center items-center h-[14.5rem] w-full min-w-0 hover:scale-[1.04] hover:-translate-y-1 transition-all duration-300 overflow-hidden select-none"
         >
             {/* Inked Distress Background Grid for genuine hand-stamped passport page */}
             <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:10px_10px] pointer-events-none" />
-            <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full border border-current opacity-[0.05] pointer-events-none" aria-hidden="true" />
-            
-            {/* Classic inset double border decoration */}
-            <div 
-                style={isHovered ? { borderColor: `rgba(${flagGlow.r}, ${flagGlow.g}, ${flagGlow.b}, 0.55)` } : undefined}
-                className={`absolute inset-2.5 rounded-xl border border-dotted scale-[0.98] opacity-35 dark:opacity-40 group-hover:scale-100 transition-transform duration-300 ${styleObj.text}`} 
+            <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.04] pointer-events-none mix-blend-multiply dark:mix-blend-screen"
+                style={{
+                  backgroundImage: `repeating-radial-gradient(circle at 50% 50%, transparent 0, #000 8px), repeating-linear-gradient(#000, #000)`,
+                  backgroundSize: '20px 20px',
+                }}
             />
 
-            {/* Header Portion */}
-            <div className={`w-full z-10 flex justify-between items-center text-[8px] font-mono font-black uppercase tracking-wider opacity-60 ${styleObj.text}`}>
-                <span className="truncate max-w-[120px]" title={country.region}>{country.region}</span>
+            {/* Centered Large Passport Ink Stamp Shape */}
+            <div className="w-full h-full flex flex-col items-center justify-center transition-all duration-300 group-hover:scale-105 group-hover:opacity-40">
+                {shapeIndex === 0 ? (
+                    // 1. Circle Double-Border Ink Badge
+                    <div className={`w-40 h-40 rounded-full border-2 border-current flex flex-col items-center justify-center p-1.5 ${inkColorClass} shrink-0 relative transition-transform duration-500`} style={{ transform: `rotate(${tilt * 1.5}deg)` }}>
+                        <div className="absolute inset-1 rounded-full border border-dashed border-current opacity-80" />
+                        <div className="w-full h-full rounded-full border border-current flex flex-col items-center justify-center gap-0.5 font-mono p-2">
+                            <span className="text-3xl filter saturate-150 drop-shadow-sm mb-0.5">{country.flag}</span>
+                            <span className="text-[10px] tracking-[0.2em] font-black uppercase text-center leading-none">{country.name.slice(0, 10)}</span>
+                            <span className="text-[7px] tracking-widest font-black uppercase bg-current text-white dark:text-zinc-950 px-1 py-0.5 rounded-sm scale-90 mt-1 leading-none">BORDER ENTR</span>
+                            <span className="text-[8px] font-black mt-1 tracking-tight">{formattedDate}</span>
+                        </div>
+                    </div>
+                ) : shapeIndex === 1 ? (
+                    // 2. Octagonal Border Decal
+                    <div className={`w-40 h-40 rounded-2xl border-2 border-current flex flex-col items-center justify-center p-2.5 ${inkColorClass} shrink-1 relative transition-transform duration-505`} style={{ transform: `rotate(${tilt * 1.5}deg)` }}>
+                        <div className="absolute inset-1.5 rounded-xl border border-dotted border-current opacity-80" />
+                        <div className="w-full h-full rounded-lg border border-current flex flex-col items-center justify-center font-mono gap-0.5">
+                            <span className="text-[8px] font-black tracking-[0.25em] uppercase leading-none opacity-85">APPROVED</span>
+                            <span className="text-3xl filter saturate-150 my-1">{country.flag}</span>
+                            <span className="text-xs font-black tracking-tight uppercase max-h-[14px] leading-none mb-1">{country.code} • {country.name.slice(0, 10)}</span>
+                            <div className="border-t border-current w-5/6 text-center pt-1 mt-0.5">
+                                <span className="text-[8px] font-black tracking-widest block leading-none">{formattedDate}</span>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    // 3. Pill-Shaped Stamp
+                    <div className={`w-44 h-32 rounded-[2rem] border-2 border-current flex flex-col items-center justify-center p-2 ${inkColorClass} shrink-0 relative transition-transform duration-501`} style={{ transform: `rotate(${tilt * 1.5}deg)` }}>
+                        <div className="absolute inset-1.5 rounded-[1.6rem] border-t border-b border-dashed border-current opacity-85" />
+                        <div className="w-full h-full rounded-[1.6rem] flex flex-col items-center justify-center font-mono gap-0.5">
+                            <span className="text-[7px] font-black tracking-[0.3em] uppercase leading-none mb-0.5">PASSPORT DEPT</span>
+                            <div className="flex items-center gap-1.5 my-1 justify-center">
+                                <span className="text-3xl filter saturate-150">{country.flag}</span>
+                                <div className="text-left">
+                                    <span className="text-sm font-black tracking-tighter block leading-none">{country.code}</span>
+                                    <span className="text-[6.5px] font-bold text-zinc-400 dark:text-zinc-500 uppercase leading-none mt-0.5 block">{country.region.slice(0, 10)}</span>
+                                </div>
+                            </div>
+                            <div className="border-t border-double border-current w-4/5 text-center pt-1">
+                                <span className="text-[9px] font-black tracking-widest">{formattedDate}</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Custom security reference footer when not hovered */}
+            <div className={`absolute bottom-2 left-6 right-6 flex justify-between items-center text-[7px] font-mono tracking-widest font-black opacity-35 group-hover:opacity-0 transition-opacity duration-300 ${styleObj.text}`}>
                 <span>{serialNumber}</span>
-            </div>
-
-            {/* Main Visual Center: Flag, Name, Code */}
-            <div className="my-1.5 flex flex-col items-center text-center z-10">
-                <div className="text-3xl filter saturate-[0.85] group-hover:scale-110 transition-transform duration-300 drop-shadow-sm mb-1">{country.flag}</div>
-                <h4 className={`text-sm font-extrabold uppercase tracking-tight leading-none truncate max-w-[170px] ${styleObj.text}`}>{country.name}</h4>
-                <div className={`mt-1 flex items-center gap-1.5 text-[8px] font-black uppercase tracking-widest leading-none ${styleObj.text} opacity-50`}>
-                    <span>PORT {country.code}</span>
-                    <span>•</span>
-                    <span>{country.tripCount} ARRIVAL{country.tripCount !== 1 ? 'S' : ''}</span>
-                </div>
-            </div>
-
-            {/* Footer stamp details */}
-            <div className="w-full flex flex-col items-center text-center z-10 leading-none">
-                <div className={`border-t border-b border-current border-solid py-1 px-4 my-1 w-full max-w-[160px] truncate ${styleObj.text}`}>
-                    <span className="text-xs font-mono font-black tracking-widest">{formattedDate}</span>
-                </div>
-                <span className={`text-[8px] font-bold uppercase opacity-60 mt-0.5 max-w-[170px] truncate ${styleObj.text}`} title={officerRef}>
-                    {officerRef}
-                </span>
+                <span>{country.tripCount} {country.tripCount === 1 ? 'ENTRY' : 'ENTRIES'}</span>
             </div>
 
             {/* Uniform Detail Backing panel shown on Hover with a subtle colored radial glow overlay */}
             <div 
-                className="absolute inset-x-0 bottom-0 top-0 bg-slate-950/95 border border-white/10 p-5 text-white flex flex-col justify-between text-left opacity-0 group-hover:opacity-100 transition-all duration-300 rounded-2xl z-20"
+                className="absolute inset-x-0 bottom-0 top-0 bg-slate-950/95 border border-white/10 p-5 text-white flex flex-col justify-between text-left opacity-0 group-hover:opacity-100 transition-all duration-300 rounded-[2.5rem] z-20"
                 style={{
                     backgroundImage: `radial-gradient(circle at top right, rgba(${flagGlow.r}, ${flagGlow.g}, ${flagGlow.b}, 0.18) 0%, transparent 65%)`
                 }}
@@ -220,11 +266,11 @@ export const PassportStamp: React.FC<PassportStampProps> = ({ country }) => {
                         </div>
                         <span className="text-[8px] font-mono font-black bg-white/10 px-1.5 py-0.5 rounded flex-shrink-0 text-white">{country.code}</span>
                     </div>
-
-                    <p className="text-[8px] uppercase tracking-wider font-extrabold text-blue-400">Security Clearance</p>
+ 
+                    <p className="text-[8px] uppercase tracking-wider font-extrabold text-indigo-400">Security Clearance</p>
                     <p className="text-[10px] font-bold text-gray-200 mt-0.5 truncate">{serialNumber}</p>
                     
-                    <p className="text-[8px] uppercase tracking-wider font-extrabold text-blue-400 mt-2">Port of Entry Logs</p>
+                    <p className="text-[8px] uppercase tracking-wider font-extrabold text-indigo-400 mt-2">Port of Entry Logs</p>
                     <p className="text-[10px] font-semibold text-gray-300 mt-0.5 line-clamp-2 leading-snug" title={citiesList}>
                         {citiesList}
                     </p>
@@ -237,7 +283,7 @@ export const PassportStamp: React.FC<PassportStampProps> = ({ country }) => {
                     </div>
                     <div className="text-right">
                         <span className="block opacity-65 uppercase text-[8px] tracking-wide">Last Arrival</span>
-                        <span className="text-xs font-black text-blue-400 block">{formattedDate}</span>
+                        <span className="text-xs font-black text-indigo-400 block">{formattedDate}</span>
                     </div>
                 </div>
             </div>

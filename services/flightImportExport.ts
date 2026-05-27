@@ -102,11 +102,19 @@ export const flightImporter = {
             
             const gapDays = (currTime - lastTime) / (1000 * 60 * 60 * 24);
 
-            if (gapDays > 14 || (flight.destination === homeBase)) {
-                currentBatch.push(flight);
-                trips.push(flightImporter._createTripFromBatch(currentBatch, userId));
-                currentBatch = [];
-                homeBase = '';
+            const isDifferentCity = flight.origin.trim().toUpperCase() !== last.destination.trim().toUpperCase();
+
+            if (gapDays > 14 || isDifferentCity || (flight.destination.trim().toUpperCase() === homeBase.trim().toUpperCase())) {
+                if (isDifferentCity) {
+                    trips.push(flightImporter._createTripFromBatch(currentBatch, userId));
+                    currentBatch = [flight];
+                    homeBase = flight.origin;
+                } else {
+                    currentBatch.push(flight);
+                    trips.push(flightImporter._createTripFromBatch(currentBatch, userId));
+                    currentBatch = [];
+                    homeBase = '';
+                }
             } else {
                 currentBatch.push(flight);
             }

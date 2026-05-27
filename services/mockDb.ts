@@ -1,5 +1,5 @@
 
-import { User, Trip, PublicHoliday, EntitlementType, SavedConfig, WorkspaceSettings, CustomEvent, PackingItem } from '../types';
+import { User, Trip, PublicHoliday, EntitlementType, SavedConfig, WorkspaceSettings, CustomEvent, PackingItem, Carrier } from '../types';
 import { getCoordinates } from './geocoding';
 
 const GEO_CACHE_KEY = 'wandergrid_geo_cache_v2';
@@ -34,7 +34,8 @@ const DEFAULT_WORKSPACE_SETTINGS: WorkspaceSettings = {
   aviationStackApiKey: '',
   brandfetchApiKey: '',
   googleGeminiApiKey: '',
-  masterPackingList: DEFAULT_MASTER_LIST
+  masterPackingList: DEFAULT_MASTER_LIST,
+  carriers: []
 };
 
 export interface ImportState {
@@ -164,7 +165,8 @@ class DataService {
           { route: '/trips', storage: 'trips' },
           { route: '/events', storage: 'events' },
           { route: '/entitlements', storage: 'entitlements' },
-          { route: '/configs', storage: 'configs' }
+          { route: '/configs', storage: 'configs' },
+          { route: '/flights', storage: 'flights' }
       ];
 
       for (const col of collections) {
@@ -249,6 +251,40 @@ class DataService {
               }
               return u;
           }));
+
+          // Automatically detect itinerary types: 'One-Way' | 'Round Trip' | 'Multi-City'
+          const flights = updatedTransports.filter(t => t.mode === 'Flight');
+          if (flights.length > 0) {
+              // Sort flights chronologically to look at itinerary flow
+              const sortedFlights = [...flights].sort((a, b) => {
+                  const da = new Date(`${a.departureDate}T${a.departureTime || '00:00'}`).getTime();
+                  const db = new Date(`${b.departureDate}T${b.departureTime || '00:00'}`).getTime();
+                  return da - db;
+              });
+
+              let itineraryType: 'One-Way' | 'Round Trip' | 'Multi-City' = 'One-Way';
+              if (sortedFlights.length > 1) {
+                  const firstOrigin = sortedFlights[0].origin.trim().toUpperCase();
+                  const lastDest = sortedFlights[sortedFlights.length - 1].destination.trim().toUpperCase();
+                  const returnsHome = lastDest === firstOrigin;
+
+                  if (returnsHome) {
+                      itineraryType = 'Round Trip';
+                  } else {
+                      itineraryType = 'Multi-City';
+                  }
+              }
+
+              // Update flight type and ensure a single consistent itineraryId for all flights in this trip
+              const customItineraryId = flights[0].itineraryId || `itinerary-${updatedTrip.id}`;
+              updatedTransports.forEach(t => {
+                  if (t.mode === 'Flight') {
+                      t.type = itineraryType;
+                      t.itineraryId = customItineraryId;
+                  }
+              });
+          }
+
           updatedTrip.transports = updatedTransports;
       }
       if (updatedTrip.locations) {
@@ -364,6 +400,10 @@ class DataService {
   async getSavedConfigs(): Promise<SavedConfig[]> { return this.fetch<SavedConfig[]>('/configs'); }
   async saveConfig(config: SavedConfig): Promise<void> { await this.fetch(`/configs/${config.id}`, { method: 'PUT', body: JSON.stringify(config) }); }
   async deleteConfig(id: string): Promise<void> { await this.fetch(`/configs/${id}`, { method: 'DELETE' }); }
+  async getFlights(): Promise<any[]> { return this.fetch<any[]>('/flights'); }
+  async addFlight(flight: any): Promise<void> { await this.fetch('/flights', { method: 'POST', body: JSON.stringify(flight) }); }
+  async updateFlight(flight: any): Promise<void> { await this.fetch(`/flights/${flight.id}`, { method: 'PUT', body: JSON.stringify(flight) }); }
+  async deleteFlight(id: string): Promise<void> { await this.fetch(`/flights/${id}`, { method: 'DELETE' }); }
   async getWorkspaceSettings(): Promise<WorkspaceSettings> {
     const settings = await this.fetch<WorkspaceSettings>('/settings');
     return { ...DEFAULT_WORKSPACE_SETTINGS, ...settings };

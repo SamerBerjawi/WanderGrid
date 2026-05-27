@@ -51,12 +51,33 @@ WanderGrid is a privacy-focused, full-stack application designed for digital nom
 4.  The app defaults to **LocalStorage Mode** if the API is unreachable, saving all data to your browser.
 
 ### Production Self-Host (Docker)
-1.  Configure `docker-compose.yml` with your PostgreSQL credentials.
-2.  (Optional) Set deployment overrides for NAS installs:
-    *   `APP_PORT` to change the host port (e.g., `APP_PORT=6125` maps `6125 -> 3000`).
-    *   `POSTGRES_DATA_DIR` to store data outside the repo (e.g., `POSTGRES_DATA_DIR=/volume1/docker/wandergrid`).
-3.  Run `docker-compose up -d` from the repository root.
-4.  The app will automatically switch to **API Mode** and persist data to the database.
+
+You can run WanderGrid in containerized production mode either by building the image locally or deploying the pre-built Docker package.
+
+#### Option A: Pulling the Pre-Built Package (Recommended)
+This repository includes an automated GitHub Actions Workflow (`.github/workflows/build-and-publish.yml`) that builds and publishes a hardened production image to the **GitHub Container Registry (GHCR)** on every push to the `main` or `master` branches, as well as on new version releases.
+
+1. Downoad the `docker-compose.yml` file.
+2. Replace `${GITHUB_REPOSITORY_OWNER_LOWERCASE:-username}` in `docker-compose.yml` with your GHCR/GitHub username (lowercase), or export it:
+   ```bash
+   export GITHUB_REPOSITORY_OWNER_LOWERCASE=your-user-or-org
+   ```
+3. Run the container cluster:
+   ```bash
+   docker compose pull && docker compose up -d
+   ```
+
+#### Option B: Building Locally
+1. Clone the repository and navigate to the root directory.
+2. (Optional) Set deployment overrides:
+    * `APP_PORT` to change the host port (e.g., `APP_PORT=6125` maps `6125 -> 3000`).
+    * `POSTGRES_DATA_DIR` to store PG data outside the container.
+3. Build and host locally:
+   ```bash
+   docker compose up -d --build
+   ```
+
+The app will automatically initialize the PostgreSQL schema and switch to **API Mode** for multi-user, persistent self-hosting.
 
 ## 🔑 Configuration
 Navigate to the **Settings** view to:
