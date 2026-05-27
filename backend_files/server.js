@@ -72,6 +72,32 @@ const initDb = async (retries = 10, delayMs = 3000) => {
         `);
         
         console.log('Database schema initialized successfully!');
+
+        // Seed the default Admin user if they do not exist
+        const adminCheck = await client.query(`
+            SELECT 1 FROM users WHERE LOWER(data->>'email') = 'admin@wandergrid.app' LIMIT 1
+        `);
+        if (adminCheck.rows.length === 0) {
+            console.log('Seeding default Admin user (admin@wandergrid.app) into database...');
+            const defaultAdmin = {
+                id: 'admin',
+                name: 'Admin User',
+                email: 'admin@wandergrid.app',
+                password: 'password',
+                role: 'Admin',
+                leaveBalance: 30,
+                takenLeave: 0,
+                allowance: 30,
+                lieuBalance: 0,
+                activeYears: [2024, 2025, 2026],
+                policies: [],
+                holidayConfigIds: []
+            };
+            await client.query(`
+                INSERT INTO users (id, data) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING
+            `, ['admin', JSON.stringify(defaultAdmin)]);
+        }
+
         return; // Connection and schema setup succeeded
       } finally {
         client.release();

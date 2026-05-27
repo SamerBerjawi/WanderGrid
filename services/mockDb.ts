@@ -65,7 +65,10 @@ class DataService {
                 body: JSON.stringify({ email, password: pass })
             });
             return user;
-        } catch (err) {
+        } catch (err: any) {
+            if (err && err.status === 401) {
+                return null;
+            }
             if (isProd) {
                 throw err;
             }
@@ -226,6 +229,11 @@ class DataService {
           
           if (!res.ok) {
               if (res.status === 404) throw new Error("API Route Not Found");
+              if (res.status === 401) {
+                  const errObj = new Error("Invalid Credentials");
+                  (errObj as any).status = 401;
+                  throw errObj;
+              }
               throw new Error(`API Error: ${res.statusText}`);
           }
 
