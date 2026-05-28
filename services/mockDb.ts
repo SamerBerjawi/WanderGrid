@@ -69,7 +69,10 @@ class DataService {
             if (err && err.status === 401) {
                 return null;
             }
-            throw err;
+            if (isProd) {
+                throw err;
+            }
+            console.warn("Server auth failed, falling back to local fallback in development:", err);
         }
     }
     const users = await this.localFetch<User[]>('/users');
@@ -102,7 +105,10 @@ class DataService {
             });
             return registeredUser;
         } catch (err) {
-            throw err;
+            if (isProd) {
+                throw err;
+            }
+            console.warn("Server register failed, falling back to local registration in development:", err);
         }
     }
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  Search, Filter, Plus, Calendar, MapPin, Trash2, Edit2, 
+  Search, Filter, Plus, Calendar, MapPin, Trash2, Edit2, Check, Square, CheckSquare, Edit3,
   ArrowRight, Plane, Landmark, Award, Clock, DollarSign, BarChart2, Briefcase, FileText, Compass, Heart, HelpCircle, RefreshCw, Upload, Download, Tag, UserCheck, Star, Sparkles, Grid, List,
   ArrowUpRight, ArrowDownLeft
 } from 'lucide-react';
@@ -284,6 +284,17 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
   const [sortSubOption, setSortSubOption] = useState<string>('default');
   const [sortAsc, setSortAsc] = useState<boolean>(true);
 
+  // Multi-edit states
+  const [isMultiEditing, setIsMultiEditing] = useState<boolean>(false);
+  const [selectedFlightIds, setSelectedFlightIds] = useState<Set<string>>(new Set());
+
+  // Delete confirm modal states
+  const [deleteConfirmTarget, setDeleteConfirmTarget] = useState<{
+    type: 'single' | 'multi';
+    singleRecord?: { flight: Transport; trip: Trip };
+    multiCount?: number;
+  } | null>(null);
+
   const handleHeaderSort = (field: 'flight' | 'sector' | 'status' | 'timing' | 'seat') => {
     if (sortField === field) {
       setSortAsc(!sortAsc);
@@ -413,8 +424,9 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
   // Set up form state for edit or new
   const openFlightForm = (record?: { flight: Transport; trip: Trip }) => {
     if (record) {
-      setEditingFlight({ flight: record.flight, tripId: record.trip.id });
-      setFormTripId(record.trip.id);
+      const parentTripId = record.trip.id.startsWith('unassigned') ? 'unassigned' : record.trip.id;
+      setEditingFlight({ flight: record.flight, tripId: parentTripId });
+      setFormTripId(parentTripId);
       setFormNewTripName('');
       setFormAirline(record.flight.provider || '');
       setFormFlightNum(record.flight.identifier || '');
@@ -581,11 +593,15 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
     }
   };
 
-  const handleDeleteFlight = async (flightRecord: { flight: Transport; trip: Trip }) => {
-    if (!confirm(`Are you sure you want to delete flight ${flightRecord.flight.provider} ${flightRecord.flight.identifier}?`)) {
-      return;
-    }
-    if (flightRecord.trip.id === 'unassigned') {
+  const handleDeleteFlight = (flightRecord: { flight: Transport; trip: Trip }) => {
+    setDeleteConfirmTarget({
+      type: 'single',
+      singleRecord: flightRecord
+    });
+  };
+
+  const executeSingleDelete = async (flightRecord: { flight: Transport; trip: Trip }) => {
+    if (flightRecord.trip.id === 'unassigned' || flightRecord.trip.id.startsWith('unassigned')) {
        await dataService.deleteFlight(flightRecord.flight.id);
     } else {
        const targetTrip = { ...flightRecord.trip };
@@ -595,6 +611,29 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
        }
     }
     refreshData();
+    setDeleteConfirmTarget(null);
+  };
+
+  const executeMultiDelete = async () => {
+    const idsToDelete = Array.from(selectedFlightIds);
+    for (const fid of idsToDelete) {
+       const record = flights.find(f => f.flight.id === fid);
+       if (record) {
+         if (record.trip.id === 'unassigned' || record.trip.id.startsWith('unassigned')) {
+            await dataService.deleteFlight(fid);
+         } else {
+            const targetTrip = { ...record.trip };
+            if (targetTrip.transports) {
+              targetTrip.transports = targetTrip.transports.filter(t => t.id !== fid);
+              await dataService.updateTrip(targetTrip);
+            }
+         }
+       }
+    }
+    setSelectedFlightIds(new Set());
+    setIsMultiEditing(false);
+    refreshData();
+    setDeleteConfirmTarget(null);
   };
 
   // Handle smart fuzzy search and filters
@@ -679,10 +718,24 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
   const groupedFlights = useMemo(() => {
     const groups: { [tripId: string]: { trip: Trip; flights: Transport[]; outbound: Transport[]; returnLegs: Transport[] } } = {};
     filteredFlights.forEach(item => {
-      if (!groups[item.trip.id]) {
-        groups[item.trip.id] = { trip: item.trip, flights: [], outbound: [], returnLegs: [] };
+      let key = item.trip.id;
+      if (key === 'unassigned') {
+        const yr = item.flight.departureDate ? new Date(item.flight.departureDate).getFullYear().toString() : 'Unscheduled';
+        key = `unassigned-${yr}`;
       }
-      groups[item.trip.id].flights.push(item.flight);
+      if (!groups[key]) {
+        groups[key] = { 
+          trip: {
+            ...item.trip,
+            id: key,
+            name: 'Independent Flights'
+          }, 
+          flights: [], 
+          outbound: [], 
+          returnLegs: [] 
+        };
+      }
+      groups[key].flights.push(item.flight);
     });
     
     // Sort flights inside each group by departure date/time
@@ -693,45 +746,9 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
         return da.getTime() - db.getTime();
       });
 
-      // Split into Outbound and Return
-      let returnStartIndex = -1;
-      const tripFlights = g.flights;
-      if (g.trip.id !== 'unassigned' && tripFlights.length > 1) {
-        const startAirport = tripFlights[0].origin;
-        // If passenger returns to start airport
-        for (let i = 0; i < tripFlights.length; i++) {
-          if (tripFlights[i].destination === startAirport) {
-            returnStartIndex = i;
-            break;
-          }
-        }
-
-        // If not, see if there is any major stay over 18 hours
-        if (returnStartIndex === -1) {
-          let maxStayMs = -1;
-          let maxStayIdx = -1;
-          for (let i = 0; i < tripFlights.length - 1; i++) {
-            const arr = getFlightArrivalUtcDate(tripFlights[i]);
-            const dep = getFlightDepartureUtcDate(tripFlights[i + 1]);
-            const stayMs = dep.getTime() - arr.getTime();
-            if (stayMs > maxStayMs) {
-              maxStayMs = stayMs;
-              maxStayIdx = i + 1;
-            }
-          }
-          if (maxStayMs > 18 * 60 * 60 * 1000 && maxStayIdx !== -1) {
-            returnStartIndex = maxStayIdx;
-          }
-        }
-      }
-
-      if (returnStartIndex > 0) {
-        g.outbound = tripFlights.slice(0, returnStartIndex);
-        g.returnLegs = tripFlights.slice(returnStartIndex);
-      } else {
-        g.outbound = tripFlights;
-        g.returnLegs = [];
-      }
+      // No Outbound and Return split - put everything in outbound and returnLegs empty
+      g.outbound = g.flights;
+      g.returnLegs = [];
 
       // Sort both itineraries by active sort fields
       const sortFlightsFunc = (a: Transport, b: Transport) => {
@@ -815,13 +832,18 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
       g.returnLegs.sort(sortFlightsFunc);
     });
 
-    // Sort groups themselves by the first flight's departure date/time (most recent upcoming, or past descending)
+    // Sort groups themselves by the first flight's departure date/time
     const sortedGroups = Object.values(groups).sort((a, b) => {
       if (a.flights.length === 0) return 1;
       if (b.flights.length === 0) return -1;
       const da = getFlightDepartureUtcDate(a.flights[0]);
       const db = getFlightDepartureUtcDate(b.flights[0]);
       
+      const isTimingSort = sortField === 'timing';
+      if (isTimingSort) {
+        return sortAsc ? da.getTime() - db.getTime() : db.getTime() - da.getTime();
+      }
+
       // If timeFilter is 'past' we might want descending
       if (timeFilter === 'past') {
         return db.getTime() - da.getTime();
@@ -848,12 +870,20 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
     });
 
     return Object.keys(yearsMap)
-      .sort((a, b) => b.localeCompare(a))
+      .sort((a, b) => {
+        if (a === 'Unscheduled') return 1;
+        if (b === 'Unscheduled') return -1;
+        const isTimingSort = sortField === 'timing';
+        if (isTimingSort) {
+          return sortAsc ? a.localeCompare(b) : b.localeCompare(a);
+        }
+        return b.localeCompare(a); // default descending
+      })
       .map(yr => ({
         year: yr,
         groups: yearsMap[yr]
       }));
-  }, [groupedFlights]);
+  }, [groupedFlights, sortField, sortAsc]);
 
   // Next Upcoming Flight Highlight for the live ticket card
   const nextUpcomingFlight = useMemo(() => {
@@ -966,6 +996,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
 
   const renderGridFlight = (flight: Transport, idx: number, legsList: Transport[], trip: Trip) => {
     const isFuture = getFlightDepartureUtcDate(flight) >= new Date();
+    const isSelected = selectedFlightIds.has(flight.id);
     
     // Calculate days remaining
     let daysRemaining = null;
@@ -993,19 +1024,41 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
     const statusInfo = getFlightStatusTags(flight);
 
     return (
-      <div key={flight.id} className="relative group transition-transform duration-300 hover:scale-[1.01]">
+      <div 
+        key={flight.id} 
+        onClick={() => {
+          if (isMultiEditing) {
+            const newSelected = new Set(selectedFlightIds);
+            if (newSelected.has(flight.id)) {
+              newSelected.delete(flight.id);
+            } else {
+              newSelected.add(flight.id);
+            }
+            setSelectedFlightIds(newSelected);
+          }
+        }}
+        className={`relative group transition-transform duration-300 hover:scale-[1.01] ${isMultiEditing ? 'cursor-pointer' : ''}`}
+      >
         {/* Boarding Pass Container */}
-        <div className="relative overflow-hidden bg-white/70 dark:bg-zinc-900/70 border border-zinc-200/40 dark:border-white/5 rounded-[2.2rem] flex flex-col justify-between shadow-xl h-full">
+        <div className={`relative overflow-hidden bg-white/70 dark:bg-zinc-900/70 border ${isSelected ? 'border-blue-500/80 ring-2 ring-blue-500/10' : 'border-zinc-200/40 dark:border-white/5'} rounded-[2.2rem] flex flex-col justify-between shadow-xl h-full`}>
           <div className="flex h-full">
-            {/* Left Column for Days (like Flighty) */}
-            <div className="w-24 bg-zinc-900 dark:bg-black/40 flex flex-col items-center justify-center text-white p-4 shrink-0 border-r border-zinc-800 dark:border-white/5">
-              {isFuture && daysRemaining !== null ? (
-                <>
-                  <span className="text-4xl font-black leading-none tracking-tighter">{daysRemaining}</span>
-                  <span className="text-[10px] font-black uppercase tracking-widest mt-1 opacity-60">DAYS</span>
-                </>
+            {/* Left Column for Days or Checkbox (multi-editing) */}
+            <div className={`w-24 ${isSelected ? 'bg-blue-600' : 'bg-zinc-900 dark:bg-black/40'} flex flex-col items-center justify-center text-white p-4 shrink-0 border-r border-zinc-800 dark:border-white/5 transition-colors duration-200 select-none`}>
+              {isMultiEditing ? (
+                isSelected ? (
+                  <CheckSquare className="w-8 h-8 text-white stroke-[2.5px] animate-scale-up" />
+                ) : (
+                  <Square className="w-8 h-8 text-white/50 stroke-[1.5px] hover:text-white transition-colors" />
+                )
               ) : (
-                  <span className="text-xs font-black uppercase tracking-widest opacity-60">PAST</span>
+                isFuture && daysRemaining !== null ? (
+                  <>
+                    <span className="text-4xl font-black leading-none tracking-tighter">{daysRemaining}</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest mt-1 opacity-60">DAYS</span>
+                  </>
+                ) : (
+                    <span className="text-xs font-black uppercase tracking-widest opacity-60">PAST</span>
+                )
               )}
             </div>
             
@@ -1082,7 +1135,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                         <div className="text-[8px] font-black uppercase text-zinc-400 tracking-wider">Scheduled Arr</div>
                         <div className="font-mono text-[10px] font-bold text-zinc-600 dark:text-zinc-400 leading-tight">
                           {statusInfo.arrScheduledDate}<br />
-                          <span className="font-black text-xs text-zinc-800 dark:text-zinc-200">{statusInfo.arrScheduledTime}</span>
+                          <span className="font-black text-xs text-zinc-805 dark:text-zinc-200">{statusInfo.arrScheduledTime}</span>
                         </div>
                       </div>
                       {statusInfo.arrActualTime && statusInfo.arrActualTime !== statusInfo.arrScheduledTime && (
@@ -1107,20 +1160,22 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     {flight.seatNumber || 'TBD'} &bull; {flight.confirmationCode || 'PNR'} 
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <button 
-                    onClick={() => openFlightForm({ flight, trip })}
-                    className="p-2 rounded-lg bg-white dark:bg-zinc-800 text-zinc-500 hover:text-blue-500 border border-zinc-200 dark:border-white/10 shadow-sm transition-all cursor-pointer"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                  </button>
-                  <button 
-                    onClick={() => handleDeleteFlight({ flight, trip })}
-                    className="p-2 rounded-lg bg-white dark:bg-zinc-800 text-zinc-500 hover:text-red-500 border border-zinc-200 dark:border-white/10 shadow-sm transition-all cursor-pointer"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                {!isMultiEditing && (
+                  <div className="flex items-center gap-1.5">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); openFlightForm({ flight, trip }); }}
+                      className="p-2 rounded-lg bg-white dark:bg-zinc-800 text-zinc-500 hover:text-blue-500 border border-zinc-200 dark:border-white/10 shadow-sm transition-all cursor-pointer"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleDeleteFlight({ flight, trip }); }}
+                      className="p-2 rounded-lg bg-white dark:bg-zinc-800 text-zinc-500 hover:text-red-500 border border-zinc-200 dark:border-white/10 shadow-sm transition-all cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1153,7 +1208,43 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
 
     return (
       <React.Fragment key={flight.id}>
-        <tr className="border-b border-zinc-200/50 dark:border-zinc-800/55 last:border-0 hover:bg-white/60 dark:hover:bg-white/5 transition-colors group">
+        <tr 
+          onClick={() => {
+            if (isMultiEditing) {
+              const newSelected = new Set(selectedFlightIds);
+              if (newSelected.has(flight.id)) {
+                newSelected.delete(flight.id);
+              } else {
+                newSelected.add(flight.id);
+              }
+              setSelectedFlightIds(newSelected);
+            }
+          }}
+          className={`border-b border-zinc-200/50 dark:border-zinc-805 last:border-0 hover:bg-white/60 dark:hover:bg-white/5 transition-colors group ${isMultiEditing ? 'cursor-pointer' : ''}`}
+        >
+          {isMultiEditing && (
+            <td className="py-3 pl-4 align-middle text-center w-[4%]">
+              <div 
+                className="flex items-center justify-center select-none"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const newSelected = new Set(selectedFlightIds);
+                  if (newSelected.has(flight.id)) {
+                    newSelected.delete(flight.id);
+                  } else {
+                    newSelected.add(flight.id);
+                  }
+                  setSelectedFlightIds(newSelected);
+                }}
+              >
+                {selectedFlightIds.has(flight.id) ? (
+                  <CheckSquare className="w-4 h-4 text-blue-500" />
+                ) : (
+                  <Square className="w-4 h-4 text-zinc-400 hover:text-blue-500 transition-colors" />
+                )}
+              </div>
+            </td>
+          )}
           {/* 1. FLIGHT & CARRIER */}
           <td className="py-3 pl-4 align-middle">
             <div className="flex items-center gap-2.5">
@@ -1304,6 +1395,17 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3 shrink-0">
+          <Button
+            variant={isMultiEditing ? "secondary" : "secondary"}
+            className={`rounded-2xl cursor-pointer ${isMultiEditing ? '!bg-amber-500/10 !text-amber-500 hover:!bg-amber-500/20 border-amber-500/30' : ''}`}
+            onClick={() => {
+              setIsMultiEditing(!isMultiEditing);
+              setSelectedFlightIds(new Set());
+            }}
+            icon={isMultiEditing ? <Check className="w-4 h-4" /> : <Edit3 className="w-4 h-4" />}
+          >
+            {isMultiEditing ? 'Done Editing' : 'Edit Boarding Passes'}
+          </Button>
           <Button 
             variant="primary" 
             className="rounded-2xl cursor-pointer"
@@ -1652,49 +1754,40 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                 </div>
 
                 <div className="flex flex-col gap-8">
-                  {groups.map(({ trip, outbound, returnLegs }) => (
-                    <motion.div
-                      layout
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      key={trip.id}
-                      className="bg-white/40 dark:bg-zinc-900/40 border border-zinc-200/50 dark:border-white/5 shadow-md rounded-[2.5rem] p-6 backdrop-blur-xl animate-fade-in"
-                    >
-                      <div className="flex items-center gap-2 mb-6 ml-2">
-                        <Compass className="w-5 h-5 text-blue-500" />
-                        <h4 className="text-base font-black text-zinc-805 dark:text-zinc-200 uppercase tracking-widest">{trip.name}</h4>
-                      </div>
+                  {groups.map(({ trip, outbound, returnLegs }) => {
+                    const isIndependent = trip.id.startsWith('unassigned');
+                    return (
+                      <motion.div
+                        layout
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        key={trip.id}
+                        className="bg-white/40 dark:bg-zinc-900/40 border border-zinc-200/50 dark:border-white/5 shadow-md rounded-[2.5rem] p-6 backdrop-blur-xl animate-fade-in"
+                      >
+                        {!isIndependent && (
+                          <div className="flex items-center gap-2 mb-6 ml-2">
+                            <Compass className="w-5 h-5 text-blue-500" />
+                            <h4 className="text-base font-black text-zinc-805 dark:text-zinc-200 uppercase tracking-widest">{trip.name}</h4>
+                          </div>
+                        )}
 
-                      <div className="space-y-6">
-                        {/* Outbound Itinerary Leg(s) */}
-                        {outbound && outbound.length > 0 && (
-                          <div>
-                            <div className="flex items-center gap-1.5 mb-3 px-2 border-b border-zinc-200/45 dark:border-white/5 pb-1 max-w-fit">
-                              <ArrowUpRight className="w-3.5 h-3.5 text-blue-500" />
-                              <span className="text-[10px] font-black uppercase tracking-wider text-zinc-550 dark:text-zinc-450">Outbound Itinerary</span>
-                            </div>
+                        <div className="space-y-6">
+                          {outbound && outbound.length > 0 && (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                               {outbound.map((flight, idx) => renderGridFlight(flight, idx, outbound, trip))}
                             </div>
-                          </div>
-                        )}
+                          )}
 
-                        {/* Return Itinerary Leg(s) */}
-                        {returnLegs && returnLegs.length > 0 && (
-                          <div className="pt-2">
-                            <div className="flex items-center gap-1.5 mb-3 px-2 border-b border-zinc-200/45 dark:border-white/5 pb-1 max-w-fit">
-                              <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-500" />
-                              <span className="text-[10px] font-black uppercase tracking-wider text-zinc-550 dark:text-zinc-450">Return Itinerary</span>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {returnLegs && returnLegs.length > 0 && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
                               {returnLegs.map((flight, idx) => renderGridFlight(flight, idx, returnLegs, trip))}
                             </div>
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  ))}
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
                 </div>
               </div>
             ))}
@@ -1705,6 +1798,11 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           <table className="w-full text-left border-collapse min-w-[950px]">
             <thead>
               <tr className="border-b border-zinc-200/50 dark:border-zinc-850/50 font-mono text-zinc-400 dark:text-zinc-500">
+                {isMultiEditing && (
+                  <th className="sticky top-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md z-30 pb-3 text-[11px] font-black uppercase tracking-widest pl-4 w-[4%] text-center border-b border-zinc-200/50 dark:border-white/10">
+                    <CheckSquare className="w-4 h-4 text-zinc-400 inline" />
+                  </th>
+                )}
                 <th className="sticky top-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md z-30 pb-3 text-[11px] font-black uppercase tracking-widest pl-4 w-[18%] text-left border-b border-zinc-200/50 dark:border-white/10">
                   <div className="flex items-center gap-1.5 relative">
                     {renderSortableHeader('Flight', 'flight')}
@@ -2082,7 +2180,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
               <React.Fragment key={year}>
                 {/* Year Header Row Spacer/Divider */}
                 <tr className="bg-zinc-150/80 dark:bg-zinc-950 border-y border-zinc-200/80 dark:border-white/10">
-                  <td colSpan={6} className="py-2.5 pl-4 bg-zinc-200/50 dark:bg-zinc-950">
+                  <td colSpan={isMultiEditing ? 7 : 6} className="py-2.5 pl-4 bg-zinc-200/50 dark:bg-zinc-950">
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-blue-500 font-extrabold" />
                       <span className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-widest">Year {year}</span>
@@ -2090,60 +2188,150 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                   </td>
                 </tr>
 
-                {groups.map(({ trip, outbound, returnLegs }, tripIdx) => (
-                  <React.Fragment key={trip.id}>
-                    {/* Divide different trips with a thin white border line like layover style */}
-                    {tripIdx > 0 && (
-                      <tr className="border-t border-zinc-200/50 dark:border-zinc-850/50">
-                        <td colSpan={6} className="h-2 p-0 bg-transparent" />
-                      </tr>
-                    )}
+                {groups.map(({ trip, outbound, returnLegs }, tripIdx) => {
+                  const isIndependent = trip.id.startsWith('unassigned');
+                  return (
+                    <React.Fragment key={trip.id}>
+                      {/* Divide different trips with a thin border/spacer */}
+                      {tripIdx > 0 && (
+                        <tr className="border-t border-zinc-200/50 dark:border-zinc-850/50">
+                          <td colSpan={isMultiEditing ? 7 : 6} className="h-2 p-0 bg-transparent" />
+                        </tr>
+                      )}
 
-                    {/* Trip Header Row */}
-                    <tr className="bg-zinc-100/60 dark:bg-zinc-900 border-y border-zinc-200/50 dark:border-white/5">
-                      <td colSpan={6} className="py-2 pl-4">
-                        <div className="flex items-center gap-2">
-                          <Compass className="w-4 h-4 text-zinc-400 dark:text-zinc-500" />
-                          <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-widest">{trip.name}</span>
-                        </div>
-                      </td>
-                    </tr>
-
-                    {/* Outbound Subsection Header */}
-                    {outbound && outbound.length > 0 && (
-                      <>
-                        <tr className="bg-zinc-50/40 dark:bg-zinc-900/40 border-b border-zinc-150/35 dark:border-white/5">
-                          <td colSpan={6} className="py-1.5 pl-4">
-                            <div className="flex items-center gap-1.5">
-                              <ArrowUpRight className="w-3 h-3 text-blue-500" />
-                              <span className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-wider animate-fadeIn">Outbound Itinerary</span>
+                      {/* Trip Header Row (only show for assigned trips) */}
+                      {!isIndependent && (
+                        <tr className="bg-zinc-100/60 dark:bg-zinc-900 border-y border-zinc-200/50 dark:border-white/5">
+                          <td colSpan={isMultiEditing ? 7 : 6} className="py-2 pl-4">
+                            <div className="flex items-center gap-2">
+                              <Compass className="w-4 h-4 text-zinc-400 dark:text-zinc-500" />
+                              <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-widest">{trip.name}</span>
                             </div>
                           </td>
                         </tr>
-                        {outbound.map((flight, idx) => renderTableRow(flight, idx, outbound, trip))}
-                      </>
-                    )}
+                      )}
 
-                    {/* Return Subsection Header */}
-                    {returnLegs && returnLegs.length > 0 && (
-                      <>
-                        <tr className="bg-zinc-50/40 dark:bg-zinc-900/40 border-b border-zinc-150/35 dark:border-white/5">
-                          <td colSpan={6} className="py-1.5 pl-4">
-                            <div className="flex items-center gap-1.5">
-                              <ArrowDownLeft className="w-3 h-3 text-emerald-500" />
-                              <span className="text-[9px] font-black text-zinc-550 dark:text-zinc-400 uppercase tracking-wider animate-fadeIn">Return Itinerary</span>
-                            </div>
-                          </td>
-                        </tr>
-                        {returnLegs.map((flight, idx) => renderTableRow(flight, idx, returnLegs, trip))}
-                      </>
-                    )}
-                  </React.Fragment>
-                ))}
+                      {/* Direct Sequential List of Flights without subheaders */}
+                      {outbound && outbound.length > 0 && (
+                        outbound.map((flight, idx) => renderTableRow(flight, idx, outbound, trip))
+                      )}
+
+                      {returnLegs && returnLegs.length > 0 && (
+                        returnLegs.map((flight, idx) => renderTableRow(flight, idx, returnLegs, trip))
+                      )}
+                    </React.Fragment>
+                  );
+                })}
               </React.Fragment>
             ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Multi-Selection Bottom Action Bar */}
+      {isMultiEditing && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white/95 dark:bg-zinc-900/95 border border-zinc-200/50 dark:border-white/10 px-6 py-4 rounded-3xl shadow-2xl flex items-center gap-6 backdrop-blur-md z-40 animate-scale-up">
+          <span className="text-xs font-black font-mono text-zinc-650 dark:text-zinc-300">
+            Selected: <span className="text-blue-500 font-extrabold">{selectedFlightIds.size}</span>
+          </span>
+          
+          <div className="h-4 w-[1px] bg-zinc-200 dark:bg-white/10" />
+          
+          <button
+            onClick={() => {
+              const allIds = new Set(filteredFlights.map(f => f.flight.id));
+              setSelectedFlightIds(allIds);
+            }}
+            className="text-xs font-bold text-zinc-650 dark:text-zinc-400 hover:text-blue-500 cursor-pointer transition-colors"
+          >
+            Select All
+          </button>
+          <button
+            onClick={() => {
+              setSelectedFlightIds(new Set());
+            }}
+            className="text-xs font-bold text-zinc-650 dark:text-zinc-400 hover:text-blue-500 cursor-pointer transition-colors"
+          >
+            Deselect All
+          </button>
+          
+          <div className="h-4 w-[1px] bg-zinc-200 dark:bg-white/10" />
+          
+          <button
+            disabled={selectedFlightIds.size === 0}
+            onClick={() => {
+              setDeleteConfirmTarget({
+                type: 'multi',
+                multiCount: selectedFlightIds.size
+              });
+            }}
+            className={`text-xs font-black uppercase text-red-500 hover:text-red-650 flex items-center gap-1.5 cursor-pointer transition-colors ${selectedFlightIds.size === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete Selected ({selectedFlightIds.size})
+          </button>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmTarget && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-[60] animate-fade-in">
+          <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl border border-zinc-200 dark:border-white/5 animate-scale-up">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-red-500/10 dark:bg-red-500/20 rounded-full flex items-center justify-center text-red-500 mb-5 border border-red-500/20 animate-pulse">
+                <Trash2 className="w-8 h-8" />
+              </div>
+              
+              <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-wider mb-2">
+                Confirm Deletion
+              </h3>
+              
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6 leading-relaxed">
+                {deleteConfirmTarget.type === 'single' ? (
+                  <>
+                    Are you sure you want to permanently delete flight{" "}
+                    <span className="font-extrabold text-blue-500">
+                      {deleteConfirmTarget.singleRecord?.flight.provider}{" "}
+                      {deleteConfirmTarget.singleRecord?.flight.identifier}
+                    </span>
+                    ? This travel leg will be permanently removed.
+                  </>
+                ) : (
+                  <>
+                    Are you sure you want to permanently delete the{" "}
+                    <span className="font-extrabold text-blue-500">
+                      {deleteConfirmTarget.multiCount}
+                    </span>{" "}
+                    selected flights? This will remove these travel legs from all itineraries and cannot be undone.
+                  </>
+                )}
+              </p>
+
+              <div className="flex items-center gap-3 w-full">
+                <button
+                  type="button"
+                  onClick={() => setDeleteConfirmTarget(null)}
+                  className="flex-1 py-3.5 px-5 rounded-2xl text-sm font-bold bg-zinc-100 dark:bg-white/5 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-250 dark:hover:bg-white/10 transition-all cursor-pointer text-center"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (deleteConfirmTarget.type === 'single' && deleteConfirmTarget.singleRecord) {
+                      await executeSingleDelete(deleteConfirmTarget.singleRecord);
+                    } else if (deleteConfirmTarget.type === 'multi') {
+                      await executeMultiDelete();
+                    }
+                  }}
+                  className="flex-1 py-3.5 px-5 rounded-2xl text-sm font-black uppercase tracking-wider bg-red-500 hover:bg-red-650 text-white shadow-lg shadow-red-500/20 transition-all cursor-pointer text-center"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

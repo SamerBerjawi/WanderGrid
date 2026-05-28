@@ -2,11 +2,13 @@ version: '3.8'
 
 services:
   app:
-    # Pre-built Docker Image (published by GitHub Actions) or local tag.
-    # Replace 'username' with your lowercase GitHub username/org.
-    # To run without source code, docker-compose will pull this image from GHCR.
-    # If source files are present, you can build locally to update it.
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER_LOWERCASE:-samerberjawi}/wandergrid:latest
+    # To run without source code (e.g., pasting directly into a Portainer stack):
+    # Portainer will pull the pre-built image from GitHub Container Registry (GHCR).
+    # You can specify WANDERGRID_TAG in Portainer's Env Variables to override 'latest' 
+    # with a specific commit SHA (like 'sha-9debe16') to force-pull new builds and bypass Docker's cache.
+    image: ghcr.io/samerberjawi/wandergrid:${WANDERGRID_TAG:-latest}
+    # If you are deploying via Portainer Git Repository or locally, you can use the build context below.
+    # Otherwise, you can comment the build block out if deploying as a standalone compose file.
     build:
       context: .
       dockerfile: backend_files/Dockerfile

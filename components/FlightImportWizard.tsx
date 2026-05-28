@@ -807,13 +807,40 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
         const targetTripId = existingTripId;
         const targetUser = selectedUserId || 'user_holder';
         
+        // Filter mappedFlights based on active filters and selected indices
+        const filteredMappedFlights = mappedFlights.filter((flight, index) => {
+            if (importSearch) {
+                const q = importSearch.toLowerCase();
+                const searchStr = `${flight.provider} ${flight.identifier} ${flight.origin} ${flight.destination} ${flight.confirmationCode || ''} ${flight.tailNumber || ''}`.toLowerCase();
+                if (!searchStr.includes(q)) return false;
+            }
+            if (importAirlineFilter !== 'all') {
+                if (flight.provider !== importAirlineFilter) return false;
+            }
+            if (importClassFilter !== 'all') {
+                if (flight.travelClass !== importClassFilter) return false;
+            }
+            if (importStartDateFilter) {
+                if (!flight.departureDate || flight.departureDate < importStartDateFilter) return false;
+            }
+            if (importEndDateFilter) {
+                if (!flight.departureDate || flight.departureDate > importEndDateFilter) return false;
+            }
+            return true;
+        });
+
+        const flightsToSave = filteredMappedFlights.filter((flight) => {
+            const originalIndex = mappedFlights.indexOf(flight);
+            return selectedImportIndexes.has(originalIndex);
+        });
+
         setIsProcessing(true);
         try {
             if (targetTripId) {
                 const trip = await dataService.getTripById(targetTripId);
                 if (trip) {
                     const currentTransports = trip.transports || [];
-                    const mergedTransports = [...currentTransports, ...mappedFlights.map(leg => ({
+                    const mergedTransports = [...currentTransports, ...flightsToSave.map(leg => ({
                         ...leg,
                         itineraryId: currentTransports[0]?.itineraryId || Math.random().toString(36).substr(2, 9),
                         type: trip.transports?.length ? trip.transports[0].type : 'Multi-City'
@@ -830,7 +857,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                 }
             } else {
                 // Save flights as independent unassigned flights
-                await Promise.all(mappedFlights.map(f => dataService.addFlight(f)));
+                await Promise.all(flightsToSave.map(f => dataService.addFlight(f)));
                 onImportComplete([]);
             }
             onClose();
