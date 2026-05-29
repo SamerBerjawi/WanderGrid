@@ -14,7 +14,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(({ className, title, a
   <div 
     ref={ref}
     className={cn(
-      "relative flex flex-col bg-white/60 dark:bg-gray-900/60 backdrop-blur-2xl border border-gray-200/50 dark:border-white/5 shadow-xl rounded-[2rem] overflow-hidden transition-all duration-300",
+      "relative flex flex-col bg-white/60 dark:bg-gray-900/60 backdrop-blur-2xl border border-gray-200/50 dark:border-white/5 shadow-xl rounded-[2rem] overflow-hidden transition-all duration-300 bleed-glass",
       className
     )} 
     {...props}
@@ -329,7 +329,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
     <div className={cn("fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-300", isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none')}>
       <div className="absolute inset-0 bg-gray-900/40 dark:bg-black/80 backdrop-blur-sm transition-opacity" onClick={onClose} />
       <div className={cn(
-          "relative bg-white/95 dark:bg-gray-900/95 backdrop-blur-2xl border border-white/20 dark:border-white/10 shadow-2xl rounded-[2rem] w-full overflow-hidden transform transition-all duration-300 max-h-[90vh] flex flex-col",
+          "relative bg-white/95 dark:bg-gray-900/95 backdrop-blur-2xl border border-white/20 dark:border-white/10 shadow-2xl rounded-[2rem] w-full overflow-hidden transform transition-all duration-300 max-h-[90vh] flex flex-col bleed-glass",
           maxWidth,
           isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-8'
         )}>

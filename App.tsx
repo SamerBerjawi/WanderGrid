@@ -47,44 +47,44 @@ const ViewLoader = () => (
 
 const VIEW_ACCENTS: Record<ViewState, { glow1: string; glow2: string; glow3: string }> = {
   [ViewState.DASHBOARD]: { 
-    glow1: 'bg-sky-500/10 dark:bg-sky-500/15', 
-    glow2: 'bg-indigo-500/10 dark:bg-indigo-500/15',
-    glow3: 'bg-blue-500/5 dark:bg-blue-500/5' 
+    glow1: 'bg-sky-500/24 dark:bg-sky-500/30', 
+    glow2: 'bg-indigo-500/24 dark:bg-indigo-500/30',
+    glow3: 'bg-blue-500/12 dark:bg-blue-500/15' 
   },
   [ViewState.SETTINGS]: { 
-    glow1: 'bg-emerald-500/10 dark:bg-emerald-500/15', 
-    glow2: 'bg-teal-500/10 dark:bg-teal-500/15',
-    glow3: 'bg-green-500/5 dark:bg-green-500/5'
+    glow1: 'bg-emerald-500/24 dark:bg-emerald-500/30', 
+    glow2: 'bg-teal-500/24 dark:bg-teal-500/30',
+    glow3: 'bg-green-500/12 dark:bg-green-500/15'
   },
   [ViewState.USER_DETAIL]: { 
-    glow1: 'bg-rose-500/10 dark:bg-rose-500/15', 
-    glow2: 'bg-pink-500/10 dark:bg-pink-500/15',
-    glow3: 'bg-orange-500/5 dark:bg-orange-500/5'
+    glow1: 'bg-rose-500/24 dark:bg-rose-500/30', 
+    glow2: 'bg-pink-500/24 dark:bg-pink-500/30',
+    glow3: 'bg-orange-500/12 dark:bg-orange-500/15'
   },
   [ViewState.PLANNER]: { 
-    glow1: 'bg-violet-500/10 dark:bg-violet-500/15', 
-    glow2: 'bg-fuchsia-500/10 dark:bg-fuchsia-500/15',
-    glow3: 'bg-purple-500/5 dark:bg-purple-500/5'
+    glow1: 'bg-violet-500/24 dark:bg-violet-500/30', 
+    glow2: 'bg-fuchsia-500/24 dark:bg-fuchsia-500/30',
+    glow3: 'bg-purple-500/12 dark:bg-purple-500/15'
   },
   [ViewState.TRIP_DETAIL]: { 
-    glow1: 'bg-amber-500/10 dark:bg-amber-500/15', 
-    glow2: 'bg-orange-500/10 dark:bg-orange-500/15',
-    glow3: 'bg-yellow-500/5 dark:bg-yellow-500/5'
+    glow1: 'bg-amber-500/24 dark:bg-amber-500/30', 
+    glow2: 'bg-orange-500/24 dark:bg-orange-500/30',
+    glow3: 'bg-yellow-500/12 dark:bg-yellow-500/15'
   },
   [ViewState.MAP]: { 
-    glow1: 'bg-cyan-500/10 dark:bg-cyan-500/15', 
-    glow2: 'bg-blue-500/10 dark:bg-blue-500/15',
-    glow3: 'bg-indigo-500/5 dark:bg-indigo-500/5'
+    glow1: 'bg-cyan-500/24 dark:bg-cyan-500/30', 
+    glow2: 'bg-blue-500/24 dark:bg-blue-500/30',
+    glow3: 'bg-indigo-500/12 dark:bg-indigo-500/15'
   },
   [ViewState.GAMIFICATION]: { 
-    glow1: 'bg-yellow-500/10 dark:bg-yellow-500/15', 
-    glow2: 'bg-amber-500/10 dark:bg-amber-500/15',
-    glow3: 'bg-orange-500/5 dark:bg-orange-500/5'
+    glow1: 'bg-yellow-500/24 dark:bg-yellow-500/30', 
+    glow2: 'bg-amber-500/24 dark:bg-amber-500/30',
+    glow3: 'bg-orange-500/12 dark:bg-orange-500/15'
   },
   [ViewState.FLIGHTS]: { 
-    glow1: 'bg-cyan-500/20 dark:bg-cyan-500/25', 
-    glow2: 'bg-teal-500/15 dark:bg-teal-500/20',
-    glow3: 'bg-blue-500/10 dark:bg-blue-500/10' 
+    glow1: 'bg-cyan-500/32 dark:bg-cyan-500/36', 
+    glow2: 'bg-teal-500/28 dark:bg-teal-500/32',
+    glow3: 'bg-blue-500/18 dark:bg-blue-500/20' 
   },
 };
 
@@ -249,9 +249,9 @@ export default function App() {
     <div className="flex h-screen w-full overflow-hidden bg-gradient-to-br from-zinc-50/40 via-neutral-100/30 to-zinc-100/40 dark:from-zinc-950 dark:via-[#0c0c0f] dark:to-zinc-950 transition-colors duration-700 text-gray-900 dark:text-gray-100 relative">
       {/* Dynamic Ambient Spot Glow Filter representing current state */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-          <div className={`absolute -top-52 -left-52 w-[650px] h-[650px] rounded-full ${currentAccent.glow1} blur-[140px] animate-[pulse_12s_infinite] transition-colors duration-[1.5s]`} />
-          <div className={`absolute top-[25%] -right-52 w-[600px] h-[600px] rounded-full ${currentAccent.glow2} blur-[130px] animate-[pulse_15s_infinite] delay-1000 transition-colors duration-[1.5s]`} />
-          <div className={`absolute -bottom-52 left-[25%] w-[550px] h-[550px] rounded-full ${currentAccent.glow3} blur-[140px] animate-[pulse_13s_infinite] delay-2000 transition-colors duration-[1.5s]`} />
+          <div className={`absolute -top-64 -left-64 w-[850px] h-[850px] rounded-full ${currentAccent.glow1} blur-[165px] animate-[pulse_12s_infinite] transition-colors duration-[1.5s]`} />
+          <div className={`absolute top-[20%] -right-64 w-[800px] h-[800px] rounded-full ${currentAccent.glow2} blur-[150px] animate-[pulse_15s_infinite] delay-1000 transition-colors duration-[1.5s]`} />
+          <div className={`absolute -bottom-64 left-[20%] w-[750px] h-[750px] rounded-full ${currentAccent.glow3} blur-[165px] animate-[pulse_13s_infinite] delay-2000 transition-colors duration-[1.5s]`} />
       </div>
       <Sidebar 
         currentView={view} 

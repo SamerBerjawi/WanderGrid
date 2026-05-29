@@ -1846,8 +1846,8 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
         </tr>
         {layoverStr && (
           <tr>
-            <td colSpan={isMultiEditing ? 7 : 6} className="py-2.5 px-1 align-middle">
-              <div className="flex items-center justify-between bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100/50 dark:hover:bg-zinc-850 px-4 py-2 rounded-2xl text-[11px] font-extrabold text-zinc-700 dark:text-zinc-200 shadow-xs transition-all w-full max-w-xl mx-auto my-1">
+            <td colSpan={isMultiEditing ? 7 : 6} className="py-0.5 px-1 align-middle">
+              <div className="flex items-center justify-between bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100/50 dark:hover:bg-zinc-850 px-4 py-1 rounded-xl text-[11px] font-extrabold text-zinc-700 dark:text-zinc-200 shadow-xs transition-all w-full my-0.5">
                 <div className="flex items-center gap-2">
                   <Clock className="w-3.5 h-3.5 text-amber-550 dark:text-amber-400 font-bold" />
                   <span>{layoverStr}</span>
