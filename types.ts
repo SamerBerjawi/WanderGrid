@@ -185,6 +185,10 @@ export interface Trip {
 
   // Map Data
   coordinates?: GeoCoordinates;
+
+  // Bundle specifics
+  isBundleOnly?: boolean;
+  hideInPlanner?: boolean;
 }
 
 export interface PublicHoliday {

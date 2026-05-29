@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Search, Filter, Plus, Calendar, MapPin, Trash2, Edit2, Check, Square, CheckSquare, Edit3,
   ArrowRight, Plane, Landmark, Award, Clock, DollarSign, BarChart2, Briefcase, FileText, Compass, Heart, HelpCircle, RefreshCw, Upload, Download, Tag, UserCheck, Star, Sparkles, Grid, List,
-  ArrowUpRight, ArrowDownLeft
+  ArrowUpRight, ArrowDownLeft, FolderPlus, FolderMinus
 } from 'lucide-react';
 import { Card, Button, Input, Select, Badge, TimeInput } from '../components/ui';
 import { Trip, Transport, User, Carrier } from '../types';
@@ -294,6 +294,13 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
     singleRecord?: { flight: Transport; trip: Trip };
     multiCount?: number;
   } | null>(null);
+
+  // Bundling states
+  const [isBundling, setIsBundling] = useState<boolean>(false);
+  const [bundleName, setBundleName] = useState<string>('');
+  const [bundleLocation, setBundleLocation] = useState<string>('');
+  const [createTripInPlanner, setCreateTripInPlanner] = useState<boolean>(true);
+  const [unbundleConfirmTarget, setUnbundleConfirmTarget] = useState<number | null>(null);
 
   const handleHeaderSort = (field: 'flight' | 'sector' | 'status' | 'timing' | 'seat') => {
     if (sortField === field) {
@@ -634,6 +641,174 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
     setIsMultiEditing(false);
     refreshData();
     setDeleteConfirmTarget(null);
+  };
+
+  useEffect(() => {
+    if (isBundling && selectedFlightIds.size > 0) {
+      const selected = flights.filter(f => selectedFlightIds.has(f.flight.id));
+      if (selected.length > 0) {
+        const destinations = Array.from(new Set(selected.map(s => getCityName(s.flight.destination) || s.flight.destination)))
+          .filter(Boolean);
+        if (destinations.length > 0) {
+          setBundleLocation(destinations.join(', '));
+          setBundleName(`${destinations[0]} Getaway`);
+        } else {
+          setBundleLocation('Various');
+          setBundleName('New Flight Bundle');
+        }
+      }
+    }
+  }, [isBundling, selectedFlightIds, flights]);
+
+  const executeBundle = async () => {
+    if (!bundleName.trim()) return;
+    
+    // Find all selected flight objects
+    const selectedRecords = flights.filter(f => selectedFlightIds.has(f.flight.id));
+    if (selectedRecords.length === 0) return;
+
+    // Determine startDate and endDate from selected flights
+    let oldestDate = '';
+    let newestDate = '';
+    selectedRecords.forEach(r => {
+      const depDate = r.flight.departureDate;
+      if (depDate) {
+        if (!oldestDate || depDate < oldestDate) oldestDate = depDate;
+        if (!newestDate || depDate > newestDate) newestDate = depDate;
+      }
+    });
+
+    const finalStartDate = oldestDate || new Date().toISOString().split('T')[0];
+    const finalEndDate = newestDate || finalStartDate;
+
+    // Create new Trip / Bundle representation
+    const newTripId = `trip-${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Convert selected flight records to Transport list, ensuring their itineraryId matches the new trip!
+    const bundledTransports: Transport[] = selectedRecords.map(r => ({
+      ...r.flight,
+      itineraryId: `itinerary-${newTripId}`
+    }));
+
+    // Step 1: Clean up old references
+    const tripsToUpdateMap: { [id: string]: Trip } = {};
+    const independentFlightsToDelete: string[] = [];
+
+    for (const r of selectedRecords) {
+      const parentId = r.trip.id;
+      if (parentId === 'unassigned' || parentId.startsWith('unassigned')) {
+        independentFlightsToDelete.push(r.flight.id);
+      } else {
+        if (!tripsToUpdateMap[parentId]) {
+          const tripObj = trips.find(t => t.id === parentId);
+          if (tripObj) {
+            tripsToUpdateMap[parentId] = JSON.parse(JSON.stringify(tripObj));
+          }
+        }
+        const mappedTrip = tripsToUpdateMap[parentId];
+        if (mappedTrip && mappedTrip.transports) {
+          mappedTrip.transports = mappedTrip.transports.filter(t => t.id !== r.flight.id);
+        }
+      }
+    }
+
+    // Process old trip updates sequentially
+    for (const tripId in tripsToUpdateMap) {
+      await dataService.updateTrip(tripsToUpdateMap[tripId]);
+    }
+
+    // Process independent deletions
+    for (const fid of independentFlightsToDelete) {
+      await dataService.deleteFlight(fid);
+    }
+
+    // Step 2: Save the new bundle as a Trip!
+    const newTrip: Trip & { isBundleOnly?: boolean; hideInPlanner?: boolean } = {
+      id: newTripId,
+      name: bundleName.trim(),
+      location: bundleLocation.trim() || 'Various',
+      startDate: finalStartDate,
+      endDate: finalEndDate,
+      status: 'Planning',
+      participants: [],
+      transports: bundledTransports,
+      isBundleOnly: !createTripInPlanner,
+      hideInPlanner: !createTripInPlanner
+    };
+
+    await dataService.addTrip(newTrip);
+
+    // Reset everything
+    setSelectedFlightIds(new Set());
+    setIsMultiEditing(false);
+    setIsBundling(false);
+    setBundleName('');
+    setBundleLocation('');
+    setCreateTripInPlanner(true);
+    refreshData();
+  };
+
+  const executeUnbundle = async () => {
+    if (!unbundleConfirmTarget) return;
+
+    // Find all selected flights that are part of a bundle
+    const selectedRecords = flights.filter(f => 
+      selectedFlightIds.has(f.flight.id) && 
+      f.trip.id !== 'unassigned' && 
+      !f.trip.id.startsWith('unassigned')
+    );
+
+    if (selectedRecords.length === 0) {
+      setUnbundleConfirmTarget(null);
+      return;
+    }
+
+    // Step 1: Group by trip id so we can update trips
+    const tripsToUpdate: { [tripId: string]: { trip: Trip; remainingTransports: Transport[] } } = {};
+    const flightsToAddAsIndependent: Transport[] = [];
+
+    selectedRecords.forEach(r => {
+      const tripId = r.trip.id;
+      if (!tripsToUpdate[tripId]) {
+        tripsToUpdate[tripId] = {
+          trip: r.trip,
+          remainingTransports: (r.trip.transports || []).filter(t => t.id !== r.flight.id)
+        };
+      } else {
+        tripsToUpdate[tripId].remainingTransports = tripsToUpdate[tripId].remainingTransports.filter(t => t.id !== r.flight.id);
+      }
+      
+      flightsToAddAsIndependent.push(r.flight);
+    });
+
+    // Step 2: Save independent flights to DB
+    for (const fl of flightsToAddAsIndependent) {
+      const independentFlight = {
+        ...fl,
+        itineraryId: '' // Clear custom grouping itinerary ID
+      };
+      await dataService.addFlight(independentFlight);
+    }
+
+    // Step 3: Update or delete the parent trips
+    for (const tripId in tripsToUpdate) {
+      const { trip, remainingTransports } = tripsToUpdate[tripId];
+      if (remainingTransports.length === 0) {
+        await dataService.deleteTrip(tripId);
+      } else {
+        const updatedTrip = {
+          ...trip,
+          transports: remainingTransports
+        };
+        await dataService.updateTrip(updatedTrip);
+      }
+    }
+
+    // Reset state & refresh
+    setSelectedFlightIds(new Set());
+    setIsMultiEditing(false);
+    setUnbundleConfirmTarget(null);
+    refreshData();
   };
 
   // Handle smart fuzzy search and filters
@@ -1404,7 +1579,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
             }}
             icon={isMultiEditing ? <Check className="w-4 h-4" /> : <Edit3 className="w-4 h-4" />}
           >
-            {isMultiEditing ? 'Done Editing' : 'Edit Boarding Passes'}
+            {isMultiEditing ? 'Done Editing' : 'Edit Flights'}
           </Button>
           <Button 
             variant="primary" 
@@ -1412,7 +1587,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
             onClick={() => openFlightForm()}
             icon={<Plus className="w-4 h-4" />}
           >
-            Add Boarding Pass
+            Add Flight
           </Button>
         </div>
       </div>
@@ -1763,12 +1938,36 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95 }}
                         key={trip.id}
-                        className="bg-white/40 dark:bg-zinc-900/40 border border-zinc-200/50 dark:border-white/5 shadow-md rounded-[2.5rem] p-6 backdrop-blur-xl animate-fade-in"
+                        className={`p-6 backdrop-blur-xl animate-fade-in rounded-[2.5rem] shadow-lg transition-all duration-300
+                          ${isIndependent 
+                            ? "bg-white/40 dark:bg-zinc-900/40 border border-zinc-200/50 dark:border-white/5 shadow-md" 
+                            : "bg-gradient-to-br from-blue-50/40 via-white/50 to-blue-50/10 dark:from-blue-950/10 dark:via-zinc-900/40 dark:to-blue-950/5 border-2 border-blue-500/15 dark:border-blue-400/10 shadow-blue-500/5"
+                          }`}
                       >
                         {!isIndependent && (
-                          <div className="flex items-center gap-2 mb-6 ml-2">
-                            <Compass className="w-5 h-5 text-blue-500" />
-                            <h4 className="text-base font-black text-zinc-805 dark:text-zinc-200 uppercase tracking-widest">{trip.name}</h4>
+                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4 border-b border-zinc-200/40 dark:border-white/5 ml-2">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2.5 bg-blue-500/10 text-blue-500 rounded-2xl border border-blue-500/15">
+                                <Compass className="w-5 h-5 shadow-sm" />
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h4 className="text-base font-black text-zinc-800 dark:text-zinc-200 uppercase tracking-widest leading-none">{trip.name}</h4>
+                                </div>
+                                {trip.location && (
+                                  <p className="text-xs text-zinc-500 dark:text-zinc-400 font-bold mt-1 flex items-center gap-1">
+                                    <MapPin className="w-3.5 h-3.5 text-zinc-400" />
+                                    {trip.location}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            {(trip.startDate || trip.endDate) && (
+                              <div className="flex items-center gap-2 px-3 py-1.5 bg-white/60 dark:bg-white/5 rounded-2xl text-[10px] font-mono font-bold text-zinc-500 dark:text-zinc-400 w-fit shadow-sm border border-zinc-200/40 dark:border-transparent">
+                                <Calendar className="w-3.5 h-3.5 text-zinc-400" />
+                                {trip.startDate} {trip.endDate && trip.endDate !== trip.startDate ? `→ ${trip.endDate}` : ''}
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -1794,8 +1993,18 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           </AnimatePresence>
         </div>
       ) : (
-        <div className="bg-white/40 dark:bg-zinc-900/40 border border-zinc-200/50 dark:border-white/5 shadow-md rounded-[2.5rem] p-6 backdrop-blur-xl overflow-auto max-h-[75vh] custom-scrollbar relative">
-          <table className="w-full text-left border-collapse min-w-[950px]">
+        <div className="overflow-auto max-h-[75vh] custom-scrollbar relative space-y-6 pr-1">
+          {/* Master Sticky Table Header Card */}
+          <table className="w-full text-left border-collapse min-w-[950px] sticky top-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md z-30 shadow-md border border-zinc-200/50 dark:border-white/5 rounded-2xl overflow-hidden table-fixed">
+            <colgroup>
+              {isMultiEditing && <col style={{ width: '4%' }} />}
+              <col style={{ width: '18%' }} />
+              <col style={{ width: '24%' }} />
+              <col style={{ width: '20%' }} />
+              <col style={{ width: '24%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '2%' }} />
+            </colgroup>
             <thead>
               <tr className="border-b border-zinc-200/50 dark:border-zinc-850/50 font-mono text-zinc-400 dark:text-zinc-500">
                 {isMultiEditing && (
@@ -2175,57 +2384,81 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                 <th className="sticky top-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md z-30 pb-3 text-right pr-4 w-[2%] border-b border-zinc-200/50 dark:border-white/10"></th>
               </tr>
             </thead>
-            <tbody>
-            {groupedByYear.map(({ year, groups }) => (
-              <React.Fragment key={year}>
-                {/* Year Header Row Spacer/Divider */}
-                <tr className="bg-zinc-150/80 dark:bg-zinc-950 border-y border-zinc-200/80 dark:border-white/10">
-                  <td colSpan={isMultiEditing ? 7 : 6} className="py-2.5 pl-4 bg-zinc-200/50 dark:bg-zinc-950">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-blue-500 font-extrabold" />
-                      <span className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-widest">Year {year}</span>
-                    </div>
-                  </td>
-                </tr>
+          </table>
 
-                {groups.map(({ trip, outbound, returnLegs }, tripIdx) => {
+          {/* Grouped Years & Flights List with Custom Panels Container */}
+          {groupedByYear.map(({ year, groups }) => (
+            <div key={year} className="space-y-6">
+              {/* Year Header Banner */}
+              <div className="flex items-center gap-2 pb-2 border-b border-zinc-250 dark:border-white/10 ml-2">
+                <Calendar className="w-5 h-5 text-blue-500" />
+                <h3 className="text-sm font-black uppercase tracking-widest text-zinc-900 dark:text-white">Year {year}</h3>
+              </div>
+
+              {/* List of Trip Group cards with rounded border containers */}
+              <div className="space-y-6">
+                {groups.map(({ trip, outbound, returnLegs }) => {
                   const isIndependent = trip.id.startsWith('unassigned');
                   return (
-                    <React.Fragment key={trip.id}>
-                      {/* Divide different trips with a thin border/spacer */}
-                      {tripIdx > 0 && (
-                        <tr className="border-t border-zinc-200/50 dark:border-zinc-850/50">
-                          <td colSpan={isMultiEditing ? 7 : 6} className="h-2 p-0 bg-transparent" />
-                        </tr>
-                      )}
-
-                      {/* Trip Header Row (only show for assigned trips) */}
+                    <div
+                      key={trip.id}
+                      className={isIndependent
+                        ? "p-1 min-w-[950px]"
+                        : "p-6 transition-all duration-300 rounded-[2.5rem] bg-gradient-to-br from-blue-50/45 via-white/50 to-blue-50/10 dark:from-blue-950/10 dark:via-zinc-900/40 dark:to-blue-950/5 border-2 border-blue-500/20 dark:border-blue-400/15 shadow-md shadow-blue-500/5 min-w-[950px]"
+                      }
+                    >
+                      {/* Sub-header block for trip groups inside container (Only for actual bundles) */}
                       {!isIndependent && (
-                        <tr className="bg-zinc-100/60 dark:bg-zinc-900 border-y border-zinc-200/50 dark:border-white/5">
-                          <td colSpan={isMultiEditing ? 7 : 6} className="py-2 pl-4">
-                            <div className="flex items-center gap-2">
-                              <Compass className="w-4 h-4 text-zinc-400 dark:text-zinc-500" />
-                              <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-widest">{trip.name}</span>
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5 pb-4 border-b border-zinc-200/40 dark:border-white/5 ml-1">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2.5 rounded-2xl border bg-blue-500/10 text-blue-500 border-blue-500/15">
+                              <Compass className="w-5 h-5" />
                             </div>
-                          </td>
-                        </tr>
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-base font-black text-zinc-850 dark:text-zinc-200 uppercase tracking-widest leading-none">
+                                  {trip.name}
+                                </span>
+                              </div>
+                              {trip.location && (
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400 font-bold mt-1 flex items-center gap-1">
+                                  <MapPin className="w-3.5 h-3.5 text-zinc-400" />
+                                  {trip.location}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          {(trip.startDate || trip.endDate) && (
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-white/60 dark:bg-white/5 rounded-2xl text-[10px] font-mono font-bold text-zinc-500 dark:text-zinc-400 border border-zinc-200/40 dark:border-transparent">
+                              <Calendar className="w-3.5 h-3.5 text-zinc-400" />
+                              {trip.startDate} {trip.endDate && trip.endDate !== trip.startDate ? `→ ${trip.endDate}` : ''}
+                            </div>
+                          )}
+                        </div>
                       )}
 
-                      {/* Direct Sequential List of Flights without subheaders */}
-                      {outbound && outbound.length > 0 && (
-                        outbound.map((flight, idx) => renderTableRow(flight, idx, outbound, trip))
-                      )}
-
-                      {returnLegs && returnLegs.length > 0 && (
-                        returnLegs.map((flight, idx) => renderTableRow(flight, idx, returnLegs, trip))
-                      )}
-                    </React.Fragment>
+                      {/* Flight leg rows */}
+                      <table className="w-full text-left border-collapse min-w-[900px] table-fixed">
+                        <colgroup>
+                          {isMultiEditing && <col style={{ width: '4%' }} />}
+                          <col style={{ width: '18%' }} />
+                          <col style={{ width: '24%' }} />
+                          <col style={{ width: '20%' }} />
+                          <col style={{ width: '24%' }} />
+                          <col style={{ width: '14%' }} />
+                          <col style={{ width: '2%' }} />
+                        </colgroup>
+                        <tbody>
+                          {outbound && outbound.length > 0 && outbound.map((flight, idx) => renderTableRow(flight, idx, outbound, trip))}
+                          {returnLegs && returnLegs.length > 0 && returnLegs.map((flight, idx) => renderTableRow(flight, idx, returnLegs, trip))}
+                        </tbody>
+                      </table>
+                    </div>
                   );
                 })}
-              </React.Fragment>
-            ))}
-            </tbody>
-          </table>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -2261,6 +2494,44 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           <button
             disabled={selectedFlightIds.size === 0}
             onClick={() => {
+              setIsBundling(true);
+            }}
+            className={`text-xs font-black uppercase text-blue-500 hover:text-blue-650 flex items-center gap-1.5 cursor-pointer transition-colors ${selectedFlightIds.size === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
+          >
+            <FolderPlus className="w-4 h-4" />
+            Bundle ({selectedFlightIds.size})
+          </button>
+
+          {/* Calculate bundled flights selected for Unbundle action */}
+          {(() => {
+            const selectedBundledCount = Array.from(selectedFlightIds).filter(id => {
+              const flightRec = flights.find(f => f.flight.id === id);
+              return flightRec && flightRec.trip.id !== 'unassigned' && !flightRec.trip.id.startsWith('unassigned');
+            }).length;
+
+            return (
+              <>
+                <div className="h-4 w-[1px] bg-zinc-200 dark:bg-white/10" />
+
+                <button
+                  disabled={selectedBundledCount === 0}
+                  onClick={() => {
+                    setUnbundleConfirmTarget(selectedBundledCount);
+                  }}
+                  className={`text-xs font-black uppercase text-amber-500 hover:text-amber-650 flex items-center gap-1.5 cursor-pointer transition-colors ${selectedBundledCount === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
+                >
+                  <FolderMinus className="w-4 h-4" />
+                  Unbundle ({selectedBundledCount})
+                </button>
+              </>
+            );
+          })()}
+
+          <div className="h-4 w-[1px] bg-zinc-200 dark:bg-white/10" />
+          
+          <button
+            disabled={selectedFlightIds.size === 0}
+            onClick={() => {
               setDeleteConfirmTarget({
                 type: 'multi',
                 multiCount: selectedFlightIds.size
@@ -2271,6 +2542,45 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
             <Trash2 className="w-4 h-4" />
             Delete Selected ({selectedFlightIds.size})
           </button>
+        </div>
+      )}
+
+      {/* Unbundle Confirmation Modal */}
+      {unbundleConfirmTarget !== null && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-[60] animate-fade-in">
+          <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl border border-zinc-200 dark:border-white/5 animate-scale-up">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-amber-500/10 dark:bg-amber-500/20 rounded-full flex items-center justify-center text-amber-500 mb-5 border border-amber-500/20">
+                <FolderMinus className="w-8 h-8" />
+              </div>
+              
+              <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-wider mb-2">
+                Unbundle Flights
+              </h3>
+              
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6 leading-relaxed">
+                Are you sure you want to unbundle the <span className="font-extrabold text-blue-500">{unbundleConfirmTarget}</span> selected flights?
+                This will separate them from their respective trip itinerary bundles and return them to independent flights.
+              </p>
+
+              <div className="flex items-center gap-3 w-full">
+                <button
+                  type="button"
+                  onClick={() => setUnbundleConfirmTarget(null)}
+                  className="flex-1 py-3.5 px-5 rounded-2xl text-sm font-bold bg-zinc-100 dark:bg-white/5 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-250 dark:hover:bg-white/10 transition-all cursor-pointer text-center"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={executeUnbundle}
+                  className="flex-1 py-3.5 px-5 rounded-2xl text-sm font-black uppercase tracking-wider bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20 transition-all cursor-pointer text-center"
+                >
+                  Unbundle
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -2335,6 +2645,90 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
         </div>
       )}
 
+      {/* Bundling Modal */}
+      {isBundling && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-[60] animate-fade-in">
+          <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl border border-zinc-200 dark:border-white/5 animate-scale-up">
+            <div className="flex flex-col">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-12 h-12 bg-blue-500/10 dark:bg-blue-500/20 rounded-full flex items-center justify-center text-blue-500 border border-blue-500/20">
+                  <FolderPlus className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-wider">
+                    Bundle Flights
+                  </h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    Group {selectedFlightIds.size} selected flights into a single trip itinerary.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4 mb-6">
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-450 dark:text-zinc-500 mb-1.5">
+                    Trip / Bundle Name
+                  </label>
+                  <input
+                    type="text"
+                    value={bundleName}
+                    onChange={(e) => setBundleName(e.target.value)}
+                    placeholder="e.g. Paris Getaway"
+                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/5 rounded-2xl text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-gray-900 dark:text-white"
+                    autoFocus
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-450 dark:text-zinc-500 mb-1.5">
+                    Destination / Location
+                  </label>
+                  <input
+                    type="text"
+                    value={bundleLocation}
+                    onChange={(e) => setBundleLocation(e.target.value)}
+                    placeholder="e.g. Paris, France"
+                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/5 rounded-2xl text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-gray-900 dark:text-white"
+                  />
+                </div>
+
+                <div className="flex items-start gap-3 mt-4 p-3 bg-zinc-50 dark:bg-black/10 rounded-2xl border border-zinc-200/50 dark:border-white/5">
+                  <input
+                    type="checkbox"
+                    id="createTripInPlanner"
+                    checked={createTripInPlanner}
+                    onChange={(e) => setCreateTripInPlanner(e.target.checked)}
+                    className="mt-1 h-4 w-4 text-blue-500 rounded border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 focus:ring-blue-500 cursor-pointer"
+                  />
+                  <label htmlFor="createTripInPlanner" className="text-xs text-zinc-650 dark:text-zinc-400 leading-relaxed cursor-pointer select-none">
+                    <span className="font-extrabold text-zinc-800 dark:text-zinc-250 block">Create Trip in Planner</span>
+                    If checked, this bundle will also appear as a structured vacation itinerary in the Planner view.
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 w-full">
+                <button
+                  type="button"
+                  onClick={() => setIsBundling(false)}
+                  className="flex-1 py-3.5 px-5 rounded-2xl text-sm font-bold bg-zinc-100 dark:bg-white/5 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-250 dark:hover:bg-white/10 transition-all cursor-pointer text-center"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={!bundleName.trim()}
+                  onClick={executeBundle}
+                  className="flex-1 py-3.5 px-5 rounded-2xl text-sm font-black uppercase tracking-wider bg-blue-500 hover:bg-blue-650 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-lg shadow-blue-500/20 transition-all cursor-pointer text-center"
+                >
+                  Create Bundle
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Add / Edit Form Modal */}
       {isEditing && (
         <div 
@@ -2357,7 +2751,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
             <div className="flex items-center justify-between border-b border-gray-150/50 dark:border-white/5 pb-4 mb-6">
               <h3 className="text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
                 <Plane className="w-6 h-6 rotate-45 text-blue-500" />
-                {editingFlight ? 'Edit Boarding Pass' : 'New Flight Record'}
+                {editingFlight ? 'Edit Flights' : 'New Flight Record'}
               </h3>
               <button 
                 onClick={() => setIsEditing(false)}

@@ -196,6 +196,7 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
     // Filtered base
     const filteredTrips = useMemo(() => {
         return trips.filter(t => {
+            if ((t as any).isBundleOnly || (t as any).hideInPlanner) return false;
             const matchesSearch = !searchQuery 
                 || t.name.toLowerCase().includes(searchQuery.toLowerCase()) 
                 || t.location.toLowerCase().includes(searchQuery.toLowerCase());

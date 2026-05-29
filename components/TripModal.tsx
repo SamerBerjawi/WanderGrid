@@ -42,6 +42,11 @@ export const TripModal: React.FC<TripModalProps> = ({ isOpen, onClose, onSubmit,
     const [privacy, setPrivacy] = useState<'Private' | 'Public'>('Private');
     const [isLoading, setIsLoading] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deleteFlightsGroup, setDeleteFlightsGroup] = useState(true);
+
+    const associatedFlightsCount = useMemo(() => {
+        return (initialData?.transports || []).filter(t => t.mode === 'Flight').length;
+    }, [initialData]);
 
     // Emoji Picker State
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -65,6 +70,7 @@ export const TripModal: React.FC<TripModalProps> = ({ isOpen, onClose, onSubmit,
             setShowDeleteConfirm(false);
             setModalTab('logistics');
             setShowAllFlightsManual(false);
+            setDeleteFlightsGroup(true);
             if (initialData) {
                 setName(initialData.name);
                 setLocation(initialData.location);
@@ -230,6 +236,15 @@ export const TripModal: React.FC<TripModalProps> = ({ isOpen, onClose, onSubmit,
     const handleDelete = async () => {
         if (initialData && onDelete) {
             setIsLoading(true);
+            if (!deleteFlightsGroup) {
+                const associatedFlights = (initialData.transports || []).filter(t => t.mode === 'Flight');
+                for (const flight of associatedFlights) {
+                    await dataService.addFlight({
+                        ...flight,
+                        itineraryId: '' // Clear custom grouping itinerary ID so it is independent
+                    });
+                }
+            }
             await onDelete(initialData.id);
             setIsLoading(false);
             onClose();
@@ -259,6 +274,25 @@ export const TripModal: React.FC<TripModalProps> = ({ isOpen, onClose, onSubmit,
                             This will permanently remove <strong>{name}</strong> and any associated stops, accommodations, or activities. This action is final.
                         </p>
                     </div>
+
+                    {associatedFlightsCount > 0 && (
+                        <div className="flex items-start text-left gap-3 p-3.5 bg-zinc-50 dark:bg-zinc-950/40 rounded-2xl border border-zinc-200/50 dark:border-white/5 mx-4">
+                            <input
+                                type="checkbox"
+                                id="deleteAssociatedFlights"
+                                checked={deleteFlightsGroup}
+                                onChange={(e) => setDeleteFlightsGroup(e.target.checked)}
+                                className="mt-1 h-4 w-4 text-rose-500 rounded border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 focus:ring-rose-500 cursor-pointer accent-rose-500"
+                            />
+                            <label htmlFor="deleteAssociatedFlights" className="text-xs text-zinc-650 dark:text-zinc-400 leading-relaxed cursor-pointer select-none">
+                                <span className="font-extrabold text-zinc-800 dark:text-zinc-250 block uppercase tracking-wider">
+                                    Delete Associated Flights ({associatedFlightsCount})
+                                </span>
+                                If unchecked, these flights will be preserved as independent flights rather than permanently deleted.
+                            </label>
+                        </div>
+                    )}
+
                     <div className="flex gap-3 pt-4">
                         <Button variant="ghost" className="flex-1 font-bold text-xs uppercase" onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
                         <Button variant="danger" className="flex-1 font-bold text-xs uppercase" onClick={handleDelete} isLoading={isLoading}>Permanently Delete</Button>
