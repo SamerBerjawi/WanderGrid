@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Search, Filter, Plus, Calendar, MapPin, Trash2, Edit2, Check, Square, CheckSquare, Edit3, ChevronRight,
   ArrowRight, Plane, Landmark, Award, Clock, DollarSign, BarChart2, Briefcase, FileText, Compass, Heart, HelpCircle, RefreshCw, Upload, Download, Tag, UserCheck, Star, Sparkles, Grid, List,
@@ -281,7 +281,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
 
   // Interactive sorting states
   const [sortField, setSortField] = useState<'flight' | 'sector' | 'status' | 'timing' | 'seat'>('timing');
-  const [sortSubOption, setSortSubOption] = useState<string>('default');
+  const [sortSubOption, setSortSubOption] = useState<string>('departure');
   const [sortAsc, setSortAsc] = useState<boolean>(true);
 
   // Multi-edit states
@@ -303,11 +303,18 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
   const [unbundleConfirmTarget, setUnbundleConfirmTarget] = useState<number | null>(null);
 
   const handleHeaderSort = (field: 'flight' | 'sector' | 'status' | 'timing' | 'seat') => {
+    const defaults = {
+      flight: 'airline',
+      sector: 'route',
+      status: 'statusLabel',
+      timing: 'departure',
+      seat: 'seatNumber'
+    };
     if (sortField === field) {
       setSortAsc(!sortAsc);
     } else {
       setSortField(field);
-      setSortSubOption('default');
+      setSortSubOption(defaults[field]);
       setSortAsc(true);
     }
   };
@@ -322,7 +329,9 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
     setColFilterStatus('all');
     setColFilterSeat('all');
     setColFilterTimingDay('all');
-    setSortSubOption('default');
+    setSortField('timing');
+    setSortSubOption('departure');
+    setSortAsc(true);
   };
 
   const getSortIcon = (field: 'flight' | 'sector' | 'status' | 'timing' | 'seat') => {
@@ -900,20 +909,55 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
     });
   }, [flights, searchQuery, timeFilter, classFilter, yearFilter, colFilterFlight, colFilterSector, colFilterStatus, colFilterSeat, colFilterTimingDay]);
 
+  const getGroupRouteTitle = useCallback((legs: Transport[]) => {
+    if (!legs || legs.length === 0) return 'No Route';
+    
+    const cities: string[] = [];
+    legs.forEach((f, idx) => {
+      const originCity = getCityName(f.origin) || f.origin;
+      const destCity = getCityName(f.destination) || f.destination;
+      if (idx === 0) {
+        cities.push(originCity);
+      } else {
+        const prevDest = getCityName(legs[idx - 1].destination) || legs[idx - 1].destination;
+        if (originCity !== prevDest) {
+          if (cities[cities.length - 1] !== originCity) {
+            cities.push(originCity);
+          }
+        }
+      }
+      if (cities[cities.length - 1] !== destCity) {
+        cities.push(destCity);
+      }
+    });
+
+    if (cities.length <= 1) {
+      return cities[0] || 'Unknown Route';
+    }
+    if (cities.length === 2) {
+      return `${cities[0]} → ${cities[1]}`;
+    }
+    if (cities.length === 3) {
+      return `${cities[0]} → ${cities[1]} → ${cities[2]}`;
+    }
+    // Return or multi-city (> 3 cities)
+    return `${cities[0]} → ${cities[1]} → ${cities[cities.length - 1]}`;
+  }, []);
+
   const groupedFlights = useMemo(() => {
     const groups: { [tripId: string]: { trip: Trip; flights: Transport[]; outbound: Transport[]; returnLegs: Transport[] } } = {};
     filteredFlights.forEach(item => {
       let key = item.trip.id;
       if (key === 'unassigned') {
-        const yr = item.flight.departureDate ? new Date(item.flight.departureDate).getFullYear().toString() : 'Unscheduled';
-        key = `unassigned-${yr}`;
+        key = `unassigned-${item.flight.id}`;
       }
       if (!groups[key]) {
         groups[key] = { 
           trip: {
             ...item.trip,
             id: key,
-            name: 'Independent Flights'
+            originalName: item.trip.name,
+            name: ''
           }, 
           flights: [], 
           outbound: [], 
@@ -1015,6 +1059,9 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
 
       g.outbound.sort(sortFlightsFunc);
       g.returnLegs.sort(sortFlightsFunc);
+
+      // Generate Route title dynamically based on actual flights in group!
+      g.trip.name = getGroupRouteTitle(g.flights);
     });
 
     // Sort groups themselves by the first flight's departure date/time
@@ -1037,7 +1084,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
     });
 
     return sortedGroups;
-  }, [filteredFlights, timeFilter, sortField, sortSubOption, sortAsc]);
+  }, [filteredFlights, timeFilter, sortField, sortSubOption, sortAsc, getGroupRouteTitle]);
 
   const groupedByYear = useMemo(() => {
     const yearsMap: { [year: string]: typeof groupedFlights } = {};
@@ -1615,16 +1662,16 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           <span>{flightCount} {flightCount === 1 ? 'flight' : 'flights'}</span>
         </div>
 
-        {/* Content Card resembling Flighty with beautiful ambient glow instead of white border */}
-        <div className="p-5 rounded-[2rem] bg-gradient-to-br from-blue-50/45 via-white/50 to-blue-50/10 dark:from-blue-950/10 dark:via-zinc-900/40 dark:to-blue-950/5 border-2 border-blue-500/20 dark:border-blue-400/15 shadow-md shadow-blue-500/5 flex flex-col gap-4">
+        {/* Transparent container to integrate smoothly in the single outer container */}
+        <div className="w-full flex flex-col gap-4 mt-1">
           {/* Card Route Title */}
-          <div className="flex items-center justify-between pb-3 border-b border-dashed border-zinc-200 dark:border-zinc-800">
-            <h4 className="font-black text-[15px] text-zinc-900 dark:text-zinc-50 flex items-center gap-1.5 leading-none">
+          <div className="flex items-center justify-between pb-3 border-b border-dashed border-zinc-200/60 dark:border-white/5">
+            <h4 className="font-extrabold text-[14px] text-zinc-650 dark:text-zinc-300 flex items-center gap-1.5 leading-none">
               <span>{startCity}</span>
-              <span className="text-zinc-400 dark:text-zinc-650 flex font-extrabold pb-0.5">→</span>
+              <span className="text-zinc-400 dark:text-zinc-600 flex font-extrabold pb-0.5">→</span>
               <span>{endCity}</span>
             </h4>
-            <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase bg-zinc-100 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 border border-zinc-200/50 dark:border-white/5">
+            <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase bg-zinc-100/80 dark:bg-white/5 text-zinc-500 dark:text-zinc-400 border border-zinc-200/40 dark:border-white/5">
               {label}
             </span>
           </div>
@@ -1648,7 +1695,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                   elements.push(
                     <div 
                       key={`layover-${flight.id}`}
-                      className="flex items-center justify-between bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100/50 dark:hover:bg-zinc-850 px-4 py-2.5 rounded-2xl text-[11px] font-extrabold text-zinc-700 dark:text-zinc-200 shadow-xs transition-all cursor-pointer my-1 w-full"
+                      className="flex items-center justify-between bg-zinc-50/60 dark:bg-zinc-905 border border-zinc-200/60 dark:border-white/5 hover:bg-zinc-100/50 dark:hover:bg-zinc-850 px-4 py-2.5 rounded-2xl text-[11px] font-extrabold text-zinc-700 dark:text-zinc-200 shadow-xs transition-all cursor-pointer my-1 w-full"
                     >
                       <div className="flex items-center gap-2">
                         <Clock className="w-3.5 h-3.5 text-amber-550 dark:text-amber-400 font-bold" />
@@ -2268,6 +2315,11 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                               <div>
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <h4 className="text-base font-black text-zinc-800 dark:text-zinc-200 uppercase tracking-widest leading-none">{trip.name}</h4>
+                                  {trip.originalName && trip.originalName !== trip.name && (
+                                    <Badge className="text-[10px] bg-blue-500/10 hover:bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/15 select-none font-bold rounded-lg py-0.5 px-2 leading-none uppercase tracking-wide">
+                                      {trip.originalName}
+                                    </Badge>
+                                  )}
                                 </div>
                                 {trip.location && (
                                   <p className="text-xs text-zinc-500 dark:text-zinc-400 font-bold mt-1 flex items-center gap-1">
@@ -2308,17 +2360,30 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           </AnimatePresence>
         </div>
       ) : (
-        <div className="relative space-y-6 pr-1">
+        <div className="relative space-y-6 md:px-6">
           {/* Master Sticky Table Header Card */}
-          <table className="hidden md:table w-full text-left border-collapse min-w-[950px] sticky top-0 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md z-30 shadow-md border-2 border-blue-500/20 dark:border-blue-400/15 rounded-3xl overflow-hidden table-fixed shadow-blue-500/5">
+          <table className="hidden md:table w-full text-left border-collapse min-w-[950px] sticky top-[72px] bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md z-30 shadow-md border-2 border-blue-500/10 dark:border-blue-400/10 rounded-[2rem] overflow-visible table-fixed shadow-blue-500/5">
             <colgroup>
-              {isMultiEditing && <col style={{ width: '4%' }} />}
-              <col style={{ width: '18%' }} />
-              <col style={{ width: '24%' }} />
-              <col style={{ width: '20%' }} />
-              <col style={{ width: '24%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '2%' }} />
+              {isMultiEditing ? (
+                <>
+                  <col style={{ width: '4%' }} />
+                  <col style={{ width: '16%' }} />
+                  <col style={{ width: '21%' }} />
+                  <col style={{ width: '17%' }} />
+                  <col style={{ width: '22%' }} />
+                  <col style={{ width: '14%' }} />
+                  <col style={{ width: '6%' }} />
+                </>
+              ) : (
+                <>
+                  <col style={{ width: '18%' }} />
+                  <col style={{ width: '23%' }} />
+                  <col style={{ width: '18%' }} />
+                  <col style={{ width: '23%' }} />
+                  <col style={{ width: '14%' }} />
+                  <col style={{ width: '4%' }} />
+                </>
+              )}
             </colgroup>
             <thead>
               <tr className="border-b border-zinc-200/50 dark:border-zinc-850/50 font-mono text-zinc-400 dark:text-zinc-500">
@@ -2717,13 +2782,10 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                   return (
                     <div
                       key={trip.id}
-                      className={isIndependent
-                        ? "p-1 min-w-0 md:min-w-[950px] w-full"
-                        : "p-4 md:p-6 transition-all duration-300 rounded-[2rem] md:rounded-[2.5rem] bg-gradient-to-br from-blue-50/45 via-white/50 to-blue-50/10 dark:from-blue-950/10 dark:via-zinc-900/40 dark:to-blue-950/5 border-2 border-blue-500/20 dark:border-blue-400/15 shadow-md shadow-blue-500/5 min-w-0 md:min-w-[950px] w-full"
-                      }
+                      className="p-3.5 md:p-6 transition-all duration-300 rounded-[2rem] md:rounded-[2.5rem] bg-gradient-to-br from-blue-50/45 via-white/50 to-blue-50/10 dark:from-blue-950/10 dark:via-zinc-900/40 dark:to-blue-950/5 border border-zinc-200/50 dark:border-white/5 shadow-md min-w-0 md:min-w-[950px] w-full"
                     >
                       {/* Sub-header block for trip groups inside container (Only for actual bundles) */}
-                      {!isIndependent && (
+                      {!isIndependent ? (
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5 pb-4 border-b border-zinc-200/40 dark:border-white/5 ml-1">
                           <div className="flex items-center gap-3">
                             <div className="p-2.5 rounded-2xl border bg-blue-500/10 text-blue-500 border-blue-500/15 animate-none">
@@ -2734,6 +2796,11 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                                 <span className="text-base font-black text-zinc-850 dark:text-zinc-200 uppercase tracking-widest leading-none">
                                   {trip.name}
                                 </span>
+                                {trip.originalName && trip.originalName !== trip.name && (
+                                  <Badge className="text-[10px] bg-blue-500/10 hover:bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/15 select-none font-bold rounded-lg py-0.5 px-2 leading-none uppercase tracking-wide">
+                                    {trip.originalName}
+                                  </Badge>
+                                )}
                               </div>
                               {trip.location && (
                                 <p className="text-xs text-zinc-500 dark:text-zinc-400 font-bold mt-1 flex items-center gap-1">
@@ -2750,18 +2817,31 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                             </div>
                           )}
                         </div>
-                      )}
+                      ) : null}
 
                       {/* Desktop Flight leg rows */}
-                      <table className="hidden md:table w-full text-left border-separate border-spacing-y-2.5 min-w-[900px] table-fixed">
+                      <table className="hidden md:table w-full text-left border-separate border-spacing-y-2.5 min-w-[905px] table-fixed">
                         <colgroup>
-                          {isMultiEditing && <col style={{ width: '4%' }} />}
-                          <col style={{ width: '18%' }} />
-                          <col style={{ width: '24%' }} />
-                          <col style={{ width: '20%' }} />
-                          <col style={{ width: '24%' }} />
-                          <col style={{ width: '14%' }} />
-                          <col style={{ width: '2%' }} />
+                          {isMultiEditing ? (
+                            <>
+                              <col style={{ width: '4%' }} />
+                              <col style={{ width: '16%' }} />
+                              <col style={{ width: '21%' }} />
+                              <col style={{ width: '17%' }} />
+                              <col style={{ width: '22%' }} />
+                              <col style={{ width: '14%' }} />
+                              <col style={{ width: '6%' }} />
+                            </>
+                          ) : (
+                            <>
+                              <col style={{ width: '18%' }} />
+                              <col style={{ width: '23%' }} />
+                              <col style={{ width: '18%' }} />
+                              <col style={{ width: '23%' }} />
+                              <col style={{ width: '14%' }} />
+                              <col style={{ width: '4%' }} />
+                            </>
+                          )}
                         </colgroup>
                         <tbody>
                           {outbound && outbound.length > 0 && outbound.map((flight, idx) => renderTableRow(flight, idx, outbound, trip))}
@@ -2770,7 +2850,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                       </table>
 
                       {/* Mobile Flight cards stack */}
-                      <div className="flex flex-col gap-5 md:hidden">
+                      <div className="flex flex-col gap-4 md:hidden">
                         {outbound && outbound.length > 0 && renderMobileTripContainer(outbound, 'Outbound', trip)}
                         {returnLegs && returnLegs.length > 0 && renderMobileTripContainer(returnLegs, 'Return', trip)}
                       </div>

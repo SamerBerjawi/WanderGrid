@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useMemo, Suspense } from 'react';
 import { Card, Button, Badge, Tabs, Modal, Input, Autocomplete, TimeInput, Select } from '../components/ui';
 import { TransportConfigurator } from '../components/FlightConfigurator';
 import { AccommodationConfigurator } from '../components/AccommodationConfigurator';
@@ -775,8 +775,17 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     const costPerPerson = trip.participants.length > 0 ? totalCost / trip.participants.length : 0;
     const costPerDay = duration > 0 ? totalCost / duration : 0;
 
+    const compareTransports = (a: Transport, b: Transport) => {
+        const dateA = a.departureDate || '1970-01-01';
+        const timeA = a.departureTime || '00:00';
+        const dateB = b.departureDate || '1970-01-01';
+        const timeB = b.departureTime || '00:00';
+        if (dateA !== dateB) return dateA.localeCompare(dateB);
+        return timeA.localeCompare(timeB);
+    };
+
     // Group by Itinerary ID
-    const transportGroups = (trip.transports || []).reduce((groups, t) => {
+    const transportGroups = [...(trip.transports || [])].sort(compareTransports).reduce((groups, t) => {
         const key = t.itineraryId || 'misc';
         if (!groups[key]) groups[key] = [];
         groups[key].push(t);
@@ -1302,7 +1311,13 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                         ) : (
                             <div className="grid grid-cols-1 gap-6">
                                 {/* Fix: Explicitly type group as Transport[] to resolve reduce, map, and function call errors */}
-                                {Object.entries(transportGroups).map(([id, group]: [string, Transport[]]) => {
+                                {Object.entries(transportGroups).sort((a, b) => {
+                                    const firstA = a[1][0];
+                                    const firstB = b[1][0];
+                                    if (!firstA) return 1;
+                                    if (!firstB) return -1;
+                                    return compareTransports(firstA, firstB);
+                                }).map(([id, group]: [string, Transport[]]) => {
                                     const first = group[0];
                                     return (
                                         <div key={id} className="bg-[#1c1c1e] rounded-3xl overflow-hidden border border-white/5 shadow-lg">
@@ -1423,7 +1438,14 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 gap-4">
-                                {trip.accommodations.map(stay => (
+                                {[...(trip.accommodations || [])].sort((a, b) => {
+                                    const dateA = a.checkInDate || '1970-01-01';
+                                    const timeA = a.checkInTime || '00:00';
+                                    const dateB = b.checkInDate || '1970-01-01';
+                                    const timeB = b.checkInTime || '00:00';
+                                    if (dateA !== dateB) return dateA.localeCompare(dateB);
+                                    return timeA.localeCompare(timeB);
+                                }).map(stay => (
                                     <div key={stay.id} className="bg-[#1c1c1e] rounded-2xl p-5 border border-white/5 shadow-lg flex justify-between items-center group hover:bg-[#252528] transition-colors">
                                         <div className="flex items-center gap-5">
                                             <div className="w-16 h-16 rounded-xl bg-blue-900/30 flex items-center justify-center text-blue-400 text-2xl font-bold overflow-hidden">

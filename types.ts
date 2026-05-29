@@ -160,6 +160,7 @@ export interface PackingItem {
 export interface Trip {
   id: string;
   name: string;
+  originalName?: string;
   location: string;
   startDate: string;
   endDate: string;
