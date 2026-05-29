@@ -24,8 +24,10 @@ interface SegmentForm {
     destination: string;
     date: string; // Departure Date
     time: string; // Departure Time
+    actualDepartureTime?: string; // Actual Departure Time
     arrivalDate: string; // Arrival Date
     arrivalTime: string; // Arrival Time
+    actualArrivalTime?: string; // Actual Arrival Time
     duration: number; // Duration in minutes
     provider: string; 
     providerCode: string; 
@@ -85,8 +87,10 @@ const DEFAULT_SEGMENT: Omit<SegmentForm, 'id'> = {
     destination: '',
     date: '',
     time: '10:00',
+    actualDepartureTime: '',
     arrivalDate: '',
     arrivalTime: '14:00',
+    actualArrivalTime: '',
     duration: 240, // 4 hours default
     provider: '',
     providerCode: '',
@@ -341,8 +345,10 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                         destination: f.destination,
                         date: f.departureDate,
                         time: f.departureTime,
+                        actualDepartureTime: f.actualDepartureTime || '',
                         arrivalDate: f.arrivalDate || f.departureDate,
                         arrivalTime: f.arrivalTime || '14:00',
+                        actualArrivalTime: f.actualArrivalTime || '',
                         duration: dur,
                         provider: providerName,
                         providerCode: providerCode,
@@ -731,8 +737,10 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                 destination: extractIata(seg.destination),
                 departureDate: seg.isApproximate ? `${seg.approximateYear}-01-01` : seg.date,
                 departureTime: seg.isApproximate ? '00:00' : seg.time,
+                actualDepartureTime: seg.isApproximate ? '00:00' : (seg.actualDepartureTime || ''),
                 arrivalDate: seg.isApproximate ? `${seg.approximateYear}-01-01` : (seg.arrivalDate || seg.date),
                 arrivalTime: seg.isApproximate ? '00:00' : (seg.arrivalTime || '00:00'),
+                actualArrivalTime: seg.isApproximate ? '00:00' : (seg.actualArrivalTime || ''),
                 travelClass: seg.travelClass as any,
                 seatNumber: seg.seatNumber,
                 seatType: seg.seatType as any,
@@ -1154,8 +1162,9 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                             onChange={e => updateSegment(index, 'date', e.target.value)} 
                                         />
                                     </div>
-                                    <div className="md:col-span-4">
-                                        <TimeInput label="Dep. Time" value={segment.time} onChange={val => updateSegment(index, 'time', val)} />
+                                    <div className="md:col-span-4 grid grid-cols-2 gap-2">
+                                        <TimeInput label="Sched. Dep" value={segment.time} onChange={val => updateSegment(index, 'time', val)} />
+                                        <TimeInput label="Actual Dep" value={segment.actualDepartureTime || ''} onChange={val => updateSegment(index, 'actualDepartureTime', val)} />
                                     </div>
 
                                     {/* Date/Time - ARRIVAL */}
@@ -1168,8 +1177,9 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                             onChange={e => updateSegment(index, 'arrivalDate', e.target.value)} 
                                         />
                                     </div>
-                                    <div className="md:col-span-4">
-                                        <TimeInput label="Arr. Time" value={segment.arrivalTime} onChange={val => updateSegment(index, 'arrivalTime', val)} />
+                                    <div className="md:col-span-4 grid grid-cols-2 gap-2">
+                                        <TimeInput label="Sched. Arr" value={segment.arrivalTime} onChange={val => updateSegment(index, 'arrivalTime', val)} />
+                                        <TimeInput label="Actual Arr" value={segment.actualArrivalTime || ''} onChange={val => updateSegment(index, 'actualArrivalTime', val)} />
                                     </div>
 
                                     {/* Duration & Distance Row */}

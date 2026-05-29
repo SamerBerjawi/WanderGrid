@@ -3,6 +3,7 @@ import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { ViewState, User } from './types';
 import { dataService } from './services/mockDb';
+import { motion, AnimatePresence } from 'motion/react';
 
 // Lazy load views to split the bundle and improve performance
 const Dashboard = lazy(() => import('./views/Dashboard').then(m => ({ default: m.Dashboard })));
@@ -262,7 +263,18 @@ export default function App() {
       />
       <main className="flex-1 h-full overflow-y-auto relative z-10 p-4 md:p-8 pb-28 md:pb-8 custom-scrollbar">
         <Suspense fallback={<ViewLoader />}>
-            {renderView()}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={view + (view === ViewState.USER_DETAIL ? selectedUserId : '') + (view === ViewState.TRIP_DETAIL ? selectedTripId : '')}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="w-full h-full"
+            >
+              {renderView()}
+            </motion.div>
+          </AnimatePresence>
         </Suspense>
       </main>
     </div>

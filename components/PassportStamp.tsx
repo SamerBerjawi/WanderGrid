@@ -168,18 +168,15 @@ export const PassportStamp: React.FC<PassportStampProps> = ({ country }) => {
         return sum % 3;
     }, [country.code]);
 
-    // Beautiful custom pastel-saturated vintage ink styles
-    const inkColorClass = useMemo(() => {
-        const colors = [
-            'text-sky-600 dark:text-sky-400 border-sky-600/60 dark:border-sky-400/60 bg-sky-50/20 dark:bg-sky-500/5',
-            'text-rose-500 dark:text-rose-400 border-rose-500/60 dark:border-rose-400/60 bg-rose-50/20 dark:bg-rose-500/5',
-            'text-emerald-600 dark:text-emerald-400 border-emerald-600/60 dark:border-emerald-400/60 bg-emerald-50/20 dark:bg-emerald-500/5',
-            'text-indigo-600 dark:text-indigo-400 border-indigo-600/60 dark:border-indigo-400/60 bg-indigo-50/20 dark:bg-indigo-500/5',
-            'text-amber-600 dark:text-amber-405 border-amber-600/60 dark:border-amber-400/60 bg-amber-50/20 dark:bg-amber-500/5',
-        ];
-        const sum = country.code.charCodeAt(0) + (country.code.charCodeAt(1) || 0);
-        return colors[sum % colors.length];
-    }, [country.code]);
+    // Beautiful custom pastel-saturated vintage ink styles dynamically matching major flag color
+    const inkStyle = useMemo(() => {
+        const rgbStr = `${flagGlow.r}, ${flagGlow.g}, ${flagGlow.b}`;
+        return {
+            color: `rgba(${rgbStr}, 0.85)`,
+            borderColor: `rgba(${rgbStr}, 0.55)`,
+            backgroundColor: `rgba(${rgbStr}, 0.04)`,
+        } as React.CSSProperties;
+    }, [flagGlow]);
 
     return (
         <div 
@@ -202,18 +199,18 @@ export const PassportStamp: React.FC<PassportStampProps> = ({ country }) => {
             <div className="w-full h-full flex flex-col items-center justify-center transition-all duration-300 group-hover:scale-105 group-hover:opacity-40">
                 {shapeIndex === 0 ? (
                     // 1. Circle Double-Border Ink Badge
-                    <div className={`w-40 h-40 rounded-full border-2 border-current flex flex-col items-center justify-center p-1.5 ${inkColorClass} shrink-0 relative transition-transform duration-500`} style={{ transform: `rotate(${tilt * 1.5}deg)` }}>
+                    <div className="w-40 h-40 rounded-full border-2 border-current flex flex-col items-center justify-center p-1.5 shrink-0 relative transition-transform duration-500" style={{ ...inkStyle, transform: `rotate(${tilt * 1.5}deg)` }}>
                         <div className="absolute inset-1 rounded-full border border-dashed border-current opacity-80" />
                         <div className="w-full h-full rounded-full border border-current flex flex-col items-center justify-center gap-0.5 font-mono p-2">
                             <span className="text-3xl filter saturate-150 drop-shadow-sm mb-0.5">{country.flag}</span>
                             <span className="text-[10px] tracking-[0.2em] font-black uppercase text-center leading-none">{country.name.slice(0, 10)}</span>
-                            <span className="text-[7px] tracking-widest font-black uppercase bg-current text-white dark:text-zinc-950 px-1 py-0.5 rounded-sm scale-90 mt-1 leading-none">BORDER ENTR</span>
+                            <span className="text-[7px] tracking-widest font-black uppercase border border-current px-1 py-0.5 rounded-sm scale-90 mt-1 leading-none bg-transparent">BORDER ENTR</span>
                             <span className="text-[8px] font-black mt-1 tracking-tight">{formattedDate}</span>
                         </div>
                     </div>
                 ) : shapeIndex === 1 ? (
                     // 2. Octagonal Border Decal
-                    <div className={`w-40 h-40 rounded-2xl border-2 border-current flex flex-col items-center justify-center p-2.5 ${inkColorClass} shrink-1 relative transition-transform duration-505`} style={{ transform: `rotate(${tilt * 1.5}deg)` }}>
+                    <div className="w-40 h-40 rounded-2xl border-2 border-current flex flex-col items-center justify-center p-2.5 shrink-1 relative transition-transform duration-505" style={{ ...inkStyle, transform: `rotate(${tilt * 1.5}deg)` }}>
                         <div className="absolute inset-1.5 rounded-xl border border-dotted border-current opacity-80" />
                         <div className="w-full h-full rounded-lg border border-current flex flex-col items-center justify-center font-mono gap-0.5">
                             <span className="text-[8px] font-black tracking-[0.25em] uppercase leading-none opacity-85">APPROVED</span>
@@ -226,7 +223,7 @@ export const PassportStamp: React.FC<PassportStampProps> = ({ country }) => {
                     </div>
                 ) : (
                     // 3. Pill-Shaped Stamp
-                    <div className={`w-44 h-32 rounded-[2rem] border-2 border-current flex flex-col items-center justify-center p-2 ${inkColorClass} shrink-0 relative transition-transform duration-501`} style={{ transform: `rotate(${tilt * 1.5}deg)` }}>
+                    <div className="w-44 h-32 rounded-[2rem] border-2 border-current flex flex-col items-center justify-center p-2 shrink-0 relative transition-transform duration-501" style={{ ...inkStyle, transform: `rotate(${tilt * 1.5}deg)` }}>
                         <div className="absolute inset-1.5 rounded-[1.6rem] border-t border-b border-dashed border-current opacity-85" />
                         <div className="w-full h-full rounded-[1.6rem] flex flex-col items-center justify-center font-mono gap-0.5">
                             <span className="text-[7px] font-black tracking-[0.3em] uppercase leading-none mb-0.5">PASSPORT DEPT</span>

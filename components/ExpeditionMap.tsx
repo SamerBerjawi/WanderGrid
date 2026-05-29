@@ -372,6 +372,8 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
     const tileLayerRef = useRef<L.TileLayer | null>(null);
     const openAipLayerRef = useRef<L.TileLayer | null>(null);
     const geoJsonLayerRef = useRef<L.GeoJSON | null>(null);
+    const routeLayerGroupRef = useRef<L.LayerGroup | null>(null);
+    const markerLayerGroupRef = useRef<L.LayerGroup | null>(null);
     const [isScreenshotting, setIsScreenshotting] = useState(false);
     
     // Road tracing / OpenSource routing cache & toggles
@@ -571,6 +573,10 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
 
         mapInstance.current = map;
 
+        // Initialize layer groups and add them to map
+        routeLayerGroupRef.current = L.layerGroup().addTo(map);
+        markerLayerGroupRef.current = L.layerGroup().addTo(map);
+
         // Force react update on zoom ending to recalculate spatial marker clustering grids
         map.on('zoomend', () => {
             setMapZoom(map.getZoom());
@@ -584,8 +590,12 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
 
         return () => {
             resizeObserver.disconnect();
-            map.remove();
-            mapInstance.current = null;
+            if (mapInstance.current) {
+                mapInstance.current.remove();
+                mapInstance.current = null;
+            }
+            routeLayerGroupRef.current = null;
+            markerLayerGroupRef.current = null;
         };
     }, []);
 
@@ -652,106 +662,20 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
         }
     }, [showAviationCharts]);
 
-    // Handle Map Content (Flights, Markers, GeoJSON)
-    useEffect(() => {
-        if (!mapInstance.current) return;
-        const map = mapInstance.current;
-
-        // Calculate unique key of the current state requiring fitting bounds
-        const getTripCoordsString = (tripsList: Trip[]) => {
-            return tripsList.map(t => {
-                const transportCoords = t.transports?.map(tr => 
-                    `${tr.originLat},${tr.originLng}-${tr.destLat},${tr.destLng}-${(tr.waypoints || []).map(wp => wp.coordinates ? `${wp.coordinates.lat},${wp.coordinates.lng}` : '').join(';')}`
-                ).join('|') || '';
-                const singleCoords = t.coordinates ? `${t.coordinates.lat},${t.coordinates.lng}` : '';
-                return `${t.id}:${transportCoords}:${singleCoords}`;
-            }).join(';');
-        };
-        const fitKey = `${viewMode}-${trips.length}-${visitedPlaces.length}-${JSON.stringify(trips.map(t => t.id))}-${getTripCoordsString(trips)}`;
-        const shouldFit = lastFitRef.current !== fitKey;
-        if (shouldFit) {
-            lastFitRef.current = fitKey;
-        }
-
-        // Clean up old layers except tiles
-        map.eachLayer((layer) => {
-            if (layer instanceof L.Marker || layer instanceof L.Polyline || layer instanceof L.CircleMarker || layer instanceof L.GeoJSON) {
-                map.removeLayer(layer);
-            }
-        });
-
-        // 1. Render Countries (Layer Logic)
-        const shouldShowCountries = showCountries || viewMode === 'scratch' || viewMode === 'network'; // Always check visited in network mode now
-        
-        if (shouldShowCountries && geoJsonData) {
-            geoJsonLayerRef.current = L.geoJSON(geoJsonData, {
-                style: (feature) => {
-                    const iso = feature?.properties?.ISO_A2 || feature?.properties?.ISO_A2_EH;
-                    const isVisited = visitedCountries.includes(iso);
-                    
-                    // Determine Gradient Color for this country
-                    let gradientColor = '#333';
-                    if (isVisited) {
-                        const center = getFeatureCenter(feature);
-                        gradientColor = getGeoGradientColor(center.lat, center.lng);
-                    }
-
-                    if (viewMode === 'scratch') {
-                        // SCRATCH MODE: High Opacity, Vibrant
-                        let fillColor = isDark ? '#09090b' : '#f8fafc'; // Darker unvisited
-                        
-                        return {
-                            color: isDark ? '#222' : '#e5e5e5', // Border color
-                            weight: 1,
-                            fillColor: isVisited ? gradientColor : fillColor, 
-                            fillOpacity: isVisited ? 0.6 : 0.5,
-                            className: isVisited ? 'transition-all duration-500' : ''
-                        };
-                    } else {
-                        // NETWORK MODE: Low Opacity, Subtle Gradient
-                        // We use the same gradient logic but with much lower opacity to let lines shine
-                        const shouldFill = isVisited && showCountries;
-
-                        return {
-                            color: isDark ? '#333' : '#ddd',
-                            weight: 1,
-                            fillColor: shouldFill ? gradientColor : 'transparent',
-                            fillOpacity: shouldFill ? 0.4 : 0, // Subtle glow
-                            className: shouldFill ? 'transition-all duration-500' : ''
-                        };
-                    }
-                }
-            }).addTo(map);
-        }
-
-        // 2. SCRATCH MAP LOGIC (Gather points only)
-        const rawPoints: PointItem[] = [];
+    // Memoized collection of raw endpoints and places of interest (prevents map tearing on zoom)
+    const rawPoints = useMemo<PointItem[]>(() => {
+        const pts: PointItem[] = [];
         if (viewMode === 'scratch') {
-            const bounds = L.latLngBounds([]);
             visitedPlaces.forEach(place => {
-                rawPoints.push({ lat: place.lat, lng: place.lng, name: place.name });
-                bounds.extend([place.lat, place.lng]);
+                pts.push({ lat: place.lat, lng: place.lng, name: place.name });
             });
-
-            if (shouldFit) {
-                if (visitedPlaces.length > 0) {
-                    map.fitBounds(bounds, { padding: [50, 50], maxZoom: 6 });
-                } else {
-                    map.setView([20, 0], 2);
-                }
-            }
         } else {
-            // 3. NETWORK MAP LOGIC
-            const bounds = L.latLngBounds([]);
-            let hasPoints = false;
-
             trips.forEach(trip => {
                 const flightStyle = getStatusStyle(trip, isDark, activeLayer);
 
                 if (trip.transports && trip.transports.length > 0) {
                     trip.transports.forEach(t => {
                         if (t.originLat && t.originLng && t.destLat && t.destLng) {
-                            // Check Mode and Filter
                             const isFlight = t.mode === 'Flight';
                             const isLand = ['Car Rental', 'Personal Car', 'Bus', 'Train'].includes(t.mode);
                             const isSea = t.mode === 'Cruise';
@@ -759,18 +683,13 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                             if (!isFlight && !showLandSeaRoutes) return;
 
                             let color = flightStyle.color;
-                            let className = flightStyle.className;
-
                             if (isLand) {
-                                color = '#f59e0b'; // Amber
-                                className = 'flight-path-land';
+                                color = '#f59e0b';
                             } else if (isSea) {
-                                color = '#06b6d4'; // Cyan
-                                className = 'flight-path-sea';
+                                color = '#06b6d4';
                             }
 
-                            // Keep track of the points for later marker clustering
-                            rawPoints.push({
+                            pts.push({
                                 lat: t.originLat,
                                 lng: t.originLng,
                                 name: t.origin,
@@ -779,15 +698,10 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                                 isEndpoint: true
                             });
 
-                            // Determine the path points
-                            const pathPoints: L.LatLng[] = [];
-                            pathPoints.push(L.latLng(t.originLat, t.originLng));
-                            
                             if (t.waypoints && t.waypoints.length > 0) {
                                 t.waypoints.forEach(wp => {
                                     if (wp.coordinates) {
-                                        pathPoints.push(L.latLng(wp.coordinates.lat, wp.coordinates.lng));
-                                        rawPoints.push({
+                                        pts.push({
                                             lat: wp.coordinates.lat,
                                             lng: wp.coordinates.lng,
                                             name: wp.name,
@@ -798,9 +712,8 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                                     }
                                 });
                             }
-                            
-                            pathPoints.push(L.latLng(t.destLat, t.destLng));
-                            rawPoints.push({
+
+                            pts.push({
                                 lat: t.destLat,
                                 lng: t.destLng,
                                 name: t.destination,
@@ -808,206 +721,11 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                                 color: color,
                                 isEndpoint: true
                             });
-
-                             // Generate curve for each segment (or use OSRM cached real roads for land)
-                             const fullCurvedPath: L.LatLng[] = [];
-                             
-                             for (let i = 0; i < pathPoints.length - 1; i++) {
-                                 const p1 = pathPoints[i];
-                                 const p2 = pathPoints[i+1];
-                                 let segmentCurve: L.LatLng[] = [];
-                                 
-                                 const segmentKey = `${p1.lat.toFixed(4)},${p1.lng.toFixed(4)}|${p2.lat.toFixed(4)},${p2.lng.toFixed(4)}`;
-                                 if (enableRoadTracing && isLand && osrmCache[segmentKey]) {
-                                     segmentCurve = [...osrmCache[segmentKey]];
-                                 } else {
-                                     segmentCurve = getCurvePoints(p1, p2);
-                                 }
-                                 
-                                 // Avoid duplicating points
-                                 if (i > 0 && segmentCurve.length > 0) segmentCurve.shift();
-                                 fullCurvedPath.push(...segmentCurve);
-                             }
-
-                            const key = getRouteKey(t.originLat, t.originLng, t.destLat, t.destLng);
-                            const freq = routeFrequencies.get(key) || 1;
-                            
-                            // Slimmer paths when Comet Flow is off
-                            const baseWeight = animateRoutes ? 2 : 1;
-                            const freqIncrement = animateRoutes ? 0.8 : 0.4;
-                            const maxWeight = animateRoutes ? 8 : 4;
-                            const dynamicWeight = showFrequencyWeight && proportionalArcThickness 
-                                ? Math.min(maxWeight, baseWeight + ((freq - 1) * freqIncrement)) 
-                                : baseWeight;
-
-                            // Draw paths (either as regional gradient segments or single-color solid curves)
-                            const trackSections: L.Polyline[] = [];
-                            const flowSections: L.Polyline[] = [];
-
-                            if (showGradientRoutes) {
-                                const numSections = 12;
-                                const pointsPerSection = Math.ceil(fullCurvedPath.length / numSections);
-                                
-                                for (let s = 0; s < numSections; s++) {
-                                    const startIdx = s * pointsPerSection;
-                                    const endIdx = Math.min(fullCurvedPath.length - 1, (s + 1) * pointsPerSection);
-                                    if (startIdx >= endIdx) break;
-                                    
-                                    const sectionPoints = fullCurvedPath.slice(startIdx, endIdx + 1);
-                                    // Midpoint coordinates for high-accuracy regional styling
-                                    const midPt = sectionPoints[Math.floor(sectionPoints.length / 2)];
-                                    const sectionColor = getGeoGradientColor(midPt.lat, midPt.lng);
-                                    
-                                    const sectionTrack = L.polyline(sectionPoints, {
-                                        color: sectionColor,
-                                        weight: animateRoutes ? (1 + (dynamicWeight * 0.2)) : 0.5,
-                                        opacity: (isDark || activeLayer === 'satellite') ? 0.35 : 0.45,
-                                        className: `flight-path-track ${className}`,
-                                        interactive: false,
-                                        smoothFactor: 1.0
-                                    }).addTo(map);
-                                    trackSections.push(sectionTrack);
-                                    
-                                    const sectionFlow = L.polyline(sectionPoints, {
-                                        color: sectionColor,
-                                        weight: dynamicWeight,
-                                        opacity: animateRoutes ? 0.9 : 0.65,
-                                        className: animateRoutes ? `flight-path-flow ${className}` : '',
-                                        interactive: false,
-                                        lineCap: 'round',
-                                        smoothFactor: 1.0
-                                    }).addTo(map);
-                                    flowSections.push(sectionFlow);
-                                }
-                            } else {
-                                // Static Track
-                                const trackLine = L.polyline(fullCurvedPath, {
-                                    color: color, 
-                                    weight: animateRoutes ? (1 + (dynamicWeight * 0.2)) : 0.5, 
-                                    opacity: (isDark || activeLayer === 'satellite') ? 0.2 : 0.3,
-                                    className: `flight-path-track ${className}`,
-                                    interactive: false,
-                                    smoothFactor: 1.0
-                                }).addTo(map);
-                                trackSections.push(trackLine);
-
-                                // Animated Flow
-                                const flowLine = L.polyline(fullCurvedPath, {
-                                    color: color,
-                                    weight: dynamicWeight,
-                                    opacity: animateRoutes ? 1 : 0.6,
-                                    className: animateRoutes ? `flight-path-flow ${className}` : '',
-                                    interactive: false,
-                                    lineCap: 'round',
-                                    smoothFactor: 1.0
-                                }).addTo(map);
-                                flowSections.push(flowLine);
-                            }
-
-                            // Interaction Line (Covers the entire route trajectory for robust hover triggers)
-                            const hitLine = L.polyline(fullCurvedPath, {
-                                color: 'transparent',
-                                weight: Math.max(15, dynamicWeight + 10), 
-                                opacity: 0,
-                                interactive: true,
-                                smoothFactor: 1.0
-                            }).addTo(map);
-
-                            // Tooltip logic
-                            let modeIcon = 'flight';
-                            let modeColor = 'text-blue-400';
-                            if (t.mode === 'Train') {
-                                modeIcon = 'directions_train';
-                                modeColor = 'text-indigo-400';
-                            } else if (t.mode === 'Car Rental' || t.mode === 'Personal Car') {
-                                modeIcon = 'directions_car';
-                                modeColor = 'text-amber-400';
-                            } else if (t.mode === 'Bus') {
-                                modeIcon = 'directions_bus';
-                                modeColor = 'text-amber-500';
-                            } else if (t.mode === 'Cruise') {
-                                modeIcon = 'directions_boat';
-                                modeColor = 'text-cyan-400';
-                            }
-
-                            const formattedDate = new Date(t.departureDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                            const classBadge = t.travelClass ? `<span class="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-white/10 text-gray-300 ml-1.5 border border-white/5 align-middle">${t.travelClass}</span>` : '';
-                            const stopoverText = t.waypoints && t.waypoints.length > 0 ? `<div class="text-[10px] text-amber-400/80 font-bold mt-1 inline-flex items-center"><span class="material-icons-outlined text-[11px] mr-1">schedule</span>Via ${t.waypoints.map(w => w.name).join(', ')}</div>` : '';
-                            const codeText = t.identifier ? `<span class="text-xs text-gray-400 font-bold tracking-wider ml-1 px-1 py-0.5 bg-neutral-800 rounded text-[9px] border border-white/5 align-middle">${t.identifier}</span>` : '';
-                            const distanceText = t.distance ? `<div class="text-[9px] text-gray-400 font-bold mt-0.5">Approx. ${t.distance} km</div>` : '';
-
-                            hitLine.bindTooltip(`
-                                <div class="font-sans p-3 min-w-[200px] select-none pointer-events-none">
-                                    <div class="flex items-center justify-between gap-4 mb-2">
-                                        <span class="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none">${trip.name}</span>
-                                        <span class="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider bg-blue-500/10 text-blue-400 border border-blue-500/20">${trip.status}</span>
-                                    </div>
-                                    <div class="flex items-center gap-1.5">
-                                        <span class="material-icons-outlined text-base ${modeColor} align-middle">${modeIcon}</span>
-                                        <span class="font-black text-sm text-white tracking-tight align-middle">${t.origin}</span>
-                                        <span class="material-icons-outlined text-xs text-gray-500 align-middle">arrow_forward</span>
-                                        <span class="font-black text-sm text-white tracking-tight align-middle">${t.destination}</span>
-                                    </div>
-                                    ${stopoverText}
-                                    <div class="mt-2 pt-2 border-t border-white/10 flex flex-col gap-0.5">
-                                        <div class="text-[10px] text-gray-300 font-semibold">
-                                            ${t.provider}${codeText}${classBadge}
-                                        </div>
-                                        <div class="text-[9px] text-gray-400 font-medium mt-0.5">${formattedDate} • ${t.departureTime || 'TBA'}</div>
-                                        ${distanceText}
-                                    </div>
-                                </div>
-                            `, { sticky: true, direction: 'top', className: 'bg-[#0f0f12]/95 border border-white/10 shadow-[0_20px_40px_rgba(0,0,0,0.8)] rounded-2xl backdrop-blur-md p-0 overflow-hidden' });
-
-                            hitLine.on('mouseover', () => {
-                                flowSections.forEach(fs => {
-                                    fs.setStyle({
-                                        weight: dynamicWeight + 2,
-                                        opacity: 1
-                                    });
-                                    const el = fs.getElement();
-                                    if (el) {
-                                        el.classList.add('flight-path-selected');
-                                        fs.bringToFront();
-                                    }
-                                });
-                                trackSections.forEach(ts => {
-                                    ts.setStyle({
-                                        opacity: (isDark || activeLayer === 'satellite') ? 0.6 : 0.7,
-                                        weight: 2 + (dynamicWeight * 0.3)
-                                    });
-                                });
-                            });
-                             
-                            hitLine.on('mouseout', () => {
-                                flowSections.forEach(fs => {
-                                    fs.setStyle({
-                                        weight: dynamicWeight,
-                                        opacity: animateRoutes ? 0.9 : 0.65
-                                    });
-                                    const el = fs.getElement();
-                                    if (el) el.classList.remove('flight-path-selected');
-                                });
-                                trackSections.forEach(ts => {
-                                    ts.setStyle({
-                                        opacity: (isDark || activeLayer === 'satellite') ? 0.2 : 0.3,
-                                        weight: animateRoutes ? (1 + (dynamicWeight * 0.2)) : 0.5
-                                    });
-                                });
-                            });
-
-                            hitLine.on('click', () => onTripClick && onTripClick(trip.id));
-                            
-                            pathPoints.forEach(pt => bounds.extend(pt));
-                            hasPoints = true;
                         }
                     });
                 } else if (trip.coordinates) {
-                    // Trip without transport
                     const { color } = getStatusStyle(trip, isDark, activeLayer);
-                    const point = L.latLng(trip.coordinates.lat, trip.coordinates.lng);
-                    
-                    rawPoints.push({
+                    pts.push({
                         lat: trip.coordinates.lat,
                         lng: trip.coordinates.lng,
                         name: trip.location || trip.name,
@@ -1015,111 +733,331 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                         color: color,
                         isEndpoint: true
                     });
-
-                    bounds.extend(point);
-                    hasPoints = true;
                 }
             });
+        }
+        return pts;
+    }, [trips, viewMode, visitedPlaces, isDark, activeLayer, showLandSeaRoutes]);
 
-            if (shouldFit) {
-                if (hasPoints) {
-                    map.fitBounds(bounds, { padding: [80, 80], maxZoom: 6 });
-                } else {
-                    map.setView([20, 0], 2);
-                }
-            }
+    // Track last fitted state to prevent annoying resetting during active interactions
+    const lastFittedPointsRef = useRef<string>('');
+
+    // Handle Auto-Fitting Bounds (Only runs on initial paint or actual trips changes, NEVER on zoom)
+    useEffect(() => {
+        if (!mapInstance.current || rawPoints.length === 0) return;
+        const map = mapInstance.current;
+
+        const pointsKey = rawPoints.map(p => `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`).join('|');
+        if (lastFittedPointsRef.current === pointsKey) return;
+        lastFittedPointsRef.current = pointsKey;
+
+        const bounds = L.latLngBounds([]);
+        rawPoints.forEach(pt => bounds.extend([pt.lat, pt.lng]));
+
+        map.fitBounds(bounds, { padding: [80, 80], maxZoom: 6 });
+    }, [rawPoints]);
+
+    // Handle GeoJSON Countries Shape highlighting
+    useEffect(() => {
+        if (!mapInstance.current) return;
+        const map = mapInstance.current;
+
+        if (geoJsonLayerRef.current) {
+            map.removeLayer(geoJsonLayerRef.current);
+            geoJsonLayerRef.current = null;
         }
 
-        // 4. DRAW UNIFIED CLUSTERED / NON-CLUSTERED CITY MARKERS
-        if (showCityMarkers && rawPoints.length > 0) {
-            if (clusterMode) {
-                const clusters = performClustering(map, rawPoints, 50);
-                clusters.forEach(cluster => {
-                    if (cluster.points.length === 1) {
-                        const pt = cluster.points[0];
-                        const markerColor = pt.color || (isDark ? '#e2e8f0' : '#1e293b');
-                        const markerRadius = hideAirportCircles ? 0.1 : (pt.isEndpoint ? airportCircleSize + 2 : airportCircleSize);
-                        const markerOpacity = hideAirportCircles ? 0 : 1;
-                        const marker = L.circleMarker([cluster.lat, cluster.lng], {
-                            radius: markerRadius,
-                            fillColor: pt.isEndpoint ? ((isDark || activeLayer === 'satellite') ? '#000000' : '#ffffff') : markerColor,
-                            color: markerColor,
-                            weight: hideAirportCircles ? 0 : 2,
-                            fillOpacity: markerOpacity,
-                            opacity: markerOpacity
-                        }).addTo(map);
+        const shouldShowCountries = showCountries || viewMode === 'scratch' || viewMode === 'network';
+        if (shouldShowCountries && geoJsonData) {
+            geoJsonLayerRef.current = L.geoJSON(geoJsonData, {
+                style: (feature) => {
+                    const iso = feature?.properties?.ISO_A2 || feature?.properties?.ISO_A2_EH;
+                    const isVisited = visitedCountries.includes(iso);
+                    
+                    let gradientColor = '#333';
+                    if (isVisited) {
+                        const center = getFeatureCenter(feature);
+                        gradientColor = getGeoGradientColor(center.lat, center.lng);
+                    }
 
-                        marker.bindTooltip(pt.name, {
-                            direction: 'top',
-                            className: 'bg-[#0f0f12]/95 text-white border border-white/10 shadow-xl text-xs font-bold px-3 py-1.5 rounded-lg'
-                        });
-
-                        marker.on('mouseover', () => {
-                            marker.setStyle({
-                                radius: pt.isEndpoint ? 9 : 7,
-                                weight: 4,
-                                color: isDark ? '#ffffff' : '#000000',
-                            });
-                        });
-
-                        marker.on('mouseout', () => {
-                            marker.setStyle({
-                                radius: pt.isEndpoint ? 6 : 4,
-                                weight: 2,
-                                color: markerColor,
-                            });
-                        });
-
-                        if (pt.tripId && onTripClick) {
-                            marker.on('click', () => onTripClick(pt.tripId!));
-                        }
+                    if (viewMode === 'scratch') {
+                        let fillColor = isDark ? '#09090b' : '#f8fafc';
+                        return {
+                            color: isDark ? '#222' : '#e5e5e5',
+                            weight: 1,
+                            fillColor: isVisited ? gradientColor : fillColor, 
+                            fillOpacity: isVisited ? 0.6 : 0.5,
+                        };
                     } else {
-                        // Render cluster
-                        const clusterIcon = L.divIcon({
-                            html: `<div class="w-8 h-8 rounded-full bg-blue-600/35 text-blue-700 border-2 border-blue-600 dark:bg-blue-400/25 dark:text-blue-200 dark:border-blue-400 flex items-center justify-center text-xs font-black shadow-lg shadow-blue-500/15 hover:scale-110 transition-transform">
-                                <span>${cluster.points.length}</span>
-                            </div>`,
-                            className: 'custom-cluster-icon',
-                            iconSize: [32, 32],
-                            iconAnchor: [16, 16]
-                        });
+                        const shouldFill = isVisited && showCountries;
+                        return {
+                            color: isDark ? '#333' : '#ddd',
+                            weight: 1,
+                            fillColor: shouldFill ? gradientColor : 'transparent',
+                            fillOpacity: shouldFill ? 0.4 : 0,
+                        };
+                    }
+                }
+            }).addTo(map);
+        }
+    }, [geoJsonData, showCountries, visitedCountries, viewMode, isDark]);
 
-                        const marker = L.marker([cluster.lat, cluster.lng], { icon: clusterIcon }).addTo(map);
+    // Handle Route Lines drawing (curves, land trace paths & animated flows)
+    useEffect(() => {
+        if (!mapInstance.current || !routeLayerGroupRef.current) return;
+        const map = mapInstance.current;
+        const routeGroup = routeLayerGroupRef.current;
 
-                        const tooltipContent = `
-                            <div class="font-sans p-2 select-none pointer-events-none text-left">
-                                <div class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 border-b border-white/10 pb-1">Cluster (${cluster.points.length} Locations)</div>
-                                <div class="space-y-1 max-h-40 overflow-y-auto pr-1">
-                                    ${cluster.points.slice(0, 8).map(p => `<div class="text-xs font-bold text-white flex items-center gap-1.5">● ${p.name}</div>`).join('')}
-                                    ${cluster.points.length > 8 ? `<div class="text-[10px] text-gray-400 italic font-medium pl-3">+ ${cluster.points.length - 8} more</div>` : ''}
+        routeGroup.clearLayers();
+
+        if (viewMode === 'scratch') return;
+
+        trips.forEach(trip => {
+            const flightStyle = getStatusStyle(trip, isDark, activeLayer);
+
+            if (trip.transports && trip.transports.length > 0) {
+                trip.transports.forEach(t => {
+                    if (t.originLat && t.originLng && t.destLat && t.destLng) {
+                        const isFlight = t.mode === 'Flight';
+                        const isLand = ['Car Rental', 'Personal Car', 'Bus', 'Train'].includes(t.mode);
+                        const isSea = t.mode === 'Cruise';
+
+                        if (!isFlight && !showLandSeaRoutes) return;
+
+                        let color = flightStyle.color;
+                        let className = flightStyle.className;
+
+                        if (isLand) {
+                            color = '#f59e0b';
+                            className = 'flight-path-land';
+                        } else if (isSea) {
+                            color = '#06b6d4';
+                            className = 'flight-path-sea';
+                        }
+
+                        const pathPoints: L.LatLng[] = [L.latLng(t.originLat, t.originLng)];
+                        
+                        if (t.waypoints && t.waypoints.length > 0) {
+                            t.waypoints.forEach(wp => {
+                                if (wp.coordinates) {
+                                    pathPoints.push(L.latLng(wp.coordinates.lat, wp.coordinates.lng));
+                                }
+                            });
+                        }
+                        
+                        pathPoints.push(L.latLng(t.destLat, t.destLng));
+
+                        const fullCurvedPath: L.LatLng[] = [];
+                        
+                        for (let i = 0; i < pathPoints.length - 1; i++) {
+                            const p1 = pathPoints[i];
+                            const p2 = pathPoints[i+1];
+                            let segmentCurve: L.LatLng[] = [];
+                            
+                            const segmentKey = `${p1.lat.toFixed(4)},${p1.lng.toFixed(4)}|${p2.lat.toFixed(4)},${p2.lng.toFixed(4)}`;
+                            if (enableRoadTracing && isLand && osrmCache[segmentKey]) {
+                                segmentCurve = [...osrmCache[segmentKey]];
+                            } else {
+                                segmentCurve = getCurvePoints(p1, p2);
+                            }
+                            
+                            if (i > 0 && segmentCurve.length > 0) segmentCurve.shift();
+                            fullCurvedPath.push(...segmentCurve);
+                        }
+
+                        const key = getRouteKey(t.originLat, t.originLng, t.destLat, t.destLng);
+                        const freq = routeFrequencies.get(key) || 1;
+                        
+                        const baseWeight = animateRoutes ? 2 : 1;
+                        const freqIncrement = animateRoutes ? 0.8 : 0.4;
+                        const maxWeight = animateRoutes ? 8 : 4;
+                        const dynamicWeight = showFrequencyWeight && proportionalArcThickness 
+                            ? Math.min(maxWeight, baseWeight + ((freq - 1) * freqIncrement)) 
+                            : baseWeight;
+
+                        const trackSections: L.Polyline[] = [];
+                        const flowSections: L.Polyline[] = [];
+
+                        if (showGradientRoutes) {
+                            const numSections = 12;
+                            const pointsPerSection = Math.ceil(fullCurvedPath.length / numSections);
+                            
+                            for (let s = 0; s < numSections; s++) {
+                                const startIdx = s * pointsPerSection;
+                                const endIdx = Math.min(fullCurvedPath.length - 1, (s + 1) * pointsPerSection);
+                                if (startIdx >= endIdx) break;
+                                
+                                const sectionPoints = fullCurvedPath.slice(startIdx, endIdx + 1);
+                                const midPt = sectionPoints[Math.floor(sectionPoints.length / 2)];
+                                const sectionColor = getGeoGradientColor(midPt.lat, midPt.lng);
+                                
+                                const sectionTrack = L.polyline(sectionPoints, {
+                                    color: sectionColor,
+                                    weight: animateRoutes ? (1 + (dynamicWeight * 0.2)) : 0.5,
+                                    opacity: (isDark || activeLayer === 'satellite') ? 0.35 : 0.45,
+                                    className: `flight-path-track ${className}`,
+                                    interactive: false,
+                                    smoothFactor: 1.0
+                                }).addTo(routeGroup);
+                                trackSections.push(sectionTrack);
+                                
+                                const sectionFlow = L.polyline(sectionPoints, {
+                                    color: sectionColor,
+                                    weight: dynamicWeight,
+                                    opacity: animateRoutes ? 0.9 : 0.65,
+                                    className: animateRoutes ? `flight-path-flow ${className}` : '',
+                                    interactive: false,
+                                    lineCap: 'round',
+                                    smoothFactor: 1.0
+                                }).addTo(routeGroup);
+                                flowSections.push(sectionFlow);
+                            }
+                        } else {
+                            const trackLine = L.polyline(fullCurvedPath, {
+                                color: color, 
+                                weight: animateRoutes ? (1 + (dynamicWeight * 0.2)) : 0.5, 
+                                opacity: (isDark || activeLayer === 'satellite') ? 0.2 : 0.3,
+                                className: `flight-path-track ${className}`,
+                                interactive: false,
+                                smoothFactor: 1.0
+                            }).addTo(routeGroup);
+                            trackSections.push(trackLine);
+
+                            const flowLine = L.polyline(fullCurvedPath, {
+                                color: color,
+                                weight: dynamicWeight,
+                                opacity: animateRoutes ? 1 : 0.6,
+                                className: animateRoutes ? `flight-path-flow ${className}` : '',
+                                interactive: false,
+                                lineCap: 'round',
+                                smoothFactor: 1.0
+                            }).addTo(routeGroup);
+                            flowSections.push(flowLine);
+                        }
+
+                        const hitLine = L.polyline(fullCurvedPath, {
+                            color: 'transparent',
+                            weight: Math.max(15, dynamicWeight + 10), 
+                            opacity: 0,
+                            interactive: true,
+                            smoothFactor: 1.0
+                        }).addTo(routeGroup);
+
+                        let modeIcon = 'flight';
+                        let modeColor = 'text-blue-400';
+                        if (t.mode === 'Train') {
+                            modeIcon = 'directions_train';
+                            modeColor = 'text-indigo-400';
+                        } else if (t.mode === 'Car Rental' || t.mode === 'Personal Car') {
+                            modeIcon = 'directions_car';
+                            modeColor = 'text-amber-400';
+                        } else if (t.mode === 'Bus') {
+                            modeIcon = 'directions_bus';
+                            modeColor = 'text-amber-500';
+                        } else if (t.mode === 'Cruise') {
+                            modeIcon = 'directions_boat';
+                            modeColor = 'text-cyan-400';
+                        }
+
+                        const formattedDate = new Date(t.departureDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                        const classBadge = t.travelClass ? `<span class="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-white/10 text-gray-300 ml-1.5 border border-white/5 align-middle">${t.travelClass}</span>` : '';
+                        const stopoverText = t.waypoints && t.waypoints.length > 0 ? `<div class="text-[10px] text-amber-400/80 font-bold mt-1 inline-flex items-center"><span class="material-icons-outlined text-[11px] mr-1">schedule</span>Via ${t.waypoints.map(w => w.name).join(', ')}</div>` : '';
+                        const codeText = t.identifier ? `<span class="text-xs text-gray-400 font-bold tracking-wider ml-1 px-1 py-0.5 bg-neutral-800 rounded text-[9px] border border-white/5 align-middle">${t.identifier}</span>` : '';
+                        const distanceText = t.distance ? `<div class="text-[9px] text-gray-400 font-bold mt-0.5">Approx. ${t.distance} km</div>` : '';
+
+                        hitLine.bindTooltip(`
+                            <div class="font-sans p-3 min-w-[200px] select-none pointer-events-none">
+                                <div class="flex items-center justify-between gap-4 mb-2">
+                                    <span class="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none">${trip.name}</span>
+                                    <span class="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider bg-blue-500/10 text-blue-400 border border-blue-500/20">${trip.status}</span>
                                 </div>
-                                <div class="text-[9px] text-blue-400 font-extrabold uppercase mt-2">Click to Zoom Sector</div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="material-icons-outlined text-base ${modeColor} align-middle">${modeIcon}</span>
+                                    <span class="font-black text-sm text-white tracking-tight align-middle">${t.origin}</span>
+                                    <span class="material-icons-outlined text-xs text-gray-500 align-middle">arrow_forward</span>
+                                    <span class="font-black text-sm text-white tracking-tight align-middle">${t.destination}</span>
+                                </div>
+                                ${stopoverText}
+                                <div class="mt-2 pt-2 border-t border-white/10 flex flex-col gap-0.5">
+                                    <div class="text-[10px] text-gray-300 font-semibold">
+                                        ${t.provider}${codeText}${classBadge}
+                                    </div>
+                                    <div class="text-[9px] text-gray-400 font-medium mt-0.5">${formattedDate} • ${t.departureTime || 'TBA'}</div>
+                                    ${distanceText}
+                                </div>
                             </div>
-                        `;
-                        marker.bindTooltip(tooltipContent, {
-                            direction: 'top',
-                            className: 'bg-black/95 text-white border border-white/10 shadow-2xl rounded-xl backdrop-blur-md px-1 py-1'
+                        `, { sticky: true, direction: 'top', className: 'bg-[#0f0f12]/95 border border-white/10 shadow-[0_20px_40px_rgba(0,0,0,0.8)] rounded-2xl backdrop-blur-md p-0 overflow-hidden' });
+
+                        hitLine.on('mouseover', () => {
+                            flowSections.forEach(fs => {
+                                fs.setStyle({
+                                    weight: dynamicWeight + 2,
+                                    opacity: 1
+                                });
+                                const el = fs.getElement();
+                                if (el) {
+                                    el.classList.add('flight-path-selected');
+                                    fs.bringToFront();
+                                }
+                            });
+                            trackSections.forEach(ts => {
+                                ts.setStyle({
+                                    opacity: (isDark || activeLayer === 'satellite') ? 0.6 : 0.7,
+                                    weight: 2 + (dynamicWeight * 0.3)
+                                });
+                            });
+                        });
+                         
+                        hitLine.on('mouseout', () => {
+                            flowSections.forEach(fs => {
+                                fs.setStyle({
+                                    weight: dynamicWeight,
+                                    opacity: animateRoutes ? 0.9 : 0.65
+                                });
+                                const el = fs.getElement();
+                                if (el) el.classList.remove('flight-path-selected');
+                            });
+                            trackSections.forEach(ts => {
+                                ts.setStyle({
+                                    opacity: (isDark || activeLayer === 'satellite') ? 0.2 : 0.3,
+                                    weight: animateRoutes ? (1 + (dynamicWeight * 0.2)) : 0.5
+                                });
+                            });
                         });
 
-                        marker.on('click', () => {
-                            map.setView([cluster.lat, cluster.lng], map.getZoom() + 2);
-                        });
+                        hitLine.on('click', () => onTripClick && onTripClick(trip.id));
                     }
                 });
-            } else {
-                // Draw normal unclustered circles
-                rawPoints.forEach(pt => {
+            }
+        });
+    }, [trips, viewMode, onTripClick, routeFrequencies, showFrequencyWeight, animateRoutes, isDark, activeLayer, showGradientRoutes, enableRoadTracing, osrmCache, showLandSeaRoutes, proportionalArcThickness]);
+
+    // Handle City Markers & Clusters Rendering (Separated to enable zero-lag map panning and native zoom rendering)
+    useEffect(() => {
+        if (!mapInstance.current || !markerLayerGroupRef.current) return;
+        const map = mapInstance.current;
+        const markerGroup = markerLayerGroupRef.current;
+
+        markerGroup.clearLayers();
+
+        if (!showCityMarkers || rawPoints.length === 0) return;
+
+        if (clusterMode) {
+            const clusters = performClustering(map, rawPoints, 50);
+            clusters.forEach(cluster => {
+                if (cluster.points.length === 1) {
+                    const pt = cluster.points[0];
                     const markerColor = pt.color || (isDark ? '#e2e8f0' : '#1e293b');
                     const markerRadius = hideAirportCircles ? 0.1 : (pt.isEndpoint ? airportCircleSize + 2 : airportCircleSize);
                     const markerOpacity = hideAirportCircles ? 0 : 1;
-                    const marker = L.circleMarker([pt.lat, pt.lng], {
+                    const marker = L.circleMarker([cluster.lat, cluster.lng], {
                         radius: markerRadius,
                         fillColor: pt.isEndpoint ? ((isDark || activeLayer === 'satellite') ? '#000000' : '#ffffff') : markerColor,
                         color: markerColor,
                         weight: hideAirportCircles ? 0 : 2,
                         fillOpacity: markerOpacity,
                         opacity: markerOpacity
-                    }).addTo(map);
+                    }).addTo(markerGroup);
 
                     marker.bindTooltip(pt.name, {
                         direction: 'top',
@@ -1145,11 +1083,79 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                     if (pt.tripId && onTripClick) {
                         marker.on('click', () => onTripClick(pt.tripId!));
                     }
-                });
-            }
-        }
+                } else {
+                    const clusterIcon = L.divIcon({
+                        html: `<div class="w-8 h-8 rounded-full bg-blue-600/35 text-blue-700 border-2 border-blue-600 dark:bg-blue-400/25 dark:text-blue-200 dark:border-blue-400 flex items-center justify-center text-xs font-black shadow-lg shadow-blue-500/15 hover:scale-110 transition-transform">
+                            <span>${cluster.points.length}</span>
+                        </div>`,
+                        className: 'custom-cluster-icon',
+                        iconSize: [32, 32],
+                        iconAnchor: [16, 16]
+                    });
 
-    }, [trips, onTripClick, routeFrequencies, showFrequencyWeight, animateRoutes, isDark, activeLayer, showCountries, visitedCountries, geoJsonData, viewMode, visitedPlaces, showCityMarkers, showLandSeaRoutes, localShowLandSeaRoutes, clusterMode, mapZoom, showGradientRoutes, enableRoadTracing, osrmCache]);
+                    const marker = L.marker([cluster.lat, cluster.lng], { icon: clusterIcon }).addTo(markerGroup);
+
+                    const tooltipContent = `
+                        <div class="font-sans p-2 select-none pointer-events-none text-left">
+                            <div class="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 border-b border-white/10 pb-1">Cluster (${cluster.points.length} Locations)</div>
+                            <div class="space-y-1 max-h-40 overflow-y-auto pr-1">
+                                ${cluster.points.slice(0, 8).map(p => `<div class="text-xs font-bold text-white flex items-center gap-1.5">● ${p.name}</div>`).join('')}
+                                ${cluster.points.length > 8 ? `<div class="text-[10px] text-gray-400 italic font-medium pl-3">+ ${cluster.points.length - 8} more</div>` : ''}
+                            </div>
+                            <div class="text-[9px] text-blue-400 font-extrabold uppercase mt-2">Click to Zoom Sector</div>
+                        </div>
+                    `;
+                    marker.bindTooltip(tooltipContent, {
+                        direction: 'top',
+                        className: 'bg-black/95 text-white border border-white/10 shadow-2xl rounded-xl backdrop-blur-md px-1 py-1'
+                    });
+
+                    marker.on('click', () => {
+                        map.setView([cluster.lat, cluster.lng], map.getZoom() + 2);
+                    });
+                }
+            });
+        } else {
+            rawPoints.forEach(pt => {
+                const markerColor = pt.color || (isDark ? '#e2e8f0' : '#1e293b');
+                const markerRadius = hideAirportCircles ? 0.1 : (pt.isEndpoint ? airportCircleSize + 2 : airportCircleSize);
+                const markerOpacity = hideAirportCircles ? 0 : 1;
+                const marker = L.circleMarker([pt.lat, pt.lng], {
+                    radius: markerRadius,
+                    fillColor: pt.isEndpoint ? ((isDark || activeLayer === 'satellite') ? '#000000' : '#ffffff') : markerColor,
+                    color: markerColor,
+                    weight: hideAirportCircles ? 0 : 2,
+                    fillOpacity: markerOpacity,
+                    opacity: markerOpacity
+                }).addTo(markerGroup);
+
+                marker.bindTooltip(pt.name, {
+                    direction: 'top',
+                    className: 'bg-[#0f0f12]/95 text-white border border-white/10 shadow-xl text-xs font-bold px-3 py-1.5 rounded-lg'
+                });
+
+                marker.on('mouseover', () => {
+                    marker.setStyle({
+                        radius: pt.isEndpoint ? 9 : 7,
+                        weight: 4,
+                        color: isDark ? '#ffffff' : '#000000',
+                    });
+                });
+
+                marker.on('mouseout', () => {
+                    marker.setStyle({
+                        radius: pt.isEndpoint ? 6 : 4,
+                        weight: 2,
+                        color: markerColor,
+                    });
+                });
+
+                if (pt.tripId && onTripClick) {
+                    marker.on('click', () => onTripClick(pt.tripId!));
+                }
+            });
+        }
+    }, [rawPoints, clusterMode, showCityMarkers, hideAirportCircles, airportCircleSize, isDark, activeLayer, mapZoom, onTripClick]);
 
     const handleZoomIn = () => mapInstance.current?.zoomIn();
     const handleZoomOut = () => mapInstance.current?.zoomOut();

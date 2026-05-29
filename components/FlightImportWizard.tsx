@@ -1189,14 +1189,9 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
 
                         const handleToggleSelectAll = () => {
                             const isAllSelected = displayedImportFlights.every(({ index }) => selectedImportIndexes.has(index));
-                            const updated = new Set(selectedImportIndexes);
-                            if (isAllSelected) {
-                                // deselect all displayed flights
-                                displayedImportFlights.forEach(({ index }) => {
-                                    updated.delete(index);
-                                });
-                            } else {
-                                // select all displayed flights
+                            const updated = new Set<number>();
+                            if (!isAllSelected) {
+                                // select all displayed flights and clear others so only filtered results are selected
                                 displayedImportFlights.forEach(({ index }) => {
                                     updated.add(index);
                                 });

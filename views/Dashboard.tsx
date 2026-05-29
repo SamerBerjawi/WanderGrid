@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, lazy, Suspense } from 'react';
 import { Card, Button } from '../components/ui';
-import { ExpeditionMap3D } from '../components/ExpeditionMap3D';
-import { ExpeditionMap } from '../components/ExpeditionMap';
+const ExpeditionMap = lazy(() => import('../components/ExpeditionMap').then(m => ({ default: m.ExpeditionMap })));
+const ExpeditionMap3D = lazy(() => import('../components/ExpeditionMap3D').then(m => ({ default: m.ExpeditionMap3D })));
 import { FlightTrackerModal } from '../components/FlightTrackerModal';
 import { dataService } from '../services/mockDb';
 import { User, Trip, EntitlementType, PublicHoliday } from '../types';
@@ -50,6 +50,25 @@ const saveCoordCache = (cache: Map<string, { lat: number, lng: number }>) => {
     } catch (e) {
         console.warn("Failed to save coord cache", e);
     }
+};
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 15 },
+  show: { 
+    opacity: 1, 
+    y: 0, 
+    transition: { type: "spring", stiffness: 300, damping: 25 } 
+  }
 };
 
 export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }) => {
@@ -603,27 +622,34 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
             
             {/* Real Space 3D Expedition Globe / 2D Map (Col-span 2) */}
             <div className="lg:col-span-2 relative h-[31rem] rounded-[2.5rem] overflow-hidden border border-zinc-200/50 dark:border-white/5 shadow-xl bg-zinc-100/40 dark:bg-zinc-950/20 backdrop-blur-md group">
-                {mapViewMode === '3d' ? (
-                    <ExpeditionMap3D 
-                        trips={trips.filter(t => t.status !== 'Planning' && t.status !== 'Cancelled')} 
-                        animateRoutes={true} 
-                        onTripClick={onTripClick}
-                        showGradientRoutes={globalGradientRoutes}
-                        onToggleGradientRoutes={(val) => setGlobalGradientRoutes(val)} 
-                    />
-                ) : (
-                    <ExpeditionMap 
-                        trips={trips.filter(t => t.status !== 'Planning' && t.status !== 'Cancelled')} 
-                        animateRoutes={false} 
-                        showFrequencyWeight={false}
-                        onTripClick={onTripClick}
-                        showCountries={false}
-                        clusterMode={false}
-                        visitedCountries={visitedData.map(vd => vd.code)}
-                        showGradientRoutes={globalGradientRoutes}
-                        onToggleGradientRoutes={(val) => setGlobalGradientRoutes(val)}
-                    />
-                )}
+                <Suspense fallback={
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900/10 dark:bg-black/40 space-y-4">
+                        <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Loading Expedition Coordinates...</p>
+                    </div>
+                }>
+                    {mapViewMode === '3d' ? (
+                        <ExpeditionMap3D 
+                            trips={trips.filter(t => t.status !== 'Planning' && t.status !== 'Cancelled')} 
+                            animateRoutes={true} 
+                            onTripClick={onTripClick}
+                            showGradientRoutes={globalGradientRoutes}
+                            onToggleGradientRoutes={(val) => setGlobalGradientRoutes(val)} 
+                        />
+                    ) : (
+                        <ExpeditionMap 
+                            trips={trips.filter(t => t.status !== 'Planning' && t.status !== 'Cancelled')} 
+                            animateRoutes={false} 
+                            showFrequencyWeight={false}
+                            onTripClick={onTripClick}
+                            showCountries={false}
+                            clusterMode={false}
+                            visitedCountries={visitedData.map(vd => vd.code)}
+                            showGradientRoutes={globalGradientRoutes}
+                            onToggleGradientRoutes={(val) => setGlobalGradientRoutes(val)}
+                        />
+                    )}
+                </Suspense>
                 
                 {/* Visual Map Switch and Route Gradient Tactile Controller bar */}
                 <div className="absolute bottom-6 left-6 z-20 flex flex-wrap items-center gap-3">
@@ -878,16 +904,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                 ) : (
                     <motion.div 
                         key="analytics-panel"
-                        initial={{ opacity: 0, y: 12 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -12 }}
-                        transition={{ duration: 0.25 }}
-                        className="space-y-8 animate-fade-in"
+                        variants={containerVariants}
+                        initial="hidden"
+                        animate="show"
+                        exit="hidden"
+                        className="space-y-8"
                     >
                         {/* ========================================================= */}
                         {/* FLIGHT ANALYTICS BENTO GRID */}
                         {/* ========================================================= */}
-                        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                        <motion.div variants={itemVariants} className="grid grid-cols-1 xl:grid-cols-3 gap-8">
                             
                             {/* Cumulative trend span */}
                             <div className="xl:col-span-2">
@@ -899,18 +925,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                 <DonutChart title="Preferred Seat Profile" data={stats.seatCounts} />
                             </div>
 
-                        </div>
+                        </motion.div>
 
                         {/* Standard Quick Stats Panel */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                             <StatCard title="Continuous Air Journeys" value={stats.totalFlights} icon="flight_takeoff" color="blue" />
                             <StatCard title="Accumulated Coverage" value={`${(stats.totalDistance / 1000).toFixed(1)}k km`} subtitle={`${stats.earthCircumnavigations}x Globe Rotations`} icon="public" color="emerald" />
                             <StatCard title="Total Flight Hours" value={`${stats.totalDurationHours}h`} subtitle={`${stats.daysInAir} Days aloft`} icon="schedule" color="purple" />
                             <StatCard title="Main Airport Hub" value={stats.topAirports[0]?.label || '-'} subtitle={`${stats.topAirports[0]?.count || 0} landings recorded`} icon="place" color="amber" />
-                        </div>
+                        </motion.div>
 
                         {/* Record flight metrics details */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-2 lg:grid-cols-3 gap-6">
                             <div className="lg:col-span-1">
                                 <ExtremeFlightCard type="Longest" flight={stats.longestFlight} color="indigo" />
                             </div>
@@ -939,13 +965,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </motion.div>
 
                         {/* Additional Donut Analysis and TopList Airport Details nested inside flight analysis */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                             <TopList title="Most Landed Airport Gateways" items={stats.topAirports} icon="apartment" color="amber" />
                             <TopList title="Primary Registered Airlines" items={stats.topAirlines} icon="flight" color="blue" />
-                        </div>
+                        </motion.div>
 
                     </motion.div>
                 )}

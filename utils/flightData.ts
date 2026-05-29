@@ -736,7 +736,11 @@ export function getFlightStatusTags(flight: Transport) {
 
   let hasActual = false;
 
-  if (actualDepVal) {
+  if (flight.actualDepartureTime) {
+    depActualTime = flight.actualDepartureTime;
+    depActualTimestamp = new Date(`${depScheduledDate}T${flight.actualDepartureTime}:00`).getTime();
+    hasActual = true;
+  } else if (actualDepVal) {
     const parsed = parseDateTimeStr(actualDepVal, depScheduledDate);
     if (parsed.time) {
       depActualDate = parsed.date;
@@ -746,7 +750,11 @@ export function getFlightStatusTags(flight: Transport) {
     }
   }
 
-  if (actualArrVal) {
+  if (flight.actualArrivalTime) {
+    arrActualTime = flight.actualArrivalTime;
+    arrActualTimestamp = new Date(`${arrScheduledDate}T${flight.actualArrivalTime}:00`).getTime();
+    hasActual = true;
+  } else if (actualArrVal) {
     const parsed = parseDateTimeStr(actualArrVal, arrScheduledDate);
     if (parsed.time) {
       arrActualDate = parsed.date;
@@ -776,10 +784,10 @@ export function getFlightStatusTags(flight: Transport) {
 
   if (!hasActual) {
     return {
-      label: 'ON TIME' as const,
-      bgClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20',
-      textClass: 'text-emerald-700 dark:text-emerald-400',
-      dotClass: 'bg-emerald-500',
+      label: 'SCHEDULED' as const,
+      bgClass: 'bg-zinc-150 text-zinc-500 dark:bg-zinc-800/60 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700/50 hover:bg-zinc-200/50 dark:hover:bg-zinc-700/50',
+      textClass: 'text-zinc-500 dark:text-zinc-400 font-extrabold',
+      dotClass: 'bg-zinc-400 dark:bg-zinc-500',
       depScheduledDate,
       depScheduledTime,
       depActualDate,

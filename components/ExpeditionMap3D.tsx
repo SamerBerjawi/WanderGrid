@@ -397,7 +397,7 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({
                 arcStartLat="startLat" arcStartLng="startLng" arcEndLat="endLat" arcEndLng="endLng"
                 arcColor="color" arcDashLength={animateRoutes ? 0.4 : 1} arcDashGap={animateRoutes ? 0.2 : 0}
                 arcDashAnimateTime={animateRoutes ? 2000 : 0} arcStroke={showFrequencyWeight ? 0.45 : 0.3} arcAltitude="alt"
-                arcResolution={128}
+                arcResolution={32}
                 pointsData={points} pointLat="lat" pointLng="lng" pointColor="color" pointRadius="radius" pointAltitude={0.01} pointResolution={2}
                 onArcClick={(arc: any) => onTripClick && onTripClick(arc.tripId)}
                 arcLabel={(arc: any) => `<div style="background: rgba(0,0,0,0.8); color: white; padding: 4px 8px; border-radius: 4px; font-family: sans-serif; font-size: 12px; border: 1px solid rgba(255,255,255,0.2);"><strong>${arc.tripName}</strong><br/>${arc.name}</div>`}

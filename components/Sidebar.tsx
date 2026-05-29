@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { ViewState, Trip, User } from '../types';
 import { dataService } from '../services/mockDb';
+import { motion } from 'motion/react';
 
 interface SidebarProps {
   currentView: ViewState;
@@ -94,22 +95,30 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
             )}
           </div>
 
-          <nav className="flex flex-col gap-2">
+          <nav className={`flex flex-col gap-2 ${isCollapsed ? 'items-center' : ''}`}>
             {navItems.map((item) => (
               <button
                 key={item.value}
                 onClick={() => onNavigate(item.value)}
-                className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 text-base font-bold select-none cursor-pointer
+                className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl text-base font-bold select-none cursor-pointer relative transition-all duration-200
                   ${currentView === item.value 
-                    ? 'bg-white/60 dark:bg-white/[0.12] shadow-sm text-blue-600 dark:text-blue-400 border border-white/20 dark:border-white/10 scale-[1.02]' 
-                    : 'text-gray-500 hover:bg-white/10 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white border border-transparent'
+                    ? 'text-blue-600 dark:text-blue-400 font-extrabold z-10 scale-[1.01]' 
+                    : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-white/5 dark:hover:bg-white/[0.03] z-0'
                   }
-                  ${isCollapsed ? 'justify-center px-2' : ''}
+                  ${isCollapsed ? 'justify-center px-0 w-12 h-12 border border-transparent' : 'w-full'}
                 `}
                 title={isCollapsed ? item.label : undefined}
               >
-                <span className="material-icons-outlined text-2xl opacity-90">{item.icon}</span>
-                {!isCollapsed && <span>{item.label}</span>}
+                {currentView === item.value && (
+                  <motion.div
+                    layoutId="activeTabGlow"
+                    className="absolute inset-0 bg-white/60 dark:bg-white/[0.12] rounded-2xl shadow-sm border border-white/20 dark:border-white/10"
+                    transition={{ type: "spring", stiffness: 385, damping: 32 }}
+                    style={{ originY: "center" }}
+                  />
+                )}
+                <span className="material-icons-outlined text-2xl opacity-90 relative z-20 shrink-0">{item.icon}</span>
+                {!isCollapsed && <span className="relative z-20">{item.label}</span>}
               </button>
             ))}
           </nav>
@@ -169,12 +178,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
               )
           ) : (
                nextTrip ? (
-                  <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 dark:bg-indigo-500/20 flex items-center justify-center text-white shadow-md cursor-help border border-white/10" title={`Next: ${nextTrip.name} (${daysUntil} days)`}>
-                      <span className="text-xl">{nextTrip.icon || '✈️'}</span>
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 dark:bg-indigo-500/20 flex items-center justify-center text-white shadow-md cursor-help border border-gray-200/20 dark:border-white/10" title={`Next: ${nextTrip.name} (${daysUntil} days)`}>
+                      <span className="text-xl leading-none">{nextTrip.icon || '✈️'}</span>
                   </div>
                ) : (
-                  <div className="w-12 h-12 rounded-2xl bg-gray-150 dark:bg-white/5 flex items-center justify-center text-gray-450 border border-dashed border-gray-250 dark:border-white/5" title="No trips planned">
-                      <span className="material-icons-outlined text-xl">explore_off</span>
+                  <div className="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-400 border border-dashed border-gray-200 dark:border-white/10" title="No trips planned">
+                      <span className="material-icons-outlined text-xl leading-none">explore_off</span>
                   </div>
                )
           )}
@@ -184,8 +193,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
               isDbMode 
               ? 'border-emerald-500/20 text-emerald-600 dark:text-emerald-400 dark:bg-emerald-500/5' 
               : 'border-amber-500/20 text-amber-600 dark:text-amber-400 dark:bg-amber-500/5'
-          } ${isCollapsed ? 'justify-center px-0 w-12 h-10' : 'w-full'}`}>
-              <span className="relative flex h-2 w-2">
+          } ${isCollapsed ? 'justify-center px-0 w-12 h-12' : 'w-full'}`}>
+              <span className="relative flex h-2 w-2 shrink-0">
                   <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isDbMode ? 'bg-emerald-400' : 'bg-amber-400'}`}></span>
                   <span className={`relative inline-flex rounded-full h-2 w-2 ${isDbMode ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
               </span>
@@ -199,20 +208,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
 
           <button 
               onClick={handleThemeCycle}
-              className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-200 text-base font-bold text-gray-500 hover:bg-white/20 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white w-full border border-gray-100/10 dark:border-white/5 hover:border-gray-200/20 dark:hover:border-white/10 select-none cursor-pointer ${isCollapsed ? 'justify-center px-0' : ''}`}
+              className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-200 text-base font-bold text-gray-500 hover:bg-white/20 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white border border-gray-100/10 dark:border-white/5 hover:border-gray-200/20 dark:hover:border-white/10 select-none cursor-pointer ${isCollapsed ? 'justify-center px-0 w-12 h-12' : 'w-full'}`}
               title={isCollapsed ? getThemeLabel() : undefined}
           >
-              <span className="material-icons-outlined text-2xl opacity-80">{getThemeIcon()}</span>
+              <span className="material-icons-outlined text-2xl opacity-80 shrink-0">{getThemeIcon()}</span>
               {!isCollapsed && <span>{getThemeLabel()}</span>}
           </button>
 
           {onLogout && (
               <button 
                   onClick={onLogout}
-                  className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-200 text-base font-bold text-rose-500 hover:bg-rose-50/50 dark:hover:bg-rose-950/20 w-full border border-transparent hover:border-rose-100/30 dark:hover:border-rose-950/30 cursor-pointer ${isCollapsed ? 'justify-center px-0' : ''}`}
+                  className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-200 text-base font-bold text-rose-500 hover:bg-rose-50/50 dark:hover:bg-rose-950/20 border border-transparent hover:border-rose-100/30 dark:hover:border-rose-950/30 cursor-pointer ${isCollapsed ? 'justify-center px-0 w-12 h-12' : 'w-full'}`}
                   title="Logout"
               >
-                  <span className="material-icons-outlined text-2xl opacity-80">logout</span>
+                  <span className="material-icons-outlined text-2xl opacity-80 shrink-0">logout</span>
                   {!isCollapsed && <span>Logout</span>}
               </button>
           )}
@@ -236,7 +245,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
               <span className="material-icons-outlined text-2xl leading-none">{item.icon}</span>
               <span className="text-[9px] font-black uppercase tracking-wider mt-1">{item.label.substring(0, 4)}</span>
               {isActive && (
-                <div className="absolute -bottom-1 w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_0_rgba(59,130,246,0.8)]" />
+                <motion.div 
+                  layoutId="mobileActiveIndicatorDot"
+                  className="absolute -bottom-1 w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_0_rgba(59,130,246,0.8)]"
+                  transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                />
               )}
             </button>
           );
@@ -255,7 +268,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
             </div>
             <span className="text-[9px] font-black uppercase tracking-wider mt-1">Me</span>
             {currentView === ViewState.USER_DETAIL && (
-              <div className="absolute -bottom-1 w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_0_rgba(59,130,246,0.8)]" />
+              <motion.div 
+                layoutId="mobileActiveIndicatorDot"
+                className="absolute -bottom-1 w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_0_rgba(59,130,246,0.8)]"
+                transition={{ type: "spring", stiffness: 350, damping: 25 }}
+              />
             )}
           </button>
         )}

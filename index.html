@@ -97,8 +97,181 @@
         --dark-card: rgba(23, 23, 23, 0.6);
       }
       .dark {
-        --light-card: rgba(23, 23, 23, 0.6);
+        --light-card: rgba(14, 14, 18, 0.85);
+        --dark-card: rgba(14, 14, 18, 0.85);
+        background: #050508 !important;
       }
+      
+      /* --- PREMIUM OBSIDIAN DARK MODE DEPTH & CONTRASTS --- */
+      
+      /* 1. Deep Glassmorphic Solid-Feel Cards */
+      .dark .dark\:bg-zinc-900\/40,
+      .dark .dark\:bg-zinc-900\/30,
+      .dark .dark\:bg-zinc-900\/50,
+      .dark .dark\:bg-zinc-900\/60,
+      .dark .dark\:bg-zinc-900\/65,
+      .dark .dark\:bg-zinc-900\/70,
+      .dark .dark\:bg-zinc-900\/80,
+      .dark .dark\:bg-zinc-900\/90,
+      .dark .dark\:bg-zinc-950\/20,
+      .dark .dark\:bg-zinc-950\/35,
+      .dark .dark\:bg-slate-900\/20,
+      .dark .dark\:bg-slate-900\/80,
+      .dark .dark\:bg-gray-900\/40,
+      .dark .dark\:bg-gray-900\/50,
+      .dark .dark-card {
+        background-color: rgba(15, 15, 20, 0.86) !important;
+        backdrop-filter: blur(28px) !important;
+        -webkit-backdrop-filter: blur(28px) !important;
+        border-color: rgba(255, 255, 255, 0.08) !important;
+      }
+
+      /* Consistent styles for gray cards in gamification and details */
+      .dark .dark\:bg-gray-800,
+      .dark .dark\:bg-gray-900,
+      .dark .dark\:bg-zinc-850,
+      .dark .dark\:bg-zinc-800,
+      .dark .dark\:bg-zinc-800\/40,
+      .dark .dark\:bg-zinc-800\/10 {
+        background-color: rgba(22, 22, 30, 0.88) !important;
+        backdrop-filter: blur(28px) !important;
+        -webkit-backdrop-filter: blur(28px) !important;
+        border-color: rgba(255, 255, 255, 0.08) !important;
+      }
+
+      /* Active hovers on primary grid tiles */
+      .dark .dark\:bg-zinc-900\/40:hover,
+      .dark .dark\:bg-zinc-900\/30:hover,
+      .dark .dark\:bg-zinc-900\/60:hover,
+      .dark .dark\:bg-gray-800:hover,
+      .dark .dark\:bg-gray-900\/40:hover {
+        border-color: rgba(255, 255, 255, 0.16) !important;
+        background-color: rgba(24, 24, 32, 0.92) !important;
+        box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.8), 
+                    0 0 0 1px rgba(255, 255, 255, 0.06) !important;
+      }
+
+      /* 2. Premium Light-Rim Highlights (Depth Layers similar to light mode card shadowing) */
+      .dark .shadow-xl {
+        box-shadow: 
+          inset 0 1px 1px rgba(255, 255, 255, 0.07),
+          0 1px 2px rgba(0, 0, 0, 0.4),
+          0 12px 30px -10px rgba(0, 0, 0, 0.85) !important;
+      }
+      
+      .dark .shadow-2xl {
+        box-shadow: 
+          inset 0 1px 2px rgba(255, 255, 255, 0.09),
+          0 1px 3px rgba(0, 0, 0, 0.5),
+          0 24px 48px -12px rgba(0, 0, 0, 0.95) !important;
+      }
+
+      .dark .shadow-sm, 
+      .dark .shadow-md,
+      .dark [class*="shadow-"] {
+        box-shadow: 
+          inset 0 1px 1px rgba(255, 255, 255, 0.06),
+          0 8px 24px -8px rgba(0, 0, 0, 0.7) !important;
+      }
+
+      /* 3. High-Contrast Crisp Borders */
+      .dark .dark\:border-white\/5 {
+        border-color: rgba(255, 255, 255, 0.08) !important;
+      }
+      .dark .dark\:border-white\/10 {
+        border-color: rgba(255, 255, 255, 0.12) !important;
+      }
+      .dark .border-zinc-200,
+      .dark .border-zinc-200\/50,
+      .dark .border-zinc-100\/40,
+      .dark .border-gray-200\/50,
+      .dark .border-gray-150\/40,
+      .dark .border-gray-100 {
+        border-color: rgba(255, 255, 255, 0.08) !important;
+      }
+
+      /* 4. Elegant Interactive Text Inputs & Form Select Dropdowns */
+      .dark input[type="text"], 
+      .dark input[type="search"], 
+      .dark input[type="email"], 
+      .dark input[type="password"], 
+      .dark textarea, 
+      .dark select {
+        background-color: rgba(10, 10, 14, 0.72) !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        color: #f8fafc !important;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+      }
+      
+      .dark input[type="text"]:focus, 
+      .dark input[type="search"]:focus, 
+      .dark input[type="email"]:focus, 
+      .dark textarea:focus, 
+      .dark select:focus {
+        background-color: rgba(8, 8, 10, 0.9) !important;
+        border-color: rgba(250, 154, 29, 0.75) !important; /* Brand glow style */
+        box-shadow: 
+          inset 0 2px 4px rgba(0, 0, 0, 0.4),
+          0 0 0 2px rgba(250, 154, 29, 0.25) !important;
+      }
+
+      .dark select option {
+        background-color: #0c0c0f !important;
+        color: #f8fafc !important;
+      }
+
+      /* 5. Complete Text Contrast Guarantee */
+      .dark .text-zinc-900,
+      .dark .text-gray-900,
+      .dark .text-black,
+      .dark .text-zinc-800,
+      .dark .text-gray-800,
+      .dark .text-neutral-800 {
+        color: #f8fafc !important; /* Pure soft crisp slate text */
+      }
+
+      .dark .text-zinc-500,
+      .dark .text-gray-500,
+      .dark .text-neutral-500 {
+        color: #94a3b8 !important; /* Highly readable secondary gray */
+      }
+
+      .dark .text-zinc-400,
+      .dark .text-gray-400,
+      .dark .text-neutral-400 {
+        color: #cbd5e1 !important; /* Premium information value text */
+      }
+
+      .dark .text-zinc-300,
+      .dark .text-gray-300,
+      .dark .text-neutral-300 {
+        color: #f1f5f9 !important; /* Extremely high clarity details */
+      }
+
+      /* Soft separators and dividers */
+      .dark .border-b, .dark .border-t, .dark .border-l, .dark .border-r {
+        border-color: rgba(255, 255, 255, 0.08) !important;
+      }
+
+      /* Lists inside flights and planners should pop */
+      .dark .bg-zinc-50, 
+      .dark .bg-zinc-100, 
+      .dark .bg-zinc-100\/50, 
+      .dark .bg-zinc-100\/70,
+      .dark .bg-gray-50,
+      .dark .bg-gray-50\/50,
+      .dark .bg-neutral-50 {
+        background-color: rgba(255, 255, 255, 0.03) !important;
+        border-color: rgba(255, 255, 255, 0.06) !important;
+      }
+
+      /* Mobile bottom menu enhancements */
+      .dark .bg-zinc-950\/35 {
+        background-color: rgba(12, 12, 16, 0.95) !important;
+        border-color: rgba(255, 255, 255, 0.1) !important;
+      }
+      
       .material-symbols-filled {
         font-variation-settings: 'FILL' 1;
       }

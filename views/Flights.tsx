@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  Search, Filter, Plus, Calendar, MapPin, Trash2, Edit2, Check, Square, CheckSquare, Edit3,
+  Search, Filter, Plus, Calendar, MapPin, Trash2, Edit2, Check, Square, CheckSquare, Edit3, ChevronRight,
   ArrowRight, Plane, Landmark, Award, Clock, DollarSign, BarChart2, Briefcase, FileText, Compass, Heart, HelpCircle, RefreshCw, Upload, Download, Tag, UserCheck, Star, Sparkles, Grid, List,
   ArrowUpRight, ArrowDownLeft, FolderPlus, FolderMinus
 } from 'lucide-react';
@@ -363,6 +363,8 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
   const [formSeatNumber, setFormSeatNumber] = useState('');
   const [formSeatType, setFormSeatType] = useState<'Window' | 'Aisle' | 'Middle'>('Window');
   const [formCost, setFormCost] = useState<string>('');
+  const [formActualDepartureTime, setFormActualDepartureTime] = useState('');
+  const [formActualArrivalTime, setFormActualArrivalTime] = useState('');
 
   // State to force-refresh display names when dynamic AviationStack lookups resolve
   const [, setMetadataVersion] = useState(0);
@@ -449,6 +451,8 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
       setFormSeatNumber(record.flight.seatNumber || '');
       setFormSeatType(record.flight.seatType || 'Window');
       setFormCost(record.flight.cost ? record.flight.cost.toString() : '');
+      setFormActualDepartureTime(record.flight.actualDepartureTime || '');
+      setFormActualArrivalTime(record.flight.actualArrivalTime || '');
     } else {
       setEditingFlight(null);
       const draftStr = localStorage.getItem('flightFormDraft');
@@ -474,6 +478,8 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
              setFormSeatNumber(draft.formSeatNumber || '');
              setFormSeatType(draft.formSeatType || 'Window');
              setFormCost(draft.formCost || '');
+             setFormActualDepartureTime(draft.formActualDepartureTime || '');
+             setFormActualArrivalTime(draft.formActualArrivalTime || '');
              loaded = true;
           }
         } catch (e) {
@@ -498,6 +504,8 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
         setFormSeatNumber('');
         setFormSeatType('Window');
         setFormCost('');
+        setFormActualDepartureTime('');
+        setFormActualArrivalTime('');
       }
     }
     setIsEditing(true);
@@ -534,6 +542,8 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
         departureTime: formDepartureTime,
         arrivalDate: formArrivalDate || formDepartureDate,
         arrivalTime: formArrivalTime,
+        actualDepartureTime: formActualDepartureTime || undefined,
+        actualArrivalTime: formActualArrivalTime || undefined,
         duration: formDuration,
         travelClass: formClass,
         seatNumber: formSeatNumber,
@@ -1365,6 +1375,298 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
     );
   };
 
+  const formatTo12Hour = (timeStr: string | undefined): string => {
+    if (!timeStr) return '';
+    const parts = timeStr.split(':');
+    if (parts.length < 2) return timeStr;
+    let hrs = parseInt(parts[0], 10);
+    const mins = parts[1];
+    if (isNaN(hrs)) return timeStr;
+    const ampm = hrs >= 12 ? 'PM' : 'AM';
+    hrs = hrs % 12;
+    if (hrs === 0) hrs = 12;
+    const paddedHrs = hrs < 10 ? `0${hrs}` : hrs;
+    return `${paddedHrs}:${mins} ${ampm}`;
+  };
+
+  const getTimeDiffMinutes = (actualTime?: string, scheduledTime?: string): number => {
+    if (!actualTime || !scheduledTime) return 0;
+    const partsActual = actualTime.split(':');
+    const partsSched = scheduledTime.split(':');
+    if (partsActual.length < 2 || partsSched.length < 2) return 0;
+    const actH = parseInt(partsActual[0], 10);
+    const actM = parseInt(partsActual[1], 10);
+    const schedH = parseInt(partsSched[0], 10);
+    const schedM = parseInt(partsSched[1], 10);
+    if (isNaN(actH) || isNaN(actM) || isNaN(schedH) || isNaN(schedM)) return 0;
+    return (actH * 60 + actM) - (schedH * 60 + schedM);
+  };
+
+  const renderFlightyLegRow = (flight: Transport, idx: number, legsList: Transport[], trip: Trip) => {
+    const statusInfo = getFlightStatusTags(flight);
+
+    // Compute 12-hour formatted times
+    const scheduledDepStr = formatTo12Hour(statusInfo.depScheduledTime);
+    const scheduledArrStr = formatTo12Hour(statusInfo.arrScheduledTime);
+    const actualDepStr = statusInfo.depActualTime ? formatTo12Hour(statusInfo.depActualTime) : scheduledDepStr;
+    const actualArrStr = statusInfo.arrActualTime ? formatTo12Hour(statusInfo.arrActualTime) : scheduledArrStr;
+
+    // Check if flight is delayed/different
+    const isDepartureDelay = statusInfo.depActualTime && statusInfo.depActualTime !== statusInfo.depScheduledTime;
+    const isArrivalDelay = statusInfo.arrActualTime && statusInfo.arrActualTime !== statusInfo.arrScheduledTime;
+
+    // Calculate exact delay minutes based on timestamps from status tags
+    const depDiffMinutes = getTimeDiffMinutes(statusInfo.depActualTime, statusInfo.depScheduledTime);
+    const arrDiffMinutes = getTimeDiffMinutes(statusInfo.arrActualTime, statusInfo.arrScheduledTime);
+    const delayMins = arrDiffMinutes || depDiffMinutes;
+
+    const hasActualData = !!(flight.actualDepartureTime || flight.actualArrivalTime || 
+                             flight.customFields?.find(f => f.key.toLowerCase().includes('actual departure') || f.key.toLowerCase() === 'actual_departure')?.value ||
+                             flight.customFields?.find(f => f.key.toLowerCase().includes('actual arrival') || f.key.toLowerCase() === 'actual_arrival')?.value);
+
+    let delayLabel = "on time";
+    let delayColorClass = "text-emerald-600 dark:text-emerald-400 font-black";
+    if (hasActualData) {
+      if (delayMins > 0) {
+        delayLabel = `${delayMins}m late`;
+        delayColorClass = "text-rose-500 font-black";
+      } else if (delayMins < 0) {
+        delayLabel = `${Math.abs(delayMins)}m early`;
+        delayColorClass = "text-emerald-600 dark:text-emerald-400 font-black";
+      } else {
+        delayLabel = "on time";
+        delayColorClass = "text-emerald-600 dark:text-emerald-400 font-black";
+      }
+    } else {
+      delayLabel = "scheduled";
+      delayColorClass = "text-zinc-400 dark:text-zinc-500 font-extrabold";
+    }
+
+    return (
+      <div 
+        key={flight.id}
+        onClick={() => {
+          if (isMultiEditing) {
+            const newSelected = new Set(selectedFlightIds);
+            if (newSelected.has(flight.id)) {
+              newSelected.delete(flight.id);
+            } else {
+              newSelected.add(flight.id);
+            }
+            setSelectedFlightIds(newSelected);
+          }
+        }}
+        className={`flex flex-col gap-3.5 relative transition-all group py-1.5 ${
+          isMultiEditing ? 'cursor-pointer' : ''
+        }`}
+      >
+        {/* ROW 1: Logo, Flight number, and Status Badge */}
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2.5">
+            {isMultiEditing && (
+              <div 
+                className="flex items-center justify-center select-none mr-1 shrink-0"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const newSelected = new Set(selectedFlightIds);
+                  if (newSelected.has(flight.id)) {
+                    newSelected.delete(flight.id);
+                  } else {
+                    newSelected.add(flight.id);
+                  }
+                  setSelectedFlightIds(newSelected);
+                }}
+              >
+                {selectedFlightIds.has(flight.id) ? (
+                  <CheckSquare className="w-5 h-5 text-blue-500" />
+                ) : (
+                  <Square className="w-5 h-5 text-zinc-400 hover:text-blue-500" />
+                )}
+              </div>
+            )}
+            <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center border border-zinc-200/90 dark:border-white/10 overflow-hidden shrink-0 shadow-xs">
+              <AirlineLogo provider={flight.provider} fallback={<Plane className="w-3.5 h-3.5 text-zinc-400" />} />
+            </div>
+            <div className="flex flex-col">
+              <span className="font-extrabold text-[13px] text-zinc-950 dark:text-zinc-100 uppercase tracking-tight leading-tight">
+                {flight.provider ? (getCarrierName(flight.provider) || flight.providerCode || flight.provider) : 'Carrier'}
+              </span>
+              <span className="font-mono text-[11px] text-zinc-450 dark:text-zinc-500 leading-none mt-0.5">
+                Flight {flight.identifier}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <span className={`px-2 py-0.5 rounded-md text-[10px] font-black tracking-widest ${statusInfo.bgClass} shadow-xs`}>
+              {statusInfo.label}
+            </span>
+            
+            {/* Action buttons (always visible or on hover) */}
+            <div className="flex gap-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-white/5 rounded-lg overflow-hidden shrink-0">
+              <button 
+                onClick={(e) => { e.stopPropagation(); openFlightForm({ flight, trip }); }} 
+                className="p-1.5 text-zinc-500 hover:text-blue-500 transition-colors cursor-pointer"
+                title="Edit Flight"
+              >
+                <Edit2 className="w-3.5 h-3.5" />
+              </button>
+              <button 
+                onClick={(e) => { e.stopPropagation(); handleDeleteFlight({ flight, trip }); }} 
+                className="p-1.5 text-zinc-500 hover:text-red-500 transition-colors cursor-pointer"
+                title="Delete Flight"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* ROW 2: Core Flighty Visuals (BEY -> FRA) */}
+        <div className="grid grid-cols-3 items-center py-2 bg-zinc-50/50 dark:bg-zinc-900/40 rounded-2xl px-4 border border-zinc-150 dark:border-white/5">
+          {/* Origin Side */}
+          <div className="flex flex-col text-left">
+            <span className="font-black text-2xl tracking-tight text-zinc-900 dark:text-zinc-50 leading-none">
+              {flight.origin}
+            </span>
+            <span className="text-[11px] font-bold text-zinc-450 dark:text-zinc-500 uppercase tracking-wide mt-1.5 leading-none truncate max-w-[95px]" title={getCityName(flight.origin)}>
+              {getCityName(flight.origin)}
+            </span>
+            <div className="mt-3 flex flex-wrap items-center gap-1.5 leading-none font-mono text-[12px]">
+              <span className={isDepartureDelay ? `text-rose-500 dark:text-rose-400 font-extrabold` : "font-extrabold text-zinc-800 dark:text-zinc-200"}>
+                {actualDepStr}
+              </span>
+              {isDepartureDelay && (
+                <span className="line-through opacity-50 text-zinc-400 dark:text-zinc-500 text-[10px]">
+                  {scheduledDepStr}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Plane & Delay indicators */}
+          <div className="flex flex-col items-center justify-center text-center">
+            <Plane className="w-5 h-5 text-zinc-400 dark:text-zinc-500 transform rotate-45 animate-pulse" />
+            <span className={`text-[10px] uppercase font-black tracking-widest mt-3 leading-none ${delayColorClass}`}>
+              {delayLabel}
+            </span>
+          </div>
+
+          {/* Destination Side */}
+          <div className="flex flex-col text-right items-end">
+            <span className="font-black text-2xl tracking-tight text-zinc-900 dark:text-zinc-50 leading-none">
+              {flight.destination}
+            </span>
+            <span className="text-[11px] font-bold text-zinc-450 dark:text-zinc-500 uppercase tracking-wide mt-1.5 leading-none truncate max-w-[95px]" title={getCityName(flight.destination)}>
+              {getCityName(flight.destination)}
+            </span>
+            <div className="mt-3 flex flex-wrap items-center justify-end gap-1.5 leading-none font-mono text-[12px] text-right">
+              <span className={isArrivalDelay ? `text-rose-500 dark:text-rose-400 font-extrabold` : "font-extrabold text-zinc-800 dark:text-zinc-200"}>
+                {actualArrStr}
+              </span>
+              {isArrivalDelay && (
+                <span className="line-through opacity-50 text-zinc-400 dark:text-zinc-500 text-[10px]">
+                  {scheduledArrStr}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Info detail bar: travel class, seat, exit-row */}
+        {(flight.travelClass || flight.seatNumber) && (
+          <div className="flex items-center gap-2 mt-0.5 px-2.5 py-1.5 bg-zinc-50 dark:bg-zinc-905 rounded-xl border border-zinc-200/55 dark:border-white/5 text-[11px] text-zinc-550 dark:text-zinc-400 self-start">
+            <span className="font-black uppercase tracking-widest text-[9px] text-zinc-400 dark:text-zinc-500">
+              {flight.travelClass || 'Economy'}
+            </span>
+            {flight.seatNumber && (
+              <>
+                <span className="inline-block w-1 h-1 rounded-full bg-zinc-350 dark:bg-zinc-700" />
+                <span className="font-mono font-bold text-amber-550 dark:text-amber-405">Seat {flight.seatNumber}</span>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderMobileTripContainer = (legs: Transport[], label: string, trip: Trip) => {
+    if (!legs || legs.length === 0) return null;
+    const startCity = getCityName(legs[0].origin);
+    const endCity = getCityName(legs[legs.length - 1].destination);
+    const flightCount = legs.length;
+    
+    // Format the date label elegantly like "Sun, Sep 2, 2012 · 3 flights"
+    let dateLabel = "";
+    if (legs[0].departureDate) {
+      const d = getFlightDepartureUtcDate(legs[0]);
+      const options: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' };
+      dateLabel = d.toLocaleDateString('en-US', options);
+    } else {
+      dateLabel = "Planned Route";
+    }
+
+    return (
+      <div className="flex flex-col gap-2.5 w-full mt-3">
+        {/* Date / Flight count heading */}
+        <div className="flex items-center justify-between px-1.5 text-[11px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
+          <span>{dateLabel}</span>
+          <span>{flightCount} {flightCount === 1 ? 'flight' : 'flights'}</span>
+        </div>
+
+        {/* Content Card resembling Flighty with beautiful ambient glow instead of white border */}
+        <div className="p-5 rounded-[2rem] bg-gradient-to-br from-blue-50/45 via-white/50 to-blue-50/10 dark:from-blue-950/10 dark:via-zinc-900/40 dark:to-blue-950/5 border-2 border-blue-500/20 dark:border-blue-400/15 shadow-md shadow-blue-500/5 flex flex-col gap-4">
+          {/* Card Route Title */}
+          <div className="flex items-center justify-between pb-3 border-b border-dashed border-zinc-200 dark:border-zinc-800">
+            <h4 className="font-black text-[15px] text-zinc-900 dark:text-zinc-50 flex items-center gap-1.5 leading-none">
+              <span>{startCity}</span>
+              <span className="text-zinc-400 dark:text-zinc-650 flex font-extrabold pb-0.5">→</span>
+              <span>{endCity}</span>
+            </h4>
+            <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase bg-zinc-100 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 border border-zinc-200/50 dark:border-white/5">
+              {label}
+            </span>
+          </div>
+
+          {/* Flights list */}
+          <div className="flex flex-col gap-3">
+            {legs.map((flight, idx) => {
+              const elements = [];
+              elements.push(renderFlightyLegRow(flight, idx, legs, trip));
+              
+              // Layover connector pill between this leg and next
+              if (idx < legs.length - 1) {
+                const nextFlight = legs[idx + 1];
+                const arrDate = getFlightArrivalUtcDate(flight);
+                const nextDep = getFlightDepartureUtcDate(nextFlight);
+                const diffMs = nextDep.getTime() - arrDate.getTime();
+                if (diffMs > 0 && diffMs < 24 * 60 * 60 * 1000) {
+                  const hrs = Math.floor(diffMs / (1000 * 60 * 60));
+                  const trueMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                  const layoverStr = `${hrs}h ${trueMins}m at ${flight.destination}`;
+                  elements.push(
+                    <div 
+                      key={`layover-${flight.id}`}
+                      className="flex items-center justify-between bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100/50 dark:hover:bg-zinc-850 px-4 py-2.5 rounded-2xl text-[11px] font-extrabold text-zinc-700 dark:text-zinc-200 shadow-xs transition-all cursor-pointer my-1 w-full"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-3.5 h-3.5 text-amber-550 dark:text-amber-400 font-bold" />
+                        <span>{layoverStr}</span>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500" />
+                    </div>
+                  );
+                }
+              }
+              return elements;
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderTableRow = (flight: Transport, idx: number, legsList: Transport[], trip: Trip) => {
     let layoverStr = null;
     if (idx < legsList.length - 1) {
@@ -1375,7 +1677,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
       if (diffMs > 0 && diffMs < 24 * 60 * 60 * 1000) {
         const hrs = Math.floor(diffMs / (1000 * 60 * 60));
         const trueMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-        layoverStr = `${hrs}h ${trueMins}m layover`;
+        layoverStr = `${hrs}h ${trueMins}m at ${flight.destination}`;
       }
     }
 
@@ -1395,10 +1697,10 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
               setSelectedFlightIds(newSelected);
             }
           }}
-          className={`border-b border-zinc-200/50 dark:border-zinc-805 last:border-0 hover:bg-white/60 dark:hover:bg-white/5 transition-colors group ${isMultiEditing ? 'cursor-pointer' : ''}`}
+          className={`transition-all duration-300 group ${isMultiEditing ? 'cursor-pointer' : ''}`}
         >
           {isMultiEditing && (
-            <td className="py-3 pl-4 align-middle text-center w-[4%]">
+            <td className="py-4 pl-4 align-middle text-center w-[4%] bg-white/45 dark:bg-zinc-950/20 group-hover:bg-blue-500/5 dark:group-hover:bg-blue-500/5 border-y border-zinc-200/40 dark:border-zinc-800/40 first:border-l last:border-r first:rounded-l-2xl last:rounded-r-2xl">
               <div 
                 className="flex items-center justify-center select-none"
                 onClick={(e) => {
@@ -1421,16 +1723,16 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
             </td>
           )}
           {/* 1. FLIGHT & CARRIER */}
-          <td className="py-3 pl-4 align-middle">
+          <td className="py-4 pl-4 align-middle bg-white/45 dark:bg-zinc-950/20 group-hover:bg-blue-500/5 dark:group-hover:bg-blue-500/5 border-y border-zinc-200/40 dark:border-zinc-800/40 first:border-l last:border-r first:rounded-l-2xl last:rounded-r-2xl">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center border border-zinc-200/80 dark:border-zinc-700/60 overflow-hidden shrink-0 shadow-xs">
+              <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center border border-zinc-200 dark:border-zinc-800 overflow-hidden shrink-0 shadow-xs">
                 <AirlineLogo provider={flight.provider} fallback={<Plane className="w-4 h-4 text-zinc-400" />} />
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="font-semibold text-[13px] text-zinc-900 dark:text-zinc-100 uppercase tracking-tight truncate max-w-[140px]">
+                <span className="font-extrabold text-[13px] text-zinc-900 dark:text-zinc-100 uppercase tracking-tight truncate max-w-[140px]">
                   {getCarrierName(flight.provider) || flight.provider}
                 </span>
-                <span className="font-mono text-[11px] text-zinc-400 dark:text-zinc-500 leading-tight">
+                <span className="font-mono text-[11px] text-zinc-400 dark:text-zinc-550 leading-tight">
                   Flight {flight.identifier}
                 </span>
               </div>
@@ -1438,33 +1740,33 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           </td>
 
           {/* 2. SECTOR / ROUTE */}
-          <td className="py-3 align-middle">
+          <td className="py-4 align-middle bg-white/45 dark:bg-zinc-950/20 group-hover:bg-blue-500/5 dark:group-hover:bg-blue-500/5 border-y border-zinc-200/40 dark:border-zinc-800/40 first:border-l last:border-r first:rounded-l-2xl last:rounded-r-2xl">
             <div className="flex items-center gap-3">
               <div className="flex flex-col min-w-0">
-                <span className="font-bold text-[13px] text-zinc-900 dark:text-zinc-100 leading-none truncate max-w-[110px]" title={getCityName(flight.origin)}>
+                <span className="font-bold text-[14px] text-zinc-900 dark:text-zinc-100 leading-none truncate max-w-[110px]" title={getCityName(flight.origin)}>
                   {getCityName(flight.origin)}
                 </span>
-                <span className="font-mono text-[11px] text-zinc-500 dark:text-zinc-400 uppercase tracking-wide leading-none mt-1">
+                <span className="font-mono text-[11px] text-zinc-450 dark:text-zinc-550 uppercase tracking-wide leading-none mt-1">
                   {flight.origin}
                 </span>
               </div>
               
               <div className="flex flex-col items-center justify-center shrink-0 px-1 text-center w-12">
-                <span className="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest leading-none mb-0.5">
+                <span className="text-[10px] font-black text-zinc-400 dark:text-zinc-550 uppercase tracking-widest leading-none mb-0.5">
                   {flight.duration ? `${Math.floor(flight.duration / 60)}h ${flight.duration % 60}m` : 'Direct'}
                 </span>
                 <div className="flex items-center justify-center w-full mt-1">
-                  <div className="w-3 h-[1px] bg-zinc-250 dark:bg-zinc-750" />
-                  <Plane className="w-2.5 h-2.5 text-zinc-400 dark:text-zinc-500 rotate-90 shrink-0 mx-0.5" />
-                  <div className="w-3 h-[1px] bg-zinc-250 dark:bg-zinc-750" />
+                  <div className="w-3 h-[1px] bg-zinc-250 dark:bg-zinc-755" />
+                  <Plane className="w-2.5 h-2.5 text-zinc-400 dark:text-zinc-550 rotate-90 shrink-0 mx-0.5" />
+                  <div className="w-3 h-[1px] bg-zinc-250 dark:bg-zinc-755" />
                 </div>
               </div>
 
               <div className="flex flex-col min-w-0">
-                <span className="font-bold text-[13px] text-zinc-900 dark:text-zinc-100 leading-none truncate max-w-[110px]" title={getCityName(flight.destination)}>
+                <span className="font-bold text-[14px] text-zinc-900 dark:text-zinc-100 leading-none truncate max-w-[110px]" title={getCityName(flight.destination)}>
                   {getCityName(flight.destination)}
                 </span>
-                <span className="font-mono text-[11px] text-zinc-500 dark:text-zinc-400 uppercase tracking-wide leading-none mt-1">
+                <span className="font-mono text-[11px] text-zinc-450 dark:text-zinc-550 uppercase tracking-wide leading-none mt-1">
                   {flight.destination}
                 </span>
               </div>
@@ -1472,7 +1774,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           </td>
 
           {/* 3. STATUS BADGE */}
-          <td className="py-3 align-middle">
+          <td className="py-4 align-middle bg-white/45 dark:bg-zinc-950/20 group-hover:bg-blue-500/5 dark:group-hover:bg-blue-500/5 border-y border-zinc-200/40 dark:border-zinc-800/40 first:border-l last:border-r first:rounded-l-2xl last:rounded-r-2xl">
             <div className="flex items-center gap-2 origin-left">
               <span className={`px-2 py-0.5 rounded-full text-[10px] font-black tracking-widest ${statusInfo.bgClass} inline-flex items-center gap-1 shadow-xs`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${statusInfo.dotClass}`} />
@@ -1481,12 +1783,12 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
               {flight.departureDate && (
                 <div className="shrink-0">
                   {getFlightDepartureUtcDate(flight) >= new Date() ? (
-                    <span className="text-[10px] font-bold text-emerald-655 dark:text-emerald-450 flex items-center gap-0.5">
+                    <span className="text-[11px] font-bold text-emerald-655 dark:text-emerald-450 flex items-center gap-0.5">
                       <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
                       In {Math.ceil(Math.abs(getFlightDepartureUtcDate(flight).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))}d
                     </span>
                   ) : (
-                    <span className="text-[10px] font-medium text-zinc-400 dark:text-zinc-500">
+                    <span className="text-[11px] font-medium text-zinc-400 dark:text-zinc-500">
                       Done
                     </span>
                   )}
@@ -1496,9 +1798,9 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           </td>
 
           {/* 4. DETAILS ON SCHEDULES */}
-          <td className="py-3 align-middle">
+          <td className="py-4 align-middle bg-white/45 dark:bg-zinc-950/20 group-hover:bg-blue-500/5 dark:group-hover:bg-blue-500/5 border-y border-zinc-200/40 dark:border-zinc-800/40 first:border-l last:border-r first:rounded-l-2xl last:rounded-r-2xl">
             <div className="flex flex-col min-w-[150px]">
-              <span className="font-mono text-[11px] text-zinc-500 dark:text-zinc-455 leading-tight">
+              <span className="font-mono text-[11px] text-zinc-450 dark:text-zinc-550 leading-tight">
                 {statusInfo.depScheduledDate}
               </span>
               <div className="font-mono text-[13px] mt-0.5 flex items-center gap-1.5 leading-none">
@@ -1515,7 +1817,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           </td>
 
           {/* 5. SEAT & EXPERIENCE */}
-          <td className="py-3 align-middle">
+          <td className="py-4 align-middle bg-white/45 dark:bg-zinc-950/20 group-hover:bg-blue-500/5 dark:group-hover:bg-blue-500/5 border-y border-zinc-200/40 dark:border-zinc-800/40 first:border-l last:border-r first:rounded-l-2xl last:rounded-r-2xl">
             <div className="flex flex-col items-start gap-1 leading-none">
               <span className="text-[13px] font-bold text-zinc-800 dark:text-zinc-200">
                 {flight.travelClass || 'Economy'}
@@ -1525,30 +1827,33 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                   Seat {flight.seatNumber}
                 </span>
               ) : (
-                <span className="text-[10px] text-zinc-400 dark:text-zinc-500">Unassigned</span>
+                <span className="text-[11px] text-zinc-400 dark:text-zinc-550">Unassigned</span>
               )}
             </div>
           </td>
 
           {/* 6. ACTIONS */}
-          <td className="py-3 text-right pr-4 align-middle">
+          <td className="py-4 text-right pr-4 align-middle bg-white/45 dark:bg-zinc-950/20 group-hover:bg-blue-500/5 dark:group-hover:bg-blue-500/5 border-y border-zinc-200/40 dark:border-zinc-800/40 first:border-l last:border-r first:rounded-l-2xl last:rounded-r-2xl">
             <div className="flex justify-end gap-1.5 opacity-80 md:opacity-0 group-hover:opacity-100 transition-opacity">
               <button onClick={() => openFlightForm({ flight, trip })} className="p-1.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:text-blue-500 hover:border-blue-500/40 dark:hover:border-blue-500/40 hover:shadow-xs transition-colors cursor-pointer" title="Edit Flight Bookings">
-                <Edit2 className="w-3 h-3" />
+                <Edit2 className="w-3.5 h-3.5" />
               </button>
               <button onClick={() => handleDeleteFlight({ flight, trip })} className="p-1.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:text-red-500 hover:border-red-500/40 dark:hover:border-red-500/40 hover:shadow-xs transition-colors cursor-pointer" title="Delete Flight">
-                <Trash2 className="w-3 h-3" />
+                <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
           </td>
         </tr>
         {layoverStr && (
-          <tr className="bg-amber-50/10 dark:bg-amber-950/10">
-            <td colSpan={6} className="py-1.5 pl-4 align-middle">
-               <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-500 pl-[2.25rem]">
-                 <Clock className="w-3 h-3 text-amber-500 animate-pulse" />
-                 <span className="text-[10px] font-black uppercase tracking-wider">{layoverStr} at {getCityName(flight.destination)}</span>
-               </div>
+          <tr>
+            <td colSpan={isMultiEditing ? 7 : 6} className="py-2.5 px-1 align-middle">
+              <div className="flex items-center justify-between bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100/50 dark:hover:bg-zinc-850 px-4 py-2 rounded-2xl text-[11px] font-extrabold text-zinc-700 dark:text-zinc-200 shadow-xs transition-all w-full max-w-xl mx-auto my-1">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-3.5 h-3.5 text-amber-550 dark:text-amber-400 font-bold" />
+                  <span>{layoverStr}</span>
+                </div>
+                <ChevronRight className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500" />
+              </div>
             </td>
           </tr>
         )}
@@ -1570,17 +1875,6 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3 shrink-0">
-          <Button
-            variant={isMultiEditing ? "secondary" : "secondary"}
-            className={`rounded-2xl cursor-pointer ${isMultiEditing ? '!bg-amber-500/10 !text-amber-500 hover:!bg-amber-500/20 border-amber-500/30' : ''}`}
-            onClick={() => {
-              setIsMultiEditing(!isMultiEditing);
-              setSelectedFlightIds(new Set());
-            }}
-            icon={isMultiEditing ? <Check className="w-4 h-4" /> : <Edit3 className="w-4 h-4" />}
-          >
-            {isMultiEditing ? 'Done Editing' : 'Edit Flights'}
-          </Button>
           <Button 
             variant="primary" 
             className="rounded-2xl cursor-pointer"
@@ -1889,20 +2183,41 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           Flight Board ({filteredFlights.length})
         </h3>
         
-        {/* View Mode Toggle */}
-        <div className="flex items-center bg-white dark:bg-black/20 rounded-xl p-1 border border-zinc-200 dark:border-white/10 shadow-sm">
-          <button 
-            onClick={() => setViewMode('table')}
-            className={`p-2 rounded-lg transition-all ${viewMode === 'table' ? 'bg-blue-500 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+        {/* Edit and View Mode Control Group */}
+        <div className="flex items-center gap-3 pr-2">
+          {/* Edit Flights icon-only button */}
+          <button
+            onClick={() => {
+              setIsMultiEditing(!isMultiEditing);
+              setSelectedFlightIds(new Set());
+            }}
+            title={isMultiEditing ? "Done Editing" : "Edit Flights"}
+            className={`p-2 rounded-xl transition-all border cursor-pointer ${
+              isMultiEditing 
+                ? 'bg-amber-500/10 text-amber-500 border-amber-500/30' 
+                : 'bg-white dark:bg-black/20 text-zinc-500 hover:text-blue-500 hover:bg-zinc-100 dark:hover:bg-white/10 dark:hover:text-zinc-300 shadow-sm border-zinc-200 dark:border-white/10'
+            }`}
           >
-            <List className="w-4 h-4" />
+            {isMultiEditing ? <Check className="w-4 h-4" /> : <Edit3 className="w-4 h-4" />}
           </button>
-          <button 
-            onClick={() => setViewMode('grid')}
-            className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-blue-500 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
-          >
-            <Grid className="w-4 h-4" />
-          </button>
+
+          {/* View Mode Toggle */}
+          <div className="flex items-center bg-white dark:bg-black/20 rounded-xl p-1 border border-zinc-200 dark:border-white/10 shadow-sm">
+            <button 
+              onClick={() => setViewMode('table')}
+              className={`p-2 rounded-lg transition-all cursor-pointer ${viewMode === 'table' ? 'bg-blue-500 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+              title="List View"
+            >
+              <List className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={() => setViewMode('grid')}
+              className={`p-2 rounded-lg transition-all cursor-pointer ${viewMode === 'grid' ? 'bg-blue-500 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+              title="Grid View"
+            >
+              <Grid className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1993,9 +2308,9 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           </AnimatePresence>
         </div>
       ) : (
-        <div className="overflow-auto max-h-[75vh] custom-scrollbar relative space-y-6 pr-1">
+        <div className="relative space-y-6 pr-1">
           {/* Master Sticky Table Header Card */}
-          <table className="w-full text-left border-collapse min-w-[950px] sticky top-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md z-30 shadow-md border border-zinc-200/50 dark:border-white/5 rounded-2xl overflow-hidden table-fixed">
+          <table className="hidden md:table w-full text-left border-collapse min-w-[950px] sticky top-0 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md z-30 shadow-md border-2 border-blue-500/20 dark:border-blue-400/15 rounded-3xl overflow-hidden table-fixed shadow-blue-500/5">
             <colgroup>
               {isMultiEditing && <col style={{ width: '4%' }} />}
               <col style={{ width: '18%' }} />
@@ -2403,16 +2718,16 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     <div
                       key={trip.id}
                       className={isIndependent
-                        ? "p-1 min-w-[950px]"
-                        : "p-6 transition-all duration-300 rounded-[2.5rem] bg-gradient-to-br from-blue-50/45 via-white/50 to-blue-50/10 dark:from-blue-950/10 dark:via-zinc-900/40 dark:to-blue-950/5 border-2 border-blue-500/20 dark:border-blue-400/15 shadow-md shadow-blue-500/5 min-w-[950px]"
+                        ? "p-1 min-w-0 md:min-w-[950px] w-full"
+                        : "p-4 md:p-6 transition-all duration-300 rounded-[2rem] md:rounded-[2.5rem] bg-gradient-to-br from-blue-50/45 via-white/50 to-blue-50/10 dark:from-blue-950/10 dark:via-zinc-900/40 dark:to-blue-950/5 border-2 border-blue-500/20 dark:border-blue-400/15 shadow-md shadow-blue-500/5 min-w-0 md:min-w-[950px] w-full"
                       }
                     >
                       {/* Sub-header block for trip groups inside container (Only for actual bundles) */}
                       {!isIndependent && (
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5 pb-4 border-b border-zinc-200/40 dark:border-white/5 ml-1">
                           <div className="flex items-center gap-3">
-                            <div className="p-2.5 rounded-2xl border bg-blue-500/10 text-blue-500 border-blue-500/15">
-                              <Compass className="w-5 h-5" />
+                            <div className="p-2.5 rounded-2xl border bg-blue-500/10 text-blue-500 border-blue-500/15 animate-none">
+                              <Compass className="w-5 h-5 animate-spin-slow" />
                             </div>
                             <div>
                               <div className="flex items-center gap-2 flex-wrap">
@@ -2437,8 +2752,8 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                         </div>
                       )}
 
-                      {/* Flight leg rows */}
-                      <table className="w-full text-left border-collapse min-w-[900px] table-fixed">
+                      {/* Desktop Flight leg rows */}
+                      <table className="hidden md:table w-full text-left border-separate border-spacing-y-2.5 min-w-[900px] table-fixed">
                         <colgroup>
                           {isMultiEditing && <col style={{ width: '4%' }} />}
                           <col style={{ width: '18%' }} />
@@ -2453,6 +2768,12 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                           {returnLegs && returnLegs.length > 0 && returnLegs.map((flight, idx) => renderTableRow(flight, idx, returnLegs, trip))}
                         </tbody>
                       </table>
+
+                      {/* Mobile Flight cards stack */}
+                      <div className="flex flex-col gap-5 md:hidden">
+                        {outbound && outbound.length > 0 && renderMobileTripContainer(outbound, 'Outbound', trip)}
+                        {returnLegs && returnLegs.length > 0 && renderMobileTripContainer(returnLegs, 'Return', trip)}
+                      </div>
                     </div>
                   );
                 })}
@@ -2740,7 +3061,8 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                 formConfirmation, formOrigin, formDestination,
                 formDepartureDate, formDepartureTime, formArrivalDate,
                 formArrivalTime, formDuration, formClass,
-                formSeatNumber, formSeatType, formCost
+                formSeatNumber, formSeatType, formCost,
+                formActualDepartureTime, formActualArrivalTime
               };
               localStorage.setItem('flightFormDraft', JSON.stringify(draft));
             }
@@ -2870,6 +3192,30 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                   value={formArrivalTime}
                   onChange={e => setFormArrivalTime(e.target.value)}
                 />
+              </div>
+
+              {/* Actual/Real-Time Tracking (Optional) */}
+              <div className="p-4 bg-emerald-500/5 dark:bg-emerald-500/5 rounded-3xl border border-emerald-500/20 dark:border-emerald-500/15 space-y-4">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 animate-pulse" />
+                  <p className="text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest leading-none">
+                    Actual/Delay Live Tracking (Optional)
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Input 
+                    label="Actual Departure Time"
+                    placeholder="e.g. 10:45"
+                    value={formActualDepartureTime}
+                    onChange={e => setFormActualDepartureTime(e.target.value)}
+                  />
+                  <Input 
+                    label="Actual Arrival Time"
+                    placeholder="e.g. 14:30"
+                    value={formActualArrivalTime}
+                    onChange={e => setFormActualArrivalTime(e.target.value)}
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-3 gap-4">

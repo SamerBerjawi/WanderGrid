@@ -68,8 +68,10 @@ export interface Transport {
   destination: string;
   departureDate: string;
   departureTime: string; // HH:mm
+  actualDepartureTime?: string; // HH:mm (Actual)
   arrivalDate: string;
   arrivalTime: string;
+  actualArrivalTime?: string; // HH:mm (Actual)
   travelClass?: 'Economy' | 'Premium Economy' | 'Business' | 'First';
   seatNumber?: string;
   seatType?: 'Window' | 'Aisle' | 'Middle';

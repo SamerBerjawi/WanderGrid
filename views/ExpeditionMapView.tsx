@@ -1,7 +1,7 @@
 
-import React, { useEffect, useState, useMemo } from 'react';
-import { ExpeditionMap } from '../components/ExpeditionMap';
-import { ExpeditionMap3D } from '../components/ExpeditionMap3D';
+import React, { useEffect, useState, useMemo, lazy, Suspense } from 'react';
+const ExpeditionMap = lazy(() => import('../components/ExpeditionMap').then(m => ({ default: m.ExpeditionMap })));
+const ExpeditionMap3D = lazy(() => import('../components/ExpeditionMap3D').then(m => ({ default: m.ExpeditionMap3D })));
 import { dataService } from '../services/mockDb';
 import { Trip } from '../types';
 import { Input, MultiSelect } from '../components/ui';
@@ -935,54 +935,61 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
             <div className="flex-1 min-h-0 w-full overflow-hidden flex flex-col gap-6 relative z-10">
                 {/* FULL-SCREEN GEOSPATIAL MAP COMMAND PANEL */}
                 <div className="flex-1 min-h-0 rounded-[2rem] lg:rounded-[2.5rem] overflow-hidden border border-gray-200 dark:border-white/5 shadow-2xl relative bg-black flex flex-col">
-                    {mapType === '2D' ? (
-                        <ExpeditionMap 
-                            key={`2d-${isDark ? 'dark' : 'light'}`}
-                            trips={filteredTrips} 
-                            onTripClick={onTripClick} 
-                            showFrequencyWeight={showFrequencyWeight}
-                            animateRoutes={animateRoutes}
-                            visitedCountries={visitedCountryCodes}
-                            showCountries={showCountries}
-                            viewMode={viewMode}
-                            visitedPlaces={visitedPlaces}
-                            activeLayer={activeLayer}
-                            onChangeActiveLayer={setActiveLayer}
-                            clusterMode={clusterMode}
-                            onToggleClusterMode={setClusterMode}
-                            showLandSeaRoutes={showLandSeaRoutes}
-                            onToggleLandSeaRoutes={setShowLandSeaRoutes}
-                            showCityMarkers={showCityMarkers}
-                            onToggleCityMarkers={setShowCityMarkers}
-                            hideAirportCircles={hideAirportCircles}
-                            airportCircleSize={airportCircleSize}
-                            proportionalArcThickness={proportionalArcThickness}
-                            showAviationCharts={showAviationCharts}
-                            focusTransportCoordinates={focusCoord}
-                            screenshotTrigger={screenshotTrigger}
-                            onScreenshotStarted={() => setIsScreenshotting(true)}
-                            onScreenshotCompleted={() => setIsScreenshotting(false)}
-                            showRoadTracing={showRoadTracing}
-                            onToggleRoadTracing={setShowRoadTracing}
-                        />
-                    ) : (
-                        <ExpeditionMap3D
-                            key={`3d-${isDark ? 'dark' : 'light'}`}
-                            trips={filteredTrips}
-                            onTripClick={onTripClick}
-                            animateRoutes={animateRoutes}
-                            showFrequencyWeight={showFrequencyWeight}
-                            activeLayer={activeLayer === 'topography' ? 'night' : (activeLayer === 'standard' ? 'standard' : 'satellite')}
-                            onActiveLayerChange={(layer: 'standard' | 'night' | 'satellite') => {
-                                if (layer === 'night') {
-                                    setActiveLayer('topography');
-                                } else {
-                                    setActiveLayer(layer);
-                                }
-                            }}
-                            focusTransportCoordinates={focusCoord}
-                        />
-                    )}
+                    <Suspense fallback={
+                        <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-950/70 border border-white/5 space-y-4">
+                            <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Booting Real-Time Vector Engine...</p>
+                        </div>
+                    }>
+                        {mapType === '2D' ? (
+                            <ExpeditionMap 
+                                key={`2d-${isDark ? 'dark' : 'light'}`}
+                                trips={filteredTrips} 
+                                onTripClick={onTripClick} 
+                                showFrequencyWeight={showFrequencyWeight}
+                                animateRoutes={animateRoutes}
+                                visitedCountries={visitedCountryCodes}
+                                showCountries={showCountries}
+                                viewMode={viewMode}
+                                visitedPlaces={visitedPlaces}
+                                activeLayer={activeLayer}
+                                onChangeActiveLayer={setActiveLayer}
+                                clusterMode={clusterMode}
+                                onToggleClusterMode={setClusterMode}
+                                showLandSeaRoutes={showLandSeaRoutes}
+                                onToggleLandSeaRoutes={setShowLandSeaRoutes}
+                                showCityMarkers={showCityMarkers}
+                                onToggleCityMarkers={setShowCityMarkers}
+                                hideAirportCircles={hideAirportCircles}
+                                airportCircleSize={airportCircleSize}
+                                proportionalArcThickness={proportionalArcThickness}
+                                showAviationCharts={showAviationCharts}
+                                focusTransportCoordinates={focusCoord}
+                                screenshotTrigger={screenshotTrigger}
+                                onScreenshotStarted={() => setIsScreenshotting(true)}
+                                onScreenshotCompleted={() => setIsScreenshotting(false)}
+                                showRoadTracing={showRoadTracing}
+                                onToggleRoadTracing={setShowRoadTracing}
+                            />
+                        ) : (
+                            <ExpeditionMap3D
+                                key={`3d-${isDark ? 'dark' : 'light'}`}
+                                trips={filteredTrips}
+                                onTripClick={onTripClick}
+                                animateRoutes={animateRoutes}
+                                showFrequencyWeight={showFrequencyWeight}
+                                activeLayer={activeLayer === 'topography' ? 'night' : (activeLayer === 'standard' ? 'standard' : 'satellite')}
+                                onActiveLayerChange={(layer: 'standard' | 'night' | 'satellite') => {
+                                    if (layer === 'night') {
+                                        setActiveLayer('topography');
+                                    } else {
+                                        setActiveLayer(layer);
+                                    }
+                                }}
+                                focusTransportCoordinates={focusCoord}
+                            />
+                        )}
+                    </Suspense>
                     
                     {trips.length === 0 && (
                         <div className="absolute inset-0 flex items-center justify-center z-[500] pointer-events-none">

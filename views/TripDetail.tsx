@@ -12,8 +12,8 @@ import { calendarService } from '../services/calendarExport';
 import { Trip, User, Transport, Accommodation, WorkspaceSettings, Activity, TransportMode, LocationEntry, EntitlementType, PublicHoliday, SavedConfig, PackingItem } from '../types';
 import { searchLocations, resolvePlaceName, getCoordinates } from '../services/geocoding';
 import { GoogleGenAI } from "@google/genai";
-import { ExpeditionMap3D } from '../components/ExpeditionMap3D';
-import { ExpeditionMap } from '../components/ExpeditionMap';
+const ExpeditionMap = React.lazy(() => import('../components/ExpeditionMap').then(m => ({ default: m.ExpeditionMap })));
+const ExpeditionMap3D = React.lazy(() => import('../components/ExpeditionMap3D').then(m => ({ default: m.ExpeditionMap3D })));
 import { FlightImportWizard } from '../components/FlightImportWizard';
 
 interface TripDetailProps {
@@ -1042,13 +1042,20 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                         <span className="text-[10px] font-black uppercase tracking-wider text-gray-700 dark:text-gray-300">Route Map Overview 2D</span>
                     </div>
                     <div className="absolute inset-0 bg-[#0f0f12]">
-                        <ExpeditionMap 
-                            trips={[trip]} 
-                            animateRoutes={true} 
-                            showFrequencyWeight={true}
-                            showCityMarkers={true}
-                            viewMode="network"
-                        />
+                        <Suspense fallback={
+                            <div className="w-full h-full flex flex-col items-center justify-center bg-[#0f0f12] text-zinc-400 space-y-3">
+                                <div className="w-8 h-8 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                                <span className="text-[9px] font-bold uppercase tracking-wider">Rasterizing Route Vector...</span>
+                            </div>
+                        }>
+                            <ExpeditionMap 
+                                trips={[trip]} 
+                                animateRoutes={true} 
+                                showFrequencyWeight={true}
+                                showCityMarkers={true}
+                                viewMode="network"
+                            />
+                        </Suspense>
                     </div>
                 </div>
             </div>
@@ -1630,12 +1637,19 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                             <span className="material-icons-outlined text-2xl">close</span>
                         </button>
                     </div>
-                    <ExpeditionMap3D 
-                        trips={[trip]} 
-                        animateRoutes={true} 
-                        showFrequencyWeight={true}
-                        autoPlay={true}
-                    />
+                    <Suspense fallback={
+                        <div className="w-full h-full flex flex-col items-center justify-center bg-black text-white space-y-4">
+                            <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em]">Engaging Cinematic Orbit Simulation...</span>
+                        </div>
+                    }>
+                        <ExpeditionMap3D 
+                            trips={[trip]} 
+                            animateRoutes={true} 
+                            showFrequencyWeight={true}
+                            autoPlay={true}
+                        />
+                    </Suspense>
                 </div>
             )}
 

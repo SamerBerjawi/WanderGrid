@@ -570,10 +570,10 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
         <div className="space-y-8 max-w-[1400px] mx-auto pb-24 relative select-none">
             
             {/* Header: Redesigned premium Dashboard banner */}
-            <header className="relative overflow-hidden bg-white/40 dark:bg-zinc-900/40 p-8 rounded-[2.5rem] backdrop-blur-2xl border border-white/50 dark:border-white/5 shadow-xl flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6">
+            <header className="relative overflow-hidden bg-white/40 dark:bg-zinc-900/40 p-6 md:p-8 rounded-[2.5rem] backdrop-blur-2xl border border-white/50 dark:border-white/5 shadow-xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
                 <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#fa9a1d]/5 dark:bg-[#fa9a1d]/10 rounded-full blur-[140px] pointer-events-none translate-x-[20%] -translate-y-[20%]" />
                 
-                <div className="space-y-2 relative z-10">
+                <div className="space-y-2 relative z-10 w-full lg:w-auto">
                     <div className="flex items-center gap-2">
                         <span className="w-2.5 h-2.5 rounded-full bg-[#fa9a1d] animate-pulse" />
                         <span className="text-[10px] font-black uppercase text-[#fa9a1d] tracking-[0.2em]">Expeditions Base</span>
@@ -582,10 +582,10 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                     <p className="text-sm font-medium text-gray-500 dark:text-zinc-400 max-w-xl">Configure travel scopes, integrate flight itineraries, co-align workspace calendars, and batch-merge overlapping stays.</p>
                 </div>
                 
-                <div className="flex flex-col md:flex-row gap-4 w-full xl:w-auto relative z-10">
+                <div className="flex flex-col sm:flex-row flex-wrap gap-4 w-full lg:w-auto relative z-10 items-stretch sm:items-center">
                     {/* Highly interactive modular filtering controls */}
-                    <div className="flex flex-col md:flex-row md:items-center gap-2 bg-white/60 dark:bg-zinc-950/35 p-2 rounded-2xl border border-zinc-200/50 dark:border-white/10 flex-1 xl:flex-initial">
-                        <div className="relative flex-1 min-w-[200px]">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 bg-white/60 dark:bg-zinc-950/35 p-2 rounded-2xl border border-zinc-200/50 dark:border-white/10 flex-1 lg:flex-initial min-w-0">
+                        <div className="relative flex-1 min-w-[180px]">
                             <span className="material-icons-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-lg">search</span>
                             <input 
                                 type="text"
@@ -595,9 +595,9 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                                 className="w-full bg-transparent pl-11 pr-4 py-2 text-sm font-medium outline-none text-gray-800 dark:text-white placeholder-zinc-455"
                             />
                         </div>
-                        <div className="h-px md:h-6 w-full md:w-px bg-zinc-200 dark:bg-zinc-800" />
+                        <div className="h-px sm:h-6 w-full sm:w-px bg-zinc-200 dark:bg-zinc-800 shrink-0" />
                         
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 shrink-0">
                             <select 
                                 value={filterYear}
                                 onChange={e => setFilterYear(e.target.value)}
@@ -620,17 +620,17 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                     </div>
 
                     {!isSelectionMode && (
-                        <div className="flex gap-2 shrink-0">
+                        <div className="flex gap-2 shrink-0 w-full sm:w-auto justify-end sm:justify-start">
                             <button 
                                 onClick={toggleSelectionMode}
-                                className="px-5 py-3 rounded-2xl border-2 border-zinc-200 dark:border-zinc-850 font-black text-xs text-zinc-600 dark:text-zinc-350 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-all flex items-center justify-center gap-1.5"
+                                className="px-5 py-3 rounded-2xl border-2 border-zinc-200 dark:border-zinc-850 font-black text-xs text-zinc-600 dark:text-zinc-350 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-all flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer"
                             >
                                 <span className="material-icons-outlined text-sm">checklist</span>
                                 <span>Batch Merge</span>
                             </button>
                             <button 
                                 onClick={() => { setEditingTrip(null); setIsCreateTripOpen(true); }}
-                                className="flex-1 md:flex-initial px-6 py-3 bg-gradient-to-r from-[#fa9a1d] to-[#fcb045] text-white hover:opacity-95 shadow-lg shadow-[#fa9a1d]/20 rounded-2xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+                                className="flex-1 sm:flex-initial px-6 py-3 bg-gradient-to-r from-[#fa9a1d] to-[#fcb045] text-white hover:opacity-95 shadow-lg shadow-[#fa9a1d]/20 rounded-2xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 active:scale-95 transition-all whitespace-nowrap cursor-pointer"
                             >
                                 <span className="material-icons-outlined text-sm font-bold">add_location_alt</span>
                                 <span>New Trip</span>
