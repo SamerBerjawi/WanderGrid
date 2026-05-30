@@ -16,6 +16,7 @@ interface SettingsProps {
 export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
   const [activeTab, setActiveTab] = useState('workspace');
   const [users, setUsers] = useState<User[]>([]);
+  const [rosterSearch, setRosterSearch] = useState('');
   const [entitlements, setEntitlements] = useState<EntitlementType[]>([]);
   const [savedConfigs, setSavedConfigs] = useState<SavedConfig[]>([]);
   const [loading, setLoading] = useState(true);
@@ -119,16 +120,30 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
 
   const handleSaveUser = async () => { 
       if (!editingUser.name) return;
+      
+      const emailVal = (editingUser.email || '').trim().toLowerCase();
+      const finalEmail = emailVal || `${editingUser.name?.toLowerCase().replace(/\s/g, '.')}@wandergrid.local`;
+      const password = (editingUser.password || '').trim();
+
+      // Enforce unique email check in memory roster
+      const duplicate = users.find(u => u.email?.toLowerCase().trim() === finalEmail && u.id !== editingUser.id);
+      if (duplicate) {
+          alert(`Conflict: A user of the roster already uses the email '${finalEmail}'. Please specify a unique email.`);
+          return;
+      }
+
       if (editingUser.id) {
-          await dataService.updateUser(editingUser as User);
+          await dataService.updateUser({
+              ...editingUser,
+              email: finalEmail,
+              password: password || 'password'
+          } as User);
       } else {
           // New User
-          const email = editingUser.email?.trim();
-          const password = editingUser.password?.trim();
           const newUser: User = {
               ...editingUser,
-              id: Math.random().toString(36).substr(2, 9),
-              email: email || `${editingUser.name?.toLowerCase().replace(/\s/g, '.')}@wandergrid.local`, 
+              id: finalEmail,
+              email: finalEmail,
               password: password || 'password', 
           } as User;
           await dataService.addUser(newUser);
@@ -593,26 +608,50 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                     <h3 className="text-xl font-black text-gray-900 dark:text-white">Personnel Roster</h3>
                     <p className="text-[10px] font-mono tracking-widest font-bold text-gray-400 uppercase">Inhabitants configurations</p>
                   </div>
-                  <Button 
-                    variant="primary" 
-                    className="!rounded-xl shadow-lg border-none" 
-                    icon={<span className="material-icons-outlined text-md">person_add</span>} 
-                    onClick={handleCreateUser}
-                  >
-                    Enroll New Member
-                  </Button>
+                  <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto items-stretch sm:items-center">
+                    <div className="relative flex-1 sm:w-64">
+                      <span className="material-icons-outlined text-gray-450 absolute left-3 top-1/2 -translate-y-1/2 text-sm">search</span>
+                      <input 
+                        type="text"
+                        placeholder="Search roster..."
+                        value={rosterSearch}
+                        onChange={e => setRosterSearch(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2 border border-zinc-200 dark:border-white/5 focus:ring-1 focus:ring-teal-500 focus:outline-none focus:border-transparent text-xs font-semibold rounded-xl bg-gray-50/50 dark:bg-black/10 text-gray-805 dark:text-zinc-200"
+                      />
+                    </div>
+                    <Button 
+                      variant="primary" 
+                      className="!rounded-xl shadow-lg border-none" 
+                      icon={<span className="material-icons-outlined text-md">person_add</span>} 
+                      onClick={handleCreateUser}
+                    >
+                      Enroll New Member
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="p-6 space-y-4">
-                  {users.length === 0 ? (
+                  {users.filter(user => {
+                    const search = rosterSearch.toLowerCase().trim();
+                    return !search || 
+                      user.name?.toLowerCase().includes(search) || 
+                      user.email?.toLowerCase().includes(search) || 
+                      user.role?.toLowerCase().includes(search);
+                  }).length === 0 ? (
                     <div className="py-16 text-center">
                       <span className="material-icons-outlined text-gray-200 dark:text-gray-800 text-6xl">person_off</span>
-                      <p className="text-gray-400 mt-4 font-bold uppercase tracking-widest text-xs">No active personnel data registered</p>
+                      <p className="text-gray-400 mt-4 font-bold uppercase tracking-widest text-xs">No active personnel matching filters</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {users.map(user => (
-                        <div key={user.id} className="group relative flex flex-col p-5 rounded-2xl bg-white border border-gray-200/50 dark:bg-gray-900/40 dark:border-white/5 hover:border-blue-300 dark:hover:border-blue-800 transition-all shadow-sm">
+                      {users.filter(user => {
+                        const search = rosterSearch.toLowerCase().trim();
+                        return !search || 
+                          user.name?.toLowerCase().includes(search) || 
+                          user.email?.toLowerCase().includes(search) || 
+                          user.role?.toLowerCase().includes(search);
+                      }).map(user => (
+                        <div key={user.id || user.email} className="group relative flex flex-col p-5 rounded-2xl bg-white border border-gray-200/50 dark:bg-gray-900/40 dark:border-white/5 hover:border-blue-300 dark:hover:border-blue-800 transition-all shadow-sm">
                           <div className="flex items-start gap-4 flex-1">
                             <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-lg font-black text-white shadow-md uppercase ${
                               user.role === 'Admin' ? 'bg-gradient-to-br from-purple-500 to-indigo-650' : 
@@ -627,6 +666,9 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                                 <Badge color={user.role === 'Partner' ? 'blue' : user.role === 'Admin' ? 'purple' : 'green'}>{user.role}</Badge>
                               </div>
                               <p className="text-xs text-slate-400 dark:text-zinc-500 truncate leading-none mt-1">{user.email || 'No email registered'}</p>
+                              <div className="pt-1 select-none">
+                                <span className="text-[9px] font-mono font-black text-zinc-400 dark:text-zinc-500 tracking-wider">SYNC-ID: {user.id}</span>
+                              </div>
                             </div>
                           </div>
 
@@ -1083,6 +1125,14 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
               placeholder="e.g. elena@wandergrid.abc" 
               value={editingUser.email || ''} 
               onChange={e => setEditingUser({...editingUser, email: e.target.value})} 
+            />
+
+            <Input 
+              label="Portal Password" 
+              type="password"
+              placeholder="e.g. min 6 characters" 
+              value={editingUser.password || ''} 
+              onChange={e => setEditingUser({...editingUser, password: e.target.value})} 
             />
 
             <div className="grid grid-cols-2 gap-4">

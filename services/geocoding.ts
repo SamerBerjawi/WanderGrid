@@ -21,6 +21,22 @@ async function throttleNetwork() {
     lastNetworkFetchTime = Date.now();
 }
 
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs: number = 3000): Promise<Response> {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const response = await fetch(url, {
+            ...options,
+            signal: controller.signal
+        });
+        clearTimeout(id);
+        return response;
+    } catch (error) {
+        clearTimeout(id);
+        throw error;
+    }
+}
+
 const loadCache = () => {
     if (isCacheLoaded) return;
     try {
@@ -284,7 +300,7 @@ const searchQueriesCache = new Map<string, string[]>();
 
 async function fetchOpenMeteoGeocoding(query: string): Promise<any[]> {
     try {
-        const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=10&language=en&format=json`);
+        const res = await fetchWithTimeout(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=10&language=en&format=json`, {}, 3000);
         if (res.ok) {
             const data = await res.json();
             return data.results || [];
@@ -630,12 +646,12 @@ export async function getCoordinates(location: string): Promise<{ lat: number; l
     }
     
     await throttleNetwork();
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1`, {
+    const res = await fetchWithTimeout(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1`, {
         headers: { 
             'Accept-Language': 'en',
             'User-Agent': 'WanderGridTravelMap/1.0 (contact: berjawi@gmail.com)'
         }
-    });
+    }, 3000);
     if (res.ok) {
         const data = await res.json();
         if (data.length > 0) {
@@ -760,9 +776,9 @@ export async function resolvePlaceName(query: string): Promise<{ city: string, c
 
         // Nominatim backup
         await throttleNetwork();
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&addressdetails=1&limit=1`, {
+        const res = await fetchWithTimeout(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&addressdetails=1&limit=1`, {
             headers: { 'Accept-Language': 'en' }
-        });
+        }, 3000);
         if (res.ok) {
             const data = await res.json();
             if (data.length > 0) {

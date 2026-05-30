@@ -47,44 +47,44 @@ const ViewLoader = () => (
 
 const VIEW_ACCENTS: Record<ViewState, { glow1: string; glow2: string; glow3: string }> = {
   [ViewState.DASHBOARD]: { 
-    glow1: 'bg-sky-500/24 dark:bg-sky-500/30', 
-    glow2: 'bg-indigo-500/24 dark:bg-indigo-500/30',
-    glow3: 'bg-blue-500/12 dark:bg-blue-500/15' 
+    glow1: 'bg-sky-500/4 dark:bg-sky-500/5', 
+    glow2: 'bg-indigo-500/4 dark:bg-indigo-500/5',
+    glow3: 'bg-blue-500/2 dark:bg-blue-500/2' 
   },
   [ViewState.SETTINGS]: { 
-    glow1: 'bg-emerald-500/24 dark:bg-emerald-500/30', 
-    glow2: 'bg-teal-500/24 dark:bg-teal-500/30',
-    glow3: 'bg-green-500/12 dark:bg-green-500/15'
+    glow1: 'bg-emerald-500/4 dark:bg-emerald-500/5', 
+    glow2: 'bg-teal-500/4 dark:bg-teal-500/5',
+    glow3: 'bg-green-500/2 dark:bg-green-500/2'
   },
   [ViewState.USER_DETAIL]: { 
-    glow1: 'bg-rose-500/24 dark:bg-rose-500/30', 
-    glow2: 'bg-pink-500/24 dark:bg-pink-500/30',
-    glow3: 'bg-orange-500/12 dark:bg-orange-500/15'
+    glow1: 'bg-rose-500/4 dark:bg-rose-500/5', 
+    glow2: 'bg-pink-500/4 dark:bg-pink-500/5',
+    glow3: 'bg-orange-500/2 dark:bg-orange-500/2'
   },
   [ViewState.PLANNER]: { 
-    glow1: 'bg-violet-500/24 dark:bg-violet-500/30', 
-    glow2: 'bg-fuchsia-500/24 dark:bg-fuchsia-500/30',
-    glow3: 'bg-purple-500/12 dark:bg-purple-500/15'
+    glow1: 'bg-violet-500/4 dark:bg-violet-500/5', 
+    glow2: 'bg-fuchsia-500/4 dark:bg-fuchsia-500/5',
+    glow3: 'bg-purple-500/2 dark:bg-purple-500/2'
   },
   [ViewState.TRIP_DETAIL]: { 
-    glow1: 'bg-amber-500/24 dark:bg-amber-500/30', 
-    glow2: 'bg-orange-500/24 dark:bg-orange-500/30',
-    glow3: 'bg-yellow-500/12 dark:bg-yellow-500/15'
+    glow1: 'bg-amber-500/4 dark:bg-amber-500/5', 
+    glow2: 'bg-orange-500/4 dark:bg-orange-500/5',
+    glow3: 'bg-yellow-500/2 dark:bg-yellow-500/2'
   },
   [ViewState.MAP]: { 
-    glow1: 'bg-cyan-500/24 dark:bg-cyan-500/30', 
-    glow2: 'bg-blue-500/24 dark:bg-blue-500/30',
-    glow3: 'bg-indigo-500/12 dark:bg-indigo-500/15'
+    glow1: 'bg-cyan-500/4 dark:bg-cyan-500/5', 
+    glow2: 'bg-blue-500/4 dark:bg-blue-500/5',
+    glow3: 'bg-indigo-500/2 dark:bg-indigo-500/2'
   },
   [ViewState.GAMIFICATION]: { 
-    glow1: 'bg-yellow-500/24 dark:bg-yellow-500/30', 
-    glow2: 'bg-amber-500/24 dark:bg-amber-500/30',
-    glow3: 'bg-orange-500/12 dark:bg-orange-500/15'
+    glow1: 'bg-yellow-500/4 dark:bg-yellow-500/5', 
+    glow2: 'bg-amber-500/4 dark:bg-amber-500/5',
+    glow3: 'bg-orange-500/2 dark:bg-orange-500/2'
   },
   [ViewState.FLIGHTS]: { 
-    glow1: 'bg-cyan-500/32 dark:bg-cyan-500/36', 
-    glow2: 'bg-teal-500/28 dark:bg-teal-500/32',
-    glow3: 'bg-blue-500/18 dark:bg-blue-500/20' 
+    glow1: 'bg-cyan-500/4 dark:bg-cyan-500/5', 
+    glow2: 'bg-teal-500/4 dark:bg-teal-500/5',
+    glow3: 'bg-blue-500/2 dark:bg-blue-500/2' 
   },
 };
 
@@ -212,7 +212,7 @@ export default function App() {
       case ViewState.SETTINGS:
         return <Settings onThemeChange={setTheme} />;
       case ViewState.USER_DETAIL:
-        return <UserDetail userId={selectedUserId!} onBack={() => navigate(ViewState.DASHBOARD)} />;
+        return <UserDetail userId={selectedUserId!} onBack={() => navigate(ViewState.DASHBOARD)} onLogout={handleLogout} />;
       case ViewState.PLANNER:
         return <VacationPlanner onTripClick={handleTripClick} />;
       case ViewState.TRIP_DETAIL:
@@ -233,8 +233,8 @@ export default function App() {
         <div className="flex h-screen w-full overflow-hidden bg-gradient-to-br from-indigo-50/50 via-slate-100/60 to-blue-50/50 dark:from-slate-950 dark:via-slate-900/90 dark:to-indigo-950/95 transition-colors duration-500 text-gray-900 dark:text-gray-100 relative">
             {/* Pulsing ambient spots */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-                <div className="absolute -top-40 -left-40 w-[550px] h-[550px] rounded-full bg-blue-500/10 dark:bg-blue-600/15 blur-[120px] animate-[pulse_10s_infinite]" />
-                <div className="absolute -bottom-40 -right-40 w-[600px] h-[600px] rounded-full bg-purple-500/10 dark:bg-purple-600/15 blur-[130px] animate-[pulse_14s_infinite] delay-1000" />
+                <div className="absolute -top-40 -left-40 w-[550px] h-[550px] rounded-full bg-blue-500/2 dark:bg-blue-600/3 blur-[120px] animate-[pulse_10s_infinite]" />
+                <div className="absolute -bottom-40 -right-40 w-[600px] h-[600px] rounded-full bg-purple-500/2 dark:bg-purple-600/3 blur-[130px] animate-[pulse_14s_infinite] delay-1000" />
             </div>
             <div className="w-full h-full relative z-10">
                 <Suspense fallback={<ViewLoader />}>

@@ -84,8 +84,8 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     return (
         <div className="flex min-h-screen items-center justify-center p-6 relative overflow-hidden">
             {/* Background elements inherited from App body, but we add some floating elements */}
-            <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl pointer-events-none animate-pulse"></div>
-            <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDelay: '1s' }}></div>
+            <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/3 rounded-full blur-3xl pointer-events-none animate-pulse"></div>
+            <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/3 rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDelay: '1s' }}></div>
 
             <Card className="w-full max-w-md z-10 !bg-white/80 dark:!bg-gray-900/80 backdrop-blur-3xl shadow-2xl border border-white/50 dark:border-white/10" noPadding>
                 <div className="p-8 text-center">

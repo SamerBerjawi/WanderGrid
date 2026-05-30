@@ -81,15 +81,16 @@ class DataService {
   }
 
   async register(name: string, email: string, pass: string): Promise<User> {
+    const cleanEmail = email.trim().toLowerCase();
     const newUser: User = {
-        id: Math.random().toString(36).substr(2, 9),
+        id: cleanEmail,
         name,
-        email,
+        email: cleanEmail,
         password: pass,
         role: 'Partner',
-        leaveBalance: 0,
+        leaveBalance: 25,
         takenLeave: 0,
-        allowance: 0,
+        allowance: 25,
         lieuBalance: 0,
         activeYears: [new Date().getFullYear()],
         policies: [],
@@ -113,7 +114,7 @@ class DataService {
     }
 
     const users = await this.localFetch<User[]>('/users');
-    const exists = users.find(u => u.email === email);
+    const exists = users.find(u => u.email?.toLowerCase().trim() === cleanEmail);
     if (exists) throw new Error("User already exists");
 
     users.push(newUser);
@@ -331,10 +332,50 @@ class DataService {
       throw new Error(`Local Mock: Route not found ${endpoint}`);
   }
 
-  async getUsers(): Promise<User[]> { return this.fetch<User[]>('/users'); }
-  async updateUser(user: User): Promise<void> { await this.fetch(`/users/${user.id}`, { method: 'PUT', body: JSON.stringify(user) }); }
-  async addUser(user: User): Promise<void> { await this.fetch('/users', { method: 'POST', body: JSON.stringify(user) }); }
-  async deleteUser(id: string): Promise<void> { await this.fetch(`/users/${id}`, { method: 'DELETE' }); }
+  async getUsers(): Promise<User[]> {
+      const list = await this.fetch<User[]>('/users');
+      try {
+          localStorage.setItem('wandergrid_users', JSON.stringify(list));
+      } catch (e) {}
+      return list;
+  }
+
+  async updateUser(user: User): Promise<void> {
+      await this.fetch(`/users/${user.id}`, { method: 'PUT', body: JSON.stringify(user) });
+      try {
+          const stored = localStorage.getItem('wandergrid_users');
+          if (stored) {
+              const list = JSON.parse(stored);
+              const idx = list.findIndex((u: any) => u.id === user.id);
+              if (idx >= 0) {
+                  list[idx] = user;
+                  localStorage.setItem('wandergrid_users', JSON.stringify(list));
+              }
+          }
+      } catch (e) {}
+  }
+
+  async addUser(user: User): Promise<void> {
+      await this.fetch('/users', { method: 'POST', body: JSON.stringify(user) });
+      try {
+          const stored = localStorage.getItem('wandergrid_users');
+          const list = stored ? JSON.parse(stored) : [];
+          list.push(user);
+          localStorage.setItem('wandergrid_users', JSON.stringify(list));
+      } catch (e) {}
+  }
+
+  async deleteUser(id: string): Promise<void> {
+      await this.fetch(`/users/${id}`, { method: 'DELETE' });
+      try {
+          const stored = localStorage.getItem('wandergrid_users');
+          if (stored) {
+              const list = JSON.parse(stored);
+              const newList = list.filter((u: any) => u.id !== id);
+              localStorage.setItem('wandergrid_users', JSON.stringify(newList));
+          }
+      } catch (e) {}
+  }
 
   private async processGeocoding(trip: Trip): Promise<Trip> {
       const updatedTrip = { ...trip };

@@ -80,7 +80,7 @@ const initDb = async (retries = 10, delayMs = 3000) => {
         if (adminCheck.rows.length === 0) {
             console.log('Seeding default Admin user (admin@wandergrid.app) into database...');
             const defaultAdmin = {
-                id: 'admin',
+                id: 'admin@wandergrid.app',
                 name: 'Admin User',
                 email: 'admin@wandergrid.app',
                 password: 'password',
@@ -95,7 +95,7 @@ const initDb = async (retries = 10, delayMs = 3000) => {
             };
             await client.query(`
                 INSERT INTO users (id, data) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING
-            `, ['admin', JSON.stringify(defaultAdmin)]);
+            `, ['admin@wandergrid.app', JSON.stringify(defaultAdmin)]);
         }
 
         return; // Connection and schema setup succeeded

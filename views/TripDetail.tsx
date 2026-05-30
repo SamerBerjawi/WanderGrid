@@ -1277,40 +1277,43 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
 
             {/* ITINERARY (BOOKINGS) TAB - NEW DESIGN */}
             {activeTab === 'itinerary' && (
-                <div className="space-y-12 animate-fade-in">
+                <div className="space-y-12 animate-fade-in text-zinc-900 dark:text-zinc-100">
                     {/* Transport Section */}
                     <div className="space-y-6">
-                        <div className="flex justify-between items-center">
+                        <div className="flex justify-between items-center bg-white/20 dark:bg-white/[0.02] p-4 rounded-3xl border border-zinc-200/40 dark:border-white/5 backdrop-blur-xl">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                                <div className="w-10 h-10 rounded-xl bg-indigo-505/10 dark:bg-indigo-500/10 text-indigo-500 flex items-center justify-center border border-indigo-500/20 shadow-sm">
                                     <span className="material-icons-outlined text-xl">commute</span>
                                 </div>
-                                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Transportation</h3>
+                                <div>
+                                    <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 tracking-tight leading-tight">Transportation</h3>
+                                    <p className="text-[11px] text-zinc-400 dark:text-zinc-500 font-medium">Flights, trains, and rental vehicles</p>
+                                </div>
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex items-center gap-2">
                                 <Button 
                                     size="sm" 
                                     variant="ghost" 
-                                    className="border-dashed border-2 text-gray-400 hover:text-white hover:border-gray-500" 
+                                    className="border-dashed border-2 border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500 hover:text-indigo-600 dark:hover:text-zinc-200 hover:border-indigo-300 dark:hover:border-zinc-700 font-bold transition-all" 
                                     onClick={() => setIsImportWizardOpen(true)}
                                 >
-                                    <span className="material-icons-outlined text-sm mr-2">upload_file</span> 
+                                    <span className="material-icons-outlined text-sm mr-1.5">upload_file</span> 
                                     Import
                                 </Button>
-                                <Button size="sm" variant="secondary" onClick={() => openTransportModal()}>
+                                <Button size="sm" variant="secondary" onClick={() => openTransportModal()} className="font-bold">
                                     + Add Booking
                                 </Button>
                             </div>
                         </div>
 
                         {Object.keys(transportGroups).length === 0 ? (
-                            <div className="p-12 text-center border-2 border-dashed border-gray-800 rounded-3xl">
-                                <span className="material-icons-outlined text-4xl text-gray-600 mb-2">flight</span>
-                                <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">No transport bookings yet</p>
+                            <div className="p-16 text-center border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-3xl">
+                                <span className="material-icons-outlined text-4xl text-zinc-300 dark:text-zinc-700 mb-3 block">flight</span>
+                                <p className="text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-widest text-xs">No transport bookings yet</p>
+                                <button className="text-xs text-indigo-500 font-bold mt-2 hover:underline cursor-pointer" onClick={() => openTransportModal()}>Add your first transport</button>
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 gap-6">
-                                {/* Fix: Explicitly type group as Transport[] to resolve reduce, map, and function call errors */}
                                 {Object.entries(transportGroups).sort((a, b) => {
                                     const firstA = a[1][0];
                                     const firstB = b[1][0];
@@ -1320,92 +1323,151 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                 }).map(([id, group]: [string, Transport[]]) => {
                                     const first = group[0];
                                     return (
-                                        <div key={id} className="bg-[#1c1c1e] rounded-3xl overflow-hidden border border-white/5 shadow-lg">
+                                        <div key={id} className="bg-white dark:bg-zinc-900/30 rounded-[2rem] overflow-hidden border border-zinc-200/50 dark:border-white/5 shadow-sm hover:shadow-md transition-all duration-300">
                                             {/* Header */}
-                                            <div className="p-5 flex justify-between items-start border-b border-white/5">
+                                            <div className="p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-zinc-50/50 dark:bg-white/[0.01] border-b border-zinc-150/50 dark:border-white/5">
                                                 <div className="flex items-center gap-4">
-                                                    <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center overflow-hidden">
+                                                    <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-white/10 flex items-center justify-center overflow-hidden p-1.5 shadow-inner shrink-0">
                                                         {first.logoUrl ? (
-                                                            <img src={first.logoUrl} className="w-full h-full object-contain p-1" />
+                                                            <img referrerPolicy="no-referrer" src={first.logoUrl} className="w-full h-full object-contain" />
                                                         ) : (
-                                                            <span className="material-icons-outlined text-black">{getTransportIcon(first.mode)}</span>
+                                                            <span className="material-icons-outlined text-zinc-600 dark:text-zinc-300 text-2xl">{getTransportIcon(first.mode)}</span>
                                                         )}
                                                     </div>
                                                     <div>
-                                                        <h4 className="font-bold text-white text-lg">{first.provider}</h4>
-                                                        <div className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
-                                                            <span>{first.identifier}</span>
-                                                            <span className="w-1 h-1 rounded-full bg-gray-600"></span>
-                                                            <span>{first.type}</span>
+                                                        <h4 className="font-bold text-zinc-800 dark:text-zinc-150 text-base leading-tight">{first.provider}</h4>
+                                                        <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                                            <span className="px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-white/5 text-[10px] font-mono font-bold text-zinc-500 dark:text-zinc-400">
+                                                                {first.identifier || 'No ID'}
+                                                            </span>
+                                                            <span className="w-1 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700"></span>
+                                                            <span className="text-[11px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">{first.type}</span>
+                                                            {first.confirmationCode && (
+                                                                <>
+                                                                    <span className="w-1 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700"></span>
+                                                                    <span className="text-[10px] font-mono tracking-widest text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-950/30 px-1.5 py-0.5 rounded border border-indigo-100 dark:border-indigo-900/20 select-all" title="Confirmation Code">
+                                                                        CONF: {first.confirmationCode}
+                                                                    </span>
+                                                                </>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div className="text-right">
-                                                    <div className="text-xl font-bold text-white">{formatCurrency(group.reduce((acc, t) => acc + (t.cost || 0), 0))}</div>
-                                                    <button onClick={() => openTransportModal(group)} className="text-[10px] font-bold text-blue-400 hover:text-blue-300 uppercase tracking-widest mt-1">
-                                                        Edit Details
+                                                <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto border-t sm:border-0 border-zinc-150 dark:border-white/5 pt-3 sm:pt-0">
+                                                    <div className="text-xl font-bold text-zinc-900 dark:text-white leading-none">
+                                                        {formatCurrency(group.reduce((acc, t) => acc + (t.cost || 0), 0))}
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => openTransportModal(group)} 
+                                                        className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 uppercase tracking-widest mt-1 cursor-pointer flex items-center gap-1 bg-indigo-50 dark:bg-indigo-950/20 px-2.5 py-1 rounded-lg border border-indigo-100 dark:border-indigo-900/10 hover:shadow-sm transition-all"
+                                                    >
+                                                        <span className="material-icons-outlined text-xs">edit_note</span> Edit Details
                                                     </button>
                                                 </div>
                                             </div>
 
                                             {/* Legs */}
-                                            <div className="p-6 space-y-8">
+                                            <div className="p-6 md:p-8 space-y-8 relative">
                                                 {group.map((t, idx) => {
-                                                    const isReturn = idx > 0 && t.origin === group[idx-1].destination; 
+                                                    const isReturn = idx > 0;
                                                     return (
                                                         <React.Fragment key={t.id}>
                                                             {/* Divider if return */}
-                                                            {idx > 0 && (
-                                                                <div className="flex items-center gap-4 py-2">
-                                                                    <div className="h-px bg-white/10 flex-1"></div>
-                                                                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Return Journey • {Math.ceil((new Date(t.departureDate).getTime() - new Date(group[idx-1].arrivalDate).getTime()) / (86400000))} Days Later</span>
-                                                                    <div className="h-px bg-white/10 flex-1"></div>
+                                                            {isReturn && (
+                                                                <div className="flex items-center gap-4 py-4">
+                                                                    <div className="h-px bg-zinc-100 dark:bg-white/5 flex-1"></div>
+                                                                    <div className="px-3 py-1 rounded-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200/40 dark:border-zinc-800 text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest flex items-center gap-1.5">
+                                                                        <span className="material-icons-outlined text-xs">repeat</span> 
+                                                                        Return Journey • {Math.ceil((new Date(t.departureDate).getTime() - new Date(group[idx-1].arrivalDate).getTime()) / 86400000)} Days Later
+                                                                    </div>
+                                                                    <div className="h-px bg-zinc-100 dark:bg-white/5 flex-1"></div>
                                                                 </div>
                                                             )}
 
-                                                            <div className="flex items-center gap-6">
-                                                                {/* Time Col */}
-                                                                <div className="w-24 text-right">
-                                                                    <div className="text-xl font-bold text-white">{formatTime(t.departureTime)}</div>
-                                                                    <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mt-1">{calculateDuration(t)}</div>
-                                                                    <div className="text-lg font-bold text-gray-400 mt-2">{formatTime(t.arrivalTime)}</div>
-                                                                </div>
-
-                                                                {/* Timeline Graphic */}
-                                                                <div className="flex flex-col items-center self-stretch py-1">
-                                                                    <div className="w-3 h-3 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]"></div>
-                                                                    <div className="w-0.5 flex-1 bg-gradient-to-b from-blue-500/50 to-gray-700/50 my-1"></div>
-                                                                    <div className="w-2 h-2 rounded-full border-2 border-gray-600 bg-[#1c1c1e]"></div>
-                                                                </div>
-
-                                                                {/* Route Info */}
-                                                                <div className="flex-1 space-y-4">
-                                                                    <div>
-                                                                        <div className="flex items-baseline gap-2">
-                                                                            <span className="text-2xl font-bold text-white">{t.origin}</span>
-                                                                            <span className="text-xs font-bold text-gray-500">{new Date(t.departureDate).toLocaleDateString()}</span>
-                                                                        </div>
+                                                            <div className="flex flex-col md:flex-row items-stretch md:items-center gap-6 relative">
+                                                                
+                                                                {/* Left: Origin Info */}
+                                                                <div className="flex-1 flex items-center gap-4 min-w-[200px]">
+                                                                    <div className="w-10 h-10 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-150/50 dark:border-white/5 flex items-center justify-center shrink-0 shadow-sm text-zinc-400 dark:text-zinc-500">
+                                                                        <span className="material-icons-outlined text-lg">flight_takeoff</span>
                                                                     </div>
                                                                     <div>
-                                                                        <div className="flex items-baseline gap-2">
-                                                                            <span className="text-2xl font-bold text-white">{t.destination}</span>
-                                                                            <span className="text-xs font-bold text-gray-500">{new Date(t.arrivalDate).toLocaleDateString()}</span>
+                                                                        <p className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider">Departure</p>
+                                                                        <div className="flex items-baseline gap-2 mt-0.5">
+                                                                            <span className="text-xl font-black text-zinc-800 dark:text-white tracking-tight uppercase">{t.origin}</span>
+                                                                            <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 font-mono">{formatTime(t.departureTime)}</span>
                                                                         </div>
+                                                                        <p className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500 mt-1">
+                                                                            {new Date(t.departureDate).toLocaleDateString(undefined, {weekday:'short', month:'short', day:'numeric'})}
+                                                                            {t.departureTerminal && ` · Term ${t.departureTerminal}`}
+                                                                            {t.departureGate && ` · Gate ${t.departureGate}`}
+                                                                        </p>
                                                                     </div>
                                                                 </div>
 
-                                                                {/* Badges */}
-                                                                <div className="flex flex-col gap-2 items-end">
-                                                                    <div className="px-2 py-1 rounded bg-[#2c2c2e] border border-white/5 text-[10px] font-bold text-blue-400 uppercase tracking-wider">
-                                                                        {t.travelClass || 'Economy'}
+                                                                {/* Center: Progress & Duration Vector */}
+                                                                <div className="flex flex-col items-center justify-center min-w-[120px] shrink-0 pointer-events-none select-none relative py-1 md:py-0">
+                                                                    <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 tracking-tight mb-1.5">{calculateDuration(t)}</span>
+                                                                    <div className="w-full flex items-center gap-1.5 relative px-2">
+                                                                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 border border-indigo-400 shrink-0"></div>
+                                                                        <div className="flex-1 h-[2px] border-t-2 border-dashed border-zinc-200 dark:border-zinc-800 relative flex items-center justify-center">
+                                                                            <span className="material-icons-outlined text-zinc-400 dark:text-zinc-600 text-sm absolute -top-1.5 scale-90 rotate-90">{getTransportIcon(t.mode) === 'flight' ? 'flight' : 'arrow_forward'}</span>
+                                                                        </div>
+                                                                        <div className="w-1.5 h-1.5 rounded-full bg-purple-500 border border-purple-400 shrink-0"></div>
                                                                     </div>
+                                                                    <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-350 dark:text-zinc-600 mt-1.5">Nonstop</span>
+                                                                </div>
+
+                                                                {/* Right: Arrival Info */}
+                                                                <div className="flex-1 flex items-center justify-start md:justify-end gap-4 min-w-[200px]">
+                                                                    <div className="md:text-right">
+                                                                        <p className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider">Arrival</p>
+                                                                        <div className="flex items-baseline md:justify-end gap-2 mt-0.5">
+                                                                            <span className="text-xl font-black text-zinc-800 dark:text-white tracking-tight uppercase">{t.destination}</span>
+                                                                            <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 font-mono">{formatTime(t.arrivalTime)}</span>
+                                                                        </div>
+                                                                        <p className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500 mt-1">
+                                                                            {new Date(t.arrivalDate).toLocaleDateString(undefined, {weekday:'short', month:'short', day:'numeric'})}
+                                                                            {t.arrivalTerminal && ` · Term ${t.arrivalTerminal}`}
+                                                                            {t.arrivalGate && ` · Gate ${t.arrivalGate}`}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="w-10 h-10 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-150/50 dark:border-white/5 flex items-center justify-center shrink-0 order-first md:order-last shadow-sm text-zinc-400 dark:text-zinc-500">
+                                                                        <span className="material-icons-outlined text-lg">flight_land</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Additional Amenities/Seats row if present */}
+                                                            {(t.travelClass || t.seatNumber || t.vehicleModel || t.pickupLocation) && (
+                                                                <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-zinc-150/40 dark:border-white/5">
+                                                                    {t.travelClass && (
+                                                                        <div className="px-2.5 py-1 rounded-lg bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-white/5 text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                                                                            <span className="material-icons-outlined text-xs text-zinc-400">workspace_premium</span> 
+                                                                            {t.travelClass}
+                                                                        </div>
+                                                                    )}
                                                                     {t.seatNumber && (
-                                                                        <div className="px-2 py-1 rounded bg-[#2c2c2e] border border-white/5 text-[10px] font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1">
-                                                                            <span className="material-icons-outlined text-[10px]">event_seat</span> {t.seatNumber}
+                                                                        <div className="px-2.5 py-1 rounded-lg bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/30 dark:border-indigo-900/15 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-1.5">
+                                                                            <span className="material-icons-outlined text-xs">airline_seat_recline_extra</span>
+                                                                            Seat {t.seatNumber} {t.seatType && `(${t.seatType})`}
+                                                                            {t.isExitRow && <span className="text-[9px] font-semibold text-rose-500 dark:text-rose-400 font-sans tracking-normal">Exit Row</span>}
+                                                                        </div>
+                                                                    )}
+                                                                    {t.vehicleModel && (
+                                                                        <div className="px-2.5 py-1 rounded-lg bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100/30 dark:border-emerald-900/15 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                                                                            <span className="material-icons-outlined text-xs">directions_car</span> 
+                                                                            {t.vehicleModel}
+                                                                        </div>
+                                                                    )}
+                                                                    {t.pickupLocation && (
+                                                                        <div className="px-2.5 py-1 rounded-lg bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-white/5 text-[10px] font-bold text-zinc-550 dark:text-zinc-400 flex items-center gap-1">
+                                                                            <span className="material-icons-outlined text-xs text-zinc-400">pin_drop</span>
+                                                                            Pickup: {t.pickupLocation}
                                                                         </div>
                                                                     )}
                                                                 </div>
-                                                            </div>
+                                                            )}
                                                         </React.Fragment>
                                                     );
                                                 })}
@@ -1419,25 +1481,29 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
 
                     {/* Accommodation Section */}
                     <div className="space-y-6">
-                        <div className="flex justify-between items-center">
+                        <div className="flex justify-between items-center bg-white/20 dark:bg-white/[0.02] p-4 rounded-3xl border border-zinc-200/40 dark:border-white/5 backdrop-blur-xl">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center">
+                                <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20 shadow-sm">
                                     <span className="material-icons-outlined text-xl">hotel</span>
                                 </div>
-                                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Accommodation</h3>
+                                <div>
+                                    <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 tracking-tight leading-tight">Accommodation</h3>
+                                    <p className="text-[11px] text-zinc-400 dark:text-zinc-500 font-medium">Hotel stays, resorts, and vacation rentals</p>
+                                </div>
                             </div>
-                            <Button size="sm" variant="secondary" onClick={() => openAccommodationModal()}>
+                            <Button size="sm" variant="secondary" onClick={() => openAccommodationModal()} className="font-bold">
                                 + Add Stay
                             </Button>
                         </div>
 
                         {(!trip.accommodations || trip.accommodations.length === 0) ? (
-                            <div className="p-12 text-center border-2 border-dashed border-gray-800 rounded-3xl">
-                                <span className="material-icons-outlined text-4xl text-gray-600 mb-2">apartment</span>
-                                <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">No accommodations booked</p>
+                            <div className="p-16 text-center border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-3xl">
+                                <span className="material-icons-outlined text-4xl text-zinc-300 dark:text-zinc-700 mb-3 block">apartment</span>
+                                <p className="text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-widest text-xs">No accommodations booked yet</p>
+                                <button className="text-xs text-indigo-500 font-bold mt-2 hover:underline cursor-pointer" onClick={() => openAccommodationModal()}>Book your stay</button>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 gap-4">
+                            <div className="grid grid-cols-1 gap-6">
                                 {[...(trip.accommodations || [])].sort((a, b) => {
                                     const dateA = a.checkInDate || '1970-01-01';
                                     const timeA = a.checkInTime || '00:00';
@@ -1446,30 +1512,83 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                     if (dateA !== dateB) return dateA.localeCompare(dateB);
                                     return timeA.localeCompare(timeB);
                                 }).map(stay => (
-                                    <div key={stay.id} className="bg-[#1c1c1e] rounded-2xl p-5 border border-white/5 shadow-lg flex justify-between items-center group hover:bg-[#252528] transition-colors">
-                                        <div className="flex items-center gap-5">
-                                            <div className="w-16 h-16 rounded-xl bg-blue-900/30 flex items-center justify-center text-blue-400 text-2xl font-bold overflow-hidden">
-                                                {stay.logoUrl ? <img src={stay.logoUrl} className="w-full h-full object-cover" /> : stay.name.substring(0, 2).toUpperCase()}
+                                    <div key={stay.id} className="bg-white dark:bg-zinc-900/30 rounded-[2rem] p-6 sm:p-8 border border-zinc-200/50 dark:border-white/5 shadow-sm hover:shadow-md hover:border-zinc-350 dark:hover:border-white/10 transition-all duration-350 flex flex-col md:flex-row justify-between items-stretch gap-6 group relative">
+                                        
+                                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-5 flex-1">
+                                            {/* Brand Logo or Visual Accent */}
+                                            <div className="w-16 h-16 rounded-[1.25rem] bg-gradient-to-tr from-indigo-50 to-indigo-100 dark:from-indigo-950/20 dark:to-indigo-900/30 border border-indigo-100 dark:border-indigo-900/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-black text-2xl overflow-hidden shrink-0 shadow-sm">
+                                                {stay.logoUrl ? (
+                                                    <img referrerPolicy="no-referrer" src={stay.logoUrl} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <span className="material-icons-outlined text-2xl">{stay.type === 'Airbnb' ? 'home_work' : stay.type === 'Resort' ? 'spa' : 'apartment'}</span>
+                                                )}
                                             </div>
-                                            <div>
-                                                <h4 className="font-bold text-white text-lg">{stay.name}</h4>
-                                                <p className="text-xs text-gray-500 mt-1">{stay.address}</p>
-                                                <div className="flex gap-2 mt-3">
-                                                    <span className="bg-[#3a3a3c] text-gray-300 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">
+                                            
+                                            <div className="space-y-1.5 flex-1 min-w-0">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <h4 className="font-bold text-zinc-800 dark:text-zinc-150 text-lg truncate leading-tight">{stay.name}</h4>
+                                                    <span className="px-2 py-0.5 rounded-md bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-white/5 text-[10px] font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-widest">
+                                                        {stay.type}
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-zinc-400 dark:text-zinc-500 font-medium flex items-center gap-1 max-w-full">
+                                                    <span className="material-icons-outlined text-sm shrink-0">place</span>
+                                                    <span className="truncate select-all" title={stay.address}>{stay.address}</span>
+                                                </p>
+                                                
+                                                <div className="flex flex-wrap gap-2 pt-1.5">
+                                                    <span className="bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-100/30 dark:border-indigo-900/10 text-indigo-600 dark:text-indigo-400 px-2.5 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                                                        <span className="material-icons-outlined text-xs">nights_stay</span>
                                                         {calculateNights(stay.checkInDate, stay.checkOutDate)} Nights
                                                     </span>
-                                                    <span className="bg-[#3a3a3c] text-gray-300 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">
+                                                    <span className="bg-zinc-50 dark:bg-zinc-850/55 border border-zinc-150/40 dark:border-white/5 text-zinc-500 dark:text-zinc-400 px-2.5 py-0.5 rounded-lg text-[10px] font-bold tracking-tight">
                                                         {new Date(stay.checkInDate).toLocaleDateString(undefined, {day:'numeric', month:'short'}).toUpperCase()} - {new Date(stay.checkOutDate).toLocaleDateString(undefined, {day:'numeric', month:'short'}).toUpperCase()}
                                                     </span>
+                                                    {stay.confirmationCode && (
+                                                        <span className="bg-zinc-100 dark:bg-zinc-850 border border-zinc-200 dark:border-white/5 text-zinc-400 dark:text-zinc-500 font-mono text-[10px] uppercase font-bold px-2 py-0.5 rounded-lg select-all">
+                                                            CONF: {stay.confirmationCode}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-6">
-                                            {stay.cost && <div className="text-lg font-bold text-emerald-400">{formatCurrency(stay.cost)}</div>}
-                                            <button onClick={() => openAccommodationModal()} className="text-gray-500 hover:text-white transition-colors">
-                                                <span className="material-icons-outlined">edit</span>
-                                            </button>
+
+                                        {/* Right: Stay Details / Pricing */}
+                                        <div className="flex sm:flex-row md:flex-col items-center justify-between md:justify-center md:items-end gap-3 shrink-0 border-t md:border-t-0 md:border-l border-zinc-150 dark:border-white/5 pt-4 md:pt-0 md:pl-6">
+                                            {stay.cost ? (
+                                                <div className="md:text-right">
+                                                    <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">Total Cost</p>
+                                                    <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">{formatCurrency(stay.cost)}</div>
+                                                    <p className="text-[9px] font-semibold text-zinc-400 dark:text-zinc-500">
+                                                        {formatCurrency(Math.round(stay.cost / calculateNights(stay.checkInDate, stay.checkOutDate)))} / night
+                                                    </p>
+                                                </div>
+                                            ) : (
+                                                <div className="text-zinc-300 dark:text-zinc-600 font-mono text-xs italic">Unpriced</div>
+                                            )}
+                                            
+                                            <div className="flex gap-2">
+                                                {stay.website && (
+                                                    <a 
+                                                        href={stay.website} 
+                                                        target="_blank" 
+                                                        rel="noopener noreferrer" 
+                                                        className="w-8 h-8 rounded-lg bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-white/5 flex items-center justify-center text-zinc-500 dark:text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 transition-all cursor-pointer"
+                                                        title="Visit Website"
+                                                    >
+                                                        <span className="material-icons-outlined text-base">language</span>
+                                                    </a>
+                                                )}
+                                                <button 
+                                                    onClick={() => openAccommodationModal()} 
+                                                    className="w-8 h-8 rounded-lg bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-white/5 flex items-center justify-center text-zinc-500 dark:text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 transition-all cursor-pointer"
+                                                    title="Edit Stay Details"
+                                                >
+                                                    <span className="material-icons-outlined text-base">edit</span>
+                                                </button>
+                                            </div>
                                         </div>
+
                                     </div>
                                 ))}
                             </div>
