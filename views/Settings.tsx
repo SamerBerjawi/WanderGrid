@@ -176,13 +176,13 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
       setConfig({...config, workingDays: newDays});
   };
 
-  const handleWipeDatabase = () => {
+  const handleWipeDatabase = async () => {
       if (resetConfirmText === 'DELETE') {
-          Object.keys(localStorage).forEach(key => {
-              if (key.startsWith('wandergrid_') || key === 'flightFormDraft') {
-                  localStorage.removeItem(key);
-              }
-          });
+          try {
+              await dataService.wipeDatabase();
+          } catch (e) {
+              console.error("Wipe failed", e);
+          }
           window.location.reload();
       }
   };

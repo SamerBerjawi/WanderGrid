@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#090d16"/>
+      <stop offset="100%" stop-color="#111827"/>
+    </linearGradient>
+
+    <!-- Subtle glow behind the emoji -->
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="rgba(59, 130, 246, 0.15)"/>
+      <stop offset="100%" stop-color="rgba(0, 0, 0, 0)"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Maskable PWA / Icon standard squircle container -->
+  <rect width="512" height="512" rx="128" fill="url(#bgGrad)" stroke="rgba(255, 255, 255, 0.08)" stroke-width="4"/>
+
+  <!-- Ambient light backing -->
+  <circle cx="256" cy="256" r="220" fill="url(#glow)"/>
+
+  <!-- Styled decorative background grid lines -->
+  <g opacity="0.08">
+    <line x1="128" y1="0" x2="128" y2="512" stroke="#ffffff" stroke-width="2"/>
+    <line x1="256" y1="0" x2="256" y2="512" stroke="#ffffff" stroke-width="2"/>
+    <line x1="384" y1="0" x2="384" y2="512" stroke="#ffffff" stroke-width="2"/>
+    <line x1="0" y1="128" x2="512" y2="128" stroke="#ffffff" stroke-width="2"/>
+    <line x1="0" y1="256" x2="512" y2="256" stroke="#ffffff" stroke-width="2"/>
+    <line x1="0" y1="384" x2="512" y2="384" stroke="#ffffff" stroke-width="2"/>
+  </g>
+
+  <!-- Centered high-resolution scale of the 🏔️ Mountain Emoji.
+       We align this centered with system-backed responsive typography rendering. -->
+  <text x="256" y="350" font-size="240" font-family="'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', system-ui, sans-serif" text-anchor="middle">🏔️</text>
+</svg>

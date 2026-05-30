@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card, Button, Input, Select, Modal } from './ui';
 import { User, WorkspaceSettings, SavedConfig } from '../types';
-import { ImportState } from '../services/mockDb';
+import { ImportState, dataService } from '../services/mockDb';
 
 interface WorkspaceSettingsTabProps {
     config: WorkspaceSettings;
@@ -38,13 +38,13 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
     const [isResetModalOpen, setIsResetModalOpen] = useState(false);
     const [resetConfirmText, setResetConfirmText] = useState('');
 
-    const handleWipeDatabase = () => {
+    const handleWipeDatabase = async () => {
         if (resetConfirmText === 'DELETE') {
-            Object.keys(localStorage).forEach(key => {
-                if (key.startsWith('wandergrid_') || key === 'flightFormDraft') {
-                    localStorage.removeItem(key);
-                }
-            });
+            try {
+                await dataService.wipeDatabase();
+            } catch (e) {
+                console.error("Wipe failed", e);
+            }
             window.location.reload();
         }
     };

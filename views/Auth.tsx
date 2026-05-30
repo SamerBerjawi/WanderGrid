@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Button, Input } from '../components/ui';
 import { dataService } from '../services/mockDb';
 import { User } from '../types';
@@ -9,7 +8,8 @@ interface AuthProps {
 }
 
 export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
-    const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+    const [mode, setMode] = useState<'signin' | 'signup' | 'setup_admin'>('signin');
+    const [isCheckingSetup, setIsCheckingSetup] = useState(true);
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -18,6 +18,23 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     });
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        dataService.getUsers()
+            .then(users => {
+                if (users.length === 0) {
+                    setMode('setup_admin');
+                } else {
+                    setMode('signin');
+                }
+            })
+            .catch(err => {
+                console.error("Error checking system users roster:", err);
+            })
+            .finally(() => {
+                setIsCheckingSetup(false);
+            });
+    }, []);
 
     const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -35,13 +52,23 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                 if (user) {
                     onLogin(user);
                 } else {
-                    setError('Invalid credentials. Try admin@wandergrid.app / password');
+                    setError('Invalid credentials. Please verify design coordinates.');
                 }
-            } else {
+            } else if (mode === 'signup') {
                 if (formData.password !== formData.confirmPassword) {
                     throw new Error("Passwords do not match");
                 }
                 const user = await dataService.register(formData.name, formData.email, formData.password);
+                onLogin(user);
+            } else if (mode === 'setup_admin') {
+                if (formData.password !== formData.confirmPassword) {
+                    throw new Error("Passwords do not match");
+                }
+                if (!formData.name || !formData.email || !formData.password) {
+                    throw new Error("All fields are required for initial administrator configuration");
+                }
+                // Automatically assign 'Admin' role as the first system administrator
+                const user = await dataService.register(formData.name, formData.email, formData.password, 'Admin');
                 onLogin(user);
             }
         } catch (err) {
@@ -55,17 +82,17 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         setIsLoading(true);
         setError('');
         try {
-            // Try default admin credentials first
-            let user = await dataService.login('admin@wandergrid.app', 'password');
+            const allUsers = await dataService.getUsers();
+            let user: User | null = null;
             
-            // If not found (e.g. data cleared or user deleted), get the first available user
-            if (!user) {
-                const allUsers = await dataService.getUsers();
-                if (allUsers.length > 0) {
+            if (allUsers.length === 0) {
+                // Create an Admin user as initial enrollment on blank slate
+                user = await dataService.register('Admin User', 'admin@wandergrid.app', 'password', 'Admin');
+            } else {
+                // Attempt standard default login
+                user = await dataService.login('admin@wandergrid.app', 'password');
+                if (!user) {
                     user = allUsers[0];
-                } else {
-                    // Create a fresh demo user if database is completely empty
-                    user = await dataService.register('Demo User', 'demo@wandergrid.app', 'demo');
                 }
             }
             
@@ -75,39 +102,54 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                 setError('Failed to initialize demo session');
             }
         } catch (e) {
-            setError('Demo mode unavailable');
+            setError('Demo mode unavailable at this moment');
         } finally {
             setIsLoading(false);
         }
     };
 
+    if (isCheckingSetup) {
+        return (
+            <div className="flex min-h-screen items-center justify-center p-6 bg-slate-900">
+                <div className="text-center space-y-4">
+                    <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-500">Checking Security Database...</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="flex min-h-screen items-center justify-center p-6 relative overflow-hidden">
-            {/* Background elements inherited from App body, but we add some floating elements */}
+            {/* Background elements */}
             <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/3 rounded-full blur-3xl pointer-events-none animate-pulse"></div>
             <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/3 rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDelay: '1s' }}></div>
 
             <Card className="w-full max-w-md z-10 !bg-white/80 dark:!bg-gray-900/80 backdrop-blur-3xl shadow-2xl border border-white/50 dark:border-white/10" noPadding>
                 <div className="p-8 text-center">
-                    <div className="w-16 h-16 mx-auto bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/30 mb-6">
-                        <span className="text-3xl font-bold text-white">W</span>
+                    <div className="w-16 h-16 mx-auto bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center shadow-lg mb-6 text-3xl">
+                        <span>🏔️</span>
                     </div>
                     <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight mb-2">
-                        {mode === 'signin' ? 'Welcome Back' : 'Join WanderGrid'}
+                        {mode === 'setup_admin' ? 'Initial System Setup' : mode === 'signin' ? 'Welcome Back' : 'Join WanderGrid'}
                     </h2>
                     <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
-                        {mode === 'signin' ? 'Enter your coordinates to continue.' : 'Start your journey with a new account.'}
+                        {mode === 'setup_admin' 
+                            ? 'Configure the primary Administrator account.' 
+                            : mode === 'signin' 
+                                ? 'Enter your credentials to manage coordinates.' 
+                                : 'Start your journey with a new partner profile.'}
                     </p>
                 </div>
 
                 <div className="px-8 pb-8 space-y-5">
                     <form onSubmit={handleSubmit} className="space-y-5">
-                        {mode === 'signup' && (
+                        {mode !== 'signin' && (
                             <div className="animate-fade-in">
                                 <Input 
                                     name="name"
                                     label="Full Name" 
-                                    placeholder="John Doe" 
+                                    placeholder={mode === 'setup_admin' ? 'Admin Administrator' : 'John Doe'} 
                                     value={formData.name}
                                     onChange={handleInput}
                                     required
@@ -119,7 +161,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                             name="email"
                             label="Email Address" 
                             type="email"
-                            placeholder="you@example.com" 
+                            placeholder={mode === 'setup_admin' ? 'admin@wandergrid.app' : 'you@example.com'} 
                             value={formData.email}
                             onChange={handleInput}
                             required
@@ -135,7 +177,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                             required
                         />
 
-                        {mode === 'signup' && (
+                        {mode !== 'signin' && (
                             <div className="animate-fade-in">
                                 <Input 
                                     name="confirmPassword"
@@ -158,16 +200,20 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                         <div className="pt-2">
                             <Button 
                                 variant="primary" 
-                                className="w-full py-4 text-sm shadow-xl shadow-blue-500/20" 
+                                className="w-full py-4 text-sm shadow-xl shadow-blue-500/20 bg-gradient-to-r from-blue-600 to-indigo-600 font-bold" 
                                 isLoading={isLoading}
                                 type="submit"
                             >
-                                {mode === 'signin' ? 'Sign In' : 'Create Account'}
+                                {mode === 'setup_admin' 
+                                    ? 'Provision Administrator Account' 
+                                    : mode === 'signin' 
+                                        ? 'Authorize Session' 
+                                        : 'Enlist Profile'}
                             </Button>
                         </div>
                     </form>
 
-                    {/* Demo Button & Divider */}
+                    {/* Show Demo Button */}
                     <div className="relative flex items-center gap-4 my-2">
                         <div className="h-px bg-gray-200 dark:bg-white/10 flex-1"></div>
                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Or</span>
@@ -181,26 +227,28 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                         type="button"
                         icon={<span className="material-icons-outlined text-sm">rocket_launch</span>}
                     >
-                        Enter Demo Mode
+                        Auto-Setup & Demo Run
                     </Button>
 
-                    <div className="text-center mt-4">
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {mode === 'signin' ? "Don't have an account? " : "Already have an account? "}
-                            <button 
-                                type="button"
-                                onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(''); }}
-                                className="font-bold text-blue-600 dark:text-blue-400 hover:underline"
-                            >
-                                {mode === 'signin' ? 'Sign Up' : 'Sign In'}
-                            </button>
-                        </p>
-                    </div>
+                    {mode !== 'setup_admin' && (
+                        <div className="text-center mt-4">
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {mode === 'signin' ? "Don't have an account? " : "Already have an account? "}
+                                <button 
+                                    type="button"
+                                    onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(''); }}
+                                    className="font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                                >
+                                    {mode === 'signin' ? 'Sign Up' : 'Sign In'}
+                                </button>
+                            </p>
+                        </div>
+                    )}
                 </div>
             </Card>
             
             <div className="absolute bottom-6 text-center w-full">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] opacity-50">WanderGrid Systems v2.1</p>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] opacity-50">WanderGrid Systems v2.2</p>
             </div>
         </div>
     );

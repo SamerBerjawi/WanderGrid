@@ -80,19 +80,20 @@ class DataService {
     return user || null;
   }
 
-  async register(name: string, email: string, pass: string): Promise<User> {
+  async register(name: string, email: string, pass: string, role: 'Partner' | 'Admin' = 'Partner'): Promise<User> {
     const cleanEmail = email.trim().toLowerCase();
+    const isSetupAdmin = role === 'Admin';
     const newUser: User = {
         id: cleanEmail,
         name,
         email: cleanEmail,
         password: pass,
-        role: 'Partner',
-        leaveBalance: 25,
+        role: role,
+        leaveBalance: isSetupAdmin ? 30 : 25,
         takenLeave: 0,
-        allowance: 25,
+        allowance: isSetupAdmin ? 30 : 25,
         lieuBalance: 0,
-        activeYears: [new Date().getFullYear()],
+        activeYears: [new Date().getFullYear(), new Date().getFullYear() + 1, new Date().getFullYear() + 2],
         policies: [],
         holidayConfigIds: []
     };
@@ -236,12 +237,6 @@ class DataService {
                   throw errObj;
               }
               throw new Error(`API Error: ${res.statusText}`);
-          }
-
-          // Trigger local-to-server synchronization in the background on the first successful fetch other than backup or restore
-          if (!this._isSynced && endpoint !== '/backup' && endpoint !== '/restore') {
-              this._isSynced = true;
-              this.syncLocalDataToServer().catch(err => console.error('[Sync] Error syncing local data:', err));
           }
 
           return await res.json();
@@ -564,6 +559,26 @@ class DataService {
     return { ...DEFAULT_WORKSPACE_SETTINGS, ...settings };
   }
   async updateWorkspaceSettings(settings: WorkspaceSettings): Promise<void> { await this.fetch('/settings', { method: 'PUT', body: JSON.stringify(settings) }); }
+  async wipeDatabase(): Promise<void> {
+      const isProd = import.meta.env.PROD;
+      if (this._useApi || isProd) {
+          try {
+              await this.fetch('/wipe', { method: 'POST' });
+          } catch (e) {
+              console.warn("Wipe database endpoint failed or not found", e);
+              if (isProd) throw e;
+          }
+      }
+      
+      // Clear localStorage keys
+      const key = (k: string) => `wandergrid_${k}`;
+      const collections = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights', 'settings', 'session_user', 'dashboard_cache_v1'];
+      collections.forEach(c => {
+          localStorage.removeItem(key(c));
+      });
+      localStorage.removeItem('flightFormDraft');
+      localStorage.removeItem('wandergrid_users');
+  }
   async exportFullState(): Promise<string> {
       let geoCache: any[] = [];
       try {

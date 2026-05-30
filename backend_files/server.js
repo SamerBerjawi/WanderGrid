@@ -73,30 +73,8 @@ const initDb = async (retries = 10, delayMs = 3000) => {
         
         console.log('Database schema initialized successfully!');
 
-        // Seed the default Admin user if they do not exist
-        const adminCheck = await client.query(`
-            SELECT 1 FROM users WHERE LOWER(data->>'email') = 'admin@wandergrid.app' LIMIT 1
-        `);
-        if (adminCheck.rows.length === 0) {
-            console.log('Seeding default Admin user (admin@wandergrid.app) into database...');
-            const defaultAdmin = {
-                id: 'admin@wandergrid.app',
-                name: 'Admin User',
-                email: 'admin@wandergrid.app',
-                password: 'password',
-                role: 'Admin',
-                leaveBalance: 30,
-                takenLeave: 0,
-                allowance: 30,
-                lieuBalance: 0,
-                activeYears: [2024, 2025, 2026],
-                policies: [],
-                holidayConfigIds: []
-            };
-            await client.query(`
-                INSERT INTO users (id, data) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING
-            `, ['admin@wandergrid.app', JSON.stringify(defaultAdmin)]);
-        }
+        // Startup db confirmation
+        console.log('Database initialization check completed: Users table ready for enrollment.');
 
         return; // Connection and schema setup succeeded
       } finally {
@@ -846,6 +824,28 @@ app.post('/api/restore', async (req, res) => {
         res.json({ success: true });
     } catch (err) {
         await client.query('ROLLBACK');
+        res.status(500).json({ error: err.message });
+    } finally {
+        client.release();
+    }
+});
+
+app.post('/api/wipe', async (req, res) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        
+        // Truncate all tables
+        const tables = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights', 'settings'];
+        for (const table of tables) {
+            await client.query(`TRUNCATE TABLE ${table} CASCADE`);
+        }
+        
+        await client.query('COMMIT');
+        res.json({ success: true });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error('Error wiping database on server:', err);
         res.status(500).json({ error: err.message });
     } finally {
         client.release();

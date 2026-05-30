@@ -143,9 +143,26 @@ export default function App() {
       setTheme(settings.theme);
     });
     
-    const storedUser = localStorage.getItem('wandergrid_session_user');
-    if (storedUser) {
-        setCurrentUser(JSON.parse(storedUser));
+    const storedUserStr = localStorage.getItem('wandergrid_session_user');
+    if (storedUserStr) {
+        try {
+            const parsedUser = JSON.parse(storedUserStr);
+            dataService.getUsers().then(users => {
+                const matched = users.find(u => u.id === parsedUser.id || u.email?.toLowerCase() === parsedUser.email?.toLowerCase());
+                if (matched) {
+                    setCurrentUser(matched);
+                    localStorage.setItem('wandergrid_session_user', JSON.stringify(matched));
+                } else {
+                    setCurrentUser(null);
+                    localStorage.removeItem('wandergrid_session_user');
+                }
+            }).catch(err => {
+                console.warn("Roster validation offline, logging in from cache:", err);
+                setCurrentUser(parsedUser);
+            });
+        } catch (e) {
+            localStorage.removeItem('wandergrid_session_user');
+        }
     }
   }, []);
 
