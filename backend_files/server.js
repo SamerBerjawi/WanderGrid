@@ -142,8 +142,10 @@ function authenticateToken(req, res, next) {
         '/api/auth/register'
     ];
     
+    const fullPath = req.baseUrl + req.path;
+    
     // Bypass authentication for public paths and calendar feeds
-    const isPublic = publicPaths.some(p => req.path === p) || (req.path.startsWith('/api/calendar/') && req.path.endsWith('/feed.ics'));
+    const isPublic = publicPaths.some(p => fullPath === p) || (fullPath.startsWith('/api/calendar/') && fullPath.endsWith('/feed.ics'));
     
     if (isPublic) {
         return next();
