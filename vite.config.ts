@@ -15,7 +15,6 @@ const reactSingletonAliases = [
   { find: /^react\/jsx-dev-runtime$/, replacement: resolveFromRoot('node_modules/react/jsx-dev-runtime.js') },
   { find: /^react-dom$/, replacement: resolveFromRoot('node_modules/react-dom') },
   { find: /^react-dom\/client$/, replacement: resolveFromRoot('node_modules/react-dom/client.js') },
-  { find: /^react-dom\/server$/, replacement: resolveFromRoot('node_modules/react-dom/server.js') },
 ];
 
 export default defineConfig(({ mode }) => {
