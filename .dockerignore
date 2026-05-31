@@ -1,0 +1,12 @@
+.git
+.github
+node_modules
+backend_files/node_modules
+dist
+build
+coverage
+.env
+.env.*
+postgres_data
+*.log
+.DS_Store

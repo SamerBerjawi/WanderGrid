@@ -16,6 +16,47 @@ const Gamification = lazy(() => import('./views/Gamification').then(m => ({ defa
 const Flights = lazy(() => import('./views/Flights').then(m => ({ default: m.Flights })));
 const Auth = lazy(() => import('./views/Auth').then(m => ({ default: m.Auth })));
 
+class AppErrorBoundary extends React.Component<{ children: React.ReactNode; onReset: () => void; resetKey: string }, { hasError: boolean; message: string }> {
+  constructor(props: { children: React.ReactNode; onReset: () => void; resetKey: string }) {
+    super(props);
+    this.state = { hasError: false, message: '' };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, message: error?.message || 'Something went wrong while rendering this page.' };
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('WanderGrid view crashed:', error, info);
+  }
+
+  componentDidUpdate(prevProps: { resetKey: string }) {
+    if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
+      this.setState({ hasError: false, message: '' });
+    }
+  }
+
+  render() {
+    if (!this.state.hasError) return this.props.children;
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center p-6">
+        <div className="max-w-md rounded-[2rem] border border-red-200/70 dark:border-red-500/20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl p-8 text-center shadow-xl">
+          <div className="text-4xl mb-4">🧭</div>
+          <h2 className="text-xl font-black text-gray-900 dark:text-white mb-2">We hit a detour</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{this.state.message}</p>
+          <button
+            onClick={() => { this.setState({ hasError: false, message: '' }); this.props.onReset(); }}
+            className="px-5 py-3 rounded-2xl bg-blue-600 text-white text-xs font-black uppercase tracking-widest hover:bg-blue-700 transition-colors"
+          >
+            Return to dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+}
+
+
 const getUrlState = () => {
     try {
         const path = window.location.pathname;
@@ -96,8 +137,10 @@ export default function App() {
   
   const [theme, setTheme] = useState<'light' | 'dark' | 'auto'>('dark');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isAuthReady, setIsAuthReady] = useState(false);
 
   const currentAccent = VIEW_ACCENTS[view] || VIEW_ACCENTS[ViewState.DASHBOARD];
+  const routeKey = `${view}:${view === ViewState.USER_DETAIL ? selectedUserId || '' : ''}:${view === ViewState.TRIP_DETAIL ? selectedTripId || '' : ''}`;
 
   // Handle URL Navigation (Push State)
   const navigate = (newView: ViewState, id?: string) => {
@@ -139,31 +182,65 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    dataService.getWorkspaceSettings().then(settings => {
-      setTheme(settings.theme);
-    });
-    
-    const storedUserStr = localStorage.getItem('wandergrid_session_user');
-    if (storedUserStr) {
-        try {
-            const parsedUser = JSON.parse(storedUserStr);
-            dataService.getUsers().then(users => {
-                const matched = users.find(u => u.id === parsedUser.id || u.email?.toLowerCase() === parsedUser.email?.toLowerCase());
-                if (matched) {
-                    setCurrentUser(matched);
-                    localStorage.setItem('wandergrid_session_user', JSON.stringify(matched));
-                } else {
-                    setCurrentUser(null);
-                    localStorage.removeItem('wandergrid_session_user');
-                }
-            }).catch(err => {
-                console.warn("Roster validation offline, logging in from cache:", err);
-                setCurrentUser(parsedUser);
-            });
-        } catch (e) {
-            localStorage.removeItem('wandergrid_session_user');
+    let isMounted = true;
+
+    const handleUnauthorized = () => {
+      if (!isMounted) return;
+      setCurrentUser(null);
+      window.history.replaceState({}, '', '/login');
+    };
+
+    window.addEventListener('wandergrid:unauthorized', handleUnauthorized);
+
+    const bootstrapAuth = async () => {
+      const cachedUser = dataService.getCachedSessionUser();
+      const token = dataService.getSessionToken();
+
+      if (token) {
+        dataService.getWorkspaceSettings()
+          .then(settings => { if (isMounted) setTheme(settings.theme); })
+          .catch(err => console.warn('Workspace settings unavailable during boot:', err));
+      }
+
+      if (!cachedUser || !token) {
+        dataService.clearSession();
+        if (isMounted) {
+          setCurrentUser(null);
+          setIsAuthReady(true);
         }
-    }
+        return;
+      }
+
+      try {
+        const users = await dataService.getUsers();
+        const matched = users.find(u => u.id === cachedUser.id || u.email?.toLowerCase() === cachedUser.email?.toLowerCase());
+        if (!isMounted) return;
+        if (matched) {
+          setCurrentUser(matched);
+          dataService.setSession(matched, token);
+        } else {
+          dataService.clearSession();
+          setCurrentUser(null);
+        }
+      } catch (err) {
+        if (!isMounted) return;
+        if (!dataService.getSessionToken()) {
+          setCurrentUser(null);
+          return;
+        }
+        console.warn('Roster validation unavailable; using cached session if token exists:', err);
+        setCurrentUser(cachedUser);
+      } finally {
+        if (isMounted) setIsAuthReady(true);
+      }
+    };
+
+    bootstrapAuth();
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener('wandergrid:unauthorized', handleUnauthorized);
+    };
   }, []);
 
   useEffect(() => {
@@ -201,12 +278,13 @@ export default function App() {
 
   const handleLogin = (user: User) => {
       setCurrentUser(user);
-      localStorage.setItem('wandergrid_session_user', JSON.stringify(user));
+      dataService.setSession(user, dataService.getSessionToken());
   };
 
   const handleLogout = () => {
       setCurrentUser(null);
-      localStorage.removeItem('wandergrid_session_user');
+      dataService.clearSession();
+      try { window.history.replaceState({}, '', '/login'); } catch (e) {}
       navigate(ViewState.DASHBOARD);
   };
 
@@ -245,6 +323,14 @@ export default function App() {
     }
   };
 
+  if (!isAuthReady) {
+      return (
+        <div className="flex h-screen w-full items-center justify-center bg-slate-950 text-gray-100">
+          <ViewLoader />
+        </div>
+      );
+  }
+
   if (!currentUser) {
       return (
         <div className="flex h-screen w-full overflow-hidden bg-gradient-to-br from-indigo-50/50 via-slate-100/60 to-blue-50/50 dark:from-slate-950 dark:via-slate-900/90 dark:to-indigo-950/95 transition-colors duration-500 text-gray-900 dark:text-gray-100 relative">
@@ -279,20 +365,25 @@ export default function App() {
         currentUser={currentUser}
       />
       <main className="flex-1 h-full overflow-y-auto relative z-10 p-4 md:p-8 pb-28 md:pb-8 custom-scrollbar">
-        <Suspense fallback={<ViewLoader />}>
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={view + (view === ViewState.USER_DETAIL ? selectedUserId : '') + (view === ViewState.TRIP_DETAIL ? selectedTripId : '')}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.18, ease: "easeOut" }}
-              className="w-full h-full"
-            >
-              {renderView()}
-            </motion.div>
-          </AnimatePresence>
-        </Suspense>
+        {/* Keep AnimatePresence mounted while the lazy page suspends. If Suspense wraps
+            the animation tree, route fallback swaps can interrupt motion's React
+            context during rapid navigation/unmount cycles. */}
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={routeKey}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className="w-full h-full"
+          >
+            <AppErrorBoundary resetKey={routeKey} onReset={() => navigate(ViewState.DASHBOARD)}>
+              <Suspense fallback={<ViewLoader />}>
+                {renderView()}
+              </Suspense>
+            </AppErrorBoundary>
+          </motion.div>
+        </AnimatePresence>
       </main>
     </div>
   );

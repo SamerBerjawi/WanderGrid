@@ -39,7 +39,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                 return dataService.getTrips();
             })
             .then(allTrips => {
-                setTrips(allTrips.filter(t => t.participants.includes(userId)));
+                setTrips(allTrips.filter(t => (t.participants || []).includes(userId)));
                 setLoading(false);
             })
             .catch(err => {

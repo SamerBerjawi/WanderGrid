@@ -1,8 +1,8 @@
-FROM node:20-alpine AS frontend-build
+FROM node:24-bookworm-slim AS frontend-build
 
 WORKDIR /app
 
-COPY package.json ./
+COPY package.json package-lock.json ./
 COPY tsconfig.json ./
 COPY vite.config.ts ./
 COPY index.html ./
@@ -14,11 +14,12 @@ COPY components ./components
 COPY services ./services
 COPY views ./views
 COPY utils ./utils
+COPY public ./public
 
 RUN npm install --legacy-peer-deps --no-audit --no-fund
 RUN npm run build
 
-FROM node:20-alpine AS backend
+FROM node:24-bookworm-slim AS backend
 
 WORKDIR /app
 ENV NODE_ENV=production
