@@ -2,16 +2,7 @@ version: '3.8'
 
 services:
   app:
-    # To run without source code (e.g., pasting directly into a Portainer stack):
-    # Portainer will pull the pre-built image from GitHub Container Registry (GHCR).
-    # You can specify WANDERGRID_TAG in Portainer's Env Variables to override 'latest' 
-    # with a specific commit SHA (like 'sha-9debe16') to force-pull new builds and bypass Docker's cache.
     image: ghcr.io/samerberjawi/wandergrid:${WANDERGRID_TAG:-latest}
-    # If you are deploying via Portainer Git Repository or locally, you can use the build context below.
-    # Otherwise, you can comment the build block out if deploying as a standalone compose file.
-    build:
-      context: .
-      dockerfile: backend_files/Dockerfile
     container_name: wandergrid_app
     restart: unless-stopped
     ports:
@@ -52,7 +43,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      test: ["CMD", "pg_isready", "-U", "${DB_USER:-wandergrid}", "-d", "${DB_NAME:-wandergrid}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -63,10 +54,8 @@ volumes:
   postgres_data:
 
 networks:
-  # Internal network restricted to database and app backend communication
   db-communication-net:
     driver: bridge
     internal: true
-  # Public/ambient bridge network for exposing the application
   app-exposure-net:
     driver: bridge

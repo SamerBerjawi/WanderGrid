@@ -504,6 +504,7 @@ const startBackgroundScheduler = () => {
   }, refreshIntervalMs);
 };
 
+const prepopulateDatabases = async () => {
   let client;
   try {
     client = await pool.connect();
@@ -625,12 +626,16 @@ const startBackgroundScheduler = () => {
 };
 
 initDb().then(() => {
-  loadGlobalData()
+  prepopulateDatabases()
     .then(() => {
-        // Start background weekly datasets synchronization task once server caches are loaded
-        startBackgroundScheduler();
+      loadGlobalData()
+        .then(() => {
+            // Start background weekly datasets synchronization task once server caches are loaded
+            startBackgroundScheduler();
+        })
+        .catch(err => console.error('Error in background data load:', err));
     })
-    .catch(err => console.error('Error in background data load:', err));
+    .catch(err => console.error('Error in prepopulating database:', err));
 }).catch(err => {
   console.error('Failed to initialize database after multiple retries. Server can still start, but database operations will fail:', err.message);
 });
