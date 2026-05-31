@@ -9,7 +9,6 @@ let isCacheLoaded = false;
 let isIndexedDbLoaded = false;
 
 let lastNetworkFetchTime = 0;
-let backendSearchAbort: AbortController | null = null;
 
 async function throttleNetwork() {
     const minInterval = 900; // ms
@@ -67,15 +66,20 @@ const openGeoDb = (): Promise<IDBDatabase | null> => new Promise((resolve) => {
         resolve(null);
         return;
     }
-    const request = indexedDB.open(GEO_DB_NAME, 1);
-    request.onupgradeneeded = () => {
-        const db = request.result;
-        if (!db.objectStoreNames.contains(GEO_STORE_NAME)) {
-            db.createObjectStore(GEO_STORE_NAME, { keyPath: 'key' });
-        }
-    };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => resolve(null);
+    try {
+        const request = indexedDB.open(GEO_DB_NAME, 1);
+        request.onupgradeneeded = () => {
+            const db = request.result;
+            if (!db.objectStoreNames.contains(GEO_STORE_NAME)) {
+                db.createObjectStore(GEO_STORE_NAME, { keyPath: 'key' });
+            }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => resolve(null);
+    } catch (e) {
+        console.warn("IndexedDB access was blocked or threw an exception:", e);
+        resolve(null);
+    }
 });
 
 const hydrateCacheFromIndexedDb = async () => {
@@ -299,51 +303,27 @@ export function calculateArrivalTime(originIata: string, destIata: string, depDa
 const activeSearchAborts = new Map<string, AbortController>();
 const searchQueriesCache = new Map<string, string[]>();
 
-
-async function searchLocationsViaBackend(query: string): Promise<string[]> {
-    try {
-        backendSearchAbort?.abort();
-        backendSearchAbort = new AbortController();
-        const timeoutId = setTimeout(() => backendSearchAbort?.abort(), 3000);
-        const token = localStorage.getItem('wandergrid_session_token');
-        const res = await fetch(`/api/geocode/search?q=${encodeURIComponent(query)}`, {
-            signal: backendSearchAbort.signal,
-            headers: token ? { Authorization: `Bearer ${token}` } : undefined
-        }).finally(() => clearTimeout(timeoutId));
-        if (!res.ok) return [];
-        const data = await res.json();
-        return Array.isArray(data?.suggestions) ? data.suggestions : [];
-    } catch (err) {
-        return [];
-    }
-}
-
-export function createDebouncedLocationSearch(delayMs = 350) {
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
-    let sequence = 0;
-
-    return (query: string): Promise<string[]> => {
-        sequence += 1;
-        const callId = sequence;
-        if (timeoutId) clearTimeout(timeoutId);
-        return new Promise(resolve => {
-            timeoutId = setTimeout(async () => {
-                if (callId !== sequence) return resolve([]);
-                resolve(await searchLocations(query));
-            }, delayMs);
-        });
-    };
-}
-
 async function fetchOpenMeteoGeocoding(query: string): Promise<any[]> {
     try {
+        // 1. Fetch from backend geocoding proxy (with PostgreSQL caching, logging, and fast responses)
+        const res = await fetchWithTimeout(`/api/proxy/geocoding?q=${encodeURIComponent(query)}`, {}, 3000);
+        if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data)) return data;
+        }
+    } catch (e) {
+        console.warn("Backend geocoding proxy failed. Falling back to direct client-side fetch...", e);
+    }
+
+    try {
+        // 2. Direct client-side fallback if backend is offline or slow
         const res = await fetchWithTimeout(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=10&language=en&format=json`, {}, 3000);
         if (res.ok) {
             const data = await res.json();
             return data.results || [];
         }
     } catch (e) {
-        console.error("Open-Meteo geocoding failed", e);
+        console.error("Direct Open-Meteo geocoding failed as well:", e);
     }
     return [];
 }
@@ -415,16 +395,10 @@ export async function searchLocations(query: string): Promise<string[]> {
         });
     } catch (e) {}
 
-    // 4. Backend cached search first, then Osm/Nominatim and Open-Meteo fallback.
+    // 4. Osm/Nominatim and Open-Meteo network query matching with abort logic
     let networkCitySuggestions: string[] = [];
     let networkAirportSuggestions: string[] = [];
     if (trimmedQuery.length >= 3) {
-        const backendSuggestions = await searchLocationsViaBackend(trimmedQuery);
-        if (backendSuggestions.length > 0) {
-            searchQueriesCache.set(lowerQuery, backendSuggestions);
-            return backendSuggestions;
-        }
-
         try {
             // Try Open-Meteo first for high reliability and unblocking
             const meteoResults = await fetchOpenMeteoGeocoding(trimmedQuery);

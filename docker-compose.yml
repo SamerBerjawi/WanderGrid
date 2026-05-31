@@ -1,8 +1,10 @@
+version: '3.8'
+
 services:
   app:
     # To run without source code (e.g., pasting directly into a Portainer stack):
     # Portainer will pull the pre-built image from GitHub Container Registry (GHCR).
-    # You can specify WANDERGRID_TAG in Portainer's Env Variables to override 'latest'
+    # You can specify WANDERGRID_TAG in Portainer's Env Variables to override 'latest' 
     # with a specific commit SHA (like 'sha-9debe16') to force-pull new builds and bypass Docker's cache.
     image: ghcr.io/samerberjawi/wandergrid:${WANDERGRID_TAG:-latest}
     # If you are deploying via Portainer Git Repository or locally, you can use the build context below.
@@ -15,59 +17,37 @@ services:
     ports:
       - "${APP_PORT:-4921}:3000"
     environment:
-      NODE_ENV: production
-      PORT: 3000
-      DATABASE_URL: postgres://wandergrid:${POSTGRES_PASSWORD:-wandergrid_password}@db:5432/wandergrid
-      PG_POOL_MAX: ${PG_POOL_MAX:-20}
-      PG_CONNECT_TIMEOUT_MS: ${PG_CONNECT_TIMEOUT_MS:-5000}
-      PG_STATEMENT_TIMEOUT_MS: ${PG_STATEMENT_TIMEOUT_MS:-15000}
-      API_CACHE_TTL_MS: ${API_CACHE_TTL_MS:-5000}
-      GLOBAL_DATA_REFRESH_MS: ${GLOBAL_DATA_REFRESH_MS:-604800000}
-      GEOCODE_CACHE_TTL_MS: ${GEOCODE_CACHE_TTL_MS:-2592000000}
-      EXTERNAL_FETCH_TIMEOUT_MS: ${EXTERNAL_FETCH_TIMEOUT_MS:-4000}
-      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=postgres://${DB_USER:-wandergrid}:${DB_PASSWORD:-wandergrid_password}@db:5432/${DB_NAME:-wandergrid}
+      - JWT_SECRET=${JWT_SECRET:-wandergrid_super_secret_development_key_change_me_in_production}
     depends_on:
       db:
         condition: service_healthy
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "node -e \"require('http').get('http://127.0.0.1:3000/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))\""
-        ]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
     networks:
-      - wandergrid-public
-      - wandergrid-internal
+      - wandergrid-net
 
   db:
     image: postgres:15-alpine
     container_name: wandergrid_db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: wandergrid
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-wandergrid_password}
-      POSTGRES_DB: wandergrid
+      POSTGRES_USER: ${DB_USER:-wandergrid}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-wandergrid_password}
+      POSTGRES_DB: ${DB_NAME:-wandergrid}
     volumes:
-      - wandergrid-postgres-data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U wandergrid -d wandergrid"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
       timeout: 5s
-      retries: 10
-      start_period: 20s
+      retries: 5
     networks:
-      - wandergrid-internal
+      - wandergrid-net
 
 volumes:
-  wandergrid-postgres-data:
+  postgres_data:
 
 networks:
-  wandergrid-public:
+  wandergrid-net:
     driver: bridge
-  wandergrid-internal:
-    driver: bridge
-    internal: true

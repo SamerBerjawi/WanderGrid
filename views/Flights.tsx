@@ -437,10 +437,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
       });
       setFlights(extracted);
     }).catch(err => {
-      console.error('Failed to load flights data:', err);
-      setTrips([]);
-      setUsers([]);
-      setFlights([]);
+      console.error("Failed to load flight lists:", err);
     });
   };
 

@@ -360,15 +360,34 @@
   <body>
     <div id="root"></div>
     <script>
+      // Active unregister and cache clearing to fix white screen loading problems
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(reg => {
-              console.log('[PWA] Service Worker registered successfully, scope:', reg.scope);
-            })
-            .catch(err => {
-              console.warn('[PWA] Service Worker registration failed:', err);
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          for (let registration of registrations) {
+            registration.unregister().then((success) => {
+              if (success) {
+                console.log('[PWA] Successfully unregistered service worker');
+              }
             });
+          }
+        }).catch((err) => {
+          console.warn('[PWA] Failed to unregister service workers:', err);
+        });
+      }
+
+      // Force deletion of all Cache Storage blocks from PWA caching
+      if ('caches' in window) {
+        caches.keys().then((keys) => {
+          return Promise.all(
+            keys.map((key) => {
+              console.log('[PWA] Deleting cache storage:', key);
+              return caches.delete(key);
+            })
+          );
+        }).then(() => {
+          console.log('[PWA] All cache storage deleted');
+        }).catch((err) => {
+          console.warn('[PWA] Error clearing cache storage:', err);
         });
       }
     </script>

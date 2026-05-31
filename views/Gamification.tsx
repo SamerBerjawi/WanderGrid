@@ -203,21 +203,14 @@ export const Gamification: React.FC<GamificationProps> = ({ onTripClick }) => {
 
     useEffect(() => {
         const load = async () => {
-            try {
-                const allTrips = await dataService.getTrips();
-                setTrips(allTrips);
-                const validTrips = allTrips.filter(t => t.status !== 'Planning' && t.status !== 'Cancelled');
-                setPastTrips(validTrips);
-                setLoading(false);
-                runAfterFirstPaint(() => {
-                    void processTravelHistory(validTrips);
-                });
-            } catch (err) {
-                console.error('Failed to load gamification data:', err);
-                setTrips([]);
-                setPastTrips([]);
-                setLoading(false);
-            }
+            const allTrips = await dataService.getTrips();
+            setTrips(allTrips);
+            const validTrips = allTrips.filter(t => t.status !== 'Planning' && t.status !== 'Cancelled');
+            setPastTrips(validTrips);
+            setLoading(false);
+            runAfterFirstPaint(() => {
+                void processTravelHistory(validTrips);
+            });
         };
         load();
     }, []);

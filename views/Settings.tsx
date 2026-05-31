@@ -89,7 +89,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
         setConfig(settings);
         setLoading(false);
     }).catch(err => {
-        console.error('Failed to load settings:', err);
+        console.error("Failed to load settings data:", err);
         setLoading(false);
     });
   };

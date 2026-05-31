@@ -1,8 +1,6 @@
-import { fileURLToPath, URL } from 'node:url';
+import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
-
-const projectRoot = fileURLToPath(new URL('.', import.meta.url));
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
@@ -17,21 +15,12 @@ export default defineConfig(({ mode }) => {
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
       },
       resolve: {
-        dedupe: ['react', 'react-dom'],
-        preserveSymlinks: false,
-        alias: [
-          { find: /^@\//, replacement: `${projectRoot}/` },
-        ]
-      },
-      optimizeDeps: {
-        include: [
-          'react',
-          'react-dom',
-          'react/jsx-runtime',
-          'react/jsx-dev-runtime',
-          'motion/react',
-          'framer-motion'
-        ]
+        alias: {
+          '@': path.resolve('.'),
+          'react': path.resolve('./node_modules/react'),
+          'react-dom': path.resolve('./node_modules/react-dom'),
+        },
+        dedupe: ['react', 'react-dom']
       }
     };
 });

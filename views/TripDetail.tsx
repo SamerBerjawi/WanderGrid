@@ -388,20 +388,18 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
             dataService.getEntitlementTypes(),
             dataService.getSavedConfigs()
         ]).then(([tripsList, allUsers, s, ents, configs]) => {
-            const foundTrip = tripsList.find(t => t.id === tripId);
-            const t = foundTrip ? { ...foundTrip, participants: foundTrip.participants || [], transports: foundTrip.transports || [], accommodations: foundTrip.accommodations || [], activities: foundTrip.activities || [], locations: foundTrip.locations || [], packingList: foundTrip.packingList || [] } : null;
-            setTrip(t);
+            const t = tripsList.find(t => t.id === tripId);
+            setTrip(t || null);
             if (t) setCalendarDate(new Date(t.startDate));
             setUsers(allUsers);
             setSettings(s);
             setAllTrips(tripsList);
             setEntitlements(ents);
-            const flatHolidays = configs.flatMap(c => (c.holidays || []).map(h => ({ ...h, configId: c.id })));
+            const flatHolidays = configs.flatMap(c => c.holidays.map(h => ({ ...h, configId: c.id })));
             setHolidays(flatHolidays);
             setLoading(false);
         }).catch(err => {
-            console.error('Failed to load trip detail:', err);
-            setTrip(null);
+            console.error("Failed to load trip details:", err);
             setLoading(false);
         });
     };
