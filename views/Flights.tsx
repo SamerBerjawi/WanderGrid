@@ -436,6 +436,11 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
         return dateB.getTime() - dateA.getTime(); // Newest first
       });
       setFlights(extracted);
+    }).catch(err => {
+      console.error('Failed to load flights data:', err);
+      setTrips([]);
+      setUsers([]);
+      setFlights([]);
     });
   };
 

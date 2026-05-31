@@ -3,6 +3,42 @@ import { User, Trip, PublicHoliday, EntitlementType, SavedConfig, WorkspaceSetti
 import { getCoordinates } from './geocoding';
 
 const GEO_CACHE_KEY = 'wandergrid_geo_cache_v2';
+const SESSION_USER_KEY = 'wandergrid_session_user';
+const SESSION_TOKEN_KEY = 'wandergrid_session_token';
+const API_REQUEST_TIMEOUT_MS = 12_000;
+const API_MAX_RETRIES = 2;
+const API_RETRY_BASE_DELAY_MS = 250;
+
+interface AuthApiResponse {
+  user?: User;
+  token?: string;
+}
+
+export class ApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+      super(message);
+      this.name = 'ApiError';
+      this.status = status;
+  }
+}
+
+export const isUnauthorizedError = (err: unknown): boolean =>
+    err instanceof ApiError && (err.status === 401 || err.status === 403);
+
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+const shouldRetryRequest = (method: string, err: unknown): boolean => {
+    // Never retry POST: a retry could create duplicate writes if the server
+    // committed but the response was lost. GET is safe; PUT/DELETE are
+    // idempotent by route key and can recover from transient failures.
+    if (!['GET', 'PUT', 'DELETE'].includes(method)) return false;
+    if (isUnauthorizedError(err)) return false;
+    if (err instanceof ApiError) return err.status === 408 || err.status === 429 || err.status >= 500;
+    return err instanceof DOMException && err.name === 'AbortError' || err instanceof TypeError;
+};
+
 
 const DEFAULT_MASTER_LIST: PackingItem[] = [
     { id: 'm1', text: 'Passport / ID', category: 'Documents', isChecked: false },
@@ -47,8 +83,47 @@ export interface ImportState {
 class DataService {
   private _importState: ImportState = { status: '', progress: 0, isActive: false };
   private _importListeners: ((state: ImportState) => void)[] = [];
-  private _useApi: boolean = true; 
+  private _useApi: boolean = true;
   private _isSynced: boolean = false;
+
+  public getSessionToken(): string | null {
+      try {
+          return localStorage.getItem(SESSION_TOKEN_KEY);
+      } catch (e) {
+          return null;
+      }
+  }
+
+  public setSession(user: User, token?: string | null): void {
+      try {
+          localStorage.setItem(SESSION_USER_KEY, JSON.stringify(user));
+          if (token) localStorage.setItem(SESSION_TOKEN_KEY, token);
+      } catch (e) {}
+  }
+
+  public clearSession(): void {
+      try {
+          localStorage.removeItem(SESSION_USER_KEY);
+          localStorage.removeItem(SESSION_TOKEN_KEY);
+      } catch (e) {}
+  }
+
+  public getCachedSessionUser(): User | null {
+      try {
+          const stored = localStorage.getItem(SESSION_USER_KEY);
+          return stored ? JSON.parse(stored) : null;
+      } catch (e) {
+          this.clearSession();
+          return null;
+      }
+  }
+
+  public emitUnauthorized(): void {
+      this.clearSession();
+      try {
+          window.dispatchEvent(new CustomEvent('wandergrid:unauthorized'));
+      } catch (e) {}
+  }
 
   constructor() {
       try {
@@ -60,11 +135,14 @@ class DataService {
     const isProd = import.meta.env.PROD;
     if (this._useApi || isProd) {
         try {
-            const user = await this.fetch<User>('/auth/login', {
+            const response = await this.fetch<AuthApiResponse | User>('/auth/login', {
                 method: 'POST',
                 body: JSON.stringify({ email, password: pass })
             });
-            return user;
+            const user = 'user' in (response as AuthApiResponse) ? (response as AuthApiResponse).user : response as User;
+            const token = 'token' in (response as AuthApiResponse) ? (response as AuthApiResponse).token : null;
+            if (user) this.setSession(user, token);
+            return user || null;
         } catch (err: any) {
             if (err && err.status === 401) {
                 return null;
@@ -77,6 +155,7 @@ class DataService {
     }
     const users = await this.localFetch<User[]>('/users');
     const user = users.find(u => u.email === email && u.password === pass);
+    if (user) this.setSession(user, `dev-token-${user.id}`);
     return user || null;
   }
 
@@ -101,10 +180,14 @@ class DataService {
     const isProd = import.meta.env.PROD;
     if (this._useApi || isProd) {
         try {
-            const registeredUser = await this.fetch<User>('/auth/register', {
+            const response = await this.fetch<AuthApiResponse | User>('/auth/register', {
                 method: 'POST',
                 body: JSON.stringify(newUser)
             });
+            const registeredUser = 'user' in (response as AuthApiResponse) ? (response as AuthApiResponse).user : response as User;
+            const token = 'token' in (response as AuthApiResponse) ? (response as AuthApiResponse).token : null;
+            if (!registeredUser) throw new Error('Registration response did not include a user profile');
+            this.setSession(registeredUser, token);
             return registeredUser;
         } catch (err) {
             if (isProd) {
@@ -120,6 +203,7 @@ class DataService {
 
     users.push(newUser);
     localStorage.setItem(`wandergrid_users`, JSON.stringify(users));
+    this.setSession(newUser, `dev-token-${newUser.id}`);
     return newUser;
   }
 
@@ -133,7 +217,7 @@ class DataService {
 
   public subscribeToImport(listener: (state: ImportState) => void): () => void {
       this._importListeners.push(listener);
-      listener(this._importState); 
+      listener(this._importState);
       return () => {
           this._importListeners = this._importListeners.filter(l => l !== listener);
       };
@@ -146,12 +230,12 @@ class DataService {
 
   private async syncLocalDataToServer() {
       if (!this._useApi) return;
-      
+
       const key = (k: string) => `wandergrid_${k}`;
-      
+
       try {
           console.log('[Sync] Checking for local data to migrate to database...');
-          
+
           // 1. Sync settings
           const localSettingsStr = localStorage.getItem(key('settings'));
           if (localSettingsStr) {
@@ -192,7 +276,7 @@ class DataService {
                               migratedCount++;
                           }
                       }
-                      
+
                       if (migratedCount > 0) {
                           console.log(`[Sync] Successfully migrated ${migratedCount} ${col.storage} to server database.`);
                       }
@@ -205,9 +289,22 @@ class DataService {
       }
   }
 
+  async hasUsers(): Promise<boolean> {
+      if (this._useApi || import.meta.env.PROD) {
+          try {
+              const status = await this.fetch<{ hasUsers: boolean }>('/auth/status');
+              return status.hasUsers;
+          } catch (err) {
+              if (import.meta.env.PROD) throw err;
+          }
+      }
+      const users = await this.localFetch<User[]>('/users');
+      return users.length > 0;
+  }
+
   private async fetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
       const isProd = import.meta.env.PROD;
-      
+
       if (isProd) {
           this._useApi = true;
       }
@@ -216,41 +313,67 @@ class DataService {
           return this.localFetch<T>(endpoint, options);
       }
 
-      try {
-          // Generous timeout (10 seconds) to tolerate database query latencies or cold starts on Cloud Run
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 10000);
+      const method = (options?.method || 'GET').toUpperCase();
+      let lastError: unknown;
+      const attempts = method === 'POST' ? 1 : API_MAX_RETRIES + 1;
 
-          const res = await fetch(`/api${endpoint}`, {
-              headers: { 'Content-Type': 'application/json' },
-              signal: controller.signal,
-              ...options
-          });
-          
-          clearTimeout(timeoutId);
-          
-          if (!res.ok) {
-              if (res.status === 404) throw new Error("API Route Not Found");
-              if (res.status === 401) {
-                  const errObj = new Error("Invalid Credentials");
-                  (errObj as any).status = 401;
-                  throw errObj;
+      for (let attempt = 0; attempt < attempts; attempt++) {
+          try {
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), API_REQUEST_TIMEOUT_MS);
+
+              const token = this.getSessionToken();
+              const headers: Record<string, string> = {
+                  'Content-Type': 'application/json',
+                  ...(options?.headers as Record<string, string> || {})
+              };
+              if (token) headers.Authorization = `Bearer ${token}`;
+
+              const res = await fetch(`/api${endpoint}`, {
+                  ...options,
+                  headers,
+                  signal: controller.signal
+              }).finally(() => clearTimeout(timeoutId));
+
+              if (!res.ok) {
+                  let message = res.statusText || 'API request failed';
+                  try {
+                      const payload = await res.json();
+                      message = payload?.error || payload?.message || message;
+                  } catch (e) {}
+                  if (res.status === 401 || res.status === 403) {
+                      const authError = new ApiError(message || 'Your session has expired', res.status);
+                      const isAuthEndpoint = endpoint.startsWith('/auth/');
+                      if (!isAuthEndpoint) this.emitUnauthorized();
+                      throw authError;
+                  }
+                  if (res.status === 404) throw new ApiError('API Route Not Found', 404);
+                  throw new ApiError(`API Error: ${message}`, res.status);
               }
-              throw new Error(`API Error: ${res.statusText}`);
-          }
 
-          return await res.json();
-      } catch (e) {
-          console.warn(`Backend unavailable (${endpoint}).`, e);
-          if (isProd) {
-              // In production, NEVER fall back to local storage. Throw the error so the user is aware of backend issues.
-              throw e;
-          } else {
-              // In development, fallback to LocalStorage is still allowed
-              console.warn(`Fallback to LocalStorage active for development request: ${endpoint}`);
-              this._useApi = false;
-              return this.localFetch<T>(endpoint, options);
+              if (res.status === 204) return undefined as T;
+              return await res.json();
+          } catch (e) {
+              lastError = e;
+              if (attempt < attempts - 1 && shouldRetryRequest(method, e)) {
+                  const delay = API_RETRY_BASE_DELAY_MS * 2 ** attempt;
+                  console.warn(`Retrying API request ${method} ${endpoint} after ${delay}ms`, e);
+                  await wait(delay);
+                  continue;
+              }
+              break;
           }
+      }
+
+      console.warn(`Backend unavailable (${endpoint}).`, lastError);
+      if (isProd || isUnauthorizedError(lastError)) {
+          // In production, NEVER fall back to local storage. Throw the error so the user is aware of backend issues.
+          throw lastError;
+      } else {
+          // In development, fallback to LocalStorage is still allowed
+          console.warn(`Fallback to LocalStorage active for development request: ${endpoint}`);
+          this._useApi = false;
+          return this.localFetch<T>(endpoint, options);
       }
   }
 
@@ -258,7 +381,11 @@ class DataService {
       const method = options?.method || 'GET';
       const body = options?.body ? JSON.parse(options.body as string) : null;
       const key = (k: string) => `wandergrid_${k}`;
-      
+      if (endpoint === '/auth/status') {
+          const list = JSON.parse(localStorage.getItem(key('users')) || '[]');
+          return { hasUsers: list.length > 0 } as T;
+      }
+
       if (endpoint === '/settings') {
           if (method === 'GET') {
               const s = localStorage.getItem(key('settings'));
@@ -289,13 +416,24 @@ class DataService {
                   return body as T;
               }
           }
+          if (endpoint === `${col.route}/bulk` && method === 'POST') {
+              const list = JSON.parse(localStorage.getItem(key(col.storage)) || '[]');
+              const incoming = Array.isArray(body?.items) ? body.items : Array.isArray(body) ? body : [];
+              incoming.forEach((item: any) => {
+                  const idx = list.findIndex((existing: any) => existing.id === item.id);
+                  if (idx >= 0) list[idx] = item;
+                  else list.push(item);
+              });
+              localStorage.setItem(key(col.storage), JSON.stringify(list));
+              return incoming as T;
+          }
           if (endpoint.startsWith(`${col.route}/`)) {
               const id = endpoint.split('/')[2];
               const list = JSON.parse(localStorage.getItem(key(col.storage)) || '[]');
               if (method === 'PUT') {
                   const idx = list.findIndex((i: any) => i.id === id);
                   if (idx >= 0) list[idx] = body;
-                  else list.push(body); 
+                  else list.push(body);
                   localStorage.setItem(key(col.storage), JSON.stringify(list));
                   return body as T;
               }
@@ -450,12 +588,12 @@ class DataService {
       return updatedTrip;
   }
 
-  async getTrips(): Promise<Trip[]> { 
-    const allTrips = await this.fetch<Trip[]>('/trips'); 
-    
+  async getTrips(): Promise<Trip[]> {
+    const allTrips = await this.fetch<Trip[]>('/trips');
+
     let loggedInUser: any = null;
     try {
-      const stored = localStorage.getItem('wandergrid_session_user');
+      const stored = localStorage.getItem(SESSION_USER_KEY);
       if (stored) loggedInUser = JSON.parse(stored);
     } catch (e) {}
 
@@ -467,18 +605,18 @@ class DataService {
       return allTrips;
     }
 
-    return allTrips.filter(t => 
-      t.participants.includes(loggedInUser.id) || 
+    return allTrips.filter(t =>
+      (t.participants || []).includes(loggedInUser.id) ||
       t.privacy === 'Public'
     );
   }
 
   async addTrip(trip: Trip): Promise<Trip> {
     const intelligentTrip = await this.processGeocoding(trip);
-    
+
     let loggedInUser: any = null;
     try {
-      const stored = localStorage.getItem('wandergrid_session_user');
+      const stored = localStorage.getItem(SESSION_USER_KEY);
       if (stored) loggedInUser = JSON.parse(stored);
     } catch (e) {}
 
@@ -510,24 +648,35 @@ class DataService {
         return `${trip.name}|${trip.startDate}|${trip.endDate}`;
     };
     const existingSignatures = new Set(existingTrips.map(t => getTripSignature(t)));
-    let addedCount = 0;
+    const tripsToPersist: Trip[] = [];
     for (let i = 0; i < total; i++) {
         const trip = newTrips[i];
         const sig = getTripSignature(trip);
         const percent = Math.round(((i + 1) / total) * 100);
         if (existingSignatures.has(sig)) continue;
-        this.updateImportState(`Importing ${i + 1}/${total}: ${trip.name}`, percent, true);
+        this.updateImportState(`Preparing ${i + 1}/${total}: ${trip.name}`, percent, true);
+        let tripToSave = trip;
         try {
-            const intelligentTrip = await this.processGeocoding(trip);
-            await this.addTrip(intelligentTrip);
-            existingSignatures.add(sig); 
-            addedCount++;
+            tripToSave = await this.processGeocoding(trip);
         } catch (e) {
-            await this.addTrip(trip); 
-            addedCount++;
+            console.warn('Geocoding failed during import; preserving original trip payload:', e);
         }
+
+        const loggedInUser = this.getCachedSessionUser();
+        if (loggedInUser) {
+            tripToSave.participants = tripToSave.participants || [];
+            if (!tripToSave.participants.includes(loggedInUser.id)) tripToSave.participants.push(loggedInUser.id);
+        }
+        tripToSave.privacy = tripToSave.privacy || 'Private';
+        tripsToPersist.push(tripToSave);
+        existingSignatures.add(sig);
     }
-    this.updateImportState(`Successfully imported ${addedCount} trips.`, 100, false);
+
+    if (tripsToPersist.length > 0) {
+        this.updateImportState(`Saving ${tripsToPersist.length} trips transactionally...`, 95, true);
+        await this.fetch<Trip[]>('/trips/bulk', { method: 'POST', body: JSON.stringify({ items: tripsToPersist }) });
+    }
+    this.updateImportState(`Successfully imported ${tripsToPersist.length} trips.`, 100, false);
     setTimeout(() => { if (!this._importState.isActive) this.updateImportState('', 0, false); }, 3000);
   }
 
@@ -569,10 +718,10 @@ class DataService {
               if (isProd) throw e;
           }
       }
-      
+
       // Clear localStorage keys
       const key = (k: string) => `wandergrid_${k}`;
-      const collections = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights', 'settings', 'session_user', 'dashboard_cache_v1'];
+      const collections = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights', 'settings', 'session_user', 'session_token', 'dashboard_cache_v1'];
       collections.forEach(c => {
           localStorage.removeItem(key(c));
       });

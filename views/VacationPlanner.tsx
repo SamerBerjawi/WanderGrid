@@ -30,12 +30,14 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
     const [searchQuery, setSearchQuery] = useState('');
     const [filterYear, setFilterYear] = useState<string>('all');
     const [filterPrivacy, setFilterPrivacy] = useState<string>('all');
+    const [loadError, setLoadError] = useState<string | null>(null);
 
     useEffect(() => {
         refreshData();
     }, []);
 
     const refreshData = () => {
+        setLoadError(null);
         Promise.all([
             dataService.getTrips(), 
             dataService.getUsers(),
@@ -47,8 +49,11 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
             setUsers(u);
             setSettings(s);
             setEntitlements(ents);
-            const flatHolidays = configs.flatMap(c => c.holidays.map(h => ({ ...h, configId: c.id })));
+            const flatHolidays = configs.flatMap(c => (c.holidays || []).map(h => ({ ...h, configId: c.id })));
             setHolidays(flatHolidays);
+        }).catch(err => {
+            console.error('Failed to load planner data:', err);
+            setLoadError(err instanceof Error ? err.message : 'Unable to load planner data.');
         });
     };
 

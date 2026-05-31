@@ -431,6 +431,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
   const [activeIndex, setActiveIndex] = useState<number>(-1);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<any>(null);
+  const requestSeqRef = useRef(0);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -439,7 +440,11 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      requestSeqRef.current += 1;
+    };
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -451,9 +456,11 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
     
     if (val.length >= 2) {
       setIsLoading(true);
+      const requestId = ++requestSeqRef.current;
       timeoutRef.current = setTimeout(async () => {
         try {
            const results = await fetchSuggestions(val);
+           if (requestId !== requestSeqRef.current) return;
            if (results && results.length > 0) {
              setSuggestions(results);
              setIsOpen(true);
@@ -462,12 +469,13 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
              setSuggestions([]);
            }
         } catch (error) {
-           console.error("Autocomplete error", error);
+           if (requestId === requestSeqRef.current) console.error("Autocomplete error", error);
         } finally {
-           setIsLoading(false);
+           if (requestId === requestSeqRef.current) setIsLoading(false);
         }
-      }, 400); 
+      }, 450);
     } else {
+      requestSeqRef.current += 1;
       setIsOpen(false);
       setIsLoading(false);
       setSuggestions([]);

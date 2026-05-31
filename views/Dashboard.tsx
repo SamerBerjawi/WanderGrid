@@ -77,6 +77,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
   const [entitlements, setEntitlements] = useState<EntitlementType[]>([]);
   const [holidays, setHolidays] = useState<PublicHoliday[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   
   const [visitedData, setVisitedData] = useState<VisitedCountry[]>([]);
   const [totalCities, setTotalCities] = useState(0);
@@ -133,6 +134,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
   }, [trips]);
 
   const refreshData = () => {
+    setLoading(true);
+    setLoadError(null);
     Promise.all([
       dataService.getUsers(),
       dataService.getTrips(),
@@ -330,6 +333,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
               visitedData: serializeVisitedData(processed.visitedData)
           }));
       });
+    }).catch(err => {
+      console.error('Dashboard data load failed:', err);
+      setLoadError(err instanceof Error ? err.message : 'Unable to load dashboard data.');
+      setLoading(false);
     });
   };
 
@@ -534,6 +541,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
       .sort((a, b) => a.startDate.localeCompare(b.startDate))
       .slice(0, 3);
   }, [trips]);
+
+  if (loadError) {
+    return (
+      <div className="w-full h-[60vh] flex items-center justify-center p-6">
+        <div className="max-w-md rounded-[2rem] border border-amber-200/70 dark:border-amber-500/20 bg-white/80 dark:bg-slate-900/80 p-8 text-center shadow-xl">
+          <div className="text-4xl mb-4">⚠️</div>
+          <h4 className="text-lg font-black text-gray-900 dark:text-white mb-2">Dashboard unavailable</h4>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{loadError}</p>
+          <Button onClick={refreshData}>Try Again</Button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
