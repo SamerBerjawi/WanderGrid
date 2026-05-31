@@ -16,7 +16,7 @@ COPY views ./views
 COPY utils ./utils
 COPY public ./public
 
-RUN npm ci --legacy-peer-deps --no-audit --no-fund
+RUN npm install --legacy-peer-deps --no-audit --no-fund
 RUN npm run build
 
 FROM node:24-alpine AS backend
