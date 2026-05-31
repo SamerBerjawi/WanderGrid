@@ -1,4 +1,4 @@
-FROM node:24-alpine AS frontend-build
+FROM node:24-bookworm-slim AS frontend-build
 
 WORKDIR /app
 
@@ -19,7 +19,7 @@ COPY public ./public
 RUN npm install --legacy-peer-deps --no-audit --no-fund
 RUN npm run build
 
-FROM node:24-alpine AS backend
+FROM node:24-bookworm-slim AS backend
 
 WORKDIR /app
 ENV NODE_ENV=production

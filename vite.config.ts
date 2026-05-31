@@ -1,21 +1,8 @@
-import path from 'path';
 import { fileURLToPath, URL } from 'node:url';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
 const projectRoot = fileURLToPath(new URL('.', import.meta.url));
-const resolveFromRoot = (...segments: string[]) => path.resolve(projectRoot, ...segments);
-
-// Keep React as a hard singleton. Animation packages (motion/framer-motion),
-// maps, charts, and linked workspaces can otherwise resolve their own React
-// copy and crash with "resolveDispatcher().useState" when hooks run.
-const reactSingletonAliases = [
-  { find: /^react$/, replacement: resolveFromRoot('node_modules/react') },
-  { find: /^react\/jsx-runtime$/, replacement: resolveFromRoot('node_modules/react/jsx-runtime.js') },
-  { find: /^react\/jsx-dev-runtime$/, replacement: resolveFromRoot('node_modules/react/jsx-dev-runtime.js') },
-  { find: /^react-dom$/, replacement: resolveFromRoot('node_modules/react-dom') },
-  { find: /^react-dom\/client$/, replacement: resolveFromRoot('node_modules/react-dom/client.js') },
-];
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
@@ -33,7 +20,6 @@ export default defineConfig(({ mode }) => {
         dedupe: ['react', 'react-dom'],
         preserveSymlinks: false,
         alias: [
-          ...reactSingletonAliases,
           { find: /^@\//, replacement: `${projectRoot}/` },
         ]
       },
@@ -45,8 +31,7 @@ export default defineConfig(({ mode }) => {
           'react/jsx-dev-runtime',
           'motion/react',
           'framer-motion'
-        ],
-        exclude: []
+        ]
       }
     };
 });
