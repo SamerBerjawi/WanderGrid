@@ -856,8 +856,8 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                     onImportComplete([updatedTrip]);
                 }
             } else {
-                // Save flights as independent unassigned flights
-                await Promise.all(flightsToSave.map(f => dataService.addFlight(f)));
+                // Save flights as independent unassigned flights using bulk upsert
+                await dataService.addFlights(flightsToSave);
                 onImportComplete([]);
             }
             onClose();

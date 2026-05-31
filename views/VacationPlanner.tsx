@@ -134,7 +134,7 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
         const mergedAccommodations = tripsToMerge.flatMap(t => t.accommodations || []);
         const mergedActivities = tripsToMerge.flatMap(t => t.activities || []);
         const mergedLocations = tripsToMerge.flatMap(t => t.locations || []);
-        const mergedParticipants = Array.from(new Set(tripsToMerge.flatMap(t => t.participants)));
+        const mergedParticipants = Array.from(new Set(tripsToMerge.flatMap(t => t.participants || [])));
 
         const newName = customMergeName.trim() || `Merged: ${primary.name} & +${tripsToMerge.length - 1} Plans`;
 
@@ -477,7 +477,7 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                     <div className="flex items-center justify-between border-t border-zinc-100/80 dark:border-white/5 pt-3">
                         <span className="text-[10px] font-black uppercase tracking-widest text-[#fa9a1d]">Co-Travelers</span>
                         <div className="flex -space-x-2.5">
-                            {trip.participants.slice(0, 5).map((pid, idx) => {
+                            {(trip.participants || []).slice(0, 5).map((pid, idx) => {
                                 const u = users.find(user => user.id === pid);
                                 if (!u) return null;
                                 return (
@@ -492,9 +492,9 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                                     </div>
                                 );
                             })}
-                            {trip.participants.length > 5 && (
+                            {(trip.participants || []).length > 5 && (
                                 <div className="w-7 h-7 rounded-full border-2 border-white dark:border-zinc-900 bg-zinc-800 text-white flex items-center justify-center text-[8px] font-black leading-none shrink-0 shadow-sm">
-                                    +{trip.participants.length - 5}
+                                    +{(trip.participants || []).length - 5}
                                 </div>
                             )}
                         </div>

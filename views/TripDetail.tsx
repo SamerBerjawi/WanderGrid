@@ -218,7 +218,7 @@ const NomadGuide: React.FC<{ trip: Trip }> = ({ trip }) => {
                 Current Trip Context:
                 - Destination: ${trip.location}
                 - Dates: ${trip.startDate} to ${trip.endDate}
-                - Travelers: ${trip.participants.length}
+                - Travelers: ${(trip.participants || []).length}
                 - Itinerary Items: ${trip.transports?.length || 0} flights, ${trip.activities?.length || 0} activities.
                 
                 Answer the user's question concisely and helpfully. Focus on travel advice, logistics, and local recommendations.
@@ -483,7 +483,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 rawTransports = flightImporter.parseTransportsCsv(content);
             }
             if (rawTransports.length > 0) {
-                const groupedTrips = flightImporter.groupTransports(rawTransports, trip.participants[0] || 'temp');
+                const groupedTrips = flightImporter.groupTransports(rawTransports, trip.participants?.[0] || 'temp');
                 const candidates: ImportCandidate[] = groupedTrips.map(gt => ({
                     trip: gt,
                     confidence: calculateRelevance(trip, gt),
@@ -775,7 +775,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     const stayCost = trip.accommodations?.reduce((sum, a) => sum + (a.cost || 0), 0) || 0;
     const totalCost = transportCost + stayCost + activityCost;
     const duration = Math.ceil((new Date(trip.endDate).getTime() - new Date(trip.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    const costPerPerson = trip.participants.length > 0 ? totalCost / trip.participants.length : 0;
+    const costPerPerson = (trip.participants || []).length > 0 ? totalCost / (trip.participants || []).length : 0;
     const costPerDay = duration > 0 ? totalCost / duration : 0;
 
     const compareTransports = (a: Transport, b: Transport) => {
@@ -1030,7 +1030,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                     </div>
                                     <div className="p-3 bg-purple-50/50 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/30 rounded-2xl text-center flex flex-col justify-center items-center">
                                         <div className="flex -space-x-1.5 mb-0.5 justify-center">
-                                            {trip.participants.map((pid, idx) => {
+                                            {(trip.participants || []).map((pid, idx) => {
                                                 const u = users.find(u => u.id === pid);
                                                 return u ? <div key={idx} className="w-5 h-5 rounded-full bg-purple-100 border-2 border-white flex items-center justify-center text-[8px] font-bold text-purple-800" title={u.name}>{u.name.charAt(0)}</div> : null;
                                             })}
@@ -1617,7 +1617,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                         <div className="p-8 rounded-[2rem] bg-[#1c1c1e] border border-white/5 shadow-xl relative">
                             <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Cost Per Person</p>
                             <h2 className="text-4xl font-black text-white">{formatCurrency(costPerPerson)}</h2>
-                            <p className="text-xs text-gray-500 mt-2">{trip.participants.length} Travelers</p>
+                            <p className="text-xs text-gray-500 mt-2">{(trip.participants || []).length} Travelers</p>
                         </div>
 
                         {/* Daily Average */}

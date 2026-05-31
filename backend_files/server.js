@@ -178,19 +178,37 @@ function sendError(res, err, status = 500, defaultMessage = 'An unexpected error
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const FLIGHT_CACHE_TTL_MS = 5 * 60 * 1000;
+const FLIGHT_CACHE_TTL_MS = process.env.API_CACHE_TTL_MS 
+    ? parseInt(process.env.API_CACHE_TTL_MS, 10) 
+    : 5 * 60 * 1000;
 const flightCache = new Map();
+
+const GEOCODE_CACHE_TTL_MS = process.env.GEOCODE_CACHE_TTL_MS
+    ? parseInt(process.env.GEOCODE_CACHE_TTL_MS, 10)
+    : 30 * 24 * 60 * 60 * 1000; // 30 days default
+
+const EXTERNAL_FETCH_TIMEOUT_MS = process.env.EXTERNAL_FETCH_TIMEOUT_MS
+    ? parseInt(process.env.EXTERNAL_FETCH_TIMEOUT_MS, 10)
+    : 3000; // 3 seconds default
 
 // Global memory caches as robust fail-safe fallbacks
 const memoryAirports = new Map();
 const memoryCarriers = new Map();
 
-// Database Connection
+let dbReady = false;
+
+// Database Connection with environment-configurable limits
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  max: 20,                // Database Connection Pooling limits to 20 client connections
+  max: process.env.DB_POOL_SIZE ? parseInt(process.env.DB_POOL_SIZE, 10) : 20,
   idleTimeoutMillis: 30000, // Reclaim idle clients back to pool after 30s
-  connectionTimeoutMillis: 5000 // Fast-fail if DB connection takes >5s
+  connectionTimeoutMillis: process.env.DB_CONNECTION_TIMEOUT_MS ? parseInt(process.env.DB_CONNECTION_TIMEOUT_MS, 10) : 5000,
+  statement_timeout: process.env.DB_STATEMENT_TIMEOUT_MS ? parseInt(process.env.DB_STATEMENT_TIMEOUT_MS, 10) : 10000,
+  query_timeout: process.env.DB_STATEMENT_TIMEOUT_MS ? parseInt(process.env.DB_STATEMENT_TIMEOUT_MS, 10) : 10000
+});
+
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle PostgreSQL pool client:', err);
 });
 
 // Middleware & Security Headers
@@ -219,8 +237,8 @@ const initDb = async (retries = 10, delayMs = 3000) => {
         for (const table of tables) {
           await client.query(`
             CREATE TABLE IF NOT EXISTS ${table} (
-              id TEXT PRIMARY KEY,
-              data JSONB NOT NULL
+              id TEXT PRIMARY KEY CHECK (id <> ''),
+              data JSONB NOT NULL CHECK (jsonb_typeof(data) = 'object')
             );
           `);
         }
@@ -228,8 +246,8 @@ const initDb = async (retries = 10, delayMs = 3000) => {
         // Settings is a singleton, key-value store
         await client.query(`
             CREATE TABLE IF NOT EXISTS settings (
-              key TEXT PRIMARY KEY,
-              data JSONB NOT NULL
+              key TEXT PRIMARY KEY CHECK (key <> ''),
+              data JSONB NOT NULL CHECK (jsonb_typeof(data) = 'object')
             );
         `);
 
@@ -237,7 +255,7 @@ const initDb = async (retries = 10, delayMs = 3000) => {
         await client.query(`
             CREATE TABLE IF NOT EXISTS global_airports (
               id SERIAL PRIMARY KEY,
-              iata VARCHAR(10),
+              iata VARCHAR(10) CHECK (iata <> ''),
               city_name TEXT,
               airport_name TEXT
             );
@@ -247,7 +265,7 @@ const initDb = async (retries = 10, delayMs = 3000) => {
         await client.query(`
             CREATE TABLE IF NOT EXISTS global_carriers (
               id SERIAL PRIMARY KEY,
-              iata VARCHAR(10),
+              iata VARCHAR(10) CHECK (iata <> ''),
               company_name TEXT,
               country_or_territory TEXT
             );
@@ -256,7 +274,7 @@ const initDb = async (retries = 10, delayMs = 3000) => {
         // Global geocoding cache table
         await client.query(`
             CREATE TABLE IF NOT EXISTS geocoding_cache (
-              query TEXT PRIMARY KEY,
+              query TEXT PRIMARY KEY CHECK (query <> ''),
               results JSONB NOT NULL,
               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
@@ -270,13 +288,31 @@ const initDb = async (retries = 10, delayMs = 3000) => {
         await client.query('CREATE INDEX IF NOT EXISTS idx_events_data ON events USING gin (data)');
         await client.query('CREATE INDEX IF NOT EXISTS idx_configs_data ON configs USING gin (data)');
         
-        // Speed up authentications by creating a functional index on the lowered email key
-        await client.query("CREATE INDEX IF NOT EXISTS idx_users_email ON users ((LOWER(data->>'email')))");
+        // Strict Unique Functional User Email Index (Unique user email index)
+        await client.query("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users ((LOWER(data->>'email'))) WHERE (data->>'email' IS NOT NULL)");
+        
+        // Trip Field Performance Indexes
+        await client.query("CREATE INDEX IF NOT EXISTS idx_trips_status ON trips ((data->>'status'))");
+        await client.query("CREATE INDEX IF NOT EXISTS idx_trips_start_date ON trips ((data->>'startDate'))");
+        await client.query("CREATE INDEX IF NOT EXISTS idx_trips_end_date ON trips ((data->>'endDate'))");
+        await client.query("CREATE INDEX IF NOT EXISTS idx_trips_privacy ON trips ((data->>'privacy'))");
+
+        // Flight Field Performance Indexes
+        await client.query("CREATE INDEX IF NOT EXISTS idx_flights_departure_date ON flights ((data->>'departureDate'))");
+        await client.query("CREATE INDEX IF NOT EXISTS idx_flights_provider_identifier ON flights ((data->>'provider'), (data->>'identifier'))");
+
+        // Global Airport/Carrier Lookup Indexes
+        await client.query("CREATE INDEX IF NOT EXISTS idx_global_airports_iata ON global_airports (iata)");
+        await client.query("CREATE INDEX IF NOT EXISTS idx_global_carriers_iata ON global_carriers (iata)");
+
+        // Geocode Cache Indexes
+        await client.query("CREATE INDEX IF NOT EXISTS idx_geocoding_cache_created_at ON geocoding_cache (created_at)");
         
         console.log('Database schema initialized successfully!');
 
         // Startup db confirmation
         console.log('Database initialization check completed: Users table ready for enrollment.');
+        dbReady = true;
 
         return; // Connection and schema setup succeeded
       } finally {
@@ -378,9 +414,17 @@ const loadGlobalData = async () => {
 };
 
 // Scheduled weekly background dataset synchronization task
+let schedulerInterval;
+
 const startBackgroundScheduler = () => {
-  const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-  setInterval(async () => {
+  const defaultInterval = 7 * 24 * 60 * 60 * 1000;
+  const refreshIntervalMs = process.env.GLOBAL_DATA_REFRESH_MS
+    ? parseInt(process.env.GLOBAL_DATA_REFRESH_MS, 10)
+    : defaultInterval;
+  
+  console.log(`[SCHEDULER] Setting up background datasets synchronization task to run every ${refreshIntervalMs}ms.`);
+  
+  schedulerInterval = setInterval(async () => {
     console.log('[SCHEDULER] Running background datasets synchronization task...');
     try {
       const response = await fetch('https://raw.githubusercontent.com/dlubom/iata_code_fetcher/main/airport_data_full_processed.jsonl');
@@ -457,7 +501,7 @@ const startBackgroundScheduler = () => {
     } catch (err) {
       console.error('[SCHEDULER] Failed scheduled synchronization run:', err.message);
     }
-  }, ONE_WEEK_MS);
+  }, refreshIntervalMs);
 };
 
   let client;
@@ -591,7 +635,38 @@ initDb().then(() => {
   console.error('Failed to initialize database after multiple retries. Server can still start, but database operations will fail:', err.message);
 });
 
-// --- Generic CRUD Handlers ---
+// --- Generic CRUD Handlers & Transactions ---
+
+async function withTransaction(callback) {
+  const maxRetries = 3;
+  let attempt = 0;
+  while (attempt < maxRetries) {
+    attempt++;
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const result = await callback(client);
+      await client.query('COMMIT');
+      return result;
+    } catch (err) {
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackErr) {
+        console.error('Error during rollback:', rollbackErr);
+      }
+      
+      const isRetryable = err.code === '40001' || err.code === '40P01';
+      if (isRetryable && attempt < maxRetries) {
+        console.warn(`Database transaction retryable error ${err.code}, retrying attempt ${attempt}...`);
+        await new Promise(resolve => setTimeout(resolve, 50 * attempt));
+        continue;
+      }
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+}
 
 const getResources = (table) => async (req, res) => {
   try {
@@ -607,10 +682,12 @@ const createResource = (table) => async (req, res) => {
   if (!resource.id) return res.status(400).json({ error: 'ID is required' });
   
   try {
-    await pool.query(
-      `INSERT INTO ${table} (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2`,
-      [resource.id, JSON.stringify(resource)]
-    );
+    await withTransaction(async (client) => {
+      await client.query(
+        `INSERT INTO ${table} (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2`,
+        [resource.id, JSON.stringify(resource)]
+      );
+    });
     res.status(201).json(resource);
   } catch (err) {
     sendError(res, err, 500, `Failed to create ${table}`);
@@ -622,10 +699,12 @@ const updateResource = (table) => async (req, res) => {
   const resource = req.body;
   
   try {
-    await pool.query(
-      `INSERT INTO ${table} (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2`,
-      [id, JSON.stringify(resource)]
-    );
+    await withTransaction(async (client) => {
+      await client.query(
+        `INSERT INTO ${table} (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2`,
+        [id, JSON.stringify(resource)]
+      );
+    });
     res.json(resource);
   } catch (err) {
     sendError(res, err, 500, `Failed to update ${table}`);
@@ -635,7 +714,9 @@ const updateResource = (table) => async (req, res) => {
 const deleteResource = (table) => async (req, res) => {
   const { id } = req.params;
   try {
-    await pool.query(`DELETE FROM ${table} WHERE id = $1`, [id]);
+    await withTransaction(async (client) => {
+      await client.query(`DELETE FROM ${table} WHERE id = $1`, [id]);
+    });
     res.json({ success: true });
   } catch (err) {
     sendError(res, err, 500, `Failed to delete ${table}`);
@@ -713,8 +794,165 @@ app.get('/api/proxy/airlines', async (req, res) => {
     }
 });
 
-// Proxy for Geocoding (Bypasses CORS, caches in PostgreSQL, enforces strict 3s timeout)
-app.get('/api/proxy/geocoding', async (req, res) => {
+// Local Airport Database coordinates mapping for ultra-fast, zero-dependency geocoding
+const STATIC_GEO_COORDS = {
+    "AMS": { "lat": "52.3086", "lon": "4.7639", "name": "Schiphol", "city": "Amsterdam", "country": "Netherlands", "tz": "Europe/Amsterdam", "iso": "NL" },
+    "LHR": { "lat": "51.4706", "lon": "-0.4619", "name": "Heathrow", "city": "London", "country": "United Kingdom", "tz": "Europe/London", "iso": "GB" },
+    "JFK": { "lat": "40.6398", "lon": "-73.7789", "name": "John F Kennedy Intl", "city": "New York", "country": "United States", "tz": "America/New_York", "iso": "US" },
+    "DXB": { "lat": "25.2528", "lon": "55.3644", "name": "Dubai Intl", "city": "Dubai", "country": "United Arab Emirates", "tz": "Asia/Dubai", "iso": "AE" },
+    "CDG": { "lat": "49.0097", "lon": "2.5478", "name": "Charles De Gaulle", "city": "Paris", "country": "France", "tz": "Europe/Paris", "iso": "FR" },
+    "FRA": { "lat": "50.0333", "lon": "8.5706", "name": "Frankfurt am Main", "city": "Frankfurt", "country": "Germany", "tz": "Europe/Berlin", "iso": "DE" },
+    "BER": { "lat": "52.3667", "lon": "13.5033", "name": "Berlin Brandenburg", "city": "Berlin", "country": "Germany", "tz": "Europe/Berlin", "iso": "DE" },
+    "VIE": { "lat": "48.1103", "lon": "16.5697", "name": "Vienna Intl", "city": "Vienna", "country": "Austria", "tz": "Europe/Vienna", "iso": "AT" },
+    "SIN": { "lat": "1.3502", "lon": "103.994", "name": "Changi Intl", "city": "Singapore", "country": "Singapore", "tz": "Asia/Singapore", "iso": "SG" },
+    "HKG": { "lat": "22.3089", "lon": "113.915", "name": "Hong Kong Intl", "city": "Hong Kong", "country": "Hong Kong", "tz": "Asia/Hong_Kong", "iso": "HK" },
+    "HND": { "lat": "35.5523", "lon": "139.78", "name": "Haneda", "city": "Tokyo", "country": "Japan", "tz": "Asia/Tokyo", "iso": "JP" },
+    "SYD": { "lat": "-33.9461", "lon": "151.177", "name": "Kingsford Smith", "city": "Sydney", "country": "Australia", "tz": "Australia/Sydney", "iso": "AU" },
+    "BEY": { "lat": "33.82", "lon": "35.49", "name": "Beirut Airport", "city": "Beirut", "country": "Lebanon", "tz": "Asia/Beirut", "iso": "LB" },
+    "PRG": { "lat": "50.10", "lon": "14.26", "name": "Prague Airport", "city": "Prague", "country": "Czechia", "tz": "Europe/Prague", "iso": "CZ" },
+    "BCN": { "lat": "41.29", "lon": "2.07", "name": "Barcelona Airport", "city": "Barcelona", "country": "Spain", "tz": "Europe/Madrid", "iso": "ES" },
+    "ORD": { "lat": "41.97", "lon": "-87.90", "name": "O'Hare Airport", "city": "Chicago", "country": "United States", "tz": "America/Chicago", "iso": "US" },
+    "DTW": { "lat": "42.21", "lon": "-83.35", "name": "Detroit Airport", "city": "Detroit", "country": "United States", "tz": "America/Detroit", "iso": "US" },
+    "IAD": { "lat": "38.95", "lon": "-77.45", "name": "Dulles Airport", "city": "Washington D.C.", "country": "United States", "tz": "America/New_York", "iso": "US" },
+    "GRR": { "lat": "42.88", "lon": "-85.52", "name": "Grand Rapids Airport", "city": "Grand Rapids", "country": "United States", "tz": "America/New_York", "iso": "US" },
+    "ATL": { "lat": "33.64", "lon": "-84.42", "name": "Atlanta Airport", "city": "Atlanta", "country": "United States", "tz": "America/New_York", "iso": "US" },
+    "AMM": { "lat": "31.72", "lon": "35.99", "name": "Queen Alia Airport", "city": "Amman", "country": "Jordan", "tz": "Asia/Amman", "iso": "JO" },
+    "TUN": { "lat": "36.85", "lon": "10.22", "name": "Tunis Airport", "city": "Tunis", "country": "Tunisia", "tz": "Africa/Tunis", "iso": "TN" },
+    "DJE": { "lat": "33.86", "lon": "10.77", "name": "Djerba Airport", "city": "Djerba", "country": "Tunisia", "tz": "Africa/Tunis", "iso": "TN" },
+    "SAW": { "lat": "40.89", "lon": "29.30", "name": "Sabiha Gökçen Airport", "city": "Istanbul", "country": "Turkey", "tz": "Europe/Istanbul", "iso": "TR" },
+    "IST": { "lat": "41.27", "lon": "28.74", "name": "Istanbul Airport", "city": "Istanbul", "country": "Turkey", "tz": "Europe/Istanbul", "iso": "TR" },
+    "ISL": { "lat": "41.27", "lon": "28.74", "name": "Atatürk Airport", "city": "Istanbul", "country": "Turkey", "tz": "Europe/Istanbul", "iso": "TR" },
+    "CPH": { "lat": "55.61", "lon": "12.65", "name": "Copenhagen Airport", "city": "Copenhagen", "country": "Denmark", "tz": "Europe/Copenhagen", "iso": "DK" },
+    "LIS": { "lat": "38.77", "lon": "-9.13", "name": "Lisbon Airport", "city": "Lisbon", "country": "Portugal", "tz": "Europe/Lisbon", "iso": "PT" },
+    "ATH": { "lat": "37.93", "lon": "23.94", "name": "Athens Airport", "city": "Athens", "country": "Greece", "tz": "Europe/Athens", "iso": "GR" },
+    "MCT": { "lat": "23.59", "lon": "58.28", "name": "Muscat Airport", "city": "Muscat", "country": "Oman", "tz": "Asia/Muscat", "iso": "OM" },
+    "AUH": { "lat": "24.43", "lon": "54.65", "name": "Abu Dhabi Airport", "city": "Abu Dhabi", "country": "United Arab Emirates", "tz": "Asia/Dubai", "iso": "AE" },
+    "PSA": { "lat": "43.68", "lon": "10.39", "name": "Pisa Airport", "city": "Pisa", "country": "Italy", "tz": "Europe/Rome", "iso": "IT" },
+    "SXF": { "lat": "52.38", "lon": "13.52", "name": "Schönefeld Airport", "city": "Berlin", "country": "Germany", "tz": "Europe/Berlin", "iso": "DE" },
+    "FLR": { "lat": "43.81", "lon": "11.20", "name": "Florence Airport", "city": "Florence", "country": "Italy", "tz": "Europe/Rome", "iso": "IT" },
+    "OTP": { "lat": "44.57", "lon": "26.10", "name": "Otopeni Airport", "city": "Bucharest", "country": "Romania", "tz": "Europe/Bucharest", "iso": "RO" },
+    "BRU": { "lat": "50.90", "lon": "4.48", "name": "Brussels Airport", "city": "Brussels", "country": "Belgium", "tz": "Europe/Brussels", "iso": "BE" },
+    "LCA": { "lat": "34.87", "lon": "33.62", "name": "Larnaca Airport", "city": "Larnaca", "country": "Cyprus", "tz": "Asia/Nicosia", "iso": "CY" },
+    "CRL": { "lat": "50.45", "lon": "4.45", "name": "Charleroi Airport", "city": "Brussels", "country": "Belgium", "tz": "Europe/Brussels", "iso": "BE" },
+    "ZRH": { "lat": "47.46", "lon": "8.54", "name": "Zurich Airport", "city": "Zurich", "country": "Switzerland", "tz": "Europe/Zurich", "iso": "CH" },
+    "NCE": { "lat": "43.66", "lon": "7.21", "name": "Nice Airport", "city": "Nice", "country": "France", "tz": "Europe/Paris", "iso": "FR" },
+    "WAW": { "lat": "52.16", "lon": "20.96", "name": "Chopin Airport", "city": "Warsaw", "country": "Poland", "tz": "Europe/Warsaw", "iso": "PL" },
+    "KUL": { "lat": "2.74", "lon": "101.70", "name": "Kuala Lumpur Airport", "city": "Kuala Lumpur", "country": "Malaysia", "tz": "Asia/Kuala_Lumpur", "iso": "MY" },
+    "LGK": { "lat": "6.32", "lon": "99.73", "name": "Langkawi Airport", "city": "Langkawi", "country": "Malaysia", "tz": "Asia/Kuala_Lumpur", "iso": "MY" },
+    "DPS": { "lat": "-8.74", "lon": "115.16", "name": "Ngurah Rai Airport", "city": "Bali", "country": "Indonesia", "tz": "Asia/Makassar", "iso": "ID" },
+    "FCO": { "lat": "41.80", "lon": "12.24", "name": "Fiumicino Airport", "city": "Rome", "country": "Italy", "tz": "Europe/Rome", "iso": "IT" },
+    "NAP": { "lat": "40.88", "lon": "14.29", "name": "Naples Airport", "city": "Naples", "country": "Italy", "tz": "Europe/Rome", "iso": "IT" },
+    "OPO": { "lat": "41.24", "lon": "-8.67", "name": "Porto Airport", "city": "Porto", "country": "Portugal", "tz": "Europe/Lisbon", "iso": "PT" },
+    "BUD": { "lat": "47.43", "lon": "19.26", "name": "Ferenc Liszt Airport", "city": "Budapest", "country": "Hungary", "tz": "Europe/Budapest", "iso": "HU" },
+    "TFS": { "lat": "28.04", "lon": "-16.57", "name": "Tenerife South Airport", "city": "Tenerife", "country": "Spain", "tz": "Atlantic/Canary", "iso": "ES" },
+    "LAX": { "lat": "33.94", "lon": "-118.40", "name": "Los Angeles Airport", "city": "Los Angeles", "country": "United States", "tz": "America/Los_Angeles", "iso": "US" },
+    "SFO": { "lat": "37.62", "lon": "-122.37", "name": "San Francisco Airport", "city": "San Francisco", "country": "United States", "tz": "America/Los_Angeles", "iso": "US" },
+    "ORY": { "lat": "48.72", "lon": "2.36", "name": "Orly Airport", "city": "Paris", "country": "France", "tz": "Europe/Paris", "iso": "FR" },
+    "SOF": { "lat": "42.69", "lon": "23.41", "name": "Sofia Airport", "city": "Sofia", "country": "Bulgaria", "tz": "Europe/Sofia", "iso": "BG" },
+    "AGP": { "lat": "36.67", "lon": "-4.49", "name": "Málaga Airport", "city": "Málaga", "country": "Spain", "tz": "Europe/Madrid", "iso": "ES" },
+    "TLL": { "lat": "59.41", "lon": "24.83", "name": "Tallinn Airport", "city": "Tallinn", "country": "Estonia", "tz": "Europe/Tallinn", "iso": "EE" },
+    "DUB": { "lat": "53.42", "lon": "-6.24", "name": "Dublin Airport", "city": "Dublin", "country": "Ireland", "tz": "Europe/Dublin", "iso": "IE" },
+    "CLE": { "lat": "41.41", "lon": "-81.85", "name": "Cleveland Airport", "city": "Cleveland", "country": "United States", "tz": "America/New_York", "iso": "US" },
+    "BRI": { "lat": "41.13", "lon": "16.76", "name": "Bari Airport", "city": "Bari", "country": "Italy", "tz": "Europe/Rome", "iso": "IT" },
+    "CAI": { "lat": "30.12", "lon": "31.40", "name": "Cairo Airport", "city": "Cairo", "country": "Egypt", "tz": "Africa/Cairo", "iso": "EG" },
+    "ASW": { "lat": "23.96", "lon": "32.81", "name": "Aswan Airport", "city": "Aswan", "country": "Egypt", "tz": "Africa/Cairo", "iso": "EG" },
+    "LXR": { "lat": "25.67", "lon": "32.70", "name": "Luxor Airport", "city": "Luxor", "country": "Egypt", "tz": "Africa/Cairo", "iso": "EG" },
+    "PDL": { "lat": "37.74", "lon": "-25.69", "name": "Ponta Delgada Airport", "city": "Azores", "country": "Portugal", "tz": "Atlantic/Azores", "iso": "PT" },
+    "MAD": { "lat": "40.4839", "lon": "-3.5679", "name": "Adolfo Suárez Madrid-Barajas", "city": "Madrid", "country": "Spain", "tz": "Europe/Madrid", "iso": "ES" },
+    "DOH": { "lat": "25.2611", "lon": "51.5650", "name": "Hamad Intl", "city": "Doha", "country": "Qatar", "tz": "Asia/Qatar", "iso": "QA" },
+    "CMB": { "lat": "7.1807", "lon": "79.8837", "name": "Bandaranaike Intl", "city": "Colombo", "country": "Sri Lanka", "tz": "Asia/Colombo", "iso": "LK" },
+    "PNH": { "lat": "11.5466", "lon": "104.8460", "name": "Phnom Penh Intl", "city": "Phnom Penh", "country": "Cambodia", "tz": "Asia/Phnom_Penh", "iso": "KH" },
+    "ARN": { "lat": "59.6519", "lon": "17.9186", "name": "Stockholm Arlanda", "city": "Stockholm", "country": "Sweden", "tz": "Europe/Stockholm", "iso": "SE" },
+    "Paris": { "lat": "48.8566", "lon": "2.3522", "city": "Paris", "country": "France", "iso": "FR" },
+    "London": { "lat": "51.5074", "lon": "-0.1278", "city": "London", "country": "United Kingdom", "iso": "GB" },
+    "New York": { "lat": "40.7128", "lon": "-74.0060", "city": "New York", "country": "United States", "iso": "US" },
+    "Tokyo": { "lat": "35.6762", "lon": "139.6503", "city": "Tokyo", "country": "Japan", "iso": "JP" },
+    "Dubai": { "lat": "25.2048", "lon": "55.2708", "city": "Dubai", "country": "United Arab Emirates", "iso": "AE" },
+    "Rome": { "lat": "41.9028", "lon": "12.4964", "city": "Rome", "country": "Italy", "iso": "IT" },
+    "Barcelona": { "lat": "41.3851", "lon": "2.1734", "city": "Barcelona", "country": "Spain", "iso": "ES" },
+    "Berlin": { "lat": "52.5200", "lon": "13.4050", "city": "Berlin", "country": "Germany", "iso": "DE" },
+    "Amsterdam": { "lat": "52.3676", "lon": "4.9041", "city": "Amsterdam", "country": "Netherlands", "iso": "NL" },
+    "Brussels": { "lat": "50.8503", "lon": "4.3517", "city": "Brussels", "country": "Belgium", "iso": "BE" },
+    "Singapore": { "lat": "1.3521", "lon": "103.8198", "city": "Singapore", "country": "Singapore", "iso": "SG" },
+    "Bali": { "lat": "-8.4095", "lon": "115.1889", "city": "Denpasar", "country": "Indonesia", "iso": "ID" },
+    "Sydney": { "lat": "-33.8688", "lon": "151.2093", "city": "Sydney", "country": "Australia", "iso": "AU" },
+    "Madrid": { "lat": "40.4168", "lon": "-3.7038", "city": "Madrid", "country": "Spain", "iso": "ES" },
+    "Doha": { "lat": "25.2854", "lon": "51.5310", "city": "Doha", "country": "Qatar", "iso": "QA" },
+    "Sri Lanka": { "lat": "7.8731", "lon": "80.7718", "city": "Colombo", "country": "Sri Lanka", "iso": "LK" },
+    "Colombo": { "lat": "6.9271", "lon": "79.8612", "city": "Colombo", "country": "Sri Lanka", "iso": "LK" },
+    "Cambodia": { "lat": "12.5657", "lon": "104.9910", "city": "Phnom Penh", "country": "Cambodia", "iso": "KH" },
+    "Phnom Penh": { "lat": "11.5564", "lon": "104.9282", "city": "Phnom Penh", "country": "Cambodia", "iso": "KH" },
+    "Stockholm": { "lat": "59.3293", "lon": "18.0686", "city": "Stockholm", "country": "Sweden", "iso": "SE" },
+    "Sweden": { "lat": "60.1282", "lon": "18.6435", "city": "Stockholm", "country": "Sweden", "iso": "SE" }
+};
+
+// Search local static and prepopulated airport/city data offline-first before triggering external network calls
+function searchLocalAirportData(q) {
+    if (!q) return null;
+    const queryLower = q.trim().toLowerCase();
+    
+    // A. Direct IATA exact 3-letter code lookup
+    if (queryLower.length === 3) {
+        const iataUpper = queryLower.toUpperCase();
+        const details = memoryAirports.get(iataUpper);
+        if (details) {
+            const gps = STATIC_GEO_COORDS[iataUpper];
+            return [{
+                name: details.airport_name || details.city_name,
+                latitude: gps ? parseFloat(gps.lat) : 0,
+                longitude: gps ? parseFloat(gps.lon) : 0,
+                country: details.country || gps?.country || '',
+                country_code: gps?.iso || '',
+                timezone: gps?.tz || 'UTC',
+                admin1: details.city_name
+            }];
+        }
+    }
+    
+    // B. Search in-memory airports loaded from PostgreSQL
+    const results = [];
+    for (const [iata, details] of memoryAirports.entries()) {
+        const iataLower = iata.toLowerCase();
+        const cityLower = (details.city_name || '').toLowerCase();
+        const airportLower = (details.airport_name || '').toLowerCase();
+        
+        if (iataLower === queryLower || cityLower.includes(queryLower) || airportLower.includes(queryLower)) {
+            const gps = STATIC_GEO_COORDS[iata];
+            if (gps) {
+                results.push({
+                    name: `${details.airport_name} (${iata})`,
+                    latitude: parseFloat(gps.lat),
+                    longitude: parseFloat(gps.lon),
+                    country: gps.country || '',
+                    country_code: gps.iso || '',
+                    timezone: gps.tz || 'UTC',
+                    admin1: details.city_name
+                });
+            }
+        }
+    }
+    
+    // C. Search static city labels directly
+    for (const [key, details] of Object.entries(STATIC_GEO_COORDS)) {
+        if (key.length > 3 && key.toLowerCase() === queryLower) {
+            results.push({
+                name: details.city || key,
+                latitude: parseFloat(details.lat),
+                longitude: parseFloat(details.lon),
+                country: details.country || '',
+                country_code: details.iso || '',
+                timezone: details.tz || 'UTC',
+                admin1: details.city || ''
+            });
+            break;
+        }
+    }
+    
+    return results.length > 0 ? results : null;
+}
+
+// Single multi-endpoint controller supporting /api/proxy/geocoding and /api/geocode/search with PostgreSQL-backed caching
+const handleGeocodingSearch = async (req, res) => {
     const { q } = req.query;
     if (!q || !q.trim()) {
         return res.json([]);
@@ -723,20 +961,33 @@ app.get('/api/proxy/geocoding', async (req, res) => {
     
     try {
         // 1. Check persistent PostgreSQL geocoding database cache first
-        const cacheLookup = await pool.query('SELECT results FROM geocoding_cache WHERE query = $1', [trimmedQ]);
+        const cacheLookup = await pool.query('SELECT results, created_at FROM geocoding_cache WHERE query = $1', [trimmedQ]);
         if (cacheLookup.rows.length > 0) {
-            res.set('X-Cache', 'HIT');
-            return res.json(cacheLookup.rows[0].results);
+            const row = cacheLookup.rows[0];
+            const age = Date.now() - new Date(row.created_at).getTime();
+            if (age < GEOCODE_CACHE_TTL_MS) {
+                res.set('X-Cache', 'HIT');
+                return res.json(row.results);
+            } else {
+                console.log(`[GEOCODE] Cache expired for query: ${trimmedQ}`);
+            }
         }
     } catch (dbErr) {
         console.warn("Geocoding database cache lookup failed:", dbErr.message);
     }
 
-    // 2. Fetch from OpenMeteo geocoding API with robust 3-second timeout abort protection
+    // 2. Search local airport data beforehand to avoid external dependency for common trips & flights
+    const localMatches = searchLocalAirportData(trimmedQ);
+    if (localMatches) {
+        res.set('X-Cache', 'LOCAL_AIRPORT');
+        return res.json(localMatches);
+    }
+
+    // 3. Fetch from OpenMeteo geocoding API with robust timeout abort protection
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
         controller.abort();
-    }, 3000);
+    }, EXTERNAL_FETCH_TIMEOUT_MS);
 
     try {
         const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(trimmedQ)}&count=10&language=en&format=json`;
@@ -750,25 +1001,40 @@ app.get('/api/proxy/geocoding', async (req, res) => {
         const data = await response.json();
         const results = data.results || [];
 
-        // 3. Keep results cached in DB for subsequent instantaneous requests (0ms latency)
+        // Fill in defaults for coordinates mapping so results match formatting
+        const formattedResults = results.map(item => ({
+            name: item.name,
+            latitude: item.latitude,
+            longitude: item.longitude,
+            country: item.country || '',
+            country_code: item.country_code || '',
+            timezone: item.timezone || 'UTC',
+            admin1: item.admin1 || ''
+        }));
+
+        // 4. Keep results cached in DB for subsequent instantaneous requests (0ms latency)
         try {
             await pool.query(
                 'INSERT INTO geocoding_cache (query, results) VALUES ($1, $2) ON CONFLICT (query) DO UPDATE SET results = $2',
-                [trimmedQ, JSON.stringify(results)]
+                [trimmedQ, JSON.stringify(formattedResults)]
             );
         } catch (dbWriteErr) {
             console.warn("Could not write geocoding result to cache:", dbWriteErr.message);
         }
 
         res.set('X-Cache', 'MISS');
-        res.json(results);
+        res.json(formattedResults);
     } catch (err) {
         clearTimeout(timeoutId);
-        console.error("Geocoding api error or timeout:", err.message);
-        // Fast-fail: return empty results instead of hanging of freezing the client UI
+        console.error("Geocoding API error or timeout:", err.message);
+        // Fast-fail: return empty results instead of hanging or freezing the client UI
         res.json([]);
     }
-});
+};
+
+// Route handlers for geocoding search
+app.get('/api/proxy/geocoding', handleGeocodingSearch);
+app.get('/api/geocode/search', handleGeocodingSearch);
 
 // --- Global Search & Lookup Endpoints (External DB / PostgreSQL) ---
 
@@ -1003,9 +1269,28 @@ app.get('/api/calendar/:userId/feed.ics', async (req, res) => {
 app.get('/api/health', async (req, res) => {
     try {
         await pool.query('SELECT 1');
-        res.json({ status: 'ok', database: 'connected' });
+        res.json({ 
+            status: dbReady ? 'ok' : 'initializing', 
+            database: 'connected', 
+            dbReady,
+            pool: {
+                totalConnections: pool.totalCount,
+                idleConnections: pool.idleCount,
+                waitingQueries: pool.waitingCount
+            }
+        });
     } catch (err) {
-        res.status(500).json({ status: 'error', database: 'disconnected', message: err.message });
+        res.status(500).json({ 
+            status: 'error', 
+            database: 'disconnected', 
+            dbReady: false,
+            message: err.message,
+            pool: {
+                totalConnections: pool.totalCount,
+                idleConnections: pool.idleCount,
+                waitingQueries: pool.waitingCount
+            }
+        });
     }
 });
 
@@ -1057,10 +1342,12 @@ app.post('/api/auth/register', async (req, res) => {
         
         user.password = hashPassword(user.password);
         
-        await pool.query(
-            `INSERT INTO users (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2`,
-            [user.id, JSON.stringify(user)]
-        );
+        await withTransaction(async (client) => {
+            await client.query(
+                `INSERT INTO users (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2`,
+                [user.id, JSON.stringify(user)]
+            );
+        });
         const responseUser = { ...user };
         delete responseUser.password;
         
@@ -1096,10 +1383,12 @@ app.post('/api/users', async (req, res) => {
         if (user.password && !user.password.includes(':')) {
             user.password = hashPassword(user.password);
         }
-        await pool.query(
-            `INSERT INTO users (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2`,
-            [user.id, JSON.stringify(user)]
-        );
+        await withTransaction(async (client) => {
+            await client.query(
+                `INSERT INTO users (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2`,
+                [user.id, JSON.stringify(user)]
+            );
+        });
         res.status(201).json(user);
     } catch (err) {
         sendError(res, err, 500, 'Failed to insert user');
@@ -1123,10 +1412,12 @@ app.put('/api/users/:id', async (req, res) => {
         } else if (updatedUser.password && !updatedUser.password.includes(':')) {
             updatedUser.password = hashPassword(updatedUser.password);
         }
-        await pool.query(
-            `INSERT INTO users (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2`,
-            [id, JSON.stringify(updatedUser)]
-        );
+        await withTransaction(async (client) => {
+            await client.query(
+                `INSERT INTO users (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2`,
+                [id, JSON.stringify(updatedUser)]
+            );
+        });
         res.json(updatedUser);
     } catch (err) {
         sendError(res, err, 500, 'Failed to update user');
@@ -1138,6 +1429,26 @@ app.delete('/api/users/:id', deleteResource('users'));
 // Trips
 app.get('/api/trips', getResources('trips'));
 app.post('/api/trips', createResource('trips'));
+app.post('/api/trips/bulk', async (req, res) => {
+    const list = req.body;
+    if (!Array.isArray(list)) {
+        return res.status(400).json({ error: 'Body must be an array of trips' });
+    }
+    try {
+        await withTransaction(async (client) => {
+            for (const trip of list) {
+                if (!trip.id) continue;
+                await client.query(
+                    `INSERT INTO trips (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2`,
+                    [trip.id, JSON.stringify(trip)]
+                );
+            }
+        });
+        res.status(201).json({ success: true, count: list.length });
+    } catch (err) {
+        sendError(res, err, 500, 'Failed to perform bulk trip upsert');
+    }
+});
 app.put('/api/trips/:id', updateResource('trips'));
 app.delete('/api/trips/:id', deleteResource('trips'));
 
@@ -1162,6 +1473,26 @@ app.delete('/api/configs/:id', deleteResource('configs'));
 // Flights
 app.get('/api/flights', getResources('flights'));
 app.post('/api/flights', createResource('flights'));
+app.post('/api/flights/bulk', async (req, res) => {
+    const list = req.body;
+    if (!Array.isArray(list)) {
+        return res.status(400).json({ error: 'Body must be an array of flights' });
+    }
+    try {
+        await withTransaction(async (client) => {
+            for (const flight of list) {
+                if (!flight.id) continue;
+                await client.query(
+                    `INSERT INTO flights (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2`,
+                    [flight.id, JSON.stringify(flight)]
+                );
+            }
+        });
+        res.status(201).json({ success: true, count: list.length });
+    } catch (err) {
+        sendError(res, err, 500, 'Failed to perform bulk flight upsert');
+    }
+});
 app.put('/api/flights/:id', updateResource('flights'));
 app.delete('/api/flights/:id', deleteResource('flights'));
 
@@ -1248,6 +1579,16 @@ app.get('/api/jobs/status/:jobId', (req, res) => {
     res.json(job);
 });
 
+// Added job status polling via /api/jobs/:id (specifically matching requirement text)
+app.get('/api/jobs/:id', (req, res) => {
+    const { id } = req.params;
+    const job = activeJobs.get(id);
+    if (!job) {
+        return res.status(404).json({ error: 'Background job not found' });
+    }
+    res.json(job);
+});
+
 // Immediately acknowledges the request with 'Processing' state while compiling heavy table states
 app.post('/api/jobs/backup', (req, res) => {
     const jobId = runBackgroundJob('DATABASE_BACKUP', async (progress) => {
@@ -1278,6 +1619,106 @@ app.post('/api/jobs/backup', (req, res) => {
     });
 });
 
+// Added manual global data refresh job endpoint. This lets heavy operations return quickly with a “processing” status.
+app.post('/api/jobs/refresh', (req, res) => {
+    const jobId = runBackgroundJob('GLOBAL_DATA_REFRESH', async (progress) => {
+        progress(20);
+        
+        // Re-fetch and update airports
+        const response = await fetch('https://raw.githubusercontent.com/dlubom/iata_code_fetcher/main/airport_data_full_processed.jsonl');
+        if (response.ok) {
+            const text = await response.text();
+            const lines = text.split('\n').filter(Boolean);
+            const client = await pool.connect();
+            try {
+                await client.query('BEGIN');
+                await client.query('TRUNCATE TABLE global_airports RESTART IDENTITY');
+                const chunkSize = 500;
+                for (let i = 0; i < lines.length; i += chunkSize) {
+                    const chunk = lines.slice(i, i + chunkSize);
+                    const values = [];
+                    const params = [];
+                    chunk.forEach((line, idx) => {
+                        try {
+                            const item = JSON.parse(line);
+                            if (item.iata) {
+                                values.push(`($${idx * 3 + 1}, $${idx * 3 + 2}, $${idx * 3 + 3})`);
+                                params.push(item.iata.trim().toUpperCase(), item.city_name || '', item.airport_name || '');
+                            }
+                        } catch (err) {}
+                    });
+                    if (values.length > 0) {
+                        await client.query(`INSERT INTO global_airports (iata, city_name, airport_name) VALUES ${values.join(', ')}`, params);
+                    }
+                }
+                await client.query('COMMIT');
+            } catch (err) {
+                await client.query('ROLLBACK');
+                throw err;
+            } finally {
+                client.release();
+            }
+        }
+        
+        progress(60);
+        
+        // Sync carriers too
+        const carrierRes = await fetch('https://raw.githubusercontent.com/dlubom/iata_code_fetcher/main/carrier_data_full_processed.jsonl');
+        if (carrierRes.ok) {
+            const text = await carrierRes.text();
+            const lines = text.split('\n').filter(Boolean);
+            const client = await pool.connect();
+            try {
+                await client.query('BEGIN');
+                await client.query('TRUNCATE TABLE global_carriers RESTART IDENTITY');
+                const chunkSize = 500;
+                for (let i = 0; i < lines.length; i += chunkSize) {
+                    const chunk = lines.slice(i, i + chunkSize);
+                    const values = [];
+                    const params = [];
+                    chunk.forEach((line, idx) => {
+                        try {
+                            const item = JSON.parse(line);
+                            if (item.iata) {
+                                values.push(`($${idx * 3 + 1}, $${idx * 3 + 2}, $${idx * 3 + 3})`);
+                                params.push(item.iata.trim().toUpperCase(), item.company_name || '', item.country_or_territory || '');
+                            }
+                        } catch (err) {}
+                    });
+                    if (values.length > 0) {
+                        await client.query(`INSERT INTO global_carriers (iata, company_name, country_or_territory) VALUES ${values.join(', ')}`, params);
+                    }
+                }
+                await client.query('COMMIT');
+            } catch (err) {
+                await client.query('ROLLBACK');
+                throw err;
+            } finally {
+                client.release();
+            }
+        }
+        
+        progress(90);
+        await loadGlobalData();
+        progress(100);
+        return { message: 'Database global datasets successfully refreshed and memory maps synced.' };
+    });
+    
+    res.status(202).json({
+        success: true,
+        message: 'Global static airports and carriers data refresh job started.',
+        jobId,
+        status: 'Processing'
+    });
+});
+
+app.post('/api/jobs/refresh-data', (req, res) => {
+    res.redirect(307, '/api/jobs/refresh');
+});
+app.post('/api/jobs/refresh-global-data', (req, res) => {
+    res.redirect(307, '/api/jobs/refresh');
+});
+
 // Import/Export Full State
 app.get('/api/backup', async (req, res) => {
     try {
@@ -1300,12 +1741,38 @@ app.get('/api/backup', async (req, res) => {
 });
 
 app.post('/api/restore', async (req, res) => {
+    const data = req.body;
+    
+    // Strict validation-driven checks
+    if (!data || typeof data !== 'object') {
+        return res.status(400).json({ error: 'Validation failed: Backup payload must be a JSON object' });
+    }
+    
+    const tables = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights'];
+    for (const table of tables) {
+        if (data[table] !== undefined) {
+            if (!Array.isArray(data[table])) {
+                return res.status(400).json({ error: `Validation failed: '${table}' must be an array` });
+            }
+            for (const item of data[table]) {
+                if (!item || typeof item !== 'object') {
+                    return res.status(400).json({ error: `Validation failed: Items in '${table}' must be objects` });
+                }
+                if (!item.id || typeof item.id !== 'string' || item.id.trim() === '') {
+                    return res.status(400).json({ error: `Validation failed: Items in '${table}' must have a valid non-empty string ID` });
+                }
+            }
+        }
+    }
+    
+    if (data.workspaceSettings !== undefined && (typeof data.workspaceSettings !== 'object' || data.workspaceSettings === null)) {
+        return res.status(400).json({ error: "Validation failed: 'workspaceSettings' must be an object" });
+    }
+
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
-        const data = req.body;
         
-        const tables = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights'];
         for (const table of tables) {
             const existingItemsMap = new Map();
             try {
@@ -1400,6 +1867,12 @@ const server = app.listen(PORT, () => {
 const gracefulShutdown = async (signal) => {
     console.warn(`[SYSTEM] Received ${signal}. Initiating graceful shutdown...`);
     
+    // Clear any active background scheduler timer to release the Node.js event line
+    if (schedulerInterval) {
+        clearInterval(schedulerInterval);
+        console.log('[SYSTEM] Background scheduler dataset refresh timer cleared.');
+    }
+
     // Close the Express HTTP Server first so we stop taking new incoming traffic
     if (server) {
         server.close(() => {

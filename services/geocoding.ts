@@ -305,7 +305,18 @@ const searchQueriesCache = new Map<string, string[]>();
 
 async function fetchOpenMeteoGeocoding(query: string): Promise<any[]> {
     try {
-        // 1. Fetch from backend geocoding proxy (with PostgreSQL caching, logging, and fast responses)
+        // 1. Fetch from backend geocoding search endpoint first (with PostgreSQL caching, local search, and logging)
+        const res = await fetchWithTimeout(`/api/geocode/search?q=${encodeURIComponent(query)}`, {}, 3000);
+        if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data)) return data;
+        }
+    } catch (e) {
+        console.warn("Backend geocoding search failed, trying fallback proxy...", e);
+    }
+
+    try {
+        // Fallback to proxy route
         const res = await fetchWithTimeout(`/api/proxy/geocoding?q=${encodeURIComponent(query)}`, {}, 3000);
         if (res.ok) {
             const data = await res.json();
@@ -484,6 +495,23 @@ export async function searchLocations(query: string): Promise<string[]> {
     searchQueriesCache.set(lowerQuery, finalResult);
     return finalResult;
 }
+
+// Reusable debouncing utility helper
+export function debounce<T extends (...args: any[]) => any>(fn: T, delay: number) {
+    let timer: any = null;
+    return (...args: Parameters<T>): Promise<ReturnType<T> | undefined> => {
+        return new Promise((resolve) => {
+            if (timer) clearTimeout(timer);
+            timer = setTimeout(async () => {
+                const res = await fn(...args);
+                resolve(res);
+            }, delay);
+        });
+    };
+}
+
+// Reusable debounced location search helper
+export const debouncedSearchLocations = debounce(searchLocations, 350);
 
 export async function searchStations(query: string, type: 'train' | 'bus'): Promise<string[]> {
     return searchLocations(`${query} ${type === 'train' ? 'railway station' : 'bus station'}`);

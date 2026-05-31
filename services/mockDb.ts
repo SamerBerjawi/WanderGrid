@@ -330,6 +330,7 @@ class DataService {
                   if (res.status === 401 || res.status === 403) {
                       try {
                           window.dispatchEvent(new CustomEvent('wandergrid-unauthorized'));
+                          window.dispatchEvent(new CustomEvent('wandergrid:unauthorized'));
                       } catch (evErr) {
                           console.warn("Could not dispatch unauthorized event:", evErr);
                       }
@@ -409,7 +410,7 @@ class DataService {
           { route: '/flights', storage: 'flights' }
       ];
 
-      for (const col of collections) {
+       for (const col of collections) {
           if (endpoint === col.route) {
               const list = JSON.parse(localStorage.getItem(key(col.storage)) || '[]');
               if (method === 'GET') return list as T;
@@ -437,6 +438,36 @@ class DataService {
                   try { window.dispatchEvent(new CustomEvent('wandergrid_db_updated')); } catch (e) {}
                   return { success: true } as unknown as T;
               }
+          }
+      }
+
+      if (endpoint === '/trips/bulk') {
+          if (method === 'POST') {
+              const list = JSON.parse(localStorage.getItem(key('trips')) || '[]');
+              const payload = body as any[];
+              for (const trip of payload) {
+                  const idx = list.findIndex((i: any) => i.id === trip.id);
+                  if (idx >= 0) list[idx] = trip;
+                  else list.push(trip);
+              }
+              localStorage.setItem(key('trips'), JSON.stringify(list));
+              try { window.dispatchEvent(new CustomEvent('wandergrid_db_updated')); } catch (e) {}
+              return { success: true, count: payload.length } as unknown as T;
+          }
+      }
+
+      if (endpoint === '/flights/bulk') {
+          if (method === 'POST') {
+              const list = JSON.parse(localStorage.getItem(key('flights')) || '[]');
+              const payload = body as any[];
+              for (const flight of payload) {
+                  const idx = list.findIndex((i: any) => i.id === flight.id);
+                  if (idx >= 0) list[idx] = flight;
+                  else list.push(flight);
+              }
+              localStorage.setItem(key('flights'), JSON.stringify(list));
+              try { window.dispatchEvent(new CustomEvent('wandergrid_db_updated')); } catch (e) {}
+              return { success: true, count: payload.length } as unknown as T;
           }
       }
 
@@ -696,24 +727,50 @@ class DataService {
         return `${trip.name}|${trip.startDate}|${trip.endDate}`;
     };
     const existingSignatures = new Set(existingTrips.map(t => getTripSignature(t)));
-    let addedCount = 0;
+    
+    let loggedInUser: any = null;
+    try {
+      const stored = localStorage.getItem('wandergrid_session_user');
+      if (stored) loggedInUser = JSON.parse(stored);
+    } catch (e) {}
+
+    const tripsToUpsert: Trip[] = [];
     for (let i = 0; i < total; i++) {
         const trip = newTrips[i];
         const sig = getTripSignature(trip);
         const percent = Math.round(((i + 1) / total) * 100);
         if (existingSignatures.has(sig)) continue;
-        this.updateImportState(`Importing ${i + 1}/${total}: ${trip.name}`, percent, true);
+        this.updateImportState(`Processing ${i + 1}/${total}: ${trip.name}`, percent, true);
+        
+        let candidate: Trip;
         try {
-            const intelligentTrip = await this.processGeocoding(trip);
-            await this.addTrip(intelligentTrip);
-            existingSignatures.add(sig); 
-            addedCount++;
+            candidate = await this.processGeocoding(trip);
         } catch (e) {
-            await this.addTrip(trip); 
-            addedCount++;
+            candidate = { ...trip };
         }
+
+        if (loggedInUser) {
+            if (!candidate.participants) {
+                candidate.participants = [];
+            }
+            if (!candidate.participants.includes(loggedInUser.id)) {
+                candidate.participants.push(loggedInUser.id);
+            }
+        }
+        if (!candidate.privacy) {
+            candidate.privacy = 'Private';
+        }
+
+        tripsToUpsert.push(candidate);
+        existingSignatures.add(sig);
     }
-    this.updateImportState(`Successfully imported ${addedCount} trips.`, 100, false);
+
+    if (tripsToUpsert.length > 0) {
+        this.updateImportState(`Persisting ${tripsToUpsert.length} trips...`, 99, true);
+        await this.fetch('/trips/bulk', { method: 'POST', body: JSON.stringify(tripsToUpsert) });
+    }
+
+    this.updateImportState(`Successfully imported ${tripsToUpsert.length} trips.`, 100, false);
     setTimeout(() => { if (!this._importState.isActive) this.updateImportState('', 0, false); }, 3000);
   }
 
@@ -738,6 +795,7 @@ class DataService {
   async deleteConfig(id: string): Promise<void> { await this.fetch(`/configs/${id}`, { method: 'DELETE' }); }
   async getFlights(): Promise<any[]> { return this.fetch<any[]>('/flights'); }
   async addFlight(flight: any): Promise<void> { await this.fetch('/flights', { method: 'POST', body: JSON.stringify(flight) }); }
+  async addFlights(flights: any[]): Promise<void> { await this.fetch('/flights/bulk', { method: 'POST', body: JSON.stringify(flights) }); }
   async updateFlight(flight: any): Promise<void> { await this.fetch(`/flights/${flight.id}`, { method: 'PUT', body: JSON.stringify(flight) }); }
   async deleteFlight(id: string): Promise<void> { await this.fetch(`/flights/${id}`, { method: 'DELETE' }); }
   async getWorkspaceSettings(): Promise<WorkspaceSettings> {

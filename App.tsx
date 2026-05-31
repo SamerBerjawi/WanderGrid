@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { Sidebar } from './components/Sidebar';
+import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { ViewState, User } from './types';
 import { dataService } from './services/mockDb';
 import { motion, AnimatePresence } from 'motion/react';
@@ -96,6 +97,7 @@ export default function App() {
   
   const [theme, setTheme] = useState<'light' | 'dark' | 'auto'>('dark');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isAuthReady, setIsAuthReady] = useState<boolean>(false);
 
   const currentAccent = VIEW_ACCENTS[view] || VIEW_ACCENTS[ViewState.DASHBOARD];
 
@@ -141,6 +143,8 @@ export default function App() {
   useEffect(() => {
     dataService.getWorkspaceSettings().then(settings => {
       setTheme(settings.theme);
+    }).catch(err => {
+      console.warn("Failed to load workspace settings:", err);
     });
     
     const storedUserStr = localStorage.getItem('wandergrid_session_user');
@@ -155,14 +159,21 @@ export default function App() {
                 } else {
                     setCurrentUser(null);
                     localStorage.removeItem('wandergrid_session_user');
+                    localStorage.removeItem('wandergrid_session_token');
                 }
+                setIsAuthReady(true);
             }).catch(err => {
                 console.warn("Roster validation offline, logging in from cache:", err);
                 setCurrentUser(parsedUser);
+                setIsAuthReady(true);
             });
         } catch (e) {
             localStorage.removeItem('wandergrid_session_user');
+            localStorage.removeItem('wandergrid_session_token');
+            setIsAuthReady(true);
         }
+    } else {
+        setIsAuthReady(true);
     }
   }, []);
 
@@ -216,8 +227,10 @@ export default function App() {
         handleLogout();
     };
     window.addEventListener('wandergrid-unauthorized', handleUnauthorized);
+    window.addEventListener('wandergrid:unauthorized', handleUnauthorized);
     return () => {
         window.removeEventListener('wandergrid-unauthorized', handleUnauthorized);
+        window.removeEventListener('wandergrid:unauthorized', handleUnauthorized);
     };
   }, []);
 
@@ -232,6 +245,19 @@ export default function App() {
           navigate(ViewState.TRIP_DETAIL, tripId);
       }
   };
+
+  const getStableRouteKey = () => {
+    switch (view) {
+      case ViewState.USER_DETAIL:
+        return `view-user-${selectedUserId || 'none'}`;
+      case ViewState.TRIP_DETAIL:
+        return `view-trip-${selectedTripId || 'none'}`;
+      default:
+        return `view-${view}`;
+    }
+  };
+
+  const routeKey = getStableRouteKey();
 
   const renderView = () => {
     switch (view) {
@@ -255,6 +281,20 @@ export default function App() {
         return <Dashboard onUserClick={handleUserClick} onTripClick={handleTripClick} />;
     }
   };
+
+  if (!isAuthReady) {
+      return (
+        <div className="flex h-screen w-full overflow-hidden bg-gradient-to-br from-indigo-50/50 via-slate-100/60 to-blue-50/50 dark:from-slate-950 dark:via-slate-900/90 dark:to-indigo-950/95 transition-colors duration-500 text-gray-900 dark:text-gray-100 relative">
+            <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+                <div className="absolute -top-40 -left-40 w-[550px] h-[550px] rounded-full bg-blue-500/2 dark:bg-blue-600/3 blur-[120px] animate-[pulse_10s_infinite]" />
+                <div className="absolute -bottom-40 -right-40 w-[600px] h-[600px] rounded-full bg-purple-500/2 dark:bg-purple-600/3 blur-[130px] animate-[pulse_14s_infinite] delay-1000" />
+            </div>
+            <div className="w-full h-full relative z-10 flex items-center justify-center">
+                <ViewLoader />
+            </div>
+        </div>
+      );
+  }
 
   if (!currentUser) {
       return (
@@ -290,20 +330,22 @@ export default function App() {
         currentUser={currentUser}
       />
       <main className="flex-1 h-full overflow-y-auto relative z-10 p-4 md:p-8 pb-28 md:pb-8 custom-scrollbar">
-        <Suspense fallback={<ViewLoader />}>
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={view + (view === ViewState.USER_DETAIL ? selectedUserId : '') + (view === ViewState.TRIP_DETAIL ? selectedTripId : '')}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.18, ease: "easeOut" }}
-              className="w-full h-full"
-            >
-              {renderView()}
-            </motion.div>
-          </AnimatePresence>
-        </Suspense>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={routeKey}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className="w-full h-full"
+          >
+            <Suspense fallback={<ViewLoader />}>
+              <AppErrorBoundary routeKey={routeKey} onResetToDashboard={() => navigate(ViewState.DASHBOARD)}>
+                {renderView()}
+              </AppErrorBoundary>
+            </Suspense>
+          </motion.div>
+        </AnimatePresence>
       </main>
     </div>
   );

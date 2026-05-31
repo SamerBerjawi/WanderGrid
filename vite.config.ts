@@ -19,8 +19,16 @@ export default defineConfig(({ mode }) => {
           '@': path.resolve('.'),
           'react': path.resolve('./node_modules/react'),
           'react-dom': path.resolve('./node_modules/react-dom'),
+          'react/jsx-runtime': path.resolve('./node_modules/react/jsx-runtime'),
+          'react/jsx-dev-runtime': path.resolve('./node_modules/react/jsx-dev-runtime'),
+          'react-dom/client': path.resolve('./node_modules/react-dom/client'),
+          'react-dom/server': path.resolve('./node_modules/react-dom/server'),
         },
-        dedupe: ['react', 'react-dom']
+        dedupe: ['react', 'react-dom'],
+        preserveSymlinks: false
+      },
+      optimizeDeps: {
+        include: ['react', 'react-dom', 'motion', 'motion/react']
       }
     };
 });

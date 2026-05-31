@@ -431,6 +431,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
   const [activeIndex, setActiveIndex] = useState<number>(-1);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<any>(null);
+  const latestQueryRef = useRef<string>('');
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -439,7 +440,10 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -447,6 +451,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
     onChange(val);
     setActiveIndex(-1);
     
+    latestQueryRef.current = val;
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     
     if (val.length >= 2) {
@@ -454,6 +459,9 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
       timeoutRef.current = setTimeout(async () => {
         try {
            const results = await fetchSuggestions(val);
+           // Ignore stale queries whose value has been updated since request dispatch
+           if (latestQueryRef.current !== val) return;
+
            if (results && results.length > 0) {
              setSuggestions(results);
              setIsOpen(true);
@@ -464,7 +472,9 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
         } catch (error) {
            console.error("Autocomplete error", error);
         } finally {
-           setIsLoading(false);
+           if (latestQueryRef.current === val) {
+             setIsLoading(false);
+           }
         }
       }, 400); 
     } else {

@@ -21,11 +21,25 @@ services:
       - PORT=3000
       - DATABASE_URL=postgres://${DB_USER:-wandergrid}:${DB_PASSWORD:-wandergrid_password}@db:5432/${DB_NAME:-wandergrid}
       - JWT_SECRET=${JWT_SECRET:-wandergrid_super_secret_development_key_change_me_in_production}
+      - DB_POOL_SIZE=${DB_POOL_SIZE:-20}
+      - DB_CONNECTION_TIMEOUT_MS=${DB_CONNECTION_TIMEOUT_MS:-5000}
+      - DB_STATEMENT_TIMEOUT_MS=${DB_STATEMENT_TIMEOUT_MS:-10000}
+      - API_CACHE_TTL_MS=${API_CACHE_TTL_MS:-300000}
+      - GLOBAL_DATA_REFRESH_MS=${GLOBAL_DATA_REFRESH_MS:-604800000}
+      - GEOCODE_CACHE_TTL_MS=${GEOCODE_CACHE_TTL_MS:-2592000000}
+      - EXTERNAL_FETCH_TIMEOUT_MS=${EXTERNAL_FETCH_TIMEOUT_MS:-3000}
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     networks:
-      - wandergrid-net
+      - db-communication-net
+      - app-exposure-net
 
   db:
     image: postgres:15-alpine
@@ -43,11 +57,16 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - wandergrid-net
+      - db-communication-net
 
 volumes:
   postgres_data:
 
 networks:
-  wandergrid-net:
+  # Internal network restricted to database and app backend communication
+  db-communication-net:
+    driver: bridge
+    internal: true
+  # Public/ambient bridge network for exposing the application
+  app-exposure-net:
     driver: bridge
