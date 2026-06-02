@@ -774,7 +774,10 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
         if (shouldShowCountries && geoJsonData) {
             geoJsonLayerRef.current = L.geoJSON(geoJsonData, {
                 style: (feature) => {
-                    const iso = feature?.properties?.ISO_A2 || feature?.properties?.ISO_A2_EH;
+                    let iso = feature?.properties?.ISO_A2;
+                    if (!iso || iso === '-99') {
+                        iso = feature?.properties?.ISO_A2_EH;
+                    }
                     const isVisited = visitedCountries.includes(iso);
                     
                     let gradientColor = '#333';
