@@ -336,6 +336,14 @@ const loadGlobalData = async () => {
   try {
     console.log('Loading global memory caches from PostgreSQL database... (eliminating raw GitHub web requests on startup)');
     
+    // Clear any potentially contaminated geocoding cache records for BER and MAN to restore correct city mappings.
+    try {
+        await pool.query("DELETE FROM geocoding_cache WHERE query IN ('ber', 'ber airport', 'man', 'man airport', 'manchester')");
+        console.log('[SYSTEM-CLEANUP] Cleaned up any potentially contaminated geocoding_cache values for BER and MAN.');
+    } catch (cleanErr) {
+        console.warn('System cleanup query failed:', cleanErr.message);
+    }
+    
     const airportsRes = await pool.query('SELECT iata, city_name, airport_name FROM global_airports');
     let apCount = 0;
     airportsRes.rows.forEach(row => {
@@ -805,6 +813,7 @@ app.get('/api/proxy/airlines', async (req, res) => {
 const STATIC_GEO_COORDS = {
     "AMS": { "lat": "52.3086", "lon": "4.7639", "name": "Schiphol", "city": "Amsterdam", "country": "Netherlands", "tz": "Europe/Amsterdam", "iso": "NL" },
     "LHR": { "lat": "51.4706", "lon": "-0.4619", "name": "Heathrow", "city": "London", "country": "United Kingdom", "tz": "Europe/London", "iso": "GB" },
+    "MAN": { "lat": "53.3588", "lon": "-2.2728", "name": "Manchester Airport", "city": "Manchester", "country": "United Kingdom", "tz": "Europe/London", "iso": "GB" },
     "JFK": { "lat": "40.6398", "lon": "-73.7789", "name": "John F Kennedy Intl", "city": "New York", "country": "United States", "tz": "America/New_York", "iso": "US" },
     "DXB": { "lat": "25.2528", "lon": "55.3644", "name": "Dubai Intl", "city": "Dubai", "country": "United Arab Emirates", "tz": "Asia/Dubai", "iso": "AE" },
     "CDG": { "lat": "49.0097", "lon": "2.5478", "name": "Charles De Gaulle", "city": "Paris", "country": "France", "tz": "Europe/Paris", "iso": "FR" },
@@ -966,8 +975,15 @@ const handleGeocodingSearch = async (req, res) => {
     }
     const trimmedQ = q.trim().toLowerCase();
     
+    // 1. Search local airport data first beforehand to avoid external api/geocoding cache contamination for common trips & flights
+    const localMatches = searchLocalAirportData(trimmedQ);
+    if (localMatches) {
+        res.set('X-Cache', 'LOCAL_AIRPORT');
+        return res.json(localMatches);
+    }
+
     try {
-        // 1. Check persistent PostgreSQL geocoding database cache first
+        // 2. Check persistent PostgreSQL geocoding database cache if not matched locally
         const cacheLookup = await pool.query('SELECT results, created_at FROM geocoding_cache WHERE query = $1', [trimmedQ]);
         if (cacheLookup.rows.length > 0) {
             const row = cacheLookup.rows[0];
@@ -981,13 +997,6 @@ const handleGeocodingSearch = async (req, res) => {
         }
     } catch (dbErr) {
         console.warn("Geocoding database cache lookup failed:", dbErr.message);
-    }
-
-    // 2. Search local airport data beforehand to avoid external dependency for common trips & flights
-    const localMatches = searchLocalAirportData(trimmedQ);
-    if (localMatches) {
-        res.set('X-Cache', 'LOCAL_AIRPORT');
-        return res.json(localMatches);
     }
 
     // 3. Fetch from OpenMeteo geocoding API with robust timeout abort protection

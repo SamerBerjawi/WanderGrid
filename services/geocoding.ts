@@ -131,6 +131,7 @@ const STATIC_GEO_DATA: Record<string, any> = {
     "SYD": { "lat": "-33.9461", "lon": "151.177", "name": "Kingsford Smith", "city": "Sydney", "country": "Australia", "tz": "Australia/Sydney", "iso": "AU" },
     
     // Requested Missing Airports
+    "MAN": { "lat": "53.3588", "lon": "-2.2728", "name": "Manchester Airport", "city": "Manchester", "country": "United Kingdom", "tz": "Europe/London", "iso": "GB" },
     "BEY": { "lat": "33.82", "lon": "35.49", "name": "Beirut Airport", "city": "Beirut", "country": "Lebanon", "iso": "LB" },
     "PRG": { "lat": "50.10", "lon": "14.26", "name": "Prague Airport", "city": "Prague", "country": "Czechia", "iso": "CZ" },
     "BCN": { "lat": "41.29", "lon": "2.07", "name": "Barcelona Airport", "city": "Barcelona", "country": "Spain", "iso": "ES" },
