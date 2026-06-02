@@ -15,6 +15,7 @@ const TripDetail = lazy(() => import('./views/TripDetail').then(m => ({ default:
 const ExpeditionMapView = lazy(() => import('./views/ExpeditionMapView').then(m => ({ default: m.ExpeditionMapView })));
 const Gamification = lazy(() => import('./views/Gamification').then(m => ({ default: m.Gamification })));
 const Flights = lazy(() => import('./views/Flights').then(m => ({ default: m.Flights })));
+const TravelAtlas = lazy(() => import('./views/TravelAtlas').then(m => ({ default: m.TravelAtlas })));
 const Auth = lazy(() => import('./views/Auth').then(m => ({ default: m.Auth })));
 
 const getUrlState = () => {
@@ -25,6 +26,7 @@ const getUrlState = () => {
         if (path === '/map') return { view: ViewState.MAP };
         if (path === '/gamification') return { view: ViewState.GAMIFICATION };
         if (path === '/flights') return { view: ViewState.FLIGHTS };
+        if (path === '/atlas' || path === '/travel-atlas') return { view: ViewState.TRAVEL_ATLAS };
         
         const userMatch = path.match(/^\/user\/([^/]+)$/);
         if (userMatch) return { view: ViewState.USER_DETAIL, userId: userMatch[1] };
@@ -277,6 +279,8 @@ export default function App() {
         return <Gamification onTripClick={handleTripClick} />;
       case ViewState.FLIGHTS:
         return <Flights onTripClick={handleTripClick} />;
+      case ViewState.TRAVEL_ATLAS:
+        return <TravelAtlas onTripClick={handleTripClick} />;
       default:
         return <Dashboard onUserClick={handleUserClick} onTripClick={handleTripClick} />;
     }

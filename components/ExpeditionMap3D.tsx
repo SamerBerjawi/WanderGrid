@@ -14,6 +14,8 @@ interface ExpeditionMap3DProps {
     focusTransportCoordinates?: { lat: number; lng: number } | null;
     showGradientRoutes?: boolean;
     onToggleGradientRoutes?: (val: boolean) => void;
+    showFlightRoutes?: boolean;
+    showLandSeaRoutes?: boolean;
 }
 
 interface ArcData {
@@ -134,7 +136,9 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({
     onActiveLayerChange,
     focusTransportCoordinates,
     showGradientRoutes: showGradientRoutesProp,
-    onToggleGradientRoutes
+    onToggleGradientRoutes,
+    showFlightRoutes = true,
+    showLandSeaRoutes = true
 }) => {
     const globeEl = useRef<any>(null);
     const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
@@ -218,6 +222,13 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({
 
             if (trip.transports && trip.transports.length > 0) {
                 trip.transports.forEach(t => {
+                    const isFlight = t.mode === 'Flight';
+                    const isLand = ['Car Rental', 'Personal Car', 'Bus', 'Train'].includes(t.mode);
+                    const isSea = t.mode === 'Cruise';
+
+                    if (isFlight && !showFlightRoutes) return;
+                    if (!isFlight && !showLandSeaRoutes) return;
+
                     const modeColor = getModeColor(t.mode, statusColor);
                     const isSurface = ['Car Rental', 'Personal Car', 'Bus', 'Train', 'Cruise'].includes(t.mode);
 

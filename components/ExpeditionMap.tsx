@@ -25,6 +25,7 @@ interface ExpeditionMapProps {
     showAviationCharts?: boolean;
     showLandSeaRoutes?: boolean;
     onToggleLandSeaRoutes?: (val: boolean) => void;
+    showFlightRoutes?: boolean;
     showCityMarkers?: boolean;
     onToggleCityMarkers?: (val: boolean) => void;
     focusTransportCoordinates?: { lat: number; lng: number } | null;
@@ -356,6 +357,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
     showAviationCharts = false,
     showLandSeaRoutes: showLandSeaRoutesProp,
     onToggleLandSeaRoutes,
+    showFlightRoutes = true,
     showCityMarkers: showCityMarkersProp,
     onToggleCityMarkers,
     focusTransportCoordinates,
@@ -680,6 +682,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                             const isLand = ['Car Rental', 'Personal Car', 'Bus', 'Train'].includes(t.mode);
                             const isSea = t.mode === 'Cruise';
 
+                            if (isFlight && !showFlightRoutes) return;
                             if (!isFlight && !showLandSeaRoutes) return;
 
                             let color = flightStyle.color;
@@ -737,7 +740,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
             });
         }
         return pts;
-    }, [trips, viewMode, visitedPlaces, isDark, activeLayer, showLandSeaRoutes]);
+    }, [trips, viewMode, visitedPlaces, isDark, activeLayer, showLandSeaRoutes, showFlightRoutes]);
 
     // Track last fitted state to prevent annoying resetting during active interactions
     const lastFittedPointsRef = useRef<string>('');
@@ -822,6 +825,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                         const isLand = ['Car Rental', 'Personal Car', 'Bus', 'Train'].includes(t.mode);
                         const isSea = t.mode === 'Cruise';
 
+                        if (isFlight && !showFlightRoutes) return;
                         if (!isFlight && !showLandSeaRoutes) return;
 
                         let color = flightStyle.color;
@@ -1030,7 +1034,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                 });
             }
         });
-    }, [trips, viewMode, onTripClick, routeFrequencies, showFrequencyWeight, animateRoutes, isDark, activeLayer, showGradientRoutes, enableRoadTracing, osrmCache, showLandSeaRoutes, proportionalArcThickness]);
+    }, [trips, viewMode, onTripClick, routeFrequencies, showFrequencyWeight, animateRoutes, isDark, activeLayer, showGradientRoutes, enableRoadTracing, osrmCache, showLandSeaRoutes, showFlightRoutes, proportionalArcThickness]);
 
     // Handle City Markers & Clusters Rendering (Separated to enable zero-lag map panning and native zoom rendering)
     useEffect(() => {

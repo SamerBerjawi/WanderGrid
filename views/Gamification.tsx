@@ -201,44 +201,91 @@ export const Gamification: React.FC<GamificationProps> = ({ onTripClick }) => {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('stamps');
 
+    const loadData = async () => {
+        try {
+            const allTrips = await dataService.getTrips() || [];
+            setTrips(allTrips);
+            const validTrips = allTrips.filter(t => t.status !== 'Planning' && t.status !== 'Cancelled');
+            setPastTrips(validTrips);
+            setLoading(false);
+            runAfterFirstPaint(() => {
+                void processTravelHistory(validTrips);
+            });
+        } catch (err) {
+            console.error("Failed to load gamification data:", err);
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const load = async () => {
-            try {
-                const allTrips = await dataService.getTrips() || [];
-                setTrips(allTrips);
-                const validTrips = allTrips.filter(t => t.status !== 'Planning' && t.status !== 'Cancelled');
-                setPastTrips(validTrips);
-                setLoading(false);
-                runAfterFirstPaint(() => {
-                    void processTravelHistory(validTrips);
-                });
-            } catch (err) {
-                console.error("Failed to load gamification data:", err);
-                setLoading(false);
-            }
+        void loadData();
+    }, []);
+
+    useEffect(() => {
+        const handleDbUpdate = () => {
+            void loadData();
         };
-        load();
+        window.addEventListener('wandergrid_db_updated', handleDbUpdate);
+        return () => {
+            window.removeEventListener('wandergrid_db_updated', handleDbUpdate);
+        };
     }, []);
 
     const processTravelHistory = async (tripList: Trip[]) => {
-        const countryMap = new Map<string, VisitedCountry>();
         let kmCount = 0;
-        const placesToResolve = new Set<string>();
-
-        // 1. Collect
         for (const trip of tripList) {
-            // Distance
             if (trip.transports) {
                 for (const t of trip.transports) {
                     if (t.distance) kmCount += t.distance;
                     else if (t.originLat && t.originLng && t.destLat && t.destLng) kmCount += calculateDistance(t.originLat, t.originLng, t.destLat, t.destLng);
                 }
             }
-            // Places
+        }
+        const totalDistance = Math.round(kmCount);
+
+        try {
+            const dbVisited = await dataService.getVisited();
+            const hasSeededBefore = localStorage.getItem('wandergrid_visited_seeded') === 'true';
+            if (dbVisited && (dbVisited.length > 0 || hasSeededBefore)) {
+                const countries = dbVisited.filter(item => item.type === 'country' && !item.isTransit);
+                const cities = dbVisited.filter(item => item.type === 'city');
+
+                const visitedData: VisitedCountry[] = countries.map(item => {
+                    const countryId = item.code.toUpperCase();
+                    const associatedCities = cities
+                        .filter(ci => ci.countryCode?.toUpperCase() === countryId)
+                        .map(ci => ci.name);
+                    
+                    return {
+                        code: countryId,
+                        name: item.name,
+                        cities: new Set(associatedCities),
+                        flag: getFlagEmoji(countryId),
+                        tripCount: tripList.filter(t => t.location && t.location.toLowerCase().includes(item.name.toLowerCase())).length || 1,
+                        lastVisit: item.visitDate ? new Date(item.visitDate) : new Date(),
+                        region: getRegion(countryId)
+                    };
+                }).sort((a,b) => a.name.localeCompare(b.name));
+
+                let totalC = 0;
+                visitedData.forEach(val => { totalC += (val.cities as Set<string>).size; });
+
+                setTotalCities(totalC);
+                setTotalDistance(totalDistance);
+                setVisitedData(visitedData);
+                return;
+            }
+        } catch (dbErr) {
+            console.warn("Could not query Visited from DB on gamification page, using fallback:", dbErr);
+        }
+
+        const countryMap = new Map<string, VisitedCountry>();
+        const placesToResolve = new Set<string>();
+
+        // 1. Collect
+        for (const trip of tripList) {
             if (trip.location && !['Time Off', 'Remote', 'Trip', 'Vacation'].includes(trip.location)) placesToResolve.add(trip.location);
             trip.accommodations?.forEach(a => placesToResolve.add(a.address));
-            
-            // Transports (simplify layover logic for mass processing)
             trip.transports?.forEach(t => placesToResolve.add(t.destination));
         }
 
@@ -255,7 +302,6 @@ export const Gamification: React.FC<GamificationProps> = ({ onTripClick }) => {
             const tripPlaces = new Set<string>();
             if (trip.location && !['Time Off', 'Remote', 'Trip', 'Vacation'].includes(trip.location)) tripPlaces.add(trip.location);
             trip.accommodations?.forEach(a => tripPlaces.add(a.address));
-            // Simplified transport logic for brevity in refactor - full logic in Dashboard/ExpeditionMap
             trip.transports?.forEach(t => tripPlaces.add(t.destination));
 
             for (const place of tripPlaces) {
@@ -279,7 +325,7 @@ export const Gamification: React.FC<GamificationProps> = ({ onTripClick }) => {
         let totalC = 0;
         countryMap.forEach((val) => { totalC += val.cities.size; finalized.push(val); });
         setTotalCities(totalC);
-        setTotalDistance(Math.round(kmCount));
+        setTotalDistance(totalDistance);
         setVisitedData(finalized.sort((a, b) => a.name.localeCompare(b.name)));
     };
 

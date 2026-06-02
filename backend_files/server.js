@@ -234,7 +234,7 @@ const initDb = async (retries = 10, delayMs = 3000) => {
       try {
         // We use a generic structure where 'data' contains the JSON object
         // and 'id' is extracted for easier lookups.
-        const tables = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights'];
+        const tables = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights', 'visited'];
         
         for (const table of tables) {
           await client.query(`
@@ -1502,6 +1502,32 @@ app.post('/api/flights/bulk', async (req, res) => {
 });
 app.put('/api/flights/:id', updateResource('flights'));
 app.delete('/api/flights/:id', deleteResource('flights'));
+
+// Visited Countries & Cities
+app.get('/api/visited', getResources('visited'));
+app.post('/api/visited', createResource('visited'));
+app.post('/api/visited/bulk', async (req, res) => {
+    const list = req.body;
+    if (!Array.isArray(list)) {
+        return res.status(400).json({ error: 'Body must be an array of visited items' });
+    }
+    try {
+        await withTransaction(async (client) => {
+            for (const item of list) {
+                if (!item.id) continue;
+                await client.query(
+                    `INSERT INTO visited (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2`,
+                    [item.id, JSON.stringify(item)]
+                );
+            }
+        });
+        res.status(201).json({ success: true, count: list.length });
+    } catch (err) {
+        sendError(res, err, 500, 'Failed to perform bulk visited upsert');
+    }
+});
+app.put('/api/visited/:id', updateResource('visited'));
+app.delete('/api/visited/:id', deleteResource('visited'));
 
 // Settings (Singleton)
 app.get('/api/settings', async (req, res) => {

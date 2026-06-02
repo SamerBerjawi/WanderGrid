@@ -504,9 +504,9 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
       e.preventDefault();
       if (activeIndex >= 0 && activeIndex < suggestions.length) {
         handleSelect(suggestions[activeIndex]);
-      } else if (suggestions.length > 0) {
-        // Fallback to first suggestion if none is highlighted explicitly
-        handleSelect(suggestions[0]);
+      } else {
+        // Dismiss suggestion list on enter without auto-selecting fallback suggestions
+        setIsOpen(false);
       }
     } else if (e.key === 'Escape') {
       setIsOpen(false);

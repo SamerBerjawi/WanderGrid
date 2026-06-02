@@ -281,7 +281,23 @@ export enum ViewState {
   TRIP_DETAIL = 'trip_detail',
   MAP = 'map',
   GAMIFICATION = 'gamification',
-  FLIGHTS = 'flights'
+  FLIGHTS = 'flights',
+  TRAVEL_ATLAS = 'travel_atlas'
+}
+
+export interface VisitedItem {
+  id: string;
+  type: 'country' | 'city';
+  code: string;
+  name: string;
+  countryCode?: string;
+  countryName?: string;
+  lat?: number;
+  lng?: number;
+  visitDate?: string;
+  isManual?: boolean;
+  notes?: string;
+  isTransit?: boolean;
 }
 
 // --- Live Flight Tracking Types ---

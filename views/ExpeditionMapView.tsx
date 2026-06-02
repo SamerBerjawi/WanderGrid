@@ -176,16 +176,44 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                 });
             };
 
+            const flightsByTripIdMap = new Map<string, any[]>();
+            (loadedFlights || []).forEach(f => {
+                const tId = f.tripId;
+                if (tId && tId !== 'unassigned') {
+                    if (!flightsByTripIdMap.has(tId)) {
+                        flightsByTripIdMap.set(tId, []);
+                    }
+                    flightsByTripIdMap.get(tId)!.push(f);
+                }
+            });
+
             // First draw: Render as much as possible instantly
-            const initialTrips = (loadedTrips || []).map(t => ({
-                ...t,
-                transports: processTransportsSync(t.transports)
-            }));
+            const initialTrips = (loadedTrips || []).map(t => {
+                const assignedFlights = flightsByTripIdMap.get(t.id) || [];
+                const existingTransports = t.transports || [];
+                const mergedTransports = [...existingTransports];
+                
+                assignedFlights.forEach(af => {
+                    const isDup = existingTransports.some(et => 
+                        (et.id && et.id === af.id) || 
+                        (et.identifier === af.identifier && et.departureDate === af.departureDate && et.origin === af.origin)
+                    );
+                    if (!isDup) {
+                        mergedTransports.push(af);
+                    }
+                });
+
+                return {
+                    ...t,
+                    transports: processTransportsSync(mergedTransports)
+                };
+            });
 
             const initialFlights = processTransportsSync(loadedFlights || []);
 
             const makeSyntheticTrips = (flightsList: any[]) => {
-                return flightsList.map((flight) => {
+                const unassignedFlights = (flightsList || []).filter(f => !f.tripId || f.tripId === 'unassigned');
+                return unassignedFlights.map((flight) => {
                     const date = flight.departureDate || '';
                     const todayStr = new Date().toISOString().split('T')[0];
                     const isPast = date < todayStr;
@@ -275,7 +303,39 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                     saveCoordCache(coordCache);
                 }
 
-                setTrips([...asyncEnrichedTrips, ...makeSyntheticTrips(asyncEnrichedFlights)]);
+                const enrichedFlightsByTripId = new Map<string, any[]>();
+                (asyncEnrichedFlights || []).forEach(f => {
+                    const tId = f.tripId;
+                    if (tId && tId !== 'unassigned') {
+                        if (!enrichedFlightsByTripId.has(tId)) {
+                            enrichedFlightsByTripId.set(tId, []);
+                        }
+                        enrichedFlightsByTripId.get(tId)!.push(f);
+                    }
+                });
+
+                const asyncEnrichedTripsMerged = asyncEnrichedTrips.map(trip => {
+                    const assignedFlights = enrichedFlightsByTripId.get(trip.id) || [];
+                    const existingTransports = trip.transports || [];
+                    const mergedTransports = [...existingTransports];
+                    
+                    assignedFlights.forEach(af => {
+                        const isDup = existingTransports.some(et => 
+                            (et.id && et.id === af.id) || 
+                            (et.identifier === af.identifier && et.departureDate === af.departureDate && et.origin === af.origin)
+                        );
+                        if (!isDup) {
+                            mergedTransports.push(af);
+                        }
+                    });
+
+                    return {
+                        ...trip,
+                        transports: mergedTransports
+                    };
+                });
+
+                setTrips([...asyncEnrichedTripsMerged, ...makeSyntheticTrips(asyncEnrichedFlights)]);
             });
 
         }).catch(err => {
@@ -287,6 +347,29 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
     // Calculate Visited Countries & Cities
     useEffect(() => {
         const processGeoData = async () => {
+            try {
+                const visited = await dataService.getVisited();
+                if (visited && visited.length > 0) {
+                    const countryCodes = visited
+                        .filter(item => item.type === 'country' && !item.isTransit)
+                        .map(item => item.code.toUpperCase());
+                    
+                    const places = visited
+                        .filter(item => item.type === 'city')
+                        .map(item => ({
+                            lat: item.lat || 0,
+                            lng: item.lng || 0,
+                            name: item.name
+                        }));
+
+                    setVisitedCountryCodes(countryCodes);
+                    setVisitedPlaces(places);
+                    return;
+                }
+            } catch (err) {
+                console.warn("Could not query Visited collection from database in Map View, using fallback resolution:", err);
+            }
+
             const countryCodes = new Set<string>();
             // Reuse cache from LocalStorage if available (shared with Gamification and Goe-API)
             const placeCacheRaw = localStorage.getItem('wandergrid_geo_cache_v3') || localStorage.getItem('wandergrid_geo_cache_v2');
@@ -958,6 +1041,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                 onToggleClusterMode={setClusterMode}
                                 showLandSeaRoutes={showLandSeaRoutes}
                                 onToggleLandSeaRoutes={setShowLandSeaRoutes}
+                                showFlightRoutes={showIndependentFlights}
                                 showCityMarkers={showCityMarkers}
                                 onToggleCityMarkers={setShowCityMarkers}
                                 hideAirportCircles={hideAirportCircles}
@@ -987,6 +1071,8 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                     }
                                 }}
                                 focusTransportCoordinates={focusCoord}
+                                showFlightRoutes={showIndependentFlights}
+                                showLandSeaRoutes={showLandSeaRoutes}
                             />
                         )}
                     </Suspense>

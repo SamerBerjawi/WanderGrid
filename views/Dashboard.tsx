@@ -119,6 +119,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
   }, []);
 
   useEffect(() => {
+    const handleDbUpdate = () => {
+      refreshData();
+    };
+    window.addEventListener('wandergrid_db_updated', handleDbUpdate);
+    return () => {
+      window.removeEventListener('wandergrid_db_updated', handleDbUpdate);
+    };
+  }, []);
+
+  useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
     const activeTrip = trips.find(t => t.status !== 'Cancelled' && t.startDate <= today && t.endDate >= today);
     if (activeTrip?.transports) {
@@ -138,8 +148,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
       dataService.getTrips(),
       dataService.getSavedConfigs(),
       dataService.getEntitlementTypes(),
-      dataService.getFlights()
-    ]).then(async ([u, t, configs, ents, flights]) => {
+      dataService.getFlights(),
+      dataService.getVisited()
+    ]).then(async ([u, t, configs, ents, flights, visited]) => {
       setUsers(u);
       setHolidays(configs.flatMap(c => c.holidays.map(h => ({ ...h, configId: c.id }))));
       setEntitlements(ents);
@@ -176,7 +187,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
       };
 
       const makeSyntheticTrips = (flightsList: any[]) => {
-          return flightsList.map((flight) => {
+          const unassignedFlights = (flightsList || []).filter(f => !f.tripId || f.tripId === 'unassigned');
+          return unassignedFlights.map((flight) => {
               const date = flight.departureDate || '';
               const todayStr = new Date().toISOString().split('T')[0];
               const isPast = date < todayStr;
@@ -198,17 +210,49 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
           });
       };
 
+      const flightsByTripIdMap = new Map<string, any[]>();
+      (flights || []).forEach(f => {
+          const tId = f.tripId;
+          if (tId && tId !== 'unassigned') {
+              if (!flightsByTripIdMap.has(tId)) {
+                  flightsByTripIdMap.set(tId, []);
+              }
+              flightsByTripIdMap.get(tId)!.push(f);
+          }
+      });
+
       // Create instant visual set (fast sync lookup)
-      const initialTrips = (t || []).map(trip => ({
-          ...trip,
-          transports: processTransportsSync(trip.transports)
-      }));
+      const initialTrips = (t || []).map(trip => {
+          const assignedFlights = flightsByTripIdMap.get(trip.id) || [];
+          const existingTransports = trip.transports || [];
+          const mergedTransports = [...existingTransports];
+          
+          assignedFlights.forEach(af => {
+              const isDup = existingTransports.some(et => 
+                  (et.id && et.id === af.id) || 
+                  (et.identifier === af.identifier && et.departureDate === af.departureDate && et.origin === af.origin)
+              );
+              if (!isDup) {
+                  mergedTransports.push(af);
+              }
+          });
+
+          return {
+              ...trip,
+              transports: processTransportsSync(mergedTransports)
+          };
+      });
       const initialFlights = processTransportsSync(flights || []);
       const combinedState = [...initialTrips, ...makeSyntheticTrips(initialFlights)];
       setTrips(combinedState);
 
       const activeTrips = combinedState.filter(trip => trip.status !== 'Planning' && trip.status !== 'Cancelled');
-      const version = getTripsVersion(activeTrips);
+      const tripsVersion = getTripsVersion(activeTrips);
+      const visitedSignature = (visited || [])
+          .map((v: any) => `${v.id}-${v.isTransit === true}-${v.visitDate || ''}`)
+          .sort()
+          .join(',');
+      const version = `${tripsVersion}_${visitedSignature}`;
       const cachedRaw = localStorage.getItem(DASHBOARD_CACHE_KEY);
       
       if (cachedRaw) {
@@ -317,11 +361,48 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
               saveCoordCache(coordCache);
           }
 
-          const finalCombined = [...asyncEnrichedTrips, ...makeSyntheticTrips(asyncEnrichedFlights)];
+          const enrichedFlightsByTripId = new Map<string, any[]>();
+          (asyncEnrichedFlights || []).forEach(f => {
+              const tId = f.tripId;
+              if (tId && tId !== 'unassigned') {
+                  if (!enrichedFlightsByTripId.has(tId)) {
+                      enrichedFlightsByTripId.set(tId, []);
+                  }
+                  enrichedFlightsByTripId.get(tId)!.push(f);
+              }
+          });
+
+          const asyncEnrichedTripsMerged = asyncEnrichedTrips.map(trip => {
+              const assignedFlights = enrichedFlightsByTripId.get(trip.id) || [];
+              const existingTransports = trip.transports || [];
+              const mergedTransports = [...existingTransports];
+              
+              assignedFlights.forEach(af => {
+                  const isDup = existingTransports.some(et => 
+                      (et.id && et.id === af.id) || 
+                      (et.identifier === af.identifier && et.departureDate === af.departureDate && et.origin === af.origin)
+                  );
+                  if (!isDup) {
+                      mergedTransports.push(af);
+                  }
+              });
+
+              return {
+                  ...trip,
+                  transports: mergedTransports
+              };
+          });
+
+          const finalCombined = [...asyncEnrichedTripsMerged, ...makeSyntheticTrips(asyncEnrichedFlights)];
           setTrips(finalCombined);
 
           const activeTripsFinal = finalCombined.filter(trip => trip.status !== 'Planning' && trip.status !== 'Cancelled');
-          const finalVersion = getTripsVersion(activeTripsFinal);
+          const finalTripsVersion = getTripsVersion(activeTripsFinal);
+          const finalVisitedSignature = (visited || [])
+              .map((v: any) => `${v.id}-${v.isTransit === true}-${v.visitDate || ''}`)
+              .sort()
+              .join(',');
+          const finalVersion = `${finalTripsVersion}_${finalVisitedSignature}`;
           const processed = await processTravelHistory(activeTripsFinal);
           localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify({
               version: finalVersion,
@@ -337,14 +418,60 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
   };
 
   const processTravelHistory = async (tripList: Trip[]) => {
-        const countryMap = new Map<string, VisitedCountry>();
         let kmCount = 0;
+        tripList.forEach(trip => {
+            if (trip.transports) {
+                trip.transports.forEach(t => {
+                    kmCount += t.distance || (t.originLat && t.originLng && t.destLat && t.destLng ? calculateDistance(t.originLat, t.originLng, t.destLat, t.destLng) : 0);
+                });
+            }
+        });
+        const totalDistance = Math.round(kmCount);
+
+        try {
+            const dbVisited = await dataService.getVisited();
+            const hasSeededBefore = localStorage.getItem('wandergrid_visited_seeded') === 'true';
+            if (dbVisited && (dbVisited.length > 0 || hasSeededBefore)) {
+                // Read from database. Filter out transits!
+                const countries = dbVisited.filter(item => item.type === 'country' && !item.isTransit);
+                const cities = dbVisited.filter(item => item.type === 'city');
+
+                const visitedData: VisitedCountry[] = countries.map(item => {
+                    const countryId = item.code.toUpperCase();
+                    const associatedCities = cities
+                        .filter(ci => ci.countryCode?.toUpperCase() === countryId)
+                        .map(ci => ci.name);
+                    
+                    return {
+                        code: countryId,
+                        name: item.name,
+                        cities: new Set(associatedCities),
+                        flag: getFlagEmoji(countryId),
+                        tripCount: tripList.filter(t => t.location && t.location.toLowerCase().includes(item.name.toLowerCase())).length || 1,
+                        lastVisit: item.visitDate ? new Date(item.visitDate) : new Date(),
+                        region: getRegion(countryId)
+                    };
+                }).sort((a,b) => a.name.localeCompare(b.name));
+
+                let totalC = 0;
+                visitedData.forEach(val => { totalC += (val.cities as Set<string>).size; });
+
+                setTotalCities(totalC);
+                setTotalDistance(totalDistance);
+                setVisitedData(visitedData);
+                return { totalCities: totalC, totalDistance, visitedData };
+            }
+        } catch (dbErr) {
+            console.warn("Could not fetch from database, using fallback computation:", dbErr);
+        }
+
+        // --- Schema Seed Fallback ---
+        const countryMap = new Map<string, VisitedCountry>();
         const placesToResolve = new Set<string>();
 
         tripList.forEach(trip => {
             if (trip.transports) {
                 trip.transports.forEach(t => {
-                    kmCount += t.distance || (t.originLat && t.originLng && t.destLat && t.destLng ? calculateDistance(t.originLat, t.originLng, t.destLat, t.destLng) : 0);
                     if (t.destination) placesToResolve.add(t.destination);
                     if (t.origin) placesToResolve.add(t.origin);
                 });
@@ -406,8 +533,46 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
 
         let totalC = 0; const finalized: VisitedCountry[] = [];
         countryMap.forEach(val => { totalC += val.cities.size; finalized.push(val); });
-        const totalDistance = Math.round(kmCount);
         const visitedData = finalized.sort((a, b) => a.name.localeCompare(b.name));
+
+        // Background write newly resolved dataset to Visited DB collection as permanent registry seed
+        try {
+            const bulkSeed: any[] = [];
+            finalized.forEach(c => {
+                bulkSeed.push({
+                    id: `country_${c.code}`,
+                    type: 'country',
+                    code: c.code,
+                    name: c.name,
+                    visitDate: c.lastVisit instanceof Date ? c.lastVisit.toISOString().split('T')[0] : String(c.lastVisit),
+                    isTransit: false,
+                    isManual: false,
+                    notes: 'Auto-seeded from travel history'
+                });
+
+                Array.from(c.cities).forEach((city: any) => {
+                    bulkSeed.push({
+                        id: `city_${city.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}`,
+                        type: 'city',
+                        code: city,
+                        name: city,
+                        countryCode: c.code,
+                        countryName: c.name,
+                        visitDate: c.lastVisit instanceof Date ? c.lastVisit.toISOString().split('T')[0] : String(c.lastVisit),
+                        isManual: false,
+                        notes: 'Auto-seeded city'
+                    });
+                });
+            });
+
+            if (bulkSeed.length > 0) {
+                void dataService.addVisitedBulk(bulkSeed);
+            }
+            localStorage.setItem('wandergrid_visited_seeded', 'true');
+        } catch (seedErr) {
+            console.error("Auto seeding of central Visited database failed:", seedErr);
+        }
+
         setTotalCities(totalC);
         setTotalDistance(totalDistance);
         setVisitedData(visitedData);
@@ -633,15 +798,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                 }>
                     {mapViewMode === '3d' ? (
                         <ExpeditionMap3D 
-                            trips={trips.filter(t => t.status !== 'Planning' && t.status !== 'Cancelled')} 
+                            trips={trips.filter(t => t.status !== 'Cancelled')} 
                             animateRoutes={true} 
                             onTripClick={onTripClick}
                             showGradientRoutes={globalGradientRoutes}
                             onToggleGradientRoutes={(val) => setGlobalGradientRoutes(val)} 
+                            showFlightRoutes={true}
+                            showLandSeaRoutes={true}
                         />
                     ) : (
                         <ExpeditionMap 
-                            trips={trips.filter(t => t.status !== 'Planning' && t.status !== 'Cancelled')} 
+                            trips={trips.filter(t => t.status !== 'Cancelled')} 
                             animateRoutes={false} 
                             showFrequencyWeight={false}
                             onTripClick={onTripClick}
@@ -650,6 +817,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                             visitedCountries={visitedData.map(vd => vd.code)}
                             showGradientRoutes={globalGradientRoutes}
                             onToggleGradientRoutes={(val) => setGlobalGradientRoutes(val)}
+                            showFlightRoutes={true}
+                            showLandSeaRoutes={true}
                         />
                     )}
                 </Suspense>

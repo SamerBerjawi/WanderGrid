@@ -23,6 +23,105 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
     const [editTakenLeave, setEditTakenLeave] = useState(0);
     const [saveLoading, setSaveLoading] = useState(false);
 
+    // Trip Edit and Delete States
+    const [isEditingTrip, setIsEditingTrip] = useState(false);
+    const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
+    const [editTripName, setEditTripName] = useState('');
+    const [editTripLocation, setEditTripLocation] = useState('');
+    const [editTripStartDate, setEditTripStartDate] = useState('');
+    const [editTripEndDate, setEditTripEndDate] = useState('');
+    const [editTripStatus, setEditTripStatus] = useState<'Planning' | 'Upcoming' | 'Past' | 'Cancelled'>('Planning');
+
+    const [isDeletingTripConfirm, setIsDeletingTripConfirm] = useState(false);
+    const [deletingTripId, setDeletingTripId] = useState<string | null>(null);
+
+    const handleStartEditTrip = (trip: Trip) => {
+        setEditingTrip(trip);
+        setEditTripName(trip.name || '');
+        setEditTripLocation(trip.location || '');
+        setEditTripStartDate(trip.startDate || '');
+        setEditTripEndDate(trip.endDate || '');
+        setEditTripStatus(trip.status || 'Planning');
+        setIsEditingTrip(true);
+    };
+
+    const handleSaveTrip = async () => {
+        if (!editingTrip || !editTripName.trim() || !editTripLocation.trim()) return;
+        setSaveLoading(true);
+        try {
+            const updatedTrip: Trip = {
+                ...editingTrip,
+                name: editTripName.trim(),
+                location: editTripLocation.trim(),
+                startDate: editTripStartDate,
+                endDate: editTripEndDate,
+                status: editTripStatus
+            };
+            await dataService.updateTrip(updatedTrip);
+            setIsEditingTrip(false);
+            setEditingTrip(null);
+            refreshProfile();
+            try { window.dispatchEvent(new CustomEvent('wandergrid_db_updated')); } catch (e) {}
+        } catch (err) {
+            console.error("Failed to save trip", err);
+        } finally {
+            setSaveLoading(false);
+        }
+    };
+
+    const handleDeleteTripClick = (tripId: string) => {
+        setDeletingTripId(tripId);
+        setIsDeletingTripConfirm(true);
+    };
+
+    const handleConfirmDeleteTrip = async () => {
+        if (!deletingTripId) return;
+        setSaveLoading(true);
+        try {
+            await dataService.deleteTrip(deletingTripId);
+            setIsDeletingTripConfirm(false);
+            setDeletingTripId(null);
+            refreshProfile();
+            try { window.dispatchEvent(new CustomEvent('wandergrid_db_updated')); } catch (e) {}
+        } catch (err) {
+            console.error("Failed to delete trip", err);
+        } finally {
+            setSaveLoading(false);
+        }
+    };
+
+    const handleCreateTripFromBundle = async (trip: Trip) => {
+        setSaveLoading(true);
+        try {
+            const updatedTrip: Trip = {
+                ...trip,
+                isBundleOnly: false,
+                hideInPlanner: false,
+            };
+            await dataService.updateTrip(updatedTrip);
+            refreshProfile();
+            try { window.dispatchEvent(new CustomEvent('wandergrid_db_updated')); } catch (e) {}
+        } catch (err) {
+            console.error("Failed to promote bundle to trip", err);
+        } finally {
+            setSaveLoading(false);
+        }
+    };
+
+    const getTripPlannerStatus = (trip: Trip) => {
+        if (trip.status === 'Planning') {
+            return { text: 'Planning', color: 'amber' as const };
+        }
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tripEnd = new Date(trip.endDate);
+        if (tripEnd >= today) {
+            return { text: 'Upcoming', color: 'emerald' as const };
+        } else {
+            return { text: 'Past', color: 'purple' as const };
+        }
+    };
+
     const refreshProfile = () => {
         setLoading(true);
         dataService.getUsers()
@@ -338,74 +437,127 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                             <p className="text-xs text-gray-500 max-w-xs mx-auto mt-2">When this user joins or gets assigned to a trip, their complete flight route details will appear beautifully styled here.</p>
                         </Card>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
-                            {trips.map(trip => {
-                                const ongoing = new Date(trip.startDate) <= new Date() && new Date() <= new Date(trip.endDate);
-                                return (
-                                    <Card key={trip.id} noPadding className="rounded-[2rem] border-zinc-200 dark:border-white/5 hover:shadow-xl transition-all group overflow-hidden flex flex-col h-full bg-white dark:bg-gray-900">
-                                        <div className="p-6 border-b border-gray-100 dark:border-white/5 flex items-center justify-between bg-gray-50/50 dark:bg-white/5">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/10 rounded-xl flex items-center justify-center text-blue-500 text-2xl group-hover:rotate-12 transition-transform">
-                                                    <span className="material-icons-outlined">{trip.icon || 'map'}</span>
-                                                </div>
-                                                <div>
-                                                    <h3 className="font-bold text-gray-900 dark:text-white text-base leading-snug truncate max-w-[13rem]" title={trip.name}>
-                                                        {trip.name}
-                                                    </h3>
-                                                    <div className="flex items-center gap-1 text-xs text-gray-450 dark:text-gray-500 mt-0.5">
-                                                        <span className="material-icons-outlined text-xs">place</span>
-                                                        <span className="truncate max-w-[11rem]">{trip.location}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                {ongoing ? (
-                                                    <Badge color="amber" className="animate-pulse">Active Now</Badge>
-                                                ) : (
-                                                    <Badge color={
-                                                        trip.status === 'Planning' ? 'amber' :
-                                                        trip.status === 'Upcoming' ? 'blue' :
-                                                        trip.status === 'Past' ? 'emerald' : 'gray'
-                                                    }>
-                                                        {trip.status}
-                                                    </Badge>
-                                                )}
-                                            </div>
-                                        </div>
+                        <Card noPadding className="rounded-[2rem] border-zinc-200 dark:border-white/5 bg-white dark:bg-gray-900 overflow-hidden shadow-xs">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="border-b border-gray-100 dark:border-white/4 bg-gray-50/40 dark:bg-white/5 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500">
+                                            <th className="py-4 px-6">Expedition</th>
+                                            <th className="py-4 px-6">Schedule</th>
+                                            <th className="py-4 px-6 text-center">Status</th>
+                                            <th className="py-4 px-6 text-center">Stats</th>
+                                            <th className="py-4 px-6 text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                                        {trips.map(trip => {
+                                            const ongoing = new Date(trip.startDate) <= new Date() && new Date() <= new Date(trip.endDate);
+                                            const departuresStr = new Date(trip.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                                            const returnStr = new Date(trip.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                                            const flightCount = (trip.transports?.filter(t => t.mode === 'Flight').length) || 0;
+                                            const overnightsCount = trip.accommodations?.length || 0;
 
-                                        <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
-                                            <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-300 font-semibold bg-gray-50 dark:bg-white/5 p-3 rounded-xl font-mono leading-none">
-                                                <div className="flex flex-col">
-                                                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">Departure</span>
-                                                    <span>{new Date(trip.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                                                </div>
-                                                <span className="material-icons-outlined text-gray-300 dark:text-gray-750 text-lg">trending_flat</span>
-                                                <div className="flex flex-col text-right">
-                                                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">Return Date</span>
-                                                    <span>{new Date(trip.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                                                </div>
-                                            </div>
-
-                                            <div className="grid grid-cols-2 gap-3 text-xs">
-                                                <div className="p-3 rounded-xl bg-violet-50/50 dark:bg-violet-900/5 border border-violet-100/50 dark:border-violet-900/20 flex flex-col justify-center">
-                                                    <span className="text-[9px] font-black text-violet-500 dark:text-violet-400 uppercase tracking-widest leading-none mb-1.5 font-mono block">Flight Legs</span>
-                                                    <span className="font-extrabold text-gray-800 dark:text-gray-200 text-base">
-                                                        {(trip.transports?.filter(t => t.mode === 'Flight').length) || 0}
-                                                    </span>
-                                                </div>
-
-                                                <div className="p-3 rounded-xl bg-emerald-50/50 dark:bg-emerald-900/5 border border-emerald-100/50 dark:border-emerald-900/20 flex flex-col justify-center">
-                                                    <span className="text-[9px] font-black text-emerald-500 dark:text-emerald-400 uppercase tracking-widest leading-none mb-1.5 font-mono block">Overnights</span>
-                                                    <span className="font-extrabold text-gray-800 dark:text-gray-200 text-base">
-                                                        {trip.accommodations?.length || 0}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </Card>
-                                );
-                            })}
-                        </div>
+                                            return (
+                                                <tr key={trip.id} className="hover:bg-gray-50/40 dark:hover:bg-white/5/30 transition-colors group">
+                                                    <td className="py-4 px-6">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/10 rounded-xl flex items-center justify-center text-blue-500 text-xl group-hover:scale-105 transition-transform shrink-0">
+                                                                <span className="material-icons-outlined">{trip.icon || 'map'}</span>
+                                                            </div>
+                                                            <div className="min-w-0">
+                                                                <h4 className="font-bold text-gray-900 dark:text-white text-sm leading-snug truncate max-w-[12rem]" title={trip.name}>
+                                                                    {trip.name}
+                                                                </h4>
+                                                                <div className="flex items-center gap-1 text-[11px] text-gray-450 dark:text-gray-500 mt-0.5 font-medium">
+                                                                    <span className="material-icons-outlined text-xs shrink-0">place</span>
+                                                                    <span className="truncate max-w-[10rem]">{trip.location}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-4 px-6">
+                                                        <div className="flex flex-col text-xs font-mono text-gray-500 dark:text-gray-400 font-semibold gap-0.5">
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className="text-[9px] font-black uppercase text-gray-350 dark:text-gray-650 tracking-wider">DEP</span>
+                                                                <span>{departuresStr}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className="text-[9px] font-black uppercase text-gray-350 dark:text-gray-650 tracking-wider">RET</span>
+                                                                <span>{returnStr}</span>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-4 px-6 text-center whitespace-nowrap">
+                                                        {trip.isBundleOnly || trip.hideInPlanner ? (
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleCreateTripFromBundle(trip);
+                                                                }}
+                                                                className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-black tracking-wide uppercase bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-950/30 dark:hover:bg-blue-900/40 dark:text-blue-400 rounded-lg border border-blue-100 dark:border-blue-900/20 transition-all cursor-pointer shadow-xs active:scale-95"
+                                                                title="Add this travel schedule directly to your Planner boards"
+                                                            >
+                                                                <span className="material-icons-outlined text-xs">add</span>
+                                                                <span>Create Trip</span>
+                                                            </button>
+                                                        ) : ongoing ? (
+                                                            <Badge color="amber" className="animate-pulse inline-block">Active Now</Badge>
+                                                        ) : (
+                                                            (() => {
+                                                                const plannerStatus = getTripPlannerStatus(trip);
+                                                                return (
+                                                                    <Badge color={plannerStatus.color} className="inline-block">
+                                                                        {plannerStatus.text}
+                                                                    </Badge>
+                                                                );
+                                                            })()
+                                                        )}
+                                                    </td>
+                                                    <td className="py-4 px-6 text-center">
+                                                        <div className="flex items-center justify-center gap-2.5 text-xs">
+                                                            <div className="flex items-center gap-1 bg-violet-50/50 dark:bg-violet-900/5 px-2 py-1 rounded-lg border border-violet-100/30 dark:border-violet-900/10" title={`${flightCount} Flight Legs`}>
+                                                                <span className="material-icons-outlined text-sm text-violet-555 dark:text-violet-400">flight</span>
+                                                                <span className="font-extrabold text-gray-800 dark:text-gray-200">{flightCount}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-1 bg-emerald-50/50 dark:bg-emerald-900/5 px-2 py-1 rounded-lg border border-emerald-100/30 dark:border-emerald-900/10" title={`${overnightsCount} Overnights`}>
+                                                                <span className="material-icons-outlined text-sm text-emerald-555 dark:text-emerald-400">hotel</span>
+                                                                <span className="font-extrabold text-gray-800 dark:text-gray-200">{overnightsCount}</span>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-4 px-6 text-right">
+                                                        <div className="flex items-center justify-end gap-1.5">
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleStartEditTrip(trip);
+                                                                }}
+                                                                className="p-1 px-2.5 rounded-lg bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-zinc-750 text-blue-500 font-bold flex items-center gap-1 transition-colors cursor-pointer border border-zinc-200 dark:border-white/5 text-[11px]"
+                                                                title="Edit Trip Settings"
+                                                            >
+                                                                <span className="material-icons-outlined text-sm">edit</span>
+                                                                <span>Edit</span>
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleDeleteTripClick(trip.id);
+                                                                }}
+                                                                className="p-1 px-2.5 rounded-lg bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-rose-950/20 text-rose-500 font-bold flex items-center gap-1 transition-colors cursor-pointer border border-zinc-200 dark:border-white/5 text-[11px]"
+                                                                title="Delete Trip"
+                                                            >
+                                                                <span className="material-icons-outlined text-sm">delete</span>
+                                                                <span>Delete</span>
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </Card>
                     )}
                 </div>
             </div>
@@ -470,6 +622,94 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                             isLoading={saveLoading}
                         >
                             Commit Changes
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* MODAL: EDIT TRIP DETAILS MODAL */}
+            <Modal isOpen={isEditingTrip} onClose={() => setIsEditingTrip(false)} title="Edit Expedition Details">
+                <div className="space-y-6 text-left">
+                    <div className="space-y-4">
+                        <Input 
+                            label="Trip Name" 
+                            placeholder="e.g. Summer Vacation" 
+                            value={editTripName} 
+                            onChange={e => setEditTripName(e.target.value)} 
+                        />
+                        <Input 
+                            label="Destination / Location" 
+                            placeholder="e.g. Paris, France" 
+                            value={editTripLocation} 
+                            onChange={e => setEditTripLocation(e.target.value)} 
+                        />
+                        <div className="grid grid-cols-2 gap-4">
+                            <Input 
+                                label="Start Date" 
+                                type="date"
+                                value={editTripStartDate} 
+                                onChange={e => setEditTripStartDate(e.target.value)} 
+                            />
+                            <Input 
+                                label="End Date" 
+                                type="date"
+                                value={editTripEndDate} 
+                                onChange={e => setEditTripEndDate(e.target.value)} 
+                            />
+                        </div>
+                        <Select 
+                            label="Trip Status" 
+                            value={editTripStatus} 
+                            onInput={(e: any) => setEditTripStatus(e.target.value)}
+                            options={[
+                                { label: 'Planning', value: 'Planning' },
+                                { label: 'Upcoming', value: 'Upcoming' },
+                                { label: 'Past', value: 'Past' },
+                                { label: 'Cancelled', value: 'Cancelled' }
+                            ]}
+                        />
+                    </div>
+
+                    <div className="flex gap-4 pt-4 border-t border-gray-150/50 dark:border-white/10 shrink-0">
+                        <Button variant="ghost" className="flex-1 !rounded-xl cursor-pointer" onClick={() => setIsEditingTrip(false)}>Cancel</Button>
+                        <Button 
+                            variant="primary" 
+                            className="flex-1 border-none !rounded-xl text-white font-bold cursor-pointer bg-blue-650 shadow-md shadow-blue-500/10" 
+                            disabled={!editTripName.trim() || !editTripLocation.trim()}
+                            onClick={handleSaveTrip}
+                            isLoading={saveLoading}
+                        >
+                            Save Expedition
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* MODAL: EXTRAPOLATED TRIPS DELETION CONFIRMATION */}
+            <Modal isOpen={isDeletingTripConfirm} onClose={() => setIsDeletingTripConfirm(false)} title="Delete Expedition">
+                <div className="space-y-6 text-left">
+                    <div className="p-4 rounded-2xl bg-rose-500/5 dark:bg-rose-500/10 border border-rose-500/15">
+                        <h4 className="text-sm font-black uppercase tracking-wider text-rose-600 dark:text-rose-400 mb-2">
+                            Aviation Archive Warning
+                        </h4>
+                        <p className="text-xs text-zinc-650 dark:text-zinc-400 leading-relaxed">
+                            You are about to delete this expedition and permanently unregister all linked travel parameters from this user profile. Standard metrics like accrued overnights and flight logs associated with this precise schedule will be adjusted.
+                        </p>
+                    </div>
+
+                    <p className="text-sm text-zinc-800 dark:text-zinc-200">
+                        Are you sure you want to delete this trip forever? This action cannot be revoked.
+                    </p>
+
+                    <div className="flex gap-4 pt-4 border-t border-gray-150/50 dark:border-white/10 shrink-0">
+                        <Button variant="ghost" className="flex-1 !rounded-xl cursor-pointer" onClick={() => setIsDeletingTripConfirm(false)}>Cancel</Button>
+                        <Button
+                            variant="primary"
+                            className="flex-1 border-none !rounded-xl text-white font-bold cursor-pointer bg-rose-600 hover:bg-rose-750 shadow-md shadow-rose-500/10"
+                            onClick={handleConfirmDeleteTrip}
+                            isLoading={saveLoading}
+                        >
+                            Confirm Delete
                         </Button>
                     </div>
                 </div>

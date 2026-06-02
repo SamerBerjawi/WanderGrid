@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
     Plane, 
@@ -114,6 +114,15 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
     const [route, setRoute] = useState<RouteStop[]>([]);
     const [isSaving, setIsSaving] = useState(false);
     const [expandedTransportId, setExpandedTransportId] = useState<string | null>(null);
+    const geoUpdateTimersRef = useRef<{ [key: number]: any }>({});
+
+    // Cleanup timers on unmount
+    useEffect(() => {
+        return () => {
+            const timers = geoUpdateTimersRef.current;
+            Object.values(timers).forEach(clearTimeout);
+        };
+    }, []);
 
     // Initial state population
     useEffect(() => {
@@ -256,39 +265,107 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
     };
 
     const handleStopNameChange = async (index: number, newName: string) => {
-        const updated = [...route];
-        updated[index] = { ...updated[index], name: newName };
+        // 1. Synchronously update the name so characters typed are not lost or reverted
+        setRoute(prevRoute => {
+            const updated = [...prevRoute];
+            if (updated[index]) {
+                updated[index] = { ...updated[index], name: newName };
+            }
+            return updated;
+        });
         
-        // Asynchronously try to pre-discover coordinates for mapping
-        const coords = getCoordinatesSync(newName) || await getCoordinates(newName);
-        if (coords) {
-            updated[index].coordinates = { lat: coords.lat, lng: coords.lng };
-            
-            // Recalculate distance to adjacent nodes
-            if (index > 0 && updated[index - 1].transportToNext) {
-                const prevStop = updated[index - 1];
-                if (prevStop.coordinates) {
-                    const dist = calculateDistance(prevStop.coordinates.lat, prevStop.coordinates.lng, coords.lat, coords.lng);
-                    const tx = { ...prevStop.transportToNext! };
-                    tx.distance = dist;
-                    tx.duration = Math.round((dist / TRANSPORT_DETAILS[tx.mode].speed) * 60) || 120;
-                    updated[index - 1] = { ...prevStop, transportToNext: tx };
+        // 2. Clear coordinates first if they have cleared the text
+        if (!newName.trim()) {
+            setRoute(prevRoute => {
+                const updated = [...prevRoute];
+                if (updated[index]) {
+                    updated[index].coordinates = undefined;
                 }
-            }
-            if (index < updated.length - 1 && updated[index].transportToNext) {
-                const nextStop = updated[index + 1];
-                const nextCoords = nextStop.coordinates || getCoordinatesSync(nextStop.name);
-                if (nextCoords) {
-                    const dist = calculateDistance(coords.lat, coords.lng, nextCoords.lat, nextCoords.lng);
-                    const tx = { ...updated[index].transportToNext! };
-                    tx.distance = dist;
-                    tx.duration = Math.round((dist / TRANSPORT_DETAILS[tx.mode].speed) * 60) || 120;
-                    updated[index] = { ...updated[index], transportToNext: tx };
-                }
-            }
+                return updated;
+            });
+            return;
         }
-        
-        setRoute(updated);
+
+        // 3. Clear existing debounce timer for this field to prevent intermediate re-renders/overlap during fast typing
+        if (geoUpdateTimersRef.current[index]) {
+            clearTimeout(geoUpdateTimersRef.current[index]);
+        }
+
+        // 4. Set a fresh 600ms debounce timer to let the user finish writing without interrupting their typing focus
+        geoUpdateTimersRef.current[index] = setTimeout(async () => {
+            const coords = getCoordinatesSync(newName);
+            if (coords) {
+                setRoute(prevRoute => {
+                    const updated = [...prevRoute];
+                    if (updated[index] && updated[index].name === newName) {
+                        updated[index].coordinates = { lat: coords.lat, lng: coords.lng };
+                        
+                        // Recalculate distance to adjacent nodes
+                        if (index > 0 && updated[index - 1].transportToNext) {
+                            const prevStop = updated[index - 1];
+                            if (prevStop.coordinates) {
+                                const dist = calculateDistance(prevStop.coordinates.lat, prevStop.coordinates.lng, coords.lat, coords.lng);
+                                const tx = { ...prevStop.transportToNext! };
+                                tx.distance = dist;
+                                tx.duration = Math.round((dist / TRANSPORT_DETAILS[tx.mode].speed) * 60) || 120;
+                                updated[index - 1] = { ...prevStop, transportToNext: tx };
+                            }
+                        }
+                        if (index < updated.length - 1 && updated[index].transportToNext) {
+                            const nextStop = updated[index + 1];
+                            const nextCoords = nextStop.coordinates || getCoordinatesSync(nextStop.name);
+                            if (nextCoords) {
+                                const dist = calculateDistance(coords.lat, coords.lng, nextCoords.lat, nextCoords.lng);
+                                const tx = { ...updated[index].transportToNext! };
+                                tx.distance = dist;
+                                tx.duration = Math.round((dist / TRANSPORT_DETAILS[tx.mode].speed) * 60) || 120;
+                                updated[index] = { ...updated[index], transportToNext: tx };
+                            }
+                        }
+                    }
+                    return updated;
+                });
+            } else {
+                try {
+                    const asyncCoords = await getCoordinates(newName);
+                    if (asyncCoords) {
+                        setRoute(prevRoute => {
+                            const updated = [...prevRoute];
+                            // Verify the input has not changed since the async request was launched
+                            if (updated[index] && updated[index].name === newName) {
+                                updated[index].coordinates = { lat: asyncCoords.lat, lng: asyncCoords.lng };
+                                
+                                // Recalculate distance to adjacent nodes
+                                if (index > 0 && updated[index - 1].transportToNext) {
+                                    const prevStop = updated[index - 1];
+                                    if (prevStop.coordinates) {
+                                        const dist = calculateDistance(prevStop.coordinates.lat, prevStop.coordinates.lng, asyncCoords.lat, asyncCoords.lng);
+                                        const tx = { ...prevStop.transportToNext! };
+                                        tx.distance = dist;
+                                        tx.duration = Math.round((dist / TRANSPORT_DETAILS[tx.mode].speed) * 60) || 120;
+                                        updated[index - 1] = { ...prevStop, transportToNext: tx };
+                                    }
+                                }
+                                if (index < updated.length - 1 && updated[index].transportToNext) {
+                                    const nextStop = updated[index + 1];
+                                    const nextCoords = nextStop.coordinates || getCoordinatesSync(nextStop.name);
+                                    if (nextCoords) {
+                                        const dist = calculateDistance(asyncCoords.lat, asyncCoords.lng, nextCoords.lat, nextCoords.lng);
+                                        const tx = { ...updated[index].transportToNext! };
+                                        tx.distance = dist;
+                                        tx.duration = Math.round((dist / TRANSPORT_DETAILS[tx.mode].speed) * 60) || 120;
+                                        updated[index] = { ...updated[index], transportToNext: tx };
+                                    }
+                                }
+                            }
+                            return updated;
+                        });
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch coordinates asynchronously:", err);
+                }
+            }
+        }, 600);
     };
 
     const handleStopDateChange = (index: number, field: 'date' | 'endDate', val: string) => {
@@ -581,7 +658,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                                     {/* Vertical Timeline Ring Indicator */}
                                     <div className="absolute left-6 md:left-8 -top-3 bottom-0 w-0.5 bg-gradient-to-b from-indigo-500/20 to-indigo-500/20 z-0" />
                                     
-                                    <Card className="!bg-white/70 dark:!bg-gray-900/70 border border-gray-100 dark:border-white/5 pl-14 md:pl-20 !rounded-[2rem] shadow-md hover:shadow-lg transition-all" noPadding>
+                                    <Card className="!bg-white/70 dark:!bg-gray-900/70 border border-gray-100 dark:border-white/5 pl-14 md:pl-20 !rounded-[2rem] shadow-md hover:shadow-lg transition-all !overflow-visible" noPadding>
                                         <div className="p-6 relative">
                                             {/* Stop Marker Number */}
                                             <div className={`absolute left-3 md:left-5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full border-2 flex items-center justify-center font-black text-xs z-10 ${

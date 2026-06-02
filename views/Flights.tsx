@@ -199,6 +199,128 @@ const AirlineLogo: React.FC<{ provider?: string, fallback: React.ReactNode }> = 
   );
 };
 
+const BundleJourneyTimeline: React.FC<{ flights: Transport[] }> = ({ flights }) => {
+  if (!flights || flights.length === 0) return null;
+
+  const totalCost = flights.reduce((sum, f) => sum + (f.cost || 0), 0);
+  const totalDuration = flights.reduce((sum, f) => {
+    const d = f.duration || Math.max(0, (getFlightArrivalUtcDate(f).getTime() - getFlightDepartureUtcDate(f).getTime()) / 60000);
+    return sum + d;
+  }, 0);
+  
+  // Determine if it is Round Trip
+  const isRoundTrip = flights.length > 1 && flights[0].origin === flights[flights.length - 1].destination;
+  const isMultiCity = flights.length > 1 && !isRoundTrip;
+
+  let journeyBadge = "One-Way";
+  let journeyColorTag = "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20";
+  if (isRoundTrip) {
+    journeyBadge = "Round-Trip";
+    journeyColorTag = "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20";
+  } else if (isMultiCity) {
+    journeyBadge = `Multi-City (${flights.length} Segments)`;
+    journeyColorTag = "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20";
+  }
+
+  // Calculate CO2 offset
+  const co2Estimate = Math.round((totalDuration / 60) * 125);
+
+  return (
+    <div className="mb-6 group/timeline">
+      {/* Metrics Banner */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 mb-4 border-b border-zinc-200/30 dark:border-white/5">
+        <div className="flex items-center gap-2">
+          <span className={`px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider border rounded-md ${journeyColorTag}`}>
+            {journeyBadge}
+          </span>
+          {co2Estimate > 0 && (
+            <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 border border-emerald-500/10 bg-emerald-500/5 rounded-md flex items-center gap-1">
+              <Sparkles className="w-2.5 h-2.5 text-emerald-500" />
+              {co2Estimate} kg CO₂ / Person
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-3 text-[11px] font-mono font-bold text-zinc-500 dark:text-zinc-400">
+          <div className="flex items-center gap-1">
+            <Clock className="w-3.5 h-3.5 text-zinc-400" />
+            <span>Air Time: <strong className="text-zinc-800 dark:text-zinc-200 font-extrabold">{Math.floor(totalDuration / 60)}h {totalDuration % 60}m</strong></span>
+          </div>
+          {totalCost > 0 && (
+            <div className="flex items-center gap-1">
+              <DollarSign className="w-3.5 h-3.5 text-zinc-400" />
+              <span>Investment: <strong className="text-zinc-800 dark:text-zinc-200 font-extrabold">${totalCost.toLocaleString()}</strong></span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Graphical Route Path */}
+      <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-zinc-200 dark:scrollbar-thumb-zinc-800">
+        <div className="flex items-center gap-0.5 min-w-max pb-2 pt-1 font-sans justify-start">
+          {flights.map((flight, idx) => {
+            const arrTime = flight.arrivalTime || 'TBD';
+            const depTime = flight.departureTime || 'TBD';
+            const durationMinutes = flight.duration || Math.max(0, (getFlightArrivalUtcDate(flight).getTime() - getFlightDepartureUtcDate(flight).getTime()) / 60000);
+            const flightDuration = durationMinutes ? `${Math.floor(durationMinutes / 60)}h ${durationMinutes % 60}m` : 'Direct';
+            
+            return (
+              <React.Fragment key={flight.id}>
+                {/* Node for flight origin */}
+                <div className="flex flex-col items-center group/node relative">
+                  <div className="w-10 h-10 rounded-2xl bg-white dark:bg-zinc-900 border-2 border-zinc-200 dark:border-zinc-800 flex items-center justify-center font-black text-xs text-zinc-800 dark:text-zinc-100 shadow-sm relative z-10 hover:border-blue-500 hover:scale-105 transition-all duration-350">
+                    {flight.origin}
+                  </div>
+                  <span className="text-[10px] font-black uppercase text-zinc-400 dark:text-zinc-500 mt-2 tracking-wider leading-none">
+                    {getCityName(flight.origin) || flight.origin}
+                  </span>
+                  <span className="font-mono text-[9px] text-zinc-500 dark:text-zinc-550 mt-1 font-bold leading-none">
+                    {depTime}
+                  </span>
+                </div>
+
+                {/* Connecting leg link */}
+                <div className="flex-1 flex flex-col items-center mx-4 relative min-w-[140px] select-none">
+                  {/* Line */}
+                  <div className="absolute top-5 left-0 right-0 h-[2px] bg-gradient-to-r from-blue-500/20 via-blue-500 to-blue-500/20 dark:from-blue-400/15 dark:via-blue-400/80 dark:to-blue-400/15 z-0" />
+                  
+                  {/* Carrier Details badge along connection route */}
+                  <div className="relative z-10 bg-white/95 dark:bg-zinc-900/95 border border-zinc-200 dark:border-zinc-800 px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-sm -mt-1 group-hover/timeline:scale-[1.02] transition-transform duration-300">
+                    <div className="w-4 h-4 rounded-md bg-zinc-50 dark:bg-zinc-850 flex items-center justify-center overflow-hidden shrink-0 shadow-xs">
+                      <AirlineLogo provider={flight.provider} fallback={<Plane className="w-2.5 h-2.5 text-zinc-400" />} />
+                    </div>
+                    <span className="font-mono text-[9px] font-black text-zinc-750 dark:text-zinc-200 uppercase tracking-widest leading-none">
+                      {flight.identifier}
+                    </span>
+                  </div>
+
+                  <span className="relative z-10 text-[9px] font-mono font-bold text-zinc-400 dark:text-zinc-500 mt-3.5 bg-zinc-100/50 dark:bg-zinc-900/50 px-2 py-0.5 rounded-md leading-none select-none border border-zinc-200/35 dark:border-white/5">
+                    {flightDuration}
+                  </span>
+                </div>
+
+                {/* Render Final Node for the last flight destination */}
+                {idx === flights.length - 1 && (
+                  <div className="flex flex-col items-center group/node relative">
+                    <div className="w-10 h-10 rounded-2xl bg-white dark:bg-zinc-900 border-2 border-zinc-200 dark:border-zinc-800 flex items-center justify-center font-black text-xs text-zinc-800 dark:text-zinc-100 shadow-sm relative z-10 hover:border-blue-500 hover:scale-105 transition-all duration-350">
+                      {flight.destination}
+                    </div>
+                    <span className="text-[10px] font-black uppercase text-zinc-400 dark:text-zinc-500 mt-2 tracking-wider leading-none">
+                      {getCityName(flight.destination) || flight.destination}
+                    </span>
+                    <span className="font-mono text-[9px] text-zinc-500 dark:text-zinc-550 mt-1 font-bold leading-none">
+                      {arrTime}
+                    </span>
+                  </div>
+                )}
+              </React.Fragment>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const SeatMap: React.FC<{ assignedSeat: string }> = ({ assignedSeat }) => {
   const match = assignedSeat.match(/(\d+)([A-Z])/i);
   let assignedRow = -1;
@@ -301,6 +423,14 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
   const [bundleLocation, setBundleLocation] = useState<string>('');
   const [createTripInPlanner, setCreateTripInPlanner] = useState<boolean>(true);
   const [unbundleConfirmTarget, setUnbundleConfirmTarget] = useState<number | null>(null);
+
+  // Bundle editing states
+  const [isEditingBundle, setIsEditingBundle] = useState<boolean>(false);
+  const [editingBundleId, setEditingBundleId] = useState<string>('');
+  const [formBundleName, setFormBundleName] = useState<string>('');
+  const [formBundleLocation, setFormBundleLocation] = useState<string>('');
+  const [formBundleStartDate, setFormBundleStartDate] = useState<string>('');
+  const [formBundleEndDate, setFormBundleEndDate] = useState<string>('');
 
   const handleHeaderSort = (field: 'flight' | 'sector' | 'status' | 'timing' | 'seat') => {
     const defaults = {
@@ -413,7 +543,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
         }
       });
       
-      const onlyFlights = (independentFlights || []).filter(fl => fl.mode === 'Flight');
+      const onlyFlights = (independentFlights || []).filter(fl => fl.mode === 'Flight' && (!fl.tripId || fl.tripId === 'unassigned'));
       const unassignedTrip: Trip = {
           id: 'unassigned',
           name: 'Independent Flights',
@@ -830,6 +960,52 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
     setIsMultiEditing(false);
     setUnbundleConfirmTarget(null);
     refreshData();
+  };
+
+  const handleSaveBundleSettings = async () => {
+    if (!editingBundleId) return;
+    const target = trips.find(t => t.id === editingBundleId);
+    if (!target) return;
+
+    const updatedTrip = {
+      ...target,
+      name: formBundleName.trim(),
+      location: formBundleLocation.trim(),
+      startDate: formBundleStartDate || target.startDate,
+      endDate: formBundleEndDate || target.endDate,
+    };
+
+    await dataService.updateTrip(updatedTrip);
+    setIsEditingBundle(false);
+    setEditingBundleId('');
+    refreshData();
+    window.dispatchEvent(new CustomEvent('wandergrid_db_updated'));
+  };
+
+  const handleDisassembleBundle = async () => {
+    if (!editingBundleId) return;
+    const target = trips.find(t => t.id === editingBundleId);
+    if (!target) return;
+
+    // 1. Recover all flights in the bundle as independent
+    const flightsToMove = (target.transports || []).map(f => ({
+      ...f,
+      tripId: 'unassigned',
+      itineraryId: '' // Clear its itinerary bundle ID to make it independent
+    }));
+
+    if (flightsToMove.length > 0) {
+      await dataService.addFlights(flightsToMove);
+    }
+
+    // 2. Delete the trip
+    await dataService.deleteTrip(editingBundleId);
+
+    // 3. Reset and refresh
+    setIsEditingBundle(false);
+    setEditingBundleId('');
+    refreshData();
+    window.dispatchEvent(new CustomEvent('wandergrid_db_updated'));
   };
 
   // Handle smart fuzzy search and filters
@@ -2309,35 +2485,54 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                           }`}
                       >
                         {!isIndependent && (
-                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4 border-b border-zinc-200/40 dark:border-white/5 ml-2">
-                            <div className="flex items-center gap-3">
-                              <div className="p-2.5 bg-blue-500/10 text-blue-500 rounded-2xl border border-blue-500/15">
-                                <Compass className="w-5 h-5 shadow-sm" />
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <h4 className="text-base font-black text-zinc-800 dark:text-zinc-200 uppercase tracking-widest leading-none">{trip.name}</h4>
-                                  {trip.originalName && trip.originalName !== trip.name && (
-                                    <Badge className="text-[10px] bg-blue-500/10 hover:bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/15 select-none font-bold rounded-lg py-0.5 px-2 leading-none uppercase tracking-wide">
-                                      {trip.originalName}
-                                    </Badge>
+                          <>
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4 border-b border-zinc-200/40 dark:border-white/5 ml-2">
+                              <div className="flex items-center gap-3">
+                                <div className="p-2.5 bg-blue-500/10 text-blue-500 rounded-2xl border border-blue-500/15">
+                                  <Compass className="w-5 h-5 shadow-sm" />
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <h4 className="text-base font-black text-zinc-800 dark:text-zinc-200 uppercase tracking-widest leading-none">{trip.name}</h4>
+                                    {trip.originalName && trip.originalName !== trip.name && (
+                                      <Badge className="text-[10px] bg-blue-500/10 hover:bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/15 select-none font-bold rounded-lg py-0.5 px-2 leading-none uppercase tracking-wide">
+                                        {trip.originalName}
+                                      </Badge>
+                                    )}
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setEditingBundleId(trip.id);
+                                        setFormBundleName(trip.originalName || trip.name || '');
+                                        setFormBundleLocation(trip.location || '');
+                                        setFormBundleStartDate(trip.startDate || '');
+                                        setFormBundleEndDate(trip.endDate || '');
+                                        setIsEditingBundle(true);
+                                      }}
+                                      className="p-1 px-2 rounded-lg bg-white dark:bg-zinc-800 text-zinc-500 hover:text-blue-500 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-all cursor-pointer flex items-center gap-1 border border-zinc-200 dark:border-white/10 shadow-xs text-[9px] font-black uppercase tracking-wider ml-1"
+                                      title="Edit Bundle Settings"
+                                    >
+                                      <Edit2 className="w-2.5 h-2.5 text-blue-500" />
+                                      <span>Edit</span>
+                                    </button>
+                                  </div>
+                                  {trip.location && (
+                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 font-bold mt-1 flex items-center gap-1">
+                                      <MapPin className="w-3.5 h-3.5 text-zinc-400" />
+                                      {trip.location}
+                                    </p>
                                   )}
                                 </div>
-                                {trip.location && (
-                                  <p className="text-xs text-zinc-500 dark:text-zinc-400 font-bold mt-1 flex items-center gap-1">
-                                    <MapPin className="w-3.5 h-3.5 text-zinc-400" />
-                                    {trip.location}
-                                  </p>
-                                )}
                               </div>
+                              {(trip.startDate || trip.endDate) && (
+                                <div className="flex items-center gap-2 px-3 py-1.5 bg-white/60 dark:bg-white/5 rounded-2xl text-[10px] font-mono font-bold text-zinc-500 dark:text-zinc-400 w-fit shadow-sm border border-zinc-200/40 dark:border-transparent">
+                                  <Calendar className="w-3.5 h-3.5 text-zinc-400" />
+                                  {trip.startDate} {trip.endDate && trip.endDate !== trip.startDate ? `→ ${trip.endDate}` : ''}
+                                </div>
+                              )}
                             </div>
-                            {(trip.startDate || trip.endDate) && (
-                              <div className="flex items-center gap-2 px-3 py-1.5 bg-white/60 dark:bg-white/5 rounded-2xl text-[10px] font-mono font-bold text-zinc-500 dark:text-zinc-400 w-fit shadow-sm border border-zinc-200/40 dark:border-transparent">
-                                <Calendar className="w-3.5 h-3.5 text-zinc-400" />
-                                {trip.startDate} {trip.endDate && trip.endDate !== trip.startDate ? `→ ${trip.endDate}` : ''}
-                              </div>
-                            )}
-                          </div>
+                            <BundleJourneyTimeline flights={[...outbound, ...returnLegs]} />
+                          </>
                         )}
 
                         <div className="space-y-6">
@@ -2788,37 +2983,56 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     >
                       {/* Sub-header block for trip groups inside container (Only for actual bundles) */}
                       {!isIndependent ? (
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5 pb-4 border-b border-zinc-200/40 dark:border-white/5 ml-1">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2.5 rounded-2xl border bg-blue-500/10 text-blue-500 border-blue-500/15 animate-none">
-                              <Compass className="w-5 h-5 animate-spin-slow" />
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-base font-black text-zinc-850 dark:text-zinc-200 uppercase tracking-widest leading-none">
-                                  {trip.name}
-                                </span>
-                                {trip.originalName && trip.originalName !== trip.name && (
-                                  <Badge className="text-[10px] bg-blue-500/10 hover:bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/15 select-none font-bold rounded-lg py-0.5 px-2 leading-none uppercase tracking-wide">
-                                    {trip.originalName}
-                                  </Badge>
+                        <>
+                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5 pb-4 border-b border-zinc-200/40 dark:border-white/5 ml-1">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2.5 rounded-2xl border bg-blue-500/10 text-blue-500 border-blue-500/15 animate-none">
+                                <Compass className="w-5 h-5 animate-spin-slow" />
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-base font-black text-zinc-850 dark:text-zinc-200 uppercase tracking-widest leading-none">
+                                    {trip.name}
+                                  </span>
+                                  {trip.originalName && trip.originalName !== trip.name && (
+                                    <Badge className="text-[10px] bg-blue-500/10 hover:bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/15 select-none font-bold rounded-lg py-0.5 px-2 leading-none uppercase tracking-wide">
+                                      {trip.originalName}
+                                    </Badge>
+                                  )}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingBundleId(trip.id);
+                                      setFormBundleName(trip.originalName || trip.name || '');
+                                      setFormBundleLocation(trip.location || '');
+                                      setFormBundleStartDate(trip.startDate || '');
+                                      setFormBundleEndDate(trip.endDate || '');
+                                      setIsEditingBundle(true);
+                                    }}
+                                    className="p-1 px-2 rounded-lg bg-white dark:bg-zinc-850 text-zinc-500 hover:text-blue-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all cursor-pointer flex items-center gap-1 border border-zinc-200 dark:border-white/10 shadow-xs text-[9px] font-black uppercase tracking-wider ml-1"
+                                    title="Edit Bundle Settings"
+                                  >
+                                    <Edit2 className="w-2.5 h-2.5 text-blue-500" />
+                                    <span>Edit</span>
+                                  </button>
+                                </div>
+                                {trip.location && (
+                                  <p className="text-xs text-zinc-500 dark:text-zinc-400 font-bold mt-1 flex items-center gap-1">
+                                    <MapPin className="w-3.5 h-3.5 text-zinc-400" />
+                                    {trip.location}
+                                  </p>
                                 )}
                               </div>
-                              {trip.location && (
-                                <p className="text-xs text-zinc-500 dark:text-zinc-400 font-bold mt-1 flex items-center gap-1">
-                                  <MapPin className="w-3.5 h-3.5 text-zinc-400" />
-                                  {trip.location}
-                                </p>
-                              )}
                             </div>
+                            {(trip.startDate || trip.endDate) && (
+                              <div className="flex items-center gap-2 px-3 py-1.5 bg-white/60 dark:bg-white/5 rounded-2xl text-[10px] font-mono font-bold text-zinc-500 dark:text-zinc-400 border border-zinc-200/40 dark:border-transparent">
+                                <Calendar className="w-3.5 h-3.5 text-zinc-400" />
+                                {trip.startDate} {trip.endDate && trip.endDate !== trip.startDate ? `→ ${trip.endDate}` : ''}
+                              </div>
+                            )}
                           </div>
-                          {(trip.startDate || trip.endDate) && (
-                            <div className="flex items-center gap-2 px-3 py-1.5 bg-white/60 dark:bg-white/5 rounded-2xl text-[10px] font-mono font-bold text-zinc-500 dark:text-zinc-400 border border-zinc-200/40 dark:border-transparent">
-                              <Calendar className="w-3.5 h-3.5 text-zinc-400" />
-                              {trip.startDate} {trip.endDate && trip.endDate !== trip.startDate ? `→ ${trip.endDate}` : ''}
-                            </div>
-                          )}
-                        </div>
+                          <BundleJourneyTimeline flights={[...outbound, ...returnLegs]} />
+                        </>
                       ) : null}
 
                       {/* Desktop Flight leg rows */}
@@ -3125,6 +3339,99 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                   className="flex-1 py-3.5 px-5 rounded-2xl text-sm font-black uppercase tracking-wider bg-blue-500 hover:bg-blue-650 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-lg shadow-blue-500/20 transition-all cursor-pointer text-center"
                 >
                   Create Bundle
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Bundle Settings Modal */}
+      {isEditingBundle && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-[60] animate-fade-in">
+          <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl border border-zinc-200 dark:border-white/5 animate-scale-up">
+            <div className="flex flex-col">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-12 h-12 bg-blue-500/10 dark:bg-blue-500/20 rounded-full flex items-center justify-center text-blue-500 border border-blue-500/20">
+                  <Compass className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-wider">
+                    Edit Bundle Settings
+                  </h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    Modify properties of this bundled flight itinerary.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4 mb-6">
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-450 dark:text-zinc-500 mb-1.5">
+                    Itinerary Bundle Name
+                  </label>
+                  <input
+                    type="text"
+                    value={formBundleName}
+                    onChange={(e) => setFormBundleName(e.target.value)}
+                    placeholder="e.g. Paris Getaway"
+                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/5 rounded-2xl text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-gray-900 dark:text-white"
+                    autoFocus
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-450 dark:text-zinc-500 mb-1.5">
+                    Destination / Location
+                  </label>
+                  <input
+                    type="text"
+                    value={formBundleLocation}
+                    onChange={(e) => setFormBundleLocation(e.target.value)}
+                    placeholder="e.g. Paris, France"
+                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/5 rounded-2xl text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-gray-900 dark:text-white"
+                  />
+                </div>
+
+                <div className="p-4 rounded-2xl bg-red-500/5 dark:bg-red-500/10 border border-red-500/15">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-red-600 dark:text-red-400 mb-1">
+                    Disassemble Bundle actions
+                  </h4>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed mb-3">
+                    Unpack this bundle entirely. The flight legs won&apos;t be deleted, but they will become standalone independent items.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm("Are you sure you want to disassemble this entire bundle? The individual flights will remain valid but become independent legs.")) {
+                        handleDisassembleBundle();
+                      }
+                    }}
+                    className="w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-red-500 hover:bg-red-650 text-white transition-all cursor-pointer text-center"
+                  >
+                    Disassemble & Unpack Bundle
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 w-full">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditingBundle(false);
+                    setEditingBundleId('');
+                  }}
+                  className="flex-1 py-3.5 px-5 rounded-2xl text-sm font-bold bg-zinc-100 dark:bg-white/5 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-250 dark:hover:bg-white/10 transition-all cursor-pointer text-center"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={!formBundleName.trim()}
+                  onClick={handleSaveBundleSettings}
+                  className="flex-1 py-3.5 px-5 rounded-2xl text-sm font-black uppercase tracking-wider bg-blue-500 hover:bg-blue-650 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-lg shadow-blue-500/20 transition-all cursor-pointer text-center"
+                >
+                  Save Changes
                 </button>
               </div>
             </div>

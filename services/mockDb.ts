@@ -387,7 +387,8 @@ class DataService {
               { route: '/events', storage: 'events' },
               { route: '/entitlements', storage: 'entitlements' },
               { route: '/configs', storage: 'configs' },
-              { route: '/flights', storage: 'flights' }
+              { route: '/flights', storage: 'flights' },
+              { route: '/visited', storage: 'visited' }
           ];
 
           for (const col of collections) {
@@ -543,7 +544,8 @@ class DataService {
           { route: '/events', storage: 'events' },
           { route: '/entitlements', storage: 'entitlements' },
           { route: '/configs', storage: 'configs' },
-          { route: '/flights', storage: 'flights' }
+          { route: '/flights', storage: 'flights' },
+          { route: '/visited', storage: 'visited' }
       ];
 
        for (const col of collections) {
@@ -602,6 +604,21 @@ class DataService {
                   else list.push(flight);
               }
               localStorage.setItem(key('flights'), JSON.stringify(list));
+              try { window.dispatchEvent(new CustomEvent('wandergrid_db_updated')); } catch (e) {}
+              return { success: true, count: payload.length } as unknown as T;
+          }
+      }
+
+      if (endpoint === '/visited/bulk') {
+          if (method === 'POST') {
+              const list = JSON.parse(localStorage.getItem(key('visited')) || '[]');
+              const payload = body as any[];
+              for (const item of payload) {
+                  const idx = list.findIndex((i: any) => i.id === item.id);
+                  if (idx >= 0) list[idx] = item;
+                  else list.push(item);
+              }
+              localStorage.setItem(key('visited'), JSON.stringify(list));
               try { window.dispatchEvent(new CustomEvent('wandergrid_db_updated')); } catch (e) {}
               return { success: true, count: payload.length } as unknown as T;
           }
@@ -929,11 +946,62 @@ class DataService {
   async getSavedConfigs(): Promise<SavedConfig[]> { return this.fetch<SavedConfig[]>('/configs'); }
   async saveConfig(config: SavedConfig): Promise<void> { await this.fetch(`/configs/${config.id}`, { method: 'PUT', body: JSON.stringify(config) }); }
   async deleteConfig(id: string): Promise<void> { await this.fetch(`/configs/${id}`, { method: 'DELETE' }); }
-  async getFlights(): Promise<any[]> { return this.fetch<any[]>('/flights'); }
+  async getFlights(): Promise<any[]> {
+    const independentFlights = await this.fetch<any[]>('/flights');
+    let trips: Trip[] = [];
+    try {
+      trips = await this.getTrips();
+    } catch (e) {
+      console.warn("Failed to retrieve trips in getFlights", e);
+    }
+    const tripFlights: any[] = [];
+    trips.forEach(trip => {
+      if (trip.transports) {
+        trip.transports.forEach(tr => {
+          if (tr.mode === 'Flight') {
+            tripFlights.push({
+              ...tr,
+              tripId: trip.id,
+              tripName: trip.name
+            });
+          }
+        });
+      }
+    });
+
+    const mergedMap = new Map<string, any>();
+    (independentFlights || []).forEach(f => {
+      mergedMap.set(f.id, {
+        ...f,
+        tripId: f.tripId || 'unassigned'
+      });
+    });
+
+    tripFlights.forEach(f => {
+      if (!mergedMap.has(f.id)) {
+        mergedMap.set(f.id, f);
+      } else {
+        const existing = mergedMap.get(f.id)!;
+        mergedMap.set(f.id, {
+          ...f,
+          ...existing,
+          tripId: f.tripId || existing.tripId
+        });
+      }
+    });
+
+    return Array.from(mergedMap.values());
+  }
   async addFlight(flight: any): Promise<void> { await this.fetch('/flights', { method: 'POST', body: JSON.stringify(flight) }); }
   async addFlights(flights: any[]): Promise<void> { await this.fetch('/flights/bulk', { method: 'POST', body: JSON.stringify(flights) }); }
   async updateFlight(flight: any): Promise<void> { await this.fetch(`/flights/${flight.id}`, { method: 'PUT', body: JSON.stringify(flight) }); }
   async deleteFlight(id: string): Promise<void> { await this.fetch(`/flights/${id}`, { method: 'DELETE' }); }
+
+  async getVisited(): Promise<any[]> { return this.fetch<any[]>('/visited'); }
+  async addVisited(item: any): Promise<void> { await this.fetch('/visited', { method: 'POST', body: JSON.stringify(item) }); }
+  async addVisitedBulk(items: any[]): Promise<void> { await this.fetch('/visited/bulk', { method: 'POST', body: JSON.stringify(items) }); }
+  async updateVisited(item: any): Promise<void> { await this.fetch(`/visited/${item.id}`, { method: 'PUT', body: JSON.stringify(item) }); }
+  async deleteVisited(id: string): Promise<void> { await this.fetch(`/visited/${id}`, { method: 'DELETE' }); }
   async getWorkspaceSettings(): Promise<WorkspaceSettings> {
     const settings = await this.fetch<WorkspaceSettings>('/settings');
     return { ...DEFAULT_WORKSPACE_SETTINGS, ...settings };
