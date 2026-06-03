@@ -37,6 +37,38 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
     }
 }
 
+const cleanupContaminatedCache = () => {
+    const contaminatedKeys = [
+        'BER', 'BER AIRPORT', 'BERLIN', 'BERLIN, GERMANY', 'BERLIN BRANDENBURG', 'BERLIN BRANDENBURG AIRPORT (BER)',
+        'MAN', 'MAN AIRPORT', 'MANCHESTER', 'MANCHESTER, UNITED KINGDOM', 'MANCHESTER AIRPORT (MAN)',
+        'TUN', 'TUN AIRPORT', 'TUNIS', 'TUNIS, TUNISIA', 'TUNIS CARTHAGE', 'TUNIS CARTHAGE AIRPORT', 'TUNIS CARTHAGE AIRPORT (TUN)',
+        'PISA', 'PISA, ITALY', 'PISSA', 'PISA AIRPORT', 'PISA, IT',
+        'NICE', 'NICE, FRANCE', 'NICE RIVIERA', 'NCE', 'NICE, FR',
+        'MONACO', 'MONACO, MONACO', 'MONTE CARLO', 'MONACO, FR', 'MONACO, MC',
+        'FLORENCE', 'FLORENCE, ITALY', 'VENICE', 'VENICE, ITALY', 'MILAN', 'MILAN, ITALY'
+    ];
+    let cleanedAny = false;
+    contaminatedKeys.forEach(k => {
+        if (internalCache.has(k)) {
+            internalCache.delete(k);
+            cleanedAny = true;
+        }
+        const u = k.toUpperCase();
+        if (internalCache.has(u)) {
+            internalCache.delete(u);
+            cleanedAny = true;
+        }
+        const l = k.toLowerCase();
+        if (internalCache.has(l)) {
+            internalCache.delete(l);
+            cleanedAny = true;
+        }
+    });
+    if (cleanedAny) {
+        saveCache();
+    }
+};
+
 const loadCache = () => {
     if (isCacheLoaded) return;
     try {
@@ -47,6 +79,7 @@ const loadCache = () => {
     Object.keys(STATIC_GEO_DATA).forEach(key => {
         if (!internalCache.has(key)) internalCache.set(key, STATIC_GEO_DATA[key]);
     });
+    cleanupContaminatedCache();
     isCacheLoaded = true;
     if (!isIndexedDbLoaded) {
         isIndexedDbLoaded = true;
@@ -93,6 +126,7 @@ const hydrateCacheFromIndexedDb = async () => {
             request.result.forEach((entry: { key: string; value: any }) => {
                 if (!internalCache.has(entry.key)) internalCache.set(entry.key, entry.value);
             });
+            cleanupContaminatedCache();
             resolve();
         };
         request.onerror = () => resolve();
@@ -212,6 +246,30 @@ const STATIC_GEO_DATA: Record<string, any> = {
     "Phnom Penh": { "lat": "11.5564", "lon": "104.9282", "city": "Phnom Penh", "country": "Cambodia", "countryCode": "KH" },
     "Stockholm": { "lat": "59.3293", "lon": "18.0686", "city": "Stockholm", "country": "Sweden", "countryCode": "SE" },
     "Sweden": { "lat": "60.1282", "lon": "18.6435", "city": "Stockholm", "country": "Sweden", "countryCode": "SE" },
+    "Tunis": { "lat": "36.8065", "lon": "10.1815", "city": "Tunis", "country": "Tunisia", "countryCode": "TN" },
+    "Tunisia": { "lat": "33.8869", "lon": "9.5375", "city": "Tunis", "country": "Tunisia", "countryCode": "TN" },
+
+    // Special entries to prevent mapping-to-capital conflicts (e.g. Pisa, Nice, Monaco)
+    "Nice": { "lat": "43.7101", "lon": "7.2619", "city": "Nice", "country": "France", "tz": "Europe/Paris", "iso": "FR" },
+    "Nice, France": { "lat": "43.7101", "lon": "7.2619", "city": "Nice", "country": "France", "tz": "Europe/Paris", "iso": "FR" },
+    "Monaco": { "lat": "43.7384", "lon": "7.4246", "city": "Monaco", "country": "Monaco", "tz": "Europe/Monaco", "iso": "MC" },
+    "Monaco, Monaco": { "lat": "43.7384", "lon": "7.4246", "city": "Monaco", "country": "Monaco", "tz": "Europe/Monaco", "iso": "MC" },
+    "Pisa": { "lat": "43.7228", "lon": "10.4017", "city": "Pisa", "country": "Italy", "tz": "Europe/Rome", "iso": "IT" },
+    "Pisa, Italy": { "lat": "43.7228", "lon": "10.4017", "city": "Pisa", "country": "Italy", "tz": "Europe/Rome", "iso": "IT" },
+    "Florence": { "lat": "43.7696", "lon": "11.2558", "city": "Florence", "country": "Italy", "tz": "Europe/Rome", "iso": "IT" },
+    "Florence, Italy": { "lat": "43.7696", "lon": "11.2558", "city": "Florence", "country": "Italy", "tz": "Europe/Rome", "iso": "IT" },
+    "Milan": { "lat": "45.4642", "lon": "9.1900", "city": "Milan", "country": "Italy", "tz": "Europe/Rome", "iso": "IT" },
+    "Milan, Italy": { "lat": "45.4642", "lon": "9.1900", "city": "Milan", "country": "Italy", "tz": "Europe/Rome", "iso": "IT" },
+    "Venice": { "lat": "45.4408", "lon": "12.3155", "city": "Venice", "country": "Italy", "tz": "Europe/Rome", "iso": "IT" },
+    "Venice, Italy": { "lat": "45.4408", "lon": "12.3155", "city": "Venice", "country": "Italy", "tz": "Europe/Rome", "iso": "IT" },
+
+    // Generic Countries
+    "Italy": { "lat": "41.8719", "lon": "12.5674", "city": "Rome", "country": "Italy", "tz": "Europe/Rome", "iso": "IT" },
+    "France": { "lat": "46.2276", "lon": "2.2137", "city": "Paris", "country": "France", "tz": "Europe/Paris", "iso": "FR" },
+    "Spain": { "lat": "40.4637", "lon": "-3.7492", "city": "Madrid", "country": "Spain", "tz": "Europe/Madrid", "iso": "ES" },
+    "Germany": { "lat": "51.1657", "lon": "10.4515", "city": "Berlin", "country": "Germany", "tz": "Europe/Berlin", "iso": "DE" },
+    "United Kingdom": { "lat": "55.3781", "lon": "-3.4360", "city": "London", "country": "United Kingdom", "tz": "Europe/London", "iso": "GB" },
+    "UK": { "lat": "55.3781", "lon": "-3.4360", "city": "London", "country": "United Kingdom", "tz": "Europe/London", "iso": "GB" },
 };
 
 loadCache();
@@ -415,7 +473,7 @@ export async function searchLocations(query: string): Promise<string[]> {
             // Try Open-Meteo first for high reliability and unblocking
             const meteoResults = await fetchOpenMeteoGeocoding(trimmedQuery);
             if (meteoResults && meteoResults.length > 0) {
-                meteoResults.forEach((item: any) => {
+                meteoResults.forEach((item: any, idx: number) => {
                     const displayName = `${item.name}${item.admin1 ? `, ${item.admin1}` : ''}, ${item.country}`;
                     networkCitySuggestions.push(displayName);
 
@@ -432,7 +490,13 @@ export async function searchLocations(query: string): Promise<string[]> {
                     };
                     internalCache.set(displayName.trim(), cacheData);
                     internalCache.set(displayName.trim().toUpperCase(), cacheData);
-                    internalCache.set(item.name.toUpperCase(), cacheData);
+                    if (idx === 0) {
+                        const nameUpper = item.name.trim().toUpperCase();
+                        // Never overwrite 3-letter codes with random geocoding names (avoids contaminating airport/IATA codes)
+                        if (nameUpper.length !== 3) {
+                            internalCache.set(nameUpper, cacheData);
+                        }
+                    }
                 });
                 saveCache();
             }
@@ -541,8 +605,21 @@ export function getCoordinatesSync(location: string): { lat: number; lng: number
       }
   }
 
-  // B. Check exact match in active cache
+  // B. Priority IATA 3-letter Exact Lookup (Structural bypass protecting airports)
   const uppercaseLoc = cleanLocation.toUpperCase();
+  if (uppercaseLoc.length === 3 && STATIC_GEO_DATA[uppercaseLoc]) {
+      const ap = STATIC_GEO_DATA[uppercaseLoc];
+      return {
+          lat: parseFloat(ap.lat),
+          lng: parseFloat(ap.lon || ap.lng),
+          tz: ap.tz,
+          city: ap.city,
+          country: ap.country,
+          countryCode: ap.iso
+      };
+  }
+
+  // C. Check exact match in active cache
   const cached = internalCache.get(cleanLocation) || internalCache.get(uppercaseLoc);
   if (cached?.lat) {
       return { 
@@ -552,19 +629,6 @@ export function getCoordinatesSync(location: string): { lat: number; lng: number
           city: cached.city,
           country: cached.country,
           countryCode: cached.countryCode || cached.iso
-      };
-  }
-
-  // C. Direct airport lookup
-  if (STATIC_GEO_DATA[uppercaseLoc]) {
-      const ap = STATIC_GEO_DATA[uppercaseLoc];
-      return {
-          lat: parseFloat(ap.lat),
-          lng: parseFloat(ap.lon || ap.lng),
-          tz: ap.tz,
-          city: ap.city,
-          country: ap.country,
-          countryCode: ap.iso
       };
   }
 
@@ -624,8 +688,21 @@ export async function getCoordinates(location: string): Promise<{ lat: number; l
       }
   }
 
-  // B. Check exact match in active cash
+  // B. Priority IATA 3-letter Exact Lookup (Structural bypass protecting airports)
   const uppercaseLoc = cleanLocation.toUpperCase();
+  if (uppercaseLoc.length === 3 && STATIC_GEO_DATA[uppercaseLoc]) {
+      const ap = STATIC_GEO_DATA[uppercaseLoc];
+      return {
+          lat: parseFloat(ap.lat),
+          lng: parseFloat(ap.lon || ap.lng),
+          tz: ap.tz,
+          city: ap.city,
+          country: ap.country,
+          countryCode: ap.iso
+      };
+  }
+
+  // C. Check exact match in active cash
   const cached = internalCache.get(cleanLocation) || internalCache.get(uppercaseLoc);
   if (cached?.lat) {
       return { 
@@ -635,19 +712,6 @@ export async function getCoordinates(location: string): Promise<{ lat: number; l
           city: cached.city,
           country: cached.country,
           countryCode: cached.countryCode || cached.iso
-      };
-  }
-
-  // C. Direct airport lookup
-  if (STATIC_GEO_DATA[uppercaseLoc]) {
-      const ap = STATIC_GEO_DATA[uppercaseLoc];
-      return {
-          lat: parseFloat(ap.lat),
-          lng: parseFloat(ap.lon || ap.lng),
-          tz: ap.tz,
-          city: ap.city,
-          country: ap.country,
-          countryCode: ap.iso
       };
   }
 
@@ -713,36 +777,91 @@ export async function getCoordinates(location: string): Promise<{ lat: number; l
 }
 
 export const LOCAL_GEO_MAP: Array<{ keywords: string[]; city: string; country: string; countryCode: string }> = [
-    { keywords: ['france', 'paris', 'nice', 'lyon', 'cdg', 'marseille', 'champs-elysees', 'french'], city: 'Paris', country: 'France', countryCode: 'FR' },
-    { keywords: ['united kingdom', 'uk', 'gb', 'london', 'lhr', 'heathrow', 'edinburgh', 'manchester', 'belfast', 'scotland', 'england', 'british'], city: 'London', country: 'United Kingdom', countryCode: 'GB' },
-    { keywords: ['united states', 'usa', 'us', 'new york', 'jfk', 'california', 'los angeles', 'san francisco', 'miami', 'chicago', 'hawaii', 'vegas', 'american'], city: 'New York', country: 'United States', countryCode: 'US' },
-    { keywords: ['japan', 'tokyo', 'kyoto', 'osaka', 'hnd', 'narita', 'shibuya', 'japanese'], city: 'Tokyo', country: 'Japan', countryCode: 'JP' },
-    { keywords: ['united arab emirates', 'uae', 'dubai', 'dxb', 'abu dhabi', 'emirati'], city: 'Dubai', country: 'United Arab Emirates', countryCode: 'AE' },
-    { keywords: ['italy', 'rome', 'milan', 'venice', 'florence', 'naples', 'fco', 'colosseum', 'italian'], city: 'Rome', country: 'Italy', countryCode: 'IT' },
-    { keywords: ['spain', 'barcelona', 'seville', 'ibiza', 'bcn', 'mallorca', 'spanish'], city: 'Barcelona', country: 'Spain', countryCode: 'ES' },
+    { keywords: ['paris', 'cdg', 'ory', 'champs-elysees'], city: 'Paris', country: 'France', countryCode: 'FR' },
+    { keywords: ['nice', 'nce', 'french riviera'], city: 'Nice', country: 'France', countryCode: 'FR' },
+    { keywords: ['lyon', 'lys'], city: 'Lyon', country: 'France', countryCode: 'FR' },
+    { keywords: ['marseille', 'mrs'], city: 'Marseille', country: 'France', countryCode: 'FR' },
+    { keywords: ['monaco', 'monte carlo'], city: 'Monaco', country: 'Monaco', countryCode: 'MC' },
+    
+    { keywords: ['london', 'lhr', 'lgw', 'heathrow'], city: 'London', country: 'United Kingdom', countryCode: 'GB' },
+    { keywords: ['edinburgh', 'edi'], city: 'Edinburgh', country: 'United Kingdom', countryCode: 'GB' },
+    { keywords: ['manchester', 'man'], city: 'Manchester', country: 'United Kingdom', countryCode: 'GB' },
+    { keywords: ['belfast', 'bfs'], city: 'Belfast', country: 'United Kingdom', countryCode: 'GB' },
+
+    { keywords: ['new york', 'jfk', 'nyc', 'manhattan'], city: 'New York', country: 'United States', countryCode: 'US' },
+    { keywords: ['los angeles', 'la', 'lax'], city: 'Los Angeles', country: 'United States', countryCode: 'US' },
+    { keywords: ['san+francisco', 'sfo', 'sf', 'san francisco'], city: 'San Francisco', country: 'United States', countryCode: 'US' },
+
+    { keywords: ['tokyo', 'hnd', 'nrt', 'shibuya'], city: 'Tokyo', country: 'Japan', countryCode: 'JP' },
+    { keywords: ['kyoto'], city: 'Kyoto', country: 'Japan', countryCode: 'JP' },
+    { keywords: ['osaka', 'kix'], city: 'Osaka', country: 'Japan', countryCode: 'JP' },
+
+    { keywords: ['dubai', 'dxb'], city: 'Dubai', country: 'United Arab Emirates', countryCode: 'AE' },
+    { keywords: ['abu dhabi', 'auh'], city: 'Abu Dhabi', country: 'United Arab Emirates', countryCode: 'AE' },
+
+    { keywords: ['rome', 'fco', 'colosseum'], city: 'Rome', country: 'Italy', countryCode: 'IT' },
+    { keywords: ['milan', 'mxp', 'lin'], city: 'Milan', country: 'Italy', countryCode: 'IT' },
+    { keywords: ['venice', 'vce'], city: 'Venice', country: 'Italy', countryCode: 'IT' },
+    { keywords: ['florence', 'flr'], city: 'Florence', country: 'Italy', countryCode: 'IT' },
+    { keywords: ['naples', 'nap'], city: 'Naples', country: 'Italy', countryCode: 'IT' },
+    { keywords: ['pisa', 'psa'], city: 'Pisa', country: 'Italy', countryCode: 'IT' },
+
+    { keywords: ['barcelona', 'bcn'], city: 'Barcelona', country: 'Spain', countryCode: 'ES' },
     { keywords: ['madrid', 'mad'], city: 'Madrid', country: 'Spain', countryCode: 'ES' },
-    { keywords: ['qatar', 'doha', 'doh'], city: 'Doha', country: 'Qatar', countryCode: 'QA' },
-    { keywords: ['sri lanka', 'colombo', 'cmb'], city: 'Colombo', country: 'Sri Lanka', countryCode: 'LK' },
-    { keywords: ['cambodia', 'phnom penh', 'pnh', 'siem reap', 'rep'], city: 'Phnom Penh', country: 'Cambodia', countryCode: 'KH' },
-    { keywords: ['sweden', 'stockholm', 'arn'], city: 'Stockholm', country: 'Sweden', countryCode: 'SE' },
-    { keywords: ['germany', 'berlin', 'munich', 'frankfurt', 'fra', 'hamburg', 'cologne', 'german'], city: 'Berlin', country: 'Germany', countryCode: 'DE' },
-    { keywords: ['netherlands', 'amsterdam', 'schiphol', 'ams', 'rotterdam', 'dutch'], city: 'Amsterdam', country: 'Netherlands', countryCode: 'NL' },
-    { keywords: ['belgium', 'brussels', 'bruges', 'antwerp', 'belgian'], city: 'Brussels', country: 'Belgium', countryCode: 'BE' },
-    { keywords: ['singapore', 'changi', 'sin'], city: 'Singapore', country: 'Singapore', countryCode: 'SG' },
-    { keywords: ['indonesia', 'bali', 'denpasar', 'jakarta', 'ubud', 'indonesian'], city: 'Denpasar', country: 'Indonesia', countryCode: 'ID' },
-    { keywords: ['australia', 'sydney', 'melbourne', 'syd', 'brisbane', 'australian'], city: 'Sydney', country: 'Australia', countryCode: 'AU' },
-    { keywords: ['greece', 'athens', 'santorini', 'mykonos', 'greek'], city: 'Athens', country: 'Greece', countryCode: 'GR' },
-    { keywords: ['switzerland', 'zurich', 'geneva', 'basel', 'swiss'], city: 'Zurich', country: 'Switzerland', countryCode: 'CH' },
-    { keywords: ['canada', 'toronto', 'vancouver', 'montreal', 'ottawa', 'canadian'], city: 'Toronto', country: 'Canada', countryCode: 'CA' },
-    { keywords: ['thailand', 'bangkok', 'phuket', 'chiang mai', 'thai'], city: 'Bangkok', country: 'Thailand', countryCode: 'TH' },
-    { keywords: ['china', 'beijing', 'shanghai', 'shenzhen', 'chinese'], city: 'Beijing', country: 'China', countryCode: 'CN' },
+    { keywords: ['seville', 'svq'], city: 'Seville', country: 'Spain', countryCode: 'ES' },
+    { keywords: ['ibiza', 'ibz'], city: 'Ibiza', country: 'Spain', countryCode: 'ES' },
+    { keywords: ['mallorca', 'pmi'], city: 'Mallorca', country: 'Spain', countryCode: 'ES' },
+
+    { keywords: ['doha', 'doh'], city: 'Doha', country: 'Qatar', countryCode: 'QA' },
+    { keywords: ['colombo', 'cmb'], city: 'Colombo', country: 'Sri Lanka', countryCode: 'LK' },
+    { keywords: ['phnom penh', 'pnh'], city: 'Phnom Penh', country: 'Cambodia', countryCode: 'KH' },
+    { keywords: ['siem reap', 'rep'], city: 'Siem Reap', country: 'Cambodia', countryCode: 'KH' },
+    { keywords: ['stockholm', 'arn'], city: 'Stockholm', country: 'Sweden', countryCode: 'SE' },
+    { keywords: ['berlin', 'txl'], city: 'Berlin', country: 'Germany', countryCode: 'DE' },
+    { keywords: ['munich', 'muc'], city: 'Munich', country: 'Germany', countryCode: 'DE' },
+    { keywords: ['frankfurt', 'fra'], city: 'Frankfurt', country: 'Germany', countryCode: 'DE' },
+    { keywords: ['amsterdam', 'ams'], city: 'Amsterdam', country: 'Netherlands', countryCode: 'NL' },
+    { keywords: ['brussels', 'bru'], city: 'Brussels', country: 'Belgium', countryCode: 'BE' },
+    { keywords: ['singapore', 'sin'], city: 'Singapore', country: 'Singapore', countryCode: 'SG' },
+    { keywords: ['denpasar', 'bali'], city: 'Denpasar', country: 'Indonesia', countryCode: 'ID' },
+    { keywords: ['sydney', 'syd'], city: 'Sydney', country: 'Australia', countryCode: 'AU' },
+    { keywords: ['athens', 'ath'], city: 'Athens', country: 'Greece', countryCode: 'GR' },
+    { keywords: ['zurich', 'zrh'], city: 'Zurich', country: 'Switzerland', countryCode: 'CH' },
+    { keywords: ['toronto', 'yyz'], city: 'Toronto', country: 'Canada', countryCode: 'CA' },
+    { keywords: ['bangkok', 'bkk'], city: 'Bangkok', country: 'Thailand', countryCode: 'TH' },
+    { keywords: ['beijing', 'pek'], city: 'Beijing', country: 'China', countryCode: 'CN' },
     { keywords: ['hong kong', 'hkg'], city: 'Hong Kong', country: 'Hong Kong', countryCode: 'HK' },
-    { keywords: ['south korea', 'seoul', 'icn', 'busan', 'korean'], city: 'Seoul', country: 'South Korea', countryCode: 'KR' },
-    { keywords: ['austria', 'vienna', 'salzburg', 'austrian'], city: 'Vienna', country: 'Austria', countryCode: 'AT' },
-    { keywords: ['portugal', 'lisbon', 'porto', 'algarve', 'portuguese'], city: 'Lisbon', country: 'Portugal', countryCode: 'PT' },
-    { keywords: ['turkey', 'istanbul', 'ankara', 'antalya', 'turkish'], city: 'Istanbul', country: 'Turkey', countryCode: 'TR' },
-    { keywords: ['egypt', 'cairo', 'giza', 'luxor', 'egyptian'], city: 'Cairo', country: 'Egypt', countryCode: 'EG' },
-    { keywords: ['brazil', 'rio', 'saulo', 'sao paulo', 'brazilian'], city: 'Rio de Janeiro', country: 'Brazil', countryCode: 'BR' },
+    { keywords: ['seoul', 'icn'], city: 'Seoul', country: 'South Korea', countryCode: 'KR' },
+    { keywords: ['vienna', 'vie'], city: 'Vienna', country: 'Austria', countryCode: 'AT' },
+    { keywords: ['lisbon', 'lis'], city: 'Lisbon', country: 'Portugal', countryCode: 'PT' },
+    { keywords: ['istanbul', 'ist'], city: 'Istanbul', country: 'Turkey', countryCode: 'TR' },
+    { keywords: ['cairo', 'cai'], city: 'Cairo', country: 'Egypt', countryCode: 'EG' },
+    { keywords: ['rio de janeiro', 'rio'], city: 'Rio de Janeiro', country: 'Brazil', countryCode: 'BR' },
+
+    // General Countries (placed at the end to allow specific city keywords like Pisa, Venice or Nice to match first in norm.includes checks)
+    { keywords: ['france', 'french'], city: 'Paris', country: 'France', countryCode: 'FR' },
+    { keywords: ['united kingdom', 'uk', 'gb', 'england', 'scotland', 'british'], city: 'London', country: 'United Kingdom', countryCode: 'GB' },
+    { keywords: ['united states', 'usa', 'us', 'american'], city: 'New York', country: 'United States', countryCode: 'US' },
+    { keywords: ['japan', 'japanese'], city: 'Tokyo', country: 'Japan', countryCode: 'JP' },
+    { keywords: ['united arab emirates', 'uae', 'emirati'], city: 'Dubai', country: 'United Arab Emirates', countryCode: 'AE' },
+    { keywords: ['italy', 'italian'], city: 'Rome', country: 'Italy', countryCode: 'IT' },
+    { keywords: ['spain', 'spanish'], city: 'Barcelona', country: 'Spain', countryCode: 'ES' },
+    { keywords: ['germany', 'german'], city: 'Berlin', country: 'Germany', countryCode: 'DE' },
+    { keywords: ['netherlands', 'dutch'], city: 'Amsterdam', country: 'Netherlands', countryCode: 'NL' },
+    { keywords: ['belgium', 'belgian'], city: 'Brussels', country: 'Belgium', countryCode: 'BE' },
+    { keywords: ['indonesia', 'indonesian'], city: 'Denpasar', country: 'Indonesia', countryCode: 'ID' },
+    { keywords: ['australia', 'australian'], city: 'Sydney', country: 'Australia', countryCode: 'AU' },
+    { keywords: ['greece', 'greek'], city: 'Athens', country: 'Greece', countryCode: 'GR' },
+    { keywords: ['switzerland', 'swiss'], city: 'Zurich', country: 'Switzerland', countryCode: 'CH' },
+    { keywords: ['canada', 'canadian'], city: 'Toronto', country: 'Canada', countryCode: 'CA' },
+    { keywords: ['thailand', 'thai'], city: 'Bangkok', country: 'Thailand', countryCode: 'TH' },
+    { keywords: ['china', 'chinese'], city: 'Beijing', country: 'China', countryCode: 'CN' },
+    { keywords: ['south korea', 'korean'], city: 'Seoul', country: 'South Korea', countryCode: 'KR' },
+    { keywords: ['austria', 'austrian'], city: 'Vienna', country: 'Austria', countryCode: 'AT' },
+    { keywords: ['portugal', 'portuguese'], city: 'Lisbon', country: 'Portugal', countryCode: 'PT' },
+    { keywords: ['turkey', 'turkish'], city: 'Istanbul', country: 'Turkey', countryCode: 'TR' },
+    { keywords: ['egypt', 'egyptian'], city: 'Cairo', country: 'Egypt', countryCode: 'EG' },
+    { keywords: ['brazil', 'brazilian'], city: 'Rio de Janeiro', country: 'Brazil', countryCode: 'BR' },
 ];
 
 export async function resolvePlaceName(query: string): Promise<{ city: string, country: string, countryCode?: string, displayName: string } | null> {

@@ -40,7 +40,7 @@ export interface TripAllocation {
   targetYear?: number; // New: specific year this allocation applies to
 }
 
-export type TransportMode = 'Flight' | 'Train' | 'Bus' | 'Car Rental' | 'Personal Car' | 'Cruise';
+export type TransportMode = 'Flight' | 'Train' | 'Bus' | 'Car Rental' | 'Personal Car' | 'Cruise' | 'Ferry';
 
 export interface GeoCoordinates {
   lat: number;
@@ -271,6 +271,9 @@ export interface WorkspaceSettings {
     googleGeminiApiKey?: string; // AI Key
     masterPackingList?: PackingItem[]; // Global packing list template
     carriers?: Carrier[]; // Manageable custom carriers list
+    defaultTravelClass?: 'Economy' | 'Premium Economy' | 'Business' | 'First';
+    defaultStartingAirport?: string;
+    defaultLandTransportMethod?: 'Train' | 'Bus' | 'Car Rental' | 'Personal Car' | 'Cruise' | 'Ferry';
 }
 
 export enum ViewState {
@@ -282,6 +285,7 @@ export enum ViewState {
   MAP = 'map',
   GAMIFICATION = 'gamification',
   FLIGHTS = 'flights',
+  ROADTRIPS = 'roadtrips',
   TRAVEL_ATLAS = 'travel_atlas'
 }
 

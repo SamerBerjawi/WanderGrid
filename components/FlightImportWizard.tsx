@@ -681,6 +681,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                     const parsed = JSON.parse(content);
                     let flightsNum = 0;
                     let tripsNum = 0;
+                    let visitedNum = 0;
                     if (parsed.independent_flights && Array.isArray(parsed.independent_flights)) {
                         flightsNum += parsed.independent_flights.length;
                     }
@@ -695,8 +696,11 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                             }
                         });
                     }
+                    if (parsed.visited && Array.isArray(parsed.visited)) {
+                        visitedNum = parsed.visited.length;
+                    }
                     setBackupDataState(content);
-                    setBackupParsedCount({ trips: tripsNum, flights: flightsNum });
+                    setBackupParsedCount({ trips: tripsNum, flights: flightsNum, visited: visitedNum });
                     setImportMode('backup');
                     setBackupRestoreSuccess(false);
                     setBackupRestoreError('');
@@ -983,6 +987,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                                 <ul className="text-xs font-bold text-zinc-650 dark:text-zinc-400 list-disc list-inside space-y-1">
                                                     <li>Trips cataloged: <span className="font-mono text-amber-500">{backupParsedCount?.trips || 0} items</span></li>
                                                     <li>Total flight legs: <span className="font-mono text-amber-500">{backupParsedCount?.flights || 0} routes</span></li>
+                                                    <li>Travel Atlas (visited): <span className="font-mono text-amber-500">{backupParsedCount?.visited || 0} places</span></li>
                                                 </ul>
                                             </div>
 

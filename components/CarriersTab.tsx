@@ -18,9 +18,10 @@ interface CarrierImageProps {
     alt: string;
     className?: string;
     apiKey?: string;
+    fill?: boolean;
 }
 
-const CarrierImage: React.FC<CarrierImageProps> = ({ domain, alt, className = "w-12 h-12", apiKey }) => {
+const CarrierImage: React.FC<CarrierImageProps> = ({ domain, alt, className = "w-12 h-12", apiKey, fill = false }) => {
     const [src, setSrc] = useState<string>('');
     const [attempt, setAttempt] = useState(0);
 
@@ -60,18 +61,18 @@ const CarrierImage: React.FC<CarrierImageProps> = ({ domain, alt, className = "w
 
     if (!domain || src === '__failed__') {
         return (
-            <div className={`${className} bg-zinc-100 border border-zinc-200 dark:bg-zinc-850 dark:border-white/5 rounded-xl flex items-center justify-center p-2 text-zinc-400`}>
+            <div className={`${className} bg-zinc-100 border border-zinc-200 dark:bg-zinc-850 dark:border-white/5 rounded-xl flex items-center justify-center ${fill ? 'p-0' : 'p-2'} text-zinc-400`}>
                 <span className="material-icons-outlined text-lg">flight_takeoff</span>
             </div>
         );
     }
 
     return (
-        <div className={`${className} bg-white border border-zinc-150 rounded-xl flex items-center justify-center p-1.5 dark:bg-zinc-800 dark:border-white/5 overflow-hidden`}>
+        <div className={`${className} bg-white border border-zinc-150 rounded-xl flex items-center justify-center ${fill ? 'p-0' : 'p-1.5'} dark:bg-zinc-800 dark:border-white/5 overflow-hidden`}>
             <img 
                 src={src || getUrl(domain, 0)} 
                 alt={alt} 
-                className="w-full h-full object-contain"
+                className={`w-full h-full ${fill ? 'object-cover' : 'object-contain'}`}
                 referrerPolicy="no-referrer"
                 onError={handleError}
             />
@@ -477,7 +478,7 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
                                             return (
                                             <tr key={c.id} className="hover:bg-zinc-100/30 dark:hover:bg-zinc-900/60 transition-colors group">
                                                 <td className="py-3 pl-6">
-                                                    <CarrierImage domain={c.domain} alt={displayName} className="w-10 h-10 shrink-0" apiKey={config.brandfetchApiKey} />
+                                                    <CarrierImage domain={c.domain} alt={displayName} className="w-10 h-10 shrink-0" apiKey={config.brandfetchApiKey} fill />
                                                 </td>
                                                 <td className="py-3 px-4 align-middle font-sans">
                                                     <span className="font-extrabold text-zinc-800 dark:text-white text-sm block">{displayName}</span>

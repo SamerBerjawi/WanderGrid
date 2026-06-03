@@ -289,6 +289,63 @@ interface PointItem {
     isEndpoint?: boolean;
 }
 
+function getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371; // Radius of the Earth in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+function normalizeCityName(name: string): string {
+    if (!name) return '';
+    return name
+        .toLowerCase()
+        .replace(/,/g, ' ')
+        .replace(/\b(airport|city|intl|international|municipal|greater|ltd|corp)\b/gi, '')
+        .replace(/\b(france|uk|usa|germany|spain|italy|canada|australia|japan|china|united kingdom|united states)\b/gi, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function areSameCity(name1: string, name2: string, lat1: number, lng1: number, lat2: number, lng2: number): boolean {
+    const d = getDistanceKm(lat1, lng1, lat2, lng2);
+    // If locations are within 35 km of each other, they are candidates for city amalgamation
+    if (d < 35) {
+        const norm1 = normalizeCityName(name1);
+        const norm2 = normalizeCityName(name2);
+        
+        if (norm1 === norm2 || norm1.includes(norm2) || norm2.includes(norm1)) {
+            return true;
+        }
+        
+        // Match substantial words (length >= 3)
+        const words1 = norm1.split(' ').filter(w => w.length >= 3);
+        const words2 = norm2.split(' ').filter(w => w.length >= 3);
+        for (const w1 of words1) {
+            if (words2.includes(w1)) return true;
+        }
+    }
+    return false;
+}
+
+function getShorterCleanerName(name1: string, name2: string): string {
+    const n1 = name1.trim();
+    const n2 = name2.trim();
+    
+    // Choose the name without a comma (typically cleaner city-only name like "Paris" versus "Paris, France")
+    const hasComma1 = n1.includes(',');
+    const hasComma2 = n2.includes(',');
+    if (!hasComma1 && hasComma2) return n1;
+    if (hasComma1 && !hasComma2) return n2;
+    
+    return n1.length <= n2.length ? n1 : n2;
+}
+
 const performClustering = (map: L.Map, points: PointItem[], radiusPixels = 50) => {
     const clusters: { lat: number; lng: number; points: PointItem[]; id: string }[] = [];
     
@@ -739,7 +796,25 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                 }
             });
         }
-        return pts;
+
+        // Auto-group and consolidate separate locations that refer to the same logical city (e.g., "Paris" and "Paris, France")
+        const mergedPts: PointItem[] = [];
+        pts.forEach(p => {
+            const dup = mergedPts.find(up => areSameCity(up.name, p.name, up.lat, up.lng, p.lat, p.lng));
+            if (dup) {
+                const cleanName = getShorterCleanerName(dup.name, p.name);
+                if (cleanName === p.name) {
+                    dup.lat = p.lat;
+                    dup.lng = p.lng;
+                }
+                dup.name = cleanName;
+                if (p.isEndpoint) dup.isEndpoint = true;
+            } else {
+                mergedPts.push({ ...p });
+            }
+        });
+
+        return mergedPts;
     }, [trips, viewMode, visitedPlaces, isDark, activeLayer, showLandSeaRoutes, showFlightRoutes]);
 
     // Track last fitted state to prevent annoying resetting during active interactions

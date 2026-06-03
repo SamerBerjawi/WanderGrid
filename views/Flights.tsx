@@ -988,11 +988,13 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
     if (!target) return;
 
     // 1. Recover all flights in the bundle as independent
-    const flightsToMove = (target.transports || []).map(f => ({
-      ...f,
-      tripId: 'unassigned',
-      itineraryId: '' // Clear its itinerary bundle ID to make it independent
-    }));
+    const flightsToMove = (target.transports || [])
+      .filter(t => !t.mode || t.mode === 'Flight')
+      .map(f => ({
+        ...f,
+        tripId: 'unassigned',
+        itineraryId: '' // Clear its itinerary bundle ID to make it independent
+      }));
 
     if (flightsToMove.length > 0) {
       await dataService.addFlights(flightsToMove);

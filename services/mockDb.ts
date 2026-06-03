@@ -35,7 +35,10 @@ const DEFAULT_WORKSPACE_SETTINGS: WorkspaceSettings = {
   brandfetchApiKey: '',
   googleGeminiApiKey: '',
   masterPackingList: DEFAULT_MASTER_LIST,
-  carriers: []
+  carriers: [],
+  defaultTravelClass: 'Economy',
+  defaultStartingAirport: '',
+  defaultLandTransportMethod: 'Train'
 };
 
 export interface ImportState {
@@ -843,6 +846,11 @@ class DataService {
     );
   }
 
+  async getTrip(tripId: string): Promise<Trip | undefined> {
+    const trips = await this.getTrips();
+    return trips.find(t => t.id === tripId);
+  }
+
   async addTrip(trip: Trip): Promise<Trip> {
     const intelligentTrip = await this.processGeocoding(trip);
     
@@ -970,7 +978,7 @@ class DataService {
     });
 
     const mergedMap = new Map<string, any>();
-    (independentFlights || []).forEach(f => {
+    (independentFlights || []).filter(f => !f.mode || f.mode === 'Flight').forEach(f => {
       mergedMap.set(f.id, {
         ...f,
         tripId: f.tripId || 'unassigned'
@@ -991,6 +999,135 @@ class DataService {
     });
 
     return Array.from(mergedMap.values());
+  }
+  async getRoadTrips(): Promise<any[]> {
+    const independentTransports = await this.fetch<any[]>('/flights');
+    let trips: Trip[] = [];
+    try {
+      trips = await this.getTrips();
+    } catch (e) {
+      console.warn("Failed to retrieve trips in getRoadTrips", e);
+    }
+    const tripRoadTrips: any[] = [];
+    trips.forEach(trip => {
+      if (trip.transports) {
+        trip.transports.forEach(tr => {
+          if (tr.mode && tr.mode !== 'Flight') {
+            tripRoadTrips.push({
+              ...tr,
+              tripId: trip.id,
+              tripName: trip.name
+            });
+          }
+        });
+      }
+    });
+
+    const mergedMap = new Map<string, any>();
+    (independentTransports || []).filter(f => f.mode && f.mode !== 'Flight').forEach(f => {
+      mergedMap.set(f.id, {
+        ...f,
+        tripId: f.tripId || 'unassigned'
+      });
+    });
+
+    tripRoadTrips.forEach(f => {
+      if (!mergedMap.has(f.id)) {
+        mergedMap.set(f.id, f);
+      } else {
+        const existing = mergedMap.get(f.id)!;
+        mergedMap.set(f.id, {
+          ...f,
+          ...existing,
+          tripId: f.tripId || existing.tripId
+        });
+      }
+    });
+
+    return Array.from(mergedMap.values());
+  }
+  async detectAndImportRouteSegments(tripId: string, defaultMode: any): Promise<any[]> {
+    const trip = await this.getTrip(tripId);
+    if (!trip) throw new Error("Trip not found");
+
+    const locations = [...(trip.locations || [])];
+    if (locations.length < 2) {
+      throw new Error("Trip must have at least 2 locations in the Visual Route Planner to auto-detect and import route segments.");
+    }
+
+    // Sort locations chronologically
+    locations.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+
+    const importedSegments: any[] = [];
+    const currentTransports = [...(trip.transports || [])];
+
+    for (let i = 0; i < locations.length - 1; i++) {
+      const locA = locations[i];
+      const locB = locations[i + 1];
+
+      // Check for existing transport between consecutive locations to avoid duplicating
+      const alreadyExists = currentTransports.some(tr => 
+        tr.origin.toLowerCase().trim() === locA.name.toLowerCase().trim() &&
+        tr.destination.toLowerCase().trim() === locB.name.toLowerCase().trim()
+      );
+
+      if (!alreadyExists) {
+        // Estimate distance based on speed
+        const speeds: Record<string, number> = {
+          'Train': 120,
+          'Bus': 70,
+          'Car Rental': 90,
+          'Personal Car': 95,
+          'Cruise': 30,
+          'Ferry': 40
+        };
+        const avgSpeed = speeds[defaultMode] || 80;
+        
+        // Calculate duration based on time between locations, capped to a reasonable duration
+        const dateA = new Date(locA.endDate || locA.startDate);
+        const dateB = new Date(locB.startDate);
+        let diffHours = Math.abs(dateB.getTime() - dateA.getTime()) / (1000 * 60 * 60);
+        if (isNaN(diffHours) || diffHours <= 0) diffHours = 4; // default 4 hours
+        if (diffHours > 24) diffHours = 6; // cap to 6 hours for a single transit segment
+
+        const durationMinutes = Math.round(diffHours * 60);
+        const calculatedDistance = Math.round(diffHours * avgSpeed);
+
+        const newSegment: any = {
+          id: `land-trip-${Math.random().toString(36).substring(2, 11)}`,
+          itineraryId: 'route-gen',
+          type: 'One-Way',
+          mode: defaultMode,
+          origin: locA.name,
+          destination: locB.name,
+          departureDate: locA.endDate || locA.startDate,
+          departureTime: '10:00',
+          arrivalDate: locB.startDate,
+          arrivalTime: '14:00',
+          provider: defaultMode === 'Train' ? 'National Rail' : (defaultMode === 'Bus' ? 'Coach Express' : 'Road Link'),
+          identifier: `${defaultMode.toUpperCase()}-${Math.floor(Math.random() * 900 + 100)}`,
+          confirmationCode: `AUTO-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+          cost: 45, // reasonable guess
+          notes: `Automatically imported from trip visual route segment.`,
+          waypoints: [],
+          duration: durationMinutes,
+          distance: calculatedDistance,
+          tripId: trip.id
+        };
+
+        currentTransports.push(newSegment);
+        importedSegments.push(newSegment);
+      }
+    }
+
+    if (importedSegments.length > 0) {
+      await this.updateTrip({
+        ...trip,
+        transports: currentTransports
+      });
+    }
+
+    return importedSegments;
   }
   async addFlight(flight: any): Promise<void> { await this.fetch('/flights', { method: 'POST', body: JSON.stringify(flight) }); }
   async addFlights(flights: any[]): Promise<void> { await this.fetch('/flights/bulk', { method: 'POST', body: JSON.stringify(flights) }); }

@@ -865,6 +865,119 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         return items.sort((a,b) => (a.time || '23:59').localeCompare(b.time || '23:59'));
     };
 
+    interface UnifiedDayItem {
+        id: string;
+        type: 'Transport' | 'Accommodation' | 'Activity' | 'Reservation' | 'Tour';
+        subType?: string;
+        time: string;
+        title: string;
+        location?: string;
+        cost?: number;
+        icon: string;
+        ref: any;
+        meta?: string;
+        isDropoff?: boolean;
+        isCheckOut?: boolean;
+        isOvernight?: boolean;
+    }
+
+    const getDayItems = (dateStr: string): UnifiedDayItem[] => {
+        const items: UnifiedDayItem[] = [];
+
+        // 1. Transports
+        const transports = getDayEvents(dateStr);
+        transports.forEach(t => {
+            const dur = !t.isDropoff ? calculateDuration(t) : '';
+            const dist = t.distance ? `${t.distance} km` : '';
+            items.push({
+                id: t.id + (t.isDropoff ? '_drop' : ''),
+                type: 'Transport',
+                subType: t.mode,
+                time: t.isDropoff ? t.arrivalTime || '00:00' : t.departureTime || '00:00',
+                title: t.isDropoff ? `Dropoff ${t.mode}` : (t.mode === 'Car Rental' || t.mode === 'Personal Car' ? `Pickup ${t.mode}` : `${t.mode} to ${t.destination}`),
+                location: t.isDropoff ? t.dropoffLocation || t.destination : t.pickupLocation || t.origin,
+                cost: (t.cost || 0) > 0 ? t.cost : undefined,
+                icon: getTransportIcon(t.mode),
+                ref: t,
+                meta: !t.isDropoff ? `${dur}${dist ? ` • ${dist}` : ''}` : 'Arrival',
+                isDropoff: t.isDropoff
+            });
+        });
+
+        // 2. Accommodations
+        trip.accommodations?.forEach(a => {
+            // Check-In
+            if (a.checkInDate === dateStr) {
+                const nights = calculateNights(a.checkInDate, a.checkOutDate);
+                items.push({
+                    id: a.id + '_checkin',
+                    type: 'Accommodation',
+                    subType: a.type,
+                    time: a.checkInTime || '15:00',
+                    title: `${a.name} (Check-In)`,
+                    location: a.address,
+                    cost: a.cost,
+                    icon: 'hotel',
+                    ref: a,
+                    meta: `${nights} Night${nights > 1 ? 's' : ''}`
+                });
+            }
+            // Check-Out
+            if (a.checkOutDate === dateStr) {
+                items.push({
+                    id: a.id + '_checkout',
+                    type: 'Accommodation',
+                    subType: a.type,
+                    time: a.checkOutTime || '11:00',
+                    title: `${a.name} (Check-Out)`,
+                    location: a.address,
+                    icon: 'hotel',
+                    ref: a,
+                    isCheckOut: true
+                });
+            }
+            // Overnight Stay
+            if (dateStr > a.checkInDate && dateStr < a.checkOutDate) {
+                items.push({
+                    id: a.id + '_overnight',
+                    type: 'Accommodation',
+                    subType: a.type,
+                    time: '08:00', // start morning stay
+                    title: `${a.name} (Overnight Stay)`,
+                    location: a.address,
+                    icon: 'hotel',
+                    ref: a,
+                    isOvernight: true
+                });
+            }
+        });
+
+        // 3. Activities
+        trip.activities?.forEach(a => {
+            if (a.date === dateStr) {
+                items.push({
+                    id: a.id,
+                    type: (a.type as any) || 'Activity',
+                    subType: a.type,
+                    time: a.time || '12:00',
+                    title: a.title,
+                    location: a.location,
+                    cost: a.cost,
+                    icon: a.type === 'Reservation' ? 'restaurant' : a.type === 'Tour' ? 'tour' : 'local_activity',
+                    ref: a,
+                    meta: a.description
+                });
+            }
+        });
+
+        // Sort by time starting from earliest to latest
+        return items.sort((a, b) => {
+            const timeA = a.time || '23:59';
+            const timeB = b.time || '23:59';
+            return timeA.localeCompare(timeB);
+        });
+    };
+
     const renderPlannerCalendar = () => {
         const year = calendarDate.getFullYear();
         const month = calendarDate.getMonth();
@@ -1128,14 +1241,12 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 <>
                     {plannerView === 'calendar' ? renderPlannerCalendar() : plannerView === 'list' ? (
                         <div className="space-y-6 relative">
-                            {/* ... (Existing List View Render - Keep exact same structure) ... */}
+                            {/* Unified Chronological Timeline per Day */}
                             <div className="absolute left-8 top-4 bottom-4 w-0.5 bg-gray-200 dark:bg-gray-800 hidden md:block" />
                             {tripDates.map((dateStr, index) => {
                                 const dateObj = new Date(dateStr); 
-                                const dayEvents = getDayEvents(dateStr);
-                                const dayStay = trip.accommodations?.find(a => dateStr >= a.checkInDate && dateStr < a.checkOutDate);
                                 const location = getLocationForDate(dateStr);
-                                const dayActivities = sortActivities(trip.activities?.filter(a => a.date === dateStr) || []);
+                                const dayItems = getDayItems(dateStr);
 
                                 return (
                                     <div key={dateStr} className="relative md:pl-20 group">
@@ -1154,64 +1265,111 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                     <span className="material-icons-outlined text-xs">place</span> {location.name}
                                                 </div>
                                             )}
-                                            {dayEvents.map(t => (
-                                                <div key={t.id + (t.isDropoff ? '_drop' : '')} className="bg-blue-50 dark:bg-gray-800 border border-blue-100 dark:border-gray-700 p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all">
-                                                    <div className="w-10 h-10 rounded-xl bg-blue-500 text-white flex items-center justify-center shadow-lg shadow-blue-500/30">
-                                                        <span className="material-icons-outlined">{getTransportIcon(t.mode)}</span>
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <h4 className="font-bold text-gray-900 dark:text-white text-sm">
-                                                            {t.isDropoff ? `Dropoff ${t.mode}` : (t.mode === 'Car Rental' || t.mode === 'Personal Car' ? `Pickup ${t.mode}` : `${t.mode} to ${t.destination}`)}
-                                                        </h4>
-                                                        <div className="flex gap-4 mt-1">
-                                                            <p className="text-[10px] text-blue-600 dark:text-blue-300 font-bold uppercase tracking-wider">
-                                                                {t.provider} {t.identifier} • {formatTime(t.isDropoff ? t.arrivalTime : t.departureTime)}
-                                                            </p>
-                                                            {!t.isDropoff && t.mode !== 'Car Rental' && t.mode !== 'Personal Car' && (
-                                                                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
-                                                                    {calculateDuration(t)} Duration
-                                                                </p>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    <button onClick={() => openTransportModal([t])} className="text-gray-400 hover:text-blue-500"><span className="material-icons-outlined text-sm">edit</span></button>
-                                                </div>
-                                            ))}
-                                            {dayStay && (
-                                                <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all"><div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-lg shadow-amber-500/30"><span className="material-icons-outlined">hotel</span></div><div className="flex-1"><h4 className="font-bold text-gray-900 dark:text-white text-sm">{dayStay.name}</h4><p className="text-[10px] text-amber-600 dark:text-amber-300 font-bold uppercase tracking-wider">{dayStay.checkInDate === dateStr ? 'Check-In' : 'Overnight Stay'}</p></div><button onClick={() => openAccommodationModal()} className="text-gray-400 hover:text-amber-500"><span className="material-icons-outlined text-sm">edit</span></button></div>
-                                            )}
-                                            {dayActivities.length > 0 && dayActivities.map(item => {
-                                                const isRes = item.type === 'Reservation';
-                                                return (
-                                                    <div key={item.id} className={`p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all group/act border ${
-                                                        isRes 
-                                                        ? 'bg-orange-50/50 dark:bg-orange-900/10 border-orange-100 dark:border-orange-900/30' 
-                                                        : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-white/10'
-                                                    }`}>
-                                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                                                            isRes 
-                                                            ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' 
-                                                            : 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'
-                                                        }`}>
-                                                            <span className="material-icons-outlined">{isRes ? 'restaurant' : item.type === 'Tour' ? 'tour' : 'local_activity'}</span>
-                                                        </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <div className="flex items-center gap-2">
-                                                                <span className={`text-xs font-black whitespace-nowrap ${isRes ? 'text-orange-400' : 'text-gray-400'}`}>{formatTime(item.time)}</span>
-                                                                <h4 className="font-bold text-gray-900 dark:text-white text-sm truncate">{item.title}</h4>
+
+                                            {dayItems.length > 0 ? (
+                                                dayItems.map(item => {
+                                                    if (item.type === 'Transport') {
+                                                        const t = item.ref;
+                                                        return (
+                                                            <div key={item.id} className="bg-blue-50 dark:bg-gray-800 border border-blue-100 dark:border-gray-700 p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all">
+                                                                <div className="w-10 h-10 rounded-xl bg-blue-500 text-white flex items-center justify-center shadow-lg shadow-blue-500/30">
+                                                                    <span className="material-icons-outlined">{item.icon}</span>
+                                                                </div>
+                                                                <div className="flex-1">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="text-xs font-black text-blue-600 dark:text-blue-400 whitespace-nowrap">{formatTime(item.time)}</span>
+                                                                        <h4 className="font-bold text-gray-900 dark:text-white text-sm">
+                                                                            {item.title}
+                                                                        </h4>
+                                                                    </div>
+                                                                    <div className="flex gap-4 mt-1">
+                                                                        <p className="text-[10px] text-blue-600 dark:text-blue-300 font-bold uppercase tracking-wider">
+                                                                            {t.provider} {t.identifier}
+                                                                        </p>
+                                                                        {item.meta && (
+                                                                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                                                                                {item.meta}
+                                                                            </p>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                                <button onClick={() => openTransportModal([t])} className="text-gray-400 hover:text-blue-500">
+                                                                    <span className="material-icons-outlined text-sm">edit</span>
+                                                                </button>
                                                             </div>
-                                                            {item.description && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">{item.description}</p>}
-                                                            {item.location && <p className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-1 truncate"><span className="material-icons-outlined text-[10px]">place</span> {item.location}</p>}
-                                                        </div>
-                                                        {item.cost && <div className={`text-xs font-bold whitespace-nowrap ${isRes ? 'text-orange-600 dark:text-orange-400' : 'text-gray-600 dark:text-gray-300'}`}>{formatCurrency(item.cost)}</div>}
-                                                        
-                                                        <div className="flex items-center gap-1 opacity-0 group-hover/act:opacity-100 transition-opacity">
-                                                            <button onClick={() => handleOpenActivityModal(dateStr, item)} className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all"><span className="material-icons-outlined text-sm">edit</span></button>
-                                                            <button onClick={() => handleDeleteActivity(item.id)} className="p-1.5 text-gray-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"><span className="material-icons-outlined text-sm">delete</span></button>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
+                                                        );
+                                                    } else if (item.type === 'Accommodation') {
+                                                        const a = item.ref;
+                                                        const isCheckIn = !item.isCheckOut && !item.isOvernight;
+                                                        const statusLabel = isCheckIn ? 'Check-In' : (item.isCheckOut ? 'Check-Out' : 'Overnight Stay');
+                                                        return (
+                                                            <div key={item.id} className="bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all">
+                                                                <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-lg shadow-amber-500/30">
+                                                                    <span className="material-icons-outlined">{item.icon}</span>
+                                                                </div>
+                                                                <div className="flex-1">
+                                                                    <div className="flex items-center gap-2">
+                                                                        {!item.isOvernight && (
+                                                                            <span className="text-xs font-black text-amber-600 dark:text-amber-400 whitespace-nowrap">{formatTime(item.time)}</span>
+                                                                        )}
+                                                                        <h4 className="font-bold text-gray-900 dark:text-white text-sm">
+                                                                            {item.title}
+                                                                        </h4>
+                                                                    </div>
+                                                                    <div className="flex gap-4 mt-1">
+                                                                        <p className="text-[10px] text-amber-600 dark:text-amber-300 font-bold uppercase tracking-wider">
+                                                                            {statusLabel}
+                                                                        </p>
+                                                                        {item.meta && (
+                                                                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                                                                                {item.meta}
+                                                                            </p>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                                <button onClick={() => openAccommodationModal()} className="text-gray-400 hover:text-amber-500">
+                                                                    <span className="material-icons-outlined text-sm">edit</span>
+                                                                </button>
+                                                            </div>
+                                                        );
+                                                    } else {
+                                                        const isRes = item.type === 'Reservation';
+                                                        const act = item.ref;
+                                                        return (
+                                                            <div key={item.id} className={`p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all group/act border ${
+                                                                isRes 
+                                                                ? 'bg-orange-50/50 dark:bg-orange-900/10 border-orange-100 dark:border-orange-900/30' 
+                                                                : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-white/10'
+                                                            }`}>
+                                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                                                                    isRes 
+                                                                    ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' 
+                                                                    : 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'
+                                                                }`}>
+                                                                    <span className="material-icons-outlined">{item.icon}</span>
+                                                                </div>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className={`text-xs font-black whitespace-nowrap ${isRes ? 'text-orange-400' : 'text-gray-400'}`}>{formatTime(item.time)}</span>
+                                                                        <h4 className="font-bold text-gray-900 dark:text-white text-sm truncate">{item.title}</h4>
+                                                                    </div>
+                                                                    {item.meta && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">{item.meta}</p>}
+                                                                    {item.location && <p className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-1 truncate"><span className="material-icons-outlined text-[10px]">place</span> {item.location}</p>}
+                                                                </div>
+                                                                {item.cost && <div className={`text-xs font-bold whitespace-nowrap ${isRes ? 'text-orange-600 dark:text-orange-400' : 'text-gray-600 dark:text-gray-300'}`}>{formatCurrency(item.cost)}</div>}
+                                                                
+                                                                <div className="flex items-center gap-1 opacity-0 group-hover/act:opacity-100 transition-opacity">
+                                                                    <button onClick={() => handleOpenActivityModal(dateStr, act)} className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all"><span className="material-icons-outlined text-sm">edit</span></button>
+                                                                    <button onClick={() => handleDeleteActivity(act.id)} className="p-1.5 text-gray-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"><span className="material-icons-outlined text-sm">delete</span></button>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    }
+                                                })
+                                            ) : (
+                                                <p className="text-xs text-gray-400 dark:text-gray-500 italic py-2 pl-4">No schedule items planned for today yet.</p>
+                                            )}
+
                                             <button onClick={() => handleOpenActivityModal(dateStr)} className="w-full py-3 border-2 border-dashed border-gray-200 dark:border-white/10 rounded-2xl text-xs font-bold text-gray-400 uppercase tracking-widest hover:border-blue-300 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 focus:opacity-100">
                                                 <span className="material-icons-outlined text-sm">add</span> Add Schedule Item
                                             </button>

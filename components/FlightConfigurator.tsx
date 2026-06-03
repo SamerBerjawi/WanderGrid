@@ -200,6 +200,9 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
     const [currencySymbol, setCurrencySymbol] = useState('$');
     const [apiKey, setApiKey] = useState<string>('');
     const [brandfetchKey, setBrandfetchKey] = useState<string>('');
+    const [defaultTravelClass, setDefaultTravelClass] = useState<string>('Economy');
+    const [defaultStartingAirport, setDefaultStartingAirport] = useState<string>('');
+    const [defaultLandTransportMethod, setDefaultLandTransportMethod] = useState<TransportMode>('Train');
 
     const [bookingCost, setBookingCost] = useState<string>('');
     const [bookingRef, setBookingRef] = useState<string>('');
@@ -264,8 +267,31 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
             if (s.aviationStackApiKey) setApiKey(s.aviationStackApiKey);
             if (s.brandfetchApiKey) setBrandfetchKey(s.brandfetchApiKey);
             setCurrencySymbol(getCurrencySymbol(s.currency));
+            
+            if (s.defaultTravelClass) setDefaultTravelClass(s.defaultTravelClass);
+            if (s.defaultStartingAirport) setDefaultStartingAirport(s.defaultStartingAirport);
+            if (s.defaultLandTransportMethod) setDefaultLandTransportMethod(s.defaultLandTransportMethod as TransportMode);
+
+            if (!initialData || initialData.length === 0) {
+                // Pre-populate segment starting locations and travel classes
+                setSegments(prev => prev.map((seg, idx) => ({
+                    ...seg,
+                    travelClass: (s.defaultTravelClass as any) || seg.travelClass || 'Economy',
+                    origin: idx === 0 ? (s.defaultStartingAirport || seg.origin) : seg.origin,
+                    destination: idx === 1 ? (s.defaultStartingAirport || seg.destination) : seg.destination
+                })));
+
+                // Seed carForm pickup elements with defaults
+                if (s.defaultStartingAirport) {
+                    setCarForm(prev => ({
+                        ...prev,
+                        pickupLocation: s.defaultStartingAirport,
+                        dropoffLocation: s.defaultStartingAirport
+                    }));
+                }
+            }
         });
-    }, []);
+    }, [initialData]);
 
     useEffect(() => {
         if (initialData && initialData.length > 0) {
@@ -538,7 +564,8 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
         setSegments([...segments, { 
             id: Math.random().toString(), 
             ...DEFAULT_SEGMENT,
-            origin: last ? last.destination : '',
+            travelClass: (defaultTravelClass as any) || 'Economy',
+            origin: last ? last.destination : (defaultStartingAirport || ''),
             date: last ? last.arrivalDate : '',
             arrivalDate: last ? last.arrivalDate : ''
         }]);
@@ -563,6 +590,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
         const newSegment: SegmentForm = {
             id: Math.random().toString(36).substr(2, 9),
             ...DEFAULT_SEGMENT,
+            travelClass: (defaultTravelClass as any) || 'Economy',
             origin: current.destination, 
             destination: next ? next.origin : (tripType === 'One-Way' ? '' : current.destination),
             date: defaultDate,

@@ -58,6 +58,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
     { label: 'Planner', value: ViewState.PLANNER, icon: 'map' }, 
     { label: 'Travel Atlas', value: ViewState.TRAVEL_ATLAS, icon: 'explore' },
     { label: 'Flights', value: ViewState.FLIGHTS, icon: 'flight_takeoff' }, 
+    { label: 'Road Trips', value: ViewState.ROADTRIPS, icon: 'directions_car' }, 
     { label: 'Settings', value: ViewState.SETTINGS, icon: 'settings' },
   ];
 
@@ -258,14 +259,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
         <button
           onClick={() => setIsMoreOpen(!isMoreOpen)}
           className={`flex flex-col items-center justify-center flex-1 h-16 min-w-0 rounded-2xl transition-all duration-300 relative select-none cursor-pointer px-0.5
-            ${(currentView === ViewState.PLANNER || currentView === ViewState.SETTINGS || currentView === ViewState.USER_DETAIL)
+            ${(currentView === ViewState.PLANNER || currentView === ViewState.SETTINGS || currentView === ViewState.USER_DETAIL || currentView === ViewState.ROADTRIPS)
               ? 'text-blue-600 dark:text-blue-400 scale-105'
               : 'text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white'
             }`}
         >
           <span className="material-icons-outlined text-2xl leading-none">more_horiz</span>
           <span className="text-[8px] font-black uppercase tracking-wider mt-1 text-center leading-tight font-sans">More</span>
-          {(currentView === ViewState.PLANNER || currentView === ViewState.SETTINGS || currentView === ViewState.USER_DETAIL) && (
+          {(currentView === ViewState.PLANNER || currentView === ViewState.SETTINGS || currentView === ViewState.USER_DETAIL || currentView === ViewState.ROADTRIPS) && (
             <motion.div 
               layoutId="mobileActiveIndicatorDot"
               className="absolute -bottom-1 w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_0_rgba(59,130,246,0.8)]"
@@ -313,6 +314,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
                     <span>Planner</span>
                   </div>
                   {currentView === ViewState.PLANNER && <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
+                </button>
+
+                {/* Road Trips option */}
+                <button
+                  onClick={() => {
+                    onNavigate(ViewState.ROADTRIPS);
+                    setIsMoreOpen(false);
+                  }}
+                  className={`flex items-center justify-between w-full p-2.5 px-3 rounded-xl text-left text-xs font-bold font-sans transition-all duration-150 border cursor-pointer ${
+                    currentView === ViewState.ROADTRIPS
+                      ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/10'
+                      : 'text-zinc-700 dark:text-zinc-300 bg-transparent border-transparent hover:bg-zinc-50 dark:hover:bg-white/[0.04]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="material-icons-outlined text-lg">directions_car</span>
+                    <span>Road Trips</span>
+                  </div>
+                  {currentView === ViewState.ROADTRIPS && <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
                 </button>
 
                 {/* Settings button option */}

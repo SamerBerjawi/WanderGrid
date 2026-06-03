@@ -129,9 +129,21 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
         setLoading(true);
         Promise.all([
             dataService.getTrips(),
-            dataService.getFlights()
-        ]).then(([loadedTrips, loadedFlights]) => {
+            dataService.getFlights(),
+            dataService.getRoadTrips()
+        ]).then(([loadedTrips, loadedFlights, loadedRoadTrips]) => {
             const coordCache = getCoordCache();
+
+            // Merge independent road trips into independent flights list safely to avoid duplicated IDs
+            const flightIds = new Set((loadedFlights || []).map(f => f.id));
+            const combinedFlights = [...(loadedFlights || [])];
+            (loadedRoadTrips || []).forEach(rt => {
+                if (!flightIds.has(rt.id)) {
+                    combinedFlights.push(rt);
+                    flightIds.add(rt.id);
+                }
+            });
+            const loadedFlightsCombined = combinedFlights;
 
             // Try to resolve coordinates instantly using local cache only to prevent blocking the UI
             const getLocalCoordsSync = (place: string) => {
@@ -177,7 +189,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
             };
 
             const flightsByTripIdMap = new Map<string, any[]>();
-            (loadedFlights || []).forEach(f => {
+            (loadedFlightsCombined || []).forEach(f => {
                 const tId = f.tripId;
                 if (tId && tId !== 'unassigned') {
                     if (!flightsByTripIdMap.has(tId)) {
@@ -209,7 +221,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                 };
             });
 
-            const initialFlights = processTransportsSync(loadedFlights || []);
+            const initialFlights = processTransportsSync(loadedFlightsCombined || []);
 
             const makeSyntheticTrips = (flightsList: any[]) => {
                 const unassignedFlights = (flightsList || []).filter(f => !f.tripId || f.tripId === 'unassigned');
@@ -257,7 +269,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                     return c;
                 };
 
-                const asyncEnrichedFlights = await mapWithConcurrency(loadedFlights || [], async (f) => {
+                const asyncEnrichedFlights = await mapWithConcurrency(loadedFlightsCombined || [], async (f) => {
                     const enriched = { ...f };
                     if (enriched.origin && (!enriched.originLat || !enriched.originLng)) {
                         const c = await resolveCoordsAsync(enriched.origin);

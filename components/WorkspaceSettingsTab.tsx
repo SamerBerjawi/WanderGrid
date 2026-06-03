@@ -87,6 +87,47 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                                 ))}
                             </div>
                         </div>
+
+                        {/* Defaults Section */}
+                        <div className="border-t border-gray-100 dark:border-white/5 pt-6 md:col-span-3 space-y-4">
+                            <h4 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
+                                <span className="material-icons-outlined text-lg text-blue-500">settings_suggest</span>
+                                Transit & Travel Defaults
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <Select 
+                                    label="Default Travel Class" 
+                                    value={config.defaultTravelClass || 'Economy'} 
+                                    onChange={e => setConfig({...config, defaultTravelClass: e.target.value as any})} 
+                                    options={[
+                                        { label: 'Economy', value: 'Economy' },
+                                        { label: 'Premium Economy', value: 'Premium Economy' },
+                                        { label: 'Business', value: 'Business' },
+                                        { label: 'First', value: 'First' }
+                                    ]} 
+                                />
+                                <Input 
+                                    label="Default Starting Airport (IATA)" 
+                                    placeholder="e.g. LAX, LHR, SYD" 
+                                    maxLength={3}
+                                    value={config.defaultStartingAirport || ''} 
+                                    onChange={e => setConfig({...config, defaultStartingAirport: e.target.value.toUpperCase()})} 
+                                />
+                                <Select 
+                                    label="Default Land Transport" 
+                                    value={config.defaultLandTransportMethod || 'Train'} 
+                                    onChange={e => setConfig({...config, defaultLandTransportMethod: e.target.value as any})} 
+                                    options={[
+                                        { label: 'Train', value: 'Train' },
+                                        { label: 'Bus', value: 'Bus' },
+                                        { label: 'Car Rental', value: 'Car Rental' },
+                                        { label: 'Personal Car', value: 'Personal Car' },
+                                        { label: 'Cruise', value: 'Cruise' },
+                                        { label: 'Ferry', value: 'Ferry' }
+                                    ]} 
+                                />
+                            </div>
+                        </div>
                     </div>
                     
                     <div className="p-8 border-t border-gray-100 dark:border-white/5 bg-gray-50/30 dark:bg-white/5 space-y-6">

@@ -572,6 +572,47 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                     />
                   </div>
 
+                  {/* Defaults Section */}
+                  <div className="pt-6 border-t border-gray-100 dark:border-white/5 space-y-4">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest block">Transit & Travel Defaults</label>
+                      <p className="text-[11px] text-gray-400">Establish fallback rules for booking classes, starting points, and land connections inside planners.</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <Select 
+                        label="Default Travel Class" 
+                        value={config.defaultTravelClass || 'Economy'} 
+                        onChange={e => setConfig({...config, defaultTravelClass: e.target.value as any})} 
+                        options={[
+                          { label: 'Economy', value: 'Economy' }, 
+                          { label: 'Premium Economy', value: 'Premium Economy' }, 
+                          { label: 'Business', value: 'Business' }, 
+                          { label: 'First', value: 'First' }
+                        ]} 
+                      />
+                      <Input 
+                        label="Default Starting Airport (IATA)" 
+                        placeholder="e.g. LAX, LHR, SYD" 
+                        maxLength={3}
+                        value={config.defaultStartingAirport || ''} 
+                        onChange={e => setConfig({...config, defaultStartingAirport: e.target.value.toUpperCase()})} 
+                      />
+                      <Select 
+                        label="Default Land Transport Mode" 
+                        value={config.defaultLandTransportMethod || 'Train'} 
+                        onChange={e => setConfig({...config, defaultLandTransportMethod: e.target.value as any})} 
+                        options={[
+                          { label: 'Train', value: 'Train' }, 
+                          { label: 'Bus', value: 'Bus' }, 
+                          { label: 'Car Rental', value: 'Car Rental' }, 
+                          { label: 'Personal Car', value: 'Personal Car' }, 
+                          { label: 'Cruise', value: 'Cruise' }, 
+                          { label: 'Ferry', value: 'Ferry' }
+                        ]} 
+                      />
+                    </div>
+                  </div>
+
                   {/* Operational Days section */}
                   <div className="pt-6 border-t border-gray-100 dark:border-white/5 space-y-3">
                     <div className="space-y-1">
@@ -917,6 +958,19 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                           <p className="text-[10px] text-amber-700/80 dark:text-amber-300/60 leading-normal font-semibold">Restoring from a backup will completely overwrite your database including all registered personnel roster accounts and trips.</p>
                         </div>
                       </div>
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-800/20 border border-zinc-200 dark:border-zinc-800 space-y-2">
+                      <p className="text-xs font-black text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">Unified Backup Features:</p>
+                      <p className="text-[10px] text-zinc-500 font-medium leading-relaxed">Generates a secure offline file containing all personal records from server state maps:</p>
+                      <ul className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-zinc-650 dark:text-zinc-400 font-bold font-mono">
+                        <li className="flex items-center gap-1.5"><span className="text-blue-500 text-base">•</span> Travel Atlas (visited)</li>
+                        <li className="flex items-center gap-1.5"><span className="text-blue-500 text-base">•</span> Flight Log Boards</li>
+                        <li className="flex items-center gap-1.5"><span className="text-blue-500 text-base">•</span> Trip & Route Rosters</li>
+                        <li className="flex items-center gap-1.5"><span className="text-blue-500 text-base">•</span> Custom Event Boards</li>
+                        <li className="flex items-center gap-1.5"><span className="text-blue-500 text-base">•</span> Team User Profiles</li>
+                        <li className="flex items-center gap-1.5"><span className="text-blue-500 text-base">•</span> Workspace Settings</li>
+                      </ul>
                     </div>
 
                     <div className="grid grid-cols-1 gap-3">

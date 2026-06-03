@@ -336,10 +336,10 @@ const loadGlobalData = async () => {
   try {
     console.log('Loading global memory caches from PostgreSQL database... (eliminating raw GitHub web requests on startup)');
     
-    // Clear any potentially contaminated geocoding cache records for BER and MAN to restore correct city mappings.
+    // Clear any potentially contaminated geocoding cache records for BER, MAN, and TUN to restore correct city mappings.
     try {
-        await pool.query("DELETE FROM geocoding_cache WHERE query IN ('ber', 'ber airport', 'man', 'man airport', 'manchester')");
-        console.log('[SYSTEM-CLEANUP] Cleaned up any potentially contaminated geocoding_cache values for BER and MAN.');
+        await pool.query("DELETE FROM geocoding_cache WHERE query IN ('ber', 'ber airport', 'man', 'man airport', 'manchester', 'tun', 'tun airport', 'tunis', 'tunis, tunisia', 'tunis carthage', 'tunis carthage airport')");
+        console.log('[SYSTEM-CLEANUP] Cleaned up any potentially contaminated geocoding_cache values for BER, MAN, and TUN.');
     } catch (cleanErr) {
         console.warn('System cleanup query failed:', cleanErr.message);
     }
@@ -899,7 +899,9 @@ const STATIC_GEO_COORDS = {
     "Cambodia": { "lat": "12.5657", "lon": "104.9910", "city": "Phnom Penh", "country": "Cambodia", "iso": "KH" },
     "Phnom Penh": { "lat": "11.5564", "lon": "104.9282", "city": "Phnom Penh", "country": "Cambodia", "iso": "KH" },
     "Stockholm": { "lat": "59.3293", "lon": "18.0686", "city": "Stockholm", "country": "Sweden", "iso": "SE" },
-    "Sweden": { "lat": "60.1282", "lon": "18.6435", "city": "Stockholm", "country": "Sweden", "iso": "SE" }
+    "Sweden": { "lat": "60.1282", "lon": "18.6435", "city": "Stockholm", "country": "Sweden", "iso": "SE" },
+    "Tunis": { "lat": "36.8065", "lon": "10.1815", "city": "Tunis", "country": "Tunisia", "iso": "TN", "tz": "Africa/Tunis" },
+    "Tunisia": { "lat": "33.8869", "lon": "9.5375", "city": "Tunis", "country": "Tunisia", "iso": "TN", "tz": "Africa/Tunis" }
 };
 
 // Search local static and prepopulated airport/city data offline-first before triggering external network calls
@@ -910,38 +912,75 @@ function searchLocalAirportData(q) {
     // A. Direct IATA exact 3-letter code lookup
     if (queryLower.length === 3) {
         const iataUpper = queryLower.toUpperCase();
+        const gps = STATIC_GEO_COORDS[iataUpper];
+        if (gps) {
+            const details = memoryAirports.get(iataUpper);
+            return [{
+                name: details?.airport_name || gps.name || gps.city || iataUpper,
+                latitude: parseFloat(gps.lat),
+                longitude: parseFloat(gps.lon),
+                country: gps.country || details?.country || '',
+                country_code: gps.iso || '',
+                timezone: gps.tz || 'UTC',
+                admin1: details?.city_name || gps.city || ''
+            }];
+        }
+        
         const details = memoryAirports.get(iataUpper);
         if (details) {
-            const gps = STATIC_GEO_COORDS[iataUpper];
             return [{
                 name: details.airport_name || details.city_name,
-                latitude: gps ? parseFloat(gps.lat) : 0,
-                longitude: gps ? parseFloat(gps.lon) : 0,
-                country: details.country || gps?.country || '',
-                country_code: gps?.iso || '',
-                timezone: gps?.tz || 'UTC',
+                latitude: 0,
+                longitude: 0,
+                country: details.country || '',
+                country_code: '',
+                timezone: 'UTC',
                 admin1: details.city_name
             }];
         }
     }
     
-    // B. Search in-memory airports loaded from PostgreSQL
     const results = [];
+
+    // B. Search high-fidelity static airport coordinates first to be extremely fast and robust
+    for (const [iata, gps] of Object.entries(STATIC_GEO_COORDS)) {
+        if (iata.length === 3) {
+            const iataLower = iata.toLowerCase();
+            const cityLower = (gps.city || '').toLowerCase();
+            const airportLower = (gps.name || '').toLowerCase();
+            
+            if (iataLower === queryLower || cityLower.includes(queryLower) || airportLower.includes(queryLower) || queryLower.includes(cityLower)) {
+                const details = memoryAirports.get(iata);
+                results.push({
+                    name: details?.airport_name || gps.name || gps.city ? `${details?.airport_name || gps.name} (${iata})` : iata,
+                    latitude: parseFloat(gps.lat),
+                    longitude: parseFloat(gps.lon),
+                    country: gps.country || details?.country || '',
+                    country_code: gps.iso || '',
+                    timezone: gps.tz || 'UTC',
+                    admin1: details?.city_name || gps.city || ''
+                });
+            }
+        }
+    }
+
+    // Secondary check of other in-memory database airports to ensure complete coverage
     for (const [iata, details] of memoryAirports.entries()) {
         const iataLower = iata.toLowerCase();
         const cityLower = (details.city_name || '').toLowerCase();
         const airportLower = (details.airport_name || '').toLowerCase();
         
         if (iataLower === queryLower || cityLower.includes(queryLower) || airportLower.includes(queryLower)) {
-            const gps = STATIC_GEO_COORDS[iata];
-            if (gps) {
+            // Only add if not already matched from static coords to avoid duplicates
+            if (!results.some(r => r.name.includes(`(${iata})`))) {
+                const gps = STATIC_GEO_COORDS[iata];
                 results.push({
                     name: `${details.airport_name} (${iata})`,
-                    latitude: parseFloat(gps.lat),
-                    longitude: parseFloat(gps.lon),
-                    country: gps.country || '',
-                    country_code: gps.iso || '',
-                    timezone: gps.tz || 'UTC',
+                    latitude: gps ? parseFloat(gps.lat) : 0,
+                    longitude: gps ? parseFloat(gps.lon) : 0,
+                    country: gps?.country || '',
+                    country_code: gps?.iso || '',
+                    timezone: gps?.tz || 'UTC',
                     admin1: details.city_name
                 });
             }
@@ -950,17 +989,19 @@ function searchLocalAirportData(q) {
     
     // C. Search static city labels directly
     for (const [key, details] of Object.entries(STATIC_GEO_COORDS)) {
-        if (key.length > 3 && key.toLowerCase() === queryLower) {
-            results.push({
-                name: details.city || key,
-                latitude: parseFloat(details.lat),
-                longitude: parseFloat(details.lon),
-                country: details.country || '',
-                country_code: details.iso || '',
-                timezone: details.tz || 'UTC',
-                admin1: details.city || ''
-            });
-            break;
+        if (key.length > 3 && (key.toLowerCase() === queryLower || queryLower.includes(key.toLowerCase()) || key.toLowerCase().includes(queryLower))) {
+            // Avoid adding duplicate cities
+            if (!results.some(r => r.name.toLowerCase() === (details.city || key).toLowerCase())) {
+                results.push({
+                    name: details.city || key,
+                    latitude: parseFloat(details.lat),
+                    longitude: parseFloat(details.lon),
+                    country: details.country || '',
+                    country_code: details.iso || '',
+                    timezone: details.tz || 'UTC',
+                    admin1: details.city || ''
+                });
+            }
         }
     }
     
@@ -1634,7 +1675,7 @@ app.get('/api/jobs/:id', (req, res) => {
 // Immediately acknowledges the request with 'Processing' state while compiling heavy table states
 app.post('/api/jobs/backup', (req, res) => {
     const jobId = runBackgroundJob('DATABASE_BACKUP', async (progress) => {
-        const tables = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights'];
+        const tables = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights', 'visited'];
         const backup = {};
         
         for (let i = 0; i < tables.length; i++) {
@@ -1764,7 +1805,7 @@ app.post('/api/jobs/refresh-global-data', (req, res) => {
 // Import/Export Full State
 app.get('/api/backup', async (req, res) => {
     try {
-        const tables = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights'];
+        const tables = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights', 'visited'];
         const backup = {};
         
         for (const table of tables) {
@@ -1790,7 +1831,7 @@ app.post('/api/restore', async (req, res) => {
         return res.status(400).json({ error: 'Validation failed: Backup payload must be a JSON object' });
     }
     
-    const tables = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights'];
+    const tables = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights', 'visited'];
     for (const table of tables) {
         if (data[table] !== undefined) {
             if (!Array.isArray(data[table])) {
@@ -1881,7 +1922,7 @@ app.post('/api/wipe', async (req, res) => {
         await client.query('BEGIN');
         
         // Truncate all tables
-        const tables = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights', 'settings'];
+        const tables = ['users', 'trips', 'events', 'entitlements', 'configs', 'flights', 'visited', 'settings'];
         for (const table of tables) {
             await client.query(`TRUNCATE TABLE ${table} CASCADE`);
         }
