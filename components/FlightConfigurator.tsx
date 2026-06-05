@@ -270,7 +270,13 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
             
             if (s.defaultTravelClass) setDefaultTravelClass(s.defaultTravelClass);
             if (s.defaultStartingAirport) setDefaultStartingAirport(s.defaultStartingAirport);
-            if (s.defaultLandTransportMethod) setDefaultLandTransportMethod(s.defaultLandTransportMethod as TransportMode);
+            if (s.defaultLandTransportMethod) {
+                const method = s.defaultLandTransportMethod as TransportMode;
+                setDefaultLandTransportMethod(method);
+                if (!initialData || initialData.length === 0) {
+                    setMode(method);
+                }
+            }
 
             if (!initialData || initialData.length === 0) {
                 // Pre-populate segment starting locations and travel classes

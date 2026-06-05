@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useMemo, useState } from 'react';
 import L from 'leaflet';
 import { Trip, Transport } from '../types';
 import html2canvas from 'html2canvas';
+import { getCoordinates, getCoordinatesSync } from '../services/geocoding';
 
 export type LayerType = 'standard' | 'satellite' | 'topography' | 'hillshade';
 
@@ -287,6 +288,7 @@ interface PointItem {
     tripId?: string;
     color?: string;
     isEndpoint?: boolean;
+    isFlight?: boolean;
 }
 
 function getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -347,52 +349,62 @@ function getShorterCleanerName(name1: string, name2: string): string {
 }
 
 const performClustering = (map: L.Map, points: PointItem[], radiusPixels = 50) => {
-    const clusters: { lat: number; lng: number; points: PointItem[]; id: string }[] = [];
-    
-    // De-duplicate points based on extremely close latitude and longitude (same city)
-    const uniquePoints: PointItem[] = [];
-    points.forEach(p => {
-        const dup = uniquePoints.find(up => Math.abs(up.lat - p.lat) < 0.005 && Math.abs(up.lng - p.lng) < 0.005);
-        if (dup) {
-            // Merge labels
-            if (!dup.name.includes(p.name)) {
-                dup.name += `, ${p.name}`;
-            }
-        } else {
-            uniquePoints.push({ ...p });
-        }
-    });
+    const flightPoints = points.filter(p => p.isFlight);
+    const landSeaPoints = points.filter(p => !p.isFlight);
 
-    uniquePoints.forEach(p => {
-        const lp = map.latLngToLayerPoint([p.lat, p.lng]);
+    const clusterGroup = (ptsList: PointItem[]) => {
+        const clusters: { lat: number; lng: number; points: PointItem[]; id: string }[] = [];
         
-        let foundCluster = false;
-        for (const c of clusters) {
-            const clp = map.latLngToLayerPoint([c.lat, c.lng]);
-            const dist = Math.sqrt(Math.pow(lp.x - clp.x, 2) + Math.pow(lp.y - clp.y, 2));
-            if (dist < radiusPixels) {
-                c.points.push(p);
-                // Recompute centroid
-                const sumLat = c.points.reduce((s, pt) => s + pt.lat, 0);
-                const sumLng = c.points.reduce((s, pt) => s + pt.lng, 0);
-                c.lat = sumLat / c.points.length;
-                c.lng = sumLng / c.points.length;
-                foundCluster = true;
-                break;
+        // De-duplicate points based on extremely close latitude and longitude (same city)
+        const uniquePoints: PointItem[] = [];
+        ptsList.forEach(p => {
+            const dup = uniquePoints.find(up => Math.abs(up.lat - p.lat) < 0.005 && Math.abs(up.lng - p.lng) < 0.005);
+            if (dup) {
+                // Merge labels
+                if (!dup.name.includes(p.name)) {
+                    dup.name += `, ${p.name}`;
+                }
+            } else {
+                uniquePoints.push({ ...p });
             }
-        }
+        });
+
+        uniquePoints.forEach(p => {
+            const lp = map.latLngToLayerPoint([p.lat, p.lng]);
+            
+            let foundCluster = false;
+            for (const c of clusters) {
+                const clp = map.latLngToLayerPoint([c.lat, c.lng]);
+                const dist = Math.sqrt(Math.pow(lp.x - clp.x, 2) + Math.pow(lp.y - clp.y, 2));
+                if (dist < radiusPixels) {
+                    c.points.push(p);
+                    // Recompute centroid
+                    const sumLat = c.points.reduce((s, pt) => s + pt.lat, 0);
+                    const sumLng = c.points.reduce((s, pt) => s + pt.lng, 0);
+                    c.lat = sumLat / c.points.length;
+                    c.lng = sumLng / c.points.length;
+                    foundCluster = true;
+                    break;
+                }
+            }
+            
+            if (!foundCluster) {
+                clusters.push({
+                    lat: p.lat,
+                    lng: p.lng,
+                    points: [p],
+                    id: Math.random().toString(36).substr(2, 9)
+                });
+            }
+        });
         
-        if (!foundCluster) {
-            clusters.push({
-                lat: p.lat,
-                lng: p.lng,
-                points: [p],
-                id: Math.random().toString(36).substr(2, 9)
-            });
-        }
-    });
-    
-    return clusters;
+        return clusters;
+    };
+
+    const flightClusters = clusterGroup(flightPoints);
+    const landSeaClusters = clusterGroup(landSeaPoints);
+
+    return [...flightClusters, ...landSeaClusters];
 };
 
 export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({ 
@@ -426,6 +438,45 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
     showRoadTracing: showRoadTracingProp,
     onToggleRoadTracing
 }) => {
+    const enrichedTrips = useMemo(() => {
+        return (trips || []).map(trip => {
+            if (!trip.transports || trip.transports.length === 0) return trip;
+            const enrichedTransports = trip.transports.map(t => {
+                let originLat = t.originLat;
+                let originLng = t.originLng;
+                let destLat = t.destLat;
+                let destLng = t.destLng;
+
+                if (t.origin && (!originLat || !originLng || isNaN(originLat) || isNaN(originLng))) {
+                    const coords = getCoordinatesSync(t.origin);
+                    if (coords) {
+                        originLat = coords.lat;
+                        originLng = coords.lng;
+                    }
+                }
+                if (t.destination && (!destLat || !destLng || isNaN(destLat) || isNaN(destLng))) {
+                    const coords = getCoordinatesSync(t.destination);
+                    if (coords) {
+                        destLat = coords.lat;
+                        destLng = coords.lng;
+                    }
+                }
+
+                return {
+                    ...t,
+                    originLat,
+                    originLng,
+                    destLat,
+                    destLng
+                };
+            });
+            return {
+                ...trip,
+                transports: enrichedTransports
+            };
+        });
+    }, [trips]);
+
     const mapContainer = useRef<HTMLDivElement>(null);
     const mapInstance = useRef<L.Map | null>(null);
     const tileLayerRef = useRef<L.TileLayer | null>(null);
@@ -433,7 +484,193 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
     const geoJsonLayerRef = useRef<L.GeoJSON | null>(null);
     const routeLayerGroupRef = useRef<L.LayerGroup | null>(null);
     const markerLayerGroupRef = useRef<L.LayerGroup | null>(null);
+    const customLayerGroupRef = useRef<L.LayerGroup | null>(null);
     const [isScreenshotting, setIsScreenshotting] = useState(false);
+    
+    // --- CUSTOM WAYPOINT AND PATH SEGMENTS PLACEMENT DECK ---
+    const [manualWaypoints, setManualWaypoints] = useState<any[]>(() => {
+        try {
+            const saved = localStorage.getItem('wandergrid_manual_waypoints');
+            return saved ? JSON.parse(saved) : [];
+        } catch {
+            return [];
+        }
+    });
+
+    const [manualSegments, setManualSegments] = useState<any[]>(() => {
+        try {
+            const saved = localStorage.getItem('wandergrid_manual_segments');
+            return saved ? JSON.parse(saved) : [];
+        } catch {
+            return [];
+        }
+    });
+
+    const saveWaypoints = (wps: any[]) => {
+        setManualWaypoints(wps);
+        try {
+            localStorage.setItem('wandergrid_manual_waypoints', JSON.stringify(wps));
+        } catch (e) {
+            console.warn(e);
+        }
+    };
+
+    const saveSegments = (segs: any[]) => {
+        setManualSegments(segs);
+        try {
+            localStorage.setItem('wandergrid_manual_segments', JSON.stringify(segs));
+        } catch (e) {
+            console.warn(e);
+        }
+    };
+
+    const [isWaypointPanelOpen, setIsWaypointPanelOpen] = useState(false);
+    const [pinningMode, setPinningMode] = useState(false);
+    const pinningModeRef = useRef(false);
+    useEffect(() => {
+        pinningModeRef.current = pinningMode;
+    }, [pinningMode]);
+
+    const [pendingPinCoord, setPendingPinCoord] = useState<{ lat: number, lng: number } | null>(null);
+    const [newPinName, setNewPinName] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchLoading, setSearchLoading] = useState(false);
+
+    // Form inputs for segments
+    const [segFromId, setSegFromId] = useState('');
+    const [segToId, setSegToId] = useState('');
+    const [segColor, setSegColor] = useState('#ec4899');
+    const [segStyle, setSegStyle] = useState('animated');
+    const [segModeRoad, setSegModeRoad] = useState(false);
+
+    const handleMapClick = (lat: number, lng: number) => {
+        setPendingPinCoord({ lat, lng });
+        setNewPinName('');
+        setIsWaypointPanelOpen(true);
+    };
+
+    const handleSavePendingPin = () => {
+        if (!pendingPinCoord) return;
+        const nameToSave = newPinName.trim() || `Pin at ${pendingPinCoord.lat.toFixed(3)}, ${pendingPinCoord.lng.toFixed(3)}`;
+        
+        const newWp = {
+            id: `wp-${Math.random().toString(36).substring(2, 11)}`,
+            name: nameToSave,
+            lat: pendingPinCoord.lat,
+            lng: pendingPinCoord.lng,
+            timestamp: Date.now()
+        };
+
+        const updatedWps = [...manualWaypoints, newWp];
+        saveWaypoints(updatedWps);
+        setPendingPinCoord(null);
+        setNewPinName('');
+    };
+
+    const handleSearchAndPin = async () => {
+        if (!searchQuery.trim()) return;
+        setSearchLoading(true);
+        try {
+            const loc = await getCoordinates(searchQuery);
+            if (loc) {
+                const newWp = {
+                    id: `wp-${Math.random().toString(36).substring(2, 11)}`,
+                    name: searchQuery.trim(),
+                    lat: loc.lat,
+                    lng: loc.lng,
+                    timestamp: Date.now()
+                };
+                
+                const updatedWps = [...manualWaypoints, newWp];
+                saveWaypoints(updatedWps);
+                
+                if (mapInstance.current) {
+                    mapInstance.current.flyTo([loc.lat, loc.lng], 7, { animate: true, duration: 1.5 });
+                }
+                
+                setSearchQuery('');
+            } else {
+                alert(`Could not resolve location coordinates for "${searchQuery}"`);
+            }
+        } catch (e) {
+            console.warn(e);
+            alert("Geocoding lookup encountered an error.");
+        } finally {
+            setSearchLoading(false);
+        }
+    };
+
+    const handleFlyToWaypoint = (wp: any) => {
+        if (mapInstance.current) {
+            mapInstance.current.flyTo([wp.lat, wp.lng], 8, { animate: true, duration: 1.5 });
+        }
+    };
+
+    const handleDeleteWaypoint = (id: string) => {
+        const updatedWps = manualWaypoints.filter(wp => wp.id !== id);
+        saveWaypoints(updatedWps);
+
+        const updatedSegs = manualSegments.filter(seg => seg.fromId !== id && seg.toId !== id);
+        saveSegments(updatedSegs);
+        
+        if (segFromId === id) setSegFromId('');
+        if (segToId === id) setSegToId('');
+    };
+
+    const handleClearAllWaypoints = () => {
+        if (window.confirm("Are you sure you want to clear all manual waypoints and connection paths?")) {
+            saveWaypoints([]);
+            saveSegments([]);
+            setSegFromId('');
+            setSegToId('');
+        }
+    };
+
+    const handleEstablishSegment = () => {
+        if (!segFromId || !segToId) {
+            alert("Please select both a Source and a Destination waypoint.");
+            return;
+        }
+        if (segFromId === segToId) {
+            alert("Source and Destination waypoints must be different.");
+            return;
+        }
+
+        const newSeg = {
+            id: `seg-${Math.random().toString(36).substring(2, 11)}`,
+            fromId: segFromId,
+            toId: segToId,
+            color: segColor,
+            style: segStyle,
+            mode: segModeRoad ? 'road' : 'direct',
+            timestamp: Date.now()
+        };
+
+        const updatedSegs = [...manualSegments, newSeg];
+        saveSegments(updatedSegs);
+
+        // Chain helper
+        setSegFromId(segToId);
+        setSegToId('');
+    };
+
+    const handleDeleteSegment = (id: string) => {
+        const updatedSegs = manualSegments.filter(seg => seg.id !== id);
+        saveSegments(updatedSegs);
+    };
+
+    // Calculate distance in kilometers
+    const getDistanceKm = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+        const R = 6371; // Earth's radius
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a = 
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+            Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    };
     
     // Road tracing / OpenSource routing cache & toggles
     const [localEnableRoadTracing, setLocalEnableRoadTracing] = useState(() => {
@@ -531,7 +768,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
         const missingSegments: { key: string; p1: L.LatLng; p2: L.LatLng }[] = [];
         const seenKeys = new Set<string>();
 
-        trips.forEach(trip => {
+        enrichedTrips.forEach(trip => {
             trip.transports?.forEach(t => {
                 if (t.originLat && t.originLng && t.destLat && t.destLng) {
                     const isLand = ['Car Rental', 'Personal Car', 'Bus', 'Train'].includes(t.mode);
@@ -587,12 +824,12 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
         return () => {
             active = false;
         };
-    }, [trips, enableRoadTracing, osrmCache]);
+    }, [enrichedTrips, enableRoadTracing, osrmCache]);
 
     // Pre-calculate frequencies
     const routeFrequencies = useMemo(() => {
         const counts = new Map<string, number>();
-        trips.forEach(trip => {
+        enrichedTrips.forEach(trip => {
             trip.transports?.forEach(t => {
                 if (t.originLat && t.originLng && t.destLat && t.destLng) {
                     const key = getRouteKey(t.originLat, t.originLng, t.destLat, t.destLng);
@@ -601,7 +838,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
             });
         });
         return counts;
-    }, [trips]);
+    }, [enrichedTrips]);
 
     // Load GeoJSON once
     useEffect(() => {
@@ -635,6 +872,14 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
         // Initialize layer groups and add them to map
         routeLayerGroupRef.current = L.layerGroup().addTo(map);
         markerLayerGroupRef.current = L.layerGroup().addTo(map);
+        customLayerGroupRef.current = L.layerGroup().addTo(map);
+
+        // Map Click Listener for Pinning custom Waypoints
+        map.on('click', (e: L.LeafletMouseEvent) => {
+            if (pinningModeRef.current) {
+                handleMapClick(e.latlng.lat, e.latlng.lng);
+            }
+        });
 
         // Force react update on zoom ending to recalculate spatial marker clustering grids
         map.on('zoomend', () => {
@@ -655,6 +900,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
             }
             routeLayerGroupRef.current = null;
             markerLayerGroupRef.current = null;
+            customLayerGroupRef.current = null;
         };
     }, []);
 
@@ -729,7 +975,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                 pts.push({ lat: place.lat, lng: place.lng, name: place.name });
             });
         } else {
-            trips.forEach(trip => {
+            enrichedTrips.forEach(trip => {
                 const flightStyle = getStatusStyle(trip, isDark, activeLayer);
 
                 if (trip.transports && trip.transports.length > 0) {
@@ -737,7 +983,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                         if (t.originLat && t.originLng && t.destLat && t.destLng) {
                             const isFlight = t.mode === 'Flight';
                             const isLand = ['Car Rental', 'Personal Car', 'Bus', 'Train'].includes(t.mode);
-                            const isSea = t.mode === 'Cruise';
+                            const isSea = ['Cruise', 'Ferry'].includes(t.mode);
 
                             if (isFlight && !showFlightRoutes) return;
                             if (!isFlight && !showLandSeaRoutes) return;
@@ -755,7 +1001,8 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                                 name: t.origin,
                                 tripId: trip.id,
                                 color: color,
-                                isEndpoint: true
+                                isEndpoint: true,
+                                isFlight: isFlight
                             });
 
                             if (t.waypoints && t.waypoints.length > 0) {
@@ -767,7 +1014,8 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                                             name: wp.name,
                                             tripId: trip.id,
                                             color: color,
-                                            isEndpoint: false
+                                            isEndpoint: false,
+                                            isFlight: isFlight
                                         });
                                     }
                                 });
@@ -779,7 +1027,8 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                                 name: t.destination,
                                 tripId: trip.id,
                                 color: color,
-                                isEndpoint: true
+                                isEndpoint: true,
+                                isFlight: isFlight
                             });
                         }
                     });
@@ -791,7 +1040,8 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                         name: trip.location || trip.name,
                         tripId: trip.id,
                         color: color,
-                        isEndpoint: true
+                        isEndpoint: true,
+                        isFlight: false
                     });
                 }
             });
@@ -809,13 +1059,14 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                 }
                 dup.name = cleanName;
                 if (p.isEndpoint) dup.isEndpoint = true;
+                if (p.isFlight) dup.isFlight = true;
             } else {
                 mergedPts.push({ ...p });
             }
         });
 
         return mergedPts;
-    }, [trips, viewMode, visitedPlaces, isDark, activeLayer, showLandSeaRoutes, showFlightRoutes]);
+    }, [enrichedTrips, viewMode, visitedPlaces, isDark, activeLayer, showLandSeaRoutes, showFlightRoutes]);
 
     // Track last fitted state to prevent annoying resetting during active interactions
     const lastFittedPointsRef = useRef<string>('');
@@ -893,15 +1144,17 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
 
         if (viewMode === 'scratch') return;
 
-        trips.forEach(trip => {
+        enrichedTrips.forEach(trip => {
             const flightStyle = getStatusStyle(trip, isDark, activeLayer);
 
             if (trip.transports && trip.transports.length > 0) {
+                console.log("ExpeditionMap: drawing transports length:", trip.transports.length);
                 trip.transports.forEach(t => {
+                    console.log("ExpeditionMap info for transport:", t.origin, "->", t.destination, "mode:", t.mode, "coords:", {originLat: t.originLat, originLng: t.originLng, destLat: t.destLat, destLng: t.destLng});
                     if (t.originLat && t.originLng && t.destLat && t.destLng) {
                         const isFlight = t.mode === 'Flight';
                         const isLand = ['Car Rental', 'Personal Car', 'Bus', 'Train'].includes(t.mode);
-                        const isSea = t.mode === 'Cruise';
+                        const isSea = ['Cruise', 'Ferry'].includes(t.mode);
 
                         if (isFlight && !showFlightRoutes) return;
                         if (!isFlight && !showLandSeaRoutes) return;
@@ -1036,7 +1289,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                         } else if (t.mode === 'Bus') {
                             modeIcon = 'directions_bus';
                             modeColor = 'text-amber-500';
-                        } else if (t.mode === 'Cruise') {
+                        } else if (t.mode === 'Cruise' || t.mode === 'Ferry') {
                             modeIcon = 'directions_boat';
                             modeColor = 'text-cyan-400';
                         }
@@ -1112,7 +1365,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                 });
             }
         });
-    }, [trips, viewMode, onTripClick, routeFrequencies, showFrequencyWeight, animateRoutes, isDark, activeLayer, showGradientRoutes, enableRoadTracing, osrmCache, showLandSeaRoutes, showFlightRoutes, proportionalArcThickness]);
+    }, [enrichedTrips, viewMode, onTripClick, routeFrequencies, showFrequencyWeight, animateRoutes, isDark, activeLayer, showGradientRoutes, enableRoadTracing, osrmCache, showLandSeaRoutes, showFlightRoutes, proportionalArcThickness]);
 
     // Handle City Markers & Clusters Rendering (Separated to enable zero-lag map panning and native zoom rendering)
     useEffect(() => {
@@ -1166,8 +1419,13 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                         marker.on('click', () => onTripClick(pt.tripId!));
                     }
                 } else {
+                    const isFlightCluster = cluster.points.some(p => p.isFlight);
+                    const bgClass = isFlightCluster
+                        ? 'bg-blue-600/35 text-blue-700 border border-blue-600 dark:bg-blue-400/25 dark:text-blue-200 dark:border-blue-400 shadow-blue-500/15'
+                        : 'bg-amber-600/35 text-amber-700 border border-amber-600 dark:bg-amber-400/25 dark:text-amber-200 dark:border-amber-400 shadow-amber-500/15';
+
                     const clusterIcon = L.divIcon({
-                        html: `<div class="w-8 h-8 rounded-full bg-blue-600/35 text-blue-700 border-2 border-blue-600 dark:bg-blue-400/25 dark:text-blue-200 dark:border-blue-400 flex items-center justify-center text-xs font-black shadow-lg shadow-blue-500/15 hover:scale-110 transition-transform">
+                        html: `<div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shadow-lg hover:scale-110 transition-transform ${bgClass}">
                             <span>${cluster.points.length}</span>
                         </div>`,
                         className: 'custom-cluster-icon',
@@ -1239,6 +1497,140 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
         }
     }, [rawPoints, clusterMode, showCityMarkers, hideAirportCircles, airportCircleSize, isDark, activeLayer, mapZoom, onTripClick]);
 
+    // Handle drawing custom/manual waypoints and path segments on the map
+    useEffect(() => {
+        if (!mapInstance.current || !customLayerGroupRef.current) return;
+        const customGroup = customLayerGroupRef.current;
+        customGroup.clearLayers();
+
+        // 1. Draw manual waypoints
+        manualWaypoints.forEach(wp => {
+            const markerColor = '#ec4899'; // Hot Rose for custom pins
+            const marker = L.circleMarker([wp.lat, wp.lng], {
+                radius: 6,
+                fillColor: '#ffffff',
+                color: markerColor,
+                weight: 3,
+                fillOpacity: 1,
+                opacity: 1
+            }).addTo(customGroup);
+
+            // Bind high-contrast text tooltip showing custom pin name
+            marker.bindTooltip(`
+                <div class="flex items-center gap-1 font-sans font-bold">
+                    <span class="material-icons-outlined text-[10px] text-rose-500">place</span>
+                    <span>${wp.name || 'Custom Pin'}</span>
+                </div>
+            `, {
+                direction: 'top',
+                className: 'leaflet-tooltip-custom bg-slate-900 border border-rose-500/30 text-white font-semibold rounded px-2.5 py-1 shadow-lg'
+            });
+
+            // Interactive hovering
+            marker.on('mouseover', () => {
+                marker.setStyle({
+                    radius: 8,
+                    weight: 4,
+                    color: '#ffffff',
+                    fillColor: markerColor
+                });
+            });
+
+            marker.on('mouseout', () => {
+                marker.setStyle({
+                    radius: 6,
+                    weight: 3,
+                    color: markerColor,
+                    fillColor: '#ffffff'
+                });
+            });
+
+            // Standard popup for details
+            marker.bindPopup(`
+                <div class="p-2 font-sans text-xs">
+                    <div class="font-bold text-gray-100 mb-1 flex items-center gap-1 font-semibold">
+                        <span class="material-icons-outlined text-xs text-rose-500">place</span>
+                        ${wp.name}
+                    </div>
+                    <div class="text-[9px] text-gray-400 font-mono">
+                        Coordinates: ${wp.lat.toFixed(5)}, ${wp.lng.toFixed(5)}
+                    </div>
+                </div>
+            `);
+        });
+
+        // 2. Draw manual path segments
+        manualSegments.forEach(seg => {
+            const fromWp = manualWaypoints.find(w => w.id === seg.fromId);
+            const toWp = manualWaypoints.find(w => w.id === seg.toId);
+            if (!fromWp || !toWp) return;
+
+            const p1 = L.latLng(fromWp.lat, fromWp.lng);
+            const p2 = L.latLng(toWp.lat, toWp.lng);
+
+            // Generate curvated geodesic points
+            let segPoints = getCurvePoints(p1, p2);
+
+            const color = seg.color || '#ec4899';
+            const style = seg.style || 'animated';
+            const isAnimated = style === 'animated' && animateRoutes;
+
+            // Track shadow line
+            L.polyline(segPoints, {
+                color: color,
+                weight: 2,
+                opacity: isDark ? 0.25 : 0.35,
+                interactive: false,
+                smoothFactor: 1.0
+            }).addTo(customGroup);
+
+            // Active trace line
+            const flowLine = L.polyline(segPoints, {
+                color: color,
+                weight: 3,
+                opacity: isAnimated ? 0.95 : 0.75,
+                className: isAnimated ? 'flight-path-flow' : '',
+                interactive: false,
+                lineCap: 'round',
+                dashArray: style === 'dashed' ? '6, 6' : undefined,
+                smoothFactor: 1.0
+            }).addTo(customGroup);
+
+            // Wide transparent click/hover area
+            const hitLine = L.polyline(segPoints, {
+                color: 'transparent',
+                weight: 15,
+                opacity: 0,
+                interactive: true,
+                smoothFactor: 1.0
+            }).addTo(customGroup);
+
+            // Dynamic distance calculation
+            const distance = Math.round(getDistanceKm(fromWp.lat, fromWp.lng, toWp.lat, toWp.lng));
+
+            hitLine.bindTooltip(`
+                <div class="p-2 font-sans select-none pointer-events-none min-w-[140px] text-zinc-100">
+                    <p class="text-[8px] font-black tracking-wider uppercase text-rose-400 mb-0.5">MANUAL SEGMENT</p>
+                    <p class="font-bold text-xs text-white">${fromWp.name} ➔ ${toWp.name}</p>
+                    <p class="text-[9px] text-zinc-400 mt-1">Approx. Distance: <span class="font-bold text-rose-400 font-mono">${distance} km</span></p>
+                </div>
+            `, {
+                sticky: true,
+                direction: 'top',
+                className: 'bg-zinc-950/95 border border-rose-500/35 rounded-xl shadow-2xl p-0'
+            });
+
+            // Interactive hovering effects
+            hitLine.on('mouseover', () => {
+                flowLine.setStyle({ weight: 5, opacity: 1 });
+            });
+
+            hitLine.on('mouseout', () => {
+                flowLine.setStyle({ weight: 3, opacity: isAnimated ? 0.95 : 0.75 });
+            });
+        });
+    }, [manualWaypoints, manualSegments, isDark, animateRoutes]);
+
     const handleZoomIn = () => mapInstance.current?.zoomIn();
     const handleZoomOut = () => mapInstance.current?.zoomOut();
     
@@ -1250,7 +1642,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
             visitedPlaces.forEach(p => bounds.extend([p.lat, p.lng]));
         } else {
             let hasPoints = false;
-            trips.forEach(trip => {
+            enrichedTrips.forEach(trip => {
                 if (trip.transports) {
                     trip.transports.forEach(t => {
                         if (t.originLat && t.originLng) bounds.extend([t.originLat, t.originLng]);
@@ -1364,7 +1756,334 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                     <span className="material-icons-outlined text-lg group-hover/fit:scale-110 transition-transform">center_focus_strong</span>
                 </button>
 
+                {/* Waypoint Dashboard Toggle */}
+                <button 
+                    onClick={() => setIsWaypointPanelOpen(!isWaypointPanelOpen)} 
+                    className={`w-10 h-10 rounded-2xl border shadow-2xl flex items-center justify-center transition-all duration-200 ${
+                        isWaypointPanelOpen
+                        ? 'bg-rose-600 border-rose-500 text-white shadow-rose-500/10'
+                        : isDark ? 'bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20' : 'bg-white/80 backdrop-blur-md border-slate-200 text-slate-600 hover:bg-slate-100'
+                    }`}
+                    title="Waypoint Drawer Desk"
+                >
+                    <span className="material-icons-outlined text-lg">route</span>
+                </button>
+
             </div>
+
+            {/* Waypoint Planner Overlay Panel - Glassy and Adaptive */}
+            {isWaypointPanelOpen && (
+                <div className={`absolute top-6 right-6 z-[6000] w-80 max-h-[88%] overflow-y-auto flex flex-col gap-4 p-4 rounded-3xl border shadow-2xl transition-all duration-300 no-scrollbar ${
+                    isDark 
+                    ? 'bg-zinc-950/95 border-zinc-900 text-white shadow-[0_20px_50px_rgba(0,0,0,0.8)]' 
+                    : 'bg-white/95 border-slate-200 text-slate-800 shadow-[0_20px_50px_rgba(0,0,0,0.15)] bg-slate-50/50'
+                }`}>
+                    {/* Header */}
+                    <div className="flex items-center justify-between border-b pb-2.5 border-dashed border-zinc-800 dark:border-zinc-800/80 border-slate-200">
+                        <div className="flex items-center gap-2">
+                            <span className="material-icons-outlined text-rose-500 text-xl font-bold">route</span>
+                            <div>
+                                <h3 className="font-black text-sm tracking-tight">Waypoint Draw Desk</h3>
+                                <p className="text-[9px] text-slate-400 dark:text-zinc-500 font-bold uppercase tracking-wider">Manual Path Segments</p>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={() => setIsWaypointPanelOpen(false)}
+                            className="w-6 h-6 rounded-lg flex items-center justify-center hover:bg-slate-200 dark:hover:bg-white/10 transition-colors"
+                        >
+                            <span className="material-icons-outlined text-sm">close</span>
+                        </button>
+                    </div>
+
+                    {/* Section 1: Pinning Controls */}
+                    <div className="flex flex-col gap-2">
+                        <span className="text-[9.5px] font-black text-rose-400 uppercase tracking-widest leading-none">
+                            I. Pinning Engine
+                        </span>
+                        
+                        {/* Toggle Pin tool */}
+                        <button
+                            onClick={() => {
+                                setPinningMode(!pinningMode);
+                                if (!pinningMode) {
+                                    setPendingPinCoord(null);
+                                }
+                            }}
+                            className={`w-full py-2.5 px-3 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 transition-all ${
+                                pinningMode
+                                ? 'bg-rose-500/20 border-rose-500 text-rose-400 shadow-md animate-pulse font-extrabold'
+                                : isDark ? 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:bg-zinc-800/80' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+                            }`}
+                        >
+                            <span className="material-icons-outlined text-sm">
+                                {pinningMode ? 'gps_fixed' : 'add_location_alt'}
+                            </span>
+                            {pinningMode ? 'PINNING MODE: ACTIVE' : 'ACTIVATE PIN PLACEMENT'}
+                        </button>
+                        <p className="text-[9px] text-zinc-500 dark:text-zinc-400 text-center italic mt-0.5 leading-tight">
+                            {pinningMode 
+                                ? "Click anywhere on the map grid to place a custom Waypoint."
+                                : "Pin tool is inactive. Turn on to drop pins directly."
+                            }
+                        </p>
+
+                        {/* Pending Pin Modal Form inline */}
+                        {pendingPinCoord && (
+                            <div className="mt-2 p-3 rounded-2xl border border-rose-500/30 bg-rose-500/5 flex flex-col gap-2 animate-fade-in-up">
+                                <span className="text-[9.5px] font-black text-rose-400 uppercase tracking-wider">Drop Pin Here</span>
+                                <span className="text-[9px] font-mono text-zinc-400 leading-none">
+                                    Lat: {pendingPinCoord.lat.toFixed(5)}, Lng: {pendingPinCoord.lng.toFixed(5)}
+                                </span>
+                                <input
+                                    type="text"
+                                    value={newPinName}
+                                    onChange={(e) => setNewPinName(e.target.value)}
+                                    placeholder="Enter descriptive label..."
+                                    className="w-full text-xs px-2.5 py-1.5 rounded-lg border focus:outline-none focus:ring-1 focus:ring-rose-500 bg-zinc-900 border-zinc-800 text-white font-medium"
+                                    autoFocus
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') handleSavePendingPin();
+                                        if (e.key === 'Escape') setPendingPinCoord(null);
+                                    }}
+                                />
+                                <div className="grid grid-cols-2 gap-2 mt-1">
+                                    <button
+                                        onClick={() => setPendingPinCoord(null)}
+                                        className="py-1 px-2 text-[10px] rounded bg-zinc-800/80 hover:bg-zinc-800 text-zinc-400 border border-zinc-700 font-bold"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleSavePendingPin}
+                                        className="py-1 px-2 text-[10px] rounded bg-rose-600 hover:bg-rose-500 text-white font-bold"
+                                    >
+                                        Save Waypoint
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Geocoding search input */}
+                        <div className="mt-2 flex flex-col gap-1.5">
+                            <span className="text-[9px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest block leading-none">
+                                Quick Find Field
+                            </span>
+                            <div className="flex gap-1.5">
+                                <input 
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    placeholder="Search city to search and pin..."
+                                    className="flex-1 text-xs px-2.5 py-1.5 rounded-lg border focus:outline-none bg-zinc-900 border-zinc-800 text-white placeholder-zinc-500"
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') handleSearchAndPin();
+                                    }}
+                                />
+                                <button 
+                                    onClick={handleSearchAndPin}
+                                    disabled={searchLoading}
+                                    className="px-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors flex items-center justify-center shrink-0"
+                                >
+                                    {searchLoading ? (
+                                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    ) : (
+                                        <span className="material-icons-outlined text-sm">search</span>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Section 2: Waypoints List */}
+                    <div className="flex flex-col gap-2">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[9.5px] font-black text-rose-400 uppercase tracking-widest leading-none">
+                                II. Pinned Locations ({manualWaypoints.length})
+                            </span>
+                            {manualWaypoints.length > 0 && (
+                                <button
+                                    onClick={handleClearAllWaypoints}
+                                    className="text-[9px] text-red-400 font-extrabold hover:underline uppercase tracking-wide cursor-pointer"
+                                    id="btn-clear-waypoints"
+                                >
+                                    Clear All
+                                </button>
+                            )}
+                        </div>
+                        {manualWaypoints.length === 0 ? (
+                            <div className="text-[10px] text-zinc-500 dark:text-zinc-500 text-center py-3 bg-slate-100/30 dark:bg-black/25 rounded-2xl border border-dashed border-slate-200 dark:border-zinc-800/85">
+                                No manually pinned places yet.
+                            </div>
+                        ) : (
+                            <div className="max-h-36 overflow-y-auto flex flex-col gap-1.5 pr-1 no-scrollbar">
+                                {manualWaypoints.map(wp => (
+                                    <div 
+                                        key={wp.id}
+                                        className="p-1.5 px-2.5 rounded-xl bg-slate-100/50 dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800/80 flex items-center justify-between gap-2"
+                                    >
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-xs font-bold truncate text-slate-800 dark:text-zinc-200">{wp.name}</p>
+                                            <p className="text-[8.5px] font-mono text-slate-400 text-opacity-80 leading-none mt-0.5">
+                                                {wp.lat.toFixed(4)}, {wp.lng.toFixed(4)}
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-1 shrink-0">
+                                            <button
+                                                onClick={() => handleFlyToWaypoint(wp)}
+                                                className="w-5 h-5 rounded-md hover:bg-slate-200 dark:hover:bg-white/10 flex items-center justify-center text-slate-500 hover:text-indigo-400"
+                                                title="Center View"
+                                            >
+                                                <span className="material-icons-outlined text-[13px]">center_focus_strong</span>
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteWaypoint(wp.id)}
+                                                className="w-5 h-5 rounded-md hover:bg-slate-200 dark:hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-red-400"
+                                                title="Delete Pin"
+                                            >
+                                                <span className="material-icons-outlined text-[13px]">delete</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Section 3: Path Connector Form */}
+                    <div className="flex flex-col gap-2 pt-2 border-t border-zinc-800/80 border-slate-200">
+                        <span className="text-[9.5px] font-black text-rose-400 uppercase tracking-widest leading-none">
+                            III. Segment Connector
+                        </span>
+                        
+                        {manualWaypoints.length < 2 ? (
+                            <p className="text-[10px] text-zinc-500 italic mt-0.5">
+                                Add at least 2 pinned waypoints to establish custom connection segments.
+                            </p>
+                        ) : (
+                            <div className="flex flex-col gap-2.5">
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="flex flex-col gap-1">
+                                        <label className="text-[8.5px] text-slate-400 dark:text-zinc-500 font-bold uppercase tracking-wider">From Location</label>
+                                        <select
+                                            value={segFromId}
+                                            onChange={(e) => setSegFromId(e.target.value)}
+                                            className="text-xs px-2 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-200 focus:outline-none"
+                                        >
+                                            <option value="">-- Start --</option>
+                                            {manualWaypoints.map(wp => (
+                                                <option key={wp.id} value={wp.id}>{wp.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="flex flex-col gap-1">
+                                        <label className="text-[8.5px] text-slate-400 dark:text-zinc-500 font-bold uppercase tracking-wider">To Location</label>
+                                        <select
+                                            value={segToId}
+                                            onChange={(e) => setSegToId(e.target.value)}
+                                            className="text-xs px-2 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-200 focus:outline-none"
+                                        >
+                                            <option value="">-- End --</option>
+                                            {manualWaypoints.map(wp => (
+                                                <option key={wp.id} value={wp.id}>{wp.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="flex flex-col gap-1">
+                                        <label className="text-[8.5px] text-slate-400 dark:text-zinc-500 font-bold uppercase tracking-wider">Neon Hue</label>
+                                        <select
+                                            value={segColor}
+                                            onChange={(e) => setSegColor(e.target.value)}
+                                            className="text-xs px-2 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-200 focus:outline-none"
+                                        >
+                                            <option value="#ec4899">Hot Rose</option>
+                                            <option value="#10b981">Emerald</option>
+                                            <option value="#3b82f6">Azure</option>
+                                            <option value="#f59e0b">Gold</option>
+                                            <option value="#a855f7">Purple</option>
+                                        </select>
+                                    </div>
+                                    <div className="flex flex-col gap-1">
+                                        <label className="text-[8.5px] text-slate-400 dark:text-zinc-500 font-bold uppercase tracking-wider">Style</label>
+                                        <select
+                                            value={segStyle}
+                                            onChange={(e) => setSegStyle(e.target.value)}
+                                            className="text-xs px-2 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-200 focus:outline-none"
+                                        >
+                                            <option value="animated">Animated Flow</option>
+                                            <option value="dashed">Dashed Trace</option>
+                                            <option value="solid">Solid Stream</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={handleEstablishSegment}
+                                    className="w-full py-2 px-3 mt-1 bg-gradient-to-r from-rose-500 to-indigo-600 hover:from-rose-600 hover:to-indigo-500 text-white font-extrabold text-xs rounded-xl shadow-lg hover:shadow-indigo-500/10 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                    id="btn-establish-segment"
+                                >
+                                    <span className="material-icons-outlined text-sm">polyline</span>
+                                    Establish Path Segment
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Section 4: Connected Paths List */}
+                    <div className="flex flex-col gap-2 pt-2 border-t border-zinc-800/80 border-slate-200">
+                        <span className="text-[9.5px] font-black text-rose-400 uppercase tracking-widest leading-none">
+                            IV. Connected Paths ({manualSegments.length})
+                        </span>
+                        
+                        {manualSegments.length === 0 ? (
+                            <div className="text-[10px] text-zinc-500 dark:text-zinc-500 text-center py-2 bg-slate-100/30 dark:bg-black/25 rounded-xl border border-dashed border-slate-200 dark:border-zinc-800/50">
+                                No custom segments drawn.
+                            </div>
+                        ) : (
+                            <div className="max-h-32 overflow-y-auto flex flex-col gap-1 pr-1 no-scrollbar">
+                                {manualSegments.map(seg => {
+                                    const fromWp = manualWaypoints.find(w => w.id === seg.fromId);
+                                    const toWp = manualWaypoints.find(w => w.id === seg.toId);
+                                    if (!fromWp || !toWp) return null;
+                                    
+                                    const colorDot = (
+                                        <span 
+                                            className="w-2 h-2 rounded-full inline-block shrink-0" 
+                                            style={{ backgroundColor: seg.color }}
+                                        />
+                                    );
+
+                                    return (
+                                        <div 
+                                            key={seg.id}
+                                            className="p-1 px-2 rounded-lg bg-slate-100/50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/50 flex items-center justify-between gap-1.5"
+                                        >
+                                            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                                {colorDot}
+                                                <div className="truncate text-[11px] font-semibold text-slate-700 dark:text-zinc-300">
+                                                    <span className="font-extrabold text-slate-900 dark:text-white truncate">{fromWp.name}</span>
+                                                    <span className="mx-1 text-slate-400 dark:text-zinc-600 text-[9px]">➔</span>
+                                                    <span className="font-extrabold text-slate-900 dark:text-white truncate">{toWp.name}</span>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => handleDeleteSegment(seg.id)}
+                                                className="w-5 h-5 rounded hover:bg-slate-200 dark:hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-red-400 shrink-0"
+                                                title="Delete Segment"
+                                            >
+                                                <span className="material-icons-outlined text-[11px]">delete</span>
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+
+                </div>
+            )}
         </div>
     );
 };

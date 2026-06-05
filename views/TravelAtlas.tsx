@@ -19,6 +19,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
   const [visitedItems, setVisitedItems] = useState<VisitedItem[]>([]);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [flights, setFlights] = useState<any[]>([]);
+  const [roadTrips, setRoadTrips] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'countries' | 'cities' | 'sync'>('countries');
 
@@ -44,8 +45,8 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
   // Interactive Scan results
   const [scanActive, setScanActive] = useState(false);
   const [scanResults, setScanResults] = useState<{
-    countries: { code: string; name: string; source: 'flight' | 'trip' | 'layover'; date: string }[];
-    cities: { name: string; countryCode: string; countryName: string; source: 'flight' | 'trip' | 'layover'; date: string; lat?: number; lng?: number }[];
+    countries: { code: string; name: string; source: 'flight' | 'trip' | 'layover' | 'roadtrip'; date: string }[];
+    cities: { name: string; countryCode: string; countryName: string; source: 'flight' | 'trip' | 'layover' | 'roadtrip'; date: string; lat?: number; lng?: number }[];
   }>({ countries: [], cities: [] });
   
   const [selectedScanCountries, setSelectedScanCountries] = useState<Set<string>>(new Set());
@@ -58,10 +59,12 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
       const visited = await dataService.getVisited();
       const allTrips = await dataService.getTrips();
       const allFlights = await dataService.getFlights();
+      const allRoadTrips = await dataService.getRoadTrips();
       
       setVisitedItems(visited || []);
       setTrips(allTrips || []);
       setFlights(allFlights || []);
+      setRoadTrips(allRoadTrips || []);
     } catch (e) {
       console.error("Failed to load Travel Atlas log data:", e);
     } finally {
@@ -273,8 +276,8 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
       const existingCountryCodes = new Set(visitedItems.filter(item => item.type === 'country').map(item => item.code.toUpperCase()));
       const existingCityNames = new Set(visitedItems.filter(item => item.type === 'city').map(item => item.name.toLowerCase()));
 
-      const foundCountries: Record<string, { code: string; name: string; source: 'flight' | 'trip' | 'layover'; date: string }> = {};
-      const foundCities: Record<string, { name: string; countryCode: string; countryName: string; source: 'flight' | 'trip' | 'layover'; date: string; lat?: number; lng?: number }> = {};
+      const foundCountries: Record<string, { code: string; name: string; source: 'flight' | 'trip' | 'layover' | 'roadtrip'; date: string }> = {};
+      const foundCities: Record<string, { name: string; countryCode: string; countryName: string; source: 'flight' | 'trip' | 'layover' | 'roadtrip'; date: string; lat?: number; lng?: number }> = {};
 
       // 1. Process flight log data
       for (const f of flights) {
@@ -321,6 +324,57 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                 date: f.arrivalDate || f.date || new Date().toISOString(),
                 lat: f.destLat,
                 lng: f.destLng
+              };
+            }
+          }
+        }
+      }
+
+      // 1.5. Process road trip / land travel log data
+      for (const r of roadTrips) {
+        if (!r || r.status === 'Cancelled') continue;
+        
+        // Origin
+        if (r.origin) {
+          const res = await resolvePlaceName(r.origin);
+          if (res && res.countryCode) {
+            const code = res.countryCode.toUpperCase();
+            if (!existingCountryCodes.has(code)) {
+              foundCountries[code] = { code, name: res.country, source: 'roadtrip', date: r.departureDate || r.date || new Date().toISOString() };
+            }
+            const cityName = res.city || r.originCity || r.origin;
+            if (!existingCityNames.has(cityName.toLowerCase())) {
+              foundCities[cityName.toLowerCase()] = {
+                name: cityName,
+                countryCode: code,
+                countryName: res.country,
+                source: 'roadtrip',
+                date: r.departureDate || r.date || new Date().toISOString(),
+                lat: r.originLat || r.lat,
+                lng: r.originLng || r.lng
+              };
+            }
+          }
+        }
+
+        // Destination
+        if (r.destination) {
+          const res = await resolvePlaceName(r.destination);
+          if (res && res.countryCode) {
+            const code = res.countryCode.toUpperCase();
+            if (!existingCountryCodes.has(code)) {
+              foundCountries[code] = { code, name: res.country, source: 'roadtrip', date: r.arrivalDate || r.date || new Date().toISOString() };
+            }
+            const cityName = res.city || r.destCity || r.destination;
+            if (!existingCityNames.has(cityName.toLowerCase())) {
+              foundCities[cityName.toLowerCase()] = {
+                name: cityName,
+                countryCode: code,
+                countryName: res.country,
+                source: 'roadtrip',
+                date: r.arrivalDate || r.date || new Date().toISOString(),
+                lat: r.destLat || r.lat,
+                lng: r.destLng || r.lng
               };
             }
           }

@@ -338,8 +338,8 @@ const loadGlobalData = async () => {
     
     // Clear any potentially contaminated geocoding cache records for BER, MAN, and TUN to restore correct city mappings.
     try {
-        await pool.query("DELETE FROM geocoding_cache WHERE query IN ('ber', 'ber airport', 'man', 'man airport', 'manchester', 'tun', 'tun airport', 'tunis', 'tunis, tunisia', 'tunis carthage', 'tunis carthage airport')");
-        console.log('[SYSTEM-CLEANUP] Cleaned up any potentially contaminated geocoding_cache values for BER, MAN, and TUN.');
+        await pool.query("DELETE FROM geocoding_cache WHERE query IN ('ber', 'ber airport', 'man', 'man airport', 'manchester', 'tun', 'tun airport', 'tunis', 'tunis, tunisia', 'tunis carthage', 'tunis carthage airport', 'naples', 'napoli', 'capri', 'vatican', 'vatican city', 'rome', 'rome, italy')");
+        console.log('[SYSTEM-CLEANUP] Cleaned up any potentially contaminated geocoding_cache values for BER, MAN, TUN, Naples, Napoli, Capri, Vatican, and Rome.');
     } catch (cleanErr) {
         console.warn('System cleanup query failed:', cleanErr.message);
     }
@@ -885,6 +885,14 @@ const STATIC_GEO_COORDS = {
     "Tokyo": { "lat": "35.6762", "lon": "139.6503", "city": "Tokyo", "country": "Japan", "iso": "JP" },
     "Dubai": { "lat": "25.2048", "lon": "55.2708", "city": "Dubai", "country": "United Arab Emirates", "iso": "AE" },
     "Rome": { "lat": "41.9028", "lon": "12.4964", "city": "Rome", "country": "Italy", "iso": "IT" },
+    "Vatican City": { "lat": "41.9029", "lon": "12.4534", "city": "Vatican City", "country": "Vatican City", "iso": "VA" },
+    "Vatican": { "lat": "41.9029", "lon": "12.4534", "city": "Vatican City", "country": "Vatican City", "iso": "VA" },
+    "Naples": { "lat": "40.8518", "lon": "14.2681", "city": "Naples", "country": "Italy", "iso": "IT" },
+    "Napoli": { "lat": "40.8518", "lon": "14.2681", "city": "Naples", "country": "Italy", "iso": "IT" },
+    "Capri": { "lat": "40.5518", "lon": "14.2447", "city": "Capri", "country": "Italy", "iso": "IT" },
+    "Milan": { "lat": "45.4642", "lon": "9.1900", "city": "Milan", "country": "Italy", "iso": "IT" },
+    "Venice": { "lat": "45.4408", "lon": "12.3155", "city": "Venice", "country": "Italy", "iso": "IT" },
+    "Florence": { "lat": "43.7696", "lon": "11.2558", "city": "Florence", "country": "Italy", "iso": "IT" },
     "Barcelona": { "lat": "41.3851", "lon": "2.1734", "city": "Barcelona", "country": "Spain", "iso": "ES" },
     "Berlin": { "lat": "52.5200", "lon": "13.4050", "city": "Berlin", "country": "Germany", "iso": "DE" },
     "Amsterdam": { "lat": "52.3676", "lon": "4.9041", "city": "Amsterdam", "country": "Netherlands", "iso": "NL" },

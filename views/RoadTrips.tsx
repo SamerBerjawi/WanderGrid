@@ -1,17 +1,19 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { 
   Plus, Search, Filter, Calendar, MapPin, Trash2, Edit2, 
   ChevronDown, ChevronUp, Clock, DollarSign, Compass, 
   Map, ArrowRight, Server, Sparkles, Navigation, Train, 
   Bus, HelpCircle, RefreshCw, Leaf, Anchor, Grid, Info
 } from 'lucide-react';
-import { Card, Button, Input, Select, Badge, TimeInput } from '../components/ui';
+import { Card, Button, Input, Select, Badge, TimeInput, Autocomplete } from '../components/ui';
 import { Trip, Transport, TransportMode, RoadTripWaypoint, ViewState } from '../types';
 import { dataService } from '../services/mockDb';
 import { motion, AnimatePresence } from 'motion/react';
 import L from 'leaflet';
-import { getCoordinates, getCoordinatesSync } from '../services/geocoding';
+import { getCoordinates, getCoordinatesSync, searchLocations } from '../services/geocoding';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+
+const ExpeditionMap = lazy(() => import('../components/ExpeditionMap').then(m => ({ default: m.ExpeditionMap })));
 
 const useDarkMode = () => {
   const [isDark, setIsDark] = useState(document.documentElement.classList.contains('dark'));
@@ -132,283 +134,17 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
   const [importState, setImportState] = useState<{ status: 'idle' | 'loading' | 'success' | 'error'; message: string }>({ status: 'idle', message: '' });
   const [pendingSuggestions, setPendingSuggestions] = useState<any[] | null>(null);
 
-  const mapContainerRef = React.useRef<HTMLDivElement>(null);
-  const mapInstanceRef = React.useRef<L.Map | null>(null);
-  const routeLayerGroupRef = React.useRef<L.LayerGroup | null>(null);
-  const markerLayerGroupRef = React.useRef<L.LayerGroup | null>(null);
-  const tileLayerRef = React.useRef<L.TileLayer | null>(null);
-  const [mapLines, setMapLines] = useState<any[]>([]);
 
-  // Local OSRM route caching for Road Trips
-  const [osrmRouteCache, setOsrmRouteCache] = useState<Record<string, [number, number][]>>({});
 
-  useEffect(() => {
-    const missingKeys: { key: string; start: [number, number]; end: [number, number] }[] = [];
-    const seen = new Set<string>();
 
-    mapLines.forEach(line => {
-      const isLand = ['Train', 'Bus', 'Car Rental', 'Personal Car'].includes(line.mode);
-      if (!isLand) return;
 
-      const key = `${line.start[0].toFixed(4)},${line.start[1].toFixed(4)}|${line.end[0].toFixed(4)},${line.end[1].toFixed(4)}`;
-      if (!osrmRouteCache[key] && !seen.has(key)) {
-        seen.add(key);
-        missingKeys.push({ key, start: line.start, end: line.end });
-      }
-    });
 
-    if (missingKeys.length === 0) return;
 
-    let active = true;
-    const fetchAllOSRM = async () => {
-      const updates: Record<string, [number, number][]> = {};
-      for (const item of missingKeys) {
-        if (!active) break;
-        try {
-          const startLat = item.start[0];
-          const startLng = item.start[1];
-          const endLat = item.end[0];
-          const endLng = item.end[1];
-          const queryUrl = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?overview=full&geometries=geojson`;
 
-          const res = await fetch(queryUrl);
-          if (res.ok) {
-            const data = await res.json();
-            if (data && data.routes && data.routes[0] && data.routes[0].geometry) {
-              const coords = data.routes[0].geometry.coordinates; // Array of [lng, lat]
-              updates[item.key] = coords.map((c: [number, number]) => [c[1], c[0]]);
-            }
-          }
-        } catch (err) {
-          console.warn("OSRM fetch error is: ", err);
-        }
-        await new Promise(resolve => setTimeout(resolve, 150));
-      }
-      if (active && Object.keys(updates).length > 0) {
-        setOsrmRouteCache(prev => ({ ...prev, ...updates }));
-      }
-    };
 
-    fetchAllOSRM();
-    return () => {
-      active = false;
-    };
-  }, [mapLines, osrmRouteCache]);
 
-  // Resolve roadTrip coordinates dynamically
-  useEffect(() => {
-    let active = true;
-    const fetchCoords = async () => {
-      const lines: any[] = [];
-      const tripsToShow = importTripId 
-        ? roadTrips.filter(tr => tr.tripId === importTripId) 
-        : roadTrips;
 
-      for (const tr of tripsToShow) {
-        if (!tr.origin || !tr.destination) continue;
-        
-        let startCoords = getCoordinatesSync(tr.origin);
-        let destCoords = getCoordinatesSync(tr.destination);
 
-        if (!startCoords) {
-          try {
-            startCoords = await getCoordinates(tr.origin);
-          } catch(e) { console.warn(e); }
-        }
-        if (!destCoords) {
-          try {
-            destCoords = await getCoordinates(tr.destination);
-          } catch(e) { console.warn(e); }
-        }
-
-        if (startCoords && destCoords) {
-          lines.push({
-            id: tr.id,
-            origin: tr.origin,
-            destination: tr.destination,
-            start: [startCoords.lat, startCoords.lng],
-            end: [destCoords.lat, destCoords.lng],
-            mode: tr.mode,
-            provider: tr.provider || 'Local Transit',
-            identifier: tr.identifier,
-            cost: tr.cost || 0
-          });
-        }
-      }
-      if (active) {
-        setMapLines(lines);
-      }
-    };
-
-    fetchCoords();
-    return () => {
-      active = false;
-    };
-  }, [roadTrips, importTripId]);
-
-  // Map Initialization
-  useEffect(() => {
-    if (hubTab !== 'map' || !isHubExpanded || !mapContainerRef.current) {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-        routeLayerGroupRef.current = null;
-        markerLayerGroupRef.current = null;
-        tileLayerRef.current = null;
-      }
-      return;
-    }
-
-    if (mapInstanceRef.current) return;
-
-    const map = L.map(mapContainerRef.current, {
-      zoomControl: true,
-      attributionControl: false,
-      scrollWheelZoom: true,
-      worldCopyJump: true,
-      preferCanvas: true
-    }).setView([46, 2], 4); 
-
-    mapInstanceRef.current = map;
-    routeLayerGroupRef.current = L.layerGroup().addTo(map);
-    markerLayerGroupRef.current = L.layerGroup().addTo(map);
-
-    const resizeObserver = new ResizeObserver(() => {
-      map.invalidateSize();
-    });
-    resizeObserver.observe(mapContainerRef.current);
-
-    return () => {
-      resizeObserver.disconnect();
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-        routeLayerGroupRef.current = null;
-        markerLayerGroupRef.current = null;
-        tileLayerRef.current = null;
-      }
-    };
-  }, [hubTab, isHubExpanded]);
-
-  // Tile Layer Updates
-  useEffect(() => {
-    if (!mapInstanceRef.current) return;
-    const map = mapInstanceRef.current;
-
-    if (tileLayerRef.current) {
-      map.removeLayer(tileLayerRef.current);
-    }
-
-    const tileUrl = isDark 
-      ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-      : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-
-    const layer = L.tileLayer(tileUrl, {
-      maxZoom: 19,
-      noWrap: false 
-    }).addTo(map);
-
-    tileLayerRef.current = layer;
-  }, [isDark, hubTab, isHubExpanded]);
-
-  // Draw Lines & Pins
-  useEffect(() => {
-    if (!mapInstanceRef.current || !routeLayerGroupRef.current || !markerLayerGroupRef.current) return;
-
-    routeLayerGroupRef.current.clearLayers();
-    markerLayerGroupRef.current.clearLayers();
-
-    if (mapLines.length === 0) return;
-
-    const bounds = L.latLngBounds([]);
-    const addedMarkers = new Set<string>();
-
-    mapLines.forEach(line => {
-      const modeColors: Record<string, string> = {
-        'Train': '#f59e0b', // Amber
-        'Bus': '#10b981', // Emerald
-        'Car Rental': '#3b82f6', // Blue
-        'Personal Car': '#6366f1', // Indigo
-        'Cruise': '#06b6d4', // Cyan
-        'Ferry': '#14b8a6' // Teal
-      };
-      const lineColor = modeColors[line.mode] || '#6b7280';
-      const isLand = ['Train', 'Bus', 'Car Rental', 'Personal Car'].includes(line.mode);
-
-      // Resolve segments using OSRM cache
-      const segmentKey = `${line.start[0].toFixed(4)},${line.start[1].toFixed(4)}|${line.end[0].toFixed(4)},${line.end[1].toFixed(4)}`;
-      const routePoints: [number, number][] = (isLand && osrmRouteCache[segmentKey])
-        ? osrmRouteCache[segmentKey]
-        : [line.start, line.end];
-
-      const pathLine = L.polyline(routePoints, {
-        color: lineColor,
-        weight: 3,
-        opacity: 0.8,
-        dashArray: line.mode === 'Ferry' || line.mode === 'Cruise' ? '5, 8' : undefined,
-        smoothFactor: 1.0
-      }).addTo(routeLayerGroupRef.current!);
-
-      pathLine.bindPopup(`
-        <div style="font-family: 'Inter', sans-serif; padding: 4px; font-size: 11px; line-height: 1.4;">
-          <div style="font-weight: 900; color: #111827; margin-bottom: 2px;">
-            ${line.origin} &rarr; ${line.destination}
-          </div>
-          <div style="font-weight: bold; color: ${lineColor}; text-transform: uppercase; font-size: 9px; tracking: 0.5px;">
-            ${line.mode}
-          </div>
-          ${line.provider ? `<div style="color: #6b7280;">Operator: <strong style="color: #4b5563;">${line.provider}</strong></div>` : ''}
-          ${line.identifier ? `<div style="color: #6b7280;">ID: <strong style="color: #4b5563;">${line.identifier}</strong></div>` : ''}
-          ${line.cost ? `<div style="color: #6b7280; margin-top: 2px;">Value: <strong style="color: #047857;">$${line.cost}</strong></div>` : ''}
-        </div>
-      `);
-
-      const startKey = `${line.start[0]},${line.start[1]}`;
-      if (!addedMarkers.has(startKey)) {
-        addedMarkers.add(startKey);
-        const marker = L.circleMarker(line.start, {
-          radius: 6,
-          fillColor: lineColor,
-          color: '#ffffff',
-          weight: 2,
-          fillOpacity: 0.9
-        }).addTo(markerLayerGroupRef.current!);
-
-        marker.bindPopup(`
-          <div style="font-family: 'Inter', sans-serif; padding: 4px; font-size: 11px;">
-            <strong style="color: #111827;">${line.origin}</strong>
-            <div style="color: #6b7280; font-size: 9px; margin-top: 2px;">Transit Origin Port</div>
-          </div>
-        `);
-      }
-
-      const endKey = `${line.end[0]/1},${line.end[1]}`;
-      if (!addedMarkers.has(endKey)) {
-        addedMarkers.add(endKey);
-        const marker = L.circleMarker(line.end, {
-          radius: 6,
-          fillColor: lineColor,
-          color: '#ffffff',
-          weight: 2,
-          fillOpacity: 0.9
-        }).addTo(markerLayerGroupRef.current!);
-
-        marker.bindPopup(`
-          <div style="font-family: 'Inter', sans-serif; padding: 4px; font-size: 11px;">
-            <strong style="color: #111827;">${line.destination}</strong>
-            <div style="color: #6b7280; font-size: 9px; margin-top: 2px;">Transit Destination Port</div>
-          </div>
-        `);
-      }
-
-      bounds.extend(line.start);
-      bounds.extend(line.end);
-    });
-
-    try {
-      mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 8 });
-    } catch(e) { console.warn("Could not fit bounds yet", e); }
-  }, [mapLines, osrmRouteCache]);
 
   const chartData = useMemo(() => {
     const sums: Record<string, { distance: number; timeMinutes: number; count: number }> = {
@@ -847,6 +583,32 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
       const kmSpeed = speeds[formMode] || 80;
       const calculatedDistance = Math.round((calculatedDuration / 60) * kmSpeed);
 
+      // Resolve coordinates on-the-fly for persistence
+      let originLat = editingTransport?.originLat;
+      let originLng = editingTransport?.originLng;
+      let destLat = editingTransport?.destLat;
+      let destLng = editingTransport?.destLng;
+
+      try {
+        const originCoords = await getCoordinates(formOrigin.trim());
+        if (originCoords) {
+          originLat = originCoords.lat;
+          originLng = originCoords.lng;
+        }
+      } catch (err) {
+        console.warn("Could not geocode origin", err);
+      }
+
+      try {
+        const destCoords = await getCoordinates(formDestination.trim());
+        if (destCoords) {
+          destLat = destCoords.lat;
+          destLng = destCoords.lng;
+        }
+      } catch (err) {
+        console.warn("Could not geocode destination", err);
+      }
+
       const transportPayload: any = {
         id: isNew ? `land-trip-${Math.random().toString(36).substring(2, 11)}` : editingTransport.id,
         itineraryId: editingTransport?.itineraryId || 'roadtrip-ref',
@@ -854,6 +616,10 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
         mode: formMode,
         origin: formOrigin.trim(),
         destination: formDestination.trim(),
+        originLat,
+        originLng,
+        destLat,
+        destLng,
         departureDate: formDepDate,
         departureTime: formDepTime,
         arrivalDate: formArrDate || formDepDate,
@@ -1126,7 +892,21 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
           <div className="grid grid-cols-1 md:grid-cols-12 border-t border-zinc-100 dark:border-white/5">
             <div className="md:col-span-8 h-[400px] border-r border-zinc-100 dark:border-white/5 relative">
               {hubTab === 'map' ? (
-                <div ref={mapContainerRef} className="w-full h-full relative" style={{ minHeight: '400px' }} />
+                <Suspense fallback={
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-950/70 border border-white/5 space-y-4">
+                    <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Booting Real-Time Vector Engine...</p>
+                  </div>
+                }>
+                  <ExpeditionMap
+                    trips={trips}
+                    showFlightRoutes={false}
+                    showLandSeaRoutes={true}
+                    showCityMarkers={true}
+                    activeLayer={isDark ? 'topography' : 'standard'}
+                    clusterMode={false}
+                  />
+                </Suspense>
               ) : (
                 <div className="w-full h-full p-6 flex flex-col justify-between">
                   <div>
@@ -1575,19 +1355,19 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
 
               {/* Geo Info Rows */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input 
+                <Autocomplete 
                   label="Origin City / Port" 
                   placeholder="e.g. Paris Gare du Nord, Rome"
                   value={formOrigin}
-                  onChange={e => setFormOrigin(e.target.value)}
-                  required
+                  onChange={val => setFormOrigin(val)}
+                  fetchSuggestions={searchLocations}
                 />
-                <Input
+                <Autocomplete
                   label="Destination City / Port"
                   placeholder="e.g. London St Pancras, Milan"
                   value={formDestination}
-                  onChange={e => setFormDestination(e.target.value)}
-                  required
+                  onChange={val => setFormDestination(val)}
+                  fetchSuggestions={searchLocations}
                 />
               </div>
 

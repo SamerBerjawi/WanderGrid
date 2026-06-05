@@ -139,13 +139,13 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                 }
                 setLegs([{
                     id: 'leg-1',
-                    title: 'Leg 1',
+                    title: 'Excursion 1',
                     segments
                 }]);
             } else {
                 setLegs([{
                     id: 'leg-1',
-                    title: 'Leg 1',
+                    title: 'Excursion 1',
                     segments: [{
                         id: 'seg-1',
                         startCity: 'Paris',
@@ -169,7 +169,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
 
             if (legIdField) {
                 if (!legGroups[legIdField]) {
-                    legGroups[legIdField] = { title: legTitleField || 'Leg', txs: [] };
+                    legGroups[legIdField] = { title: legTitleField || 'Excursion', txs: [] };
                 }
                 legGroups[legIdField].txs.push(tx);
             } else if (tx.itineraryId === 'route-gen' || tx.itineraryId === 'route-booked') {
@@ -232,7 +232,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
         if (parsedLegs.length === 0) {
             parsedLegs.push({
                 id: 'leg-1',
-                title: 'Leg 1',
+                title: 'Excursion 1',
                 segments: [{
                     id: 'seg-1',
                     startCity: 'Paris',
@@ -297,18 +297,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
         let isValid = true;
         let errorMessage = '';
 
-        if (idx > 0) {
-            const prevLeg = legs[idx - 1];
-            const prevDates = compileLegDates(prevLeg);
-            
-            const dCurrentStart = parseDateString(dates.startDate);
-            const dPrevEnd = parseDateString(prevDates.endDate);
-
-            if (dCurrentStart && dPrevEnd && dCurrentStart < dPrevEnd) {
-                isValid = false;
-                errorMessage = `Starts on ${dates.startDate}, but previous Leg ends on ${prevDates.endDate}.`;
-            }
-        }
+        // Excursions are now fully independent. No consecutive date restrictions between them.
 
         return {
             legId: leg.id,
@@ -506,7 +495,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
             ...prev,
             {
                 id: nextId,
-                title: `Leg ${prev.length + 1}`,
+                title: `Excursion ${prev.length + 1}`,
                 segments: [{
                     id: `seg-${Math.random().toString(36).substring(2, 9)}`,
                     startCity: 'Paris',
@@ -540,10 +529,10 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
             const [removed] = list.splice(draggedLegIndex, 1);
             list.splice(targetIdx, 0, removed);
             
-            // Reindex names if they have standard names, e.g. "Leg X"
+            // Reindex names if they have standard names, e.g. "Leg X" or "Excursion X"
             return list.map((leg, idx) => {
-                if (leg.title.startsWith('Leg ')) {
-                    return { ...leg, title: `Leg ${idx + 1}` };
+                if (leg.title.startsWith('Leg ') || leg.title.startsWith('Excursion ')) {
+                    return { ...leg, title: `Excursion ${idx + 1}` };
                 }
                 return leg;
             });
@@ -629,7 +618,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                             finalLocations.push({
                                 id: startLocId,
                                 name: sName,
-                                startDate: defaultStartDate,
+                                startDate: seg.date,
                                 endDate: seg.date,
                                 description: 'Overnight',
                                 coordinates: sCoords ? { lat: sCoords.lat, lng: sCoords.lng } : undefined
@@ -639,7 +628,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                     }
 
                     const nextSeg = leg.segments[idx + 1];
-                    const nextDate = nextSeg ? nextSeg.date : defaultEndDate;
+                    const nextDate = nextSeg ? nextSeg.date : seg.date;
                     const destLocId = `${seg.id}-dest`;
                     if (!addedLocations.has(destLocId)) {
                         finalLocations.push({
@@ -763,13 +752,13 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                                         {/* Drag Handle */}
                                         <div 
                                             className="p-1 text-gray-400 hover:text-gray-600 dark:text-zinc-650 dark:hover:text-zinc-400 cursor-grab active:cursor-grabbing shrink-0"
-                                            title="Grab to reorder itinerary leg"
+                                            title="Grab to reorder itinerary excursion"
                                         >
                                             <GripVertical className="w-4 h-4" />
                                         </div>
 
                                         <Badge color={legIdx % 2 === 0 ? 'indigo' : 'purple'} className="py-1 px-3 rounded-xl">
-                                            Leg {legIdx + 1}
+                                            Excursion {legIdx + 1}
                                         </Badge>
                                         <input
                                             type="text"
@@ -777,7 +766,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                                             onChange={(e) => renameLeg(leg.id, e.target.value)}
                                             className="text-base font-black tracking-tight bg-transparent border-b border-transparent hover:border-gray-300 dark:hover:border-zinc-700 focus:border-blue-500 focus:ring-0 outline-none w-full text-gray-800 dark:text-gray-100 transition-colors py-0.5 px-1"
                                             placeholder="Name this journey sector..."
-                                        />
+                                         />
                                     </div>
 
                                     <div className="flex items-center gap-2 shrink-0">
@@ -798,7 +787,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                                                 onClick={() => deleteLeg(leg.id)}
                                                 icon={<Trash2 className="w-3.5 h-3.5" />}
                                                 className="h-9 w-9 p-0 !rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20"
-                                                title="Delete Entire Leg"
+                                                title="Delete Entire Excursion"
                                             />
                                         )}
                                     </div>
@@ -1022,7 +1011,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                                         <Calendar className="w-3.5 h-3.5 text-slate-400" />
                                         <span>Duration: <span className="text-gray-700 dark:text-zinc-350">{validation.durationText}</span> ({validation.startDate} to {validation.endDate})</span>
                                     </div>
-                                    <span>{leg.segments.length} segment{leg.segments.length > 1 ? 's' : ''} in Leg</span>
+                                    <span>{leg.segments.length} segment{leg.segments.length > 1 ? 's' : ''} in excursion</span>
                                 </div>
                             </motion.div>
                         );
@@ -1035,7 +1024,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                         onClick={addLeg}
                         className="flex items-center gap-2.5 px-6 py-5 border-2 border-dashed border-slate-200 dark:border-white/10 hover:border-blue-500 dark:hover:border-blue-400 text-slate-550 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-300 rounded-[2.5rem] w-full justify-center transition-all bg-white/40 dark:bg-slate-900/10 font-bold uppercase tracking-wider text-xs shadow-inner cursor-pointer"
                     >
-                        <Plus className="w-4 h-4 animate-bounce" /> Add Separate Journey Leg
+                        <Plus className="w-4 h-4 animate-bounce" /> Add Separate Excursion / Route
                     </button>
                 </div>
             </div>
@@ -1045,12 +1034,12 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                 <Card title="Itinerary Dispatch" className="shadow-lg">
                     <div className="space-y-4">
                         <p className="text-xs text-gray-400 leading-normal">
-                            Apply and lock all changed georoutes, separate legs, sequence linkages, and segment transit routes to the master trip database instantly.
+                            Apply and lock all changed georoutes, separate excursions, sequence linkages, and segment transit routes to the master trip database instantly.
                         </p>
 
                         {hasTimelineOverlaps && (
                             <div className="bg-red-500/10 p-3.5 border border-red-500/15 rounded-2xl text-[10px] text-red-600 dark:text-red-400 font-bold leading-normal">
-                                🚫 Save Disabled: You must resolve timeline overlaps between consecutive route legs before saving. Use the auto-align alignment buttons to fix issues instantly.
+                                🚫 Save Disabled: You must resolve timeline overlaps between consecutive excursions before saving. Use the auto-align alignment buttons to fix issues instantly.
                             </div>
                         )}
 

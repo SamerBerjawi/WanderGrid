@@ -9,12 +9,100 @@ import { PackingList } from '../components/PackingList';
 import { dataService } from '../services/mockDb';
 import { flightImporter } from '../services/flightImportExport';
 import { calendarService } from '../services/calendarExport';
-import { Trip, User, Transport, Accommodation, WorkspaceSettings, Activity, TransportMode, LocationEntry, EntitlementType, PublicHoliday, SavedConfig, PackingItem } from '../types';
+import { Trip, User, Transport, Accommodation, WorkspaceSettings, Activity, TransportMode, LocationEntry, EntitlementType, PublicHoliday, SavedConfig, PackingItem, Carrier } from '../types';
 import { searchLocations, resolvePlaceName, getCoordinates } from '../services/geocoding';
 import { GoogleGenAI } from "@google/genai";
 const ExpeditionMap = React.lazy(() => import('../components/ExpeditionMap').then(m => ({ default: m.ExpeditionMap })));
 const ExpeditionMap3D = React.lazy(() => import('../components/ExpeditionMap3D').then(m => ({ default: m.ExpeditionMap3D })));
 import { FlightImportWizard } from '../components/FlightImportWizard';
+import { getMerchantLogoUrl } from '../utils/brandfetch';
+
+interface AirlineLogoProps {
+    provider?: string;
+    brandfetchApiKey?: string;
+    carriers?: Carrier[];
+    fallback: React.ReactNode;
+}
+
+const AirlineLogo: React.FC<AirlineLogoProps> = ({ provider, brandfetchApiKey, carriers = [], fallback }) => {
+    const [logoUrl, setLogoUrl] = useState<string>('');
+    const [attempt, setAttempt] = useState(0);
+
+    const getAirlineLogoUrl = (nameStr: string, currentAttempt: number): string => {
+        let domain = '';
+        const airlineName = nameStr.trim();
+
+        if (carriers.length > 0) {
+            const custom = carriers.find(
+                (c: any) => c.code?.toLowerCase().trim() === airlineName.toLowerCase().trim() ||
+                            c.name?.toLowerCase().trim() === airlineName.toLowerCase().trim()
+            );
+            if (custom && custom.domain) {
+                domain = custom.domain.trim();
+            }
+        }
+
+        if (!domain) {
+            const cleaned = airlineName.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const mappings: Record<string, string> = {
+                'deltaairlines': 'delta.com', 'delta': 'delta.com', 'americanairlines': 'aa.com', 'american': 'aa.com',
+                'unitedairlines': 'united.com', 'united': 'united.com', 'southwestairlines': 'southwest.com', 'southwest': 'southwest.com',
+                'britishairways': 'britishairways.com', 'emirates': 'emirates.com', 'qatarairways': 'qatarairways.com', 'qatar': 'qatarairways.com',
+                'lufthansa': 'lufthansa.com', 'airfrance': 'airfrance.com', 'klm': 'klm.com', 'singaporeairlines': 'singaporeair.com',
+                'cathaypacific': 'cathaypacific.com', 'ana': 'ana.co.jp', 'japanairlines': 'jal.com', 'jal': 'jal.com',
+                'ryanair': 'ryanair.com', 'easyjet': 'easyjet.com'
+            };
+            domain = mappings[cleaned] || `${cleaned}.com`;
+        }
+
+        const overrides: Record<string, string> = {};
+        carriers.forEach(c => {
+            if (c.code) overrides[c.code.toLowerCase().trim()] = c.domain;
+            if (c.name) overrides[c.name.toLowerCase().trim()] = c.domain;
+        });
+
+        const steps: string[] = [];
+        if (brandfetchApiKey) {
+            const bfUrl = getMerchantLogoUrl(airlineName, brandfetchApiKey, overrides, { type: 'icon', fallback: '404' });
+            if (bfUrl) steps.push(bfUrl);
+        }
+
+        steps.push(`https://logo.clearbit.com/${domain}`);
+        steps.push(`https://asset.brandfetch.io/${domain}/logo?theme=light`);
+        steps.push(`https://www.google.com/s2/favicons?sz=128&domain=${domain}`);
+
+        return steps[currentAttempt] || '';
+    };
+
+    useEffect(() => {
+        if (provider) {
+            setLogoUrl(getAirlineLogoUrl(provider, 0));
+            setAttempt(0);
+        }
+    }, [provider, carriers, brandfetchApiKey]);
+
+    const handleError = () => {
+        if (provider && attempt < 3) {
+            const nextAttempt = attempt + 1;
+            setAttempt(nextAttempt);
+            setLogoUrl(getAirlineLogoUrl(provider, nextAttempt));
+        } else {
+            setLogoUrl('__failed__');
+        }
+    };
+
+    if (!provider || logoUrl === '__failed__') return <>{fallback}</>;
+
+    return (
+        <img 
+            src={logoUrl || getAirlineLogoUrl(provider, 0)} 
+            alt={provider} 
+            className="w-full h-full object-contain animate-fade-in" 
+            referrerPolicy="no-referrer"
+            onError={handleError}
+        />
+    );
+};
 
 interface TripDetailProps {
     tripId: string;
@@ -386,18 +474,70 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
             dataService.getUsers(),
             dataService.getWorkspaceSettings(),
             dataService.getEntitlementTypes(),
-            dataService.getSavedConfigs()
-        ]).then(([tripsList, allUsers, s, ents, configs]) => {
-            const t = tripsList.find(t => t.id === tripId);
-            setTrip(t || null);
-            if (t) setCalendarDate(new Date(t.startDate));
-            setUsers(allUsers);
-            setSettings(s);
-            setAllTrips(tripsList);
-            setEntitlements(ents);
-            const flatHolidays = configs.flatMap(c => c.holidays.map(h => ({ ...h, configId: c.id })));
-            setHolidays(flatHolidays);
-            setLoading(false);
+            dataService.getSavedConfigs(),
+            dataService.getFlights()
+        ]).then(([tripsList, allUsers, s, ents, configs, independentFlights]) => {
+            const runAutoAssignment = async () => {
+                let hasChanges = false;
+                const updatedTrips = [...tripsList];
+                const flightsToDelete: string[] = [];
+
+                for (const flight of (independentFlights || [])) {
+                    // Only auto-assign flights that are truly independent (unassigned)
+                    if (flight.tripId && flight.tripId !== 'unassigned') continue;
+                    if (!flight.departureDate) continue;
+                    const fDate = new Date(flight.departureDate);
+                    if (isNaN(fDate.getTime())) continue;
+
+                    // Match with a trip
+                    const matchingTripIndex = updatedTrips.findIndex(tripItem => {
+                        if (!tripItem.startDate || !tripItem.endDate) return false;
+                        const sDate = new Date(tripItem.startDate);
+                        const eDate = new Date(tripItem.endDate);
+                        return fDate >= sDate && fDate <= eDate;
+                    });
+
+                    if (matchingTripIndex >= 0) {
+                        const trip = updatedTrips[matchingTripIndex];
+                        if (!trip.transports) trip.transports = [];
+
+                        if (!trip.transports.some(item => item.id === flight.id)) {
+                            trip.transports.push({ ...flight, mode: 'Flight' });
+                            flightsToDelete.push(flight.id);
+                            hasChanges = true;
+                        }
+                    }
+                }
+
+                if (hasChanges) {
+                    for (const trip of updatedTrips) {
+                        const gotAdded = trip.transports?.some(item => flightsToDelete.includes(item.id));
+                        if (gotAdded) {
+                            await dataService.updateTrip(trip);
+                        }
+                    }
+                    for (const fId of flightsToDelete) {
+                        await dataService.deleteFlight(fId);
+                    }
+                    // Fetch latest trips to synchronize state
+                    const freshTrips = await dataService.getTrips();
+                    return freshTrips;
+                }
+                return tripsList;
+            };
+
+            runAutoAssignment().then(finalTrips => {
+                const t = finalTrips.find(x => x.id === tripId);
+                setTrip(t || null);
+                if (t) setCalendarDate(new Date(t.startDate));
+                setUsers(allUsers);
+                setSettings(s);
+                setAllTrips(finalTrips);
+                setEntitlements(ents);
+                const flatHolidays = configs.flatMap(c => c.holidays.map(h => ({ ...h, configId: c.id })));
+                setHolidays(flatHolidays);
+                setLoading(false);
+            });
         }).catch(err => {
             console.error("Failed to load trip details:", err);
             setLoading(false);
@@ -464,8 +604,8 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         }
         updatedTransports = [...updatedTransports, ...newTransports];
         const updatedTrip = { ...trip, transports: updatedTransports };
-        await dataService.updateTrip(updatedTrip);
-        setTrip(updatedTrip);
+        const savedTrip = await dataService.updateTrip(updatedTrip);
+        setTrip(savedTrip);
         setIsTransportModalOpen(false);
         setEditingTransports(null);
     };
@@ -595,6 +735,8 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     const handleSaveRoute = async (items: LocationEntry[], finalTransports: Transport[]) => {
         if (!trip) return;
 
+        console.log("handleSaveRoute CALLED with:", { itemsLength: items.length, finalTransports });
+
         // Preserve any transports that the route manager did NOT manage/touch
         const finalTransportIds = new Set(finalTransports.map(t => t.id));
         const originalTransports = trip.transports || [];
@@ -614,10 +756,12 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         });
 
         const mergedTransports = [...preservedTransports, ...finalTransports];
+        console.log("handleSaveRoute: preservedTransports count:", preservedTransports.length, "mergedTransports count:", mergedTransports.length);
 
         const updatedTrip = { ...trip, locations: items, transports: mergedTransports };
-        await dataService.updateTrip(updatedTrip);
-        setTrip(updatedTrip);
+        const savedTrip = await dataService.updateTrip(updatedTrip);
+        console.log("handleSaveRoute: savedTrip returned with transports count:", savedTrip.transports?.length);
+        setTrip(savedTrip);
     };
 
     const handleOpenActivityModal = (dateStr: string, existingActivity?: Activity) => {
@@ -1488,8 +1632,15 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                             {/* Header */}
                                             <div className="p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-zinc-50/50 dark:bg-white/[0.01] border-b border-zinc-150/50 dark:border-white/5">
                                                 <div className="flex items-center gap-4">
-                                                    <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-white/10 flex items-center justify-center overflow-hidden p-1.5 shadow-inner shrink-0">
-                                                        {first.logoUrl ? (
+                                                    <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-white/10 flex items-center justify-center overflow-hidden shadow-inner shrink-0">
+                                                        {first.mode === 'Flight' ? (
+                                                            <AirlineLogo 
+                                                                provider={first.provider} 
+                                                                brandfetchApiKey={settings?.brandfetchApiKey} 
+                                                                carriers={settings?.carriers} 
+                                                                fallback={<span className="material-icons-outlined text-zinc-600 dark:text-zinc-300 text-2xl">flight_takeoff</span>} 
+                                                            />
+                                                        ) : first.logoUrl ? (
                                                             <img referrerPolicy="no-referrer" src={first.logoUrl} className="w-full h-full object-contain" />
                                                         ) : (
                                                             <span className="material-icons-outlined text-zinc-600 dark:text-zinc-300 text-2xl">{getTransportIcon(first.mode)}</span>

@@ -229,10 +229,13 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                     const date = flight.departureDate || '';
                     const todayStr = new Date().toISOString().split('T')[0];
                     const isPast = date < todayStr;
+                    const isFlightMode = !flight.mode || flight.mode === 'Flight';
 
                     return {
-                        id: `independent-flight-${flight.id}`,
-                        name: `Independent: ${flight.provider} ${flight.identifier || 'Flight'}`,
+                        id: isFlightMode ? `independent-flight-${flight.id}` : `independent-road-trip-${flight.id}`,
+                        name: isFlightMode 
+                            ? `Independent: ${flight.provider} ${flight.identifier || 'Flight'}`
+                            : `Independent: ${flight.provider} ${flight.identifier || flight.mode || 'Road Trip'}`,
                         location: `${flight.origin} ➔ ${flight.destination}`,
                         startDate: date,
                         endDate: flight.arrivalDate || date,
@@ -551,6 +554,9 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
             if (!showIndependentFlights && t.id.startsWith('independent-flight-')) {
                 return false;
             }
+            if (!showLandSeaRoutes && t.id.startsWith('independent-road-trip-')) {
+                return false;
+            }
 
             const tStart = t.startDate ? new Date(t.startDate) : null;
             const tEnd = t.endDate ? new Date(t.endDate) : (tStart || null);
@@ -576,7 +582,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
 
             return matchesStatus && matchesYear && matchesFrom && matchesTo && matchesDep && matchesArr;
         });
-    }, [trips, statusFilter, yearFilter, dateFrom, dateTo, depFilter, arrFilter, showIndependentFlights]);
+    }, [trips, statusFilter, yearFilter, dateFrom, dateTo, depFilter, arrFilter, showIndependentFlights, showLandSeaRoutes]);
 
     const totalDistanceKm = useMemo(() => {
         let sum = 0;

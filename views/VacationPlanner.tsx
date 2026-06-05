@@ -41,14 +41,66 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
             dataService.getUsers(),
             dataService.getWorkspaceSettings(),
             dataService.getEntitlementTypes(),
-            dataService.getSavedConfigs()
-        ]).then(([t, u, s, ents, configs]) => {
-            setTrips(t);
-            setUsers(u);
-            setSettings(s);
-            setEntitlements(ents);
-            const flatHolidays = configs.flatMap(c => c.holidays.map(h => ({ ...h, configId: c.id })));
-            setHolidays(flatHolidays);
+            dataService.getSavedConfigs(),
+            dataService.getFlights()
+        ]).then(([t, u, s, ents, configs, independentFlights]) => {
+            const runAutoAssignment = async () => {
+                let hasChanges = false;
+                const updatedTrips = [...t];
+                const flightsToDelete: string[] = [];
+
+                for (const flight of (independentFlights || [])) {
+                    // Only auto-assign flights that are truly independent (unassigned)
+                    if (flight.tripId && flight.tripId !== 'unassigned') continue;
+                    if (!flight.departureDate) continue;
+                    const fDate = new Date(flight.departureDate);
+                    if (isNaN(fDate.getTime())) continue;
+
+                    // Match with a trip
+                    const matchingTripIndex = updatedTrips.findIndex(tripItem => {
+                        if (!tripItem.startDate || !tripItem.endDate) return false;
+                        const sDate = new Date(tripItem.startDate);
+                        const eDate = new Date(tripItem.endDate);
+                        return fDate >= sDate && fDate <= eDate;
+                    });
+
+                    if (matchingTripIndex >= 0) {
+                        const trip = updatedTrips[matchingTripIndex];
+                        if (!trip.transports) trip.transports = [];
+
+                        if (!trip.transports.some(item => item.id === flight.id)) {
+                            trip.transports.push({ ...flight, mode: 'Flight' });
+                            flightsToDelete.push(flight.id);
+                            hasChanges = true;
+                        }
+                    }
+                }
+
+                if (hasChanges) {
+                    for (const trip of updatedTrips) {
+                        const gotAdded = trip.transports?.some(item => flightsToDelete.includes(item.id));
+                        if (gotAdded) {
+                            await dataService.updateTrip(trip);
+                        }
+                    }
+                    for (const fId of flightsToDelete) {
+                        await dataService.deleteFlight(fId);
+                    }
+                    // Fetch latest trips to synchronize state
+                    const freshTrips = await dataService.getTrips();
+                    return freshTrips;
+                }
+                return t;
+            };
+
+            runAutoAssignment().then(finalTrips => {
+                setTrips(finalTrips);
+                setUsers(u);
+                setSettings(s);
+                setEntitlements(ents);
+                const flatHolidays = configs.flatMap(c => c.holidays.map(h => ({ ...h, configId: c.id })));
+                setHolidays(flatHolidays);
+            });
         }).catch(err => {
             console.error("Failed to load vacation planner metrics:", err);
         });

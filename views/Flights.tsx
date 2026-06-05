@@ -5,7 +5,7 @@ import {
   ArrowUpRight, ArrowDownLeft, FolderPlus, FolderMinus
 } from 'lucide-react';
 import { Card, Button, Input, Select, Badge, TimeInput } from '../components/ui';
-import { Trip, Transport, User, Carrier } from '../types';
+import { Trip, Transport, User, Carrier, WorkspaceSettings } from '../types';
 import { getMerchantLogoUrl } from '../utils/brandfetch';
 import { dataService } from '../services/mockDb';
 import { FlightyPassport } from '../components/FlightyPassport';
@@ -518,6 +518,8 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
     };
   }, []);
 
+  const [workspaceSettings, setWorkspaceSettings] = useState<WorkspaceSettings | null>(null);
+
   useEffect(() => {
     refreshData();
   }, []);
@@ -526,10 +528,12 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
     Promise.all([
       dataService.getTrips(),
       dataService.getUsers(),
-      dataService.getFlights()
-    ]).then(([t, u, independentFlights]) => {
+      dataService.getFlights(),
+      dataService.getWorkspaceSettings()
+    ]).then(([t, u, independentFlights, s]) => {
       setTrips(t);
       setUsers(u);
+      setWorkspaceSettings(s);
 
       // Extract all transports that are Flights
       const extracted: { flight: Transport; trip: Trip }[] = [];
@@ -633,7 +637,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
         setFormAirline('');
         setFormFlightNum('');
         setFormConfirmation('');
-        setFormOrigin('');
+        setFormOrigin(workspaceSettings?.defaultStartingAirport || '');
         setFormDestination('');
         const todayString = new Date().toISOString().split('T')[0];
         setFormDepartureDate(todayString);
@@ -641,7 +645,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
         setFormArrivalDate(todayString);
         setFormArrivalTime('14:00');
         setFormDuration(120);
-        setFormClass('Economy');
+        setFormClass(workspaceSettings?.defaultTravelClass || 'Economy');
         setFormSeatNumber('');
         setFormSeatType('Window');
         setFormCost('');

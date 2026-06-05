@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import Globe from 'react-globe.gl';
 import { Trip } from '../types';
+import { getCoordinatesSync } from '../services/geocoding';
 
 interface ExpeditionMap3DProps {
     trips: Trip[];
@@ -140,6 +141,45 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({
     showFlightRoutes = true,
     showLandSeaRoutes = true
 }) => {
+    const enrichedTrips = useMemo(() => {
+        return (trips || []).map(trip => {
+            if (!trip.transports || trip.transports.length === 0) return trip;
+            const enrichedTransports = trip.transports.map(t => {
+                let originLat = t.originLat;
+                let originLng = t.originLng;
+                let destLat = t.destLat;
+                let destLng = t.destLng;
+
+                if (t.origin && (!originLat || !originLng || isNaN(originLat) || isNaN(originLng))) {
+                    const coords = getCoordinatesSync(t.origin);
+                    if (coords) {
+                        originLat = coords.lat;
+                        originLng = coords.lng;
+                    }
+                }
+                if (t.destination && (!destLat || !destLng || isNaN(destLat) || isNaN(destLng))) {
+                    const coords = getCoordinatesSync(t.destination);
+                    if (coords) {
+                        destLat = coords.lat;
+                        destLng = coords.lng;
+                    }
+                }
+
+                return {
+                    ...t,
+                    originLat,
+                    originLng,
+                    destLat,
+                    destLng
+                };
+            });
+            return {
+                ...trip,
+                transports: enrichedTransports
+            };
+        });
+    }, [trips]);
+
     const globeEl = useRef<any>(null);
     const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
     const containerRef = useRef<HTMLDivElement>(null);
