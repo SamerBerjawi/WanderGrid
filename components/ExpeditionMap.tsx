@@ -151,6 +151,22 @@ const useDarkMode = () => {
     return isDark;
 };
 
+
+const isValidCoordinate = (value: unknown): value is number => {
+    return typeof value === 'number' && Number.isFinite(value);
+};
+
+const hasTransportEndpoints = (transport: Transport): transport is Transport & Required<Pick<Transport, 'originLat' | 'originLng' | 'destLat' | 'destLng'>> => {
+    return isValidCoordinate(transport.originLat) &&
+        isValidCoordinate(transport.originLng) &&
+        isValidCoordinate(transport.destLat) &&
+        isValidCoordinate(transport.destLng);
+};
+
+const getTransportCoordinateKey = (transport: Transport) => {
+    return `${transport.id}|${transport.origin || ''}|${transport.destination || ''}`;
+};
+
 // Helper to normalize route key
 const getRouteKey = (lat1: number, lng1: number, lat2: number, lng2: number) => {
     const p1 = `${lat1.toFixed(3)},${lng1.toFixed(3)}`;
@@ -438,23 +454,26 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
     showRoadTracing: showRoadTracingProp,
     onToggleRoadTracing
 }) => {
+    const [resolvedTransportCoordinates, setResolvedTransportCoordinates] = useState<Record<string, Partial<Pick<Transport, 'originLat' | 'originLng' | 'destLat' | 'destLng'>>>>({});
+
     const enrichedTrips = useMemo(() => {
         return (trips || []).map(trip => {
             if (!trip.transports || trip.transports.length === 0) return trip;
             const enrichedTransports = trip.transports.map(t => {
-                let originLat = t.originLat;
-                let originLng = t.originLng;
-                let destLat = t.destLat;
-                let destLng = t.destLng;
+                const resolvedCoords = resolvedTransportCoordinates[getTransportCoordinateKey(t)] || {};
+                let originLat = isValidCoordinate(t.originLat) ? t.originLat : resolvedCoords.originLat;
+                let originLng = isValidCoordinate(t.originLng) ? t.originLng : resolvedCoords.originLng;
+                let destLat = isValidCoordinate(t.destLat) ? t.destLat : resolvedCoords.destLat;
+                let destLng = isValidCoordinate(t.destLng) ? t.destLng : resolvedCoords.destLng;
 
-                if (t.origin && (!originLat || !originLng || isNaN(originLat) || isNaN(originLng))) {
+                if (t.origin && (!isValidCoordinate(originLat) || !isValidCoordinate(originLng))) {
                     const coords = getCoordinatesSync(t.origin);
                     if (coords) {
                         originLat = coords.lat;
                         originLng = coords.lng;
                     }
                 }
-                if (t.destination && (!destLat || !destLng || isNaN(destLat) || isNaN(destLng))) {
+                if (t.destination && (!isValidCoordinate(destLat) || !isValidCoordinate(destLng))) {
                     const coords = getCoordinatesSync(t.destination);
                     if (coords) {
                         destLat = coords.lat;
@@ -475,7 +494,72 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                 transports: enrichedTransports
             };
         });
-    }, [trips]);
+    }, [trips, resolvedTransportCoordinates]);
+
+    useEffect(() => {
+        let cancelled = false;
+        const missingLookups: Array<{ key: string; origin?: string; destination?: string; needsOrigin: boolean; needsDestination: boolean }> = [];
+
+        (trips || []).forEach(trip => {
+            trip.transports?.forEach(t => {
+                const resolvedCoords = resolvedTransportCoordinates[getTransportCoordinateKey(t)] || {};
+                const hasOrigin = (isValidCoordinate(t.originLat) && isValidCoordinate(t.originLng)) ||
+                    (isValidCoordinate(resolvedCoords.originLat) && isValidCoordinate(resolvedCoords.originLng)) ||
+                    !!(t.origin && getCoordinatesSync(t.origin));
+                const hasDestination = (isValidCoordinate(t.destLat) && isValidCoordinate(t.destLng)) ||
+                    (isValidCoordinate(resolvedCoords.destLat) && isValidCoordinate(resolvedCoords.destLng)) ||
+                    !!(t.destination && getCoordinatesSync(t.destination));
+
+                if ((t.origin && !hasOrigin) || (t.destination && !hasDestination)) {
+                    missingLookups.push({
+                        key: getTransportCoordinateKey(t),
+                        origin: t.origin,
+                        destination: t.destination,
+                        needsOrigin: !!t.origin && !hasOrigin,
+                        needsDestination: !!t.destination && !hasDestination
+                    });
+                }
+            });
+        });
+
+        if (missingLookups.length === 0) return;
+
+        Promise.all(missingLookups.map(async lookup => {
+            const patch: Partial<Pick<Transport, 'originLat' | 'originLng' | 'destLat' | 'destLng'>> = {};
+            if (lookup.needsOrigin && lookup.origin) {
+                const coords = await getCoordinates(lookup.origin);
+                if (coords) {
+                    patch.originLat = coords.lat;
+                    patch.originLng = coords.lng;
+                }
+            }
+            if (lookup.needsDestination && lookup.destination) {
+                const coords = await getCoordinates(lookup.destination);
+                if (coords) {
+                    patch.destLat = coords.lat;
+                    patch.destLng = coords.lng;
+                }
+            }
+            return { key: lookup.key, patch };
+        })).then(results => {
+            if (cancelled) return;
+            setResolvedTransportCoordinates(prev => {
+                let changed = false;
+                const next = { ...prev };
+                results.forEach(({ key, patch }) => {
+                    if (Object.keys(patch).length > 0) {
+                        next[key] = { ...(next[key] || {}), ...patch };
+                        changed = true;
+                    }
+                });
+                return changed ? next : prev;
+            });
+        }).catch(err => console.debug('ExpeditionMap coordinate lazy resolve failure', err));
+
+        return () => {
+            cancelled = true;
+        };
+    }, [trips, resolvedTransportCoordinates]);
 
     const mapContainer = useRef<HTMLDivElement>(null);
     const mapInstance = useRef<L.Map | null>(null);
@@ -770,7 +854,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
 
         enrichedTrips.forEach(trip => {
             trip.transports?.forEach(t => {
-                if (t.originLat && t.originLng && t.destLat && t.destLng) {
+                if (hasTransportEndpoints(t)) {
                     const isLand = ['Car Rental', 'Personal Car', 'Bus', 'Train'].includes(t.mode);
                     if (!isLand) return;
 
@@ -831,7 +915,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
         const counts = new Map<string, number>();
         enrichedTrips.forEach(trip => {
             trip.transports?.forEach(t => {
-                if (t.originLat && t.originLng && t.destLat && t.destLng) {
+                if (hasTransportEndpoints(t)) {
                     const key = getRouteKey(t.originLat, t.originLng, t.destLat, t.destLng);
                     counts.set(key, (counts.get(key) || 0) + 1);
                 }
@@ -980,7 +1064,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
 
                 if (trip.transports && trip.transports.length > 0) {
                     trip.transports.forEach(t => {
-                        if (t.originLat && t.originLng && t.destLat && t.destLng) {
+                        if (hasTransportEndpoints(t)) {
                             const isFlight = t.mode === 'Flight';
                             const isLand = ['Car Rental', 'Personal Car', 'Bus', 'Train'].includes(t.mode);
                             const isSea = ['Cruise', 'Ferry'].includes(t.mode);
@@ -1148,10 +1232,8 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
             const flightStyle = getStatusStyle(trip, isDark, activeLayer);
 
             if (trip.transports && trip.transports.length > 0) {
-                console.log("ExpeditionMap: drawing transports length:", trip.transports.length);
                 trip.transports.forEach(t => {
-                    console.log("ExpeditionMap info for transport:", t.origin, "->", t.destination, "mode:", t.mode, "coords:", {originLat: t.originLat, originLng: t.originLng, destLat: t.destLat, destLng: t.destLng});
-                    if (t.originLat && t.originLng && t.destLat && t.destLng) {
+                    if (hasTransportEndpoints(t)) {
                         const isFlight = t.mode === 'Flight';
                         const isLand = ['Car Rental', 'Personal Car', 'Bus', 'Train'].includes(t.mode);
                         const isSea = ['Cruise', 'Ferry'].includes(t.mode);
@@ -1645,8 +1727,8 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
             enrichedTrips.forEach(trip => {
                 if (trip.transports) {
                     trip.transports.forEach(t => {
-                        if (t.originLat && t.originLng) bounds.extend([t.originLat, t.originLng]);
-                        if (t.destLat && t.destLng) bounds.extend([t.destLat, t.destLng]);
+                        if (isValidCoordinate(t.originLat) && isValidCoordinate(t.originLng)) bounds.extend([t.originLat, t.originLng]);
+                        if (isValidCoordinate(t.destLat) && isValidCoordinate(t.destLng)) bounds.extend([t.destLat, t.destLng]);
                         t.waypoints?.forEach(wp => {
                             if (wp.coordinates) bounds.extend([wp.coordinates.lat, wp.coordinates.lng]);
                         });

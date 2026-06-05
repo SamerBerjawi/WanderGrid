@@ -1,8 +1,8 @@
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import Globe from 'react-globe.gl';
-import { Trip } from '../types';
-import { getCoordinatesSync } from '../services/geocoding';
+import { Trip, Transport } from '../types';
+import { getCoordinates, getCoordinatesSync } from '../services/geocoding';
 
 interface ExpeditionMap3DProps {
     trips: Trip[];
@@ -97,6 +97,22 @@ const getStatusColor = (trip: Trip, isDark: boolean, activeLayer: string) => {
     return isSatellite || isDark ? '#ffffff' : '#334155';
 };
 
+
+const isValidCoordinate = (value: unknown): value is number => {
+    return typeof value === 'number' && Number.isFinite(value);
+};
+
+const hasTransportEndpoints = (transport: Transport): transport is Transport & Required<Pick<Transport, 'originLat' | 'originLng' | 'destLat' | 'destLng'>> => {
+    return isValidCoordinate(transport.originLat) &&
+        isValidCoordinate(transport.originLng) &&
+        isValidCoordinate(transport.destLat) &&
+        isValidCoordinate(transport.destLng);
+};
+
+const getTransportCoordinateKey = (transport: Transport) => {
+    return `${transport.id}|${transport.origin || ''}|${transport.destination || ''}`;
+};
+
 const getModeColor = (mode: string, baseColor: string) => {
     if (['Car Rental', 'Personal Car', 'Bus', 'Train'].includes(mode)) return '#f59e0b';
     if (mode === 'Cruise') return '#06b6d4';
@@ -141,23 +157,26 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({
     showFlightRoutes = true,
     showLandSeaRoutes = true
 }) => {
+    const [resolvedTransportCoordinates, setResolvedTransportCoordinates] = useState<Record<string, Partial<Pick<Transport, 'originLat' | 'originLng' | 'destLat' | 'destLng'>>>>({});
+
     const enrichedTrips = useMemo(() => {
         return (trips || []).map(trip => {
             if (!trip.transports || trip.transports.length === 0) return trip;
             const enrichedTransports = trip.transports.map(t => {
-                let originLat = t.originLat;
-                let originLng = t.originLng;
-                let destLat = t.destLat;
-                let destLng = t.destLng;
+                const resolvedCoords = resolvedTransportCoordinates[getTransportCoordinateKey(t)] || {};
+                let originLat = isValidCoordinate(t.originLat) ? t.originLat : resolvedCoords.originLat;
+                let originLng = isValidCoordinate(t.originLng) ? t.originLng : resolvedCoords.originLng;
+                let destLat = isValidCoordinate(t.destLat) ? t.destLat : resolvedCoords.destLat;
+                let destLng = isValidCoordinate(t.destLng) ? t.destLng : resolvedCoords.destLng;
 
-                if (t.origin && (!originLat || !originLng || isNaN(originLat) || isNaN(originLng))) {
+                if (t.origin && (!isValidCoordinate(originLat) || !isValidCoordinate(originLng))) {
                     const coords = getCoordinatesSync(t.origin);
                     if (coords) {
                         originLat = coords.lat;
                         originLng = coords.lng;
                     }
                 }
-                if (t.destination && (!destLat || !destLng || isNaN(destLat) || isNaN(destLng))) {
+                if (t.destination && (!isValidCoordinate(destLat) || !isValidCoordinate(destLng))) {
                     const coords = getCoordinatesSync(t.destination);
                     if (coords) {
                         destLat = coords.lat;
@@ -178,7 +197,72 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({
                 transports: enrichedTransports
             };
         });
-    }, [trips]);
+    }, [trips, resolvedTransportCoordinates]);
+
+    useEffect(() => {
+        let cancelled = false;
+        const missingLookups: Array<{ key: string; origin?: string; destination?: string; needsOrigin: boolean; needsDestination: boolean }> = [];
+
+        (trips || []).forEach(trip => {
+            trip.transports?.forEach(t => {
+                const resolvedCoords = resolvedTransportCoordinates[getTransportCoordinateKey(t)] || {};
+                const hasOrigin = (isValidCoordinate(t.originLat) && isValidCoordinate(t.originLng)) ||
+                    (isValidCoordinate(resolvedCoords.originLat) && isValidCoordinate(resolvedCoords.originLng)) ||
+                    !!(t.origin && getCoordinatesSync(t.origin));
+                const hasDestination = (isValidCoordinate(t.destLat) && isValidCoordinate(t.destLng)) ||
+                    (isValidCoordinate(resolvedCoords.destLat) && isValidCoordinate(resolvedCoords.destLng)) ||
+                    !!(t.destination && getCoordinatesSync(t.destination));
+
+                if ((t.origin && !hasOrigin) || (t.destination && !hasDestination)) {
+                    missingLookups.push({
+                        key: getTransportCoordinateKey(t),
+                        origin: t.origin,
+                        destination: t.destination,
+                        needsOrigin: !!t.origin && !hasOrigin,
+                        needsDestination: !!t.destination && !hasDestination
+                    });
+                }
+            });
+        });
+
+        if (missingLookups.length === 0) return;
+
+        Promise.all(missingLookups.map(async lookup => {
+            const patch: Partial<Pick<Transport, 'originLat' | 'originLng' | 'destLat' | 'destLng'>> = {};
+            if (lookup.needsOrigin && lookup.origin) {
+                const coords = await getCoordinates(lookup.origin);
+                if (coords) {
+                    patch.originLat = coords.lat;
+                    patch.originLng = coords.lng;
+                }
+            }
+            if (lookup.needsDestination && lookup.destination) {
+                const coords = await getCoordinates(lookup.destination);
+                if (coords) {
+                    patch.destLat = coords.lat;
+                    patch.destLng = coords.lng;
+                }
+            }
+            return { key: lookup.key, patch };
+        })).then(results => {
+            if (cancelled) return;
+            setResolvedTransportCoordinates(prev => {
+                let changed = false;
+                const next = { ...prev };
+                results.forEach(({ key, patch }) => {
+                    if (Object.keys(patch).length > 0) {
+                        next[key] = { ...(next[key] || {}), ...patch };
+                        changed = true;
+                    }
+                });
+                return changed ? next : prev;
+            });
+        }).catch(err => console.debug('ExpeditionMap3D coordinate lazy resolve failure', err));
+
+        return () => {
+            cancelled = true;
+        };
+    }, [trips, resolvedTransportCoordinates]);
 
     const globeEl = useRef<any>(null);
     const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
@@ -234,9 +318,9 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({
         const seqPoints: { lat: number, lng: number, label: string }[] = [];
 
         // 1. Frequencies
-        trips.forEach(trip => {
+        enrichedTrips.forEach(trip => {
             trip.transports?.forEach(t => {
-                if (t.originLat && t.originLng && t.destLat && t.destLng) {
+                if (hasTransportEndpoints(t)) {
                     const key = getRouteKey(t.originLat, t.originLng, t.destLat, t.destLng);
                     routeFrequencies.set(key, (routeFrequencies.get(key) || 0) + 1);
                 }
@@ -244,13 +328,13 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({
         });
 
         // 2. Build Objects
-        trips.forEach(trip => {
+        enrichedTrips.forEach(trip => {
             const statusColor = getStatusColor(trip, isDark, activeLayer);
             
             // Build Sequential Points for AutoPlay (Only if single trip provided to prevent chaos)
-            if (trips.length === 1 && trip.transports) {
+            if (enrichedTrips.length === 1 && trip.transports) {
                 // Sort transports
-                const sorted = [...trip.transports].sort((a, b) => new Date(a.departureDate).getTime() - new Date(b.departureDate).getTime());
+                const sorted = [...trip.transports].filter(hasTransportEndpoints).sort((a, b) => new Date(a.departureDate).getTime() - new Date(b.departureDate).getTime());
                 if (sorted.length > 0) {
                     // Start
                     seqPoints.push({ lat: sorted[0].originLat || 0, lng: sorted[0].originLng || 0, label: `Start: ${sorted[0].origin}` });
@@ -272,7 +356,7 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({
                     const modeColor = getModeColor(t.mode, statusColor);
                     const isSurface = ['Car Rental', 'Personal Car', 'Bus', 'Train', 'Cruise'].includes(t.mode);
 
-                    if (t.originLat && t.originLng && t.destLat && t.destLng) {
+                    if (hasTransportEndpoints(t)) {
                         const segments = [];
                         let currentStart = { lat: t.originLat, lng: t.originLng, name: t.origin };
                         
@@ -330,7 +414,7 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({
         });
 
         return { arcs: arcList, points: Array.from(pointMap.values()), sequentialPoints: seqPoints };
-    }, [trips, isDark, activeLayer, showFrequencyWeight, showGradientRoutes]);
+    }, [enrichedTrips, isDark, activeLayer, showFrequencyWeight, showGradientRoutes, showFlightRoutes, showLandSeaRoutes]);
 
     // Resize Observer
     useEffect(() => {
