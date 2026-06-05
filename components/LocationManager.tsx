@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
     Plane, 
@@ -23,8 +23,10 @@ import {
     GripVertical
 } from 'lucide-react';
 import { Button, Input, Autocomplete, Select, Card, Badge } from './ui';
-import { LocationEntry, Transport, TransportMode } from '../types';
+import { LocationEntry, Transport, TransportMode, Trip } from '../types';
 import { searchLocations, getCoordinates, getCoordinatesSync, calculateDistance } from '../services/geocoding';
+
+const ExpeditionMap = React.lazy(() => import('./ExpeditionMap').then(m => ({ default: m.ExpeditionMap })));
 
 interface RouteManagerProps {
     locations: LocationEntry[];
@@ -180,11 +182,16 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
         const parsedLegs: JourneyLeg[] = [];
 
         Object.entries(legGroups).forEach(([legId, group]) => {
-            const sortedTxs = [...group.txs].sort((a, b) => new Date(a.departureDate).getTime() - new Date(b.departureDate).getTime());
+            const sortedTxs = [...group.txs].sort((a, b) => {
+                const aOrder = Number(a.customFields?.find(f => f.key === 'routeOrder')?.value ?? Number.MAX_SAFE_INTEGER);
+                const bOrder = Number(b.customFields?.find(f => f.key === 'routeOrder')?.value ?? Number.MAX_SAFE_INTEGER);
+                if (Number.isFinite(aOrder) || Number.isFinite(bOrder)) return aOrder - bOrder;
+                return 0;
+            });
             const segments: RouteSegment[] = sortedTxs.map((tx, idx) => {
                 const prevTx = idx > 0 ? sortedTxs[idx - 1] : null;
                 const linkStartToPrevDest = prevTx ? tx.origin.toLowerCase().trim() === prevTx.destination.toLowerCase().trim() : false;
-                const linkDateToPrevDate = prevTx ? tx.departureDate === prevTx.departureDate : false;
+                const linkDateToPrevDate = false;
 
                 return {
                     id: tx.id || `seg-${Math.random().toString(36).substring(2, 9)}`,
@@ -209,7 +216,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
             const segments: RouteSegment[] = sortedLegacy.map((tx, idx) => {
                 const prevTx = idx > 0 ? sortedLegacy[idx - 1] : null;
                 const linkStartToPrevDest = prevTx ? tx.origin.toLowerCase().trim() === prevTx.destination.toLowerCase().trim() : false;
-                const linkDateToPrevDate = prevTx ? tx.departureDate === prevTx.departureDate : false;
+                const linkDateToPrevDate = false;
 
                 return {
                     id: tx.id || `seg-${Math.random().toString(36).substring(2, 9)}`,
@@ -310,44 +317,6 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
         };
     });
 
-    const hasTimelineOverlaps = legValidations.some(v => !v.isValid);
-
-    // Timeline solver: Shifts current leg and dependents forward recursively to fix conflicts instantly
-    const autoResolveTimelineOverlap = (legIndex: number) => {
-        if (legIndex <= 0) return;
-        setLegs(prevLegs => {
-            const list = JSON.parse(JSON.stringify(prevLegs)) as JourneyLeg[];
-            
-            for (let i = legIndex; i < list.length; i++) {
-                const prev = list[i - 1];
-                const current = list[i];
-                
-                const prevDates = compileLegDates(prev);
-                const currentDates = compileLegDates(current);
-                
-                const dPrevEnd = parseDateString(prevDates.endDate);
-                const dCurrentStart = parseDateString(currentDates.startDate);
-                
-                if (dPrevEnd && dCurrentStart && dCurrentStart < dPrevEnd) {
-                    const msDiff = dPrevEnd.getTime() - dCurrentStart.getTime();
-                    const daysToShift = Math.ceil(msDiff / (1000 * 60 * 60 * 24));
-                    
-                    current.segments.forEach(seg => {
-                        const d = parseDateString(seg.date);
-                        if (d) {
-                            d.setDate(d.getDate() + daysToShift);
-                            const y = d.getFullYear();
-                            const m = String(d.getMonth() + 1).padStart(2, '0');
-                            const day = String(d.getDate()).padStart(2, '0');
-                            seg.date = `${y}-${m}-${day}`;
-                        }
-                    });
-                }
-            }
-            return list;
-        });
-    };
-
     // Generalized reactive updater for safe linkage cascading
     const updateSegment = (legId: string, segmentId: string, field: keyof RouteSegment, value: any) => {
         setLegs(prevLegs => prevLegs.map(leg => {
@@ -365,9 +334,6 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
 
                 if (linkedSeg.linkStartToPrevDest) {
                     linkedSeg.startCity = prev.destination;
-                }
-                if (linkedSeg.linkDateToPrevDate) {
-                    linkedSeg.date = prev.date;
                 }
                 return linkedSeg;
             });
@@ -387,22 +353,6 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                     ...seg,
                     linkStartToPrevDest: linkNew,
                     startCity: linkNew ? prevDest : seg.startCity
-                };
-            });
-            return { ...leg, segments: updatedSegments };
-        }));
-    };
-
-    const toggleLinkDate = (legId: string, segmentId: string, prevDate: string) => {
-        setLegs(prevLegs => prevLegs.map(leg => {
-            if (leg.id !== legId) return leg;
-            const updatedSegments = leg.segments.map((seg, idx) => {
-                if (seg.id !== segmentId) return seg;
-                const linkNew = !seg.linkDateToPrevDate;
-                return {
-                    ...seg,
-                    linkDateToPrevDate: linkNew,
-                    date: linkNew ? prevDate : seg.date
                 };
             });
             return { ...leg, segments: updatedSegments };
@@ -449,9 +399,6 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                 if (linkedSeg.linkStartToPrevDest) {
                     linkedSeg.startCity = prev.destination;
                 }
-                if (linkedSeg.linkDateToPrevDate) {
-                    linkedSeg.date = prev.date;
-                }
                 return linkedSeg;
             });
 
@@ -478,9 +425,6 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                 let linkedSeg = { ...seg };
                 if (linkedSeg.linkStartToPrevDest) {
                     linkedSeg.startCity = prev.destination;
-                }
-                if (linkedSeg.linkDateToPrevDate) {
-                    linkedSeg.date = prev.date;
                 }
                 return linkedSeg;
             });
@@ -542,10 +486,6 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
     };
 
     const triggerSaveRoute = async () => {
-        if (hasTimelineOverlaps) {
-            return;
-        }
-
         setIsSaving(true);
         try {
             const finalTransports: Transport[] = [];
@@ -594,7 +534,9 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                         destLng: destCoords?.lng,
                         customFields: [
                             { key: 'legId', value: leg.id },
-                            { key: 'legTitle', value: leg.title }
+                            { key: 'legTitle', value: leg.title },
+                            { key: 'routeOrder', value: String(idx) },
+                            { key: 'routeKind', value: 'independent-excursion' }
                         ]
                     });
                 }
@@ -678,7 +620,61 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
         }, 0)
     , 0);
 
+    const routePreviewTrip = useMemo<Trip>(() => {
+        const previewTransports: Transport[] = [];
 
+        legs.forEach((leg, legIdx) => {
+            leg.segments.forEach((seg, segIdx) => {
+                const startName = seg.startCity.trim();
+                const destName = seg.destination.trim();
+                if (!startName || !destName) return;
+
+                const startCoords = coordsCache[startName] || getCoordinatesSync(startName);
+                const destCoords = coordsCache[destName] || getCoordinatesSync(destName);
+
+                previewTransports.push({
+                    id: `preview-${leg.id}-${seg.id}`,
+                    itineraryId: 'route-gen',
+                    type: 'One-Way',
+                    mode: seg.transportMode,
+                    provider: leg.title || `Excursion ${legIdx + 1}`,
+                    identifier: `${segIdx + 1}`,
+                    confirmationCode: '',
+                    origin: startName,
+                    destination: destName,
+                    departureDate: seg.date || defaultStartDate,
+                    departureTime: '10:00',
+                    arrivalDate: seg.date || defaultStartDate,
+                    arrivalTime: '13:00',
+                    travelClass: 'Economy',
+                    cost: 0,
+                    duration: 0,
+                    distance: startCoords && destCoords ? calculateDistance(startCoords.lat, startCoords.lng, destCoords.lat, destCoords.lng) : undefined,
+                    originLat: startCoords?.lat,
+                    originLng: startCoords?.lng,
+                    destLat: destCoords?.lat,
+                    destLng: destCoords?.lng,
+                    customFields: [
+                        { key: 'legId', value: leg.id },
+                        { key: 'legTitle', value: leg.title },
+                        { key: 'routeOrder', value: String(segIdx) },
+                        { key: 'routeKind', value: 'independent-excursion-preview' }
+                    ]
+                });
+            });
+        });
+
+        return {
+            id: 'route-planner-preview',
+            name: 'Route Planner Preview',
+            location: previewTransports[0]?.origin || 'Route Planner',
+            startDate: defaultStartDate,
+            endDate: defaultEndDate,
+            status: 'Planning',
+            participants: [],
+            transports: previewTransports
+        };
+    }, [legs, coordsCache, defaultStartDate, defaultEndDate]);
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 text-gray-900 dark:text-gray-100">
@@ -691,7 +687,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                         <h2 className="text-3xl font-black tracking-tight font-sans">Route Planner</h2>
                     </div>
                     <p className="text-sm text-slate-400 mt-2 font-medium max-w-xl">
-                        Reworked and simplified. Build independent legs with secure timelines, visual coordinate maps, and intelligent cascading alignment.
+                        Build independent excursions/routes inside this trip. Each route keeps its own date and every route is visualized on the live map preview.
                     </p>
                 </div>
                 
@@ -854,39 +850,15 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                                                         />
                                                     </div>
 
-                                                    {/* Journey Date Picker with Link Toggle (WIDENED & STYLIZED) */}
+                                                    {/* Journey Date Picker - independent per route segment */}
                                                     <div className="md:col-span-3 space-y-1.5">
-                                                        <div className="flex items-center justify-between">
-                                                            <label className="text-[10px] font-black uppercase tracking-wider text-gray-400">Departure</label>
-                                                            {prevSegment && (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => toggleLinkDate(leg.id, seg.id, prevSegment.date)}
-                                                                    className={`p-1 rounded-lg transition-colors ${
-                                                                        seg.linkDateToPrevDate 
-                                                                        ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30' 
-                                                                        : 'text-gray-400 hover:text-gray-600 dark:hover:text-zinc-350 hover:bg-gray-150 dark:hover:bg-zinc-800/50'
-                                                                    }`}
-                                                                    title={seg.linkDateToPrevDate ? "Unlock departure date" : `Link departure date to previous stop (${prevSegment.date})`}
-                                                                >
-                                                                    {seg.linkDateToPrevDate ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
-                                                                </button>
-                                                            )}
-                                                        </div>
-
-                                                        {seg.linkDateToPrevDate && prevSegment ? (
-                                                            <div className="w-full px-4 py-3 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/10 border border-indigo-100/50 dark:border-indigo-900/30 text-gray-700 dark:text-indigo-300 text-sm font-bold flex items-center justify-between h-[46px]">
-                                                                <span className="truncate pr-1">{prevSegment.date}</span>
-                                                                <Badge color="indigo" className="text-[8px] font-extrabold shrink-0">LINKED</Badge>
-                                                            </div>
-                                                        ) : (
-                                                            <Input
-                                                                type="date"
-                                                                value={seg.date}
-                                                                onChange={(e) => updateSegment(leg.id, seg.id, 'date', e.target.value)}
-                                                                className="h-[46px]"
-                                                            />
-                                                        )}
+                                                        <label className="text-[10px] font-black uppercase tracking-wider text-gray-400">Departure</label>
+                                                        <Input
+                                                            type="date"
+                                                            value={seg.date}
+                                                            onChange={(e) => updateSegment(leg.id, seg.id, 'date', e.target.value)}
+                                                            className="h-[46px]"
+                                                        />
                                                     </div>
 
                                                     {/* Transport Mode Selection */}
@@ -961,49 +933,16 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                                                             {seg.linkStartToPrevDest ? (
                                                                 <>🚀 Lock to {prevSegment.destination || "stop"}</>
                                                             ) : (
-                                                                <>🔗 Link start to previous stop ({prevSegment.destination || "stop"}</>
+                                                                <>🔗 Link start to previous stop ({prevSegment.destination || "stop"})</>
                                                             )}
                                                         </button>
 
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => toggleLinkDate(leg.id, seg.id, prevSegment.date)}
-                                                            className={`px-3 py-1 rounded-full text-[9px] font-bold tracking-tight transition-all flex items-center gap-1 cursor-pointer ${
-                                                                seg.linkDateToPrevDate 
-                                                                ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 shadow-sm' 
-                                                                : 'bg-zinc-100 dark:bg-zinc-800/40 hover:bg-zinc-200/60 text-gray-500 dark:text-gray-400'
-                                                            }`}
-                                                        >
-                                                            {seg.linkDateToPrevDate ? (
-                                                                <>📅 Synced to {prevSegment.date}</>
-                                                            ) : (
-                                                                <>📅 Link date to previous ({prevSegment.date})</>
-                                                            )}
-                                                        </button>
                                                     </div>
                                                 )}
                                             </div>
                                         );
                                     })}
                                 </div>
-
-                                {/* Timeline error/validation block */}
-                                {!validation.isValid && (
-                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-red-500/10 p-4 border border-red-500/15 rounded-3xl text-xs mt-4">
-                                        <div className="flex items-center gap-2 text-red-600 dark:text-red-400 font-bold">
-                                            <span>⚠️</span>
-                                            <span>{validation.errorMessage}</span>
-                                        </div>
-                                        <Button 
-                                            variant="secondary" 
-                                            size="sm" 
-                                            className="bg-white/90 dark:bg-zinc-800 text-[10px] font-extrabold py-1.5 px-3 rounded-xl border border-red-500/10 hover:bg-white dark:hover:bg-zinc-700 cursor-pointer shadow-sm text-red-500 hover:text-red-600"
-                                            onClick={() => autoResolveTimelineOverlap(legIdx)}
-                                        >
-                                            Auto-Align Timeline
-                                        </Button>
-                                    </div>
-                                )}
 
                                 {/* Internal leg stats footer with duration */}
                                 <div className="mt-5 flex justify-between items-center text-[10px] font-extrabold uppercase text-gray-400 tracking-wider">
@@ -1034,14 +973,8 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                 <Card title="Itinerary Dispatch" className="shadow-lg">
                     <div className="space-y-4">
                         <p className="text-xs text-gray-400 leading-normal">
-                            Apply and lock all changed georoutes, separate excursions, sequence linkages, and segment transit routes to the master trip database instantly.
+                            Apply all independent excursions/routes to the trip database. Route dates are informational only and never force another route to move.
                         </p>
-
-                        {hasTimelineOverlaps && (
-                            <div className="bg-red-500/10 p-3.5 border border-red-500/15 rounded-2xl text-[10px] text-red-600 dark:text-red-400 font-bold leading-normal">
-                                🚫 Save Disabled: You must resolve timeline overlaps between consecutive excursions before saving. Use the auto-align alignment buttons to fix issues instantly.
-                            </div>
-                        )}
 
                         <div className="space-y-2 mt-4">
                             <Button 
@@ -1049,7 +982,6 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                                 className="w-full" 
                                 size="lg" 
                                 isLoading={isSaving}
-                                disabled={hasTimelineOverlaps}
                                 onClick={triggerSaveRoute}
                             >
                                 Save Itinerary Changes
@@ -1062,6 +994,33 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                             >
                                 Discard Unsaved Changes
                             </Button>
+                        </div>
+                    </div>
+                </Card>
+
+                <Card title="All Routes Map Preview" className="shadow-lg overflow-hidden">
+                    <div className="space-y-3">
+                        <p className="text-xs text-gray-400 leading-normal">
+                            Every independent excursion/route below is drawn here as soon as both endpoints have coordinates. Dates do not control visibility or ordering.
+                        </p>
+                        <div className="h-[360px] rounded-[2rem] overflow-hidden border border-gray-100 dark:border-white/10 bg-[#0f0f12] relative">
+                            <Suspense fallback={
+                                <div className="w-full h-full flex flex-col items-center justify-center text-zinc-400 space-y-3">
+                                    <div className="w-7 h-7 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                                    <span className="text-[9px] font-bold uppercase tracking-wider">Preparing route preview...</span>
+                                </div>
+                            }>
+                                <ExpeditionMap
+                                    key={`${routePreviewTrip.transports?.length || 0}-${Object.keys(coordsCache).length}`}
+                                    trips={[routePreviewTrip]}
+                                    animateRoutes={true}
+                                    showFrequencyWeight={false}
+                                    showCityMarkers={true}
+                                    showLandSeaRoutes={true}
+                                    showFlightRoutes={true}
+                                    viewMode="network"
+                                />
+                            </Suspense>
                         </div>
                     </div>
                 </Card>

@@ -1318,10 +1318,13 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                             </div>
                         }>
                             <ExpeditionMap 
+                                key={`${trip.id}-${trip.transports?.length || 0}-${trip.locations?.length || 0}`}
                                 trips={[trip]} 
                                 animateRoutes={true} 
                                 showFrequencyWeight={true}
                                 showCityMarkers={true}
+                                showLandSeaRoutes={true}
+                                showFlightRoutes={true}
                                 viewMode="network"
                             />
                         </Suspense>
