@@ -419,8 +419,8 @@ export const PassportStampsPage: React.FC<PassportStampsPageProps> = ({ flights,
         }}
       />
       
-      <div className="space-y-4 overflow-visible">
-        <div className="flex justify-between items-center border-b border-zinc-200/40 dark:border-white/5 pb-2.5 select-none">
+      <div className="space-y-4 overflow-visible flex-1 flex flex-col">
+        <div className="flex justify-between items-center border-b border-zinc-200/40 dark:border-white/5 pb-2.5 select-none shrink-0">
           <h3 className="text-xs font-black uppercase text-zinc-500 tracking-widest flex items-center gap-1.5">
             <Award className="w-4 h-4 text-emerald-500" />
             Visa stamps
@@ -432,7 +432,7 @@ export const PassportStampsPage: React.FC<PassportStampsPageProps> = ({ flights,
 
         {/* Vintage-style stamp gallery */}
         {stats.flags.length > 0 ? (
-          <div className="flex flex-wrap gap-3 py-3 px-2 justify-center max-h-[140px] overflow-y-auto overflow-x-visible custom-scrollbar">
+          <div className="flex flex-wrap gap-[15px] py-3 px-2 justify-center flex-1 overflow-y-auto overflow-x-visible custom-scrollbar">
             {stats.flags.map((stamp, idx) => {
               const name = COUNTRY_NAMES[stamp.code] || stamp.code;
               const colors = [
@@ -448,14 +448,14 @@ export const PassportStampsPage: React.FC<PassportStampsPageProps> = ({ flights,
               return (
                 <div
                   key={stamp.code}
-                  className={`w-9 h-9 rounded-full border border-dashed ${color.border} ${color.text} ${color.bg} flex items-center justify-center font-mono select-none shadow-sm cursor-pointer transition-all duration-300 relative`}
+                  className={`w-10 h-10 rounded-full border border-dashed ${color.border} ${color.text} ${color.bg} flex items-center justify-center font-mono select-none shadow-sm cursor-pointer transition-all duration-300 relative`}
                   style={{
                     transform: `rotate(${stableRotate}deg)`,
                     zIndex: idx + 1,
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.zIndex = '99';
-                    e.currentTarget.style.transform = 'scale(1.3) rotate(0deg)';
+                    e.currentTarget.style.transform = 'scale(1.35) rotate(0deg)';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.zIndex = (idx + 1).toString();
@@ -469,7 +469,7 @@ export const PassportStampsPage: React.FC<PassportStampsPageProps> = ({ flights,
             })}
           </div>
         ) : (
-          <div className="w-full text-center py-7 text-[8px] uppercase font-bold text-zinc-400 border border-dashed border-zinc-200/50 dark:border-white/5 rounded-2xl bg-zinc-500/5 select-none">
+          <div className="flex-1 flex flex-col items-center justify-center w-full text-center py-7 text-[8px] uppercase font-bold text-zinc-400 border border-dashed border-zinc-200/50 dark:border-white/5 rounded-2xl bg-zinc-500/5 select-none">
             No stamps recorded for this era
           </div>
         )}

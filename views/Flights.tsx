@@ -286,7 +286,7 @@ const BundleJourneyTimeline: React.FC<{ flights: Transport[] }> = ({ flights }) 
                   {/* Carrier Details badge along connection route */}
                   <div className="relative z-10 bg-white/95 dark:bg-zinc-900/95 border border-zinc-200 dark:border-zinc-800 px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-sm -mt-1 group-hover/timeline:scale-[1.02] transition-transform duration-300">
                     <div className="w-4 h-4 rounded-md bg-zinc-50 dark:bg-zinc-850 flex items-center justify-center overflow-hidden shrink-0 shadow-xs">
-                      <AirlineLogo provider={flight.provider} fallback={<Plane className="w-2.5 h-2.5 text-zinc-400" />} />
+                      <AirlineLogo provider={flight.provider} fallback={<Plane className="w-3 h-3 text-zinc-400" />} />
                     </div>
                     <span className="font-mono text-[9px] font-black text-zinc-750 dark:text-zinc-200 uppercase tracking-widest leading-none">
                       {flight.identifier}
@@ -1740,7 +1740,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
               </div>
             )}
             <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center border border-zinc-200/90 dark:border-white/10 overflow-hidden shrink-0 shadow-xs">
-              <AirlineLogo provider={flight.provider} fallback={<Plane className="w-3.5 h-3.5 text-zinc-400" />} />
+              <AirlineLogo provider={flight.provider} fallback={<Plane className="w-4 h-4 text-zinc-400" />} />
             </div>
             <div className="flex flex-col">
               <span className="font-extrabold text-[13px] text-zinc-950 dark:text-zinc-100 uppercase tracking-tight leading-tight">
@@ -2272,8 +2272,8 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           <PassportTravelMap flights={filteredFlights.map(f => f.flight)} yearFilter={yearFilter} />
         </div>
 
-        {/* Row 2: Boarding Pass Hero Ticket (5 cols), Stamps Page (3 cols), and Flight Insights & Charts combined (4 cols) */}
-        <div className="col-span-12 md:col-span-6 lg:col-span-5 flex flex-col">
+        {/* Row 2: Boarding Pass Hero Ticket (4 cols), Stamps Page (4 cols), and Flight Insights & Charts combined (4 cols) */}
+        <div className="col-span-12 md:col-span-4 flex flex-col">
           {nextUpcomingFlight ? (() => {
             const flight = nextUpcomingFlight.flight;
             const trip = nextUpcomingFlight.trip;
@@ -2308,8 +2308,8 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                   </div>
                   
                   <div className="flex items-center gap-2.5 mt-3.5">
-                    <div className="w-8.5 h-8.5 rounded-xl bg-white dark:bg-zinc-800 flex items-center justify-center border border-zinc-200 dark:border-white/5 overflow-hidden shadow-xs shrink-0">
-                      <AirlineLogo provider={flight.provider} fallback={<Plane className="w-4.5 h-4.5 text-zinc-400" />} />
+                    <div className="w-9 h-9 rounded-xl bg-white dark:bg-zinc-800 flex items-center justify-center border border-zinc-200 dark:border-white/5 overflow-hidden shadow-xs shrink-0">
+                      <AirlineLogo provider={flight.provider} fallback={<Plane className="w-4 h-4 text-zinc-400" />} />
                     </div>
                     <div className="flex flex-col min-w-0">
                       <span className="text-xs font-black text-zinc-800 dark:text-zinc-200 uppercase leading-none truncate block">
@@ -2429,11 +2429,11 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           )}
         </div>
 
-        <div className="col-span-12 md:col-span-6 lg:col-span-3 flex flex-col">
+        <div className="col-span-12 md:col-span-4 flex flex-col">
           <PassportStampsPage flights={filteredFlights.map(f => f.flight)} yearFilter={yearFilter} />
         </div>
 
-        <div className="col-span-12 lg:col-span-4 flex flex-col">
+        <div className="col-span-12 md:col-span-4 flex flex-col">
           <div className="bg-white/70 dark:bg-zinc-900/40 border border-zinc-200/60 dark:border-white/5 shadow-xl rounded-[2.5rem] p-6 backdrop-blur-xl flex flex-col justify-between h-full space-y-5 transition-all duration-300 hover:shadow-2xl">
             <div>
               <h3 className="text-xs font-black text-zinc-450 dark:text-zinc-405 uppercase tracking-widest flex items-center gap-2 mb-4 select-none">
