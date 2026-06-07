@@ -75,7 +75,7 @@ const AIRPORT_COUNTRIES: Record<string, string> = {
   BEY: 'LB', PRG: 'CZ', BCN: 'ES', CDG: 'FR', ORD: 'US', DTW: 'US', IAD: 'US', GRR: 'US', ATL: 'US', FRA: 'DE',
   AMM: 'JO', MAD: 'ES', TUN: 'TN', DJE: 'TN', SAW: 'TR', IST: 'TR', ISL: 'TR', CPH: 'DK', LIS: 'PT', ATH: 'GR',
   MCT: 'OM', AUH: 'AE', PSA: 'IT', AMS: 'NL', FLR: 'IT', OTP: 'RO', BRU: 'BE', LCA: 'CY', CRL: 'BE',
-  LHR: 'GB', ZRH: 'CH', NCE: 'FR', WAW: 'PL', KUL: 'MY', LGK: 'MY', DPS: 'ID', SIN: 'SG', FCO: 'IT', NAP: 'IT',
+  LHR: 'GB-ENG', ZRH: 'CH', NCE: 'FR', WAW: 'PL', KUL: 'MY', LGK: 'MY', DPS: 'ID', SIN: 'SG', FCO: 'IT', NAP: 'IT',
   OPO: 'PT', BUD: 'HU', TFS: 'ES', LAX: 'US', SFO: 'US', ORY: 'FR', SOF: 'BG', AGP: 'ES', DOH: 'QA', CMB: 'LK',
   PNH: 'KH', TLL: 'EE', ARN: 'SE', DUB: 'IE', CLE: 'US', BRI: 'IT', CAI: 'EG', ASW: 'EG', LXR: 'EG', PDL: 'PT',
   BER: 'DE', VIE: 'AT',
@@ -85,13 +85,19 @@ const COUNTRY_NAMES: Record<string, string> = {
   LB: 'LEBANON', CZ: 'CZECH REP.', ES: 'SPAIN', FR: 'FRANCE', US: 'USA', DE: 'GERMANY',
   JO: 'JORDAN', TN: 'TUNISIA', TR: 'TURKEY', DK: 'DENMARK', PT: 'PORTUGAL', GR: 'GREECE',
   OM: 'OMAN', AE: 'U.A.E.', IT: 'ITALY', NL: 'NETHERLANDS', RO: 'ROMANIA', BE: 'BELGIUM',
-  CY: 'CYPRUS', GB: 'U.K.', CH: 'SWISS', PL: 'POLAND', MY: 'MALAYSIA',
+  CY: 'CYPRUS', GB: 'U.K.', 'GB-ENG': 'ENGLAND', 'GB-SCT': 'SCOTLAND', 'GB-WLS': 'WALES', 'GB-NIR': 'N. IRELAND', CH: 'SWISS', PL: 'POLAND', MY: 'MALAYSIA',
   ID: 'INDONESIA', SG: 'SINGAPORE', HU: 'HUNGARY', BG: 'BULGARIA', QA: 'QATAR', LK: 'SRI LANKA',
   KH: 'CAMBODIA', EE: 'ESTONIA', SE: 'SWEDEN', IE: 'IRELAND', EG: 'EGYPT', AT: 'AUSTRIA',
 };
 
 const getFlagEmoji = (countryCode: string) => {
   if (!countryCode) return '';
+  const code = countryCode.toUpperCase();
+  if (code === 'GB-ENG') return '🏴󠁧󠁢󠁥󠁮󠁧󠁿';
+  if (code === 'GB-SCT') return '🏴󠁧󠁢󠁳󠁣󠁴󠁿';
+  if (code === 'GB-WLS') return '🏴󠁧󠁢󠁷󠁬󠁳󠁿';
+  if (code === 'GB-NIR') return '🇬🇧';
+  if (countryCode.length !== 2) return '🏳️';
   const codePoints = countryCode
     .toUpperCase()
     .split('')

@@ -13,7 +13,6 @@ const UserDetail = lazy(() => import('./views/UserDetail').then(m => ({ default:
 const VacationPlanner = lazy(() => import('./views/VacationPlanner').then(m => ({ default: m.VacationPlanner })));
 const TripDetail = lazy(() => import('./views/TripDetail').then(m => ({ default: m.TripDetail })));
 const ExpeditionMapView = lazy(() => import('./views/ExpeditionMapView').then(m => ({ default: m.ExpeditionMapView })));
-const Gamification = lazy(() => import('./views/Gamification').then(m => ({ default: m.Gamification })));
 const Flights = lazy(() => import('./views/Flights').then(m => ({ default: m.Flights })));
 const RoadTrips = lazy(() => import('./views/RoadTrips').then(m => ({ default: m.RoadTrips })));
 const TravelAtlas = lazy(() => import('./views/TravelAtlas').then(m => ({ default: m.TravelAtlas })));
@@ -25,7 +24,7 @@ const getUrlState = () => {
         if (path === '/settings') return { view: ViewState.SETTINGS };
         if (path === '/planner') return { view: ViewState.PLANNER };
         if (path === '/map') return { view: ViewState.MAP };
-        if (path === '/gamification') return { view: ViewState.GAMIFICATION };
+        if (path === '/gamification') return { view: ViewState.DASHBOARD };
         if (path === '/flights') return { view: ViewState.FLIGHTS };
         if (path === '/roadtrips') return { view: ViewState.ROADTRIPS };
         if (path === '/atlas' || path === '/travel-atlas') return { view: ViewState.TRAVEL_ATLAS };
@@ -284,7 +283,7 @@ export default function App() {
       case ViewState.MAP:
         return <ExpeditionMapView onTripClick={handleTripClick} />;
       case ViewState.GAMIFICATION:
-        return <Gamification onTripClick={handleTripClick} />;
+        return <Dashboard onUserClick={handleUserClick} onTripClick={handleTripClick} />;
       case ViewState.FLIGHTS:
         return <Flights onTripClick={handleTripClick} />;
       case ViewState.ROADTRIPS:

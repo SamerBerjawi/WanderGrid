@@ -763,7 +763,10 @@ export async function getCoordinates(location: string): Promise<{ lat: number; l
 
 export const LOCAL_GEO_MAP: Array<{ keywords: string[]; city: string; country: string; countryCode: string }> = [
     { keywords: ['france', 'paris', 'nice', 'lyon', 'cdg', 'marseille', 'champs-elysees', 'french'], city: 'Paris', country: 'France', countryCode: 'FR' },
-    { keywords: ['united kingdom', 'uk', 'gb', 'london', 'lhr', 'heathrow', 'edinburgh', 'manchester', 'belfast', 'scotland', 'england', 'british'], city: 'London', country: 'United Kingdom', countryCode: 'GB' },
+    { keywords: ['england', 'english', 'london', 'lhr', 'heathrow', 'manchester', 'birmingham', 'man', 'bhx', 'british', 'uk', 'gb'], city: 'London', country: 'England', countryCode: 'GB-ENG' },
+    { keywords: ['scotland', 'scottish', 'edinburgh', 'glasgow', 'edi', 'gla', 'abz', 'aberdeen'], city: 'Edinburgh', country: 'Scotland', countryCode: 'GB-SCT' },
+    { keywords: ['wales', 'welsh', 'cardiff', 'cwl'], city: 'Cardiff', country: 'Wales', countryCode: 'GB-WLS' },
+    { keywords: ['northern ireland', 'belfast', 'bfs', 'bhd'], city: 'Belfast', country: 'Northern Ireland', countryCode: 'GB-NIR' },
     { keywords: ['united states', 'usa', 'us', 'new york', 'jfk', 'california', 'los angeles', 'san francisco', 'miami', 'chicago', 'hawaii', 'vegas', 'american'], city: 'New York', country: 'United States', countryCode: 'US' },
     { keywords: ['japan', 'tokyo', 'kyoto', 'osaka', 'hnd', 'narita', 'shibuya', 'japanese'], city: 'Tokyo', country: 'Japan', countryCode: 'JP' },
     { keywords: ['united arab emirates', 'uae', 'dubai', 'dxb', 'abu dhabi', 'emirati'], city: 'Dubai', country: 'United Arab Emirates', countryCode: 'AE' },
@@ -800,7 +803,71 @@ export const LOCAL_GEO_MAP: Array<{ keywords: string[]; city: string; country: s
     { keywords: ['brazil', 'rio', 'saulo', 'sao paulo', 'brazilian'], city: 'Rio de Janeiro', country: 'Brazil', countryCode: 'BR' },
 ];
 
+export function refineUKCountry(city: string, country: string, countryCode?: string, query?: string): { city: string, country: string, countryCode?: string } {
+    const code = countryCode?.toUpperCase() || '';
+    const normCountry = (country || '').toLowerCase();
+    const isUK = code === 'GB' || code === 'UK' || normCountry.includes('united kingdom') || normCountry.includes('great britain') || normCountry.includes('england') || normCountry.includes('scotland') || normCountry.includes('wales') || normCountry.includes('northern ireland');
+
+    if (!isUK) {
+        return { city, country, countryCode: code };
+    }
+
+    const textToSearch = `${city || ''} ${country || ''} ${query || ''}`.toLowerCase();
+
+    // Check Scotland
+    if (
+        textToSearch.includes('scotland') ||
+        textToSearch.includes('scottish') ||
+        textToSearch.includes('edinburgh') ||
+        textToSearch.includes('glasgow') ||
+        textToSearch.includes('edi') ||
+        textToSearch.includes('gla') ||
+        textToSearch.includes('abz') ||
+        textToSearch.includes('inv') ||
+        textToSearch.includes('aberdeen')
+    ) {
+        return { city, country: 'Scotland', countryCode: 'GB-SCT' };
+    }
+
+    // Check Wales
+    if (
+        textToSearch.includes('wales') ||
+        textToSearch.includes('welsh') ||
+        textToSearch.includes('cardiff') ||
+        textToSearch.includes('swansea') ||
+        textToSearch.includes('cwl')
+    ) {
+        return { city, country: 'Wales', countryCode: 'GB-WLS' };
+    }
+
+    // Check Northern Ireland
+    if (
+        textToSearch.includes('northern ireland') ||
+        textToSearch.includes('belfast') ||
+        textToSearch.includes('bfs') ||
+        textToSearch.includes('bhd') ||
+        textToSearch.includes('derry')
+    ) {
+        return { city, country: 'Northern Ireland', countryCode: 'GB-NIR' };
+    }
+
+    // Fallback to England
+    return { city, country: 'England', countryCode: 'GB-ENG' };
+}
+
 export async function resolvePlaceName(query: string): Promise<{ city: string, country: string, countryCode?: string, displayName: string } | null> {
+    const raw = await resolvePlaceNameRaw(query);
+    if (!raw) return null;
+    const refined = refineUKCountry(raw.city, raw.country, raw.countryCode, query);
+    return {
+        ...raw,
+        city: refined.city,
+        country: refined.country,
+        countryCode: refined.countryCode
+    };
+}
+
+async function resolvePlaceNameRaw(query: string): Promise<{ city: string, country: string, countryCode?: string, displayName: string } | null> {
     if (!query) return null;
     loadCache();
     

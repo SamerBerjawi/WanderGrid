@@ -9,6 +9,7 @@ export interface VisitedCountry {
     tripCount: number;
     lastVisit: Date | string; 
     region: string; 
+    rarity?: 'gold' | 'silver' | 'bronze' | 'Legendary' | 'Rare' | 'Uncommon' | 'Common';
 }
 
 interface PassportStampProps {
@@ -79,6 +80,10 @@ export const PassportStamp: React.FC<PassportStampProps> = ({ country }) => {
             'IT': { r: 16, g: 185, b: 129 },  // Emerald Green
             'ES': { r: 239, g: 68, b: 68 },   // Red/Yellow
             'GB': { r: 29, g: 78, b: 216 },   // Navy Blue
+            'GB-ENG': { r: 206, g: 17, b: 38 },  // St George Red
+            'GB-SCT': { r: 0, g: 101, b: 189 },  // Scottish Saltire Blue
+            'GB-WLS': { r: 0, g: 173, b: 95 },   // Welsh Green/White
+            'GB-NIR': { r: 210, g: 12, b: 35 },  // Red Cross / Ulster
             'NL': { r: 220, g: 38, b: 38 },   // Red
             'CH': { r: 239, g: 68, b: 68 },   // Red
             'SE': { r: 14, g: 165, b: 233 },  // Sky Swedish Blue
@@ -178,14 +183,56 @@ export const PassportStamp: React.FC<PassportStampProps> = ({ country }) => {
         } as React.CSSProperties;
     }, [flagGlow]);
 
+    const rarity = useMemo(() => {
+        const rawRarity = country.rarity;
+        if (rawRarity) {
+            const r = String(rawRarity).toLowerCase();
+            if (r.includes('gold') || r.includes('legendary')) return 'gold';
+            if (r.includes('silver') || r.includes('rare')) return 'silver';
+            return 'bronze';
+        }
+        // Fallback calculation based on country code hash and number of trips
+        let sum = 0;
+        for (let i = 0; i < country.code.length; i++) {
+            sum += country.code.charCodeAt(i);
+        }
+        const trips = country.tripCount || 1;
+        if (trips >= 4 || sum % 5 === 0) return 'gold';
+        if (trips >= 2 || sum % 5 === 2 || sum % 5 === 3) return 'silver';
+        return 'bronze';
+    }, [country.code, country.tripCount, country.rarity]);
+
+    const borderRarityClasses = useMemo(() => {
+        if (rarity === 'gold') {
+            return 'border-amber-400/90 dark:border-amber-400/70 shadow-[0_0_12px_rgba(245,158,11,0.2)] ring-2 ring-amber-400/10 dark:ring-amber-400/15';
+        }
+        if (rarity === 'silver') {
+            return 'border-slate-300 dark:border-zinc-500 shadow-[0_0_12px_rgba(156,163,175,0.15)] ring-2 ring-slate-300/10 dark:ring-zinc-500/15';
+        }
+        return 'border-amber-700/50 dark:border-amber-700/40 shadow-[0_0_10px_rgba(180,83,9,0.12)] ring-2 ring-amber-700/5 dark:ring-amber-700/10';
+    }, [rarity]);
+
     return (
         <div 
             id={`passport-stamp-${country.code}`}
             style={dynamicStyle} 
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
-            className="group relative bg-white/70 dark:bg-zinc-900/60 backdrop-blur-md rounded-[2.5rem] border border-zinc-200/50 dark:border-white/5 p-6 flex flex-col justify-center items-center h-[14.5rem] w-full min-w-0 hover:scale-[1.04] hover:-translate-y-1 transition-all duration-300 overflow-hidden select-none"
+            className={`group relative bg-white/70 dark:bg-zinc-900/60 backdrop-blur-md rounded-[2.5rem] border p-6 flex flex-col justify-center items-center h-[14.5rem] w-full min-w-0 hover:scale-[1.04] hover:-translate-y-1 transition-all duration-300 overflow-hidden select-none ${borderRarityClasses}`}
         >
+            {/* Stamp Card Rarity Indicator Pill */}
+            <div className="absolute top-4 right-5 z-10 flex items-center gap-1 pointer-events-none">
+              <span className={`text-[8.5px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                rarity === 'gold'
+                  ? 'bg-amber-500/10 text-amber-500 dark:text-amber-400 border border-amber-500/20'
+                  : rarity === 'silver'
+                  ? 'bg-slate-500/10 text-slate-550 dark:text-slate-400 border border-slate-550/20'
+                  : 'bg-amber-800/15 text-amber-705 dark:text-amber-600 border border-amber-805/15'
+              }`}>
+                {rarity === 'gold' ? '🥇 Gold' : rarity === 'silver' ? '🥈 Silver' : '🥉 Bronze'}
+              </span>
+            </div>
+
             {/* Inked Distress Background Grid for genuine hand-stamped passport page */}
             <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:10px_10px] pointer-events-none" />
             <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.04] pointer-events-none mix-blend-multiply dark:mix-blend-screen"
@@ -250,7 +297,13 @@ export const PassportStamp: React.FC<PassportStampProps> = ({ country }) => {
 
             {/* Uniform Detail Backing panel shown on Hover with a subtle colored radial glow overlay */}
             <div 
-                className="absolute inset-x-0 bottom-0 top-0 bg-slate-950/95 border border-white/10 p-5 text-white flex flex-col justify-between text-left opacity-0 group-hover:opacity-100 transition-all duration-300 rounded-[2.5rem] z-20"
+                className={`absolute inset-x-0 bottom-0 top-0 bg-slate-950/95 p-5 text-white flex flex-col justify-between text-left opacity-0 group-hover:opacity-100 transition-all duration-300 rounded-[2.5rem] z-20 ${
+                    rarity === 'gold'
+                        ? 'border-2 border-amber-400'
+                        : rarity === 'silver'
+                        ? 'border-2 border-slate-300 dark:border-zinc-500'
+                        : 'border-2 border-amber-700/60'
+                }`}
                 style={{
                     backgroundImage: `radial-gradient(circle at top right, rgba(${flagGlow.r}, ${flagGlow.g}, ${flagGlow.b}, 0.18) 0%, transparent 65%)`
                 }}

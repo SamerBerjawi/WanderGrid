@@ -234,7 +234,7 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({
         const seqPoints: { lat: number, lng: number, label: string }[] = [];
 
         // 1. Frequencies
-        trips.forEach(trip => {
+        enrichedTrips.forEach(trip => {
             trip.transports?.forEach(t => {
                 if (t.originLat && t.originLng && t.destLat && t.destLng) {
                     const key = getRouteKey(t.originLat, t.originLng, t.destLat, t.destLng);
@@ -244,11 +244,11 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({
         });
 
         // 2. Build Objects
-        trips.forEach(trip => {
+        enrichedTrips.forEach(trip => {
             const statusColor = getStatusColor(trip, isDark, activeLayer);
             
             // Build Sequential Points for AutoPlay (Only if single trip provided to prevent chaos)
-            if (trips.length === 1 && trip.transports) {
+            if (enrichedTrips.length === 1 && trip.transports) {
                 // Sort transports
                 const sorted = [...trip.transports].sort((a, b) => new Date(a.departureDate).getTime() - new Date(b.departureDate).getTime());
                 if (sorted.length > 0) {
@@ -330,7 +330,7 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({
         });
 
         return { arcs: arcList, points: Array.from(pointMap.values()), sequentialPoints: seqPoints };
-    }, [trips, isDark, activeLayer, showFrequencyWeight, showGradientRoutes]);
+    }, [enrichedTrips, isDark, activeLayer, showFrequencyWeight, showGradientRoutes, showFlightRoutes, showLandSeaRoutes]);
 
     // Resize Observer
     useEffect(() => {

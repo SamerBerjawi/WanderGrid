@@ -5,12 +5,16 @@ const ExpeditionMap3D = lazy(() => import('../components/ExpeditionMap3D').then(
 import { FlightTrackerModal } from '../components/FlightTrackerModal';
 import { dataService } from '../services/mockDb';
 import { User, Trip, EntitlementType, PublicHoliday } from '../types';
-import { resolvePlaceName, calculateDistance, getCoordinates, getCoordinatesSync } from '../services/geocoding';
+import { resolvePlaceName, calculateDistance, getCoordinates, getCoordinatesSync, refineUKCountry } from '../services/geocoding';
 import { getRegion, getFlagEmoji } from '../services/geoData';
 import { REGION_STYLES } from './regionStyles';
 import { getTripsVersion, serializeVisitedData, deserializeVisitedData, runAfterFirstPaint, mapWithConcurrency } from '../services/utils';
 import { StatCard, ExtremeFlightCard, DonutChart, TopList, ExtremeFlight, FlightTrendChart, FlightTrendPoint } from '../components/DashboardWidgets';
 import { PassportStamp, VisitedCountry } from '../components/PassportStamp';
+import { StampFlipBook } from '../components/StampFlipBook';
+import { StickerStamp } from '../components/StickerStamp';
+import { AchievementMilestones } from '../components/AchievementMilestones';
+import { ICONIC_STICKERS, loadStickersProgress, StickerClaim, STICKER_CATEGORIES } from '../utils/stickersData';
 import { motion, AnimatePresence } from 'motion/react';
 import { Globe, Plane, Award, Compass, Search, MapPin, Calendar, CheckCircle, Shield, Briefcase, ChevronRight, TrendingUp } from 'lucide-react';
 
@@ -86,6 +90,75 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
   // Interactive Stamps Filter States
   const [stampSearch, setStampSearch] = useState('');
   const [selectedRegion, setSelectedRegion] = useState('All');
+
+  // Gamification & Stickers Integrated States
+  const [stickerSearch, setStickerSearch] = useState('');
+  const [selectedStickerCategory, setSelectedStickerCategory] = useState('All');
+
+  // Computed Past Trips, Sticker Claims and Stats
+  const pastTrips = useMemo(() => {
+    return trips.filter(t => t.status !== 'Planning' && t.status !== 'Cancelled');
+  }, [trips]);
+
+  const stickerClaims = useMemo(() => {
+    return loadStickersProgress(trips).claimsMap;
+  }, [trips]);
+
+  const stickerStats = useMemo(() => {
+    const totalCount = ICONIC_STICKERS.length;
+    const unlockedCount = Array.from(stickerClaims.values()).length;
+    const percent = totalCount > 0 ? Math.round((unlockedCount / totalCount) * 100) : 0;
+    
+    // Category specific breakdowns
+    const categoryBreakdowns = STICKER_CATEGORIES.map(cat => {
+        const catStickers = ICONIC_STICKERS.filter(s => s.category === cat);
+        const catTotal = catStickers.length;
+        const catUnlocked = catStickers.filter(s => stickerClaims.has(s.id)).length;
+        const catPercent = catTotal > 0 ? Math.round((catUnlocked / catTotal) * 100) : 0;
+        return {
+            category: cat,
+            total: catTotal,
+            unlocked: catUnlocked,
+            percent: Math.min(100, catPercent),
+            isCompleted: catTotal > 0 && catUnlocked === catTotal
+        };
+    });
+
+    // Collector Ranks based on total unlocked percentage
+    let rank = 'Backyard Explorer';
+    let nextRank = 'Novice Surveyor';
+    let rankDesc = 'You have just started finding stickers around the globe!';
+    if (percent >= 15) {
+        rank = 'Novice Surveyor';
+        nextRank = 'Experienced Cartographer';
+        rankDesc = 'You are mapping your footprint across notable historic regions.';
+    }
+    if (percent >= 40) {
+        rank = 'Experienced Cartographer';
+        nextRank = 'Elite Trailblazer';
+        rankDesc = 'Your travels capture majestic peaks and natural wonders alike.';
+    }
+    if (percent >= 70) {
+        rank = 'Elite Trailblazer';
+        nextRank = 'Legendary World Voyager';
+        rankDesc = 'An exceptional portfolio of historic claims and extreme alpine peaks!';
+    }
+    if (percent === 100) {
+        rank = 'Legendary World Voyager';
+        nextRank = 'Ultimate Completionist';
+        rankDesc = 'You have stood before every historic wonder, park, and high summit on Earth.';
+    }
+
+    return {
+        totalCount,
+        unlockedCount,
+        percent,
+        rank,
+        nextRank,
+        rankDesc,
+        categoryBreakdowns
+    };
+  }, [stickerClaims]);
 
   const [isFlightTrackerOpen, setIsFlightTrackerOpen] = useState(false);
   const [todaysFlight, setTodaysFlight] = useState<{ iata: string; origin: string; destination: string; date: string } | undefined>(undefined);
@@ -436,22 +509,80 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                 const countries = dbVisited.filter(item => item.type === 'country' && !item.isTransit);
                 const cities = dbVisited.filter(item => item.type === 'city');
 
-                const visitedData: VisitedCountry[] = countries.map(item => {
+                const visitedDataList: VisitedCountry[] = [];
+                countries.forEach(item => {
                     const countryId = item.code.toUpperCase();
                     const associatedCities = cities
-                        .filter(ci => ci.countryCode?.toUpperCase() === countryId)
+                        .filter(ci => ci.countryCode?.toUpperCase() === countryId || (countryId === 'GB' && ['GB-ENG','GB-SCT','GB-WLS','GB-NIR'].includes(ci.countryCode?.toUpperCase() || '')))
                         .map(ci => ci.name);
-                    
-                    return {
-                        code: countryId,
-                        name: item.name,
-                        cities: new Set(associatedCities),
-                        flag: getFlagEmoji(countryId),
-                        tripCount: tripList.filter(t => t.location && t.location.toLowerCase().includes(item.name.toLowerCase())).length || 1,
-                        lastVisit: item.visitDate ? new Date(item.visitDate) : new Date(),
-                        region: getRegion(countryId)
-                    };
-                }).sort((a,b) => a.name.localeCompare(b.name));
+
+                    if (countryId === 'GB' || countryId === 'UK') {
+                        const subNationBuckets: Record<string, { name: string, cities: string[] }> = {
+                            'GB-ENG': { name: 'England', cities: [] },
+                            'GB-SCT': { name: 'Scotland', cities: [] },
+                            'GB-WLS': { name: 'Wales', cities: [] },
+                            'GB-NIR': { name: 'Northern Ireland', cities: [] }
+                        };
+
+                        associatedCities.forEach(city => {
+                            const refined = refineUKCountry(city, 'United Kingdom');
+                            const refCode = refined.countryCode || 'GB-ENG';
+                            if (subNationBuckets[refCode]) {
+                                subNationBuckets[refCode].cities.push(city);
+                            }
+                        });
+
+                        let addedAny = false;
+                        Object.entries(subNationBuckets).forEach(([code, snData]) => {
+                            if (snData.cities.length > 0) {
+                                visitedDataList.push({
+                                    code,
+                                    name: snData.name,
+                                    cities: new Set(snData.cities),
+                                    flag: getFlagEmoji(code),
+                                    tripCount: tripList.filter(t => t.location && t.location.toLowerCase().includes(snData.name.toLowerCase())).length || 1,
+                                    lastVisit: item.visitDate ? new Date(item.visitDate) : new Date(),
+                                    region: getRegion(code)
+                                });
+                                addedAny = true;
+                            }
+                        });
+
+                        if (!addedAny) {
+                            visitedDataList.push({
+                                code: 'GB-ENG',
+                                name: 'England',
+                                cities: new Set(associatedCities),
+                                flag: getFlagEmoji('GB-ENG'),
+                                tripCount: 1,
+                                lastVisit: item.visitDate ? new Date(item.visitDate) : new Date(),
+                                region: getRegion('GB-ENG')
+                            });
+                        }
+                    } else if (['GB-ENG','GB-SCT','GB-WLS','GB-NIR'].includes(countryId)) {
+                        visitedDataList.push({
+                            code: countryId,
+                            name: item.name,
+                            cities: new Set(associatedCities),
+                            flag: getFlagEmoji(countryId),
+                            tripCount: tripList.filter(t => t.location && t.location.toLowerCase().includes(item.name.toLowerCase())).length || 1,
+                            lastVisit: item.visitDate ? new Date(item.visitDate) : new Date(),
+                            region: getRegion(countryId)
+                        });
+                    } else {
+                        visitedDataList.push({
+                            code: countryId,
+                            name: item.name,
+                            cities: new Set(associatedCities),
+                            flag: getFlagEmoji(countryId),
+                            tripCount: tripList.filter(t => t.location && t.location.toLowerCase().includes(item.name.toLowerCase())).length || 1,
+                            lastVisit: item.visitDate ? new Date(item.visitDate) : new Date(),
+                            region: getRegion(countryId)
+                        });
+                    }
+                });
+
+                const visitedData = visitedDataList.sort((a,b) => a.name.localeCompare(b.name));
 
                 let totalC = 0;
                 visitedData.forEach(val => { totalC += (val.cities as Set<string>).size; });
@@ -969,41 +1100,71 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                         )}
                     </div>
                 </div>
-
             </div>
+
         </div>
 
-        {/* ========================================================= */}
-        {/* ROW 3: RECONFIGURED SLIDING SEGMENT TERMINAL */}
+         {/* ========================================================= */}
+        {/* ROW 3: UNIFIED GAMIFICATION & ANALYTICS WORKSPACE */}
         {/* ========================================================= */}
         <div className="space-y-6">
             
             {/* Sliding Pill Tab Toggle Header */}
-            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between border-b border-zinc-200/50 dark:border-white/5 pb-4">
-                <div className="flex items-center p-1 bg-zinc-100 dark:bg-zinc-900 rounded-2xl gap-1 border border-zinc-200/30 dark:border-white/5 relative shrink-0">
+            <div className="flex flex-col xl:flex-row gap-4 items-center justify-between border-b border-zinc-200/50 dark:border-white/5 pb-4">
+                <div className="flex items-center p-1 bg-zinc-100 dark:bg-zinc-900 rounded-2xl gap-1 border border-zinc-200/30 dark:border-white/5 relative shrink-0 overflow-x-auto max-w-full no-scrollbar">
                     <button
                         onClick={() => setActiveStatsTab('stamps')}
-                        className={`relative py-2.5 px-6 rounded-xl text-xs font-mono font-black uppercase tracking-wider transition-all duration-300 ${
+                        className={`relative py-2.5 px-4 rounded-xl text-xs font-mono font-black uppercase tracking-wider transition-all duration-300 whitespace-nowrap ${
                             activeStatsTab === 'stamps' 
                             ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' 
-                            : 'text-zinc-400 hover:text-zinc-600 dark:text-zinc-400 dark:hover:text-zinc-200'
+                            : 'text-zinc-400 hover:text-zinc-600 dark:text-zinc-400 dark:hover:text-zinc-205'
                         }`}
                     >
-                        PASSPORT VISA BOARD
+                        PASSPORT STAMPS 🛂
+                    </button>
+                    <button
+                        onClick={() => setActiveStatsTab('flipbook')}
+                        className={`relative py-2.5 px-4 rounded-xl text-xs font-mono font-black uppercase tracking-wider transition-all duration-300 whitespace-nowrap ${
+                            activeStatsTab === 'flipbook' 
+                            ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' 
+                            : 'text-zinc-400 hover:text-zinc-650 dark:text-zinc-400 dark:hover:text-zinc-205'
+                        }`}
+                    >
+                        3D ALBUM 📖
+                    </button>
+                    <button
+                        onClick={() => setActiveStatsTab('stickers')}
+                        className={`relative py-2.5 px-4 rounded-xl text-xs font-mono font-black uppercase tracking-wider transition-all duration-300 whitespace-nowrap ${
+                            activeStatsTab === 'stickers' 
+                            ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' 
+                            : 'text-zinc-400 hover:text-zinc-650 dark:text-zinc-400 dark:hover:text-zinc-205'
+                        }`}
+                    >
+                        LANDMARK STICKERS ⭐️
+                    </button>
+                    <button
+                        onClick={() => setActiveStatsTab('milestones')}
+                        className={`relative py-2.5 px-4 rounded-xl text-xs font-mono font-black uppercase tracking-wider transition-all duration-300 whitespace-nowrap ${
+                            activeStatsTab === 'milestones' 
+                            ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' 
+                            : 'text-zinc-400 hover:text-zinc-650 dark:text-zinc-400 dark:hover:text-zinc-205'
+                        }`}
+                    >
+                        ACHIEVEMENTS 🏆
                     </button>
                     <button
                         onClick={() => setActiveStatsTab('analytics')}
-                        className={`relative py-2.5 px-6 rounded-xl text-xs font-mono font-black uppercase tracking-wider transition-all duration-300 ${
+                        className={`relative py-2.5 px-4 rounded-xl text-xs font-mono font-black uppercase tracking-wider transition-all duration-300 whitespace-nowrap ${
                             activeStatsTab === 'analytics' 
                             ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm' 
-                            : 'text-zinc-400 hover:text-zinc-600 dark:text-zinc-400 dark:hover:text-zinc-200'
+                            : 'text-zinc-400 hover:text-zinc-600 dark:text-zinc-400 dark:hover:text-zinc-205'
                         }`}
                     >
-                        FLIGHT COCKPIT ANALYTICS
+                        FLIGHT COCKPIT 📊
                     </button>
                 </div>
 
-                <div className="flex items-center gap-4 text-xs font-mono text-zinc-400">
+                <div className="flex items-center gap-4 text-xs font-mono text-zinc-400 text-right">
                     <span className="flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5 text-emerald-500" /> Auto-Synchronized</span>
                     <span className="hidden sm:inline-block text-zinc-300">|</span>
                     <span className="hidden sm:inline-block">Total distance: <strong className="text-zinc-700 dark:text-zinc-200">{totalDistance.toLocaleString()} KM</strong></span>
@@ -1011,7 +1172,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
             </div>
 
             <AnimatePresence mode="wait">
-                {activeStatsTab === 'stamps' ? (
+                {activeStatsTab === 'stamps' && (
                     <motion.div 
                         key="stamps-panel"
                         initial={{ opacity: 0, y: 12 }}
@@ -1073,7 +1234,200 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                             </div>
                         )}
                     </motion.div>
-                ) : (
+                )}
+
+                {activeStatsTab === 'flipbook' && (
+                    <motion.div 
+                        key="flipbook-panel"
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -12 }}
+                        transition={{ duration: 0.25 }}
+                        className="space-y-6"
+                    >
+                        <StampFlipBook visitedCountries={visitedData} stickerClaims={stickerClaims} />
+                    </motion.div>
+                )}
+
+                {activeStatsTab === 'stickers' && (
+                    <motion.div 
+                        key="stickers-panel"
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -12 }}
+                        transition={{ duration: 0.25 }}
+                        className="space-y-6"
+                    >
+                        {/* Header card with Collector Rank progress */}
+                        <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-6 bg-white/40 dark:bg-zinc-900/30 p-6 rounded-[2.5rem] border border-zinc-200/50 dark:border-white/5 backdrop-blur-3xl">
+                            <div className="space-y-2">
+                                <span className="inline-block text-[10px] font-mono font-black uppercase tracking-wider bg-amber-500/10 text-amber-500 dark:text-amber-400 px-3 py-1 rounded-full border border-amber-500/20">
+                                    ★ Collector Rank: {stickerStats.rank}
+                                </span>
+                                <h3 className="text-xl font-extrabold text-zinc-950 dark:text-zinc-150 tracking-tight">Landmark Sticker Album</h3>
+                                <p className="text-xs text-zinc-500 font-semibold">{stickerStats.rankDesc}</p>
+                            </div>
+
+                            <div className="flex flex-col items-center justify-center shrink-0 w-full lg:w-48 space-y-2">
+                                <div className="flex justify-between w-full text-xs font-mono font-black text-gray-400 dark:text-zinc-500">
+                                    <span>ALBUM PROGRESS</span>
+                                    <span className="text-amber-500 font-bold">{stickerStats.percent}%</span>
+                                </div>
+                                <div className="h-3 w-full bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden relative border border-white/10 shadow-inner">
+                                    <div 
+                                        className="h-full bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 transition-all duration-1000 ease-out rounded-full relative" 
+                                        style={{ width: `${stickerStats.percent}%` }}
+                                    />
+                                </div>
+                                <span className="text-[10px] font-mono font-bold text-gray-450 uppercase tracking-widest text-center">
+                                    {stickerStats.unlockedCount} / {stickerStats.totalCount} stickers adhered
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Filter Categories and Landmark Search input */}
+                        <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
+                            <div className="flex flex-wrap gap-1.5 p-1 bg-zinc-100/65 dark:bg-zinc-900/65 rounded-2xl border border-zinc-200/40 dark:border-white/5 overflow-x-auto no-scrollbar max-w-full">
+                                <button
+                                    onClick={() => setSelectedStickerCategory('All')}
+                                    className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap ${
+                                        selectedStickerCategory === 'All'
+                                            ? 'bg-white dark:bg-zinc-850 text-gray-900 dark:text-white shadow-sm font-black'
+                                            : 'text-zinc-500 hover:text-gray-950 dark:text-zinc-405 dark:hover:text-white font-bold'
+                                    }`}
+                                >
+                                    All Categories
+                                </button>
+                                {STICKER_CATEGORIES.map(cat => {
+                                    const stats = stickerStats.categoryBreakdowns.find(cb => cb.category === cat);
+                                    return (
+                                        <button
+                                            key={cat}
+                                            onClick={() => setSelectedStickerCategory(cat)}
+                                            className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                                                selectedStickerCategory === cat
+                                                    ? 'bg-white dark:bg-zinc-850 text-gray-900 dark:text-white shadow-sm font-black'
+                                                    : 'text-zinc-500 hover:text-gray-950 dark:text-zinc-405 dark:hover:text-white font-bold'
+                                            }`}
+                                        >
+                                            {cat}
+                                            {stats && stats.unlocked > 0 && (
+                                                <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-black ${stats.isCompleted ? 'bg-emerald-500 text-white' : 'bg-amber-500/15 text-amber-500'}`}>
+                                                    {stats.unlocked}
+                                                </span>
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            <div className="relative">
+                                <span className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none text-zinc-400">
+                                    <Search className="w-4 h-4" />
+                                </span>
+                                <input
+                                    type="text"
+                                    placeholder="Find landmarks or countries..."
+                                    value={stickerSearch}
+                                    onChange={(e) => setStickerSearch(e.target.value)}
+                                    className="w-full md:w-64 pl-10 pr-4 py-2.5 text-xs rounded-2xl bg-zinc-50/70 dark:bg-zinc-900/60 border border-zinc-200 dark:border-white/5 outline-none focus:bg-white focus:border-indigo-500 dark:text-white font-medium"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Booklet Table of Contents breakdown */}
+                        {selectedStickerCategory === 'All' && !stickerSearch && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                                {stickerStats.categoryBreakdowns.map(item => (
+                                    <div 
+                                        key={item.category}
+                                        onClick={() => setSelectedStickerCategory(item.category)}
+                                        className={`p-4 rounded-3xl border transition-all cursor-pointer hover:-translate-y-1 active:scale-98 ${
+                                            item.isCompleted 
+                                                ? 'bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/25 hover:bg-emerald-500/10'
+                                                : 'bg-zinc-50/50 dark:bg-zinc-900/30 border-zinc-200/50 dark:border-white/5 hover:bg-zinc-100/50 dark:hover:bg-zinc-900/40'
+                                        }`}
+                                    >
+                                        <span className="text-[9px] font-mono font-black text-zinc-400 uppercase tracking-widest">{item.unlocked === item.total ? '🏆 PERFECT' : 'ALBUM SECTION'}</span>
+                                        <h4 className="text-xs font-black uppercase text-gray-900 dark:text-white mt-0.5 truncate">{item.category}</h4>
+                                        <div className="mt-3 flex items-center justify-between text-[11px] font-semibold">
+                                            <span className="text-zinc-500">{item.unlocked} of {item.total} acquired</span>
+                                            <span className={item.isCompleted ? 'text-emerald-500 font-bold' : 'text-amber-500 font-bold'}>{item.percent}%</span>
+                                        </div>
+                                        <div className="h-1.5 w-full bg-zinc-100 dark:bg-white/5 rounded-full overflow-hidden mt-1.5">
+                                            <div 
+                                                className={`h-full rounded-full transition-all duration-500 ${item.isCompleted ? 'bg-emerald-500' : 'bg-amber-500'}`} 
+                                                style={{ width: `${item.percent}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="p-4 rounded-2xl text-xs bg-indigo-500/5 text-indigo-700 dark:text-indigo-400 border border-indigo-500/10 font-semibold flex items-center gap-2">
+                            <span className="material-icons-outlined text-lg">lightbulb</span>
+                            <span>
+                                💡 <strong>Sticker Verification Tip:</strong> Collect adhesive stamps automatically when you configure past trips within <strong>65km</strong> of any landmark, or trigger manual overrides to document elder memories!
+                            </span>
+                        </div>
+
+                        {/* Active Grid Display of Stickers */}
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                {ICONIC_STICKERS.filter(sticker => {
+                                    const matchCategory = selectedStickerCategory === 'All' || sticker.category === selectedStickerCategory;
+                                    const searchLower = stickerSearch.toLowerCase();
+                                    const matchSearch = !stickerSearch || 
+                                        sticker.name.toLowerCase().includes(searchLower) || 
+                                        sticker.location.toLowerCase().includes(searchLower) || 
+                                        sticker.countryCode.toLowerCase().includes(searchLower);
+                                    return matchCategory && matchSearch;
+                                }).map(sticker => (
+                                    <StickerStamp 
+                                        key={sticker.id}
+                                        sticker={sticker}
+                                        claim={stickerClaims.get(sticker.id)}
+                                        availableTrips={pastTrips}
+                                    />
+                                ))}
+                            </div>
+                            {ICONIC_STICKERS.filter(sticker => {
+                                const matchCategory = selectedStickerCategory === 'All' || sticker.category === selectedStickerCategory;
+                                const searchLower = stickerSearch.toLowerCase();
+                                const matchSearch = !stickerSearch || 
+                                    sticker.name.toLowerCase().includes(searchLower) || 
+                                    sticker.location.toLowerCase().includes(searchLower) || 
+                                    sticker.countryCode.toLowerCase().includes(searchLower);
+                                return matchCategory && matchSearch;
+                            }).length === 0 && (
+                                <div className="p-12 text-center text-zinc-400 font-mono font-bold uppercase tracking-wider border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-3xl">
+                                    No landmarks matched your active filters 🧭
+                                </div>
+                            )}
+                        </div>
+                    </motion.div>
+                )}
+
+                {activeStatsTab === 'milestones' && (
+                    <motion.div 
+                        key="milestones-panel"
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -12 }}
+                        transition={{ duration: 0.25 }}
+                        className="space-y-6"
+                    >
+                        <AchievementMilestones 
+                            pastTrips={pastTrips} 
+                            visitedCountries={visitedData} 
+                            totalDistanceKm={totalDistance} 
+                            stickersCount={stickerClaims.size} 
+                        />
+                    </motion.div>
+                )}
+
+                {activeStatsTab === 'analytics' && (
                     <motion.div 
                         key="analytics-panel"
                         variants={containerVariants}
@@ -1102,7 +1456,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                         {/* Standard Quick Stats Panel */}
                         <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                             <StatCard title="Continuous Air Journeys" value={stats.totalFlights} icon="flight_takeoff" color="blue" />
-                            <StatCard title="Accumulated Coverage" value={`${(stats.totalDistance / 1000).toFixed(1)}k km`} subtitle={`${stats.earthCircumnavigations}x Globe Rotations`} icon="public" color="emerald" />
+                            <StatCard title="Accumulated Coverage" value={`${(stats.totalDistance / 1005).toFixed(1)}k km`} subtitle={`${stats.earthCircumnavigations}x Globe Rotations`} icon="public" color="emerald" />
                             <StatCard title="Total Flight Hours" value={`${stats.totalDurationHours}h`} subtitle={`${stats.daysInAir} Days aloft`} icon="schedule" color="purple" />
                             <StatCard title="Main Airport Hub" value={stats.topAirports[0]?.label || '-'} subtitle={`${stats.topAirports[0]?.count || 0} landings recorded`} icon="place" color="amber" />
                         </motion.div>

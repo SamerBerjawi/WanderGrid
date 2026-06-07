@@ -50,6 +50,120 @@ L.Icon.Default.mergeOptions({
 // Module-level cache for GeoJSON to prevent re-fetching during session
 let cachedGeoJson: any = null;
 
+function splitUKGeoJSON(data: any): any {
+    if (!data || !data.features) return data;
+    const gbIndex = data.features.findIndex((f: any) => {
+        let iso = f.properties?.ISO_A2;
+        if (!iso || iso === '-99') iso = f.properties?.ISO_A2_EH;
+        return iso === 'GB' || iso === 'UK';
+    });
+
+    if (gbIndex === -1) return data;
+
+    const gbFeature = data.features[gbIndex];
+    const subNations = [
+        { code: 'GB-ENG', name: 'England' },
+        { code: 'GB-SCT', name: 'Scotland' },
+        { code: 'GB-WLS', name: 'Wales' },
+        { code: 'GB-NIR', name: 'Northern Ireland' }
+    ];
+
+    const gbGeom = gbFeature.geometry;
+    const polys = gbGeom.type === 'Polygon' ? [gbGeom.coordinates] : gbGeom.coordinates;
+
+    const engCoordinates: any[] = [];
+    const sctCoordinates: any[] = [];
+    const wlsCoordinates: any[] = [];
+    const nirCoordinates: any[] = [];
+
+    // Helper to check where a point/vertex lies
+    const getPointNation = (lng: number, lat: number) => {
+        // Northern Ireland is on the west island (island of Ireland, West of -5.4, South of 55.3)
+        if (lng <= -5.4 && lat < 55.3) {
+            return 'NIR';
+        }
+        // Scotland is North of latitude 55.765 (border with England)
+        if (lat >= 55.765) {
+            return 'SCT';
+        }
+        // Wales is West of -2.85, between latitude 51.35 and 53.45
+        if (lng <= -2.85 && lat < 53.45 && lat > 51.35) {
+            return 'WLS';
+        }
+        return 'ENG';
+    };
+
+    polys.forEach((polygon: any) => {
+        polygon.forEach((ring: any) => {
+            // Classify points in the ring
+            const ptsByNation: Record<string, number[][]> = { ENG: [], SCT: [], WLS: [], NIR: [] };
+            ring.forEach((pt: number[]) => {
+                const nat = getPointNation(pt[0], pt[1]);
+                ptsByNation[nat].push(pt);
+            });
+
+            const lengths = Object.entries(ptsByNation).map(([k, v]) => ({ nation: k, count: v.length }));
+            lengths.sort((a, b) => b.count - a.count);
+            const primaryNation = lengths[0].nation;
+
+            // If the ring is predominantly or entirely inside one nation, keep it whole (e.g. islands, Hebrides, Northern Ireland polygon)
+            if (lengths[0].count === ring.length || ring.length < 15) {
+                if (primaryNation === 'ENG') engCoordinates.push([ring]);
+                else if (primaryNation === 'SCT') sctCoordinates.push([ring]);
+                else if (primaryNation === 'WLS') wlsCoordinates.push([ring]);
+                else if (primaryNation === 'NIR') nirCoordinates.push([ring]);
+            } else {
+                // Otherwise, split the main ring into clean contiguous sub-nation loops
+                const engPts = ring.filter((pt: number[]) => getPointNation(pt[0], pt[1]) === 'ENG');
+                const sctPts = ring.filter((pt: number[]) => getPointNation(pt[0], pt[1]) === 'SCT');
+                const wlsPts = ring.filter((pt: number[]) => getPointNation(pt[0], pt[1]) === 'WLS');
+
+                if (engPts.length > 2) {
+                    engCoordinates.push([engPts]);
+                }
+                if (sctPts.length > 2) {
+                    sctCoordinates.push([sctPts]);
+                }
+                if (wlsPts.length > 2) {
+                    wlsCoordinates.push([wlsPts]);
+                }
+            }
+        });
+    });
+
+    const newFeatures = subNations.map(sn => {
+        let coords: any[] = [];
+        if (sn.code === 'GB-ENG') coords = engCoordinates;
+        else if (sn.code === 'GB-SCT') coords = sctCoordinates;
+        else if (sn.code === 'GB-WLS') coords = wlsCoordinates;
+        else if (sn.code === 'GB-NIR') coords = nirCoordinates;
+
+        return {
+            type: "Feature",
+            properties: {
+                ...gbFeature.properties,
+                ISO_A2: sn.code,
+                ISO_A2_EH: sn.code,
+                NAME: sn.name,
+                NAME_LONG: sn.name,
+                ADMIN: sn.name
+            },
+            geometry: {
+                type: "MultiPolygon",
+                coordinates: coords
+            }
+        };
+    });
+
+    const finalFeatures = [...data.features];
+    finalFeatures.splice(gbIndex, 1, ...newFeatures);
+
+    return {
+        ...data,
+        features: finalFeatures
+    };
+}
+
 // --- Gradient Color Logic (Vibrant Edition) ---
 
 const COLOR_POLES = [
@@ -850,8 +964,9 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
         fetch('https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson')
             .then(r => r.json())
             .then(data => {
-                cachedGeoJson = data;
-                setGeoJsonData(data);
+                const splitData = splitUKGeoJSON(data);
+                cachedGeoJson = splitData;
+                setGeoJsonData(splitData);
             })
             .catch(e => console.warn("Failed to load country shapes", e));
     }, []);
