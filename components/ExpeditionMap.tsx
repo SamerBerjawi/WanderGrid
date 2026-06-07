@@ -1060,7 +1060,8 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
             attribution,
             subdomains: 'abcd',
             maxZoom: 19,
-            noWrap: false 
+            noWrap: false,
+            opacity: activeLayer === 'standard' ? 0.0 : 1.0
         }).addTo(map);
 
         tileLayerRef.current = layer;
@@ -1220,7 +1221,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
             geoJsonLayerRef.current = null;
         }
 
-        const shouldShowCountries = showCountries || viewMode === 'scratch' || viewMode === 'network';
+        const shouldShowCountries = showCountries || viewMode === 'network';
         if (shouldShowCountries && geoJsonData) {
             geoJsonLayerRef.current = L.geoJSON(geoJsonData, {
                 style: (feature) => {
@@ -1817,8 +1818,8 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
     };
 
     return (
-        <div className={`relative w-full h-full group overflow-hidden isolation-auto ${isDark ? 'bg-[#0a0a0a]' : 'bg-slate-50'}`}>
-            <div ref={mapContainer} className={`w-full h-full z-0 ${isDark ? 'bg-[#0a0a0a]' : 'bg-slate-50'}`} />
+        <div className="relative w-full h-full group overflow-hidden isolation-auto bg-transparent">
+            <div ref={mapContainer} className="w-full h-full z-0 bg-transparent" />
             
             {/* Control Bar - Top Left */}
             <div className="absolute top-6 left-6 flex flex-col gap-3 z-[5000]">

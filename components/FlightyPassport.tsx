@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
-import { Transport } from '../types';
+import { Transport, User } from '../types';
 import { ComposableMap, Geographies, Geography, Line, Marker } from 'react-simple-maps';
-import { Plane } from 'lucide-react';
+import { Plane, Award, Compass, Globe, Shield, Navigation } from 'lucide-react';
 import { getCoordinatesSync } from '../services/geocoding';
 
 const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
@@ -124,20 +124,15 @@ const haversineDistance = (coords1: [number, number], coords2: [number, number])
 };
 
 const generateMRZ = (name: string, flightCount: number, yearFilter: string, issueDate: string) => {
-  const namePart = name.toUpperCase().replace(/[^A-Z]/g, '<').padEnd(20, '<');
-  const datePart = issueDate.replace(/ /g, '').toUpperCase();
+  const namePart = name.toUpperCase().replace(/[^A-Z]/g, '<').padEnd(23, '<');
   const yearStr = yearFilter === 'all' ? 'ALLTIME' : `YEAR${yearFilter}`;
-  return `${yearStr}<<${namePart}<<PASSPORT<<<<<<<<<<<<\nISSUED${datePart}BEY<<<<<<<<<<<<<<<<<<GLOBAL.CITIZEN`;
+  const paddedYear = yearStr.padEnd(9, '<');
+  return `P<LBN${namePart}<<PASSPORT<<<<<<\nWG859214<8LBN8505247M${paddedYear}<<<<<<<<02`;
 };
 
-interface FlightyPassportProps {
-  flights: Transport[];
-  yearFilter: string;
-  children?: React.ReactNode;
-}
-
-export const FlightyPassport: React.FC<FlightyPassportProps> = ({ flights, yearFilter, children }) => {
-  const userStats = useMemo(() => {
+// Hook to centralize calculations so each bento module stays synchronized
+export const useBentoStats = (flights: Transport[]) => {
+  return useMemo(() => {
     let totalDistance = 0;
     let totalHours = 0;
     const airports = new Set<string>();
@@ -243,187 +238,336 @@ export const FlightyPassport: React.FC<FlightyPassportProps> = ({ flights, yearF
       }))
     };
   }, [flights]);
+};
 
-  const daysHour = Math.floor(userStats.hours / 24);
-  const remHours = Math.floor(userStats.hours % 24);
-  const mrz = generateMRZ("SAMER BERJAWI", flights.length, yearFilter, "24 MAY 26");
+// -------------------------------------------------------------
+// Module 1: Passport Owner ID Card (Fidelity Biometric Passport)
+// -------------------------------------------------------------
+interface PassportIdCardProps {
+  flights: Transport[];
+  yearFilter: string;
+  currentUser?: User | null;
+}
+
+export const PassportIdCard: React.FC<PassportIdCardProps> = ({ flights, yearFilter, currentUser }) => {
+  const stats = useBentoStats(flights);
+  const daysHour = Math.floor(stats.hours / 24);
+  const remHours = Math.floor(stats.hours % 24);
+
+  const travelerName = currentUser?.name || "SAMER BERJAWI";
+  const initials = travelerName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || "SB";
+  
+  // Split travelerName into Surname and Given Names
+  const nameParts = travelerName.trim().split(/\s+/);
+  const surname = nameParts.length > 1 ? nameParts[nameParts.length - 1] : nameParts[0] || "BERJAWI";
+  const givenNames = nameParts.length > 1 ? nameParts.slice(0, nameParts.length - 1).join(' ') : "SAMER";
+
+  const nationality = currentUser?.nationality || "LEBANESE";
+  
+  // Format Date of Birth
+  let dobStr = "24 MAY 85";
+  if (currentUser?.dateOfBirth) {
+    try {
+      const d = new Date(currentUser.dateOfBirth);
+      if (!isNaN(d.getTime())) {
+        const day = d.getDate();
+        const month = d.toLocaleString('en-US', { month: 'short' }).toUpperCase();
+        const year = d.getFullYear().toString().substring(2);
+        dobStr = `${day} ${month} ${year}`;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  const authority = currentUser?.passportIssuingEntity || "WG Aviation HQ";
+  const passportNumber = currentUser?.passportNumber || `WG-${124589 + flights.length}`;
+
+  const mrz = generateMRZ(travelerName, flights.length, yearFilter, currentUser?.passportIssueDate || "24 MAY 26");
 
   return (
-    <div className="w-full relative rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col bg-white/40 dark:bg-zinc-900/40 border border-zinc-200/50 dark:border-white/5 backdrop-blur-xl group transition-all duration-300">
-      {/* Premium Ambient Light Gradients */}
-      <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none group-hover:scale-110 transition-transform duration-700" />
-      <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none group-hover:scale-110 transition-transform duration-700" />
-
-      {/* Pattern overlay representing passport booklet paper texture */}
+    <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 to-zinc-950 border border-zinc-200/50 dark:border-white/5 shadow-2xl rounded-[2.5rem] p-6 text-white flex flex-col justify-between h-full group transition-all duration-300 hover:shadow-indigo-500/10 hover:border-zinc-805/50">
+      {/* Background patterns */}
+      <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none group-hover:scale-125 transition-transform duration-700" />
       <div 
-        className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] pointer-events-none mix-blend-multiply dark:mix-blend-screen"
+        className="absolute inset-0 opacity-[0.03] pointer-events-none mix-blend-screen"
         style={{
-          backgroundImage: `repeating-radial-gradient(circle at 0 0, transparent 0, #000 14px), repeating-linear-gradient(#000, #000)`,
-          backgroundSize: '30px 30px',
+          backgroundImage: `repeating-radial-gradient(circle at 100% 100%, transparent 0, #3b82f6 10px), repeating-linear-gradient(#fff, #fff)`,
+          backgroundSize: '24px 24px',
         }}
       />
       
-      {/* Top Half: Stats and Info */}
-      <div className="w-full flex flex-col relative justify-between shrink-0">
-        <div className="relative z-10 p-5 md:p-6 pb-2 w-full text-zinc-900 dark:text-white flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-2">
-            <div className="space-y-0.5">
-              <h2 className="text-2xl md:text-3xl font-black tracking-tight uppercase">My Passport</h2>
-              <div className="flex items-center gap-2 text-[8px] md:text-[9px] font-black uppercase text-zinc-400 dark:text-zinc-500/60 tracking-wider">
-                PASSPORT • PASS • PASAPORTE
+      <div className="space-y-4">
+        {/* Visual header */}
+        <div className="flex justify-between items-center border-b border-white/5 pb-3">
+          <div className="flex items-center gap-1.5 text-[8px] font-black uppercase tracking-widest text-zinc-400">
+            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
+            GLOBAL PASSPORT • PORTAL
+          </div>
+          <div className="text-[8px] font-mono text-indigo-400 font-extrabold uppercase tracking-widest bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-500/10">
+            {passportNumber}
+          </div>
+        </div>
+
+        {/* Biometric Row */}
+        <div className="flex flex-col sm:flex-row gap-5 items-center">
+          {/* Photos slot */}
+          <div className="flex flex-col items-center gap-2.5 shrink-0">
+            <div className="w-28 h-32 rounded-2xl bg-gradient-to-tr from-zinc-800 via-indigo-950/40 to-zinc-900 border border-white/5 flex flex-col items-center justify-center relative overflow-hidden shadow-inner group-hover:border-zinc-700 transition-colors">
+              <div className="absolute inset-x-0 top-0 h-10 bg-indigo-500/5 blur-md" />
+              <div className="absolute -left-5 -bottom-5 w-16 h-16 bg-sky-500/5 rounded-full blur-xl animate-pulse" />
+              
+              {/* Profile icon structure */}
+              {currentUser?.profilePicture ? (
+                <img src={currentUser.profilePicture} alt={travelerName} className="w-full h-full object-cover relative z-10" referrerPolicy="no-referrer" />
+              ) : (
+                <>
+                  <div className="w-12 h-12 rounded-full bg-zinc-700/80 border border-zinc-600 flex items-center justify-center text-zinc-300 relative z-10 shrink-0 font-bold text-lg shadow-sm">
+                    {initials}
+                  </div>
+                  <div className="w-20 h-10 rounded-t-[50%] bg-zinc-700/50 border border-zinc-650/40 relative z-10 -mt-2 shadow-sm" />
+                </>
+              )}
+              
+              {/* Waterproof security print */}
+              <div className="absolute bottom-2 right-2 w-12 h-12 rounded-full border border-teal-500/20 flex items-center justify-center text-[5px] font-black text-teal-400 rotate-12 select-none pointer-events-none uppercase bg-teal-500/[0.02]">
+                <div className="text-center leading-[1.1]">
+                  WG VALID
+                  <br />
+                  ★ ADMITTED ★
+                </div>
               </div>
             </div>
-            <div className="w-9 h-9 bg-indigo-500/10 dark:bg-sky-500/25 rounded-full flex items-center justify-center relative shadow-inner shrink-0 leading-none">
-              <Plane className="w-4.5 h-4.5 text-indigo-600 dark:text-sky-400 transform rotate-45" />
-            </div>
+            <span className="text-[7px] font-black tracking-widest uppercase text-zinc-400 font-mono text-center">BIOMETRIC PASS</span>
           </div>
 
-          <div className="flex w-full my-2 items-center">
-            <div className="flex items-center gap-2.5">
-              <div className="text-5xl md:text-6xl font-black leading-none -ml-1 text-zinc-905 dark:text-white drop-shadow-xs">
-                {flights.length}
-              </div>
-              <div className="text-xl font-light opacity-85 mt-1 uppercase tracking-widest text-zinc-450 dark:text-zinc-550">
-                flights
-              </div>
+          {/* Core metadata columns */}
+          <div className="flex-1 grid grid-cols-2 gap-y-3 gap-x-2.5">
+            <div>
+              <span className="block text-[7px] text-zinc-400 font-black uppercase tracking-wider">Surname</span>
+              <span className="text-[11px] font-extrabold uppercase tracking-tight text-white">{surname}</span>
+            </div>
+            <div>
+              <span className="block text-[7px] text-zinc-400 font-black uppercase tracking-wider">Given Names</span>
+              <span className="text-[11px] font-extrabold uppercase tracking-tight text-white">{givenNames}</span>
+            </div>
+            <div>
+              <span className="block text-[7px] text-zinc-400 font-black uppercase tracking-wider">Nationality</span>
+              <span className="text-[11px] font-extrabold uppercase tracking-tight text-white">{nationality}</span>
+            </div>
+            <div>
+              <span className="block text-[7px] text-zinc-400 font-black uppercase tracking-wider">Sex / DOB</span>
+              <span className="text-[11px] font-extrabold uppercase tracking-tight text-white">M / {dobStr}</span>
+            </div>
+            <div>
+              <span className="block text-[7px] text-zinc-400 font-black uppercase tracking-wider">Authority</span>
+              <span className="text-[11px] font-extrabold uppercase tracking-tight text-zinc-300 truncate leading-none block">{authority}</span>
+            </div>
+            <div>
+              <span className="block text-[7px] text-zinc-400 font-black uppercase tracking-wider">Document Type</span>
+              <span className="text-[11px] font-extrabold uppercase tracking-tight text-zinc-300">P / CITIZEN</span>
             </div>
           </div>
+        </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-y-3 gap-x-4 mb-2">
-            <div>
-              <div className="text-[8px] font-black tracking-wider uppercase text-zinc-500 dark:text-zinc-400 mb-0.5">Distance</div>
-              <div className="text-lg md:text-xl font-black flex items-baseline gap-0.5 break-all font-mono">
-                {userStats.distance.toLocaleString()} <span className="text-[9px] font-mono font-black text-indigo-500 dark:text-sky-400 uppercase">km</span>
-              </div>
-            </div>
-            <div>
-              <div className="text-[8px] font-black tracking-wider uppercase text-zinc-500 dark:text-zinc-400 mb-0.5">Time</div>
-              <div className="text-lg md:text-xl font-black flex items-baseline gap-0.5 break-all font-mono">
-                {daysHour}d {remHours}h
-              </div>
-            </div>
-            <div>
-              <div className="text-[8px] font-black tracking-wider uppercase text-zinc-500 dark:text-zinc-400 mb-0.5">Airports</div>
-              <div className="text-lg md:text-xl font-black break-all font-mono">{userStats.airports}</div>
-            </div>
-            <div>
-              <div className="text-[8px] font-black tracking-wider uppercase text-zinc-500 dark:text-zinc-400 mb-0.5">Airlines</div>
-              <div className="text-lg md:text-xl font-black break-all font-mono">{userStats.airlines}</div>
-            </div>
+        {/* Dynamic numerical tracking summary */}
+        <div className="grid grid-cols-3 gap-2 border-t border-b border-dashed border-white/5 py-3 my-2 text-center">
+          <div>
+            <span className="block text-[7px] font-black uppercase text-zinc-400">Total Flights</span>
+            <span className="text-xs font-black text-blue-400 font-mono mt-0.5 block">{flights.length}</span>
           </div>
-          
-          {children && (
-            <div className="mt-2 pt-2 border-t border-zinc-200/50 dark:border-white/10 relative z-20">
-              {children}
-            </div>
-          )}
+          <div>
+            <span className="block text-[7px] font-black uppercase text-zinc-400">Distance</span>
+            <span className="text-xs font-black text-zinc-200 font-mono mt-0.5 block truncate">{stats.distance.toLocaleString()} <span className="text-[8px] font-sans text-zinc-400">km</span></span>
+          </div>
+          <div>
+            <span className="block text-[7px] font-black uppercase text-zinc-400">Hours Airward</span>
+            <span className="text-xs font-black text-zinc-200 font-mono mt-0.5 block">{daysHour}d {remHours}h</span>
+          </div>
         </div>
       </div>
 
-      {/* Middle Section: Flags/Stamps Overlapping Tray */}
-      <div className="w-full shrink-0 py-2 px-5 border-t border-b border-dashed border-zinc-200 dark:border-white/5 bg-zinc-500/5 overflow-visible relative z-20">
-        {userStats.flags.length > 0 ? (
-          <div className="flex justify-center items-center py-0.5 overflow-visible">
-            <div className="flex flex-wrap justify-center items-center gap-1.5 overflow-visible max-w-full px-2">
-              {userStats.flags.map((stamp, idx) => {
-                const name = COUNTRY_NAMES[stamp.code] || stamp.code;
-                const colors = [
-                  { text: 'text-sky-600 dark:text-sky-400', border: 'border-sky-500/30 dark:border-sky-400/30', bg: 'bg-sky-50 dark:bg-sky-950/80' },
-                  { text: 'text-rose-600 dark:text-rose-400', border: 'border-rose-500/30 dark:border-rose-400/30', bg: 'bg-rose-50 dark:bg-rose-950/80' },
-                  { text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-500/30 dark:border-emerald-400/30', bg: 'bg-emerald-50 dark:bg-emerald-950/80' },
-                  { text: 'text-indigo-600 dark:text-indigo-400', border: 'border-indigo-500/30 dark:border-indigo-400/30', bg: 'bg-indigo-50 dark:bg-indigo-950/80' },
-                  { text: 'text-amber-600 dark:text-amber-400', border: 'border-amber-500/30 dark:border-amber-400/30', bg: 'bg-amber-50 dark:bg-amber-950/80' },
-                ];
-                const color = colors[idx % colors.length];
-                const stableRotate = Math.sin(idx * 13) * 6;
-                
-                return (
-                  <div
-                    key={stamp.code}
-                    className={`w-7 h-7 rounded-full border ${color.border} ${color.text} ${color.bg} flex items-center justify-center font-mono select-none shadow-sm cursor-pointer transition-all duration-300 relative`}
-                    style={{
-                      transform: `rotate(${stableRotate}deg)`,
-                      zIndex: idx + 1,
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.zIndex = '999';
-                      e.currentTarget.style.transform = 'scale(1.3) rotate(0deg)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.zIndex = (idx + 1).toString();
-                      e.currentTarget.style.transform = `scale(1) rotate(${stableRotate}deg)`;
-                    }}
-                    title={`${name} (Admitted)`}
-                  >
-                    <span className="text-base leading-none filter saturate-150">{stamp.flag}</span>
-                  </div>
-                );
-              })}
-            </div>
+      {/* Machine Readable Zone MRZ Code block */}
+      <div className="mt-4 pt-2 text-center select-none bg-black/40 p-2.5 rounded-xl border border-white/5">
+        <div className="font-mono text-[8.5px] sm:text-[9.5px] leading-tight tracking-[0.14em] whitespace-normal sm:whitespace-pre-wrap font-bold text-zinc-500">
+          {mrz}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// -------------------------------------------------------------
+// Module 2: Passport Stamps Page (VISA Admissions Badge Gallery)
+// -------------------------------------------------------------
+interface PassportStampsPageProps {
+  flights: Transport[];
+  yearFilter: string;
+}
+
+export const PassportStampsPage: React.FC<PassportStampsPageProps> = ({ flights, yearFilter }) => {
+  const stats = useBentoStats(flights);
+
+  return (
+    <div className="relative bg-white/70 dark:bg-zinc-900/40 border border-zinc-200/65 dark:border-white/5 shadow-xl rounded-[2.5rem] p-5 backdrop-blur-xl flex flex-col justify-between h-full group transition-all duration-300 hover:shadow-2xl overflow-visible">
+      {/* Grid Pattern overlays to simulate vintage passport pages */}
+      <div 
+        className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] pointer-events-none mix-blend-multiply dark:mix-blend-screen rounded-[2.5rem]"
+        style={{
+          backgroundImage: `repeating-linear-gradient(45deg, #000 0, #000 1px, transparent 0, transparent 8px)`,
+          backgroundSize: '12px 12px',
+        }}
+      />
+      
+      <div className="space-y-4 overflow-visible">
+        <div className="flex justify-between items-center border-b border-zinc-200/40 dark:border-white/5 pb-2.5 select-none">
+          <h3 className="text-xs font-black uppercase text-zinc-500 tracking-widest flex items-center gap-1.5">
+            <Award className="w-4 h-4 text-emerald-500" />
+            Visa stamps
+          </h3>
+          <span className="text-[7.5px] font-black uppercase tracking-widest text-zinc-400 bg-zinc-150 dark:bg-zinc-800 px-2.5 py-0.5 rounded-full">
+            {stats.flags.length} ADMITTED
+          </span>
+        </div>
+
+        {/* Vintage-style stamp gallery */}
+        {stats.flags.length > 0 ? (
+          <div className="flex flex-wrap gap-3 py-3 px-2 justify-center max-h-[140px] overflow-y-auto overflow-x-visible custom-scrollbar">
+            {stats.flags.map((stamp, idx) => {
+              const name = COUNTRY_NAMES[stamp.code] || stamp.code;
+              const colors = [
+                { text: 'text-sky-600 dark:text-sky-400', border: 'border-sky-500/20 dark:border-sky-450/20', bg: 'bg-gradient-to-tr from-sky-500/[0.02] to-sky-500/[0.08]' },
+                { text: 'text-rose-600 dark:text-rose-405', border: 'border-rose-500/20 dark:border-rose-455/20', bg: 'bg-gradient-to-tr from-rose-500/[0.02] to-rose-500/[0.08]' },
+                { text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-500/20 dark:border-emerald-400/20', bg: 'bg-gradient-to-tr from-emerald-500/[0.02] to-emerald-500/[0.08]' },
+                { text: 'text-indigo-600 dark:text-indigo-405', border: 'border-indigo-500/20 dark:border-indigo-405/20', bg: 'bg-gradient-to-tr from-indigo-500/[0.02] to-indigo-500/[0.08]' },
+                { text: 'text-amber-600 dark:text-amber-400', border: 'border-amber-500/20 dark:border-amber-400/20', bg: 'bg-gradient-to-tr from-amber-500/[0.02] to-amber-500/[0.08]' },
+              ];
+              const color = colors[idx % colors.length];
+              const stableRotate = Math.sin(idx * 17) * 7;
+              
+              return (
+                <div
+                  key={stamp.code}
+                  className={`w-9 h-9 rounded-full border border-dashed ${color.border} ${color.text} ${color.bg} flex items-center justify-center font-mono select-none shadow-sm cursor-pointer transition-all duration-300 relative`}
+                  style={{
+                    transform: `rotate(${stableRotate}deg)`,
+                    zIndex: idx + 1,
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.zIndex = '99';
+                    e.currentTarget.style.transform = 'scale(1.3) rotate(0deg)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.zIndex = (idx + 1).toString();
+                    e.currentTarget.style.transform = `scale(1) rotate(${stableRotate}deg)`;
+                  }}
+                  title={`${name} (Official Stamp)`}
+                >
+                  <span className="text-xl leading-none filter saturate-150 select-none pb-0.5">{stamp.flag}</span>
+                </div>
+              );
+            })}
           </div>
         ) : (
-          <div className="w-full text-center py-1.5 text-[8px] uppercase font-bold text-zinc-400/70 tracking-widest border border-dashed border-zinc-200 dark:border-white/5 rounded-lg bg-zinc-500/5">
+          <div className="w-full text-center py-7 text-[8px] uppercase font-bold text-zinc-400 border border-dashed border-zinc-200/50 dark:border-white/5 rounded-2xl bg-zinc-500/5 select-none">
             No stamps recorded for this era
           </div>
         )}
       </div>
 
-      {/* Bottom Section: Map Overlay */}
-      <div className="relative w-full h-[260px] sm:h-[320px] overflow-hidden shrink-0 m-0 p-0">
-        <div className="absolute inset-0 flex items-center justify-center p-0 m-0">
-          <ComposableMap projection="geoEquirectangular" projectionConfig={{ scale: 145, center: [0, 0] }} style={{ width: "100%", height: "100%" }}>
+      <div className="mt-3 text-[7.5px] font-black uppercase text-zinc-400/60 font-mono tracking-widest text-center border-t border-dashed border-zinc-200/50 dark:border-white/5 pt-3 select-none">
+        WanderGrid ADMISSION SEALS
+      </div>
+    </div>
+  );
+};
+
+// -------------------------------------------------------------
+// Module 3: Passport Travel Map (Global Routes Tracking Stage)
+// -------------------------------------------------------------
+interface PassportTravelMapProps {
+  flights: Transport[];
+  yearFilter: string;
+}
+
+export const PassportTravelMap: React.FC<PassportTravelMapProps> = ({ flights, yearFilter }) => {
+  const stats = useBentoStats(flights);
+
+  return (
+    <div className="relative overflow-hidden bg-white/70 dark:bg-zinc-900/40 border border-zinc-200/60 dark:border-white/5 shadow-xl rounded-[2.5rem] backdrop-blur-xl h-full flex flex-col justify-end group transition-all duration-300 hover:shadow-2xl">
+      {/* Floating Status Indicator Tag */}
+      <div className="absolute top-5 left-5 z-20 bg-white/90 dark:bg-black/55 px-3 py-2 rounded-2xl border border-zinc-200 dark:border-white/10 backdrop-blur-md shadow-sm pointer-events-none">
+        <div className="flex items-center gap-2 text-[8px] md:text-[9.5px] font-black uppercase tracking-widest text-zinc-800 dark:text-zinc-250">
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping shrink-0" />
+          Live Route Network
+        </div>
+      </div>
+
+      {/* Floating Network Statistics Tag */}
+      <div className="absolute top-5 right-5 z-20 bg-white/90 dark:bg-black/55 px-3 py-2 rounded-2xl border border-zinc-200 dark:border-white/10 backdrop-blur-md shadow-sm pointer-events-none">
+        <div className="flex items-center gap-1 text-[8.5px] font-bold text-zinc-500 dark:text-zinc-400">
+          <Globe className="w-3.5 h-3.5 text-indigo-500" />
+          {stats.routes.length} Active Segments
+        </div>
+      </div>
+
+      {/* Map stage */}
+      <div className="relative w-full h-[280px] sm:h-[340px] md:h-full min-h-[300px] overflow-hidden">
+        <div className="absolute inset-0 flex items-center justify-center">
+          <ComposableMap 
+            projection="geoEquirectangular" 
+            projectionConfig={{ scale: 145, center: [0, 0] }} 
+            className="w-full h-full p-2"
+          >
             <Geographies geography={geoUrl}>
               {({ geographies }) =>
                 geographies.map(geo => (
                   <Geography 
                     key={geo.rsmKey} 
                     geography={geo} 
-                    fill="#cbd5e1" 
-                    stroke="#94a3b8"
+                    fill="#e2e8f0" 
+                    stroke="#cbd5e1"
                     strokeWidth={0.5} 
-                    className="dark:fill-zinc-800 dark:stroke-zinc-700 transition-all"
+                    className="dark:fill-zinc-800/80 dark:stroke-zinc-750 transition-colors"
                     style={{ outline: "none" }}
                   />
                 ))
               }
             </Geographies>
             
-            {/* Map flight arcs represented as premium dashed coordinates */}
-            {userStats.routes.map((r, i) => (
+            {/* Solid route lines */}
+            {stats.routes.map((r, i) => (
               <Line
-                key={`route-${i}`}
+                key={`bento-route-${i}`}
                 from={r.source}
                 to={r.target}
-                stroke="#6366f1"
+                stroke="#3b82f6"
                 strokeWidth={1.5}
                 strokeLinecap="round"
-                strokeDasharray="2 2"
-                className="stroke-indigo-500 dark:stroke-sky-400"
-                style={{ opacity: 0.8 }}
+                className="stroke-blue-500 dark:stroke-sky-400"
+                style={{ opacity: 0.85 }}
               />
             ))}
             
-            {/* Elegant glowing sector endpoints */}
-            {userStats.routes.map((r, i) => (
-              <React.Fragment key={`pts-${i}`}>
+            {/* Glowing sector endpoints */}
+            {stats.routes.map((r, i) => (
+              <React.Fragment key={`bento-pts-${i}`}>
                 <Marker coordinates={r.source}>
-                  <circle r={2.5} fill="#6366f1" stroke="#ffffff" strokeWidth={0.5} className="dark:stroke-zinc-950 dark:fill-sky-400" />
+                  <circle r={3} fill="#3b82f6" stroke="#ffffff" strokeWidth={1} className="dark:stroke-zinc-900 dark:fill-sky-400 shadow-md animate-none" />
                 </Marker>
                 <Marker coordinates={r.target}>
-                  <circle r={2.5} fill="#6366f1" stroke="#ffffff" strokeWidth={0.5} className="dark:stroke-zinc-950 dark:fill-sky-400" />
+                  <circle r={3} fill="#3b82f6" stroke="#ffffff" strokeWidth={1} className="dark:stroke-zinc-900 dark:fill-sky-400 shadow-md animate-none" />
                 </Marker>
               </React.Fragment>
             ))}
           </ComposableMap>
         </div>
       </div>
-
-      {/* MRZ Footer */}
-      <div className="mt-auto px-5 py-2 md:py-3 bg-zinc-50/60 dark:bg-black/45 z-10 w-full overflow-hidden border-t border-dashed border-zinc-200/85 dark:border-white/10 shrink-0 text-center">
-        <div className="font-mono text-[8px] sm:text-[10px] leading-tight tracking-[0.12em] whitespace-pre-wrap font-black text-zinc-400 dark:text-zinc-505">
-          {mrz}
-        </div>
-      </div>
     </div>
   );
+};
+
+// Keeping retro-compatibility wrapper for any direct import of older full passport
+export const FlightyPassport: React.FC<PassportIdCardProps> = ({ flights, yearFilter }) => {
+  return <PassportIdCard flights={flights} yearFilter={yearFilter} />;
 };

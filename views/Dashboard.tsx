@@ -16,7 +16,7 @@ import { StickerStamp } from '../components/StickerStamp';
 import { AchievementMilestones } from '../components/AchievementMilestones';
 import { ICONIC_STICKERS, loadStickersProgress, StickerClaim, STICKER_CATEGORIES } from '../utils/stickersData';
 import { motion, AnimatePresence } from 'motion/react';
-import { Globe, Plane, Award, Compass, Search, MapPin, Calendar, CheckCircle, Shield, Briefcase, ChevronRight, TrendingUp } from 'lucide-react';
+import { Globe, Plane, Award, Compass, Search, MapPin, Calendar, CheckCircle, Shield, Briefcase, ChevronRight, TrendingUp, Cpu, Layers, Wifi, Sparkles, Ticket, Activity, Info } from 'lucide-react';
 
 interface DashboardProps {
     onUserClick?: (userId: string) => void;
@@ -881,55 +881,67 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
   }
 
   return (
-    <div className="space-y-8 animate-fade-in max-w-[102rem] mx-auto pb-20 px-2 sm:px-4">
-        
+    <div className="relative overflow-visible pb-20 px-2 sm:px-6 max-w-[102rem] mx-auto space-y-10 animate-fade-in">
+        {/* Modern Glassmorphic ambient backdrop blur accent fields */}
+        <div className="absolute top-10 left-[10%] w-[45rem] h-[35rem] bg-gradient-to-tr from-blue-400/[0.08] to-indigo-500/[0.08] dark:from-blue-600/[0.12] dark:to-indigo-500/[0.08] rounded-full blur-[140px] pointer-events-none select-none -z-10 animate-[bounce_15s_infinite_alternate]" style={{ animationDuration: '20s' }} />
+        <div className="absolute top-[35%] right-[5%] w-[40rem] h-[40rem] bg-gradient-to-bl from-amber-400/[0.06] to-pink-500/[0.06] dark:from-amber-500/[0.05] dark:to-orange-500/[0.05] rounded-full blur-[130px] pointer-events-none select-none -z-10 animate-[pulse_12s_infinite_alternate]" />
+        <div className="absolute bottom-[15%] left-[5%] w-[50rem] h-[50rem] bg-gradient-to-tr from-purple-400/[0.04] to-blue-500/[0.04] dark:from-indigo-950/[0.08] dark:to-purple-950/[0.06] rounded-full blur-[160px] pointer-events-none select-none -z-10" />
+
         {/* ========================================================= */}
-        {/* BRAND NEW LUXURY USER COMPASS HEADER */}
+        {/* BRAND NEW LUXURY USER COMPASS HEADER (GLASSMORPHIC) */}
         {/* ========================================================= */}
-        <div className="relative overflow-hidden bg-white/40 dark:bg-zinc-900/30 border border-zinc-200/50 dark:border-white/5 rounded-[2.5rem] p-6 sm:p-8 backdrop-blur-3xl shadow-sm transition-all duration-300">
+        <div className="relative overflow-hidden bg-white/40 dark:bg-zinc-950/25 border border-white/60 dark:border-white/10 rounded-[2.5rem] p-6 sm:p-8 backdrop-blur-3xl shadow-[0_8px_32px_0_rgba(31,38,135,0.06)] dark:shadow-[0_16px_48px_0_rgba(0,0,0,0.3)] transition-all duration-300">
             {/* Ambient subtle warm & blue flows inside header backing */}
-            <div className="absolute top-0 right-0 w-[400px] h-[300px] bg-gradient-to-bl from-blue-500/10 via-indigo-500/5 to-transparent blur-3xl pointer-events-none" />
+            <div className="absolute -top-12 -right-12 w-[350px] h-[350px] bg-gradient-to-bl from-blue-500/[0.12] via-indigo-500/[0.05] to-transparent blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-12 -left-12 w-[250px] h-[255px] bg-gradient-to-tr from-amber-500/[0.05] to-transparent blur-2xl pointer-events-none" />
             
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
                 {/* Explorer Identity Badge */}
                 <div className="flex items-center gap-5">
                     <div className="relative group shrink-0">
-                        <div className="absolute inset-0 bg-gradient-to-tr from-blue-600 via-indigo-500 to-amber-400 rounded-full blur-md opacity-50 group-hover:scale-105 transition-transform duration-500" />
-                        <div className="relative w-16 h-16 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 flex items-center justify-center font-black text-2xl border-2 border-white/20 shadow-xl select-none uppercase">
-                            {currentUser?.name ? currentUser.name.charAt(0) : currentUser?.email ? currentUser.email.charAt(0) : 'E'}
+                        <div className="absolute inset-0 bg-gradient-to-tr from-blue-600 via-indigo-500 to-amber-400 rounded-full blur-md opacity-40 group-hover:scale-105 transition-transform duration-500" />
+                        <div className="relative w-16 h-16 rounded-full bg-zinc-900/10 dark:bg-zinc-800/20 backdrop-blur-md text-zinc-900 dark:text-white flex items-center justify-center font-black text-2xl border border-white/40 dark:border-white/20 shadow-lg select-none uppercase">
+                            <span className="bg-gradient-to-tr from-blue-600 to-indigo-400 dark:from-white dark:to-zinc-200 bg-clip-text text-transparent font-extrabold">
+                                {currentUser?.name ? currentUser.name.charAt(0) : currentUser?.email ? currentUser.email.charAt(0) : 'E'}
+                            </span>
+                        </div>
+                        <div className="absolute -bottom-1 -right-1 bg-emerald-500 rounded-full p-1 border border-white dark:border-zinc-900 shadow-md">
+                            <div className="w-2.5 h-2.5 bg-white rounded-full animate-ping absolute" />
+                            <div className="w-2.5 h-2.5 bg-white rounded-full" />
                         </div>
                     </div>
                     <div>
                         <div className="flex flex-wrap items-center gap-2.5">
-                            <h2 className="text-2.5xl font-extrabold tracking-tight text-zinc-900 dark:text-white">
+                            <h2 className="text-2.5xl font-black tracking-tight text-zinc-900 dark:text-white flex items-center gap-2">
                                 Welcome back, {currentUser?.name || currentUser?.email?.split('@')[0] || 'Explorer'}
+                                <Sparkles className="w-5 h-5 text-amber-550 dark:text-amber-450 animate-pulse text-amber-500 shrink-0" />
                             </h2>
-                            <span className="inline-flex items-center gap-1 text-[10px] font-mono font-black uppercase bg-blue-500/10 dark:bg-blue-400/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 py-1 px-2.5 rounded-lg leading-none">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-mono font-black uppercase bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 py-1 px-2.5 rounded-lg leading-none">
                                 <Shield className="w-3.5 h-3.5" /> Checked-In
                             </span>
                         </div>
-                        <p className="text-xs text-zinc-500 mt-1 dark:text-zinc-400 font-medium">
-                            Status: <span className="font-bold text-zinc-800 dark:text-zinc-200">{currentLevel.name}</span> (Level {currentLevel.level}) • Airspace operational
+                        <p className="text-xs text-zinc-500 mt-1.5 dark:text-zinc-400 font-semibold tracking-wide">
+                            Status: <span className="font-extrabold text-zinc-800 dark:text-zinc-200">{currentLevel.name}</span> (Level {currentLevel.level}) • Airspace operational
                         </p>
                     </div>
                 </div>
 
                 {/* Swiss-Pairing Clock Panel */}
-                <div className="flex flex-wrap items-center gap-4 lg:gap-8 border-t lg:border-t-0 border-zinc-200/50 dark:border-white/5 pt-4 lg:pt-0">
-                    <div className="flex items-center gap-3 bg-zinc-100/50 dark:bg-white/[0.02] border border-zinc-200/40 dark:border-white/5 py-2.5 px-4 rounded-2xl">
+                <div className="flex flex-wrap items-center gap-4 lg:gap-6 border-t lg:border-t-0 border-zinc-200/50 dark:border-white/5 pt-4 lg:pt-0">
+                    <div className="flex items-center gap-3 bg-white/35 dark:bg-zinc-900/10 border border-white/40 dark:border-white/5 py-2.5 px-4 rounded-2xl backdrop-blur-md shadow-sm">
                         <Calendar className="w-4 h-4 text-zinc-400" />
                         <div className="text-left font-mono">
-                            <span className="block text-[11px] text-zinc-400 uppercase font-black tracking-widest">Chronometer</span>
+                            <span className="block text-[9px] text-zinc-400 uppercase font-black tracking-widest leading-none mb-1">Chronometer</span>
                             <span className="text-xs font-black text-zinc-800 dark:text-zinc-100">
                                 {currentTime.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
                             </span>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3 bg-zinc-100/50 dark:bg-white/[0.02] border border-zinc-200/40 dark:border-white/5 py-2.5 px-4 rounded-2xl">
+                    <div className="flex items-center gap-3 bg-white/35 dark:bg-zinc-900/10 border border-white/40 dark:border-white/5 py-2.5 px-4 rounded-2xl backdrop-blur-md shadow-sm">
                         <Compass className="w-4 h-4 text-amber-500 animate-[spin_12s_linear_infinite]" />
                         <div className="text-left font-mono">
-                            <span className="block text-[11px] text-zinc-400 uppercase font-black tracking-widest font-mono">World Time</span>
+                            <span className="block text-[9px] text-zinc-400 uppercase font-black tracking-widest leading-none mb-1">World Time</span>
                             <span className="text-xs font-black text-zinc-800 dark:text-zinc-100">
                                 {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
                             </span>
@@ -938,24 +950,26 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
 
                     <Button 
                         variant="primary" 
-                        className="bg-blue-600 font-extrabold hover:bg-blue-700 shadow-xl text-white py-3 px-6 rounded-2xl flex items-center gap-2 text-xs uppercase tracking-wider" 
+                        className="bg-blue-600/95 dark:bg-blue-600 font-extrabold hover:bg-blue-700 dark:hover:bg-blue-500 shadow-[0_4px_24px_rgba(37,99,235,0.3)] hover:shadow-[0_8px_32px_rgba(37,99,235,0.45)] text-white py-3 px-6 rounded-2xl flex items-center gap-2 text-xs uppercase tracking-wider transition-all duration-200 border-t border-white/20" 
                         onClick={() => setIsFlightTrackerOpen(true)}
                     >
-                        <Plane className="w-4 h-4" /> Track Active Flight
+                        <Plane className="w-4 h-4 text-white" /> Track Active Flight
                     </Button>
                 </div>
             </div>
         </div>
 
         {/* ========================================================= */}
-        {/* ROW 2: PANORAMIC EXPEDITION MAP & TITANIUM LOYALTY CARD */}
+        {/* ROW 2: BENTO GRID (REARRANGED MAP & EXQUISITE GLASS CARD COMPONENT) */}
         {/* ========================================================= */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
             
             {/* Real Space 3D Expedition Globe / 2D Map (Col-span 2) */}
-            <div className="lg:col-span-2 relative h-[31rem] rounded-[2.5rem] overflow-hidden border border-zinc-200/50 dark:border-white/5 shadow-xl bg-zinc-100/40 dark:bg-zinc-950/20 backdrop-blur-md group">
+            <div className="lg:col-span-2 relative h-[34rem] rounded-[2.5rem] overflow-hidden border border-white/50 dark:border-white/10 shadow-[0_24px_64px_rgba(0,0,0,0.08)] dark:shadow-[0_24px_64px_rgba(0,0,0,0.45)] bg-white/35 dark:bg-zinc-950/15 backdrop-blur-xl group flex flex-col">
+                <div className="absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-white/20 dark:from-black/10 to-transparent pointer-events-none z-10" />
+                
                 <Suspense fallback={
-                    <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900/10 dark:bg-black/40 space-y-4">
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900/5 dark:bg-black/30 space-y-4">
                         <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Loading Expedition Coordinates...</p>
                     </div>
@@ -987,10 +1001,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                     )}
                 </Suspense>
                 
-                {/* Visual Map Switch and Route Gradient Tactile Controller bar */}
+                {/* Embedded Glass Tactile Map Control overlay */}
                 <div className="absolute bottom-6 left-6 z-20 flex flex-wrap items-center gap-3">
                     {/* View Switch: 3D Globe / 2D Map */}
-                    <div className="bg-[#1e293b]/90 dark:bg-black/85 backdrop-blur-md p-1 rounded-2xl border border-white/10 flex items-center shadow-2xl">
+                    <div className="bg-zinc-900/80 dark:bg-zinc-950/80 backdrop-blur-xl p-1 rounded-2xl border border-white/15 flex items-center shadow-2xl">
                         <button
                             onClick={() => {
                                 setMapViewMode('3d');
@@ -998,7 +1012,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                             }}
                             className={`px-3 py-1.5 rounded-xl text-[11px] font-bold tracking-tight flex items-center gap-1.5 transition-all text-white ${mapViewMode === '3d' ? 'bg-blue-600 shadow-md border-white/5' : 'opacity-60 hover:opacity-100'}`}
                         >
-                            <Globe className="w-3.5 h-3.5" /> 3D Globe
+                            <Globe className="w-3.5 h-3.5 text-white" /> 3D Globe
                         </button>
                         <button
                             onClick={() => {
@@ -1007,102 +1021,116 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                             }}
                             className={`px-3 py-1.5 rounded-xl text-[11px] font-bold tracking-tight flex items-center gap-1.5 transition-all text-white ${mapViewMode === '2d' ? 'bg-blue-600 shadow-md border-white/5' : 'opacity-60 hover:opacity-100'}`}
                         >
-                            <span className="material-icons-outlined text-sm leading-none">map</span> 2D Map
+                            <span className="material-icons-outlined text-sm leading-none text-white animate-pulse">map</span> 2D Map
                         </button>
                     </div>
 
                     {/* Gradient Routes On / Off Switch */}
-                    <div className="bg-[#1e293b]/90 dark:bg-black/85 backdrop-blur-md px-3.5 py-1.5 rounded-2xl border border-white/10 flex items-center gap-3 shadow-2xl h-[34px]">
-                        <span className="text-[9px] font-black font-mono text-zinc-300 uppercase tracking-widest">Gradient Routes</span>
+                    <div className="bg-zinc-900/80 dark:bg-zinc-950/80 backdrop-blur-xl px-4 py-1.5 rounded-2xl border border-white/15 flex items-center gap-3 shadow-2xl h-[34px]">
+                        <span className="text-[9px] font-black font-mono text-zinc-300 uppercase tracking-widest select-none">Gradient Routes</span>
                         <button
                             onClick={() => {
                                 const nextVal = !globalGradientRoutes;
                                 setGlobalGradientRoutes(nextVal);
                                 localStorage.setItem('wandergrid_gradient_routes', String(nextVal));
                             }}
-                            className={`w-8 h-4 px-0.5 rounded-full transition-all duration-200 flex items-center ${globalGradientRoutes ? 'bg-blue-500 justify-end' : 'bg-zinc-700 justify-start'}`}
+                            className={`w-8 h-4 px-0.5 rounded-full transition-all duration-300 flex items-center ${globalGradientRoutes ? 'bg-blue-500 justify-end' : 'bg-zinc-700 justify-start'}`}
                             title="Toggles multi-color gradient routes style matching country highlights"
                         >
                             <div className="w-3 h-3 bg-white rounded-full shadow-md" />
                         </button>
                     </div>
                 </div>
-                
-
             </div>
 
             {/* Exclusive Loyalty / Rank Card Column (Col-span 1) */}
-            <div className="space-y-6 lg:col-span-1 h-full flex flex-col justify-between">
+            <div className="xl:col-span-1 h-full flex flex-col justify-between gap-6">
                 
-                {/* WANDERER EXECUTIVE TILE */}
-                <div className="bg-white/40 dark:bg-zinc-900/40 border border-zinc-200/50 dark:border-white/5 rounded-[2rem] p-6 backdrop-blur-2xl relative overflow-hidden group hover:border-zinc-350 dark:hover:border-white/10 transition-all duration-300 flex flex-col justify-between">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl translate-x-1/2 -translate-y-1/2 pointer-events-none group-hover:scale-125 transition-transform duration-500" />
-                    
-                    <div className="flex justify-between items-start">
+                {/* HIGH-CONCEPT HOLOGRAPHIC TITANIUM PRIVATE EXECUTIVE CARD */}
+                <div className="relative overflow-hidden rounded-[2.2rem] p-6 backdrop-blur-2xl bg-gradient-to-br from-zinc-900/95 via-zinc-950/95 to-slate-900/90 dark:from-black/70 dark:via-zinc-950/80 dark:to-zinc-950/90 border border-white/15 shadow-[0_16px_48px_rgba(0,0,0,0.4)] hover:shadow-[0_24px_56px_rgba(0,0,0,0.5)] transition-all duration-300 group flex flex-col justify-between h-[15.5rem]">
+                    {/* Reflective Holographic patch */}
+                    <div className="absolute top-[35%] right-[10%] w-12 h-16 bg-gradient-to-tr from-cyan-400 via-pink-400 to-yellow-350 dark:from-cyan-500 dark:via-fuchsia-500 dark:to-amber-400 opacity-30 blur-[2px] rounded-lg rotate-12 pointer-events-none group-hover:scale-110 transition-transform duration-700 select-none" />
+                    {/* Metallic glow accents */}
+                    <div className="absolute -top-12 -left-12 w-32 h-32 bg-amber-500/10 rounded-full blur-[40px] pointer-events-none group-hover:scale-150 transition-all duration-500" />
+                    <div className="absolute -bottom-16 -right-16 w-44 h-44 bg-blue-500/15 rounded-full blur-[50px] pointer-events-none" />
+
+                    <div className="flex justify-between items-start relative z-10">
                         <div>
-                            <span className="block text-[10px] font-mono font-black tracking-widest text-amber-500 uppercase">Wanderer Executive</span>
-                            <span className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 mt-1">Elite Travel Status</span>
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-[10px] font-mono font-black tracking-widest text-transparent bg-gradient-to-r from-amber-400 to-amber-200 bg-clip-text uppercase">Wander Executive</span>
+                                <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
+                            </div>
+                            <span className="block text-[9px] font-mono font-bold text-zinc-400 mt-1 uppercase tracking-wider">Holographic Membership Card</span>
                         </div>
-                        <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 dark:text-amber-400 border border-amber-500/20 flex items-center justify-center shrink-0">
-                            <Award className="w-5 h-5 filter drop-shadow-[0_0_8px_rgba(245,158,11,0.4)]" />
+                        <div className="flex flex-col items-end gap-1">
+                            <div className="p-2 sm:p-2.5 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-550/20 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
+                                <Cpu className="w-5 h-5 text-amber-550 filter drop-shadow-[0_0_8px_rgba(245,158,11,0.4)]" />
+                            </div>
+                            <span className="text-[7px] font-mono text-zinc-500 uppercase tracking-widest">Digital RFID</span>
                         </div>
                     </div>
 
-                    <div className="mt-6 space-y-4">
-                        <div className="flex justify-between items-center py-2.5 border-b border-zinc-100/40 dark:border-white/5">
-                            <span className="text-xs text-zinc-400 font-bold uppercase">Member Name</span>
-                            <span className="text-sm font-black text-zinc-800 dark:text-white uppercase tracking-wider">
-                                {currentUser?.name ? currentUser.name : currentUser?.email ? currentUser.email.split('@')[0] : 'EXECUTIVE EXPLORER'}
-                            </span>
+                    {/* Monospace credit card layout info */}
+                    <div className="space-y-4 relative z-10 mt-2">
+                        {/* Member Code */}
+                        <div className="font-mono text-xs sm:text-sm tracking-[0.25em] text-zinc-300 font-extrabold flex justify-between">
+                            <span>EX-{currentLevel.level.toString().padStart(2, '0')}</span>
+                            <span>9876</span>
+                            <span>1024</span>
+                            <span className="text-amber-400">{2026 + currentLevel.level}</span>
                         </div>
-                        <div className="flex justify-between items-center py-2.5 border-b border-zinc-100/40 dark:border-white/5">
-                            <span className="text-xs text-zinc-400 font-bold uppercase">Rank Standing</span>
-                            <span className="text-sm font-black text-amber-500 dark:text-amber-400 uppercase tracking-wide">
-                                {currentLevel.name}
-                            </span>
-                        </div>
-                        <div className="flex justify-between items-center pt-2.5">
-                            <span className="text-xs text-zinc-400 font-bold uppercase">Level Index</span>
-                            <span className="text-sm font-mono font-black text-zinc-800 dark:text-white">
-                                LVL-{String(currentLevel.level).padStart(2, '0')}
-                            </span>
+
+                        {/* Interactive contact waves and metadata */}
+                        <div className="flex justify-between items-end border-t border-white/10 pt-3">
+                            <div>
+                                <span className="block text-[8px] font-mono text-zinc-550 uppercase font-black tracking-widest mb-0.5">Cardholder</span>
+                                <span className="text-xs font-black text-white uppercase tracking-wider">
+                                    {currentUser?.name ? currentUser.name : currentUser?.email ? currentUser.email.split('@')[0] : 'EXECUTIVE EXPLORER'}
+                                </span>
+                            </div>
+                            <div className="text-right">
+                                <span className="block text-[8px] font-mono text-zinc-550 uppercase font-black tracking-widest mb-0.5">Tier Status</span>
+                                <span className="text-xs font-black text-amber-400 uppercase tracking-wide">
+                                    {currentLevel.name}
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 {/* Rank Completion Ledger */}
-                <div className="bg-white/40 dark:bg-zinc-900/40 border border-zinc-200/50 dark:border-white/5 rounded-[2rem] p-6 backdrop-blur-2xl">
+                <div className="bg-white/40 dark:bg-zinc-900/15 border border-white/60 dark:border-white/5 rounded-[2rem] p-5 backdrop-blur-2xl shadow-[0_4px_24px_rgba(0,0,0,0.03)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.2)]">
                     <div className="flex justify-between items-end mb-2.5">
-                        <span className="text-[10px] font-mono font-black text-zinc-400 uppercase tracking-widest">Wander Registry Progress</span>
-                        <span className="text-xs font-mono font-black text-blue-500">{Math.round(progressToNext)}% Complete</span>
+                        <span className="text-[9px] font-mono font-black text-zinc-400 uppercase tracking-[0.15em]">Travel Altitudes</span>
+                        <span className="text-xs font-mono font-black text-blue-500">{Math.round(progressToNext)}% Completed</span>
                     </div>
                     
-                    <div className="h-4 w-full bg-zinc-200/50 dark:bg-white/5 rounded-full overflow-hidden p-[2.5px] border border-zinc-350 dark:border-white/5">
+                    <div className="h-4 w-full bg-zinc-200/50 dark:bg-zinc-950/60 rounded-full overflow-hidden p-[2.5px] border border-white/50 dark:border-white/5">
                         <div className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-amber-400 transition-all duration-1000 ease-out rounded-full relative shadow-[0_0_10px_rgba(59,130,246,0.3)] animate-pulse" style={{ width: `${progressToNext}%` }}>
                             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[pulse_1.5s_infinite]" />
                         </div>
                     </div>
 
                     {nextLevel && (
-                        <p className="text-[10px] text-zinc-400 dark:text-zinc-400 mt-3 font-semibold text-center uppercase tracking-wide">
-                            Land <span className="font-bold text-zinc-700 dark:text-zinc-200">{nextLevel.countries - visitedData.length} more countries</span> to reach <span className="font-black text-amber-500 uppercase">{nextLevel.name}</span>
+                        <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-2.5 font-semibold text-center uppercase tracking-wider">
+                            Arrive in <span className="font-extrabold text-zinc-900 dark:text-zinc-250">{nextLevel.countries - visitedData.length} countries</span> to achieve <span className="font-black text-amber-500 tracking-wide">{nextLevel.name}</span>
                         </p>
                     )}
                 </div>
 
-                {/* Upcoming Milestones Box */}
-                <div className="bg-white/40 dark:bg-zinc-900/40 border border-zinc-200/50 dark:border-white/5 rounded-[2rem] p-5 backdrop-blur-2xl flex-1 flex flex-col justify-between">
+                {/* TRANSLUCENT E-BOARDING PASSES (UPCOMING TRIPS LEDGER) */}
+                <div className="bg-white/40 dark:bg-zinc-900/15 border border-white/60 dark:border-white/5 rounded-[2.2rem] p-5 backdrop-blur-2xl flex-1 flex flex-col justify-between shadow-[0_8px_32px_rgba(0,0,0,0.03)] dark:shadow-[0_16px_40px_rgba(0,0,0,0.25)] min-h-[14rem]">
                     <div>
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-xs font-mono font-black text-zinc-400 uppercase tracking-widest">Planned Odysseys</h3>
-                            <span className="text-[9px] font-mono font-black px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-white/5 text-zinc-500 dark:text-zinc-400 uppercase leading-none">Schedule</span>
+                        <div className="flex justify-between items-center mb-3">
+                            <h3 className="text-[10px] font-mono font-black text-zinc-400 uppercase tracking-[0.15em]">TRANSIT PASSING LIST</h3>
+                            <span className="text-[8px] font-mono font-black px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-white/5 text-zinc-500 dark:text-zinc-400 uppercase leading-none border border-zinc-200/50 dark:border-white/5">GATE</span>
                         </div>
                         
                         {upcomingTripsList.length === 0 ? (
-                            <div className="p-4 rounded-2xl bg-zinc-100/30 dark:bg-white/[0.01] border border-dashed border-zinc-200 dark:border-white/5 flex flex-col items-center justify-center text-center">
-                                <Compass className="w-5 h-5 text-zinc-400 mb-1 leading-none" />
-                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Empty Flight Path</p>
-                                <p className="text-[9px] text-zinc-400 mt-0.5">Use the Vacation Planner to queue upcoming arrivals</p>
+                            <div className="p-4 py-8 rounded-2xl bg-zinc-150/20 dark:bg-white/[0.01] border border-dashed border-zinc-250 dark:border-white/5 flex flex-col items-center justify-center text-center">
+                                <Compass className="w-5 h-5 text-zinc-400 mb-1.5 animate-[spin_18s_linear_infinite]" />
+                                <p className="text-[10px] font-mono font-black text-zinc-400 uppercase tracking-widest">No Active Permits</p>
+                                <p className="text-[9px] text-zinc-500 mt-0.5 font-medium">Create itineraries to queue active airport slips</p>
                             </div>
                         ) : (
                             <div className="space-y-3">
@@ -1110,22 +1138,39 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                     <div 
                                         key={t.id} 
                                         onClick={() => onTripClick && onTripClick(t.id)}
-                                        className="p-3 bg-zinc-100/50 dark:bg-white/[0.02] border border-zinc-200/40 dark:border-white/5 rounded-2xl flex items-center justify-between hover:bg-zinc-100 dark:hover:bg-white/5 cursor-pointer transition-colors"
+                                        className="relative overflow-hidden p-3.5 bg-white/55 dark:bg-zinc-950/10 border border-white/60 dark:border-white/5 rounded-2xl flex items-center justify-between hover:bg-zinc-100/50 dark:hover:bg-zinc-950/20 cursor-pointer transition-all duration-200 hover:translate-x-0.5 shadow-sm hover:border-blue-450 dark:hover:border-blue-500"
+                                        title="Click to manage travel passes"
                                     >
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            <div className="w-8 h-8 rounded-xl bg-indigo-505/10 bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-500 shrink-0 select-none">
-                                                <span className="text-lg leading-none">{t.icon || '✈️'}</span>
+                                        {/* Boarding pass tear-off stub decoration (cutout circle dots) */}
+                                        <div className="absolute top-[40%] -left-1.5 w-3 h-3 bg-zinc-100/70 dark:bg-zinc-900 rounded-full border border-zinc-200 dark:border-transparent pointer-events-none" />
+                                        <div className="absolute top-[40%] -right-1.5 w-3 h-3 bg-zinc-100/70 dark:bg-zinc-900 rounded-full border border-zinc-200 dark:border-transparent pointer-events-none" />
+
+                                        <div className="flex items-center gap-3 min-w-0 pl-1">
+                                            <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 dark:border-blue-400/20 flex items-center justify-center text-blue-500 shrink-0 select-none">
+                                                <span className="text-xl leading-none">{t.icon || '✈️'}</span>
                                             </div>
                                             <div className="min-w-0">
-                                                <span className="block text-xs font-extrabold text-zinc-800 dark:text-zinc-100 truncate">{t.name}</span>
-                                                <span className="block text-[9px] font-mono text-zinc-400 uppercase font-black tracking-wide mt-0.5">{t.location}</span>
+                                                <div className="flex items-center gap-1">
+                                                    <span className="block text-xs font-black text-zinc-800 dark:text-zinc-100 truncate">{t.name}</span>
+                                                    <Ticket className="w-3 h-3 text-zinc-400 shrink-0 animate-pulse" />
+                                                </div>
+                                                <span className="block text-[9px] font-mono font-bold text-zinc-450 dark:text-zinc-400 uppercase tracking-wider mt-0.5 truncate">{t.location}</span>
                                             </div>
                                         </div>
-                                        <div className="text-right shrink-0">
-                                            <span className="block text-[10px] font-mono font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">
+                                        
+                                        <div className="text-right shrink-0 pr-1 font-mono">
+                                            <span className="block text-[11px] font-black text-blue-600 dark:text-blue-400 uppercase">
                                                 {new Date(t.startDate).toLocaleDateString([], { month: 'short', day: 'numeric' })}
                                             </span>
-                                            <span className="block text-[8px] font-mono text-zinc-400 uppercase mt-0.5">Deploying</span>
+                                            {/* Barcode representation pattern */}
+                                            <div className="flex gap-[1px] justify-end opacity-25 h-4 mt-1">
+                                                <span className="w-[1px] bg-zinc-800 dark:bg-white h-full" />
+                                                <span className="w-[2px] bg-zinc-800 dark:bg-white h-full" />
+                                                <span className="w-[1px] bg-zinc-800 dark:bg-white h-full" />
+                                                <span className="w-[1px] bg-zinc-800 dark:bg-white h-full" />
+                                                <span className="w-[3px] bg-zinc-800 dark:bg-white h-full" />
+                                                <span className="w-[1px] bg-zinc-800 dark:bg-white h-full" />
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
@@ -1138,9 +1183,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
         </div>
 
          {/* ========================================================= */}
-        {/* ROW 3: UNIFIED GAMIFICATION & ANALYTICS WORKSPACE */}
-        {/* ========================================================= */}
-        <div className="space-y-6">
+         {/* ROW 3: UNIFIED GAMIFICATION & ANALYTICS WORKSPACE */}
+         {/* ========================================================= */}
+         <div className="space-y-6">
             
             {/* Sliding Pill Tab Toggle Header */}
             <div className="flex flex-col xl:flex-row gap-4 items-center justify-between border-b border-zinc-200/50 dark:border-white/5 pb-4">

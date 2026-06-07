@@ -1,5 +1,25 @@
 
 import React, { useEffect, useState, useMemo, lazy, Suspense } from 'react';
+import { 
+    Compass, 
+    Settings, 
+    Radio, 
+    Globe, 
+    SlidersHorizontal, 
+    RefreshCw, 
+    Play, 
+    Activity, 
+    MapPin, 
+    Layers, 
+    Calendar,
+    Sparkles,
+    Sliders,
+    Zap,
+    Map as MapIcon,
+    Info,
+    Grid,
+    SlidersHorizontal as ControlsIcon
+} from 'lucide-react';
 const ExpeditionMap = lazy(() => import('../components/ExpeditionMap').then(m => ({ default: m.ExpeditionMap })));
 const ExpeditionMap3D = lazy(() => import('../components/ExpeditionMap3D').then(m => ({ default: m.ExpeditionMap3D })));
 import { dataService } from '../services/mockDb';
@@ -621,29 +641,37 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
         };
     }, [trips]);
 
-    if (loading) return <div className="h-full flex items-center justify-center text-gray-500">Initializing Satellite Uplink...</div>;
+    if (loading) return <div className="h-full flex items-center justify-center text-gray-500">Initializing Satellite Uplink...</div>;    return (
+        <div className="relative overflow-visible pb-12 w-full space-y-8 animate-fade-in flex flex-col h-full min-h-0">
+            {/* Modern Glassmorphic ambient backdrop blur accent fields */}
+            <div className="absolute top-10 left-[10%] w-[45rem] h-[35rem] bg-gradient-to-tr from-blue-400/[0.08] to-indigo-500/[0.08] dark:from-blue-600/[0.12] dark:to-indigo-500/[0.08] rounded-full blur-[140px] pointer-events-none select-none -z-10 animate-[bounce_15s_infinite_alternate]" style={{ animationDuration: '20s' }} />
+            <div className="absolute top-[35%] right-[5%] w-[40rem] h-[40rem] bg-gradient-to-bl from-amber-400/[0.06] to-pink-500/[0.06] dark:from-amber-400/[0.05] dark:to-orange-500/[0.05] rounded-full blur-[130px] pointer-events-none select-none -z-10 animate-[pulse_12s_infinite_alternate]" />
+            <div className="absolute bottom-[15%] left-[5%] w-[50rem] h-[50rem] bg-gradient-to-tr from-purple-400/[0.04] to-blue-500/[0.04] dark:from-indigo-950/[0.08] dark:to-purple-950/[0.06] rounded-full blur-[160px] pointer-events-none select-none -z-10" />
 
-    return (
-        <div className="flex flex-col h-full w-full gap-6">
-                     {/* HERO HEADER - OPERATIONS COMMAND DECK */}
-            <div className="bg-white dark:bg-gray-900 rounded-[2rem] p-6 shadow-xl border border-gray-100 dark:border-white/5 flex flex-col gap-6 shrink-0 relative overflow-visible z-20 transition-all duration-300">
-                <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+            {/* HERO HEADER - OPERATIONS COMMAND DECK */}
+            <div className="relative overflow-hidden bg-white/40 dark:bg-zinc-950/25 border border-white/60 dark:border-white/10 rounded-[2.5rem] p-6 backdrop-blur-3xl shadow-[0_8px_32px_0_rgba(31,38,135,0.06)] dark:shadow-[0_16px_48px_0_rgba(0,0,0,0.3)] flex flex-col gap-6 shrink-0 z-20 transition-all duration-300">
+                <div className="absolute -top-12 -right-12 w-[350px] h-[350px] bg-gradient-to-bl from-blue-500/[0.12] via-indigo-500/[0.05] to-transparent blur-3xl pointer-events-none" />
+                <div className="absolute -bottom-12 -left-12 w-[250px] h-[255px] bg-gradient-to-tr from-amber-500/[0.05] to-transparent blur-2xl pointer-events-none" />
 
                 {/* ROW 1: Operations Header & Live Metrics Deck */}
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 w-full relative z-10">
                     <div className="flex items-center justify-between w-full lg:w-auto gap-4">
                         <div className="flex items-center gap-4">
-                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-xl shadow-indigo-500/20 shrink-0">
-                                <span className="material-icons-outlined text-2xl animate-pulse">explore</span>
+                            <div className="relative group shrink-0">
+                                <div className="absolute inset-0 bg-gradient-to-tr from-blue-500 via-indigo-550 to-amber-400 rounded-2xl blur-md opacity-40 group-hover:scale-105 transition-transform duration-500" />
+                                <div className="relative w-14 h-14 rounded-2xl bg-zinc-900/10 dark:bg-zinc-800/20 backdrop-blur-xl text-zinc-900 dark:text-white flex items-center justify-center border border-white/40 dark:border-white/20 shadow-lg shrink-0">
+                                    <Compass className="w-7 h-7 text-indigo-600 dark:text-indigo-400 animate-[spin_20s_linear_infinite]" />
+                                </div>
                             </div>
                             <div>
-                                <h2 className="text-xl md:text-2xl font-black text-gray-900 dark:text-white tracking-tight leading-tight">
+                                <h2 className="text-xl md:text-2xl font-black text-zinc-905 dark:text-white tracking-tight leading-tight flex items-center gap-2">
                                     Operations Command Deck
+                                    <Sparkles className="w-5 h-5 text-amber-500 animate-[pulse_1.5s_infinite]" />
                                 </h2>
-                                <p className="text-[10px] md:text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mt-1 flex items-center gap-1.5">
-                                    <span className="flex h-2 w-2 relative">
+                                <p className="text-[10px] md:text-[11px] font-extrabold text-zinc-500 dark:text-indigo-450 uppercase tracking-[0.18em] mt-1.5 flex items-center gap-2">
+                                    <span className="flex h-2.5 w-2.5 relative">
                                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
                                     </span>
                                     Telemetry Network Uplink
                                 </p>
@@ -653,40 +681,42 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                         {/* Toggle Collapse Button */}
                         <button 
                             onClick={() => setIsCollapsed(!isCollapsed)}
-                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-200/60 dark:border-white/10 text-slate-700 dark:text-slate-300 font-extrabold text-xs transition-colors shadow-sm"
+                            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/40 hover:bg-white/60 dark:bg-white/5 dark:hover:bg-white/10 border border-white/50 dark:border-white/10 text-zinc-800 dark:text-zinc-200 font-extrabold text-xs transition-all shadow-[0_2px_8px_rgba(31,38,135,0.04)] backdrop-blur-md hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
                         >
-                            <span className="material-icons-outlined text-sm">{isCollapsed ? 'settings_suggest' : 'close'}</span>
-                            {isCollapsed ? 'Configure' : 'Close'}
+                            <ControlsIcon className={`w-4 h-4 text-zinc-600 dark:text-zinc-400 transition-transform duration-300 ${isCollapsed ? '' : 'rotate-90'}`} />
+                            {isCollapsed ? 'Configure Deck' : 'Hide Controls'}
                         </button>
                     </div>
 
                     {/* DYNAMIC OPERATION METRICS */}
-                    <div className="grid grid-cols-2 md:flex md:flex-row items-center gap-3 w-full lg:w-auto">
-                        <div className="bg-slate-50/80 dark:bg-black/45 rounded-2xl px-4 py-3 border border-slate-100 dark:border-white/5 flex items-center gap-3 shadow-sm hover:shadow-md transition-shadow">
-                            <div className="w-9 h-9 rounded-xl bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-                                <span className="material-icons-outlined text-lg">public</span>
+                    <div className="grid grid-cols-2 md:flex md:flex-row items-center gap-4 w-full lg:w-auto">
+                        <div className="bg-white/35 dark:bg-zinc-900/10 backdrop-blur-xl rounded-2xl px-5 py-3 border border-white/40 dark:border-white/5 flex items-center gap-3.5 shadow-sm hover:shadow-md transition-all duration-300 group">
+                            <div className="w-10 h-10 rounded-xl bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-500/15 group-hover:scale-105 transition-transform">
+                                <Globe className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                             </div>
                             <div className="min-w-0">
-                                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 truncate">Total Sphere Range</p>
-                                <p className="text-sm md:text-base font-black text-slate-900 dark:text-white tracking-tight mt-0.5 truncate leading-none">
-                                    {totalDistanceKm.toLocaleString()}<span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 ml-0.5">KM</span>
+                                <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-500 truncate">Total Sphere Range</p>
+                                <p className="text-sm md:text-base font-black text-zinc-900 dark:text-white tracking-tight mt-0.5 truncate leading-none">
+                                    {totalDistanceKm.toLocaleString()}<span className="text-[10px] font-bold text-indigo-500 ml-0.5">KM</span>
                                 </p>
-                                <p className="text-[9px] text-slate-400 dark:text-slate-500 truncate mt-0.5 font-medium">
+                                <p className="text-[9px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5 font-bold font-mono">
                                     {(Math.round(totalDistanceKm * 0.621371)).toLocaleString()} MI
                                 </p>
                             </div>
                         </div>
 
-                        <div className="bg-slate-50/80 dark:bg-black/45 rounded-2xl px-4 py-3 border border-slate-100 dark:border-white/5 flex items-center gap-3 shadow-sm hover:shadow-md transition-shadow">
-                            <div className="w-9 h-9 rounded-xl bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-                                <span className="material-icons-outlined text-lg">hub</span>
+                        <div className="bg-white/35 dark:bg-zinc-900/10 backdrop-blur-xl rounded-2xl px-5 py-3 border border-white/40 dark:border-white/5 flex items-center gap-3.5 shadow-sm hover:shadow-md transition-all duration-300 group">
+                            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-500/15 group-hover:scale-105 transition-transform">
+                                <Zap className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                             </div>
                             <div className="min-w-0">
-                                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 truncate">Connected Hubs</p>
-                                <p className="text-sm md:text-base font-black text-slate-900 dark:text-white tracking-tight mt-0.5 truncate leading-none">
-                                    {activeSectorsCount} <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">Sectors</span>
+                                <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-500 truncate">Connected Hubs</p>
+                                <p className="text-sm md:text-base font-black text-zinc-900 dark:text-white tracking-tight mt-0.5 truncate leading-none">
+                                    {activeSectorsCount} <span className="text-[10px] font-bold text-indigo-500">Sectors</span>
                                 </p>
-                                <p className="text-[9px] text-slate-400 dark:text-slate-500 mt-1 font-semibold">Active Vectors</p>
+                                <p className="text-[9px] text-indigo-550 dark:text-indigo-400 mt-0.5 font-extrabold flex items-center gap-1 leading-none">
+                                    <Activity className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> Vectors Live
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -694,258 +724,225 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
 
                 {/* REDESIGNED BENTO COMMAND HUB */}
                 <div className={`transition-all duration-300 flex flex-col gap-6 relative z-10 ${isCollapsed ? 'hidden' : 'flex'}`}>
-                    <div className="h-px bg-slate-100 dark:bg-white/5 w-full" />
+                    <div className="h-px bg-white/20 dark:bg-white/5 w-full" />
                     
                     {/* BENTO GRID: Fully adaptive grid across phones, tablets, and computers */}
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
-                        
-                        {/* BENTO CARD 1: Projection & Coordinates Engine */}
-                        <div className="bg-slate-50/50 dark:bg-black/20 p-4 rounded-2xl border border-slate-200/40 dark:border-white/5 flex flex-col justify-between gap-3 shadow-inner">
+                                               {/* BENTO CARD 1: Projection & Presentation Engine (Merged & Streamlined) */}
+                        <div className="md:col-span-2 xl:col-span-2 bg-white/30 dark:bg-zinc-950/20 p-5 rounded-[2.2rem] border border-white/60 dark:border-white/5 flex flex-col justify-between gap-4 shadow-sm backdrop-blur-2xl hover:border-blue-400/30 dark:hover:border-white/10 transition-all duration-300 min-h-[14rem]">
                             <div>
-                                <span className="text-[10.5px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-2.5">
-                                    I. Projection Engine
-                                </span>
-                                <div className="flex flex-col gap-2">
-                                    {/* Projection Mode (2D / 3D) */}
-                                    <div className="flex items-center justify-between gap-2">
-                                        <span className="text-xs font-bold text-slate-600 dark:text-slate-400">Projection:</span>
-                                        <div className="flex p-0.5 bg-slate-200/50 dark:bg-black/30 rounded-xl border border-slate-300/30 dark:border-white/5 shrink-0">
-                                            <button 
-                                                onClick={() => setMapType('2D')}
-                                                className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 ${
-                                                    mapType === '2D' 
-                                                    ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-white shadow-sm' 
-                                                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                                <div className="flex items-center justify-between mb-4">
+                                    <span className="text-[10.5px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest block flex items-center gap-1.5">
+                                        <SlidersHorizontal className="w-3.5 h-3.5" /> I. PROJECTION & PRESENTATION
+                                    </span>
+                                    <button 
+                                        onClick={handleRefresh}
+                                        className="text-[9px] font-black text-white hover:text-white/90 bg-gradient-to-r from-blue-600 to-indigo-650 px-2.5 py-1 rounded-lg transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer shadow-[0_2px_10px_rgba(37,99,235,0.2)] border border-white/20"
+                                        title="Clear coordinate caches and reload all geocoding / route paths"
+                                    >
+                                        <RefreshCw className="w-3 h-3 hover:rotate-180 transition-transform duration-500" />
+                                        Sync
+                                    </button>
+                                </div>
+                                <div className="grid grid-cols-1 lg:grid-cols-10 gap-5">
+                                    {/* Projection Section (Left side) */}
+                                    <div className="lg:col-span-4 flex flex-col gap-2.5">
+                                        <p className="text-[9px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest leading-none">Projection Control</p>
+                                        <div className="grid grid-cols-1 gap-2">
+                                            {/* 2D / 3D Dimension toggle */}
+                                            <button
+                                                onClick={() => setMapType(mapType === '2D' ? '3D' : '2D')}
+                                                className={`p-2 rounded-xl border text-left font-bold transition-all duration-205 flex items-center gap-2 cursor-pointer ${
+                                                    mapType === '3D'
+                                                    ? 'bg-purple-500/10 border-purple-500/30 text-purple-600 dark:text-purple-400 shadow-sm'
+                                                    : 'bg-white/30 dark:bg-white/5 border-white/40 dark:border-white/5 text-zinc-450 hover:text-zinc-650 dark:hover:text-zinc-350'
                                                 }`}
+                                                title={mapType === '3D' ? "Switch to 2D Flat Map View" : "Switch to 3D Globe Projection View"}
                                             >
-                                                <span className="material-icons-outlined text-xs">map</span> 2D
+                                                <Globe className={`w-4 h-4 ${mapType === '3D' ? 'text-purple-500 animate-[spin_10s_linear_infinite]' : 'text-zinc-450'}`} />
+                                                <div className="min-w-0 flex-1 leading-none">
+                                                    <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Dimension</p>
+                                                    <p className="text-[9.5px] font-extrabold mt-0.5 truncate">{mapType === '3D' ? '3D Globe' : '2D Map'}</p>
+                                                </div>
                                             </button>
-                                            <button 
-                                                onClick={() => setMapType('3D')}
-                                                className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 ${
-                                                    mapType === '3D' 
-                                                    ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-white shadow-sm' 
-                                                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+
+                                            {/* Network toggle */}
+                                            <button
+                                                onClick={() => setViewMode(viewMode === 'network' ? 'scratch' : 'network')}
+                                                className={`p-2 rounded-xl border text-left font-bold transition-all duration-205 flex items-center gap-2 cursor-pointer ${
+                                                    viewMode === 'network'
+                                                    ? 'bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-400 shadow-sm'
+                                                    : 'bg-white/30 dark:bg-white/5 border-white/40 dark:border-white/5 text-zinc-450 hover:text-zinc-650 dark:hover:text-zinc-350'
                                                 }`}
+                                                title={viewMode === 'network' ? "Hide Network Routes & Plots" : "Display Network Routes & Plots"}
                                             >
-                                                <span className="material-icons-outlined text-xs">public</span> 3D
+                                                <Compass className={`w-4 h-4 ${viewMode === 'network' ? 'text-blue-500' : 'text-zinc-450'}`} />
+                                                <div className="min-w-0 flex-1 leading-none">
+                                                    <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Network</p>
+                                                    <p className="text-[9.5px] font-extrabold mt-0.5 truncate">{viewMode === 'network' ? 'Active' : 'Disabled'}</p>
+                                                </div>
+                                            </button>
+
+                                            {/* Scratch toggle */}
+                                            <button
+                                                onClick={() => setShowCountries(!showCountries)}
+                                                className={`p-2 rounded-xl border text-left font-bold transition-all duration-205 flex items-center gap-2 cursor-pointer ${
+                                                    showCountries
+                                                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 shadow-sm'
+                                                    : 'bg-white/30 dark:bg-white/5 border-white/40 dark:border-white/5 text-zinc-450 hover:text-zinc-650 dark:hover:text-zinc-350'
+                                                }`}
+                                                title={showCountries ? "Hide Visited Lands layer" : "Display Visited Lands layer"}
+                                            >
+                                                <MapPin className={`w-4 h-4 ${showCountries ? 'text-amber-500' : 'text-zinc-450'}`} />
+                                                <div className="min-w-0 flex-1 leading-none">
+                                                    <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Scratch</p>
+                                                    <p className="text-[9.5px] font-extrabold mt-0.5 truncate">{showCountries ? 'Active' : 'Disabled'}</p>
+                                                </div>
                                             </button>
                                         </div>
                                     </div>
 
-                                    {/* Map overlay visualization style (Network / Scratch) */}
-                                    {mapType === '2D' && (
-                                        <div className="flex items-center justify-between gap-2 mt-1">
-                                            <span className="text-xs font-bold text-slate-600 dark:text-slate-400">Plot Type:</span>
-                                            <div className="flex p-0.5 bg-slate-200/50 dark:bg-black/30 rounded-xl border border-slate-300/30 dark:border-white/5 shrink-0">
-                                                <button 
-                                                    onClick={() => setViewMode('network')}
-                                                    className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 ${
-                                                        viewMode === 'network' 
-                                                        ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-white shadow-sm' 
-                                                        : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-                                                    }`}
-                                                >
-                                                    <span className="material-icons-outlined text-xs">hub</span> Network
-                                                </button>
-                                                <button 
-                                                    onClick={() => setViewMode('scratch')}
-                                                    className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 ${
-                                                        viewMode === 'scratch' 
-                                                        ? 'bg-white dark:bg-gray-700 text-amber-600 dark:text-amber-400 shadow-sm' 
-                                                        : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-                                                    }`}
-                                                >
-                                                    <span className="material-icons-outlined text-xs">flag</span> Scratch
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
+                                    {/* Presentation Section (Right side) */}
+                                    <div className="lg:col-span-6 flex flex-col gap-2.5">
+                                        <p className="text-[9px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest leading-none">Presentation Channels</p>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {/* 1. FLIGHTS */}
+                                            <button
+                                                onClick={() => setShowIndependentFlights(!showIndependentFlights)}
+                                                className={`p-2 rounded-xl border text-left font-bold transition-all duration-205 flex items-center gap-2 cursor-pointer ${
+                                                    showIndependentFlights
+                                                    ? 'bg-purple-500/10 border-purple-500/30 text-purple-600 dark:text-purple-400 shadow-sm'
+                                                    : 'bg-white/30 dark:bg-white/5 border-white/40 dark:border-white/5 text-zinc-450 hover:text-zinc-650 dark:hover:text-zinc-350'
+                                                }`}
+                                                title="Toggle Independent Flights"
+                                            >
+                                                <Compass className="w-4 h-4 text-purple-500" />
+                                                <div className="min-w-0 flex-1 leading-none">
+                                                    <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Flights</p>
+                                                    <p className="text-[9.5px] font-extrabold mt-0.5 truncate">{showIndependentFlights ? 'Active' : 'Hidden'}</p>
+                                                </div>
+                                            </button>
 
-                                    {/* Highlight Lands Toggles (only visible in 2D) */}
-                                    {mapType === '2D' && (
-                                        <div className="flex items-center justify-between gap-2 mt-1">
-                                            <span className="text-xs font-bold text-slate-600 dark:text-slate-400">Crossed Lands:</span>
-                                            <div className="flex p-0.5 bg-slate-200/50 dark:bg-black/30 rounded-xl border border-slate-300/30 dark:border-white/5 shrink-0">
-                                                <button 
-                                                    onClick={() => setShowCountries(true)}
-                                                    className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 ${
-                                                        showCountries 
-                                                        ? 'bg-white dark:bg-gray-700 text-rose-600 dark:text-white shadow-sm' 
-                                                        : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-                                                    }`}
-                                                >
-                                                    Highlight
-                                                </button>
-                                                <button 
-                                                    onClick={() => setShowCountries(false)}
-                                                    className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 ${
-                                                        !showCountries 
-                                                        ? 'bg-white dark:bg-gray-700 text-slate-600 dark:text-white shadow-sm' 
-                                                        : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-                                                    }`}
-                                                >
-                                                    Off
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
+                                            {/* 2. TRANSIT */}
+                                            <button
+                                                onClick={() => setShowLandSeaRoutes(!showLandSeaRoutes)}
+                                                className={`p-2 rounded-xl border text-left font-bold transition-all duration-205 flex items-center gap-2 cursor-pointer ${
+                                                    showLandSeaRoutes
+                                                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 shadow-sm'
+                                                    : 'bg-white/30 dark:bg-white/5 border-white/40 dark:border-white/5 text-zinc-450 hover:text-zinc-650 dark:hover:text-zinc-350'
+                                                }`}
+                                                title={showLandSeaRoutes ? "Hide Land/Sea vehicle paths" : "Display Land/Sea vehicle paths"}
+                                            >
+                                                <Zap className="w-4 h-4 text-amber-500" />
+                                                <div className="min-w-0 flex-1 leading-none">
+                                                    <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Transit</p>
+                                                    <p className="text-[9.5px] font-extrabold mt-0.5 truncate">{showLandSeaRoutes ? 'Active' : 'Hidden'}</p>
+                                                </div>
+                                            </button>
 
-                        {/* BENTO CARD 2: Map Presentation Toggles (Core request!) */}
-                        <div className="bg-slate-50/50 dark:bg-black/20 p-4 rounded-2xl border border-slate-200/40 dark:border-white/5 flex flex-col justify-between gap-3 shadow-inner">
-                            <div>
-                                <div className="flex items-center justify-between mb-2.5">
-                                    <span className="text-[10.5px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block">
-                                        II. Presentation Controls
-                                    </span>
-                                    <button 
-                                        onClick={handleRefresh}
-                                        className="text-[9px] font-extrabold text-blue-500 hover:text-blue-600 bg-blue-500/10 hover:bg-blue-500/20 px-2 py-0.5 rounded transition-all active:scale-95 flex items-center gap-1 cursor-pointer"
-                                        title="Clear coordinate caches and reload all geocoding / route paths"
-                                    >
-                                        <span className="material-icons-outlined text-xs">refresh</span>
-                                        Refresh Routes
-                                    </button>
-                                </div>
-                                <div className="grid grid-cols-2 gap-1.5">
-                                    {/* 1. FLIGHTS */}
-                                    <button
-                                        onClick={() => setShowIndependentFlights(!showIndependentFlights)}
-                                        className={`p-1.5 rounded-xl border text-left font-bold transition-all flex items-center gap-1.5 ${
-                                            showIndependentFlights
-                                            ? 'bg-purple-500/10 border-purple-500/20 text-purple-600 dark:text-purple-400 shadow-sm'
-                                            : 'bg-white dark:bg-white/5 border-slate-200/60 dark:border-white/10 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-                                        }`}
-                                        title="Toggle Independent Flights"
-                                    >
-                                        <span className="material-icons-outlined text-sm">flight</span>
-                                        <div className="min-w-0 flex-1 leading-none">
-                                            <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Flights</p>
-                                            <p className="text-[9.5px] font-extrabold mt-0.5 truncate">{showIndependentFlights ? 'Routes On' : 'Hidden'}</p>
-                                        </div>
-                                    </button>
+                                            {/* 3. CITIES */}
+                                            <button
+                                                onClick={() => setShowCityMarkers(!showCityMarkers)}
+                                                className={`p-2 rounded-xl border text-left font-bold transition-all duration-205 flex items-center gap-2 cursor-pointer ${
+                                                    showCityMarkers
+                                                    ? 'bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-400 shadow-sm'
+                                                    : 'bg-white/30 dark:bg-white/5 border-white/40 dark:border-white/5 text-zinc-450 hover:text-zinc-650 dark:hover:text-zinc-350'
+                                                }`}
+                                                title={showCityMarkers ? "Hide City labels on the map" : "Display major city endpoints"}
+                                            >
+                                                <MapPin className="w-4 h-4 text-blue-500" />
+                                                <div className="min-w-0 flex-1 leading-none">
+                                                    <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Cities</p>
+                                                    <p className="text-[9.5px] font-extrabold mt-0.5 truncate">{showCityMarkers ? 'Visible' : 'Hidden'}</p>
+                                                </div>
+                                            </button>
 
-                                    {/* 2. TRANSIT */}
-                                    <button
-                                        onClick={() => setShowLandSeaRoutes(!showLandSeaRoutes)}
-                                        className={`p-1.5 rounded-xl border text-left font-bold transition-all flex items-center gap-1.5 ${
-                                            showLandSeaRoutes
-                                            ? 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400 shadow-sm'
-                                            : 'bg-white dark:bg-white/5 border-slate-200/60 dark:border-white/10 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-                                        }`}
-                                        title={showLandSeaRoutes ? "Hide Land/Sea vehicle paths" : "Display Land/Sea vehicle paths"}
-                                    >
-                                        <span className="material-icons-outlined text-sm">commute</span>
-                                        <div className="min-w-0 flex-1 leading-none">
-                                            <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Transit</p>
-                                            <p className="text-[9.5px] font-extrabold mt-0.5 truncate">{showLandSeaRoutes ? 'Routes On' : 'Hidden'}</p>
-                                        </div>
-                                    </button>
+                                            {/* 4. CLUSTER */}
+                                            <button
+                                                onClick={() => setClusterMode(!clusterMode)}
+                                                className={`p-2 rounded-xl border text-left font-bold transition-all duration-205 flex items-center gap-2 cursor-pointer ${
+                                                    clusterMode
+                                                    ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                                                    : 'bg-white/30 dark:bg-white/5 border-white/40 dark:border-white/5 text-zinc-450 hover:text-zinc-650 dark:hover:text-zinc-350'
+                                                }`}
+                                                title={clusterMode ? "Disable marker group combining" : "Group overlapping airport nodes"}
+                                            >
+                                                <Layers className="w-4 h-4 text-indigo-505" />
+                                                <div className="min-w-0 flex-1 leading-none">
+                                                    <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Cluster</p>
+                                                    <p className="text-[9.5px] font-extrabold mt-0.5 truncate">{clusterMode ? 'Active' : 'Off'}</p>
+                                                </div>
+                                            </button>
 
-                                    {/* 3. CITIES */}
-                                    <button
-                                        onClick={() => setShowCityMarkers(!showCityMarkers)}
-                                        className={`p-1.5 rounded-xl border text-left font-bold transition-all flex items-center gap-1.5 ${
-                                            showCityMarkers
-                                            ? 'bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400 shadow-sm'
-                                            : 'bg-white dark:bg-white/5 border-slate-200/60 dark:border-white/10 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-                                        }`}
-                                        title={showCityMarkers ? "Hide City labels on the map" : "Display major city endpoints"}
-                                    >
-                                        <span className="material-icons-outlined text-sm">location_city</span>
-                                        <div className="min-w-0 flex-1 leading-none">
-                                            <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Cities</p>
-                                            <p className="text-[9.5px] font-extrabold mt-0.5 truncate">{showCityMarkers ? 'Visible' : 'Hidden'}</p>
-                                        </div>
-                                    </button>
+                                            {/* 5. COMET FLOW */}
+                                            <button
+                                                onClick={() => setAnimateRoutes(!animateRoutes)}
+                                                className={`p-2 rounded-xl border text-left font-bold transition-all duration-205 flex items-center gap-2 cursor-pointer ${
+                                                    animateRoutes
+                                                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                                                    : 'bg-white/30 dark:bg-white/5 border-white/40 dark:border-white/5 text-zinc-450 hover:text-zinc-650 dark:hover:text-zinc-350'
+                                                }`}
+                                                title="Toggle Animated Pulse Lines"
+                                            >
+                                                <Play className="w-4 h-4 text-emerald-555 animate-pulse" />
+                                                <div className="min-w-0 flex-1 leading-none">
+                                                    <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Comet Flow</p>
+                                                    <p className="text-[9.5px] font-extrabold mt-0.5 truncate">{animateRoutes ? 'Active' : 'Off'}</p>
+                                                </div>
+                                            </button>
 
-                                    {/* 4. CLUSTER */}
-                                    <button
-                                        onClick={() => setClusterMode(!clusterMode)}
-                                        className={`p-1.5 rounded-xl border text-left font-bold transition-all flex items-center gap-1.5 ${
-                                            clusterMode
-                                            ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                                            : 'bg-white dark:bg-white/5 border-slate-200/60 dark:border-white/10 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-                                        }`}
-                                        title={clusterMode ? "Disable marker group combining" : "Group overlapping airport nodes"}
-                                    >
-                                        <span className="material-icons-outlined text-sm">layers</span>
-                                        <div className="min-w-0 flex-1 leading-none">
-                                            <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Cluster</p>
-                                            <p className="text-[9.5px] font-extrabold mt-0.5 truncate">{clusterMode ? 'Active' : 'Disabled'}</p>
-                                        </div>
-                                    </button>
+                                            {/* 6. WEIGHT FLOW */}
+                                            <button
+                                                onClick={() => setShowFrequencyWeight(!showFrequencyWeight)}
+                                                className={`p-2 rounded-xl border text-left font-bold transition-all duration-205 flex items-center gap-2 cursor-pointer ${
+                                                    showFrequencyWeight
+                                                    ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-600 dark:text-cyan-400 shadow-sm'
+                                                    : 'bg-white/30 dark:bg-white/5 border-white/40 dark:border-white/5 text-zinc-450 hover:text-zinc-650 dark:hover:text-zinc-350'
+                                                }`}
+                                                title="Line thickness changes with route replication"
+                                            >
+                                                <Activity className="w-4 h-4 text-cyan-500" />
+                                                <div className="min-w-0 flex-1 leading-none">
+                                                    <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Weight Flow</p>
+                                                    <p className="text-[9.5px] font-extrabold mt-0.5 truncate">{showFrequencyWeight ? 'Active' : 'Off'}</p>
+                                                </div>
+                                            </button>
 
-                                    {/* 5. COMET FLOW */}
-                                    <button
-                                        onClick={() => setAnimateRoutes(!animateRoutes)}
-                                        className={`p-1.5 rounded-xl border text-left font-bold transition-all flex items-center gap-1.5 ${
-                                            animateRoutes
-                                            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400 shadow-sm'
-                                            : 'bg-white dark:bg-white/5 border-slate-200/60 dark:border-white/10 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-                                        }`}
-                                        title="Toggle Animated Pulse Lines"
-                                    >
-                                        <span className="material-icons-outlined text-sm">play_arrow</span>
-                                        <div className="min-w-0 flex-1 leading-none">
-                                            <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Comet Flow</p>
-                                            <p className="text-[9.5px] font-extrabold mt-0.5 truncate">{animateRoutes ? 'Active' : 'Off'}</p>
+                                            {/* 7. ROAD TRACING (OSRM) */}
+                                            <button
+                                                onClick={() => {
+                                                    const newVal = !showRoadTracing;
+                                                    setShowRoadTracing(newVal);
+                                                    localStorage.setItem('wandergrid_road_tracing', String(newVal));
+                                                }}
+                                                className={`col-span-2 p-2 rounded-xl border text-left font-bold transition-all duration-205 flex items-center gap-2.5 cursor-pointer ${
+                                                    showRoadTracing
+                                                    ? 'bg-rose-500/10 border-rose-500/30 text-rose-605 dark:text-rose-400 shadow-sm'
+                                                    : 'bg-white/30 dark:bg-white/5 border-white/40 dark:border-white/5 text-zinc-450 hover:text-zinc-650 dark:hover:text-zinc-350'
+                                                }`}
+                                                title={showRoadTracing ? "Disable realistic land route tracing over OSRM" : "Trace land routes along actual roads using OpenStreetMap/OSRM"}
+                                            >
+                                                <Radio className="w-4 h-4 text-rose-500 shrink-0" />
+                                                <div className="min-w-0 flex-1 leading-none">
+                                                    <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Realistic Land Trails (OSRM)</p>
+                                                    <p className="text-[9.5px] font-extrabold mt-0.5 truncate">{showRoadTracing ? 'Enabled (Actual Roads)' : 'Disabled (Arcs Only)'}</p>
+                                                </div>
+                                            </button>
                                         </div>
-                                    </button>
-
-                                    {/* 6. WEIGHT FLOW */}
-                                    <button
-                                        onClick={() => setShowFrequencyWeight(!showFrequencyWeight)}
-                                        className={`p-1.5 rounded-xl border text-left font-bold transition-all flex items-center gap-1.5 ${
-                                            showFrequencyWeight
-                                            ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-600 dark:text-cyan-400 shadow-sm'
-                                            : 'bg-white dark:bg-white/5 border-slate-200/60 dark:border-white/10 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-                                        }`}
-                                        title="Line thickness changes with route replication"
-                                    >
-                                        <span className="material-icons-outlined text-sm">line_weight</span>
-                                        <div className="min-w-0 flex-1 leading-none">
-                                            <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Weight Flow</p>
-                                            <p className="text-[9.5px] font-extrabold mt-0.5 truncate">{showFrequencyWeight ? 'Active' : 'Off'}</p>
-                                        </div>
-                                    </button>
-
-                                    {/* 7. ROAD TRACING (OSRM) */}
-                                    <button
-                                        onClick={() => {
-                                            const newVal = !showRoadTracing;
-                                            setShowRoadTracing(newVal);
-                                            localStorage.setItem('wandergrid_road_tracing', String(newVal));
-                                        }}
-                                        className={`col-span-2 p-1.5 rounded-xl border text-left font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                                            showRoadTracing
-                                            ? 'bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400 shadow-sm'
-                                            : 'bg-white dark:bg-white/5 border-slate-200/60 dark:border-white/10 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-                                        }`}
-                                        title={showRoadTracing ? "Disable realistic land route tracing over OSRM" : "Trace land routes along actual roads using OpenStreetMap/OSRM"}
-                                    >
-                                        <span className="material-icons-outlined text-sm">alt_route</span>
-                                        <div className="min-w-0 flex-1 leading-none">
-                                            <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Realistic Land Trails (OSRM)</p>
-                                            <p className="text-[9.5px] font-extrabold mt-0.5 truncate">{showRoadTracing ? 'Enabled (Actual Roads)' : 'Disabled (Arcs Only)'}</p>
-                                        </div>
-                                    </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
                         {/* BENTO CARD 3: Location Connectivity Filter */}
-                        <div className="bg-slate-50/50 dark:bg-black/20 p-4 rounded-2xl border border-slate-200/40 dark:border-white/5 flex flex-col justify-between gap-3 shadow-inner">
+                        <div className="bg-white/30 dark:bg-zinc-950/20 p-5 rounded-[2.2rem] border border-white/60 dark:border-white/5 flex flex-col justify-between gap-4 shadow-sm backdrop-blur-2xl hover:border-blue-400/30 dark:hover:border-white/10 transition-all duration-300 min-h-[14rem]">
                             <div>
-                                <span className="text-[10.5px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1.5">
-                                    III. Global Hub Routing
+                                <span className="text-[10.5px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest block mb-2.5 flex items-center gap-1.5">
+                                    <Compass className="w-3.5 h-3.5" /> III. CONNECTIVITY
                                 </span>
-                                <div className="space-y-2">
+                                <div className="space-y-3">
                                     <div>
-                                        <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Departure Station</p>
+                                        <p className="text-[9px] font-extrabold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1">Departure Station</p>
                                         <MultiSelect 
                                             placeholder="Any Departure Hub"
                                             options={uniqueAirports.origins}
@@ -954,7 +951,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                         />
                                     </div>
                                     <div>
-                                        <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Arrival Station</p>
+                                        <p className="text-[9px] font-extrabold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1">Arrival Station</p>
                                         <MultiSelect 
                                             placeholder="Any Arrival Hub"
                                             options={uniqueAirports.destinations}
@@ -967,56 +964,56 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                         </div>
 
                         {/* BENTO CARD 4: Time Span & Quick Filters */}
-                        <div className="bg-slate-50/50 dark:bg-black/20 p-4 rounded-2xl border border-slate-200/40 dark:border-white/5 flex flex-col justify-between gap-3 shadow-inner">
+                        <div className="bg-white/30 dark:bg-zinc-950/20 p-5 rounded-[2.2rem] border border-white/60 dark:border-white/5 flex flex-col justify-between gap-4 shadow-sm backdrop-blur-2xl hover:border-blue-400/30 dark:hover:border-white/10 transition-all duration-300 min-h-[14rem]">
                             <div>
-                                <span className="text-[10.5px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1.5">
-                                    IV. Temporal Range
+                                <span className="text-[10.5px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest block mb-2.5 flex items-center gap-1.5">
+                                    <Calendar className="w-3.5 h-3.5" /> IV. TEMPORAL RANGE
                                 </span>
-                                <div className="space-y-2.5">
+                                <div className="space-y-3">
                                     <div className="grid grid-cols-2 gap-2">
                                         <div>
-                                            <label className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1">From Date</label>
+                                            <label className="text-[9px] font-extrabold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block mb-1">From Date</label>
                                             <Input 
                                                 type="date" 
                                                 value={dateFrom} 
                                                 onChange={(e) => setDateFrom(e.target.value)} 
-                                                className="!py-1 !px-2 !text-[11px] !font-bold !h-8 bg-white dark:bg-white/5 text-gray-800 dark:text-white border border-slate-200/60 dark:border-white/10"
+                                                className="!py-1 !px-2 !text-[11px] !font-bold !h-8 bg-white/55 dark:bg-zinc-950/40 text-zinc-850 dark:text-white border border-white/40 dark:border-white/5 focus:border-indigo-450 rounded-xl"
                                             />
                                         </div>
                                         <div>
-                                            <label className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1">To Date</label>
+                                            <label className="text-[9px] font-extrabold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block mb-1">To Date</label>
                                             <Input 
                                                 type="date" 
                                                 value={dateTo} 
                                                 onChange={(e) => setDateTo(e.target.value)} 
-                                                className="!py-1 !px-2 !text-[11px] !font-bold !h-8 bg-white dark:bg-white/5 text-gray-800 dark:text-white border border-slate-200/60 dark:border-white/10"
+                                                className="!py-1 !px-2 !text-[11px] !font-bold !h-8 bg-white/55 dark:bg-zinc-950/40 text-zinc-850 dark:text-white border border-white/40 dark:border-white/5 focus:border-indigo-450 rounded-xl"
                                             />
                                         </div>
                                     </div>
 
                                     {/* Year Select & Timeline buttons */}
-                                    <div className="flex flex-col gap-1.5">
+                                    <div className="flex flex-col gap-2">
                                         <div className="flex items-center gap-2 justify-between">
-                                            <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500">Operation Year:</span>
+                                            <span className="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Operation Year:</span>
                                             <select 
                                                 value={yearFilter}
                                                 onChange={(e) => setYearFilter(e.target.value)}
-                                                className="bg-white dark:bg-black text-[10.5px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 outline-none px-2 py-1 cursor-pointer rounded-lg border border-slate-200 dark:border-white/10"
+                                                className="bg-white/70 dark:bg-zinc-950 text-[10.5px] font-extrabold uppercase tracking-wider text-zinc-750 dark:text-zinc-300 outline-none px-2 py-1 cursor-pointer rounded-lg border border-white/40 dark:border-white/5"
                                             >
                                                 <option value="all">All Years</option>
                                                 {years.map(y => <option key={y} value={y}>{y}</option>)}
                                             </select>
                                         </div>
 
-                                        <div className="flex p-0.5 bg-slate-200/50 dark:bg-black/30 rounded-xl border border-slate-300/30 dark:border-white/5 w-full justify-between">
+                                        <div className="flex p-0.5 bg-zinc-200/50 dark:bg-zinc-950/60 rounded-xl border border-white/30 dark:border-white/5 w-full justify-between">
                                             {['all', 'Upcoming', 'Past'].map((s) => (
                                                 <button
                                                     key={s}
                                                     onClick={() => setStatusFilter(s as any)}
-                                                    className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex-1 text-center ${
+                                                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex-1 text-center ${
                                                         statusFilter === s 
-                                                        ? 'bg-white dark:bg-gray-700 text-black dark:text-white shadow-sm font-black' 
-                                                        : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                                                        ? 'bg-white dark:bg-zinc-800 text-black dark:text-white shadow-sm font-black border border-white/10' 
+                                                        : 'text-zinc-450 hover:text-zinc-650 dark:hover:text-zinc-300'
                                                     }`}
                                                 >
                                                     {s === 'all' ? 'All' : s}
@@ -1033,13 +1030,13 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
             </div>
             
             {/* CONTENT AREA */}
-            <div className="flex-1 min-h-0 w-full overflow-hidden flex flex-col gap-6 relative z-10">
+            <div className="flex-1 min-h-[36rem] w-full flex flex-col gap-6 relative z-10">
                 {/* FULL-SCREEN GEOSPATIAL MAP COMMAND PANEL */}
-                <div className="flex-1 min-h-0 rounded-[2rem] lg:rounded-[2.5rem] overflow-hidden border border-gray-200 dark:border-white/5 shadow-2xl relative bg-black flex flex-col">
+                <div className="flex-1 min-h-[36rem] rounded-[2.5rem] overflow-hidden border border-white/50 dark:border-white/10 shadow-[0_24px_64px_rgba(0,0,0,0.08)] dark:shadow-[0_24px_64px_rgba(0,0,0,0.45)] relative bg-zinc-100/35 dark:bg-black/25 backdrop-blur-3xl flex flex-col">
                     <Suspense fallback={
                         <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-950/70 border border-white/5 space-y-4">
-                            <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Booting Real-Time Vector Engine...</p>
+                            <Compass className="w-10 h-10 text-indigo-500 animate-[spin_5s_linear_infinite]" />
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 font-mono">Booting Real-Time Vector Engine...</p>
                         </div>
                     }>
                         {mapType === '2D' ? (

@@ -13,6 +13,13 @@ export interface User {
   holidayConfigIds?: string[]; // Updated: Links to multiple SavedConfig.id
   holidayWeekendRule?: 'monday' | 'lieu' | 'none'; // Per-user rule for how to handle weekend holidays
   activeYears?: number[]; // New: Explicitly tracked years for UI persistence
+  profilePicture?: string;
+  nationality?: string;
+  dateOfBirth?: string;
+  passportNumber?: string;
+  passportIssuingEntity?: string;
+  passportIssueDate?: string;
+  passportExpiryDate?: string;
 }
 
 export interface UserPolicy {

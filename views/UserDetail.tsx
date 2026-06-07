@@ -23,6 +23,51 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
     const [editTakenLeave, setEditTakenLeave] = useState(0);
     const [saveLoading, setSaveLoading] = useState(false);
 
+    // Profile picture and passport states
+    const [editProfilePicture, setEditProfilePicture] = useState('');
+    const [editNationality, setEditNationality] = useState('');
+    const [editDateOfBirth, setEditDateOfBirth] = useState('');
+    const [editPassportNumber, setEditPassportNumber] = useState('');
+    const [editPassportIssuingEntity, setEditPassportIssuingEntity] = useState('');
+    const [editPassportIssueDate, setEditPassportIssueDate] = useState('');
+    const [editPassportExpiryDate, setEditPassportExpiryDate] = useState('');
+    const [isDragging, setIsDragging] = useState(false);
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = () => {
+        setIsDragging(false);
+    };
+
+    const processFile = (file: File) => {
+        if (file && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                if (event.target?.result) {
+                    setEditProfilePicture(event.target.result as string);
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragging(false);
+        const file = e.dataTransfer.files[0];
+        processFile(file);
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            processFile(file);
+        }
+    };
+
     // Trip Edit and Delete States
     const [isEditingTrip, setIsEditingTrip] = useState(false);
     const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
@@ -134,6 +179,13 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                     setEditWeekendRule(foundUser.holidayWeekendRule || 'none');
                     setEditLeaveBalance(foundUser.leaveBalance ?? 25);
                     setEditTakenLeave(foundUser.takenLeave ?? 0);
+                    setEditProfilePicture(foundUser.profilePicture || '');
+                    setEditNationality(foundUser.nationality || '');
+                    setEditDateOfBirth(foundUser.dateOfBirth || '');
+                    setEditPassportNumber(foundUser.passportNumber || '');
+                    setEditPassportIssuingEntity(foundUser.passportIssuingEntity || '');
+                    setEditPassportIssueDate(foundUser.passportIssueDate || '');
+                    setEditPassportExpiryDate(foundUser.passportExpiryDate || '');
                 }
                 return dataService.getTrips();
             })
@@ -189,7 +241,14 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                 password: editPassword.trim(),
                 holidayWeekendRule: editWeekendRule,
                 leaveBalance: editLeaveBalance,
-                takenLeave: editTakenLeave
+                takenLeave: editTakenLeave,
+                profilePicture: editProfilePicture,
+                nationality: editNationality,
+                dateOfBirth: editDateOfBirth,
+                passportNumber: editPassportNumber,
+                passportIssuingEntity: editPassportIssuingEntity,
+                passportIssueDate: editPassportIssueDate,
+                passportExpiryDate: editPassportExpiryDate
             };
             await dataService.updateUser(updatedUser);
             setUser(updatedUser);
@@ -238,11 +297,15 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                 <div className="relative p-8 lg:p-12 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
                     <div className="flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
                         <div className="relative">
-                            <div className={`w-28 h-28 rounded-[2rem] flex items-center justify-center text-5xl font-black text-white shadow-xl transition-all hover:scale-105 duration-300 border border-white/20
+                            <div className={`w-28 h-28 rounded-[2rem] flex items-center justify-center overflow-hidden text-5xl font-black text-white shadow-xl transition-all hover:scale-105 duration-300 border border-white/20
                                 ${user.role === 'Partner' ? 'bg-gradient-to-br from-blue-600 to-indigo-700 shadow-indigo-500/20' : 
                                   user.role === 'Admin' ? 'bg-gradient-to-br from-purple-500 to-indigo-650 shadow-purple-500/20' : 
                                   'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-teal-500/20'}`}>
-                                {user.name?.charAt(0) || '?'}
+                                {user.profilePicture ? (
+                                    <img src={user.profilePicture} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                ) : (
+                                    user.name?.charAt(0) || '?'
+                                )}
                             </div>
                             <div className="absolute -bottom-2 -right-2 bg-white dark:bg-gray-800 px-3 py-1 rounded-xl shadow-md border border-gray-100 dark:border-white/10">
                                 <span className={`text-[10px] font-black uppercase tracking-wider ${
@@ -262,6 +325,13 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                                         setEditWeekendRule(user.holidayWeekendRule || 'none');
                                         setEditLeaveBalance(user.leaveBalance ?? 25);
                                         setEditTakenLeave(user.takenLeave ?? 0);
+                                        setEditProfilePicture(user.profilePicture || '');
+                                        setEditNationality(user.nationality || '');
+                                        setEditDateOfBirth(user.dateOfBirth || '');
+                                        setEditPassportNumber(user.passportNumber || '');
+                                        setEditPassportIssuingEntity(user.passportIssuingEntity || '');
+                                        setEditPassportIssueDate(user.passportIssueDate || '');
+                                        setEditPassportExpiryDate(user.passportExpiryDate || '');
                                         setIsEditing(true);
                                     }}
                                     className="p-2 text-zinc-400 hover:text-blue-500 hover:bg-slate-100 dark:hover:bg-zinc-805 rounded-xl transition-colors cursor-pointer"
@@ -591,6 +661,106 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                                     { label: 'Compensate Lieu Rule', value: 'lieu' }
                                 ]}
                             />
+                        </div>
+
+                        {/* Biometric & Passport details */}
+                        <div className="border-t border-gray-100 dark:border-white/5 pt-4 space-y-4">
+                            <h4 className="text-xs font-black uppercase tracking-wider text-zinc-400 font-mono">Passport & Biometrics</h4>
+                            
+                            {/* Portrait Photo Dropzone */}
+                            <div className="space-y-1">
+                                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400">Portrait Biography Photo</label>
+                                <div 
+                                    onDragOver={handleDragOver}
+                                    onDragLeave={handleDragLeave}
+                                    onDrop={handleDrop}
+                                    className={`border-2 border-dashed rounded-2xl p-4 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all ${
+                                        isDragging 
+                                            ? 'border-blue-500 bg-blue-50/10 dark:bg-blue-950/20' 
+                                            : 'border-zinc-200 hover:border-zinc-300 dark:border-white/10 dark:hover:border-zinc-700 bg-zinc-50/30 dark:bg-black/10'
+                                    }`}
+                                    onClick={() => document.getElementById('profile-pic-input')?.click()}
+                                >
+                                    <input 
+                                        id="profile-pic-input" 
+                                        type="file" 
+                                        accept="image/*" 
+                                        className="hidden" 
+                                        onChange={handleFileChange} 
+                                    />
+                                    {editProfilePicture ? (
+                                        <div className="flex items-center gap-4 w-full">
+                                            <img src={editProfilePicture} className="w-16 h-16 rounded-xl object-cover shrink-0 border border-zinc-200 dark:border-white/10" alt="Preview" />
+                                            <div className="flex-1 text-left">
+                                                <span className="text-xs text-emerald-500 font-bold flex items-center gap-1">
+                                                    <span className="material-icons-outlined text-sm">check_circle</span> Loaded Successfully
+                                                </span>
+                                                <button 
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setEditProfilePicture('');
+                                                    }}
+                                                    className="text-[10px] text-rose-500 font-black tracking-wider uppercase mt-1 hover:underline cursor-pointer"
+                                                >
+                                                    Remove Photo
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-2">
+                                            <span className="material-icons-outlined text-2xl text-zinc-400 block mb-1">add_a_photo</span>
+                                            <span className="text-[11px] font-bold text-zinc-500 block">Drag & drop or click to select image</span>
+                                            <span className="text-[9px] text-zinc-400 block font-mono mt-0.5">PNG, JPG, WebP</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <Input 
+                                    label="Nationality / Nationalities" 
+                                    placeholder="e.g. Lebanese, Italian" 
+                                    value={editNationality} 
+                                    onChange={e => setEditNationality(e.target.value)} 
+                                />
+                                <Input 
+                                    label="Date of Birth" 
+                                    type="date" 
+                                    value={editDateOfBirth} 
+                                    onChange={e => setEditDateOfBirth(e.target.value)} 
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <Input 
+                                    label="Passport Number" 
+                                    placeholder="e.g. RL1234567" 
+                                    value={editPassportNumber} 
+                                    onChange={e => setEditPassportNumber(e.target.value)} 
+                                />
+                                <Input 
+                                    label="Issuing Entity" 
+                                    placeholder="e.g. WG Aviation HQ" 
+                                    value={editPassportIssuingEntity} 
+                                    onChange={e => setEditPassportIssuingEntity(e.target.value)} 
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <Input 
+                                    label="Issue Date" 
+                                    type="date" 
+                                    value={editPassportIssueDate} 
+                                    onChange={e => setEditPassportIssueDate(e.target.value)} 
+                                />
+                                <Input 
+                                    label="Expiry Date" 
+                                    type="date" 
+                                    value={editPassportExpiryDate} 
+                                    onChange={e => setEditPassportExpiryDate(e.target.value)} 
+                                />
+                            </div>
                         </div>
 
                         {/* Admin-only properties editable in User profile as well */}

@@ -432,14 +432,14 @@ export const ExpeditionMap3D: React.FC<ExpeditionMap3DProps> = ({
     };
 
     return (
-        <div ref={containerRef} className={`w-full h-full overflow-hidden relative ${isDark ? 'bg-black' : 'bg-slate-50'}`}>
+        <div ref={containerRef} className="w-full h-full overflow-hidden relative bg-transparent">
             <Globe
                 ref={globeEl}
                 width={dimensions.width}
                 height={dimensions.height}
                 globeImageUrl={getGlobeImage()}
                 bumpImageUrl="https://unpkg.com/three-globe/example/img/earth-topology.png"
-                backgroundColor={isDark ? "#000000" : "#f8fafc"}
+                backgroundColor="rgba(0,0,0,0)"
                 showAtmosphere={showAtmosphere}
                 atmosphereColor={isDark || activeLayer !== 'standard' ? "#3a228a" : "#ffffff"}
                 atmosphereAltitude={atmosphereAltitude}

@@ -1305,15 +1305,15 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 })()}
 
                 {/* Right Card: Beautiful interactive 2D Map Overview card of the configured routes */}
-                <div className="lg:col-span-4 relative rounded-[2.5rem] bg-white dark:bg-gray-900 shadow-2xl border border-gray-100 dark:border-white/5 overflow-hidden min-h-[300px]">
-                    <div className="absolute top-4 left-4 z-10 flex items-center gap-1.5 bg-white/90 dark:bg-gray-900/90 backdrop-blur px-3 py-1.5 rounded-full border border-gray-100 dark:border-white/10 shadow-sm pointer-events-none">
+                <div className="lg:col-span-4 relative rounded-[2.5rem] bg-white/35 dark:bg-zinc-950/15 backdrop-blur-xl border border-white/50 dark:border-white/10 shadow-[0_24px_64px_rgba(0,0,0,0.08)] dark:shadow-[0_24px_64px_rgba(0,0,0,0.45)] overflow-hidden min-h-[300px]">
+                    <div className="absolute top-4 left-4 z-10 flex items-center gap-1.5 bg-white/95 dark:bg-black/40 backdrop-blur px-3 py-1.5 rounded-full border border-white/50 dark:border-white/10 shadow-sm pointer-events-none">
                         <span className="material-icons-outlined text-blue-500 text-sm">explore</span>
                         <span className="text-[10px] font-black uppercase tracking-wider text-gray-700 dark:text-gray-300">Route Map Overview 2D</span>
                     </div>
-                    <div className="absolute inset-0 bg-[#0f0f12]">
+                    <div className="absolute inset-0 bg-transparent">
                         <Suspense fallback={
-                            <div className="w-full h-full flex flex-col items-center justify-center bg-[#0f0f12] text-zinc-400 space-y-3">
-                                <div className="w-8 h-8 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                            <div className="w-full h-full flex flex-col items-center justify-center bg-transparent text-zinc-400 space-y-3">
+                                <span className="w-8 h-8 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin"></span>
                                 <span className="text-[9px] font-bold uppercase tracking-wider">Rasterizing Route Vector...</span>
                             </div>
                         }>
