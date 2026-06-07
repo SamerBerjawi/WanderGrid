@@ -582,7 +582,40 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                     }
                 });
 
-                const visitedData = visitedDataList.sort((a,b) => a.name.localeCompare(b.name));
+                const mergedVisitedMap = new Map<string, VisitedCountry>();
+                visitedDataList.forEach(entry => {
+                    const existing = mergedVisitedMap.get(entry.code);
+                    if (existing) {
+                        const mergedCities = new Set<string>();
+                        if (existing.cities instanceof Set) {
+                            existing.cities.forEach(c => mergedCities.add(c));
+                        } else if (Array.isArray(existing.cities)) {
+                            existing.cities.forEach(c => mergedCities.add(c));
+                        }
+                        if (entry.cities instanceof Set) {
+                            entry.cities.forEach(c => mergedCities.add(c));
+                        } else if (Array.isArray(entry.cities)) {
+                            entry.cities.forEach(c => mergedCities.add(c));
+                        }
+
+                        const d1 = existing.lastVisit instanceof Date ? existing.lastVisit : new Date(existing.lastVisit);
+                        const d2 = entry.lastVisit instanceof Date ? entry.lastVisit : new Date(entry.lastVisit);
+                        const latestDate = d1 > d2 ? d1 : d2;
+
+                        mergedVisitedMap.set(entry.code, {
+                            ...existing,
+                            cities: mergedCities,
+                            tripCount: Math.max(existing.tripCount, entry.tripCount),
+                            lastVisit: latestDate
+                        });
+                    } else {
+                        mergedVisitedMap.set(entry.code, {
+                            ...entry,
+                            cities: entry.cities instanceof Set ? entry.cities : new Set(entry.cities)
+                        });
+                    }
+                });
+                const visitedData = Array.from(mergedVisitedMap.values()).sort((a,b) => a.name.localeCompare(b.name));
 
                 let totalC = 0;
                 visitedData.forEach(val => { totalC += (val.cities as Set<string>).size; });

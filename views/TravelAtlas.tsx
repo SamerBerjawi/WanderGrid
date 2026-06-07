@@ -782,10 +782,10 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                       {/* Transit toggle */}
                       <button 
                         onClick={() => handleToggleTransit(item)}
-                        className={`w-full mt-4 flex items-center justify-between text-[11px] font-black tracking-wide uppercase px-4 py-2.5 rounded-2xl border transition-all ${
+                        className={`w-full mt-4 flex items-center justify-between text-[11px] font-extrabold tracking-wider uppercase px-4.5 py-3 rounded-2xl border transition-all duration-200 ${
                           item.isTransit 
-                            ? 'bg-amber-100/40 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-300/40' 
-                            : 'bg-indigo-50/50 dark:bg-whiteScale-5 hover:bg-indigo-50 text-indigo-600 dark:text-indigo-400 dark:hover:bg-indigo-950/20 border-transparent'
+                            ? 'bg-amber-100/50 hover:bg-amber-100/70 border-amber-300/60 text-amber-900 dark:bg-amber-950/35 dark:hover:bg-amber-950/50 dark:border-amber-900/40 dark:text-amber-300' 
+                            : 'bg-indigo-100/50 hover:bg-indigo-100/70 border-indigo-200/50 text-indigo-900 dark:bg-indigo-950/30 dark:hover:bg-indigo-950/50 dark:border-indigo-900/30 dark:text-indigo-300'
                         }`}
                       >
                         <span className="flex items-center gap-1.5">

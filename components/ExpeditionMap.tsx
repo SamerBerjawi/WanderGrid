@@ -979,7 +979,11 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
             attributionControl: false,
             scrollWheelZoom: true,
             worldCopyJump: true,
-            preferCanvas: false // Use high-fidelity native SVG vectors for ultra-smooth rendering, custom classes, animations, and zero-stagger zoom interactions
+            preferCanvas: false, // Use high-fidelity native SVG vectors for ultra-smooth rendering, custom classes, animations, and zero-stagger zoom interactions
+            zoomSnap: 0.1,
+            zoomDelta: 0.1,
+            minZoom: 0,
+            maxZoom: 18
         }).setView([25, 10], 2); // Slightly centered for aesthetics
 
         mapInstance.current = map;
@@ -996,9 +1000,14 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
             }
         });
 
-        // Force react update on zoom ending to recalculate spatial marker clustering grids
+        // Force react update on zoom / zoom ending to recalculate spatial marker clustering grids
+        map.on('zoom', () => {
+            const z = map.getZoom();
+            setMapZoom(Math.round(z * 10) / 10);
+        });
         map.on('zoomend', () => {
-            setMapZoom(map.getZoom());
+            const z = map.getZoom();
+            setMapZoom(Math.round(z * 10) / 10);
         });
 
         // Resize Observer to handle container size changes (e.g. sidebar toggle)
@@ -1884,6 +1893,48 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                     <span className="material-icons-outlined text-lg">route</span>
                 </button>
 
+            </div>
+
+            {/* Elegant Floating Zoom Level Slider - Bottom Center */}
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[5000] flex items-center gap-3 px-4 py-2 rounded-full border shadow-[0_20px_50px_rgba(0,0,0,0.3)] bg-white/80 dark:bg-zinc-900/90 backdrop-blur-md border-slate-200/80 dark:border-zinc-800/80 transition-all duration-300 hover:scale-[1.02] select-none">
+                <button 
+                    onClick={handleZoomOut} 
+                    className="w-7 h-7 flex items-center justify-center rounded-full text-slate-500 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-800 dark:hover:text-white transition-all"
+                    title="Zoom Out"
+                >
+                    <span className="material-icons-outlined text-base">remove</span>
+                </button>
+                
+                <input 
+                    type="range" 
+                    min="0" 
+                    max="18" 
+                    step="0.1"
+                    value={mapZoom} 
+                    onChange={(e) => {
+                        const newZoom = Number(e.target.value);
+                        setMapZoom(newZoom);
+                        mapInstance.current?.setZoom(newZoom);
+                    }}
+                    className="w-32 sm:w-44 h-1 rounded-lg appearance-none cursor-pointer bg-slate-200 dark:bg-zinc-700 accent-blue-600 dark:accent-indigo-500 outline-none"
+                    style={{
+                        background: `linear-gradient(to right, ${isDark ? '#6366f1' : '#2563eb'} ${(mapZoom / 18) * 100}%, ${isDark ? '#3f3f46' : '#cbd5e1'} ${(mapZoom / 18) * 100}%)`
+                    }}
+                />
+
+                <button 
+                    onClick={handleZoomIn} 
+                    className="w-7 h-7 flex items-center justify-center rounded-full text-slate-500 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-800 dark:hover:text-white transition-all"
+                    title="Zoom In"
+                >
+                    <span className="material-icons-outlined text-base">add</span>
+                </button>
+
+                <div className="h-4 w-px bg-slate-200 dark:bg-zinc-700 mx-1" />
+
+                <span className="text-[10px] font-extrabold font-mono text-slate-600 dark:text-zinc-300 uppercase tracking-widest min-w-[50px] text-center">
+                    x{mapZoom.toFixed(1)}
+                </span>
             </div>
 
             {/* Waypoint Planner Overlay Panel - Glassy and Adaptive */}

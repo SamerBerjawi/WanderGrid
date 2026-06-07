@@ -134,18 +134,6 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
   const [importState, setImportState] = useState<{ status: 'idle' | 'loading' | 'success' | 'error'; message: string }>({ status: 'idle', message: '' });
   const [pendingSuggestions, setPendingSuggestions] = useState<any[] | null>(null);
 
-
-
-
-
-
-
-
-
-
-
-
-
   const chartData = useMemo(() => {
     const sums: Record<string, { distance: number; timeMinutes: number; count: number }> = {
       'Train': { distance: 0, timeMinutes: 0, count: 0 },
@@ -903,7 +891,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                     showFlightRoutes={false}
                     showLandSeaRoutes={true}
                     showCityMarkers={true}
-                    activeLayer={isDark ? 'topography' : 'standard'}
+                    activeLayer={'standard'}
                     clusterMode={false}
                   />
                 </Suspense>
