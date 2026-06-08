@@ -14,6 +14,8 @@ COPY components ./components
 COPY services ./services
 COPY views ./views
 COPY utils ./utils
+COPY hooks ./hooks
+COPY public ./public
 
 RUN npm install --legacy-peer-deps --no-audit --no-fund
 RUN npm run build
