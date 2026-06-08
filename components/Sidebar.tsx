@@ -56,6 +56,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
     { label: 'Dashboard', value: ViewState.DASHBOARD, icon: 'grid_view' },
     { label: 'Map', value: ViewState.MAP, icon: 'public' },
     { label: 'Planner', value: ViewState.PLANNER, icon: 'map' }, 
+    { label: 'Vacation Calendar', value: ViewState.VACATION_CALENDAR, icon: 'calendar_month' }, 
     { label: 'Travel Atlas', value: ViewState.TRAVEL_ATLAS, icon: 'explore' },
     { label: 'Flights', value: ViewState.FLIGHTS, icon: 'flight_takeoff' }, 
     { label: 'Road Trips', value: ViewState.ROADTRIPS, icon: 'directions_car' }, 

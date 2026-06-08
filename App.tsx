@@ -16,6 +16,7 @@ const ExpeditionMapView = lazy(() => import('./views/ExpeditionMapView').then(m 
 const Flights = lazy(() => import('./views/Flights').then(m => ({ default: m.Flights })));
 const RoadTrips = lazy(() => import('./views/RoadTrips').then(m => ({ default: m.RoadTrips })));
 const TravelAtlas = lazy(() => import('./views/TravelAtlas').then(m => ({ default: m.TravelAtlas })));
+const VacationCalendar = lazy(() => import('./views/VacationCalendar').then(m => ({ default: m.VacationCalendar })));
 const Auth = lazy(() => import('./views/Auth').then(m => ({ default: m.Auth })));
 
 const getUrlState = () => {
@@ -28,6 +29,7 @@ const getUrlState = () => {
         if (path === '/flights') return { view: ViewState.FLIGHTS };
         if (path === '/roadtrips') return { view: ViewState.ROADTRIPS };
         if (path === '/atlas' || path === '/travel-atlas') return { view: ViewState.TRAVEL_ATLAS };
+        if (path === '/calendar' || path === '/vacation-calendar') return { view: ViewState.VACATION_CALENDAR };
         
         const userMatch = path.match(/^\/user\/([^/]+)$/);
         if (userMatch) return { view: ViewState.USER_DETAIL, userId: userMatch[1] };
@@ -95,6 +97,11 @@ const VIEW_ACCENTS: Record<ViewState, { glow1: string; glow2: string; glow3: str
     glow2: 'bg-amber-500/4 dark:bg-amber-500/5',
     glow3: 'bg-emerald-500/2 dark:bg-emerald-500/2' 
   },
+  [ViewState.VACATION_CALENDAR]: { 
+    glow1: 'bg-indigo-500/4 dark:bg-indigo-500/5', 
+    glow2: 'bg-purple-500/4 dark:bg-purple-500/5',
+    glow3: 'bg-blue-500/2 dark:bg-blue-500/2' 
+  },
 };
 
 export default function App() {
@@ -119,6 +126,7 @@ export default function App() {
           case ViewState.GAMIFICATION: path = '/gamification'; break;
           case ViewState.FLIGHTS: path = '/flights'; break;
           case ViewState.ROADTRIPS: path = '/roadtrips'; break;
+          case ViewState.VACATION_CALENDAR: path = '/calendar'; break;
           case ViewState.USER_DETAIL: path = id ? `/user/${id}` : '/'; break;
           case ViewState.TRIP_DETAIL: path = id ? `/trip/${id}` : '/'; break;
           case ViewState.DASHBOARD: 
@@ -290,6 +298,8 @@ export default function App() {
         return <RoadTrips onTripClick={handleTripClick} />;
       case ViewState.TRAVEL_ATLAS:
         return <TravelAtlas onTripClick={handleTripClick} />;
+      case ViewState.VACATION_CALENDAR:
+        return <VacationCalendar onTripClick={handleTripClick} />;
       default:
         return <Dashboard onUserClick={handleUserClick} onTripClick={handleTripClick} />;
     }

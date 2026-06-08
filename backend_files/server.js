@@ -771,6 +771,231 @@ app.get('/api/proxy/flight-status', async (req, res) => {
     }
 });
 
+// Proxy for AviationStack by route (Flighty / byAir style search list)
+app.get('/api/proxy/route-flights', async (req, res) => {
+    const { access_key, dep_iata, arr_iata, flight_date } = req.query;
+    if (!dep_iata || !arr_iata || !flight_date) {
+        return res.status(400).json({ error: 'Missing dep_iata, arr_iata, or flight_date' });
+    }
+
+    const cleanDep = dep_iata.trim().toUpperCase();
+    const cleanArr = arr_iata.trim().toUpperCase();
+    const cleanDate = flight_date.trim();
+
+    const cacheKey = `${cleanDep}:${cleanArr}:${cleanDate}`;
+    const cached = flightCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+        res.set('X-Cache', 'HIT');
+        return res.json(cached.data);
+    }
+
+    try {
+        if (access_key && access_key !== 'null' && access_key !== 'undefined' && access_key.trim() !== '') {
+            const url = `http://api.aviationstack.com/v1/flights?access_key=${access_key}&dep_iata=${cleanDep}&arr_iata=${cleanArr}&flight_date=${cleanDate}`;
+            console.log(`[API] Querying AviationStack for route: ${cleanDep} -> ${cleanArr} on ${cleanDate}`);
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data && data.data && data.data.length > 0) {
+                flightCache.set(cacheKey, { data, expiresAt: Date.now() + FLIGHT_CACHE_TTL_MS });
+                res.set('X-Cache', 'MISS');
+                return res.json(data);
+            } else if (data && data.error) {
+                console.warn("[API] AviationStack returned error, switching to Fallback:", data.error);
+            } else {
+                console.warn(`[API] AviationStack returned empty results for ${cleanDep} -> ${cleanArr}, switching to Fallback.`);
+            }
+        }
+    } catch (err) {
+        console.error("[API] AviationStack route flight proxy request failed:", err);
+    }
+
+    // Fallback Phase 1: Gemini API
+    const activeGeminiKey = process.env.GEMINI_API_KEY;
+    if (activeGeminiKey) {
+        try {
+            console.log(`[AI Fallback] Generating flight schedules via Gemini for route: ${cleanDep} -> ${cleanArr} on ${cleanDate}...`);
+            const modelPrompt = `You are an aviation expert database API. For route from "${cleanDep}" to "${cleanArr}" on date "${cleanDate}", generate and return a list of 5-8 realistic flight options spread throughout the day (morning, afternoon, evening) operated by different major airlines that typically fly this route.
+            
+            The output must EXACTLY match the AviationStack response format in raw JSON:
+            {
+                "pagination": { "limit": 100, "offset": 0, "count": 6, "total": 6 },
+                "data": [
+                    {
+                        "flight_date": "${cleanDate}",
+                        "flight_status": "scheduled",
+                        "departure": {
+                            "airport": "Departure Airport Name",
+                            "timezone": "Continent/City",
+                            "iata": "${cleanDep}",
+                            "icao": "K${cleanDep}",
+                            "terminal": "e.g. 4",
+                            "gate": "e.g. B12",
+                            "delay": 0,
+                            "scheduled": "ISO Date String e.g. ${cleanDate}T08:15:00Z",
+                            "estimated": "ISO Date String e.g. ${cleanDate}T08:15:00Z",
+                            "actual": null,
+                            "estimated_runway": null,
+                            "actual_runway": null
+                        },
+                        "arrival": {
+                            "airport": "Arrival Airport Name",
+                            "timezone": "Continent/City",
+                            "iata": "${cleanArr}",
+                            "icao": "E${cleanArr}",
+                            "terminal": "e.g. 5",
+                            "gate": "e.g. A3",
+                            "baggage": "e.g. 8",
+                            "delay": 0,
+                            "scheduled": "ISO Date String e.g. ${cleanDate}T14:30:00Z",
+                            "estimated": "ISO Date String e.g. ${cleanDate}T14:30:00Z",
+                            "actual": null,
+                            "estimated_runway": null,
+                            "actual_runway": null
+                        },
+                        "airline": { "name": "Airline Name", "iata": "Airline IATA code e.g. AA", "icao": "Airline ICAO code" },
+                        "flight": { "number": "Flight number e.g. 112", "iata": "airline IATA + flight number e.g. AA112", "icao": "airline ICAO + flight number" },
+                        "aircraft": { "registration": "Tail eg N123AA", "iata": "772", "model": "Boeing 777-200", "country": "US" }
+                    }
+                ]
+            }
+            Make sure the flight departure scheduled times are spread across the day from 06:00 to 22:30. Ensure arrival scheduled hour is correctly calculated based on departure scheduled hour and real travel duration.
+            Respond only with the raw JSON object. Do not wrap in markdown \`\`\`json block.`;
+
+            const resFetch = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${activeGeminiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: modelPrompt }] }]
+                })
+            });
+
+            if (resFetch.ok) {
+                const textRes = await resFetch.json();
+                let rawText = textRes.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                if (rawText.includes('{')) {
+                    rawText = rawText.substring(rawText.indexOf('{'), rawText.lastIndexOf('}') + 1);
+                    const parsed = JSON.parse(rawText);
+                    if (parsed && parsed.data && parsed.data.length > 0) {
+                        flightCache.set(cacheKey, { data: parsed, expiresAt: Date.now() + FLIGHT_CACHE_TTL_MS });
+                        res.set('X-Cache', 'GEMINI');
+                        return res.json(parsed);
+                    }
+                }
+            }
+        } catch (geminiErr) {
+            console.error("[Fallback] Gemini route flight generation failed:", geminiErr);
+        }
+    }
+
+    // Fallback Phase 2: High-fidelity Deterministic list
+    console.log(`[Fallback] Generating deterministic mock flights for route: ${cleanDep} -> ${cleanArr} on ${cleanDate}`);
+    const dummyAirlines = [
+        { name: "Delta Air Lines", iata: "DL" },
+        { name: "United Airlines", iata: "UA" },
+        { name: "American Airlines", iata: "AA" },
+        { name: "British Airways", iata: "BA" },
+        { name: "Lufthansa", iata: "LH" },
+        { name: "Emirates", iata: "EK" }
+    ];
+    const dummyAircrafts = [
+        { model: "Boeing 737-800", registration: "N737AA", iata: "738" },
+        { model: "Airbus A320neo", registration: "N320UA", iata: "32N" },
+        { model: "Boeing 777-300ER", registration: "N777DL", iata: "77W" },
+        { model: "Airbus A350-900", registration: "G-XWBA", iata: "359" },
+        { model: "Boeing 787-9 Dreamliner", registration: "N787BA", iata: "789" },
+        { model: "Airbus A380-800", registration: "A6-EEK", iata: "388" }
+    ];
+
+    const depAirportInfo = memoryAirports.get(cleanDep) || { city_name: cleanDep, airport_name: `${cleanDep} Intl Airport` };
+    const arrAirportInfo = memoryAirports.get(cleanArr) || { city_name: cleanArr, airport_name: `${cleanArr} Intl Airport` };
+
+    // Standard hours of departure
+    const departureTimes = [
+        { hour: 6, min: 30 },
+        { hour: 9, min: 15 },
+        { hour: 12, min: 0 },
+        { hour: 15, min: 45 },
+        { hour: 18, min: 30 },
+        { hour: 21, min: 0 }
+    ];
+
+    const flightDurationHours = 3.5; // average reasonable flight duration
+
+    const simulatedData = departureTimes.map((dt, idx) => {
+        const airline = dummyAirlines[idx % dummyAirlines.length];
+        const aircraft = dummyAircrafts[idx % dummyAircrafts.length];
+
+        const fNum = Math.floor(100 + idx * 115 + (cleanDep.charCodeAt(0) + cleanArr.charCodeAt(0)) % 100).toString();
+        const depTimeStr = `${String(dt.hour).padStart(2, '0')}:${String(dt.min).padStart(2, '0')}:00`;
+
+        const depDateObj = new Date(`${cleanDate}T${depTimeStr}Z`);
+        const arrDateObj = new Date(depDateObj.getTime() + flightDurationHours * 60 * 60 * 1000); // add 3.5 hours
+        
+        const arrDateOnly = arrDateObj.toISOString().split('T')[0];
+        const arrTimeStr = arrDateObj.toISOString().split('T')[1].substring(0, 8);
+
+        return {
+            flight_date: cleanDate,
+            flight_status: "scheduled",
+            departure: {
+                airport: depAirportInfo.airport_name,
+                timezone: "UTC",
+                iata: cleanDep,
+                icao: `K${cleanDep}`,
+                terminal: String((idx % 3) + 1),
+                gate: `B${10 + idx}`,
+                delay: 0,
+                scheduled: `${cleanDate}T${depTimeStr}Z`,
+                estimated: `${cleanDate}T${depTimeStr}Z`,
+                actual: null,
+                estimated_runway: null,
+                actual_runway: null
+            },
+            arrival: {
+                airport: arrAirportInfo.airport_name,
+                timezone: "UTC",
+                iata: cleanArr,
+                icao: `E${cleanArr}`,
+                terminal: String((idx % 4) + 1),
+                gate: `C${20 + idx}`,
+                baggage: String((idx % 9) + 1),
+                delay: 0,
+                scheduled: `${arrDateOnly}T${arrTimeStr}Z`,
+                estimated: `${arrDateOnly}T${arrTimeStr}Z`,
+                actual: null,
+                estimated_runway: null,
+                actual_runway: null
+            },
+            airline: {
+                name: airline.name,
+                iata: airline.iata,
+                icao: `${airline.iata}X`
+            },
+            flight: {
+                number: fNum,
+                iata: `${airline.iata}${fNum}`,
+                icao: `${airline.iata}X${fNum}`
+            },
+            aircraft: {
+                registration: aircraft.registration,
+                iata: aircraft.iata,
+                model: aircraft.model,
+                country: "Unknown"
+            }
+        };
+    });
+
+    const mockResponse = {
+        pagination: { limit: 100, offset: 0, count: simulatedData.length, total: simulatedData.length },
+        data: simulatedData
+    };
+
+    flightCache.set(cacheKey, { data: mockResponse, expiresAt: Date.now() + FLIGHT_CACHE_TTL_MS });
+    res.set('X-Cache', 'MOCK_DETERMINISTIC');
+    res.json(mockResponse);
+});
+
 // Proxy for AviationStack Airports (Bypasses CORS & mixed content)
 app.get('/api/proxy/airports', async (req, res) => {
     const { access_key, iata_code, search } = req.query;

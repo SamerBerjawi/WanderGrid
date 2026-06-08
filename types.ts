@@ -293,7 +293,8 @@ export enum ViewState {
   GAMIFICATION = 'gamification',
   FLIGHTS = 'flights',
   ROADTRIPS = 'roadtrips',
-  TRAVEL_ATLAS = 'travel_atlas'
+  TRAVEL_ATLAS = 'travel_atlas',
+  VACATION_CALENDAR = 'vacation_calendar'
 }
 
 export interface VisitedItem {

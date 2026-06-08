@@ -14,7 +14,7 @@ interface SettingsProps {
 }
 
 export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
-  const [activeTab, setActiveTab] = useState('workspace');
+  const [activeTab, setActiveTab] = useState<string>('menu');
   const [users, setUsers] = useState<User[]>([]);
   const [rosterSearch, setRosterSearch] = useState('');
   const [entitlements, setEntitlements] = useState<EntitlementType[]>([]);
@@ -74,6 +74,8 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
     });
     return unsubscribe;
   }, []);
+
+
 
   const refreshData = () => {
     setLoading(true);
@@ -436,72 +438,84 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
         </div>
       </header>
 
-      {/* Redesigned Dual-Pane Responsive Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        
-        {/* Settings Tab Sidebar (Left Column - 3 Units wide) */}
-        <aside className="lg:col-span-3 space-y-4">
+      {/* Redesigned Single-Column Responsive Layout */}
+      <div className="w-full">
+        <main className="w-full animate-fade-in-up space-y-8">
           
-          {/* Mobile/Tablet Horizontal Scroll Tabs View */}
-          <div className="flex lg:hidden overflow-x-auto gap-2 pb-2 scrollbar-none snap-x touch-pan-x -mx-4 px-4">
-            {settingTabs.map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 py-3 px-5 rounded-xl text-xs font-black tracking-wide uppercase whitespace-nowrap snap-center transition-all cursor-pointer ${
-                    isActive 
-                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/10' 
-                      : 'bg-white/50 border border-gray-200/40 text-gray-500 hover:text-gray-800 dark:bg-gray-900/40 dark:border-white/5 dark:text-zinc-400 dark:hover:text-white'
-                  }`}
-                >
-                  <span className="material-icons-outlined text-base leading-none">{tab.icon}</span>
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Desktop Vertical Menu Card */}
-          <Card noPadding className="hidden lg:block rounded-[2.2rem] bg-white/40 dark:bg-gray-900/30 overflow-hidden shadow-xl border border-zinc-200/50 dark:border-white/5">
-            <div className="p-6 border-b border-gray-100 dark:border-white/5">
-              <span className="text-[10px] tracking-widest font-black uppercase text-gray-400 block font-mono">Control Panel Tabs</span>
+          {/* Universal Sticky/Clean Back Navigation Row */}
+          {activeTab !== 'menu' && (
+            <div className="flex items-center justify-between bg-zinc-100/60 dark:bg-zinc-900/40 backdrop-blur-xl p-4 rounded-3xl border border-zinc-200/40 dark:border-white/5 backdrop-filter sticky top-[76px] z-40 shadow-sm animate-fade-in">
+              <button 
+                onClick={() => setActiveTab('menu')}
+                className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-white hover:bg-zinc-100 dark:bg-zinc-850 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 transition-all font-black text-xs uppercase tracking-wide cursor-pointer shadow-sm border border-zinc-200/50 dark:border-white/10 active:scale-95"
+              >
+                <span className="material-icons-outlined text-base">arrow_back</span>
+                Back to Control Panel
+              </button>
+              <div className="flex items-center gap-2 mr-2">
+                <span className="material-icons-outlined text-zinc-400 dark:text-zinc-500 text-lg">
+                  {settingTabs.find(t => t.id === activeTab)?.icon}
+                </span>
+                <span className="text-xs font-mono font-black uppercase text-zinc-500 dark:text-zinc-400 tracking-wider">
+                  {settingTabs.find(t => t.id === activeTab)?.label}
+                </span>
+              </div>
             </div>
-            <div className="p-3 flex flex-col gap-1.5">
-              {settingTabs.map((tab) => {
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`w-full flex items-center gap-4 text-left p-4 rounded-2xl transition-all duration-200 group relative border select-none cursor-pointer ${
-                      isActive 
-                        ? 'bg-blue-600 border-transparent text-white shadow-xl shadow-blue-500/15 font-black scale-[1.01]' 
-                        : 'bg-transparent border-transparent text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-white/80 dark:hover:bg-white/5'
-                    }`}
-                  >
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
-                      isActive ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-zinc-800 text-slate-400 dark:text-zinc-500 group-hover:bg-slate-200/50'
-                    }`}>
-                      <span className="material-icons-outlined text-xl">{tab.icon}</span>
-                    </div>
-                    <div className="min-w-0">
-                      <span className="text-sm font-bold block truncate">{tab.label}</span>
-                      <span className={`text-[10px] truncate block opacity-70 ${isActive ? 'text-blue-100' : 'text-slate-400 dark:text-slate-500'}`}>{tab.description}</span>
-                    </div>
-                    {isActive && (
-                      <span className="absolute right-4 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-white shadow-md animate-pulse" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </Card>
-        </aside>
+          )}
 
-        {/* Setting View Container (Right Column - 9 Units wide) */}
-        <main className="lg:col-span-9 animate-fade-in-up">
+          {/* Centralized Categories Bento/Grid Menu (Always active when state is 'menu') */}
+          {activeTab === 'menu' && (
+            <div className="space-y-6 animate-fade-in">
+              <div className="bg-zinc-50 dark:bg-zinc-900/30 p-6 rounded-3xl border border-zinc-200/50 dark:border-white/5 text-center max-w-2xl mx-auto">
+                <span className="text-[11px] font-mono font-black uppercase text-zinc-400 dark:text-zinc-500 tracking-widest block">Systems Directory</span>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1.5 font-semibold leading-relaxed">Select a category below to configure system keys, roster parameters, brand mappings, and master inventories.</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {settingTabs.map((tab) => {
+                  const bgColors: Record<string, string> = {
+                    workspace: 'from-blue-500/10 to-indigo-500/5 border-blue-500/10 hover:border-blue-500/30 text-blue-600 dark:text-blue-400',
+                    personnel: 'from-emerald-500/10 to-teal-500/5 border-emerald-500/10 hover:border-emerald-500/30 text-emerald-600 dark:text-emerald-400',
+                    integrations: 'from-purple-500/10 to-pink-500/5 border-purple-500/10 hover:border-purple-500/30 text-purple-600 dark:text-purple-400',
+                    gear: 'from-cyan-500/10 to-blue-500/5 border-cyan-500/10 hover:border-cyan-500/30 text-cyan-600 dark:text-cyan-400',
+                    carriers: 'from-indigo-500/10 to-purple-500/5 border-indigo-500/10 hover:border-indigo-500/30 text-indigo-600 dark:text-indigo-400',
+                    data: 'from-gray-500/10 to-slate-500/5 border-gray-500/10 hover:border-gray-500/30 text-slate-600 dark:text-slate-400',
+                  };
+                  const iconColors: Record<string, string> = {
+                    workspace: 'bg-blue-600 text-white',
+                    personnel: 'bg-emerald-600 text-white',
+                    integrations: 'bg-purple-650 text-white',
+                    gear: 'bg-cyan-650 text-white',
+                    carriers: 'bg-indigo-650 text-white',
+                    data: 'bg-slate-600 text-white',
+                  };
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`w-full flex flex-col justify-between p-6 rounded-[2.2rem] bg-gradient-to-br ${bgColors[tab.id]} border-2 transition-all duration-300 text-left cursor-pointer hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] group relative overflow-hidden`}
+                    >
+                      <div className="space-y-4">
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-md ${iconColors[tab.id]}`}>
+                          <span className="material-icons-outlined text-2xl">{tab.icon}</span>
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-base font-black block tracking-tight text-gray-900 dark:text-white group-hover:text-current transition-colors">{tab.label}</span>
+                          <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 leading-normal block">{tab.description}</span>
+                        </div>
+                      </div>
+                      <div className="mt-6 flex items-center justify-between text-xs font-bold text-gray-400 dark:text-zinc-500 group-hover:text-current transition-colors">
+                        <span className="uppercase tracking-widest text-[9px] font-mono font-black">Configure Parameters</span>
+                        <div className="w-8 h-8 rounded-full bg-white dark:bg-zinc-800 border border-zinc-200/50 dark:border-white/5 flex items-center justify-center shrink-0 group-hover:translate-x-1 transition-all">
+                          <span className="material-icons-outlined text-base">arrow_forward</span>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           
           {/* SECTION 1: Workspace & Identity Style */}
           {activeTab === 'workspace' && (
@@ -619,21 +633,21 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                       <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Workspace Operational Days</label>
                       <p className="text-[11px] text-gray-400">Specify standard workdays used in planning and leave allocation calculators.</p>
                     </div>
-                    <div className="flex gap-2 flex-wrap pt-1">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 pt-1">
                       {['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].map((d, i) => (
                           <button 
                               key={i} 
                               onClick={() => toggleWorkingDay(i)}
-                              className={`py-3 px-5 rounded-xl font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer border ${
+                              className={`py-3 px-3 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer border ${
                                 config.workingDays.includes(i) 
                                 ? 'bg-blue-600 text-white shadow-md border-transparent' 
-                                : 'bg-gray-100/50 dark:bg-zinc-800/40 text-gray-400 dark:text-zinc-500 border-zinc-200/50 dark:border-white/5 hover:bg-gray-150'
+                                : 'bg-gray-100/50 dark:bg-zinc-800/40 text-gray-405 dark:text-zinc-500 border-zinc-200/50 dark:border-white/5 hover:bg-gray-150'
                               }`}
                           >
-                            <span className="material-icons-outlined text-sm">
+                            <span className="material-icons-outlined text-sm leading-none">
                               {config.workingDays.includes(i) ? 'check_box' : 'check_box_outline_blank'}
                             </span>
-                            {d}
+                            <span className="truncate">{d}</span>
                           </button>
                       ))}
                     </div>
@@ -696,23 +710,44 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                           user.role?.toLowerCase().includes(search);
                       }).map(user => (
                         <div key={user.id || user.email} className="group relative flex flex-col p-5 rounded-2xl bg-white border border-gray-200/50 dark:bg-gray-900/40 dark:border-white/5 hover:border-blue-300 dark:hover:border-blue-800 transition-all shadow-sm">
-                          <div className="flex items-start gap-4 flex-1">
-                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-lg font-black text-white shadow-md uppercase ${
-                              user.role === 'Admin' ? 'bg-gradient-to-br from-purple-500 to-indigo-650' : 
-                              user.role === 'Partner' ? 'bg-gradient-to-br from-blue-500 to-indigo-600' : 
-                              'bg-gradient-to-br from-emerald-500 to-teal-600'
-                            }`}>
-                              {user.name?.charAt(0) || '?'}
+                          {/* Card Header row with user info and actions */}
+                          <div className="flex items-start justify-between gap-3 flex-1">
+                            <div className="flex items-start gap-4 min-w-0">
+                              <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 text-lg font-black text-white shadow-md uppercase ${
+                                user.role === 'Admin' ? 'bg-gradient-to-br from-purple-500 to-indigo-650' : 
+                                user.role === 'Partner' ? 'bg-gradient-to-br from-blue-500 to-indigo-600' : 
+                                'bg-gradient-to-br from-emerald-500 to-teal-600'
+                              }`}>
+                                {user.name?.charAt(0) || '?'}
+                              </div>
+                              <div className="min-w-0 space-y-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <h4 className="font-extrabold text-gray-800 dark:text-white text-base leading-none truncate max-w-[120px] sm:max-w-[160px]" title={user.name}>{user.name}</h4>
+                                  <Badge color={user.role === 'Partner' ? 'blue' : user.role === 'Admin' ? 'purple' : 'green'}>{user.role}</Badge>
+                                </div>
+                                <p className="text-xs text-slate-400 dark:text-zinc-500 truncate leading-none mt-1">{user.email || 'No email registered'}</p>
+                                <div className="pt-1 select-none">
+                                  <span className="text-[9px] font-mono font-black text-zinc-400 dark:text-zinc-500 tracking-wider">SYNC-ID: {user.id}</span>
+                                </div>
+                              </div>
                             </div>
-                            <div className="min-w-0 flex-1 space-y-1">
-                              <div className="flex items-center gap-2">
-                                <h4 className="font-extrabold text-gray-800 dark:text-white text-base leading-none truncate max-w-[200px]" title={user.name}>{user.name}</h4>
-                                <Badge color={user.role === 'Partner' ? 'blue' : user.role === 'Admin' ? 'purple' : 'green'}>{user.role}</Badge>
-                              </div>
-                              <p className="text-xs text-slate-400 dark:text-zinc-500 truncate leading-none mt-1">{user.email || 'No email registered'}</p>
-                              <div className="pt-1 select-none">
-                                <span className="text-[9px] font-mono font-black text-zinc-400 dark:text-zinc-500 tracking-wider">SYNC-ID: {user.id}</span>
-                              </div>
+
+                            {/* Safe touch-friendly Action Buttons */}
+                            <div className="flex items-center gap-1.5 shrink-0 self-start md:opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button 
+                                onClick={() => handleEditUser(user)} 
+                                className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg cursor-pointer dark:bg-blue-500/15 dark:hover:bg-blue-500/35 border-none dark:text-blue-300"
+                                title="Edit member profile"
+                              >
+                                <span className="material-icons-outlined text-sm block">edit</span>
+                              </button>
+                              <button 
+                                onClick={() => initiateDeleteMember(user)} 
+                                className="p-2 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg cursor-pointer dark:bg-rose-500/15 dark:hover:bg-rose-500/35 border-none dark:text-rose-450"
+                                title="Remove member"
+                              >
+                                <span className="material-icons-outlined text-sm block">delete</span>
+                              </button>
                             </div>
                           </div>
 
@@ -725,24 +760,6 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                               <span className="text-[10px] text-zinc-400 font-bold block uppercase tracking-wide">Taken Leave</span>
                               <span className="text-sm font-extrabold text-gray-800 dark:text-zinc-200">{user.takenLeave} Days</span>
                             </div>
-                          </div>
-
-                          {/* Float hovering actions */}
-                          <div className="absolute top-4 right-4 flex gap-1 opacity-100 group-hover:opacity-100 md:opacity-0 transition-opacity">
-                            <button 
-                              onClick={() => handleEditUser(user)} 
-                              className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg cursor-pointer dark:bg-blue-500/15 dark:hover:bg-blue-500/35 border border-transparent dark:text-blue-300"
-                              title="Edit member profile"
-                            >
-                              <span className="material-icons-outlined text-sm block">edit</span>
-                            </button>
-                            <button 
-                              onClick={() => initiateDeleteMember(user)} 
-                              className="p-2 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg cursor-pointer dark:bg-rose-500/15 dark:hover:bg-rose-500/35 border border-transparent dark:text-rose-450"
-                              title="Remove member"
-                            >
-                              <span className="material-icons-outlined text-sm block">delete</span>
-                            </button>
                           </div>
                         </div>
                       ))}
@@ -1192,7 +1209,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
               onChange={e => setEditingUser({...editingUser, password: e.target.value})} 
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Select 
                 label="Roster Role" 
                 value={editingUser.role || 'Partner'} 
@@ -1217,7 +1234,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input 
                 label="Annual Accrual Balance (Days)" 
                 type="number" 

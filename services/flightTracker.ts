@@ -319,5 +319,30 @@ export const flightTracker = {
                 country: 'Global'
             }
         };
+    },
+
+    searchFlightsByRoute: async (
+        apiKey: string,
+        depIata: string,
+        arrIata: string,
+        date: string
+    ): Promise<FlightStatusResponse[]> => {
+        const cleanDep = depIata.trim().toUpperCase().replace(/\s/g, '').split('-')[0].trim();
+        const cleanArr = arrIata.trim().toUpperCase().replace(/\s/g, '').split('-')[0].trim();
+        const cleanDate = date.trim();
+
+        try {
+            const proxyUrl = `/api/proxy/route-flights?access_key=${encodeURIComponent(apiKey)}&dep_iata=${encodeURIComponent(cleanDep)}&arr_iata=${encodeURIComponent(cleanArr)}&flight_date=${encodeURIComponent(cleanDate)}`;
+            const res = await fetch(proxyUrl);
+            if (res.ok) {
+                const json = await res.json();
+                if (json && json.data) {
+                    return json.data as FlightStatusResponse[];
+                }
+            }
+        } catch (e) {
+            console.warn("Backend route-flights proxy failed:", e);
+        }
+        return [];
     }
 };

@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button, Input, Select, Autocomplete, Badge, TimeInput } from './ui';
-import { Transport, TransportMode } from '../types';
+import { Transport, TransportMode, FlightStatusResponse } from '../types';
 import { dataService } from '../services/mockDb';
 import { getCoordinates, calculateDistance, calculateDurationMinutes, calculateArrivalTime, searchLocations, searchStations } from '../services/geocoding';
 import { getAirportsByQueryLocally, getCarriersByQueryLocally } from '../utils/flightData';
+import { flightTracker } from '../services/flightTracker';
 
 // ... (Interfaces remain unchanged)
 interface TransportConfiguratorProps {
@@ -214,6 +215,9 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
     const [isAutoFilling, setIsAutoFilling] = useState<string | null>(null);
     const [isEstimatingDistance, setIsEstimatingDistance] = useState<string | null>(null);
     const [isFetchingBrand, setIsFetchingBrand] = useState<string | null>(null);
+    const [searchedFlights, setSearchedFlights] = useState<Record<number, FlightStatusResponse[]>>({});
+    const [isRouteSearchingFlag, setIsRouteSearchingFlag] = useState<Record<number, boolean>>({});
+    const [routeSearchError, setRouteSearchError] = useState<Record<number, string>>({});
     
     const [airportList, setAirportList] = useState<AirportData[]>([]);
     const [airlineList, setAirlineList] = useState<AirlineData[]>([]);
@@ -943,6 +947,118 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
         finally { setIsAutoFilling(null); }
     };
 
+    const handleSearchRouteFlights = async (index: number) => {
+        const seg = segments[index];
+        const originIata = extractIata(seg.origin);
+        const destIata = extractIata(seg.destination);
+
+        if (!originIata || !destIata || !seg.date) {
+            alert("Please input Origin, Destination, and Date first.");
+            return;
+        }
+
+        setIsRouteSearchingFlag(prev => ({ ...prev, [index]: true }));
+        setRouteSearchError(prev => ({ ...prev, [index]: '' }));
+        try {
+            const results = await flightTracker.searchFlightsByRoute(
+                apiKey,
+                originIata,
+                destIata,
+                seg.date
+            );
+            if (results && results.length > 0) {
+                setSearchedFlights(prev => ({ ...prev, [index]: results }));
+            } else {
+                setSearchedFlights(prev => ({ ...prev, [index]: [] }));
+                setRouteSearchError(prev => ({ ...prev, [index]: 'No flights found on this route and date.' }));
+            }
+        } catch (err) {
+            console.error("Flight route search failed:", err);
+            setRouteSearchError(prev => ({ ...prev, [index]: 'Search request failed. Please check your network or try again.' }));
+        } finally {
+            setIsRouteSearchingFlag(prev => ({ ...prev, [index]: false }));
+        }
+    };
+
+    const handleSelectRouteFlight = (index: number, flight: FlightStatusResponse) => {
+        const seg = segments[index];
+        const updates: Partial<SegmentForm> = {
+            provider: flight.airline?.name || seg.provider,
+            providerCode: flight.airline?.iata || seg.providerCode,
+            identifier: flight.flight?.number || seg.identifier,
+        };
+
+        if (flight.departure?.scheduled) {
+            try {
+                const parts = flight.departure.scheduled.split('T');
+                if (parts.length === 2) {
+                    updates.date = parts[0];
+                    updates.time = parts[1].substring(0, 5);
+                }
+            } catch (err) {
+                console.warn("Could not parse schedule time:", err);
+            }
+        }
+
+        if (flight.arrival?.scheduled) {
+            try {
+                const parts = flight.arrival.scheduled.split('T');
+                if (parts.length === 2) {
+                    updates.arrivalDate = parts[0];
+                    updates.arrivalTime = parts[1].substring(0, 5);
+                }
+            } catch (err) {
+                console.warn("Could not parse arrival schedule time:", err);
+            }
+        }
+
+        if (flight.departure?.iata) {
+            updates.origin = flight.departure.iata;
+        }
+        if (flight.arrival?.iata) {
+            updates.destination = flight.arrival.iata;
+        }
+
+        // Auto Calc Duration
+        const newDur = calculateDurationMinutes(
+            updates.origin || seg.origin,
+            updates.destination || seg.destination,
+            updates.date || seg.date,
+            updates.time || seg.time,
+            updates.arrivalDate || seg.arrivalDate,
+            updates.arrivalTime || seg.arrivalTime
+        );
+        updates.duration = newDur;
+
+        const newSegments = [...segments];
+        newSegments[index] = { ...newSegments[index], ...updates };
+        if (tripType === 'Round Trip' && index === 0 && segments.length === 2) {
+             if (updates.origin) newSegments[1].destination = updates.origin;
+             if (updates.destination) newSegments[1].origin = updates.destination;
+             if (updates.date) {
+                 if (!newSegments[1].date) {
+                     newSegments[1].date = updates.date;
+                     newSegments[1].arrivalDate = updates.date;
+                 }
+             }
+        }
+        setSegments(newSegments);
+
+        // Collapse route flights selector
+        setSearchedFlights(prev => {
+            const copy = { ...prev };
+            delete copy[index];
+            return copy;
+        });
+
+        // Trigger dynamic brand logo fetch if brandfetchKey exists
+        if (brandfetchKey) {
+            setTimeout(() => {
+                handleFetchBrandForSegment(index);
+            }, 300);
+        }
+    };
+
     const isCar = mode === 'Car Rental' || mode === 'Personal Car';
     const isValid = isCar 
         ? carForm.pickupLocation && carForm.pickupDate && carForm.dropoffDate
@@ -1243,6 +1359,139 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                             {isEstimatingDistance === segment.id ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <span className="material-icons-outlined text-lg">timeline</span>}
                                         </button>
                                     </div>
+
+                                    {/* Flighty & byAir Active Route Flight Search list */}
+                                    {mode === 'Flight' && (
+                                        <div className="md:col-span-12 mt-2 bg-slate-50 dark:bg-white/5 p-5 rounded-2xl border border-dashed border-slate-200 dark:border-white/10 shadow-inner">
+                                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                                <div>
+                                                    <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                                        <span className="material-icons text-blue-500 animate-pulse text-sm">local_airport</span>
+                                                        Find Flight Schedules
+                                                    </h4>
+                                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                                        Live search available airline schedules on this route for {segment.date || 'selected date'}
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleSearchRouteFlights(index)}
+                                                    disabled={isRouteSearchingFlag[index] || !segment.origin || !segment.destination || !segment.date}
+                                                    className="w-full sm:w-auto px-4 py-2 text-xs font-bold text-white bg-slate-900 dark:bg-blue-600 hover:bg-slate-800 dark:hover:bg-blue-500 disabled:bg-slate-200 dark:disabled:bg-white/5 disabled:text-slate-400 dark:disabled:text-slate-500 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5"
+                                                    id={`btn-find-flights-${index}`}
+                                                >
+                                                    {isRouteSearchingFlag[index] ? (
+                                                        <>
+                                                            <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin mr-1" />
+                                                            Searching...
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <span className="material-icons text-xs">search</span>
+                                                            Find Flights
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </div>
+
+                                            {routeSearchError[index] && (
+                                                <div className="mt-3 p-3 bg-red-50 dark:bg-rose-950/20 text-red-600 dark:text-rose-400 text-xs font-semibold rounded-xl border border-red-100 dark:border-rose-950/30 flex items-center gap-2">
+                                                    <span className="material-icons text-base">error_outline</span>
+                                                    {routeSearchError[index]}
+                                                </div>
+                                            )}
+
+                                            {searchedFlights[index] && (
+                                                <div className="mt-4 space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                                                    <div className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wider mb-2.5 flex justify-between items-center">
+                                                        <span>Pick a flight option below</span>
+                                                        <button 
+                                                            type="button"
+                                                            onClick={() => setSearchedFlights(prev => {
+                                                                const copy = { ...prev };
+                                                                delete copy[index];
+                                                                return copy;
+                                                            })}
+                                                            className="text-[9px] hover:text-red-500 text-slate-400 hover:underline cursor-pointer uppercase transition-all"
+                                                        >
+                                                            Clear List
+                                                        </button>
+                                                    </div>
+                                                    
+                                                    {searchedFlights[index].length === 0 ? (
+                                                        <div className="text-center py-6 text-xs text-slate-400 dark:text-slate-500">
+                                                            No schedules was returned on this date for this route.
+                                                        </div>
+                                                    ) : (
+                                                        searchedFlights[index].map((flight, flightIdx) => {
+                                                            const carrierName = flight.airline?.name || "Unknown Airline";
+                                                            const flightNum = flight.flight?.iata || flight.flight?.number || "Flight";
+                                                            const depSched = flight.departure?.scheduled ? flight.departure.scheduled.split('T')[1]?.substring(0, 5) || '' : '--:--';
+                                                            const arrSched = flight.arrival?.scheduled ? flight.arrival.scheduled.split('T')[1]?.substring(0, 5) || '' : '--:--';
+                                                            
+                                                            return (
+                                                                <div 
+                                                                    key={flightIdx}
+                                                                    onClick={() => handleSelectRouteFlight(index, flight)}
+                                                                    className="w-full text-left p-3.5 bg-white dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 rounded-2xl border border-slate-100 dark:border-white/5 cursor-pointer transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 group/flight-item shadow-sm"
+                                                                >
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-white/10 border border-slate-100 dark:border-white/10 flex items-center justify-center p-1.5 overflow-hidden shadow-inner">
+                                                                            <img 
+                                                                                src={`https://img.logo.dev/${carrierName.toLowerCase().replace(/[^a-z0-9]/g, '')}.com?token=pk_q` || `https://logo.clearbit.com/${carrierName.toLowerCase().replace(/\s+/g, '')}.com` || ''}
+                                                                                onError={(e) => {
+                                                                                    e.currentTarget.onerror = null;
+                                                                                    e.currentTarget.src = `https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=60&auto=format&fit=crop&q=60`;
+                                                                                }}
+                                                                                alt={carrierName}
+                                                                                className="w-full h-full object-contain"
+                                                                                referrerPolicy="no-referrer"
+                                                                            />
+                                                                        </div>
+                                                                        <div>
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                                                                                    {carrierName}
+                                                                                </span>
+                                                                                <Badge color="blue" className="!px-2 !py-0.5 !text-[9px] font-mono font-bold">
+                                                                                    {flightNum}
+                                                                                </Badge>
+                                                                            </div>
+                                                                            <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-500 dark:text-slate-400 font-mono">
+                                                                                <span>{flight.departure?.airport || flight.departure?.iata}</span>
+                                                                                <span className="material-icons-outlined text-[10px] text-slate-400">east</span>
+                                                                                <span>{flight.arrival?.airport || flight.arrival?.iata}</span>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    
+                                                                    <div className="flex items-center justify-between sm:justify-end gap-5 border-t sm:border-t-0 pt-2.5 sm:pt-0 border-slate-100 dark:border-white/5">
+                                                                        <div className="text-right">
+                                                                            <div className="text-xs font-black text-slate-900 dark:text-slate-100 flex items-center gap-1 justify-end">
+                                                                                <span className="font-sans">{depSched}</span>
+                                                                                <span className="text-[10px] text-slate-400 font-normal">→</span>
+                                                                                <span className="font-sans">{arrSched}</span>
+                                                                            </div>
+                                                                            <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1 mt-0.5 justify-end">
+                                                                                <span className="material-icons text-slate-400 text-[10px] mr-0.5">schedule</span>
+                                                                                <span>
+                                                                                    {flight.departure?.terminal ? `Terminal ${flight.departure.terminal}` : ''}
+                                                                                    {flight.departure?.gate ? ` • Gate ${flight.departure.gate}` : ''}
+                                                                                </span>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 group-hover/flight-item:bg-blue-600 group-hover/flight-item:text-white rounded-lg transition-all text-[11px] font-bold uppercase tracking-wider">
+                                                                            Select
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
 
                                     {/* Details */}
                                     {mode === 'Flight' ? (

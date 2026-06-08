@@ -4,14 +4,19 @@ import {
   ArrowRight, Plane, Landmark, Award, Clock, DollarSign, BarChart2, Briefcase, FileText, Compass, Heart, HelpCircle, RefreshCw, Upload, Download, Tag, UserCheck, Star, Sparkles, Grid, List,
   ArrowUpRight, ArrowDownLeft, FolderPlus, FolderMinus
 } from 'lucide-react';
-import { Card, Button, Input, Select, Badge, TimeInput } from '../components/ui';
-import { Trip, Transport, User, Carrier, WorkspaceSettings } from '../types';
+import { Card, Button, Input, Select, Badge, TimeInput, Autocomplete } from '../components/ui';
+import { Trip, Transport, User, Carrier, WorkspaceSettings, FlightStatusResponse } from '../types';
 import { getMerchantLogoUrl } from '../utils/brandfetch';
 import { dataService } from '../services/mockDb';
 import { FlightyPassport, PassportIdCard, PassportStampsPage, PassportTravelMap } from '../components/FlightyPassport';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion, AnimatePresence } from 'motion/react';
-import { getCityName, getCarrierName, getFlightStatusTags, getFlightDepartureUtcDate, getFlightArrivalUtcDate } from '../utils/flightData';
+import { 
+  getCityName, getCarrierName, getFlightStatusTags, getFlightDepartureUtcDate, getFlightArrivalUtcDate,
+  getAirportsByQueryLocally, getCarriersByQueryLocally 
+} from '../utils/flightData';
+import { flightTracker } from '../services/flightTracker';
+import { calculateDurationMinutes } from '../services/geocoding';
 
 const SeatLayoutOverlay = ({ cabinClass, seatNumber }: { cabinClass: string, seatNumber: string }) => {
   const match = (seatNumber || '').trim().toUpperCase().match(/^(\d+)([A-Z])$/);
@@ -506,6 +511,179 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
   const [formActualDepartureTime, setFormActualDepartureTime] = useState('');
   const [formActualArrivalTime, setFormActualArrivalTime] = useState('');
 
+  // Flighty / byAir Search states
+  const [showManualFields, setShowManualFields] = useState<boolean>(false);
+  const [searchedFlights, setSearchedFlights] = useState<FlightStatusResponse[] | null>(null);
+  const [isRouteSearchingFlag, setIsRouteSearchingFlag] = useState<boolean>(false);
+  const [routeSearchError, setRouteSearchError] = useState<string>('');
+
+  const extractIata = (val: string) => {
+    if (!val) return '';
+    return val.includes(' - ') ? val.split(' - ')[0].trim().toUpperCase() : val.trim().toUpperCase();
+  };
+
+  const fetchAirportSuggestions = async (query: string): Promise<string[]> => {
+    if (!query || query.length < 2) return [];
+    let apiResults: any[] = [];
+    try {
+        const res = await fetch(`/api/airports/search?q=${encodeURIComponent(query)}`);
+        if (res.ok) {
+            apiResults = await res.json();
+        }
+    } catch (e) {
+        console.warn("Airport search API failed, using local dataset fallback:", e);
+    }
+    
+    const localResults = getAirportsByQueryLocally(query);
+    const seenIatas = new Set<string>();
+    const merged: any[] = [];
+    
+    if (Array.isArray(apiResults)) {
+        for (const item of apiResults) {
+            if (item.iata) {
+                seenIatas.add(item.iata.toUpperCase());
+                merged.push(item);
+            }
+        }
+    }
+    
+    for (const item of localResults) {
+        if (item.iata && !seenIatas.has(item.iata.toUpperCase())) {
+            merged.push(item);
+        }
+    }
+    
+    return merged.slice(0, 15).map((a: any) => `${a.iata} - ${a.city_name} (${a.airport_name})`);
+  };
+
+  const fetchAirlineSuggestions = async (query: string): Promise<string[]> => {
+    if (!query || query.length < 1) return [];
+    let apiResults: any[] = [];
+    try {
+        const res = await fetch(`/api/carriers/search?q=${encodeURIComponent(query)}`);
+        if (res.ok) {
+            apiResults = await res.json();
+        }
+    } catch (e) {
+        console.warn("Airline search API failed, using local dataset fallback:", e);
+    }
+
+    const localResults = getCarriersByQueryLocally(query);
+    const seenNames = new Set<string>();
+    const merged: string[] = [];
+
+    if (Array.isArray(apiResults)) {
+        for (const item of apiResults) {
+            const name = item.company_name;
+            if (name) {
+                seenNames.add(name.toLowerCase());
+                merged.push(name);
+            }
+        }
+    }
+
+    for (const item of localResults) {
+        const name = item.company_name;
+        if (name && !seenNames.has(name.toLowerCase())) {
+            merged.push(name);
+        }
+    }
+
+    return merged.slice(0, 15);
+  };
+
+  const handleSearchRouteFlights = async () => {
+    const originIata = extractIata(formOrigin);
+    const destIata = extractIata(formDestination);
+
+    if (!originIata || !destIata || !formDepartureDate) {
+        alert("Please input Origin, Destination, and Departure Date first.");
+        return;
+    }
+
+    setIsRouteSearchingFlag(true);
+    setRouteSearchError('');
+    try {
+        const results = await flightTracker.searchFlightsByRoute(
+            workspaceSettings?.aviationStackApiKey || '',
+            originIata,
+            destIata,
+            formDepartureDate
+        );
+        if (results && results.length > 0) {
+            setSearchedFlights(results);
+        } else {
+            setSearchedFlights([]);
+            setRouteSearchError('No flights found on this route and date.');
+        }
+    } catch (err) {
+        console.error("Flight route search failed:", err);
+        setRouteSearchError('Search request failed. Please check your network or try again.');
+    } finally {
+        setIsRouteSearchingFlag(false);
+    }
+  };
+
+  const handleSelectRouteFlight = (flight: FlightStatusResponse) => {
+    setFormAirline(flight.airline?.name || "");
+    setFormFlightNum(flight.flight?.number || "");
+    setShowManualFields(true);
+    
+    if (flight.departure?.iata) {
+      setFormOrigin(flight.departure.iata);
+    }
+    if (flight.arrival?.iata) {
+      setFormDestination(flight.arrival.iata);
+    }
+
+    let depTime = formDepartureTime;
+    let arrTime = formArrivalTime;
+    let depDate = formDepartureDate;
+    let arrDate = formArrivalDate || formDepartureDate;
+
+    if (flight.departure?.scheduled) {
+        try {
+            const parts = flight.departure.scheduled.split('T');
+            if (parts.length === 2) {
+                depDate = parts[0];
+                depTime = parts[1].substring(0, 5);
+                setFormDepartureDate(parts[0]);
+                setFormDepartureTime(parts[1].substring(0, 5));
+            }
+        } catch (err) {
+            console.warn("Could not parse schedule time:", err);
+        }
+    }
+
+    if (flight.arrival?.scheduled) {
+        try {
+            const parts = flight.arrival.scheduled.split('T');
+            if (parts.length === 2) {
+                arrDate = parts[0];
+                arrTime = parts[1].substring(0, 5);
+                setFormArrivalDate(parts[0]);
+                setFormArrivalTime(parts[1].substring(0, 5));
+            }
+        } catch (err) {
+            console.warn("Could not parse arrival schedule time:", err);
+        }
+    }
+
+    // Auto Calc Duration
+    const duration = calculateDurationMinutes(
+        flight.departure?.iata || extractIata(formOrigin),
+        flight.arrival?.iata || extractIata(formDestination),
+        depDate,
+        depTime,
+        arrDate,
+        arrTime
+    );
+    setFormDuration(duration);
+
+    // Clear search list once selected
+    setSearchedFlights(null);
+  };
+
   // State to force-refresh display names when dynamic AviationStack lookups resolve
   const [, setMetadataVersion] = useState(0);
 
@@ -594,6 +772,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
   // Set up form state for edit or new
   const openFlightForm = (record?: { flight: Transport; trip: Trip }) => {
     if (record) {
+      setShowManualFields(true);
       const parentTripId = record.trip.id.startsWith('unassigned') ? 'unassigned' : record.trip.id;
       setEditingFlight({ flight: record.flight, tripId: parentTripId });
       setFormTripId(parentTripId);
@@ -615,6 +794,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
       setFormActualDepartureTime(record.flight.actualDepartureTime || '');
       setFormActualArrivalTime(record.flight.actualArrivalTime || '');
     } else {
+      setShowManualFields(false);
       setEditingFlight(null);
       const draftStr = localStorage.getItem('flightFormDraft');
       let loaded = false;
@@ -697,8 +877,8 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
         provider: formAirline,
         identifier: formFlightNum.toUpperCase(),
         confirmationCode: formConfirmation.toUpperCase(),
-        origin: formOrigin.toUpperCase(),
-        destination: formDestination.toUpperCase(),
+        origin: extractIata(formOrigin).toUpperCase(),
+        destination: extractIata(formDestination).toUpperCase(),
         departureDate: formDepartureDate,
         departureTime: formDepartureTime,
         arrivalDate: formArrivalDate || formDepartureDate,
@@ -2647,9 +2827,9 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           </AnimatePresence>
         </div>
       ) : (
-        <div className="relative space-y-6 md:px-6">
+        <div className="relative space-y-12 md:px-6">
           {/* Master Sticky Table Header Card */}
-          <table className="hidden md:table w-full text-left border-collapse min-w-[950px] sticky top-[76px] bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 shadow-md border-2 border-blue-500/10 dark:border-blue-400/10 rounded-[2rem] overflow-visible table-fixed shadow-blue-500/5">
+          <table className="hidden md:table w-full h-12 text-left border-collapse min-w-[950px] sticky top-[76px] bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 shadow-md border-2 border-blue-500/10 dark:border-blue-400/10 rounded-[2rem] overflow-visible table-fixed shadow-blue-500/5">
             <colgroup>
               {isMultiEditing ? (
                 <>
@@ -2675,11 +2855,11 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
             <thead>
               <tr className="border-b border-zinc-200/50 dark:border-zinc-850/50 font-mono text-zinc-400 dark:text-zinc-500">
                 {isMultiEditing && (
-                  <th className="sticky top-0 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4.5 text-[11px] font-black uppercase tracking-widest pl-4 w-[4%] text-center border-b border-zinc-200/50 dark:border-white/10">
+                  <th className="sticky top-[76px] bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4.5 text-[11px] font-black uppercase tracking-widest pl-4 w-[4%] text-center border-b border-zinc-200/50 dark:border-white/10">
                     <CheckSquare className="w-4 h-4 text-zinc-400 inline" />
                   </th>
                 )}
-                <th className="sticky top-0 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4.5 text-[11px] font-black uppercase tracking-widest pl-4 w-[18%] text-left border-b border-zinc-200/50 dark:border-white/10">
+                <th className="sticky top-[76px] bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4.5 text-[11px] font-black uppercase tracking-widest pl-4 w-[18%] text-left border-b border-zinc-200/50 dark:border-white/10">
                   <div className="flex items-center gap-1.5 relative">
                     {renderSortableHeader('Flight', 'flight')}
                     <button
@@ -2750,7 +2930,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     )}
                   </div>
                 </th>
-                <th className="sticky top-0 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4.5 text-[11px] font-black uppercase tracking-widest w-[24%] text-left border-b border-zinc-200/50 dark:border-white/10">
+                <th className="sticky top-[76px] bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4.5 text-[11px] font-black uppercase tracking-widest w-[24%] text-left border-b border-zinc-200/50 dark:border-white/10">
                   <div className="flex items-center gap-1.5 relative">
                     {renderSortableHeader('Sector / Route', 'sector')}
                     <button
@@ -2821,7 +3001,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     )}
                   </div>
                 </th>
-                <th className="sticky top-0 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4.5 text-[11px] font-black uppercase tracking-widest w-[20%] text-left border-b border-zinc-200/50 dark:border-white/10">
+                <th className="sticky top-[76px] bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4.5 text-[11px] font-black uppercase tracking-widest w-[20%] text-left border-b border-zinc-200/50 dark:border-white/10">
                   <div className="flex items-center gap-1.5 relative">
                     {renderSortableHeader('Status', 'status')}
                     <button
@@ -2895,7 +3075,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     )}
                   </div>
                 </th>
-                <th className="sticky top-0 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4.5 text-[11px] font-black uppercase tracking-widest w-[24%] text-left border-b border-zinc-200/50 dark:border-white/10">
+                <th className="sticky top-[76px] bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4.5 text-[11px] font-black uppercase tracking-widest w-[24%] text-left border-b border-zinc-200/50 dark:border-white/10">
                   <div className="flex items-center gap-1.5 relative">
                     {renderSortableHeader('Schedules & Timing', 'timing')}
                     <button
@@ -2973,7 +3153,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     )}
                   </div>
                 </th>
-                <th className="sticky top-0 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4.5 text-[11px] font-black uppercase tracking-widest w-[14%] text-left border-b border-zinc-200/50 dark:border-white/10">
+                <th className="sticky top-[76px] bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4.5 text-[11px] font-black uppercase tracking-widest w-[14%] text-left border-b border-zinc-200/50 dark:border-white/10">
                   <div className="flex items-center gap-1.5 relative">
                     {renderSortableHeader('Seat & Class', 'seat')}
                     <button
@@ -3048,7 +3228,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     )}
                   </div>
                 </th>
-                <th className="sticky top-0 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4.5 text-right pr-4 w-[2%] border-b border-zinc-200/50 dark:border-white/10"></th>
+                <th className="sticky top-[76px] bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4.5 text-right pr-4 w-[2%] border-b border-zinc-200/50 dark:border-white/10"></th>
               </tr>
             </thead>
           </table>
@@ -3563,188 +3743,358 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
             </div>
 
             <form onSubmit={handleSaveFlight} className="space-y-6">
-              {/* Trip Association Section */}
-              <div className="p-4 bg-gray-50 dark:bg-white/5 rounded-3xl border border-gray-100 dark:border-white/5 space-y-4">
-                <Select
-                  label="Link to Expedition"
-                  value={formTripId}
-                  onChange={e => setFormTripId(e.target.value)}
-                  options={[
-                    { label: "Independent Flight (Not attached to Expedition)", value: "unassigned" },
-                    ...trips.map(t => ({ label: `Add to Trip: ${t.name}`, value: t.id }))
-                  ]}
-                />
-              </div>
+              
+              {/* SECTION 1: ROUTE SEARCH / LOOKUP (VISIBLE BY DEFAULT) */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="flex flex-col">
+                    <Autocomplete 
+                      label="Origin Airport Code"
+                      placeholder="e.g. JFK or New York"
+                      value={formOrigin}
+                      onChange={val => setFormOrigin(val)}
+                      fetchSuggestions={fetchAirportSuggestions}
+                    />
+                    {formOrigin && (
+                      extractIata(formOrigin).toUpperCase() === getCityName(extractIata(formOrigin)).toUpperCase() ? (
+                        <span className="text-[10px] text-amber-500 font-bold mt-1 ml-1 flex items-center gap-1">
+                           <HelpCircle className="w-3 h-3" /> Unrecognized code
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-emerald-500 font-bold mt-1 ml-1 flex items-center gap-1 animate-fadeIn">
+                           <Sparkles className="w-3 h-3 text-emerald-500 animate-pulse" /> {getCityName(extractIata(formOrigin))}
+                        </span>
+                      )
+                    )}
+                  </div>
 
-              {/* Legs Setup */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col">
-                  <Input 
-                    label="Airline / Operator"
-                    placeholder="e.g. DL, Delta Air Lines, Emirates"
-                    value={formAirline}
-                    onChange={e => setFormAirline(e.target.value)}
-                  />
-                  {formAirline && formAirline.trim().toUpperCase() !== getCarrierName(formAirline).toUpperCase() && (
-                    <span className="text-[10px] text-emerald-500 font-bold mt-1 ml-1 flex items-center gap-1">
-                       <Sparkles className="w-3 h-3 text-emerald-500 animate-pulse" /> {getCarrierName(formAirline)}
-                    </span>
+                  <div className="flex flex-col">
+                    <Autocomplete 
+                      label="Destination Airport Code"
+                      placeholder="e.g. LHR or London"
+                      value={formDestination}
+                      onChange={val => setFormDestination(val)}
+                      fetchSuggestions={fetchAirportSuggestions}
+                    />
+                    {formDestination && (
+                      extractIata(formDestination).toUpperCase() === getCityName(extractIata(formDestination)).toUpperCase() ? (
+                        <span className="text-[10px] text-amber-500 font-bold mt-1 ml-1 flex items-center gap-1">
+                           <HelpCircle className="w-3 h-3" /> Unrecognized code
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-emerald-500 font-bold mt-1 ml-1 flex items-center gap-1 animate-fadeIn">
+                           <Sparkles className="w-3 h-3 text-emerald-500 animate-pulse" /> {getCityName(extractIata(formDestination))}
+                        </span>
+                      )
+                    )}
+                  </div>
+
+                  <div className="flex flex-col">
+                    <Input 
+                      label="Departure Date"
+                      type="date"
+                      value={formDepartureDate}
+                      onChange={e => setFormDepartureDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Find Flight Schedules Panel (Flighty/byAir Style) */}
+                <div className="bg-slate-50 dark:bg-zinc-805/40 p-4 rounded-3xl border border-dashed border-slate-200 dark:border-white/10 shadow-inner">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div className="flex-1">
+                      <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                        <span className="material-icons text-blue-500 text-sm">local_airport</span>
+                        Find Flight Schedules
+                      </h4>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                        Search available airline schedules on this route for {formDepartureDate || 'selected date'}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleSearchRouteFlights}
+                      disabled={isRouteSearchingFlag || !formOrigin || !formDestination || !formDepartureDate}
+                      className="w-full sm:w-auto px-4 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 dark:disabled:bg-white/5 disabled:text-slate-400 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      {isRouteSearchingFlag ? (
+                        <>
+                          <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-1" />
+                          Searching...
+                        </>
+                      ) : (
+                        <>
+                          <span className="material-icons text-xs">search</span>
+                          Find Flights
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {routeSearchError && (
+                    <div className="mt-3 p-3 bg-red-50 dark:bg-rose-950/20 text-red-600 dark:text-rose-400 text-[11px] font-semibold rounded-xl border border-red-100 dark:border-rose-950/30 flex items-center gap-2">
+                      <span className="material-icons text-base">error_outline</span>
+                      {routeSearchError}
+                    </div>
+                  )}
+
+                  {searchedFlights && (
+                    <div className="mt-4 space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                      <div className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wider mb-2.5 flex justify-between items-center">
+                        <span>Select Flight Schedule Option</span>
+                        <button 
+                          type="button"
+                          onClick={() => setSearchedFlights(null)}
+                          className="text-[9px] hover:text-red-500 text-slate-400 hover:underline cursor-pointer uppercase transition-all"
+                        >
+                          Clear List
+                        </button>
+                      </div>
+                      
+                      {searchedFlights.length === 0 ? (
+                        <div className="text-center py-6 text-xs text-slate-400 dark:text-slate-500">
+                          No schedules were returned on this date for this route.
+                        </div>
+                      ) : (
+                        searchedFlights.map((flight, flightIdx) => {
+                          const carrierName = flight.airline?.name || "Unknown Airline";
+                          const flightNum = flight.flight?.iata || flight.flight?.number || "Flight";
+                          const depSched = flight.departure?.scheduled ? flight.departure.scheduled.split('T')[1]?.substring(0, 5) || '' : '--:--';
+                          const arrSched = flight.arrival?.scheduled ? flight.arrival.scheduled.split('T')[1]?.substring(0, 5) || '' : '--:--';
+                          
+                          return (
+                            <div 
+                              key={flightIdx}
+                              onClick={() => handleSelectRouteFlight(flight)}
+                              className="w-full text-left p-3.5 bg-white dark:bg-zinc-900/40 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-2xl border border-slate-100 dark:border-white/5 cursor-pointer transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 group/flight-item shadow-sm"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/10 flex items-center justify-center p-1.5 overflow-hidden shadow-inner shrink-0">
+                                  <img 
+                                    src={`https://img.logo.dev/${carrierName.toLowerCase().replace(/[^a-z0-9]/g, '')}.com?token=pk_q` || ''}
+                                    onError={(e) => {
+                                      e.currentTarget.onerror = null;
+                                      e.currentTarget.src = `https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=60&auto=format&fit=crop&q=60`;
+                                    }}
+                                    alt={carrierName}
+                                    className="w-full h-full object-contain"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                </div>
+                                  <div>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                                        {carrierName}
+                                      </span>
+                                      <Badge color="blue" className="!px-2 !py-0.5 !text-[9px] font-mono font-bold">
+                                        {flightNum}
+                                      </Badge>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-500 dark:text-slate-400 font-mono">
+                                      <span>{flight.departure?.airport || flight.departure?.iata}</span>
+                                      <span className="text-[10px] text-slate-400">→</span>
+                                      <span>{flight.arrival?.airport || flight.arrival?.iata}</span>
+                                    </div>
+                                  </div>
+                              </div>
+                              
+                              <div className="flex items-center justify-between sm:justify-end gap-5 border-t sm:border-t-0 pt-2.5 sm:pt-0 border-slate-100 dark:border-white/5">
+                                <div className="text-right">
+                                  <div className="text-xs font-black text-slate-900 dark:text-slate-100 flex items-center gap-1 justify-end font-mono">
+                                    <span>{depSched}</span>
+                                    <span className="text-[10px] text-slate-400 font-normal">→</span>
+                                    <span>{arrSched}</span>
+                                  </div>
+                                  <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1 mt-0.5 justify-end">
+                                    <Clock className="w-3 h-3 text-slate-400" />
+                                    <span>
+                                      {flight.departure?.terminal ? `T${flight.departure.terminal}` : ''}
+                                      {flight.departure?.gate ? ` • G${flight.departure.gate}` : ''}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 group-hover/flight-item:bg-blue-600 group-hover/flight-item:text-white rounded-lg transition-all text-[11px] font-bold uppercase tracking-wider">
+                                  Select
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
                   )}
                 </div>
-                <Input 
-                  label="Flight Number"
-                  placeholder="e.g. DL104, EK201"
-                  value={formFlightNum}
-                  onChange={e => setFormFlightNum(e.target.value)}
-                />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col">
-                  <Input 
-                    label="Origin Airport Code"
-                    placeholder="e.g. JFK, SFO"
-                    value={formOrigin}
-                    onChange={e => setFormOrigin(e.target.value)}
-                    maxLength={10}
-                  />
-                  {formOrigin && (
-                    formOrigin.trim().toUpperCase() === getCityName(formOrigin).toUpperCase() ? (
-                      <span className="text-[10px] text-amber-500 font-bold mt-1 ml-1 flex items-center gap-1">
-                         <HelpCircle className="w-3 h-3" /> Unrecognized code
-                      </span>
-                    ) : (
-                      <span className="text-[10px] text-emerald-500 font-bold mt-1 ml-1 flex items-center gap-1 animate-fadeIn">
-                         <Sparkles className="w-3 h-3 text-emerald-500 animate-pulse" /> {getCityName(formOrigin)}
-                      </span>
-                    )
-                  )}
-                </div>
-                <div className="flex flex-col">
-                  <Input 
-                    label="Destination Airport Code"
-                    placeholder="e.g. LHR, DXB"
-                    value={formDestination}
-                    onChange={e => setFormDestination(e.target.value)}
-                    maxLength={10}
-                  />
-                  {formDestination && (
-                    formDestination.trim().toUpperCase() === getCityName(formDestination).toUpperCase() ? (
-                      <span className="text-[10px] text-amber-500 font-bold mt-1 ml-1 flex items-center gap-1">
-                         <HelpCircle className="w-3 h-3" /> Unrecognized code
-                      </span>
-                    ) : (
-                      <span className="text-[10px] text-emerald-500 font-bold mt-1 ml-1 flex items-center gap-1 animate-fadeIn">
-                         <Sparkles className="w-3 h-3 text-emerald-500 animate-pulse" /> {getCityName(formDestination)}
-                      </span>
-                    )
-                  )}
-                </div>
-              </div>
-
-              {/* Timestamp Config */}
-              <div className="grid grid-cols-2 gap-4 border-t border-dashed border-gray-150 dark:border-white/5 pt-4">
-                <Input 
-                  label="Departure Date"
-                  type="date"
-                  value={formDepartureDate}
-                  onChange={e => setFormDepartureDate(e.target.value)}
-                />
-                <Input 
-                  label="Departure Time"
-                  placeholder="e.g. 10:30, 22:15"
-                  value={formDepartureTime}
-                  onChange={e => setFormDepartureTime(e.target.value)}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <Input 
-                  label="Arrival Date"
-                  type="date"
-                  value={formArrivalDate}
-                  onChange={e => setFormArrivalDate(e.target.value)}
-                />
-                <Input 
-                  label="Arrival Time"
-                  placeholder="e.g. 14:15, 06:45"
-                  value={formArrivalTime}
-                  onChange={e => setFormArrivalTime(e.target.value)}
-                />
-              </div>
-
-              {/* Actual/Real-Time Tracking (Optional) */}
-              <div className="p-4 bg-emerald-500/5 dark:bg-emerald-500/5 rounded-3xl border border-emerald-500/20 dark:border-emerald-500/15 space-y-4">
-                <div className="flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 animate-pulse" />
-                  <p className="text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest leading-none">
-                    Actual/Delay Live Tracking (Optional)
+              {/* MANUAL ENTRY COLLAPSE INTERFACE/TOGGLE BUTTON */}
+              <div className="flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100/80 dark:bg-zinc-900/40 dark:hover:bg-zinc-905 rounded-3xl border border-slate-100 dark:border-white/5 transition-all mt-6">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                    {showManualFields ? "Reviewing flight roster coordinates" : "Looking to input additional manual details?"}
+                  </span>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                    {showManualFields ? "Fine-tune operator codes, seats, custom booking reference or ticket pricing." : "Configure airline operator, flight number codes, seats, or ticket prices manually."}
                   </p>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <Input 
-                    label="Actual Departure Time"
-                    placeholder="e.g. 10:45"
-                    value={formActualDepartureTime}
-                    onChange={e => setFormActualDepartureTime(e.target.value)}
-                  />
-                  <Input 
-                    label="Actual Arrival Time"
-                    placeholder="e.g. 14:30"
-                    value={formActualArrivalTime}
-                    onChange={e => setFormActualArrivalTime(e.target.value)}
-                  />
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowManualFields(!showManualFields)}
+                  className="px-3.5 py-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-100/50 dark:hover:bg-blue-900/20 active:scale-95 rounded-xl border border-blue-200/55 dark:border-blue-900/20 transition-all flex items-center gap-1 cursor-pointer shrink-0"
+                >
+                  <span className="material-icons text-sm">
+                    {showManualFields ? "expand_less" : "expand_more"}
+                  </span>
+                  {showManualFields ? "Hide Options" : "Manual Entry"}
+                </button>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <Select 
-                  label="Cabin Class"
-                  value={formClass}
-                  onChange={e => setFormClass(e.target.value as any)}
-                  options={[
-                    { label: "Economy", value: "Economy" },
-                    { label: "Premium Econ", value: "Premium Economy" },
-                    { label: "Business", value: "Business" },
-                    { label: "First Class", value: "First" }
-                  ]}
-                />
-                <Input 
-                  label="Seat Code"
-                  placeholder="e.g. 17C, 12A"
-                  value={formSeatNumber}
-                  onChange={e => setFormSeatNumber(e.target.value)}
-                />
-                <Select 
-                  label="Seat Position"
-                  value={formSeatType}
-                  onChange={e => setFormSeatType(e.target.value as any)}
-                  options={[
-                    { label: "Window", value: "Window" },
-                    { label: "Aisle", value: "Aisle" },
-                    { label: "Middle", value: "Middle" }
-                  ]}
-                />
-                <SeatLayoutOverlay cabinClass={formClass} seatNumber={formSeatNumber} />
-              </div>
+              {/* SECTION 2: ADDITIONAL / MANUAL FIELDS */}
+              <AnimatePresence initial={false}>
+                {showManualFields && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-6 overflow-hidden"
+                  >
+                    {/* Trip Association Section */}
+                    <div className="p-4 bg-gray-50/50 dark:bg-white/5 rounded-3xl border border-gray-100/80 dark:border-white/5 space-y-4 pt-1">
+                      <Select
+                        label="Link to Expedition"
+                        value={formTripId}
+                        onChange={e => setFormTripId(e.target.value)}
+                        options={[
+                          { label: "Independent Flight (Not attached to Expedition)", value: "unassigned" },
+                          ...trips.map(t => ({ label: `Add to Trip: ${t.name}`, value: t.id }))
+                        ]}
+                      />
+                    </div>
 
-              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-dashed border-gray-150 dark:border-white/5">
-                <Input 
-                  label="Booking Locator (PNR)"
-                  placeholder="e.g. XG7HK9"
-                  value={formConfirmation}
-                  onChange={e => setFormConfirmation(e.target.value)}
-                />
-                <Input 
-                  label="Cost Estimate ($)"
-                  placeholder="e.g. 450"
-                  type="number"
-                  value={formCost}
-                  onChange={e => setFormCost(e.target.value)}
-                />
-              </div>
+                    {/* Legs Setup */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex flex-col">
+                        <Autocomplete 
+                          label="Airline / Operator"
+                          placeholder="e.g. Delta or DL"
+                          value={formAirline}
+                          onChange={val => setFormAirline(val)}
+                          fetchSuggestions={fetchAirlineSuggestions}
+                        />
+                        {formAirline && formAirline.trim().toUpperCase() !== getCarrierName(formAirline).toUpperCase() && (
+                          <span className="text-[10px] text-emerald-500 font-bold mt-1 ml-1 flex items-center gap-1">
+                             <Sparkles className="w-3 h-3 text-emerald-500 animate-pulse" /> {getCarrierName(formAirline)}
+                          </span>
+                        )}
+                      </div>
+                      <Input 
+                        label="Flight Number"
+                        placeholder="e.g. DL104, EK201"
+                        value={formFlightNum}
+                        onChange={e => setFormFlightNum(e.target.value)}
+                      />
+                    </div>
 
-              <div className="flex gap-3 pt-6">
+                    {/* Departure Time, Arrival Date & Arrival Time setup */}
+                    <div className="grid grid-cols-3 gap-4">
+                      <Input 
+                        label="Departure Time"
+                        placeholder="e.g. 10:30"
+                        value={formDepartureTime}
+                        onChange={e => setFormDepartureTime(e.target.value)}
+                      />
+                      <Input 
+                        label="Arrival Date"
+                        type="date"
+                        value={formArrivalDate}
+                        onChange={e => setFormArrivalDate(e.target.value)}
+                      />
+                      <Input 
+                        label="Arrival Time"
+                        placeholder="e.g. 14:15"
+                        value={formArrivalTime}
+                        onChange={e => setFormArrivalTime(e.target.value)}
+                      />
+                    </div>
+
+                    {/* Actual/Real-Time Tracking (Optional) */}
+                    <div className="p-4 bg-emerald-500/5 dark:bg-emerald-500/5 rounded-3xl border border-emerald-500/25 dark:border-emerald-500/15 space-y-4">
+                      <div className="flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 animate-pulse" />
+                        <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest leading-none">
+                          Actual/Delay Live Tracking (Optional)
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <Input 
+                          label="Actual Departure Time"
+                          placeholder="e.g. 10:45"
+                          value={formActualDepartureTime}
+                          onChange={e => setFormActualDepartureTime(e.target.value)}
+                        />
+                        <Input 
+                          label="Actual Arrival Time"
+                          placeholder="e.g. 14:30"
+                          value={formActualArrivalTime}
+                          onChange={e => setFormActualArrivalTime(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Cabin Class Selection & Seats */}
+                    <div className="grid grid-cols-3 gap-4">
+                      <Select 
+                        label="Cabin Class"
+                        value={formClass}
+                        onChange={e => setFormClass(e.target.value as any)}
+                        options={[
+                          { label: "Economy", value: "Economy" },
+                          { label: "Premium Econ", value: "Premium Economy" },
+                          { label: "Business", value: "Business" },
+                          { label: "First Class", value: "First" }
+                        ]}
+                      />
+                      <Input 
+                        label="Seat Code"
+                        placeholder="e.g. 17C"
+                        value={formSeatNumber}
+                        onChange={e => setFormSeatNumber(e.target.value)}
+                      />
+                      <Select 
+                        label="Seat Position"
+                        value={formSeatType}
+                        onChange={e => setFormSeatType(e.target.value as any)}
+                        options={[
+                          { label: "Window", value: "Window" },
+                          { label: "Aisle", value: "Aisle" },
+                          { label: "Middle", value: "Middle" }
+                        ]}
+                      />
+                      <SeatLayoutOverlay cabinClass={formClass} seatNumber={formSeatNumber} />
+                    </div>
+
+                    {/* booking code and pricing */}
+                    <div className="grid grid-cols-2 gap-4 pt-4 border-t border-dashed border-gray-150 dark:border-white/5">
+                      <Input 
+                        label="Booking Locator (PNR)"
+                        placeholder="e.g. XG7HK9"
+                        value={formConfirmation}
+                        onChange={e => setFormConfirmation(e.target.value)}
+                      />
+                      <Input 
+                        label="Cost Estimate ($)"
+                        placeholder="e.g. 450"
+                        type="number"
+                        value={formCost}
+                        onChange={e => setFormCost(e.target.value)}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* ACTION FOOTER BUTTONS */}
+              <div className="flex gap-3 pt-6 border-t border-dashed border-gray-150 dark:border-white/5">
                 <Button 
                   type="button" 
                   variant="ghost" 
