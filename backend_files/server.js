@@ -1,6 +1,7 @@
 
 const express = require('express');
 const { Pool } = require('pg');
+const { AviationStackError, normalizeFutureFlight, requestAviationStack } = require('./aviationStack');
 const cors = require('cors');
 const path = require('path');
 const crypto = require('crypto');
@@ -184,6 +185,9 @@ const FLIGHT_CACHE_TTL_MS = process.env.API_CACHE_TTL_MS
     ? parseInt(process.env.API_CACHE_TTL_MS, 10) 
     : 5 * 60 * 1000;
 const flightCache = new Map();
+const FLIGHT_FETCH_TIMEOUT_MS = process.env.FLIGHT_FETCH_TIMEOUT_MS
+    ? parseInt(process.env.FLIGHT_FETCH_TIMEOUT_MS, 10)
+    : 10000;
 
 const GEOCODE_CACHE_TTL_MS = process.env.GEOCODE_CACHE_TTL_MS
     ? parseInt(process.env.GEOCODE_CACHE_TTL_MS, 10)
@@ -753,310 +757,134 @@ const deleteResource = (table) => async (req, res) => {
 
 // --- Routes ---
 
-// Proxy for AviationStack (Fixes CORS issues)
+// AviationStack proxies keep API calls server-side to avoid browser CORS and mixed-content failures.
+const getAviationStackKey = (req) => {
+    const headerKey = req.get('X-AviationStack-Key');
+    const queryKey = req.query.access_key;
+    return String(headerKey || queryKey || '').trim();
+};
+
+const sendAviationStackError = (res, error) => {
+    const status = error instanceof AviationStackError ? error.status : 502;
+    console.error('[API] AviationStack request failed:', error);
+    return res.status(status).json({
+        error: error.message || 'AviationStack request failed.',
+        code: error.code || 'aviationstack_error'
+    });
+};
+
 app.get('/api/proxy/flight-status', async (req, res) => {
-    const { access_key, flight_iata, flight_date } = req.query;
-    if (!access_key || !flight_iata) {
-        return res.status(400).json({ error: 'Missing access_key or flight_iata' });
+    const accessKey = getAviationStackKey(req);
+    const flightIata = String(req.query.flight_iata || '').trim().toUpperCase().replace(/\s/g, '');
+    const flightDate = String(req.query.flight_date || '').trim();
+    if (!accessKey || !flightIata) {
+        return res.status(400).json({ error: 'Missing AviationStack API key or flight number.' });
     }
 
-    const cacheKey = `${flight_iata}:${flight_date || 'latest'}`;
+    const cacheKey = `${flightIata}:${flightDate || 'latest'}`;
     const cached = flightCache.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) {
         res.set('X-Cache', 'HIT');
-        res.set('Cache-Control', `public, max-age=${Math.floor(FLIGHT_CACHE_TTL_MS / 1000)}`);
+        res.set('Cache-Control', `private, max-age=${Math.floor(FLIGHT_CACHE_TTL_MS / 1000)}`);
         return res.json(cached.data);
     }
-    
+
     try {
-        const dateParam = flight_date ? `&flight_date=${flight_date}` : '';
-        const url = `http://api.aviationstack.com/v1/flights?access_key=${access_key}&flight_iata=${flight_iata}${dateParam}`;
-        // Using built-in fetch (Node 18+)
-        const response = await fetch(url);
-        const data = await response.json();
+        const data = await requestAviationStack('flights', {
+            access_key: accessKey,
+            flight_iata: flightIata,
+            flight_date: flightDate
+        }, { timeoutMs: FLIGHT_FETCH_TIMEOUT_MS });
         flightCache.set(cacheKey, { data, expiresAt: Date.now() + FLIGHT_CACHE_TTL_MS });
         res.set('X-Cache', 'MISS');
-        res.set('Cache-Control', `public, max-age=${Math.floor(FLIGHT_CACHE_TTL_MS / 1000)}`);
-        res.json(data);
-    } catch (err) {
-        console.error("Proxy error:", err);
-        res.status(500).json({ error: 'Failed to fetch flight data' });
+        res.set('Cache-Control', `private, max-age=${Math.floor(FLIGHT_CACHE_TTL_MS / 1000)}`);
+        return res.json(data);
+    } catch (error) {
+        return sendAviationStackError(res, error);
     }
 });
 
-// Proxy for AviationStack by route (Flighty / byAir style search list)
 app.get('/api/proxy/route-flights', async (req, res) => {
-    const { access_key, dep_iata, arr_iata, flight_date } = req.query;
-    if (!dep_iata || !arr_iata || !flight_date) {
-        return res.status(400).json({ error: 'Missing dep_iata, arr_iata, or flight_date' });
+    const accessKey = getAviationStackKey(req);
+    const cleanDep = String(req.query.dep_iata || '').trim().toUpperCase();
+    const cleanArr = String(req.query.arr_iata || '').trim().toUpperCase();
+    const cleanDate = String(req.query.flight_date || '').trim();
+    if (!accessKey || !/^[A-Z]{3}$/.test(cleanDep) || !/^[A-Z]{3}$/.test(cleanArr) || !/^\d{4}-\d{2}-\d{2}$/.test(cleanDate)) {
+        return res.status(400).json({ error: 'A valid API key, origin, destination, and date are required.' });
     }
 
-    const cleanDep = dep_iata.trim().toUpperCase();
-    const cleanArr = arr_iata.trim().toUpperCase();
-    const cleanDate = flight_date.trim();
-
-    // Evaluate Today vs Past vs Future
-    const targetDateObj = new Date(cleanDate);
-    const isValidDate = !isNaN(targetDateObj.getTime());
-    
-    let isPast = false;
-    let isToday = false;
-    let isFuture = false;
-
-    if (isValidDate) {
-        const todayStr = new Date().toISOString().split('T')[0];
-        const todayDateObj = new Date(todayStr);
-
-        const targetMidnight = new Date(targetDateObj.getUTCFullYear(), targetDateObj.getUTCMonth(), targetDateObj.getUTCDate());
-        const todayMidnight = new Date(todayDateObj.getUTCFullYear(), todayDateObj.getUTCMonth(), todayDateObj.getUTCDate());
-
-        if (targetMidnight < todayMidnight) {
-            isPast = true;
-        } else if (targetMidnight.getTime() === todayMidnight.getTime()) {
-            isToday = true;
-        } else {
-            isFuture = true;
-        }
-    } else {
-        isToday = true;
+    const targetTime = Date.parse(`${cleanDate}T00:00:00Z`);
+    if (Number.isNaN(targetTime)) {
+        return res.status(400).json({ error: 'Flight date must use YYYY-MM-DD format.' });
     }
-
-    // Generate DB-backed Cache Key: ORIGIN-DESTINATION-YYYY-MM-DD
+    const today = new Date();
+    const todayTime = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+    const isPast = targetTime < todayTime;
+    const isFuture = targetTime > todayTime;
     const cacheKey = `${cleanDep}-${cleanArr}-${cleanDate}`;
-
-    // 1. Check Smart Database Cache Layer
-    let cacheHit = false;
-    let cachedPayload = null;
 
     try {
         const cacheRes = await pool.query('SELECT payload, updated_at FROM cached_routes WHERE route_key = $1', [cacheKey]);
         if (cacheRes.rows.length > 0) {
             const { payload, updated_at } = cacheRes.rows[0];
-            const updatedAtTime = new Date(updated_at).getTime();
-            const now = Date.now();
-            
-            if (isPast) {
-                // Historical data never changes, return it forever
-                cacheHit = true;
-                cachedPayload = payload;
-                console.log(`[DB CACHE] Hit for historical route: ${cacheKey}`);
-            } else if (isFuture) {
-                // Future schedules cache hits less than 24 hours old
-                const oneDayMs = 24 * 60 * 60 * 1000;
-                if (now - updatedAtTime < oneDayMs) {
-                    cacheHit = true;
-                    cachedPayload = payload;
-                    console.log(`[DB CACHE] Hit for future schedule: ${cacheKey}`);
-                }
-            } else {
-                // Today live flights cache hits less than 5 minutes old
-                if (now - updatedAtTime < FLIGHT_CACHE_TTL_MS) {
-                    cacheHit = true;
-                    cachedPayload = payload;
-                    console.log(`[DB CACHE] Hit for live today flights: ${cacheKey}`);
-                }
+            const age = Date.now() - new Date(updated_at).getTime();
+            const maxAge = isPast ? Infinity : isFuture ? 24 * 60 * 60 * 1000 : FLIGHT_CACHE_TTL_MS;
+            if (age < maxAge) {
+                res.set('X-Cache', 'HIT');
+                return res.json({ pagination: { count: payload.length, total: payload.length }, data: payload });
             }
         }
-    } catch (dbErr) {
-        console.error("[DB CACHE ERROR] Failed querying cached_routes:", dbErr);
+    } catch (error) {
+        console.error('[DB CACHE ERROR] Failed querying cached_routes:', error);
     }
 
-    if (cacheHit && cachedPayload) {
-        res.set('X-Cache', 'HIT');
-        return res.json({
-            pagination: { limit: 100, offset: 0, count: cachedPayload.length, total: cachedPayload.length },
-            data: cachedPayload
-        });
-    }
-
-    // 2. Fetch from AviationStack conditionally based on Date strategy
-    let flightsArray = [];
     try {
-        if (access_key && access_key !== 'null' && access_key !== 'undefined' && access_key.trim() !== '') {
-            if (isPast) {
-                // Path A: Historical Flights (The Past)
-                const url = `http://api.aviationstack.com/v1/flights?access_key=${access_key}&dep_iata=${cleanDep}&arr_iata=${cleanArr}&flight_date=${cleanDate}`;
-                console.log(`[API] Path A: Querying historical AviationStack route: ${cleanDep} -> ${cleanArr} on ${cleanDate}`);
-                const response = await fetch(url);
-                const data = await response.json();
-                if (data && data.data) {
-                    flightsArray = data.data;
-                } else if (data && data.error) {
-                    console.warn("[API] Historical flight search error:", data.error);
-                }
-            } else if (isToday) {
-                // Path B: Today / Live & Current Flights
-                const url = `http://api.aviationstack.com/v1/flights?access_key=${access_key}&dep_iata=${cleanDep}&arr_iata=${cleanArr}`;
-                console.log(`[API] Path B: Querying today/live AviationStack route: ${cleanDep} -> ${cleanArr}`);
-                const response = await fetch(url);
-                const data = await response.json();
-                if (data && data.data) {
-                    flightsArray = data.data;
-                } else if (data && data.error) {
-                    console.warn("[API] Live flight search error:", data.error);
-                }
-            } else {
-                // Path C: Upcoming Flights (The Future)
-                let responseData;
-                try {
-                    // Attempt C1: flightsFuture
-                    const futureUrl = `http://api.aviationstack.com/v1/flightsFuture?access_key=${access_key}&dep_iata=${cleanDep}&arr_iata=${cleanArr}&flight_date=${cleanDate}`;
-                    console.log(`[API] Path C: Trying /v1/flightsFuture for ${cleanDep} -> ${cleanArr} on ${cleanDate}`);
-                    const resFuture = await fetch(futureUrl);
-                    const dataFuture = await resFuture.json();
-                    if (dataFuture && dataFuture.data && dataFuture.data.length > 0) {
-                        responseData = dataFuture.data;
-                    } else if (dataFuture && dataFuture.error) {
-                        console.warn("[API] /v1/flightsFuture returned error:", dataFuture.error);
-                    }
-                } catch (errFuture) {
-                    console.warn("[API] /v1/flightsFuture call failed:", errFuture.message);
-                }
+        let flights;
+        if (isFuture) {
+            const daysAhead = Math.floor((targetTime - todayTime) / (24 * 60 * 60 * 1000));
+            if (daysAhead <= 7) {
+                return res.status(422).json({
+                    error: 'AviationStack only publishes future schedules more than 7 days ahead. Search today, a past date supported by your plan, or a date at least 8 days from today.',
+                    code: 'future_date_not_available'
+                });
+            }
+            const data = await requestAviationStack('flightsFuture', {
+                access_key: accessKey,
+                iataCode: cleanDep,
+                type: 'departure',
+                date: cleanDate
+            }, { timeoutMs: FLIGHT_FETCH_TIMEOUT_MS });
+            flights = (data.data || [])
+                .map(item => normalizeFutureFlight(item, cleanDate))
+                .filter(item => item.arrival.iata.toUpperCase() === cleanArr);
+        } else {
+            const data = await requestAviationStack('flights', {
+                access_key: accessKey,
+                dep_iata: cleanDep,
+                arr_iata: cleanArr,
+                flight_date: cleanDate
+            }, { timeoutMs: FLIGHT_FETCH_TIMEOUT_MS });
+            flights = Array.isArray(data.data) ? data.data : [];
+        }
 
-                if (!responseData) {
-                    try {
-                        // Attempt C2: flight_schedules
-                        const schedulesUrl = `http://api.aviationstack.com/v1/flight_schedules?access_key=${access_key}&dep_iata=${cleanDep}&arr_iata=${cleanArr}`;
-                        console.log(`[API] Path C: Future was empty/invalid, trying /v1/flight_schedules for ${cleanDep} -> ${cleanArr}`);
-                        const resSchedules = await fetch(schedulesUrl);
-                        const dataSchedules = await resSchedules.json();
-                        if (dataSchedules && dataSchedules.data && dataSchedules.data.length > 0) {
-                            // Filter weekday
-                            const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-                            const targetWeekday = weekdays[targetDateObj.getUTCDay()];
-                            
-                            responseData = dataSchedules.data.filter(item => {
-                                if (item[targetWeekday] !== undefined) {
-                                    return item[targetWeekday] === '1' || item[targetWeekday] === 1 || item[targetWeekday] === true;
-                                }
-                                return true;
-                            }).map(item => {
-                                return {
-                                    ...item,
-                                    flight_date: cleanDate,
-                                    flight_status: item.flight_status || 'scheduled'
-                                };
-                            });
-                        } else if (dataSchedules && dataSchedules.error) {
-                            console.warn("[API] /v1/flight_schedules returned error:", dataSchedules.error);
-                        }
-                    } catch (errSched) {
-                        console.warn("[API] /v1/flight_schedules call failed:", errSched.message);
-                    }
-                }
-
-                if (!responseData) {
-                    try {
-                        // Attempt C3: Fallback flight_date standard endpoint
-                        const regUrl = `http://api.aviationstack.com/v1/flights?access_key=${access_key}&dep_iata=${cleanDep}&arr_iata=${cleanArr}&flight_date=${cleanDate}`;
-                        console.log(`[API] Path C: Fallback to standard flights for future search: ${cleanDep} -> ${cleanArr} on ${cleanDate}`);
-                        const resReg = await fetch(regUrl);
-                        const dataReg = await resReg.json();
-                        if (dataReg && dataReg.data) {
-                            responseData = dataReg.data;
-                        }
-                    } catch (errReg) {
-                        console.warn("[API] Path C fallback failed:", errReg.message);
-                    }
-                }
-
-                if (responseData) {
-                    flightsArray = responseData;
-                }
+        if (flights.length > 0) {
+            try {
+                await pool.query(
+                    `INSERT INTO cached_routes (route_key, payload, updated_at)
+                     VALUES ($1, $2, CURRENT_TIMESTAMP)
+                     ON CONFLICT (route_key) DO UPDATE SET payload = EXCLUDED.payload, updated_at = CURRENT_TIMESTAMP`,
+                    [cacheKey, JSON.stringify(flights)]
+                );
+            } catch (error) {
+                console.error('[DB CACHE ERROR] Failed saving route cache:', error);
             }
         }
-    } catch (err) {
-        console.error("[API] Failed contacting AviationStack API:", err);
-        return res.status(500).json({ error: 'AviationStack connection failed.' });
+
+        res.set('X-Cache', 'MISS');
+        return res.json({ pagination: { count: flights.length, total: flights.length }, data: flights });
+    } catch (error) {
+        return sendAviationStackError(res, error);
     }
-
-    // 3. Filter Early: pluck out only what UI needs as specified by FlightStatusResponse structure
-    const processedFlights = Array.isArray(flightsArray)
-        ? flightsArray.map(f => ({
-            flight_date: f.flight_date || cleanDate,
-            flight_status: f.flight_status || 'scheduled',
-            departure: f.departure ? {
-                airport: f.departure.airport || '',
-                timezone: f.departure.timezone || '',
-                iata: f.departure.iata || '',
-                icao: f.departure.icao || '',
-                terminal: f.departure.terminal || '',
-                gate: f.departure.gate || '',
-                delay: f.departure.delay || 0,
-                scheduled: f.departure.scheduled || '',
-                estimated: f.departure.estimated || '',
-                actual: f.departure.actual || '',
-                estimated_runway: f.departure.estimated_runway || '',
-                actual_runway: f.departure.actual_runway || ''
-            } : null,
-            arrival: f.arrival ? {
-                airport: f.arrival.airport || '',
-                timezone: f.arrival.timezone || '',
-                iata: f.arrival.iata || '',
-                icao: f.arrival.icao || '',
-                terminal: f.arrival.terminal || '',
-                gate: f.arrival.gate || '',
-                baggage: f.arrival.baggage || '',
-                delay: f.arrival.delay || 0,
-                scheduled: f.arrival.scheduled || '',
-                estimated: f.arrival.estimated || '',
-                actual: f.arrival.actual || '',
-                estimated_runway: f.arrival.estimated_runway || '',
-                actual_runway: f.arrival.actual_runway || ''
-            } : null,
-            airline: f.airline ? {
-                name: f.airline.name || '',
-                iata: f.airline.iata || '',
-                icao: f.airline.icao || ''
-            } : null,
-            flight: f.flight ? {
-                number: f.flight.number || '',
-                iata: f.flight.iata || '',
-                icao: f.flight.icao || '',
-                codeshared: f.flight.codeshared || null
-            } : null,
-            aircraft: f.aircraft ? {
-                registration: f.aircraft.registration || '',
-                iata: f.aircraft.iata || '',
-                model: f.aircraft.model || '',
-                country: f.aircraft.country || ''
-            } : null,
-            ...(f.live ? {
-                live: {
-                    updated: f.live.updated || '',
-                    latitude: f.live.latitude || 0,
-                    longitude: f.live.longitude || 0,
-                    altitude: f.live.altitude || 0,
-                    direction: f.live.direction || 0,
-                    speed_horizontal: f.live.speed_horizontal || 0,
-                    speed_vertical: f.live.speed_vertical || 0,
-                    is_ground: f.live.is_ground || false
-                }
-            } : {})
-        }))
-        : [];
-
-    // Save of cache population
-    if (processedFlights.length > 0 && access_key) {
-        try {
-            await pool.query(
-                `INSERT INTO cached_routes (route_key, payload, updated_at)
-                 VALUES ($1, $2, CURRENT_TIMESTAMP)
-                 ON CONFLICT (route_key)
-                 DO UPDATE SET payload = $2, updated_at = CURRENT_TIMESTAMP`,
-                [cacheKey, JSON.stringify(processedFlights)]
-            );
-            console.log(`[DB CACHE POPULATED] Cache saved for: ${cacheKey}`);
-        } catch (dbSaveErr) {
-            console.error("[DB CACHE SAVE ERROR] failed saving to database cache:", dbSaveErr);
-        }
-    }
-
-    res.set('X-Cache', 'MISS');
-    res.json({
-        pagination: { limit: 100, offset: 0, count: processedFlights.length, total: processedFlights.length },
-        data: processedFlights
-    });
 });
 
 // Proxy for AviationStack Airports (Bypasses CORS & mixed content)
