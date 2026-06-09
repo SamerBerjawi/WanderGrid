@@ -1,5 +1,25 @@
 import { FlightStatusResponse } from '../types';
 
+const authenticatedHeaders = (aviationStackKey?: string): Record<string, string> => {
+    const headers: Record<string, string> = {};
+    const token = typeof window !== 'undefined' ? localStorage.getItem('wandergrid_session_token') : null;
+    if (token) headers.Authorization = `Bearer ${token}`;
+    if (aviationStackKey) headers['X-AviationStack-Key'] = aviationStackKey;
+    return headers;
+};
+
+const readApiResponse = async (response: Response): Promise<any> => {
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) {
+        const message = typeof payload?.error === 'string'
+            ? payload.error
+            : payload?.error?.message || `Flight service returned HTTP ${response.status}.`;
+        throw new Error(message);
+    }
+    return payload;
+};
+
+
 export const flightTracker = {
     getFlightStatus: async (
         apiKey: string, 
@@ -10,8 +30,8 @@ export const flightTracker = {
     ): Promise<FlightStatusResponse> => {
         const cleanIata = flightIata.trim().toUpperCase().replace(/\s/g, '');
 
-        if (!apiKey) {
-            throw new Error("AviationStack API Key is required to perform factual flight status lookups. Please configure it in Settings.");
+        if ((provider === 'aviationstack' || provider === 'aerodatabox') && !apiKey) {
+            throw new Error("An API key is required for the selected flight data provider. Please configure it in Settings.");
         }
 
         if (provider === 'adsbdb') {
@@ -64,7 +84,8 @@ export const flightTracker = {
                             flight: {
                                 number: cleanIata.replace(/^[A-Z]+/g, ''),
                                 iata: cleanIata,
-                                icao: ''
+                                icao: '',
+                                codeshared: null
                             },
                             aircraft: {
                                 registration: r.aircraft_registration || r.registration || 'N/A',
@@ -134,7 +155,8 @@ export const flightTracker = {
                             flight: {
                                 number: cleanIata.replace(/^[A-Z]+/g, ''),
                                 iata: cleanIata,
-                                icao: ''
+                                icao: '',
+                                codeshared: null
                             },
                             aircraft: {
                                 registration: f.aircraft?.reg || 'N/A',
@@ -150,61 +172,23 @@ export const flightTracker = {
             }
         }
 
-        // --- Default AviationStack Tracker ---
-        // Helper to parse the AviationStack response
-        const processResponse = (json: any) => {
-            if (json.error) {
-                if (json.error.code === 'https_access_restricted') {
-                    throw new Error("API Key Restricted: Your AviationStack plan does not support HTTPS over the direct client.");
-                }
-                throw new Error(json.error.message || "API Error");
-            }
+        // AviationStack requests are intentionally backend-only. Browser-side calls are
+        // blocked by CORS/mixed-content rules and would expose the workspace API key.
+        const query = new URLSearchParams({ flight_iata: cleanIata });
+        if (date) query.set('flight_date', date);
+        const response = await fetch(`/api/proxy/flight-status?${query.toString()}`, {
+            headers: authenticatedHeaders(apiKey)
+        });
+        const json = await readApiResponse(response);
 
-            if (!json.data || json.data.length === 0) {
-                throw new Error("No live flight found on database file records.");
-            }
-
-            let targetFlight = json.data[0];
-            if (date) {
-                const found = json.data.find((f: any) => f.flight_date === date);
-                if (found) targetFlight = found;
-            }
-            return targetFlight as FlightStatusResponse;
-        };
-
-        try {
-            const proxyUrl = `/api/proxy/flight-status?access_key=${apiKey}&flight_iata=${cleanIata}`;
-            const token = typeof window !== 'undefined' ? localStorage.getItem('wandergrid_session_token') : null;
-            const headers: Record<string, string> = {};
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-            }
-            const res = await fetch(proxyUrl, { headers });
-            if (res.ok) {
-                const json = await res.json();
-                return processResponse(json);
-            }
-        } catch (e) {
-            console.warn("Backend proxy unavailable, switching to direct endpoint.");
+        if (!Array.isArray(json.data) || json.data.length === 0) {
+            throw new Error(`No AviationStack flight record was found for ${cleanIata}${date ? ` on ${date}` : ''}.`);
         }
 
-        const directUrl = `http://api.aviationstack.com/v1/flights?access_key=${apiKey}&flight_iata=${cleanIata}`;
-        try {
-            const res = await fetch(directUrl);
-            if (res.ok) {
-                const json = await res.json();
-                return processResponse(json);
-            }
-        } catch (e) {}
-
-        // Strategy 3: CORS Proxy
-        const corsProxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(directUrl)}`;
-        const res = await fetch(corsProxyUrl);
-        if (!res.ok) {
-            throw new Error("All flight status feeds and CORS proxies failed to retrieve flight details.");
-        }
-        const json = await res.json();
-        return processResponse(json);
+        const exactDateMatch = date
+            ? json.data.find((flight: FlightStatusResponse) => flight.flight_date === date)
+            : undefined;
+        return (exactDateMatch || json.data[0]) as FlightStatusResponse;
     },
 
     searchFlightsByRoute: async (
@@ -218,108 +202,21 @@ export const flightTracker = {
         const cleanDate = date.trim();
 
         if (!apiKey) {
-            throw new Error("An AviationStack API Key must be set in your settings/configs to query real flight schedules.");
+            throw new Error("An AviationStack API Key must be set in Settings to search flight schedules.");
+        }
+        if (!/^[A-Z]{3}$/.test(cleanDep) || !/^[A-Z]{3}$/.test(cleanArr)) {
+            throw new Error("Select valid three-letter origin and destination airport codes.");
         }
 
-        try {
-            const proxyUrl = `/api/proxy/route-flights?access_key=${encodeURIComponent(apiKey)}&dep_iata=${encodeURIComponent(cleanDep)}&arr_iata=${encodeURIComponent(cleanArr)}&flight_date=${encodeURIComponent(cleanDate)}`;
-            const token = typeof window !== 'undefined' ? localStorage.getItem('wandergrid_session_token') : null;
-            const headers: Record<string, string> = {};
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-            }
-            const res = await fetch(proxyUrl, { headers });
-            if (res.ok) {
-                const contentType = res.headers.get('content-type');
-                if (contentType && contentType.includes('application/json')) {
-                    const json = await res.json();
-                    if (json && json.data && Array.isArray(json.data)) {
-                        return json.data as FlightStatusResponse[];
-                    }
-                    if (json && json.error) {
-                        throw new Error(json.error.message || "AviationStack returned an API error.");
-                    }
-                } else {
-                    throw new Error("Proxy returned non-JSON (HTML/fallback) content.");
-                }
-            } else {
-                const errText = await res.text().catch(() => "");
-                let errMsg = "Server proxy error while searching routes.";
-                try {
-                    const errData = JSON.parse(errText);
-                    if (errData.error) errMsg = errData.error;
-                } catch (e) {}
-                throw new Error(errMsg);
-            }
-        } catch (e: any) {
-            console.warn("Backend route-flights proxy failed, falling back to direct API fetch:", e.message || e);
-            
-            // Direct flight search fallback over standard AviationStack endpoints
-            try {
-                const targetDateObj = new Date(cleanDate);
-                const isValidDate = !isNaN(targetDateObj.getTime());
-                
-                let isPast = false;
-                let isToday = false;
-                let isFuture = false;
-
-                if (isValidDate) {
-                    const todayStr = new Date().toISOString().split('T')[0];
-                    const todayDateObj = new Date(todayStr);
-
-                    const targetMidnight = new Date(targetDateObj.getUTCFullYear(), targetDateObj.getUTCMonth(), targetDateObj.getUTCDate());
-                    const todayMidnight = new Date(todayDateObj.getUTCFullYear(), todayDateObj.getUTCMonth(), todayDateObj.getUTCDate());
-
-                    if (targetMidnight < todayMidnight) {
-                        isPast = true;
-                    } else if (targetMidnight.getTime() === todayMidnight.getTime()) {
-                        isToday = true;
-                    } else {
-                        isFuture = true;
-                    }
-                } else {
-                    isToday = true;
-                }
-
-                // Construct direct URL
-                let directUrl = `http://api.aviationstack.com/v1/flights?access_key=${apiKey}&dep_iata=${cleanDep}&arr_iata=${cleanArr}`;
-                if (isPast || isFuture) {
-                    directUrl += `&flight_date=${cleanDate}`;
-                }
-
-                console.log(`[Direct Fallback] Fetching direct flight schedules: ${directUrl}`);
-                const response = await fetch(directUrl);
-                
-                if (response.ok) {
-                    const json = await response.json();
-                    if (json && json.error) {
-                        throw new Error(json.error.message || "AviationStack returned an API error.");
-                    }
-                    if (json && json.data && Array.isArray(json.data)) {
-                        return json.data as FlightStatusResponse[];
-                    }
-                }
-                
-                // Secondary Fallback: Try via AllOrigins CORS proxy if direct HTTP call is blocked or fails
-                const corsProxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(directUrl)}`;
-                console.log(`[Direct Fallback] Trying CORS Proxy: ${corsProxyUrl}`);
-                const corsRes = await fetch(corsProxyUrl);
-                if (!corsRes.ok) {
-                    throw new Error("Direct route lookup and CORS proxy both failed.");
-                }
-                const json = await corsRes.json();
-                if (json && json.error) {
-                    throw new Error(json.error.message || "CORS proxy returned error.");
-                }
-                if (json && json.data && Array.isArray(json.data)) {
-                    return json.data as FlightStatusResponse[];
-                }
-                throw new Error("No scheduled flights dataset found.");
-            } catch (fallbackErr: any) {
-                console.error("Direct fallback flight search failed:", fallbackErr);
-                throw new Error(fallbackErr.message || "Failed to search flights on either proxy or direct endpoint.");
-            }
-        }
-        return [];
+        const query = new URLSearchParams({
+            dep_iata: cleanDep,
+            arr_iata: cleanArr,
+            flight_date: cleanDate
+        });
+        const response = await fetch(`/api/proxy/route-flights?${query.toString()}`, {
+            headers: authenticatedHeaders(apiKey)
+        });
+        const json = await readApiResponse(response);
+        return Array.isArray(json.data) ? json.data as FlightStatusResponse[] : [];
     }
 };
