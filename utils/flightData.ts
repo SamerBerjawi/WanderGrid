@@ -423,19 +423,30 @@ function saveAirportToCache(item: CachedAirport) {
   } catch (e) {}
 }
 
+async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('wandergrid_session_token') : null;
+  const headers = {
+    ...(options.headers || {}),
+  } as Record<string, string>;
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return fetch(url, { ...options, headers });
+}
+
 async function triggerBackgroundAirportFetch(code: string) {
   if (pendingAirportFetches.has(code) || failedAirportFetches.has(code)) return;
   pendingAirportFetches.add(code);
   
   try {
-    const res = await fetch(`/api/airports/lookup/${code}`);
+    const res = await fetchWithAuth(`/api/airports/lookup/${code}`);
     if (res.ok) {
       const data = await res.json();
       saveAirportToCache({
-        iata: code,
-        city: data.city_name || data.airport_name,
-        name: data.airport_name,
-        country: data.country_or_territory
+         iata: code,
+         city: data.city_name || data.airport_name,
+         name: data.airport_name,
+         country: data.country_or_territory
       });
       return;
     }
@@ -448,7 +459,7 @@ async function triggerBackgroundAirportFetch(code: string) {
       if (isMockMode) {
         extRes = await fetch(`http://api.aviationstack.com/v1/airports?access_key=${apiKey}&iata_code=${code}`);
       } else {
-        extRes = await fetch(`/api/proxy/airports?access_key=${apiKey}&iata_code=${code}`);
+        extRes = await fetchWithAuth(`/api/proxy/airports?access_key=${apiKey}&iata_code=${code}`);
       }
       if (extRes.ok) {
         const json = await extRes.json();
@@ -530,7 +541,7 @@ async function triggerBackgroundCarrierFetch(code: string) {
   pendingCarrierFetches.add(code);
   
   try {
-    const res = await fetch(`/api/carriers/lookup/${code}`);
+    const res = await fetchWithAuth(`/api/carriers/lookup/${code}`);
     if (res.ok) {
       const data = await res.json();
       saveCarrierToCache({
@@ -548,7 +559,7 @@ async function triggerBackgroundCarrierFetch(code: string) {
       if (isMockMode) {
         extRes = await fetch(`http://api.aviationstack.com/v1/airlines?access_key=${apiKey}&iata_code=${code}`);
       } else {
-        extRes = await fetch(`/api/proxy/airlines?access_key=${apiKey}&iata_code=${code}`);
+        extRes = await fetchWithAuth(`/api/proxy/airlines?access_key=${apiKey}&iata_code=${code}`);
       }
       if (extRes.ok) {
         const json = await extRes.json();

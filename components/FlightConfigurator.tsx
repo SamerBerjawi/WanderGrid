@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { Plane, AlertCircle, Search } from 'lucide-react';
 import { Button, Input, Select, Autocomplete, Badge, TimeInput } from './ui';
 import { Transport, TransportMode, FlightStatusResponse } from '../types';
 import { dataService } from '../services/mockDb';
@@ -462,7 +463,9 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
         if (field === 'provider' && mode === 'Flight') {
             const trimmedValue = (value as string).trim();
             if (trimmedValue) {
-                fetch(`/api/carriers/search?q=${encodeURIComponent(trimmedValue)}`)
+                const token = localStorage.getItem('wandergrid_session_token');
+                const headers: Record<string, string> = token ? { 'Authorization': `Bearer ${token}` } : {};
+                fetch(`/api/carriers/search?q=${encodeURIComponent(trimmedValue)}`, { headers })
                     .then(res => res.json())
                     .then(data => {
                         if (Array.isArray(data) && data.length > 0) {
@@ -806,7 +809,9 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
         if (!query || query.length < 2) return [];
         let apiResults: any[] = [];
         try {
-            const res = await fetch(`/api/airports/search?q=${encodeURIComponent(query)}`);
+            const token = localStorage.getItem('wandergrid_session_token');
+            const headers: Record<string, string> = token ? { 'Authorization': `Bearer ${token}` } : {};
+            const res = await fetch(`/api/airports/search?q=${encodeURIComponent(query)}`, { headers });
             if (res.ok) {
                 apiResults = await res.json();
             }
@@ -840,7 +845,9 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
         if (!query || query.length < 1) return [];
         let apiResults: any[] = [];
         try {
-            const res = await fetch(`/api/carriers/search?q=${encodeURIComponent(query)}`);
+            const token = localStorage.getItem('wandergrid_session_token');
+            const headers: Record<string, string> = token ? { 'Authorization': `Bearer ${token}` } : {};
+            const res = await fetch(`/api/carriers/search?q=${encodeURIComponent(query)}`, { headers });
             if (res.ok) {
                 apiResults = await res.json();
             }
@@ -972,9 +979,9 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                 setSearchedFlights(prev => ({ ...prev, [index]: [] }));
                 setRouteSearchError(prev => ({ ...prev, [index]: 'No flights found on this route and date.' }));
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error("Flight route search failed:", err);
-            setRouteSearchError(prev => ({ ...prev, [index]: 'Search request failed. Please check your network or try again.' }));
+            setRouteSearchError(prev => ({ ...prev, [index]: err.message || 'Search request failed. Please check your config/network and try again.' }));
         } finally {
             setIsRouteSearchingFlag(prev => ({ ...prev, [index]: false }));
         }
@@ -1366,12 +1373,12 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                                 <div>
                                                     <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                                                        <span className="material-icons text-blue-500 animate-pulse text-sm">local_airport</span>
+                                                        <Plane className="w-4 h-4 text-blue-500 animate-pulse shrink-0" />
                                                         Find Flight Schedules
                                                     </h4>
                                                     <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
                                                         Live search available airline schedules on this route for {segment.date || 'selected date'}
-                                                    </p>
+                                                     </p>
                                                 </div>
                                                 <button
                                                     type="button"
@@ -1387,16 +1394,16 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                                         </>
                                                     ) : (
                                                         <>
-                                                            <span className="material-icons text-xs">search</span>
+                                                            <Search className="w-3.5 h-3.5" />
                                                             Find Flights
                                                         </>
                                                     )}
                                                 </button>
                                             </div>
-
+ 
                                             {routeSearchError[index] && (
                                                 <div className="mt-3 p-3 bg-red-50 dark:bg-rose-950/20 text-red-600 dark:text-rose-400 text-xs font-semibold rounded-xl border border-red-100 dark:border-rose-950/30 flex items-center gap-2">
-                                                    <span className="material-icons text-base">error_outline</span>
+                                                    <AlertCircle className="w-4 h-4 text-red-500 dark:text-rose-400 shrink-0" />
                                                     {routeSearchError[index]}
                                                 </div>
                                             )}

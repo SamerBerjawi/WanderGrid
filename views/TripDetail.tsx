@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState, useRef, useMemo, Suspense } from 'react';
+import { ChevronUp, ChevronDown } from 'lucide-react';
 import { Card, Button, Badge, Tabs, Modal, Input, Autocomplete, TimeInput, Select } from '../components/ui';
 import { TransportConfigurator } from '../components/FlightConfigurator';
 import { AccommodationConfigurator } from '../components/AccommodationConfigurator';
@@ -2135,7 +2136,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                            <div className="flex justify-between items-center"><h4 className="font-bold text-gray-900 dark:text-white">{t.name}</h4><Badge color={candidate.confidence > 80 ? 'green' : candidate.confidence > 50 ? 'amber' : 'gray'}>{candidate.confidence}% Match</Badge></div>
                                            <div className="text-xs text-gray-500 mt-1 flex gap-3"><span>{new Date(t.startDate).toLocaleDateString()}</span><span>•</span><span>{t.transports?.length} Flights</span></div>
                                        </div>
-                                       <button onClick={(e) => { e.stopPropagation(); setExpandedCandidateId(isExpanded ? null : t.id); }} className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full text-gray-400"><span className="material-icons-outlined">{isExpanded ? 'expand_less' : 'expand_more'}</span></button>
+                                       <button onClick={(e) => { e.stopPropagation(); setExpandedCandidateId(isExpanded ? null : t.id); }} className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full text-gray-400">{isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}</button>
                                    </div>
                                    {isExpanded && t.transports && (
                                        <div className="border-t border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-black/20 p-4 space-y-2">

@@ -1,5 +1,6 @@
 
 import React, { ReactNode, useState, useEffect, useRef, forwardRef } from 'react';
+import { ChevronDown, X } from 'lucide-react';
 
 // --- Utils ---
 const cn = (...classes: (string | undefined | null | false)[]) => classes.filter(Boolean).join(' ');
@@ -41,7 +42,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(({ children, variant = 'primary', size = 'md', className, icon, isLoading, disabled, ...props }, ref) => {
   const variants = {
-    primary: "bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/20 border border-transparent dark:bg-blue-600 dark:hover:bg-blue-50 dark:shadow-blue-900/20",
+    primary: "bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/20 border border-transparent dark:bg-blue-600 dark:hover:bg-blue-50 dark:shadow-blue-900/20 hover:text-slate-800",
     secondary: "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 shadow-sm dark:bg-gray-800 dark:text-gray-200 dark:border-white/10 dark:hover:bg-gray-700",
     ghost: "bg-transparent text-gray-600 hover:bg-gray-100/50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white",
     danger: "bg-red-50 text-red-600 hover:bg-red-100 border border-red-100 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20 dark:hover:bg-red-500/20",
@@ -267,7 +268,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({ label, options, value,
         onClick={() => setIsOpen(!isOpen)}
       >
         <span className="truncate">{displayValue}</span>
-        <span className="material-icons-outlined text-xs text-gray-400">expand_more</span>
+        <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
       </button>
 
       {isOpen && (
@@ -336,7 +337,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
         <div className="px-6 py-5 border-b border-gray-100/50 dark:border-white/10 flex justify-between items-center bg-gray-50/50 dark:bg-white/5 shrink-0">
             <h3 className="text-lg font-bold text-gray-800 dark:text-white">{title}</h3>
             <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-200/50 dark:hover:bg-white/10 transition-colors text-gray-500 dark:text-gray-400">
-                <span className="material-icons-outlined text-lg">close</span>
+                <X className="w-5 h-5" />
             </button>
         </div>
         <div className="p-6 overflow-y-auto custom-scrollbar">

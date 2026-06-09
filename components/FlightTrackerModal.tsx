@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { AlertCircle } from 'lucide-react';
 import { Modal, Button, Input } from './ui';
 import { flightTracker } from '../services/flightTracker';
 import { FlightStatusResponse, Transport } from '../types';
@@ -165,7 +166,7 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
 
                 {error && (
                     <div className="p-6 text-center rounded-2xl bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-900/30">
-                        <span className="material-icons-outlined text-4xl text-rose-400 mb-2">error_outline</span>
+                        <AlertCircle className="w-10 h-10 text-rose-400 mx-auto mb-2" />
                         <p className="text-rose-600 dark:text-rose-300 font-bold">{error}</p>
                     </div>
                 )}

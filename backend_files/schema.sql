@@ -60,6 +60,14 @@ CREATE TABLE IF NOT EXISTS geocoding_cache (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Global Route-Flights Cache Table
+CREATE TABLE IF NOT EXISTS cached_routes (
+  id SERIAL PRIMARY KEY,
+  route_key VARCHAR(255) UNIQUE CHECK (route_key <> ''),
+  payload JSONB NOT NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- 4. Database Core Performance & Search GIN Indexes
 CREATE INDEX IF NOT EXISTS idx_trips_data ON trips USING gin (data);
 CREATE INDEX IF NOT EXISTS idx_users_data ON users USING gin (data);
@@ -86,3 +94,6 @@ CREATE INDEX IF NOT EXISTS idx_global_carriers_iata ON global_carriers (iata);
 
 -- 9. Geocode Cache Indexes
 CREATE INDEX IF NOT EXISTS idx_geocoding_cache_created_at ON geocoding_cache (created_at);
+
+-- 10. Route Cache Indexes
+CREATE INDEX IF NOT EXISTS idx_cached_routes_route_key ON cached_routes (route_key);

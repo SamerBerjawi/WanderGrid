@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
-  Search, Filter, Plus, Calendar, MapPin, Trash2, Edit2, Check, Square, CheckSquare, Edit3, ChevronRight, ChevronDown,
+  Search, Filter, Plus, Calendar, MapPin, Trash2, Edit2, Check, Square, CheckSquare, Edit3, ChevronRight, ChevronDown, ChevronUp, AlertCircle,
   ArrowRight, Plane, Landmark, Award, Clock, DollarSign, BarChart2, Briefcase, FileText, Compass, Heart, HelpCircle, RefreshCw, Upload, Download, Tag, UserCheck, Star, Sparkles, Grid, List,
   ArrowUpRight, ArrowDownLeft, FolderPlus, FolderMinus
 } from 'lucide-react';
@@ -526,7 +526,9 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
     if (!query || query.length < 2) return [];
     let apiResults: any[] = [];
     try {
-        const res = await fetch(`/api/airports/search?q=${encodeURIComponent(query)}`);
+        const token = localStorage.getItem('wandergrid_session_token');
+        const headers: Record<string, string> = token ? { 'Authorization': `Bearer ${token}` } : {};
+        const res = await fetch(`/api/airports/search?q=${encodeURIComponent(query)}`, { headers });
         if (res.ok) {
             apiResults = await res.json();
         }
@@ -560,7 +562,9 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
     if (!query || query.length < 1) return [];
     let apiResults: any[] = [];
     try {
-        const res = await fetch(`/api/carriers/search?q=${encodeURIComponent(query)}`);
+        const token = localStorage.getItem('wandergrid_session_token');
+        const headers: Record<string, string> = token ? { 'Authorization': `Bearer ${token}` } : {};
+        const res = await fetch(`/api/carriers/search?q=${encodeURIComponent(query)}`, { headers });
         if (res.ok) {
             apiResults = await res.json();
         }
@@ -616,9 +620,9 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
             setSearchedFlights([]);
             setRouteSearchError('No flights found on this route and date.');
         }
-    } catch (err) {
+    } catch (err: any) {
         console.error("Flight route search failed:", err);
-        setRouteSearchError('Search request failed. Please check your network or try again.');
+        setRouteSearchError(err.message || 'Search request failed. Please check your config/network and try again.');
     } finally {
         setIsRouteSearchingFlag(false);
     }
@@ -2301,10 +2305,6 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
       {/* Dynamic Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 relative">
         <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-zinc-805/60 border border-blue-100/50 dark:border-white/5">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-405">Aviation Headquarters</span>
-          </div>
           <h1 className="text-4xl md:text-5xl font-black text-zinc-900 dark:text-white tracking-tight flex items-center gap-3 mt-1.5">
             <span className="p-2.5 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white shadow-lg shadow-blue-500/20 inline-flex items-center justify-center">
               <Plane className="w-8 h-8 rotate-45 shrink-0" />
@@ -3803,8 +3803,8 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                 <div className="bg-slate-50 dark:bg-zinc-805/40 p-4 rounded-3xl border border-dashed border-slate-200 dark:border-white/10 shadow-inner">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div className="flex-1">
-                      <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                        <span className="material-icons text-blue-500 text-sm">local_airport</span>
+                      <h4 className="text-xs font-bold text-slate-800 dark:text-slate-500 flex items-center gap-2">
+                        <Plane className="w-4 h-4 text-blue-500 animate-pulse shrink-0" />
                         Find Flight Schedules
                       </h4>
                       <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
@@ -3824,7 +3824,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                         </>
                       ) : (
                         <>
-                          <span className="material-icons text-xs">search</span>
+                          <Search className="w-3.5 h-3.5 font-bold" />
                           Find Flights
                         </>
                       )}
@@ -3833,7 +3833,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
 
                   {routeSearchError && (
                     <div className="mt-3 p-3 bg-red-50 dark:bg-rose-950/20 text-red-600 dark:text-rose-400 text-[11px] font-semibold rounded-xl border border-red-100 dark:border-rose-950/30 flex items-center gap-2">
-                      <span className="material-icons text-base">error_outline</span>
+                      <AlertCircle className="w-4 h-4 text-red-500 dark:text-rose-400 shrink-0" />
                       {routeSearchError}
                     </div>
                   )}
@@ -3939,11 +3939,9 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                 <button
                   type="button"
                   onClick={() => setShowManualFields(!showManualFields)}
-                  className="px-3.5 py-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-100/50 dark:hover:bg-blue-900/20 active:scale-95 rounded-xl border border-blue-200/55 dark:border-blue-900/20 transition-all flex items-center gap-1 cursor-pointer shrink-0"
+                  className="px-3.5 py-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-100/50 dark:hover:bg-blue-900/20 active:scale-95 rounded-xl border border-blue-200/55 dark:border-blue-900/20 transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
                 >
-                  <span className="material-icons text-sm">
-                    {showManualFields ? "expand_less" : "expand_more"}
-                  </span>
+                  {showManualFields ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                   {showManualFields ? "Hide Options" : "Manual Entry"}
                 </button>
               </div>

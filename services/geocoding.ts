@@ -25,8 +25,16 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeoutMs);
     try {
+        const customHeaders: Record<string, string> = { ...(options.headers as any) };
+        if (url.startsWith('/api')) {
+            const token = typeof window !== 'undefined' ? localStorage.getItem('wandergrid_session_token') : null;
+            if (token && !customHeaders['Authorization']) {
+                customHeaders['Authorization'] = `Bearer ${token}`;
+            }
+        }
         const response = await fetch(url, {
             ...options,
+            headers: customHeaders,
             signal: controller.signal
         });
         clearTimeout(id);

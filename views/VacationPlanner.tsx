@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button, Badge, Input, Select, Modal } from '../components/ui';
 import { TripModal } from '../components/TripModal';
@@ -887,12 +888,10 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                                             }`}
                                             title={isCollapsed ? "Expand Year Record" : "Collapse Year Record"}
                                         >
-                                            <span 
-                                                className="material-icons-outlined text-lg transform transition-transform duration-300" 
+                                            <ChevronDown 
+                                                className="w-5 h-5 text-[#fa9a1d] transform transition-transform duration-300 pointer-events-none" 
                                                 style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}
-                                            >
-                                                expand_more
-                                            </span>
+                                            />
                                         </button>
                                         
                                         {/* Year Title Frame */}
