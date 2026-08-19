@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { ViewState, VisitedItem, Trip } from '../types';
 import { dataService } from '../services/mockDb';
 import { getFlagEmoji, getRegion } from '../services/geoData';
@@ -1097,38 +1098,39 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
 
       {/* Unified Register Visited Country / City Add & Edit Slide Tray Dialog */}
       <AnimatePresence>
-        {isModalOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+        {isModalOpen && createPortal(
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 font-sans" style={{ WebkitBackdropFilter: 'blur(4px)' }}>
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white dark:bg-zinc-900 border border-gray-100 dark:border-white/5 w-full max-w-lg rounded-[2.5rem] shadow-2xl relative overflow-hidden text-gray-900 dark:text-gray-100"
+              className="bg-light-card/90 dark:bg-dark-card/90 backdrop-blur-xl border border-black/10 dark:border-white/10 w-full max-w-lg rounded-3xl shadow-2xl relative overflow-hidden text-light-text dark:text-dark-text"
+              style={{ WebkitBackdropFilter: 'blur(24px)' }}
             >
-              <div className="p-8 border-b border-gray-100 dark:border-white/5 flex items-center justify-between">
+              <div className="p-6 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-primary-500/5 to-transparent">
                 <div>
-                  <span className="text-xs font-black uppercase text-indigo-500 tracking-wider">
+                  <span className="text-2xs font-bold uppercase tracking-wider bg-primary-500/10 text-primary-600 dark:text-primary-400 px-2 py-0.5 rounded-full border border-primary-500/20">
                     {editingItem ? 'Edit footprint record' : 'Add custom footprint'}
                   </span>
-                  <h3 className="text-2xl font-black mt-1">
+                  <h3 className="text-lg font-bold text-light-text dark:text-dark-text tracking-tight mt-1">
                     {modalType === 'country' ? 'Visited Country' : 'Visited City Hub'}
                   </h3>
                 </div>
                 <button 
                   onClick={() => setIsModalOpen(false)}
-                  className="p-2 bg-gray-50 hover:bg-gray-100 dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded-full transition-all"
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <form onSubmit={handleSaveItem} className="p-8 space-y-5">
+              <form onSubmit={handleSaveItem} className="p-6 space-y-5">
                 
                 {modalType === 'country' ? (
                   <>
                     <div className="grid grid-cols-3 gap-4">
                       <div className="col-span-1 select-none">
-                        <label className="text-[10px] font-bold uppercase text-gray-400 block mb-2">Country Code</label>
+                        <label className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block mb-1.5">Country Code</label>
                         <input 
                           type="text"
                           required
@@ -1136,39 +1138,39 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                           maxLength={2}
                           value={formCountryCode}
                           onChange={(e) => setFormCountryCode(e.target.value.toUpperCase())}
-                          className="w-full bg-white dark:bg-zinc-950 border border-gray-200 dark:border-white/10 rounded-2xl py-3 px-4 text-xs font-extrabold focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+                          className="w-full bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-2xl py-2.5 px-4 text-xs font-bold focus:outline-none focus:border-primary-500 text-light-text dark:text-dark-text transition-all"
                         />
                       </div>
                       <div className="col-span-2 select-none">
-                        <label className="text-[10px] font-bold uppercase text-gray-400 block mb-2">Full Country Name</label>
+                        <label className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block mb-1.5">Full Country Name</label>
                         <input 
                           type="text"
                           required
                           placeholder="e.g. United States"
                           value={formCountryName}
                           onChange={(e) => setFormCountryName(e.target.value)}
-                          className="w-full bg-white dark:bg-zinc-950 border border-gray-200 dark:border-white/10 rounded-2xl py-3 px-4 text-xs font-bold focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+                          className="w-full bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-2xl py-2.5 px-4 text-xs font-bold focus:outline-none focus:border-primary-500 text-light-text dark:text-dark-text transition-all"
                         />
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-white/5 rounded-2xl">
+                    <div className="flex items-center justify-between p-4 bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 rounded-2xl">
                       <div>
-                        <span className="text-xs font-bold block mb-0.5">Layover / Transit Only</span>
-                        <span className="text-[10px] text-gray-500">If checked, ignores this from standard visited lists and maps</span>
+                        <span className="text-xs font-bold text-light-text dark:text-dark-text block mb-0.5">Layover / Transit Only</span>
+                        <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary">If checked, ignores this from standard visited lists and maps</span>
                       </div>
                       <input 
                         type="checkbox"
                         checked={formIsTransit}
                         onChange={(e) => setFormIsTransit(e.target.checked)}
-                        className="w-5 h-5 rounded border-gray-200 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                        className="w-5 h-5 rounded border-black/10 dark:border-white/10 text-primary-500 focus:ring-primary-500 cursor-pointer"
                       />
                     </div>
                   </>
                 ) : (
                   <>
                     <div className="select-none">
-                      <label className="text-[10px] font-bold uppercase text-gray-400 block mb-2">City Name</label>
+                      <label className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block mb-1.5">City Name</label>
                       <input 
                         type="text"
                         required
@@ -1178,14 +1180,14 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                           setFormCityName(e.target.value);
                         }}
                         onBlur={() => handleResolveCoordsForCity(formCityName)}
-                        className="w-full bg-white dark:bg-zinc-950 border border-gray-200 dark:border-white/10 rounded-2xl py-3 px-4 text-xs font-bold focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+                        className="w-full bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-2xl py-2.5 px-4 text-xs font-bold focus:outline-none focus:border-primary-500 text-light-text dark:text-dark-text transition-all"
                       />
-                      <p className="text-[10px] text-gray-400 mt-1">Leaves field to auto-geocode coordinates</p>
+                      <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary mt-1">Leaves field to auto-geocode coordinates</p>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="select-none">
-                        <label className="text-[10px] font-bold uppercase text-gray-400 block mb-2">Parent Country Code</label>
+                        <label className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block mb-1.5">Parent Country Code</label>
                         <input 
                           type="text"
                           required
@@ -1193,43 +1195,43 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                           maxLength={2}
                           value={formCountryCode}
                           onChange={(e) => setFormCountryCode(e.target.value.toUpperCase())}
-                          className="w-full bg-white dark:bg-zinc-950 border border-gray-200 dark:border-white/10 rounded-2xl py-3 px-4 text-xs font-extrabold focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+                          className="w-full bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-2xl py-2.5 px-4 text-xs font-bold focus:outline-none focus:border-primary-500 text-light-text dark:text-dark-text transition-all"
                         />
                       </div>
                       <div className="select-none">
-                        <label className="text-[10px] font-bold uppercase text-gray-400 block mb-2">Country Name</label>
+                        <label className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block mb-1.5">Country Name</label>
                         <input 
                           type="text"
                           required
                           placeholder="e.g. France"
                           value={formCountryName}
                           onChange={(e) => setFormCountryName(e.target.value)}
-                          className="w-full bg-white dark:bg-zinc-950 border border-gray-200 dark:border-white/10 rounded-2xl py-3 px-4 text-xs font-bold focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+                          className="w-full bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-2xl py-2.5 px-4 text-xs font-bold focus:outline-none focus:border-primary-500 text-light-text dark:text-dark-text transition-all"
                         />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="select-none">
-                        <label className="text-[10px] font-bold uppercase text-gray-400 block mb-2">Latitude (Degree)</label>
+                        <label className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block mb-1.5">Latitude (Degree)</label>
                         <input 
                           type="text"
                           required
                           placeholder="e.g. 48.8566"
                           value={formLat}
                           onChange={(e) => setFormLat(e.target.value)}
-                          className="w-full bg-white dark:bg-zinc-950 border border-gray-200 dark:border-white/10 rounded-2xl py-3 px-4 text-xs font-mono focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+                          className="w-full bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-2xl py-2.5 px-4 text-xs font-mono font-bold focus:outline-none focus:border-primary-500 text-light-text dark:text-dark-text transition-all"
                         />
                       </div>
                       <div className="select-none">
-                        <label className="text-[10px] font-bold uppercase text-gray-400 block mb-2">Longitude (Degree)</label>
+                        <label className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block mb-1.5">Longitude (Degree)</label>
                         <input 
                           type="text"
                           required
                           placeholder="e.g. 2.3522"
                           value={formLng}
                           onChange={(e) => setFormLng(e.target.value)}
-                          className="w-full bg-white dark:bg-zinc-950 border border-gray-200 dark:border-white/10 rounded-2xl py-3 px-4 text-xs font-mono focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+                          className="w-full bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-2xl py-2.5 px-4 text-xs font-mono font-bold focus:outline-none focus:border-primary-500 text-light-text dark:text-dark-text transition-all"
                         />
                       </div>
                     </div>
@@ -1238,39 +1240,40 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
 
                 <div className="grid grid-cols-1 gap-4">
                   <div className="select-none">
-                    <label className="text-[10px] font-bold uppercase text-gray-400 block mb-2">Visit Date (YYYY-MM-DD)</label>
+                    <label className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block mb-1.5">Visit Date (YYYY-MM-DD)</label>
                     <input 
                       type="date"
                       value={formVisitDate}
                       onChange={(e) => setFormVisitDate(e.target.value)}
-                      className="w-full bg-white dark:bg-zinc-950 border border-gray-200 dark:border-white/10 rounded-2xl py-3 px-4 text-xs font-bold focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+                      className="w-full bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-2xl py-2.5 px-4 text-xs font-bold focus:outline-none focus:border-primary-500 text-light-text dark:text-dark-text transition-all"
                     />
                   </div>
                   
                   <div className="select-none">
-                    <label className="text-[10px] font-bold uppercase text-gray-400 block mb-2">Optional Notes</label>
+                    <label className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block mb-1.5">Optional Notes</label>
                     <textarea 
                       placeholder="e.g. Wonderful local bistros, beautiful culture..."
                       rows={2}
                       value={formNotes}
                       onChange={(e) => setFormNotes(e.target.value)}
-                      className="w-full bg-white dark:bg-zinc-950 border border-gray-200 dark:border-white/10 rounded-2xl py-3 px-4 text-xs font-medium focus:ring-2 focus:ring-indigo-500 transition-all outline-none resize-none"
+                      className="w-full bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-2xl py-2.5 px-4 text-xs font-medium focus:outline-none focus:border-primary-500 text-light-text dark:text-dark-text transition-all resize-none"
                     />
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-gray-100 dark:border-white/5 flex gap-3">
+                <div className="pt-4 border-t border-black/5 dark:border-white/5 flex gap-3">
                   <Button 
                     type="button" 
-                    variant="outline" 
+                    variant="secondary" 
                     onClick={() => setIsModalOpen(false)}
-                    className="flex-1 rounded-2xl text-xs font-bold"
+                    className="flex-1 text-xs"
                   >
                     Cancel
                   </Button>
                   <Button 
                     type="submit" 
-                    className="flex-1 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow"
+                    variant="primary"
+                    className="flex-1 text-xs"
                   >
                     {editingItem ? 'Save Record' : 'Register to Atlas'}
                   </Button>
@@ -1278,7 +1281,8 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
 
               </form>
             </motion.div>
-          </div>
+          </div>,
+          document.body
         )}
       </AnimatePresence>
 

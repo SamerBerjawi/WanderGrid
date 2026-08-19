@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, RotateCcw, Map as MapIcon, Plane, Layers, Compass, Sparkles } from 'lucide-react';
 import { MapAppearanceSettings, DEFAULT_MAP_APPEARANCE } from '../types/mapAppearance';
 
@@ -48,34 +49,39 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                 ...settings,
                 projection: 'globe',
                 basemap: 'satellite',
-                airportDetail: 'standard',
-                routeColorMode: 'default',
-                routeScale: 'thick',
-                timeOfDay: false,
-                rainRadar: true
+                airportDetail: 'minimal',
+                routeColorMode: 'single',
+                routeScale: 'normal',
+                timeOfDay: true,
+                rainRadar: false
             });
-        } else {
+        } else if (preset === 'minimal') {
             onChangeSettings({
                 ...settings,
-                projection: 'flat',
+                projection: '2d',
                 basemap: 'default',
-                airportDetail: 'standard',
-                routeColorMode: 'default',
-                routeScale: 'thin',
+                airportDetail: 'none',
+                routeColorMode: 'single',
+                routeScale: 'slim',
                 timeOfDay: false,
                 rainRadar: false
             });
         }
     };
 
-    return (
+    return createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 font-sans select-none">
             {/* Frosted Backdrop */}
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={onClose} />
+            <div 
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
+                style={{ WebkitBackdropFilter: 'blur(4px)' }}
+                onClick={onClose} 
+            />
 
             {/* Modal Dialog */}
             <div 
-                className="relative w-full max-w-lg bg-light-card dark:bg-dark-card border border-black/10 dark:border-white/10 shadow-2xl rounded-3xl overflow-hidden flex flex-col max-h-[88vh] z-10"
+                className="relative w-full max-w-lg bg-light-card/90 dark:bg-dark-card/90 backdrop-blur-xl border border-black/10 dark:border-white/10 shadow-2xl rounded-3xl overflow-hidden flex flex-col max-h-[88vh] z-10"
+                style={{ WebkitBackdropFilter: 'blur(24px)' }}
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header with WanderGrid Studio Brand */}
@@ -533,6 +539,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                     )}
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };

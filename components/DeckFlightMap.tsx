@@ -388,6 +388,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         return [
             new MapView({
                 id: 'map',
+                repeat: true,
                 controller: {
                     ...controllerConfig,
                     dragRotate: false
@@ -956,11 +957,13 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     filled: true,
                     stroked: false,
                     wrapLongitude: true,
-                    getFillColor: (f: any) => {
-                        const idx = f.properties?.stepIndex ?? 0;
-                        // Smooth progressive alpha shading without any vertical seam cuts
-                        const alpha = Math.min(55, 14 + idx * 4.2);
-                        return [2, 6, 23, alpha];
+                    getFillColor: () => {
+                        const isSatellite = activeAppearance.basemap === 'satellite';
+                        const baseAlpha = isSatellite ? 26 : (isDark ? 16 : 22);
+                        return [5, 8, 18, baseAlpha];
+                    },
+                    updateTriggers: {
+                        getFillColor: [isDark, activeAppearance.basemap]
                     },
                     pickable: false,
                     parameters: {
@@ -1020,6 +1023,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     widthMinPixels: 2.0,
                     widthMaxPixels: 60,
                     capRounded: false,
+                    wrapLongitude: true,
                     pickable: false
                 })
             );
@@ -1036,6 +1040,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         widthUnits: 'meters',
                         widthMinPixels: 1.2,
                         widthMaxPixels: 15,
+                        wrapLongitude: true,
                         pickable: false
                     })
                 );
@@ -1052,6 +1057,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     widthUnits: 'meters',
                     widthMinPixels: 1.0,
                     widthMaxPixels: 5,
+                    wrapLongitude: true,
                     pickable: false
                 })
             );
@@ -1068,6 +1074,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         widthUnits: 'meters',
                         widthMinPixels: 1.0,
                         widthMaxPixels: 8,
+                        wrapLongitude: true,
                         pickable: false
                     })
                 );
@@ -1082,6 +1089,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     data: geoJsonData,
                     filled: true,
                     stroked: true,
+                    wrapLongitude: true,
                     getLineColor: isDark ? [65, 75, 95, 180] : [200, 205, 215, 200],
                     getLineWidth: 1,
                     lineWidthUnits: 'pixels',
@@ -1122,6 +1130,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     stroked: true,
                     lineWidthUnits: 'pixels',
                     getLineWidth: 1.5,
+                    wrapLongitude: true,
                     pickable: true,
                     onHover: (info: any) => info.object && setHoverInfo(info)
                 })
@@ -1159,6 +1168,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     widthMaxPixels: 6,
                     capRounded: true,
                     jointRounded: true,
+                    wrapLongitude: true,
                     pickable: false,
                     parameters: { depthTest: true },
                     updateTriggers: {
@@ -1200,6 +1210,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     widthMaxPixels: 6.0,
                     capRounded: true,
                     jointRounded: true,
+                    wrapLongitude: true,
                     pickable: false,
                     parameters: { depthTest: true },
                     updateTriggers: {
@@ -1233,6 +1244,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     widthMinPixels: 2.2,
                     capRounded: true,
                     jointRounded: true,
+                    wrapLongitude: true,
                     parameters: { depthTest: true }
                 })
             );
@@ -1251,6 +1263,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     widthMinPixels: 14,
                     capRounded: true,
                     jointRounded: true,
+                    wrapLongitude: true,
                     pickable: true,
                     onHover: (info: any) => {
                         if (info.object) {
@@ -1283,6 +1296,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         getFillColor: (d: any) => d.haloColor,
                         getRadius: (d: any) => d.radius * 1.5,
                         radiusUnits: 'pixels',
+                        wrapLongitude: true,
                         pickable: false
                     })
                 );
@@ -1298,6 +1312,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         stroked: true,
                         lineWidthUnits: 'pixels',
                         getLineWidth: 1.5,
+                        wrapLongitude: true,
                         pickable: true,
                         onHover: (info: any) => info.object && setHoverInfo(info),
                         onClick: (info: any) => info.object?.tripId && onTripClick && onTripClick(info.object.tripId)
@@ -1314,6 +1329,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         getTextAnchor: 'middle',
                         getAlignmentBaseline: 'center',
                         fontWeight: 'bold',
+                        wrapLongitude: true,
                         pickable: false
                     })
                 );
@@ -1358,6 +1374,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         stroked: true,
                         lineWidthUnits: 'pixels',
                         getLineWidth: 1.2,
+                        wrapLongitude: true,
                         pickable: true,
                         autoHighlight: true,
                         highlightColor: [255, 255, 255, 255],
