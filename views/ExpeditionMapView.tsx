@@ -16,12 +16,11 @@ import {
     Sliders,
     Zap,
     Map as MapIcon,
+    Plane,
     Info,
     Grid,
     SlidersHorizontal as ControlsIcon
 } from 'lucide-react';
-const ExpeditionMap = lazy(() => import('../components/ExpeditionMap').then(m => ({ default: m.ExpeditionMap })));
-const ExpeditionMap3D = lazy(() => import('../components/ExpeditionMap3D').then(m => ({ default: m.ExpeditionMap3D })));
 const DeckFlightMap = lazy(() => import('../components/DeckFlightMap').then(m => ({ default: m.DeckFlightMap || m.default })));
 import { dataService } from '../services/mockDb';
 import { Trip } from '../types';
@@ -86,7 +85,7 @@ const getGreatCircleDistance = (lat1: number, lng1: number, lat2: number, lng2: 
 };
 
 export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClick }) => {
-    const [mapType, setMapType] = useState<'GPU' | '2D' | '3D'>('GPU');
+    const [projectionMode, setProjectionMode] = useState<'flat' | 'globe' | 'elevated'>('elevated');
     const [viewMode, setViewMode] = useState<'network' | 'scratch'>('network');
     const [trips, setTrips] = useState<Trip[]>([]);
     const [loading, setLoading] = useState(true);
@@ -750,28 +749,28 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                     <div className="lg:col-span-4 flex flex-col gap-2.5">
                                         <p className="text-[9px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest leading-none">Projection Control</p>
                                         <div className="grid grid-cols-1 gap-2">
-                                            {/* GPU / 3D / 2D Engine Selector */}
+                                            {/* Flat Map / 3D Globe / 3D Elevated Projection Selector */}
                                             <div className="flex p-0.5 bg-zinc-200/50 dark:bg-zinc-950/60 rounded-xl border border-white/30 dark:border-white/5 w-full justify-between">
                                                 {[
-                                                    { id: 'GPU', label: 'GPU (Deck.gl)', icon: Zap },
-                                                    { id: '3D', label: '3D Globe', icon: Globe },
-                                                    { id: '2D', label: 'Classic', icon: MapIcon }
-                                                ].map((eng) => {
-                                                    const IconComponent = eng.icon;
-                                                    const isSelected = mapType === eng.id;
+                                                    { id: 'flat', label: 'Flat Map', icon: MapIcon },
+                                                    { id: 'globe', label: '3D Globe', icon: Globe },
+                                                    { id: 'elevated', label: '3D Elevated', icon: Plane }
+                                                ].map((proj) => {
+                                                    const IconComponent = proj.icon;
+                                                    const isSelected = projectionMode === proj.id;
                                                     return (
                                                         <button
-                                                            key={eng.id}
-                                                            onClick={() => setMapType(eng.id as any)}
+                                                            key={proj.id}
+                                                            onClick={() => setProjectionMode(proj.id as any)}
                                                             className={`px-2 py-1.5 rounded-lg text-[9.5px] font-black uppercase tracking-wider transition-all flex-1 flex items-center justify-center gap-1 cursor-pointer ${
                                                                 isSelected 
                                                                 ? 'bg-blue-600 text-white shadow-md font-black border border-blue-400/30' 
                                                                 : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
                                                             }`}
-                                                            title={`Switch to ${eng.label}`}
+                                                            title={`Switch to ${proj.label}`}
                                                         >
                                                             <IconComponent className="w-3 h-3" />
-                                                            <span>{eng.label}</span>
+                                                            <span>{proj.label}</span>
                                                         </button>
                                                     );
                                                 })}
@@ -1050,77 +1049,30 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 font-mono">Booting Real-Time Vector Engine...</p>
                         </div>
                     }>
-                        {mapType === 'GPU' ? (
-                            <DeckFlightMap
-                                key={`gpu-${isDark ? 'dark' : 'light'}`}
-                                trips={filteredTrips}
-                                onTripClick={onTripClick}
-                                showFrequencyWeight={showFrequencyWeight}
-                                animateRoutes={animateRoutes}
-                                visitedCountries={visitedCountryCodes}
-                                showCountries={showCountries}
-                                viewMode={viewMode}
-                                visitedPlaces={visitedPlaces}
-                                activeLayer={activeLayer}
-                                showFlightRoutes={showIndependentFlights}
-                                showLandSeaRoutes={showLandSeaRoutes}
-                                showCityMarkers={showCityMarkers}
-                                showGradientRoutes={true}
-                                clusterMode={clusterMode}
-                                showRoadTracing={showRoadTracing}
-                                focusTransportCoordinates={focusCoord}
-                            />
-                        ) : mapType === '2D' ? (
-                            <ExpeditionMap 
-                                key={`2d-${isDark ? 'dark' : 'light'}`}
-                                trips={filteredTrips} 
-                                onTripClick={onTripClick} 
-                                showFrequencyWeight={showFrequencyWeight}
-                                animateRoutes={animateRoutes}
-                                visitedCountries={visitedCountryCodes}
-                                showCountries={showCountries}
-                                viewMode={viewMode}
-                                visitedPlaces={visitedPlaces}
-                                activeLayer={activeLayer}
-                                onChangeActiveLayer={setActiveLayer}
-                                clusterMode={clusterMode}
-                                onToggleClusterMode={setClusterMode}
-                                showLandSeaRoutes={showLandSeaRoutes}
-                                onToggleLandSeaRoutes={setShowLandSeaRoutes}
-                                showFlightRoutes={showIndependentFlights}
-                                showCityMarkers={showCityMarkers}
-                                onToggleCityMarkers={setShowCityMarkers}
-                                hideAirportCircles={hideAirportCircles}
-                                airportCircleSize={airportCircleSize}
-                                proportionalArcThickness={proportionalArcThickness}
-                                showAviationCharts={showAviationCharts}
-                                focusTransportCoordinates={focusCoord}
-                                screenshotTrigger={screenshotTrigger}
-                                onScreenshotStarted={() => setIsScreenshotting(true)}
-                                onScreenshotCompleted={() => setIsScreenshotting(false)}
-                                showRoadTracing={showRoadTracing}
-                                onToggleRoadTracing={setShowRoadTracing}
-                            />
-                        ) : (
-                            <ExpeditionMap3D
-                                key={`3d-${isDark ? 'dark' : 'light'}`}
-                                trips={filteredTrips}
-                                onTripClick={onTripClick}
-                                animateRoutes={animateRoutes}
-                                showFrequencyWeight={showFrequencyWeight}
-                                activeLayer={activeLayer === 'topography' ? 'night' : (activeLayer === 'standard' ? 'standard' : 'satellite')}
-                                onActiveLayerChange={(layer: 'standard' | 'night' | 'satellite') => {
-                                    if (layer === 'night') {
-                                        setActiveLayer('topography');
-                                    } else {
-                                        setActiveLayer(layer);
-                                    }
-                                }}
-                                focusTransportCoordinates={focusCoord}
-                                showFlightRoutes={showIndependentFlights}
-                                showLandSeaRoutes={showLandSeaRoutes}
-                            />
-                        )}
+                        <DeckFlightMap
+                            key={`gpu-${isDark ? 'dark' : 'light'}`}
+                            trips={filteredTrips}
+                            onTripClick={onTripClick}
+                            showFrequencyWeight={showFrequencyWeight}
+                            animateRoutes={animateRoutes}
+                            visitedCountries={visitedCountryCodes}
+                            showCountries={showCountries}
+                            viewMode={viewMode}
+                            visitedPlaces={visitedPlaces}
+                            activeLayer={activeLayer}
+                            onChangeActiveLayer={setActiveLayer}
+                            projection={projectionMode === 'flat' ? 'flat' : 'globe'}
+                            elevatedRoutes={projectionMode === 'elevated'}
+                            onProjectionChange={(p) => setProjectionMode(p === 'flat' ? 'flat' : (projectionMode === 'elevated' ? 'elevated' : 'globe'))}
+                            onElevatedRoutesChange={(el) => setProjectionMode(el ? 'elevated' : 'globe')}
+                            showFlightRoutes={showIndependentFlights}
+                            showLandSeaRoutes={showLandSeaRoutes}
+                            showCityMarkers={showCityMarkers}
+                            showGradientRoutes={true}
+                            clusterMode={clusterMode}
+                            showRoadTracing={showRoadTracing}
+                            focusTransportCoordinates={focusCoord}
+                        />
                     </Suspense>
                     
                     {trips.length === 0 && (

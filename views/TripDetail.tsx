@@ -13,8 +13,7 @@ import { calendarService } from '../services/calendarExport';
 import { Trip, User, Transport, Accommodation, WorkspaceSettings, Activity, TransportMode, LocationEntry, EntitlementType, PublicHoliday, SavedConfig, PackingItem, Carrier } from '../types';
 import { searchLocations, resolvePlaceName, getCoordinates } from '../services/geocoding';
 import { GoogleGenAI } from "@google/genai";
-const ExpeditionMap = React.lazy(() => import('../components/ExpeditionMap').then(m => ({ default: m.ExpeditionMap })));
-const ExpeditionMap3D = React.lazy(() => import('../components/ExpeditionMap3D').then(m => ({ default: m.ExpeditionMap3D })));
+const DeckFlightMap = React.lazy(() => import('../components/DeckFlightMap').then(m => ({ default: m.DeckFlightMap || m.default })));
 import { FlightImportWizard } from '../components/FlightImportWizard';
 import { getMerchantLogoUrl } from '../utils/brandfetch';
 
@@ -1318,7 +1317,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                 <span className="text-[9px] font-bold uppercase tracking-wider">Rasterizing Route Vector...</span>
                             </div>
                         }>
-                            <ExpeditionMap 
+                            <DeckFlightMap 
                                 trips={[trip]} 
                                 animateRoutes={true} 
                                 showFrequencyWeight={true}
@@ -2097,11 +2096,12 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                             <span className="text-[10px] font-black uppercase tracking-[0.2em]">Engaging Cinematic Orbit Simulation...</span>
                         </div>
                     }>
-                        <ExpeditionMap3D 
+                        <DeckFlightMap 
                             trips={[trip]} 
                             animateRoutes={true} 
                             showFrequencyWeight={true}
-                            autoPlay={true}
+                            initialProjection="globe"
+                            initialElevated={true}
                         />
                     </Suspense>
                 </div>

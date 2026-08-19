@@ -13,7 +13,7 @@ import L from 'leaflet';
 import { getCoordinates, getCoordinatesSync, searchLocations } from '../services/geocoding';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
-const ExpeditionMap = lazy(() => import('../components/ExpeditionMap').then(m => ({ default: m.ExpeditionMap })));
+const DeckFlightMap = lazy(() => import('../components/DeckFlightMap').then(m => ({ default: m.DeckFlightMap || m.default })));
 
 const useDarkMode = () => {
   const [isDark, setIsDark] = useState(document.documentElement.classList.contains('dark'));
@@ -886,11 +886,12 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Booting Real-Time Vector Engine...</p>
                   </div>
                 }>
-                  <ExpeditionMap
+                  <DeckFlightMap
                     trips={trips}
                     showFlightRoutes={false}
                     showLandSeaRoutes={true}
                     showCityMarkers={true}
+                    showRoadTracing={true}
                     activeLayer={'standard'}
                     clusterMode={false}
                   />

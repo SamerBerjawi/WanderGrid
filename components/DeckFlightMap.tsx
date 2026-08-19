@@ -30,7 +30,7 @@ const getGeoGradientRGB = (lat: number, lng: number): [number, number, number] =
         const dLng = lng - pole.lng;
         const distSq = dLat * dLat + dLng * dLng;
         const weight = 1 / Math.pow(distSq + 800, 1.5);
-        
+
         totalWeight += weight;
         r += pole.color[0] * weight;
         g += pole.color[1] * weight;
@@ -51,7 +51,7 @@ const getFeatureCentroid = (feature: any): { lat: number; lng: number } => {
     try {
         const geom = feature.geometry;
         if (!geom) return { lat: 20, lng: 0 };
-        
+
         let sumLat = 0, sumLng = 0, count = 0;
         const extractCoords = (coords: any) => {
             if (typeof coords[0] === 'number' && typeof coords[1] === 'number') {
@@ -103,10 +103,10 @@ const fetchOsrmGeometry = async (startLat: number, startLng: number, endLat: num
 const curvePointsCache = new Map<string, [number, number, number][]>();
 
 const getGeodesicPoints = (
-    startLat: number, 
-    startLng: number, 
-    endLat: number, 
-    endLng: number, 
+    startLat: number,
+    startLng: number,
+    endLat: number,
+    endLng: number,
     elevated: boolean = false,
     isGlobe: boolean = false
 ): [number, number, number][] => {
@@ -227,6 +227,8 @@ const useDarkMode = () => {
     return isDark;
 };
 
+export type DeckLayerType = 'standard' | 'night' | 'satellite' | 'topography' | 'hillshade' | 'physical' | 'ocean';
+
 export interface DeckFlightMapProps {
     trips: Trip[];
     onTripClick?: (tripId: string) => void;
@@ -236,7 +238,8 @@ export interface DeckFlightMapProps {
     showCountries?: boolean;
     viewMode?: 'network' | 'scratch';
     visitedPlaces?: { lat: number; lng: number; name: string }[];
-    activeLayer?: 'standard' | 'satellite' | 'topography' | 'hillshade' | 'night';
+    activeLayer?: DeckLayerType | string;
+    onChangeActiveLayer?: (layer: DeckLayerType) => void;
     showFlightRoutes?: boolean;
     showLandSeaRoutes?: boolean;
     showCityMarkers?: boolean;
@@ -244,6 +247,10 @@ export interface DeckFlightMapProps {
     clusterMode?: boolean;
     showRoadTracing?: boolean;
     focusTransportCoordinates?: { lat: number; lng: number } | null;
+    projection?: 'flat' | 'globe';
+    elevatedRoutes?: boolean;
+    onProjectionChange?: (projection: 'flat' | 'globe') => void;
+    onElevatedRoutesChange?: (elevated: boolean) => void;
     initialProjection?: 'flat' | 'globe';
     initialElevated?: boolean;
 }
@@ -258,6 +265,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     viewMode = 'network',
     visitedPlaces = [],
     activeLayer: activeLayerProp = 'standard',
+    onChangeActiveLayer,
     showFlightRoutes = true,
     showLandSeaRoutes = true,
     showCityMarkers = true,
@@ -265,15 +273,35 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     clusterMode = false,
     showRoadTracing = false,
     focusTransportCoordinates,
+    projection: projectionProp,
+    elevatedRoutes: elevatedRoutesProp,
+    onProjectionChange,
+    onElevatedRoutesChange,
     initialProjection = 'flat',
     initialElevated = false
 }) => {
     const isDark = useDarkMode();
-    const [localLayer, setLocalLayer] = useState<'standard' | 'satellite' | 'topography' | 'night'>(activeLayerProp as any);
-    const [projection, setProjection] = useState<'flat' | 'globe'>(initialProjection);
-    const [elevatedRoutes, setElevatedRoutes] = useState<boolean>(initialElevated);
+    const [localLayer, setLocalLayer] = useState<DeckLayerType>((activeLayerProp as DeckLayerType) || 'standard');
+    const [localProjection, setLocalProjection] = useState<'flat' | 'globe'>(projectionProp || initialProjection);
+    const [localElevatedRoutes, setLocalElevatedRoutes] = useState<boolean>(elevatedRoutesProp !== undefined ? elevatedRoutesProp : initialElevated);
     const [hoveredRouteKey, setHoveredRouteKey] = useState<string | null>(null);
     const [, setOsrmVersion] = useState(0);
+
+    // Synchronize controlled projection and elevation props
+    useEffect(() => {
+        if (projectionProp !== undefined) {
+            setLocalProjection(projectionProp);
+        }
+    }, [projectionProp]);
+
+    useEffect(() => {
+        if (elevatedRoutesProp !== undefined) {
+            setLocalElevatedRoutes(elevatedRoutesProp);
+        }
+    }, [elevatedRoutesProp]);
+
+    const projection = projectionProp !== undefined ? projectionProp : localProjection;
+    const elevatedRoutes = elevatedRoutesProp !== undefined ? elevatedRoutesProp : localElevatedRoutes;
 
     // Animation timer for Comet Flow TripsLayer (60 FPS)
     const [animTime, setAnimTime] = useState(0);
@@ -291,17 +319,27 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         return () => cancelAnimationFrame(animationFrame);
     }, [animateRoutes]);
 
+    // Synchronize prop changes to localLayer state
     useEffect(() => {
-        if (activeLayerProp) setLocalLayer(activeLayerProp as any);
+        if (activeLayerProp) {
+            setLocalLayer(activeLayerProp as DeckLayerType);
+        }
     }, [activeLayerProp]);
 
-    const currentLayer = activeLayerProp || localLayer;
+    const currentLayer = localLayer;
+
+    const handleSelectLayer = (layerId: DeckLayerType) => {
+        setLocalLayer(layerId);
+        if (onChangeActiveLayer) {
+            onChangeActiveLayer(layerId);
+        }
+    };
 
     // View state supporting both Flat Mercator and 3D Globe
     const [viewState, setViewState] = useState({
         longitude: 15,
         latitude: 35,
-        zoom: initialProjection === 'globe' ? 0.8 : 2.2,
+        zoom: (projectionProp || initialProjection) === 'globe' ? 0.8 : 2.2,
         pitch: 0,
         bearing: 0,
         maxZoom: 18,
@@ -311,7 +349,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     // Handle projection toggle
     const handleToggleProjection = () => {
         const nextProjection = projection === 'flat' ? 'globe' : 'flat';
-        setProjection(nextProjection);
+        setLocalProjection(nextProjection);
+        if (onProjectionChange) onProjectionChange(nextProjection);
         setViewState(prev => ({
             ...prev,
             zoom: nextProjection === 'globe' ? Math.min(prev.zoom, 1.2) : Math.max(prev.zoom, 2.0),
@@ -320,12 +359,18 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         }));
     };
 
+    const handleToggleElevated = () => {
+        const nextElevated = !elevatedRoutes;
+        setLocalElevatedRoutes(nextElevated);
+        if (onElevatedRoutesChange) onElevatedRoutesChange(nextElevated);
+    };
+
     // Configure Deck.gl Views (MapView vs _GlobeView)
     const views = useMemo(() => {
         if (projection === 'globe') {
             return [
-                new _GlobeView({ 
-                    id: 'globe', 
+                new _GlobeView({
+                    id: 'globe',
                     controller: {
                         dragPan: true,
                         dragRotate: true,
@@ -342,16 +387,16 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             ];
         }
         return [
-            new MapView({ 
-                id: 'map', 
-                controller: { 
+            new MapView({
+                id: 'map',
+                controller: {
                     dragPan: true,
                     scrollZoom: { speed: 0.015, smooth: true },
-                    doubleClickZoom: true, 
+                    doubleClickZoom: true,
                     touchZoom: true,
                     dragRotate: false,
                     inertia: 350
-                } 
+                }
             })
         ];
     }, [projection]);
@@ -453,18 +498,27 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         }
     }, [enrichedTrips, projection]);
 
-    // Basemap Tile URL
+    // Hardware-Accelerated Basemap Tile URLs
     const tileUrl = useMemo(() => {
-        if (currentLayer === 'satellite') {
-            return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+        switch (currentLayer) {
+            case 'satellite':
+                return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+            case 'topography':
+                return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}';
+            case 'hillshade':
+                return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Shaded_Relief/MapServer/tile/{z}/{y}/{x}';
+            case 'physical':
+                return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}';
+            case 'ocean':
+                return 'https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}';
+            case 'night':
+                return 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png';
+            case 'standard':
+            default:
+                return isDark
+                    ? 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png'
+                    : 'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png';
         }
-        if (currentLayer === 'topography') {
-            return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}';
-        }
-        if (isDark || currentLayer === 'night') {
-            return 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png';
-        }
-        return 'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png';
     }, [currentLayer, isDark]);
 
     // Build Multi-Segment Gradient Routes, Wide Hit-Test Paths, Comet Trips & Airport Hubs
@@ -551,7 +605,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 // Comet Flow Trips payload (timed 0 to 1800ms)
                 if (animateRoutes && fullPath.length > 1) {
                     const timestamps = fullPath.map((_, idx) => (idx / (fullPath.length - 1)) * 1800);
-                    const cometColor = isFlight 
+                    const cometColor = isFlight
                         ? (showGradientRoutes ? getGeoGradientRGB(t.destLat, t.destLng) : fallbackRGB)
                         : modeRGB;
 
@@ -991,19 +1045,21 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             <div className="absolute top-6 left-6 flex flex-col gap-2 z-20">
                 <div className="flex flex-col rounded-2xl border border-white/10 dark:border-white/10 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl shadow-2xl overflow-hidden">
                     {[
-                        { id: 'standard', label: 'Standard', icon: 'public' },
+                        { id: 'standard', label: 'Standard Light', icon: 'public' },
                         { id: 'night', label: 'Dark Mode', icon: 'nights_stay' },
-                        { id: 'satellite', label: 'Satellite', icon: 'satellite_alt' },
-                        { id: 'topography', label: 'Topography', icon: 'terrain' }
+                        { id: 'satellite', label: 'Satellite Imagery', icon: 'satellite_alt' },
+                        { id: 'topography', label: 'World Topography', icon: 'terrain' },
+                        { id: 'hillshade', label: 'Shaded Relief / Hillshade', icon: 'landscape' },
+                        { id: 'physical', label: 'Physical & Landcover', icon: 'nature' },
+                        { id: 'ocean', label: 'Ocean & Bathymetry', icon: 'water' }
                     ].map(layer => (
                         <button
                             key={layer.id}
-                            onClick={() => setLocalLayer(layer.id as any)}
-                            className={`w-10 h-10 flex items-center justify-center transition-all border-b last:border-0 border-zinc-200/50 dark:border-white/5 cursor-pointer ${
-                                currentLayer === layer.id
+                            onClick={() => handleSelectLayer(layer.id as any)}
+                            className={`w-10 h-10 flex items-center justify-center transition-all border-b last:border-0 border-zinc-200/50 dark:border-white/5 cursor-pointer ${currentLayer === layer.id
                                     ? 'text-blue-500 bg-blue-500/15 font-black'
                                     : 'text-zinc-500 dark:text-zinc-400 hover:bg-black/5 dark:hover:bg-white/10'
-                            }`}
+                                }`}
                             title={layer.label}
                         >
                             <span className="material-icons-outlined text-lg">{layer.icon}</span>
@@ -1018,11 +1074,10 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 {projection === 'globe' && (
                     <button
                         onClick={() => setElevatedRoutes(!elevatedRoutes)}
-                        className={`px-3.5 py-2.5 rounded-2xl shadow-2xl backdrop-blur-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 cursor-pointer transition-all active:scale-95 border ${
-                            elevatedRoutes
+                        className={`px-3.5 py-2.5 rounded-2xl shadow-2xl backdrop-blur-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 cursor-pointer transition-all active:scale-95 border ${elevatedRoutes
                                 ? 'bg-indigo-600 text-white border-indigo-400/40 shadow-indigo-500/20'
                                 : 'bg-white/85 dark:bg-zinc-950/85 hover:bg-white dark:hover:bg-zinc-900 text-zinc-750 dark:text-zinc-300 border-zinc-200/70 dark:border-white/10'
-                        }`}
+                            }`}
                         title={elevatedRoutes ? 'Switch to Surface Routes on Globe' : 'Elevate Flight Arcs above 3D Globe'}
                     >
                         <span className="material-icons-outlined text-base">

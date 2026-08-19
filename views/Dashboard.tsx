@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useMemo, lazy, Suspense } from 'react';
 import { Card, Button } from '../components/ui';
-const ExpeditionMap = lazy(() => import('../components/ExpeditionMap').then(m => ({ default: m.ExpeditionMap })));
-const ExpeditionMap3D = lazy(() => import('../components/ExpeditionMap3D').then(m => ({ default: m.ExpeditionMap3D })));
+const DeckFlightMap = lazy(() => import('../components/DeckFlightMap').then(m => ({ default: m.DeckFlightMap || m.default })));
 import { FlightTrackerModal } from '../components/FlightTrackerModal';
 import { dataService } from '../services/mockDb';
 import { User, Trip, EntitlementType, PublicHoliday } from '../types';
@@ -971,31 +970,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Loading Expedition Coordinates...</p>
                     </div>
                 }>
-                    {mapViewMode === '3d' ? (
-                        <ExpeditionMap3D 
-                            trips={trips.filter(t => t.status !== 'Cancelled')} 
-                            animateRoutes={true} 
-                            onTripClick={onTripClick}
-                            showGradientRoutes={globalGradientRoutes}
-                            onToggleGradientRoutes={(val) => setGlobalGradientRoutes(val)} 
-                            showFlightRoutes={true}
-                            showLandSeaRoutes={true}
-                        />
-                    ) : (
-                        <ExpeditionMap 
-                            trips={trips.filter(t => t.status !== 'Cancelled')} 
-                            animateRoutes={false} 
-                            showFrequencyWeight={false}
-                            onTripClick={onTripClick}
-                            showCountries={false}
-                            clusterMode={false}
-                            visitedCountries={visitedData.map(vd => vd.code)}
-                            showGradientRoutes={globalGradientRoutes}
-                            onToggleGradientRoutes={(val) => setGlobalGradientRoutes(val)}
-                            showFlightRoutes={true}
-                            showLandSeaRoutes={true}
-                        />
-                    )}
+                    <DeckFlightMap 
+                        trips={trips.filter(t => t.status !== 'Cancelled')} 
+                        animateRoutes={mapViewMode === '3d'} 
+                        showFrequencyWeight={true}
+                        onTripClick={onTripClick}
+                        showCountries={false}
+                        clusterMode={false}
+                        visitedCountries={visitedData.map(vd => vd.code)}
+                        showGradientRoutes={globalGradientRoutes}
+                        showFlightRoutes={true}
+                        showLandSeaRoutes={true}
+                        initialProjection={mapViewMode === '3d' ? 'globe' : 'flat'}
+                        initialElevated={mapViewMode === '3d'}
+                    />
                 </Suspense>
                 
                 {/* Floating Glass Tactile Map Overlays */}
