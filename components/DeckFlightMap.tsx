@@ -5,10 +5,19 @@ import { ScatterplotLayer, GeoJsonLayer, PathLayer, BitmapLayer, TextLayer } fro
 import { TileLayer, TripsLayer } from '@deck.gl/geo-layers';
 import { Trip } from '../types';
 import { getCoordinatesSync } from '../services/geocoding';
+import { 
+    MapAppearanceSettings, 
+    DEFAULT_MAP_APPEARANCE, 
+    loadMapAppearanceSettings, 
+    saveMapAppearanceSettings 
+} from '../types/mapAppearance';
+import { getTwilightGradientGeoJSON } from '../services/solarTerminator';
+import { getLatestRainRadarMetadata, RainRadarMetadata } from '../services/rainViewer';
+import { generateAirportRunway, RunwayGeometry } from '../services/airportRunways';
 
 // --- Exact Gradient Color Logic & Regional Poles ---
 const COLOR_POLES = [
-    { lat: 55, lng: -100, color: [0, 122, 255] },    // NA: Vivid Blue (Apple Blue)
+    { lat: 55, lng: -100, color: [0, 122, 255] },    // NA: Vivid Blue
     { lat: -15, lng: -60, color: [0, 200, 83] },     // SA: Vivid Emerald
     { lat: 10, lng: 20, color: [255, 179, 0] },      // Africa: Vivid Amber/Gold
     { lat: 50, lng: 15, color: [124, 58, 237] },     // Europe: Vivid Violet
@@ -44,6 +53,14 @@ const getGeoGradientRGB = (lat: number, lng: number): [number, number, number] =
     ];
     geoGradientCache.set(key, res);
     return res;
+};
+
+// Frequency-based color palette progression
+const getFrequencyRGB = (freq: number): [number, number, number] => {
+    if (freq <= 1) return [56, 189, 248];  // Ice Cyan (1 flight)
+    if (freq <= 3) return [168, 85, 247]; // Violet / Purple (2-3 flights)
+    if (freq <= 6) return [244, 63, 94];   // Rose / Coral (4-6 flights)
+    return [245, 158, 11];                 // Fiery Amber / Gold (7+ flights)
 };
 
 // Calculate approximate polygon centroid for Scratch Map regional coloring
@@ -87,111 +104,81 @@ const fetchOsrmGeometry = async (startLat: number, startLng: number, endLat: num
         if (res.ok) {
             const data = await res.json();
             if (data?.routes?.[0]?.geometry?.coordinates) {
-                const coords: [number, number][] = data.routes[0].geometry.coordinates; // [lng, lat]
+                const coords: [number, number][] = data.routes[0].geometry.coordinates;
                 osrmCache.set(key, coords);
                 onDone();
             }
         }
     } catch {
-        // Fallback to straight line on network error
+        // Fallback
     } finally {
         pendingOsrmFetches.delete(key);
     }
 };
 
-// Spherical Geodesic (Great-Circle) Path Generator supporting 3D Elevation
+// SLERP Great Circle Interpolation with 3D Altitude Parabolic Arch
 const curvePointsCache = new Map<string, [number, number, number][]>();
 
 const getGeodesicPoints = (
-    startLat: number,
-    startLng: number,
-    endLat: number,
-    endLng: number,
+    lat1: number,
+    lng1: number,
+    lat2: number,
+    lng2: number,
     elevated: boolean = false,
     isGlobe: boolean = false
 ): [number, number, number][] => {
-    const key = `${startLat.toFixed(3)},${startLng.toFixed(3)}|${endLat.toFixed(3)},${endLng.toFixed(3)}|${elevated ? '1' : '0'}|${isGlobe ? '1' : '0'}`;
+    const key = `${lat1.toFixed(3)},${lng1.toFixed(3)}|${lat2.toFixed(3)},${lng2.toFixed(3)}|${elevated}|${isGlobe}`;
     const cached = curvePointsCache.get(key);
     if (cached) return cached;
 
-    const lat1 = startLat * Math.PI / 180;
-    const lng1 = startLng * Math.PI / 180;
-    const lat2 = endLat * Math.PI / 180;
-    const lng2 = endLng * Math.PI / 180;
+    const rad = Math.PI / 180;
+    const phi1 = lat1 * rad;
+    const lambda1 = lng1 * rad;
+    const phi2 = lat2 * rad;
+    const lambda2 = lng2 * rad;
 
-    // 3D Cartesian Unit Vectors on Sphere
-    const v1 = [
-        Math.cos(lat1) * Math.cos(lng1),
-        Math.cos(lat1) * Math.sin(lng1),
-        Math.sin(lat1)
-    ];
-    const v2 = [
-        Math.cos(lat2) * Math.cos(lng2),
-        Math.cos(lat2) * Math.sin(lng2),
-        Math.sin(lat2)
-    ];
+    const cosD = Math.sin(phi1) * Math.sin(phi2) + Math.cos(phi1) * Math.cos(phi2) * Math.cos(lambda2 - lambda1);
+    const d = Math.acos(Math.max(-1, Math.min(1, cosD)));
 
-    // Dot product & true spherical angle (SLERP angle)
-    const dot = Math.min(1, Math.max(-1, v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2]));
-    const d = Math.acos(dot);
+    if (d < 1e-6) {
+        const pts: [number, number, number][] = [[lng1, lat1, 0], [lng2, lat2, 0]];
+        curvePointsCache.set(key, pts);
+        return pts;
+    }
+
+    const distKm = d * 6371;
+    const maxAlt = elevated ? Math.min(1200000, Math.max(180000, distKm * 140)) : 0;
+    const numPoints = Math.max(30, Math.min(120, Math.round(distKm / 120)));
+    const sinD = Math.sin(d);
 
     const points: [number, number, number][] = [];
-    const steps = Math.min(96, Math.max(24, Math.ceil(d * 52)));
+    let prevLngDeg = lng1;
 
-    // Real-world aviation tiered distance altitude scaling on 3D globe
-    const distKm = d * 6371;
-    let maxAlt = 0;
-    if (elevated) {
-        if (distKm < 800) {
-            maxAlt = 200000 + (distKm / 800) * 350000;
-        } else if (distKm < 3500) {
-            maxAlt = 550000 + ((distKm - 800) / 2700) * 950000;
-        } else {
-            maxAlt = Math.min(2800000, 1500000 + Math.pow((distKm - 3500) / 9000, 0.75) * 1300000);
-        }
-    }
-
-    if (d < 0.0001) {
-        points.push([startLng, startLat, 0], [endLng, endLat, 0]);
-        curvePointsCache.set(key, points);
-        return points;
-    }
-
-    const sinD = Math.sin(d);
-    let prevLngDeg = startLng;
-
-    for (let i = 0; i <= steps; i++) {
-        const f = i / steps;
+    for (let i = 0; i <= numPoints; i++) {
+        const f = i / numPoints;
         const A = Math.sin((1 - f) * d) / sinD;
         const B = Math.sin(f * d) / sinD;
 
-        // Interpolated 3D unit vector on unit sphere
-        const vx = A * v1[0] + B * v2[0];
-        const vy = A * v1[1] + B * v2[1];
-        const vz = A * v1[2] + B * v2[2];
+        const x = A * Math.cos(phi1) * Math.cos(lambda1) + B * Math.cos(phi2) * Math.cos(lambda2);
+        const y = A * Math.cos(phi1) * Math.sin(lambda1) + B * Math.cos(phi2) * Math.sin(lambda2);
+        const z = A * Math.sin(phi1) + B * Math.sin(phi2);
 
-        // Convert 3D vector back to exact spherical coordinates
-        const latRad = Math.atan2(vz, Math.sqrt(vx * vx + vy * vy));
-        const lngRad = Math.atan2(vy, vx);
+        const latRad = Math.atan2(z, Math.sqrt(x * x + y * y));
+        let lngRad = Math.atan2(y, x);
 
-        const latDeg = latRad * 180 / Math.PI;
-        let lngDeg = lngRad * 180 / Math.PI;
+        let lngDeg = lngRad / rad;
+        const latDeg = latRad / rad;
 
         if (!isGlobe) {
-            // Flat 2D unwrapping only when in 2D Mercator view
-            let diff = lngDeg - prevLngDeg;
-            while (diff > 180) {
+            while (lngDeg - prevLngDeg > 180) {
                 lngDeg -= 360;
-                diff = lngDeg - prevLngDeg;
             }
-            while (diff < -180) {
+            while (lngDeg - prevLngDeg < -180) {
                 lngDeg += 360;
-                diff = lngDeg - prevLngDeg;
             }
             prevLngDeg = lngDeg;
         }
 
-        // Smooth aerodynamic climb, cruise & descent altitude curve
         const alt = elevated ? Math.pow(Math.sin(f * Math.PI), 0.85) * maxAlt : 0;
         points.push([lngDeg, latDeg, alt]);
     }
@@ -200,7 +187,6 @@ const getGeodesicPoints = (
     return points;
 };
 
-// Status fallback styling matching Classic ExpeditionMap
 const getStatusRGB = (trip: Trip): [number, number, number] => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -253,6 +239,8 @@ export interface DeckFlightMapProps {
     onElevatedRoutesChange?: (elevated: boolean) => void;
     initialProjection?: 'flat' | 'globe';
     initialElevated?: boolean;
+    appearanceSettings?: MapAppearanceSettings;
+    onChangeAppearanceSettings?: (settings: MapAppearanceSettings) => void;
 }
 
 export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
@@ -264,7 +252,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     showCountries = false,
     viewMode = 'network',
     visitedPlaces = [],
-    activeLayer: activeLayerProp = 'standard',
+    activeLayer: activeLayerProp,
     onChangeActiveLayer,
     showFlightRoutes = true,
     showLandSeaRoutes = true,
@@ -278,21 +266,50 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     onProjectionChange,
     onElevatedRoutesChange,
     initialProjection = 'flat',
-    initialElevated = false
+    initialElevated = false,
+    appearanceSettings: appearanceSettingsProp,
+    onChangeAppearanceSettings
 }) => {
     const isDark = useDarkMode();
-    const [localLayer, setLocalLayer] = useState<DeckLayerType>((activeLayerProp as DeckLayerType) || 'standard');
-    const [localProjection, setLocalProjection] = useState<'flat' | 'globe'>(projectionProp || initialProjection);
-    const [localElevatedRoutes, setLocalElevatedRoutes] = useState<boolean>(elevatedRoutesProp !== undefined ? elevatedRoutesProp : initialElevated);
+
+    // Map Appearance State Management
+    const [localAppearance, setLocalAppearance] = useState<MapAppearanceSettings>(() => {
+        return appearanceSettingsProp || loadMapAppearanceSettings();
+    });
+
+    useEffect(() => {
+        if (appearanceSettingsProp) {
+            setLocalAppearance(appearanceSettingsProp);
+        }
+    }, [appearanceSettingsProp]);
+
+    const activeAppearance = appearanceSettingsProp || localAppearance;
+
+    // Projection & Layer Resolution
+    const effectiveProjection = projectionProp !== undefined 
+        ? projectionProp 
+        : (activeAppearance.projection || initialProjection);
+
+    const [localElevatedRoutes, setLocalElevatedRoutes] = useState<boolean>(
+        elevatedRoutesProp !== undefined ? elevatedRoutesProp : initialElevated
+    );
     const [hoveredRouteKey, setHoveredRouteKey] = useState<string | null>(null);
     const [, setOsrmVersion] = useState(0);
 
-    // Synchronize controlled projection and elevation props
+    // Weather Rain Radar Metadata
+    const [radarMeta, setRadarMeta] = useState<RainRadarMetadata | null>(null);
+
     useEffect(() => {
-        if (projectionProp !== undefined) {
-            setLocalProjection(projectionProp);
+        if (activeAppearance.rainRadar) {
+            getLatestRainRadarMetadata(
+                activeAppearance.rainRadarColorScheme || 2,
+                1,
+                1
+            ).then(meta => {
+                if (meta) setRadarMeta(meta);
+            });
         }
-    }, [projectionProp]);
+    }, [activeAppearance.rainRadar, activeAppearance.rainRadarColorScheme]);
 
     useEffect(() => {
         if (elevatedRoutesProp !== undefined) {
@@ -300,16 +317,15 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         }
     }, [elevatedRoutesProp]);
 
-    const projection = projectionProp !== undefined ? projectionProp : localProjection;
     const elevatedRoutes = elevatedRoutesProp !== undefined ? elevatedRoutesProp : localElevatedRoutes;
 
-    // Animation timer for Comet Flow TripsLayer (60 FPS)
+    // Animation timer for Comet Flow TripsLayer
     const [animTime, setAnimTime] = useState(0);
     useEffect(() => {
         if (!animateRoutes) return;
         let animationFrame: number;
         const start = performance.now();
-        const loopDuration = 1800; // Loop every 1.8 seconds
+        const loopDuration = 1800;
 
         const animate = (now: number) => {
             setAnimTime(((now - start) % loopDuration));
@@ -319,68 +335,49 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         return () => cancelAnimationFrame(animationFrame);
     }, [animateRoutes]);
 
-    // Synchronize prop changes to localLayer state
-    useEffect(() => {
-        if (activeLayerProp) {
-            setLocalLayer(activeLayerProp as DeckLayerType);
-        }
-    }, [activeLayerProp]);
+    const currentLayer = (activeLayerProp as DeckLayerType) || activeAppearance.basemap || 'standard';
 
-    const currentLayer = localLayer;
-
-    const handleSelectLayer = (layerId: DeckLayerType) => {
-        setLocalLayer(layerId);
-        if (onChangeActiveLayer) {
-            onChangeActiveLayer(layerId);
-        }
-    };
-
-    // View state supporting both Flat Mercator and 3D Globe
+    // Default Zoom: 0.35 on 3D Globe to view the entire spherical globe comfortably
     const [viewState, setViewState] = useState({
         longitude: 15,
-        latitude: 35,
-        zoom: (projectionProp || initialProjection) === 'globe' ? 0.8 : 2.2,
+        latitude: 25,
+        zoom: effectiveProjection === 'globe' ? 0.35 : 2.0,
         pitch: 0,
         bearing: 0,
         maxZoom: 18,
-        minZoom: 0
+        minZoom: 0.1
     });
 
-    // Handle projection toggle
-    const handleToggleProjection = () => {
-        const nextProjection = projection === 'flat' ? 'globe' : 'flat';
-        setLocalProjection(nextProjection);
-        if (onProjectionChange) onProjectionChange(nextProjection);
+    // Update zoom when projection changes
+    useEffect(() => {
         setViewState(prev => ({
             ...prev,
-            zoom: nextProjection === 'globe' ? Math.min(prev.zoom, 1.2) : Math.max(prev.zoom, 2.0),
+            zoom: effectiveProjection === 'globe' ? Math.min(prev.zoom, 0.4) : Math.max(prev.zoom, 1.8),
             pitch: 0,
             bearing: 0
         }));
-    };
+    }, [effectiveProjection]);
 
-    const handleToggleElevated = () => {
-        const nextElevated = !elevatedRoutes;
-        setLocalElevatedRoutes(nextElevated);
-        if (onElevatedRoutesChange) onElevatedRoutesChange(nextElevated);
-    };
-
-    // Configure Deck.gl Views (MapView vs _GlobeView)
+    // Configure Deck.gl Views with ultra-smooth mouse scroll zoom
     const views = useMemo(() => {
-        if (projection === 'globe') {
+        const controllerConfig = {
+            dragPan: true,
+            scrollZoom: { speed: 0.04, smooth: true },
+            doubleClickZoom: true,
+            touchZoom: true,
+            inertia: 250
+        };
+
+        if (effectiveProjection === 'globe') {
             return [
                 new _GlobeView({
                     id: 'globe',
                     controller: {
-                        dragPan: true,
+                        ...controllerConfig,
                         dragRotate: true,
-                        scrollZoom: { speed: 0.015, smooth: true },
-                        doubleClickZoom: true,
-                        touchZoom: true,
-                        touchRotate: true,
-                        inertia: 350
+                        touchRotate: true
                     },
-                    farZMultiplier: 5.0, // Extend frustum far plane to prevent clipping 3D elevated arcs
+                    farZMultiplier: 5.0,
                     nearZMultiplier: 0.01,
                     resolution: 5
                 })
@@ -390,16 +387,12 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             new MapView({
                 id: 'map',
                 controller: {
-                    dragPan: true,
-                    scrollZoom: { speed: 0.015, smooth: true },
-                    doubleClickZoom: true,
-                    touchZoom: true,
-                    dragRotate: false,
-                    inertia: 350
+                    ...controllerConfig,
+                    dragRotate: false
                 }
             })
         ];
-    }, [projection]);
+    }, [effectiveProjection]);
 
     const [hoverInfo, setHoverInfo] = useState<any>(null);
     const [geoJsonData, setGeoJsonData] = useState<any>(null);
@@ -442,7 +435,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         });
     }, [trips]);
 
-    // Request OSRM geometries for land trips when showRoadTracing is enabled
+    // Request OSRM geometries for land trips
     useEffect(() => {
         if (!showRoadTracing) return;
         enrichedTrips.forEach(trip => {
@@ -469,7 +462,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         }
     }, [focusTransportCoordinates]);
 
-    // Auto-fit initial bounds
+    // Auto-fit initial bounds (Globe defaults to whole earth zoom 0.35)
     const fittedRef = useRef(false);
     useEffect(() => {
         if (fittedRef.current || enrichedTrips.length === 0) return;
@@ -493,12 +486,12 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 ...prev,
                 longitude: (minLng + maxLng) / 2,
                 latitude: (minLat + maxLat) / 2,
-                zoom: projection === 'globe' ? 0.8 : Math.min(4, Math.max(1.8, Math.log2(360 / Math.max(maxLng - minLng, 30))))
+                zoom: effectiveProjection === 'globe' ? 0.35 : Math.min(4, Math.max(1.8, Math.log2(360 / Math.max(maxLng - minLng, 30))))
             }));
         }
-    }, [enrichedTrips, projection]);
+    }, [enrichedTrips, effectiveProjection]);
 
-    // Hardware-Accelerated Basemap Tile URLs
+    // Basemap Tile URLs
     const tileUrl = useMemo(() => {
         switch (currentLayer) {
             case 'satellite':
@@ -514,6 +507,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             case 'night':
                 return 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png';
             case 'standard':
+            case 'default':
             default:
                 return isDark
                     ? 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png'
@@ -521,18 +515,29 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         }
     }, [currentLayer, isDark]);
 
-    // Build Multi-Segment Gradient Routes, Wide Hit-Test Paths, Comet Trips & Airport Hubs
-    const isElevatedActive = projection === 'globe' && elevatedRoutes;
+    // Build Routes, Comet Trips & Airport Hubs
+    const isElevatedActive = effectiveProjection === 'globe' && elevatedRoutes;
 
-    const { routeSegments, trackSegments, hitTestPaths, cometTrips, airportPoints, clusterNodes } = useMemo(() => {
+    const { 
+        routeSegments, 
+        trackSegments, 
+        hitTestPaths, 
+        cometTrips, 
+        airportPoints, 
+        clusterNodes,
+        detailedRunways 
+    } = useMemo(() => {
         const flowSegs: any[] = [];
         const trackSegs: any[] = [];
         const hitPaths: any[] = [];
         const comets: any[] = [];
         const pointsMap = new Map<string, any>();
+        const airportFreqMap = new Map<string, number>();
         const frequencies = new Map<string, number>();
+        const runwayGeometries: RunwayGeometry[] = [];
+        const processedRunwayKeys = new Set<string>();
 
-        // 1. Compute route frequencies
+        // 1. Compute route & airport frequencies
         enrichedTrips.forEach(trip => {
             trip.transports?.forEach(t => {
                 if (t.originLat && t.originLng && t.destLat && t.destLng) {
@@ -540,11 +545,23 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     const p2 = `${t.destLat.toFixed(3)},${t.destLng.toFixed(3)}`;
                     const key = p1 < p2 ? `${p1}|${p2}` : `${p2}|${p1}`;
                     frequencies.set(key, (frequencies.get(key) || 0) + 1);
+
+                    airportFreqMap.set(p1, (airportFreqMap.get(p1) || 0) + 1);
+                    airportFreqMap.set(p2, (airportFreqMap.get(p2) || 0) + 1);
                 }
             });
         });
 
-        // 2. Build multi-segment gradient paths & wide hit-test targets
+        // Scale Multipliers
+        const scaleMultiplier = activeAppearance.routeScale === 'thin' 
+            ? 0.65 
+            : activeAppearance.routeScale === 'thick' 
+                ? 1.75 
+                : 1.0;
+
+        const isWidthByFreq = activeAppearance.routeWidthMode === 'frequency' || showFrequencyWeight;
+
+        // 2. Build multi-segment gradient paths
         enrichedTrips.forEach(trip => {
             const fallbackRGB = getStatusRGB(trip);
 
@@ -564,16 +581,20 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 const freq = frequencies.get(freqKey) || 1;
 
                 const uniqueRouteKey = `${trip.id}_${t.origin}_${t.destination}_${t.departureDate || ''}_${t.identifier || ''}`;
-                const strokeWidth = showFrequencyWeight ? Math.min(2.4, 1.0 + Math.log2(freq) * 0.4) : 1.1;
+                
+                const baseStroke = isWidthByFreq 
+                    ? Math.min(2.8, 1.0 + Math.log2(freq) * 0.45) 
+                    : 1.2;
+                const strokeWidth = baseStroke * scaleMultiplier;
 
                 // Check for OSRM road geometry
                 const osrmKey = `${t.originLat.toFixed(3)},${t.originLng.toFixed(3)}|${t.destLat.toFixed(3)},${t.destLng.toFixed(3)}`;
                 const cachedRoadCoords = showRoadTracing && isLand ? osrmCache.get(osrmKey) : null;
 
-                // Generate 3D elevated or surface coordinates
+                // Coordinates
                 let fullPath: [number, number, number][] = [];
                 if (isFlight) {
-                    fullPath = getGeodesicPoints(t.originLat, t.originLng, t.destLat, t.destLng, isElevatedActive, projection === 'globe');
+                    fullPath = getGeodesicPoints(t.originLat, t.originLng, t.destLat, t.destLng, isElevatedActive, effectiveProjection === 'globe');
                 } else if (cachedRoadCoords && cachedRoadCoords.length > 0) {
                     fullPath = cachedRoadCoords.map(c => [c[0], c[1], 0]);
                 } else {
@@ -586,9 +607,17 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     fullPath.push([t.destLng, t.destLat, 0]);
                 }
 
-                const modeRGB: [number, number, number] = isLand ? [245, 158, 11] : isSea ? [6, 182, 212] : fallbackRGB;
+                // Determine Color
+                let modeRGB: [number, number, number] = isLand 
+                    ? [245, 158, 11] 
+                    : isSea 
+                        ? [6, 182, 212] 
+                        : (activeAppearance.routeColorMode === 'frequency' 
+                            ? getFrequencyRGB(freq)
+                            : (activeAppearance.routeColorMode === 'default' 
+                                ? [59, 130, 246] 
+                                : fallbackRGB));
 
-                // Hit-test payload
                 hitPaths.push({
                     path: fullPath,
                     routeKey: uniqueRouteKey,
@@ -602,11 +631,12 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     mode: t.mode || (isFlight ? 'Flight' : 'Transit')
                 });
 
-                // Comet Flow Trips payload (timed 0 to 1800ms)
                 if (animateRoutes && fullPath.length > 1) {
                     const timestamps = fullPath.map((_, idx) => (idx / (fullPath.length - 1)) * 1800);
                     const cometColor = isFlight
-                        ? (showGradientRoutes ? getGeoGradientRGB(t.destLat, t.destLng) : fallbackRGB)
+                        ? (activeAppearance.routeColorMode === 'gradient' 
+                            ? getGeoGradientRGB(t.destLat, t.destLng) 
+                            : modeRGB)
                         : modeRGB;
 
                     comets.push({
@@ -617,7 +647,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     });
                 }
 
-                if (showGradientRoutes && isFlight && fullPath.length > 2) {
+                const useRegionalGradient = activeAppearance.routeColorMode === 'gradient' && showGradientRoutes;
+
+                if (useRegionalGradient && isFlight && fullPath.length > 2) {
                     const numSections = 6;
                     const pointsPerSection = Math.ceil(fullPath.length / numSections);
 
@@ -657,7 +689,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 } else {
                     flowSegs.push({
                         path: fullPath,
-                        color: [...modeRGB, 220],
+                        color: [...modeRGB, 225],
                         rawColor: modeRGB,
                         routeKey: uniqueRouteKey,
                         width: strokeWidth,
@@ -673,48 +705,84 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
                     trackSegs.push({
                         path: fullPath,
-                        color: [...modeRGB, 35],
+                        color: [...modeRGB, 40],
                         rawColor: modeRGB,
                         routeKey: uniqueRouteKey,
                         width: strokeWidth + 1.2
                     });
                 }
 
-                // Airport & City Node Hubs
+                // Airport Sizing
+                const baseAirportRadius = activeAppearance.airportSize === 'off' 
+                    ? 0 
+                    : activeAppearance.airportSize === 'small' 
+                        ? 2.0 
+                        : activeAppearance.airportSize === 'large' 
+                            ? 6.2 
+                            : 3.8;
+
+                const getCalculatedRadius = (pKey: string) => {
+                    if (baseAirportRadius === 0) return 0;
+                    if (activeAppearance.airportMode === 'frequency') {
+                        const count = airportFreqMap.get(pKey) || 1;
+                        return Math.min(10, baseAirportRadius * (1 + 0.35 * Math.log2(count)));
+                    }
+                    return baseAirportRadius;
+                };
+
+                // Airport Hubs & Detailed Runways
                 const oKey = `${t.originLng.toFixed(3)},${t.originLat.toFixed(3)}`;
                 if (!pointsMap.has(oKey)) {
-                    const hubRGB = showGradientRoutes ? getGeoGradientRGB(t.originLat, t.originLng) : modeRGB;
+                    const hubRGB = useRegionalGradient 
+                        ? getGeoGradientRGB(t.originLat, t.originLng) 
+                        : modeRGB;
+                    const r = getCalculatedRadius(oKey);
+                    
                     pointsMap.set(oKey, {
                         position: [t.originLng, t.originLat, 0],
                         name: t.origin,
                         color: [...hubRGB, 255],
                         strokeColor: isDark ? [255, 255, 255, 220] : [15, 23, 42, 220],
-                        radius: 3.2,
+                        radius: r,
                         tripId: trip.id
                     });
+
+                    if (activeAppearance.airportDetail === 'detailed' && isFlight && !processedRunwayKeys.has(oKey)) {
+                        processedRunwayKeys.add(oKey);
+                        runwayGeometries.push(generateAirportRunway(t.origin, t.originLat, t.originLng, 90));
+                    }
                 }
 
                 const dKey = `${t.destLng.toFixed(3)},${t.destLat.toFixed(3)}`;
                 if (!pointsMap.has(dKey)) {
-                    const hubRGB = showGradientRoutes ? getGeoGradientRGB(t.destLat, t.destLng) : modeRGB;
+                    const hubRGB = useRegionalGradient 
+                        ? getGeoGradientRGB(t.destLat, t.destLng) 
+                        : modeRGB;
+                    const r = getCalculatedRadius(dKey);
+
                     pointsMap.set(dKey, {
                         position: [t.destLng, t.destLat, 0],
                         name: t.destination,
                         color: [...hubRGB, 255],
                         strokeColor: isDark ? [255, 255, 255, 220] : [15, 23, 42, 220],
-                        radius: 3.2,
+                        radius: r,
                         tripId: trip.id
                     });
+
+                    if (activeAppearance.airportDetail === 'detailed' && isFlight && !processedRunwayKeys.has(dKey)) {
+                        processedRunwayKeys.add(dKey);
+                        runwayGeometries.push(generateAirportRunway(t.destination, t.destLat, t.destLng, 270));
+                    }
                 }
             });
         });
 
         // 3. Cluster Markers Logic
-        const allAirports = Array.from(pointsMap.values());
+        const allAirports = Array.from(pointsMap.values()).filter(pt => pt.radius > 0);
         const clusters: any[] = [];
         if (clusterMode) {
             const grid = new Map<string, any[]>();
-            const gridSize = 1.8; // Degrees grid bucket
+            const gridSize = 1.8;
             allAirports.forEach(pt => {
                 const gKey = `${Math.floor(pt.position[1] / gridSize)},${Math.floor(pt.position[0] / gridSize)}`;
                 if (!grid.has(gKey)) grid.set(gKey, []);
@@ -746,18 +814,31 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             hitTestPaths: hitPaths,
             cometTrips: comets,
             airportPoints: allAirports,
-            clusterNodes: clusters
+            clusterNodes: clusters,
+            detailedRunways: runwayGeometries
         };
-    }, [enrichedTrips, showFrequencyWeight, showGradientRoutes, showFlightRoutes, showLandSeaRoutes, isDark, isElevatedActive, animateRoutes, clusterMode, showRoadTracing]);
+    }, [
+        enrichedTrips, 
+        showFrequencyWeight, 
+        showGradientRoutes, 
+        showFlightRoutes, 
+        showLandSeaRoutes, 
+        isDark, 
+        isElevatedActive, 
+        animateRoutes, 
+        clusterMode, 
+        showRoadTracing,
+        activeAppearance
+    ]);
 
     // Build Deck.gl Layers
     const layers = useMemo(() => {
         const layerList: any[] = [];
 
-        // 1. WebGL Hardware-Accelerated Basemap TileLayer
+        // 1. WebGL Basemap TileLayer
         layerList.push(
             new TileLayer({
-                id: `basemap-tile-layer-${currentLayer}-${isDark ? 'dark' : 'light'}-${projection}`,
+                id: `basemap-tile-layer-${currentLayer}-${isDark ? 'dark' : 'light'}-${effectiveProjection}`,
                 data: tileUrl,
                 minZoom: 0,
                 maxZoom: 19,
@@ -773,7 +854,119 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             })
         );
 
-        // 2. Country Polygons (GeoJSON) - Scratch Map Regional Colors
+        // 2. Solar Terminator Ultra-Smooth 14-Band Twilight Shading Gradient
+        if (activeAppearance.timeOfDay) {
+            const twilightData = getTwilightGradientGeoJSON();
+            layerList.push(
+                new GeoJsonLayer({
+                    id: 'solar-twilight-gradient-layer',
+                    data: twilightData,
+                    filled: true,
+                    stroked: false,
+                    getFillColor: (f: any) => {
+                        const idx = f.properties?.stepIndex ?? 0;
+                        // Smooth progressive alpha shading
+                        const alpha = Math.min(48, 12 + idx * 2.8);
+                        return [2, 6, 23, alpha];
+                    },
+                    pickable: false,
+                    parameters: {
+                        blend: true,
+                        blendFunc: [770, 771]
+                    }
+                })
+            );
+        }
+
+        // 3. RainViewer Live Rain Radar Layer
+        if (activeAppearance.rainRadar && radarMeta?.tileUrl) {
+            const opacity = activeAppearance.rainRadarOpacity !== undefined ? activeAppearance.rainRadarOpacity : 0.85;
+            layerList.push(
+                new TileLayer({
+                    id: `rain-radar-layer-${radarMeta.tileUrl}-${opacity}`,
+                    data: radarMeta.tileUrl,
+                    minZoom: 0,
+                    maxZoom: 18,
+                    tileSize: 256,
+                    opacity,
+                    renderSubLayers: (props: any) => {
+                        const { boundingBox } = props.tile;
+                        return new BitmapLayer(props, {
+                            data: null,
+                            image: props.data,
+                            bounds: [boundingBox[0][0], boundingBox[0][1], boundingBox[1][0], boundingBox[1][1]]
+                        });
+                    }
+                })
+            );
+        }
+
+        // 4. Detailed Airport Runway Markings Layer (Meter-Accurate Layouts)
+        if (activeAppearance.airportDetail === 'detailed' && detailedRunways.length > 0) {
+            const allStrips: { path: [number, number, number][]; width: number }[] = [];
+            const allTaxiways: [number, number, number][][] = [];
+            const allThresholds: [number, number, number][][] = [];
+
+            detailedRunways.forEach(r => {
+                r.runwayPaths.forEach(rp => {
+                    allStrips.push({ path: rp.stripPath, width: rp.widthMeters });
+                });
+                r.taxiwayPaths.forEach(tp => allTaxiways.push(tp));
+                r.thresholdMarkings.forEach(tm => allThresholds.push(tm));
+            });
+
+            // Runway Asphalt Pavement Strips
+            layerList.push(
+                new PathLayer({
+                    id: 'runway-strips-layer',
+                    data: allStrips,
+                    getPath: (d: any) => d.path,
+                    getColor: isDark ? [15, 23, 42, 255] : [51, 65, 85, 255],
+                    getWidth: (d: any) => d.width || 45,
+                    widthUnits: 'meters',
+                    widthMinPixels: 2.5,
+                    widthMaxPixels: 50,
+                    capRounded: false,
+                    pickable: false
+                })
+            );
+
+            // Taxiway Network Lines (Yellow #eab308)
+            if (allTaxiways.length > 0) {
+                layerList.push(
+                    new PathLayer({
+                        id: 'taxiway-lines-layer',
+                        data: allTaxiways,
+                        getPath: (d: any) => d,
+                        getColor: [234, 179, 8, 230],
+                        getWidth: 20,
+                        widthUnits: 'meters',
+                        widthMinPixels: 1.5,
+                        widthMaxPixels: 15,
+                        pickable: false
+                    })
+                );
+            }
+
+            // Piano Keys & Centerline White Markings
+            if (allThresholds.length > 0) {
+                layerList.push(
+                    new PathLayer({
+                        id: 'runway-thresholds-layer',
+                        data: allThresholds,
+                        getPath: (d: any) => d,
+                        getColor: [255, 255, 255, 240],
+                        getWidth: 4,
+                        widthUnits: 'meters',
+                        widthMinPixels: 1.0,
+                        widthMaxPixels: 8,
+                        pickable: false
+                    })
+                );
+            }
+        }
+
+        // 5. Country Polygons (GeoJSON) - Scratch Map Regional Colors
         if (geoJsonData && (showCountries || viewMode === 'scratch')) {
             layerList.push(
                 new GeoJsonLayer({
@@ -790,7 +983,6 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         const isVisited = iso && visitedCountries.includes(iso);
 
                         if (isVisited) {
-                            // Regional Gradient Colors (Europe: Violet, NA: Blue, SA: Emerald, Asia: Red, Africa: Gold, Oceania: Cyan)
                             const center = getFeatureCentroid(f);
                             const rgb = getGeoGradientRGB(center.lat, center.lng);
                             return [...rgb, viewMode === 'scratch' ? 190 : 120];
@@ -807,14 +999,14 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             );
         }
 
-        // 3. Scratch Map Visited Place Pins
+        // 6. Scratch Map Visited Place Pins
         if (viewMode === 'scratch' && visitedPlaces.length > 0) {
             layerList.push(
                 new ScatterplotLayer({
                     id: 'scratch-visited-places',
                     data: visitedPlaces,
                     getPosition: (d: any) => [d.lng, d.lat, 0],
-                    getFillColor: [245, 158, 11, 240], // Vivid Amber Pin
+                    getFillColor: [245, 158, 11, 240],
                     getLineColor: [255, 255, 255, 230],
                     getRadius: 4.5,
                     radiusUnits: 'pixels',
@@ -828,7 +1020,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             );
         }
 
-        // 4. Underlying Glow Track Layer (Whole-Route Highlight Glow)
+        // 7. Underlying Glow Track Layer
         if (viewMode === 'network' && trackSegments.length > 0) {
             layerList.push(
                 new PathLayer({
@@ -861,7 +1053,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             );
         }
 
-        // 5. Vibrant Multi-Segment Gradient Flight & Transit Flow Layer
+        // 8. Flight & Transit Flow Layer
         if (viewMode === 'network' && routeSegments.length > 0) {
             layerList.push(
                 new PathLayer({
@@ -871,7 +1063,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     getColor: (d: any) => {
                         const isHovered = hoveredRouteKey === d.routeKey;
                         if (isHovered) {
-                            return [255, 255, 255, 255]; // Crisp whole-route brilliant white highlight
+                            return [255, 255, 255, 255];
                         }
                         return d.color;
                     },
@@ -881,7 +1073,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     },
                     widthUnits: 'pixels',
                     widthMinPixels: 1,
-                    widthMaxPixels: 4.5,
+                    widthMaxPixels: 6.0,
                     capRounded: true,
                     jointRounded: true,
                     pickable: false,
@@ -894,7 +1086,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             );
         }
 
-        // 6. Comet Flow TripsLayer (Animated Neon Pulses along routes)
+        // 9. Comet Flow TripsLayer
         if (viewMode === 'network' && animateRoutes && cometTrips.length > 0) {
             layerList.push(
                 new TripsLayer({
@@ -915,7 +1107,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             );
         }
 
-        // 7. Invisible Wide Hit-Test Layer (Generous 18px cursor picking tolerance)
+        // 10. Wide Hit-Test Layer
         if (viewMode === 'network' && hitTestPaths.length > 0) {
             layerList.push(
                 new PathLayer({
@@ -943,10 +1135,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             );
         }
 
-        // 8. Airport & City Node Markers / Cluster Markers
-        if (showCityMarkers) {
+        // 11. Airport & City Node Markers / Cluster Markers
+        if (showCityMarkers && activeAppearance.airportSize !== 'off') {
             if (clusterMode && clusterNodes.length > 0) {
-                // Cluster Halos
                 layerList.push(
                     new ScatterplotLayer({
                         id: 'airport-cluster-halos',
@@ -958,7 +1149,6 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         pickable: false
                     })
                 );
-                // Cluster Nodes
                 layerList.push(
                     new ScatterplotLayer({
                         id: 'airport-cluster-nodes',
@@ -976,7 +1166,6 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         onClick: (info: any) => info.object?.tripId && onTripClick && onTripClick(info.object.tripId)
                     })
                 );
-                // Cluster Text Count
                 layerList.push(
                     new TextLayer({
                         id: 'airport-cluster-text',
@@ -1001,8 +1190,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         getLineColor: (d: any) => d.strokeColor,
                         getRadius: (d: any) => d.radius,
                         radiusUnits: 'pixels',
-                        radiusMinPixels: 2.8,
-                        radiusMaxPixels: 6,
+                        radiusMinPixels: 2.0,
+                        radiusMaxPixels: 10,
                         stroked: true,
                         lineWidthUnits: 'pixels',
                         getLineWidth: 1.2,
@@ -1021,14 +1210,40 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         }
 
         return layerList;
-    }, [tileUrl, currentLayer, geoJsonData, routeSegments, trackSegments, cometTrips, hitTestPaths, airportPoints, clusterNodes, showCountries, viewMode, showCityMarkers, visitedCountries, visitedPlaces, isDark, projection, isElevatedActive, hoveredRouteKey, animTime, animateRoutes, clusterMode]);
+    }, [
+        tileUrl, 
+        currentLayer, 
+        geoJsonData, 
+        routeSegments, 
+        trackSegments, 
+        cometTrips, 
+        hitTestPaths, 
+        airportPoints, 
+        clusterNodes, 
+        detailedRunways,
+        showCountries, 
+        viewMode, 
+        showCityMarkers, 
+        visitedCountries, 
+        visitedPlaces, 
+        isDark, 
+        effectiveProjection, 
+        isElevatedActive, 
+        hoveredRouteKey, 
+        animTime, 
+        animateRoutes, 
+        clusterMode,
+        activeAppearance,
+        radarMeta
+    ]);
 
     return (
         <div className="relative w-full h-full overflow-hidden bg-[#090d16] select-none">
-            {/* Deck.gl 60 FPS WebGL Canvas with smooth inertia & 10px picking tolerance */}
+            {/* Deck.gl 60 FPS WebGL Canvas with Mouse Scroll Zoom enabled */}
             <DeckGL
                 views={views}
                 viewState={viewState}
+                controller={true}
                 onViewStateChange={({ viewState: newViewState }: any) => {
                     setViewState(prev => ({
                         ...prev,
@@ -1041,65 +1256,6 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 getCursor={({ isHovering, isDragging }) => (isDragging ? 'grabbing' : isHovering ? 'pointer' : 'grab')}
             />
 
-            {/* Layer View Mode Controls (Top Left) */}
-            <div className="absolute top-6 left-6 flex flex-col gap-2 z-20">
-                <div className="flex flex-col rounded-2xl border border-white/10 dark:border-white/10 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl shadow-2xl overflow-hidden">
-                    {[
-                        { id: 'standard', label: 'Standard Light', icon: 'public' },
-                        { id: 'night', label: 'Dark Mode', icon: 'nights_stay' },
-                        { id: 'satellite', label: 'Satellite Imagery', icon: 'satellite_alt' },
-                        { id: 'topography', label: 'World Topography', icon: 'terrain' },
-                        { id: 'hillshade', label: 'Shaded Relief / Hillshade', icon: 'landscape' },
-                        { id: 'physical', label: 'Physical & Landcover', icon: 'nature' },
-                        { id: 'ocean', label: 'Ocean & Bathymetry', icon: 'water' }
-                    ].map(layer => (
-                        <button
-                            key={layer.id}
-                            onClick={() => handleSelectLayer(layer.id as any)}
-                            className={`w-10 h-10 flex items-center justify-center transition-all border-b last:border-0 border-zinc-200/50 dark:border-white/5 cursor-pointer ${currentLayer === layer.id
-                                    ? 'text-blue-500 bg-blue-500/15 font-black'
-                                    : 'text-zinc-500 dark:text-zinc-400 hover:bg-black/5 dark:hover:bg-white/10'
-                                }`}
-                            title={layer.label}
-                        >
-                            <span className="material-icons-outlined text-lg">{layer.icon}</span>
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            {/* Projection & Elevation Controls (Top Right) */}
-            <div className="absolute top-6 right-6 z-20 flex items-center gap-2.5">
-                {/* 3D Elevated Arcs Toggle (Visible when in 3D Globe mode) */}
-                {projection === 'globe' && (
-                    <button
-                        onClick={() => setElevatedRoutes(!elevatedRoutes)}
-                        className={`px-3.5 py-2.5 rounded-2xl shadow-2xl backdrop-blur-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 cursor-pointer transition-all active:scale-95 border ${elevatedRoutes
-                                ? 'bg-indigo-600 text-white border-indigo-400/40 shadow-indigo-500/20'
-                                : 'bg-white/85 dark:bg-zinc-950/85 hover:bg-white dark:hover:bg-zinc-900 text-zinc-750 dark:text-zinc-300 border-zinc-200/70 dark:border-white/10'
-                            }`}
-                        title={elevatedRoutes ? 'Switch to Surface Routes on Globe' : 'Elevate Flight Arcs above 3D Globe'}
-                    >
-                        <span className="material-icons-outlined text-base">
-                            {elevatedRoutes ? 'flight_takeoff' : 'flight'}
-                        </span>
-                        <span>{elevatedRoutes ? 'Elevated Arcs: ON' : 'Elevated: OFF'}</span>
-                    </button>
-                )}
-
-                {/* 2D Flat Map vs 3D Globe Projection Switcher */}
-                <button
-                    onClick={handleToggleProjection}
-                    className="px-4 py-2.5 bg-white/85 dark:bg-zinc-950/85 hover:bg-white dark:hover:bg-zinc-900 text-zinc-850 dark:text-zinc-100 border border-zinc-200/70 dark:border-white/10 rounded-2xl shadow-2xl backdrop-blur-xl text-xs font-black uppercase tracking-wider flex items-center gap-2.5 cursor-pointer transition-all active:scale-95 group"
-                    title={projection === 'flat' ? 'Switch to 3D Globe Projection' : 'Switch to 2D Flat Map'}
-                >
-                    <span className={`material-icons-outlined text-base transition-transform duration-300 ${projection === 'globe' ? 'text-purple-400 rotate-180' : 'text-blue-500 group-hover:rotate-45'}`}>
-                        {projection === 'globe' ? 'public' : 'map'}
-                    </span>
-                    <span>{projection === 'globe' ? '3D Globe' : 'Flat Map'}</span>
-                </button>
-            </div>
-
             {/* Zoom Controls (Bottom Right) */}
             <div className="absolute bottom-6 right-6 z-20 flex flex-col gap-2">
                 <div className="flex flex-col rounded-2xl border border-white/10 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl shadow-2xl overflow-hidden">
@@ -1111,7 +1267,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         +
                     </button>
                     <button
-                        onClick={() => setViewState(v => ({ ...v, zoom: Math.max(v.zoom - 0.8, 0) }))}
+                        onClick={() => setViewState(v => ({ ...v, zoom: Math.max(v.zoom - 0.8, 0.1) }))}
                         className="w-10 h-10 flex items-center justify-center text-zinc-700 dark:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer font-black text-lg"
                         title="Zoom Out"
                     >

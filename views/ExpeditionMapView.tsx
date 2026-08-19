@@ -1,9 +1,6 @@
-
 import React, { useEffect, useState, useMemo, lazy, Suspense } from 'react';
 import { 
     Compass, 
-    Settings, 
-    Radio, 
     Globe, 
     SlidersHorizontal, 
     RefreshCw, 
@@ -13,26 +10,32 @@ import {
     Layers, 
     Calendar,
     Sparkles,
-    Sliders,
     Zap,
     Map as MapIcon,
     Plane,
-    Info,
-    Grid,
-    SlidersHorizontal as ControlsIcon
+    X,
+    Filter,
+    Radio,
+    Eye,
+    RotateCcw
 } from 'lucide-react';
 const DeckFlightMap = lazy(() => import('../components/DeckFlightMap').then(m => ({ default: m.DeckFlightMap || m.default })));
 import { dataService } from '../services/mockDb';
 import { Trip } from '../types';
 import { Input, MultiSelect } from '../components/ui';
-import { resolvePlaceName, getCoordinates, getCoordinatesSync } from '../services/geocoding';
+import { getCoordinates, getCoordinatesSync } from '../services/geocoding';
 import { runAfterFirstPaint, mapWithConcurrency } from '../services/utils';
+import { 
+    MapAppearanceSettings, 
+    DEFAULT_MAP_APPEARANCE, 
+    loadMapAppearanceSettings, 
+    saveMapAppearanceSettings 
+} from '../types/mapAppearance';
 
 interface ExpeditionMapViewProps {
     onTripClick: (tripId: string) => void;
 }
 
-// Custom Hook to detect Dark Mode changes from Tailwind class on HTML element
 const useDarkMode = () => {
     const [isDark, setIsDark] = useState(document.documentElement.classList.contains('dark'));
 
@@ -48,8 +51,6 @@ const useDarkMode = () => {
 };
 
 const GEO_CONCURRENCY_LIMIT = 6;
-
-// Coordinate Cache to prevent excessive API calls
 const COORD_CACHE_KEY = 'wandergrid_coord_cache';
 let coordCache: Map<string, { lat: number, lng: number }> | null = null;
 
@@ -73,7 +74,7 @@ const saveCoordCache = (cache: Map<string, { lat: number, lng: number }>) => {
 };
 
 const getGreatCircleDistance = (lat1: number, lng1: number, lat2: number, lng2: number) => {
-    const R = 6371; // Earth's radius in km
+    const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLng = (lng2 - lng1) * Math.PI / 180;
     const a = 
@@ -85,38 +86,65 @@ const getGreatCircleDistance = (lat1: number, lng1: number, lat2: number, lng2: 
 };
 
 export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClick }) => {
-    const [projectionMode, setProjectionMode] = useState<'flat' | 'globe' | 'elevated'>('elevated');
-    const [viewMode, setViewMode] = useState<'network' | 'scratch'>('network');
     const [trips, setTrips] = useState<Trip[]>([]);
     const [loading, setLoading] = useState(true);
-    
-    // Map Visual Settings
-    const [showFrequencyWeight, setShowFrequencyWeight] = useState(false);
+
+    // Sidebar state & tab
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [activeSidebarTab, setActiveSidebarTab] = useState<'map' | 'flights' | 'layers' | 'filters'>('map');
+
+    // Appearance Settings State
+    const [appearance, setAppearance] = useState<MapAppearanceSettings>(() => loadMapAppearanceSettings());
+
+    // Additional Map Modes
+    const [viewMode, setViewMode] = useState<'network' | 'scratch'>('network');
+    const [elevatedProjection, setElevatedProjection] = useState<boolean>(true);
     const [animateRoutes, setAnimateRoutes] = useState(false);
-    const [showCountries, setShowCountries] = useState(false); 
-    const [activeLayer, setActiveLayer] = useState<'standard' | 'satellite' | 'topography' | 'hillshade'>('standard');
-    const [clusterMode, setClusterMode] = useState<boolean>(false);
-    const [showLandSeaRoutes, setShowLandSeaRoutes] = useState<boolean>(true);
-    const [showCityMarkers, setShowCityMarkers] = useState<boolean>(true);
-    const [screenshotTrigger, setScreenshotTrigger] = useState<number>(0);
-    const [isScreenshotting, setIsScreenshotting] = useState<boolean>(false);
-    const [isCollapsed, setIsCollapsed] = useState(true);
+    const [showCountries, setShowCountries] = useState(false);
+    const [clusterMode, setClusterMode] = useState(false);
+    const [showLandSeaRoutes, setShowLandSeaRoutes] = useState(true);
     const [showIndependentFlights, setShowIndependentFlights] = useState(true);
     const [showRoadTracing, setShowRoadTracing] = useState<boolean>(() => {
         return localStorage.getItem('wandergrid_road_tracing') === 'true';
     });
 
-    // AirTrail Visual Customizations
-    const [hideAirportCircles, setHideAirportCircles] = useState(false);
-    const [airportCircleSize, setAirportCircleSize] = useState(2);
-    const [proportionalArcThickness, setProportionalArcThickness] = useState(false);
-    const [showAviationCharts, setShowAviationCharts] = useState(false);
-
-    // Data for Highlights
+    // Visited Data
     const [visitedCountryCodes, setVisitedCountryCodes] = useState<string[]>([]);
-    const [visitedPlaces, setVisitedPlaces] = useState<{lat: number, lng: number, name: string}[]>([]);
-
+    const [visitedPlaces, setVisitedPlaces] = useState<{ lat: number; lng: number; name: string }[]>([]);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+    // Filters
+    const [statusFilter, setStatusFilter] = useState<'all' | 'Past' | 'Upcoming' | 'Planning'>('all');
+    const [yearFilter, setYearFilter] = useState<string>('all');
+    const [depFilter, setDepFilter] = useState<string[]>([]);
+    const [arrFilter, setArrFilter] = useState<string[]>([]);
+    const [dateFrom, setDateFrom] = useState<string>('');
+    const [dateTo, setDateTo] = useState<string>('');
+    const [focusCoord, setFocusCoord] = useState<{ lat: number, lng: number } | null>(null);
+
+    const isDark = useDarkMode();
+
+    const handleUpdateAppearance = (newSettings: MapAppearanceSettings) => {
+        setAppearance(newSettings);
+        saveMapAppearanceSettings(newSettings);
+    };
+
+    const handleResetAll = () => {
+        handleUpdateAppearance({ ...DEFAULT_MAP_APPEARANCE });
+        setViewMode('network');
+        setShowCountries(false);
+        setAnimateRoutes(false);
+        setClusterMode(false);
+        setShowLandSeaRoutes(true);
+        setShowIndependentFlights(true);
+        setShowRoadTracing(false);
+        setStatusFilter('all');
+        setYearFilter('all');
+        setDepFilter([]);
+        setArrFilter([]);
+        setDateFrom('');
+        setDateTo('');
+    };
 
     const handleRefresh = () => {
         setLoading(true);
@@ -134,17 +162,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
         setRefreshTrigger(prev => prev + 1);
     };
 
-    // Filters
-    const [statusFilter, setStatusFilter] = useState<'all' | 'Past' | 'Upcoming' | 'Planning'>('all');
-    const [yearFilter, setYearFilter] = useState<string>('all');
-    const [depFilter, setDepFilter] = useState<string[]>([]);
-    const [arrFilter, setArrFilter] = useState<string[]>([]);
-    const [dateFrom, setDateFrom] = useState<string>('');
-    const [dateTo, setDateTo] = useState<string>('');
-    const [focusCoord, setFocusCoord] = useState<{ lat: number, lng: number } | null>(null);
-
-    const isDark = useDarkMode();
-
+    // Load Data
     useEffect(() => {
         setLoading(true);
         Promise.all([
@@ -154,7 +172,6 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
         ]).then(([loadedTrips, loadedFlights, loadedRoadTrips]) => {
             const coordCache = getCoordCache();
 
-            // Merge independent road trips into independent flights list safely to avoid duplicated IDs
             const flightIds = new Set((loadedFlights || []).map(f => f.id));
             const combinedFlights = [...(loadedFlights || [])];
             (loadedRoadTrips || []).forEach(rt => {
@@ -165,25 +182,18 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
             });
             const loadedFlightsCombined = combinedFlights;
 
-            // Try to resolve coordinates instantly using local cache only to prevent blocking the UI
             const getLocalCoordsSync = (place: string) => {
                 if (!place) return null;
                 const clean = place.trim();
                 const uppercaseLoc = clean.toUpperCase();
-                
-                // Check if it is already in our local cache Map
                 const cached = coordCache.get(clean) || coordCache.get(uppercaseLoc);
-                if (cached) {
-                    return { lat: cached.lat, lng: cached.lng };
-                }
+                if (cached) return { lat: cached.lat, lng: cached.lng };
 
-                // Fallback to fast synchronous database/IATA lookup before checking network
                 const syncRes = getCoordinatesSync(clean);
                 if (syncRes) {
                     coordCache.set(clean, { lat: syncRes.lat, lng: syncRes.lng });
                     return { lat: syncRes.lat, lng: syncRes.lng };
                 }
-
                 return null;
             };
 
@@ -219,7 +229,6 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                 }
             });
 
-            // First draw: Render as much as possible instantly
             const initialTrips = (loadedTrips || []).map(t => {
                 const assignedFlights = flightsByTripIdMap.get(t.id) || [];
                 const existingTransports = t.transports || [];
@@ -270,11 +279,9 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                 });
             };
 
-            // Display immediately to unblock UI
             setTrips([...initialTrips, ...makeSyntheticTrips(initialFlights)]);
             setLoading(false);
 
-            // Now, run full asynchronous geocoding in the background to resolve any missing coords without blocking
             runAfterFirstPaint(async () => {
                 let coordsDirty = false;
 
@@ -379,7 +386,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
         });
     }, [refreshTrigger]);
 
-    // Calculate Visited Countries & Cities
+    // Visited countries calculation
     useEffect(() => {
         const processGeoData = async () => {
             try {
@@ -399,688 +406,813 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
 
                     setVisitedCountryCodes(countryCodes);
                     setVisitedPlaces(places);
-                    return;
                 }
             } catch (err) {
-                console.warn("Could not query Visited collection from database in Map View, using fallback resolution:", err);
+                console.warn("Could not query Visited collection:", err);
             }
-
-            const countryCodes = new Set<string>();
-            // Reuse cache from LocalStorage if available (shared with Gamification and Goe-API)
-            const placeCacheRaw = localStorage.getItem('wandergrid_geo_cache_v3') || localStorage.getItem('wandergrid_geo_cache_v2');
-            const placeDetailsCache = placeCacheRaw ? new Map(JSON.parse(placeCacheRaw)) : new Map();
-            const coordinateCache = getCoordCache();
-            let coordsDirty = false;
-            
-            const placesToCheckForCountry = new Set<string>();
-            const placesToCheckForCoords = new Set<string>(); // Map Name -> LatLng
-            const finalPlaces: { lat: number, lng: number, name: string }[] = [];
-            const processedPlaceKeys = new Set<string>(); // "lat,lng"
-
-            trips.forEach(t => {
-                if (t.status !== 'Past') return;
-                
-                // 1. Main Trip Location
-                if (t.location) {
-                    placesToCheckForCountry.add(t.location);
-                    if (t.coordinates) {
-                        const key = `${t.coordinates.lat.toFixed(4)},${t.coordinates.lng.toFixed(4)}`;
-                        if (!processedPlaceKeys.has(key)) {
-                            finalPlaces.push({ lat: t.coordinates.lat, lng: t.coordinates.lng, name: t.location });
-                            processedPlaceKeys.add(key);
-                        }
-                    } else {
-                        placesToCheckForCoords.add(t.location);
-                    }
-                }
-
-                // 2. Transports
-                t.transports?.forEach(tr => {
-                    // Countries
-                    if (tr.origin) placesToCheckForCountry.add(tr.origin);
-                    if (tr.destination) placesToCheckForCountry.add(tr.destination);
-                    
-                    // Cities (Use explicit Lat/Lng if available from transport data)
-                    if (tr.originLat && tr.originLng) {
-                        const key = `${tr.originLat.toFixed(4)},${tr.originLng.toFixed(4)}`;
-                        if (!processedPlaceKeys.has(key)) {
-                            finalPlaces.push({ lat: tr.originLat, lng: tr.originLng, name: tr.origin });
-                            processedPlaceKeys.add(key);
-                        }
-                    } else if (tr.origin) {
-                        placesToCheckForCoords.add(tr.origin);
-                    }
-
-                    if (tr.destLat && tr.destLng) {
-                        const key = `${tr.destLat.toFixed(4)},${tr.destLng.toFixed(4)}`;
-                        if (!processedPlaceKeys.has(key)) {
-                            finalPlaces.push({ lat: tr.destLat, lng: tr.destLng, name: tr.destination });
-                            processedPlaceKeys.add(key);
-                        }
-                    } else if (tr.destination) {
-                        placesToCheckForCoords.add(tr.destination);
-                    }
-
-                    // Waypoints (Stops)
-                    tr.waypoints?.forEach(wp => {
-                        if (wp.name) placesToCheckForCountry.add(wp.name);
-                        
-                        if (wp.coordinates) {
-                            const key = `${wp.coordinates.lat.toFixed(4)},${wp.coordinates.lng.toFixed(4)}`;
-                            if (!processedPlaceKeys.has(key)) {
-                                finalPlaces.push({ lat: wp.coordinates.lat, lng: wp.coordinates.lng, name: wp.name });
-                                processedPlaceKeys.add(key);
-                            }
-                        } else if (wp.name) {
-                            placesToCheckForCoords.add(wp.name);
-                        }
-                    });
-                });
-
-                // 3. Locations (Route Manager)
-                t.locations?.forEach(l => {
-                    placesToCheckForCountry.add(l.name);
-                    if (l.coordinates) {
-                        const key = `${l.coordinates.lat.toFixed(4)},${l.coordinates.lng.toFixed(4)}`;
-                        if (!processedPlaceKeys.has(key)) {
-                            finalPlaces.push({ lat: l.coordinates.lat, lng: l.coordinates.lng, name: l.name });
-                            processedPlaceKeys.add(key);
-                        }
-                    } else {
-                        placesToCheckForCoords.add(l.name);
-                    }
-                });
-
-                // 4. Accommodations
-                t.accommodations?.forEach(a => {
-                    // Usually we have full address, might be noisy for map country check but resolvePlaceName handles it
-                    placesToCheckForCountry.add(a.address);
-                    // For coords, full address is good
-                    placesToCheckForCoords.add(a.address);
-                });
-            });
-
-            // Resolve Countries First (Fast update)
-            const countryPlaces = Array.from(placesToCheckForCountry);
-            const countryResults = await mapWithConcurrency(countryPlaces, async (place) => {
-                if (placeDetailsCache.has(place)) {
-                    return placeDetailsCache.get(place).countryCode as string | undefined;
-                }
-                const res = await resolvePlaceName(place);
-                return res?.countryCode;
-            }, GEO_CONCURRENCY_LIMIT);
-
-            countryResults.forEach((code) => {
-                if (code && code.length === 2) countryCodes.add(code.toUpperCase());
-            });
-            
-            // UPDATE COUNTRIES IMMEDIATELY
-            setVisitedCountryCodes(Array.from(countryCodes));
-
-            // Resolve Coords for missing items (Slower update)
-            const coordPlaces = Array.from(placesToCheckForCoords);
-            const coordResults = await mapWithConcurrency(coordPlaces, async (place) => {
-                let coords = coordinateCache.get(place);
-                if (!coords) {
-                    const res = await getCoordinates(place);
-                    if (res) {
-                        coords = { lat: res.lat, lng: res.lng };
-                        coordinateCache.set(place, coords);
-                        coordsDirty = true;
-                    }
-                }
-                return { place, coords };
-            }, GEO_CONCURRENCY_LIMIT);
-
-            coordResults.forEach(({ place, coords }) => {
-                if (!coords) return;
-                const key = `${coords.lat.toFixed(4)},${coords.lng.toFixed(4)}`;
-                if (!processedPlaceKeys.has(key)) {
-                    finalPlaces.push({ lat: coords.lat, lng: coords.lng, name: place });
-                    processedPlaceKeys.add(key);
-                }
-            });
-
-            if (coordsDirty) saveCoordCache(coordinateCache);
-
-            // UPDATE CITY DOTS LATER
-            setVisitedPlaces(finalPlaces);
         };
-
-        if (trips.length > 0) {
-            runAfterFirstPaint(() => {
-                void processGeoData();
-            });
-        }
-    }, [trips, refreshTrigger]);
-
-    // Derived Data
-    const years = useMemo(() => {
-        const y = new Set<number>();
-        trips.forEach(t => {
-            if (t.startDate) {
-                const year = new Date(t.startDate).getFullYear();
-                if (!isNaN(year)) y.add(year);
-            }
-        });
-        return Array.from(y).sort((a,b) => b - a);
+        processGeoData();
     }, [trips]);
 
-    const filteredTrips = useMemo(() => {
-        const today = new Date();
-        today.setHours(0,0,0,0);
-
-        return trips.filter(t => {
-            if (!showIndependentFlights && t.id.startsWith('independent-flight-')) {
-                return false;
-            }
-            if (!showLandSeaRoutes && t.id.startsWith('independent-road-trip-')) {
-                return false;
-            }
-
-            const tStart = t.startDate ? new Date(t.startDate) : null;
-            const tEnd = t.endDate ? new Date(t.endDate) : (tStart || null);
-            
-            let matchesStatus = true;
-            if (statusFilter === 'Past') {
-                matchesStatus = tEnd ? tEnd < today : true;
-            } else if (statusFilter === 'Upcoming') {
-                matchesStatus = t.status === 'Upcoming' && (tEnd ? tEnd >= today : true);
-            } else if (statusFilter === 'Planning') {
-                matchesStatus = t.status === 'Planning';
-            }
-
-            let matchesYear = true;
-            if (yearFilter !== 'all') {
-                matchesYear = tStart ? tStart.getFullYear().toString() === yearFilter : false;
-            }
-
-            const matchesFrom = !dateFrom || (tEnd && tEnd >= new Date(dateFrom));
-            const matchesTo = !dateTo || (tStart && tStart <= new Date(dateTo));
-            const matchesDep = depFilter.length === 0 || (t.transports?.some(tr => depFilter.includes(tr.origin)) ?? false);
-            const matchesArr = arrFilter.length === 0 || (t.transports?.some(tr => arrFilter.includes(tr.destination)) ?? false);
-
-            return matchesStatus && matchesYear && matchesFrom && matchesTo && matchesDep && matchesArr;
-        });
-    }, [trips, statusFilter, yearFilter, dateFrom, dateTo, depFilter, arrFilter, showIndependentFlights, showLandSeaRoutes]);
-
-    const totalDistanceKm = useMemo(() => {
-        let sum = 0;
-        filteredTrips.forEach(t => {
-            t.transports?.forEach(tr => {
-                if (tr.originLat && tr.originLng && tr.destLat && tr.destLng) {
-                    sum += getGreatCircleDistance(tr.originLat, tr.originLng, tr.destLat, tr.destLng);
-                }
-            });
-        });
-        return Math.round(sum);
-    }, [filteredTrips]);
-
-    const activeSectorsCount = useMemo(() => {
-        let count = 0;
-        filteredTrips.forEach(t => {
-            if (t.transports) {
-                count += t.transports.length;
-            }
-        });
-        return count;
-    }, [filteredTrips]);
-
+    // Unique filter options
     const uniqueAirports = useMemo(() => {
         const origins = new Set<string>();
         const destinations = new Set<string>();
+
         trips.forEach(t => {
             t.transports?.forEach(tr => {
                 if (tr.origin) origins.add(tr.origin);
                 if (tr.destination) destinations.add(tr.destination);
             });
         });
+
         return {
-            origins: Array.from(origins).sort().map(code => ({ label: code, value: code })),
-            destinations: Array.from(destinations).sort().map(code => ({ label: code, value: code }))
+            origins: Array.from(origins).sort().map(a => ({ label: a, value: a })),
+            destinations: Array.from(destinations).sort().map(a => ({ label: a, value: a }))
         };
     }, [trips]);
 
-    if (loading) return <div className="h-full flex items-center justify-center text-gray-500">Initializing Satellite Uplink...</div>;    return (
-        <div className="relative overflow-visible pb-12 w-full space-y-8 animate-fade-in flex flex-col h-full min-h-0">
-            {/* Modern Glassmorphic ambient backdrop blur accent fields */}
-            <div className="absolute top-10 left-[10%] w-[45rem] h-[35rem] bg-gradient-to-tr from-blue-400/[0.08] to-indigo-500/[0.08] dark:from-blue-600/[0.12] dark:to-indigo-500/[0.08] rounded-full blur-[140px] pointer-events-none select-none -z-10 animate-[bounce_15s_infinite_alternate]" style={{ animationDuration: '20s' }} />
-            <div className="absolute top-[35%] right-[5%] w-[40rem] h-[40rem] bg-gradient-to-bl from-amber-400/[0.06] to-pink-500/[0.06] dark:from-amber-400/[0.05] dark:to-orange-500/[0.05] rounded-full blur-[130px] pointer-events-none select-none -z-10 animate-[pulse_12s_infinite_alternate]" />
-            <div className="absolute bottom-[15%] left-[5%] w-[50rem] h-[50rem] bg-gradient-to-tr from-purple-400/[0.04] to-blue-500/[0.04] dark:from-indigo-950/[0.08] dark:to-purple-950/[0.06] rounded-full blur-[160px] pointer-events-none select-none -z-10" />
+    const years = useMemo(() => {
+        const yearSet = new Set<string>();
+        trips.forEach(t => {
+            if (t.startDate) {
+                const y = new Date(t.startDate).getFullYear().toString();
+                if (!isNaN(Number(y))) yearSet.add(y);
+            }
+        });
+        return Array.from(yearSet).sort((a, b) => b.localeCompare(a));
+    }, [trips]);
 
-            {/* HERO HEADER - OPERATIONS COMMAND DECK */}
-            <div className="relative overflow-hidden bg-white/40 dark:bg-zinc-950/25 border border-white/60 dark:border-white/10 rounded-[2.5rem] p-6 backdrop-blur-3xl shadow-[0_8px_32px_0_rgba(31,38,135,0.06)] dark:shadow-[0_16px_48px_0_rgba(0,0,0,0.3)] flex flex-col gap-6 shrink-0 z-20 transition-all duration-300">
-                <div className="absolute -top-12 -right-12 w-[350px] h-[350px] bg-gradient-to-bl from-blue-500/[0.12] via-indigo-500/[0.05] to-transparent blur-3xl pointer-events-none" />
-                <div className="absolute -bottom-12 -left-12 w-[250px] h-[255px] bg-gradient-to-tr from-amber-500/[0.05] to-transparent blur-2xl pointer-events-none" />
+    // Filter Trips
+    const filteredTrips = useMemo(() => {
+        return trips.filter(trip => {
+            if (statusFilter !== 'all' && trip.status !== statusFilter) return false;
 
-                {/* ROW 1: Operations Header & Live Metrics Deck */}
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 w-full relative z-10">
-                    <div className="flex items-center justify-between w-full lg:w-auto gap-4">
-                        <div className="flex items-center gap-4">
-                            <div className="relative group shrink-0">
-                                <div className="absolute inset-0 bg-gradient-to-tr from-blue-500 via-indigo-550 to-amber-400 rounded-2xl blur-md opacity-40 group-hover:scale-105 transition-transform duration-500" />
-                                <div className="relative w-14 h-14 rounded-2xl bg-zinc-900/10 dark:bg-zinc-800/20 backdrop-blur-xl text-zinc-900 dark:text-white flex items-center justify-center border border-white/40 dark:border-white/20 shadow-lg shrink-0">
-                                    <Compass className="w-7 h-7 text-indigo-600 dark:text-indigo-400 animate-[spin_20s_linear_infinite]" />
-                                </div>
-                            </div>
-                            <div>
-                                <h2 className="text-xl md:text-2xl font-black text-zinc-905 dark:text-white tracking-tight leading-tight flex items-center gap-2">
-                                    Operations Command Deck
-                                    <Sparkles className="w-5 h-5 text-amber-500 animate-[pulse_1.5s_infinite]" />
-                                </h2>
-                                <p className="text-[10px] md:text-[11px] font-extrabold text-zinc-500 dark:text-indigo-450 uppercase tracking-[0.18em] mt-1.5 flex items-center gap-2">
-                                    <span className="flex h-2.5 w-2.5 relative">
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                                    </span>
-                                    Telemetry Network Uplink
-                                </p>
-                            </div>
-                        </div>
+            if (yearFilter !== 'all') {
+                const tripYear = trip.startDate ? new Date(trip.startDate).getFullYear().toString() : '';
+                if (tripYear !== yearFilter) return false;
+            }
 
-                        {/* Toggle Collapse Button */}
-                        <button 
-                            onClick={() => setIsCollapsed(!isCollapsed)}
-                            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/40 hover:bg-white/60 dark:bg-white/5 dark:hover:bg-white/10 border border-white/50 dark:border-white/10 text-zinc-800 dark:text-zinc-200 font-extrabold text-xs transition-all shadow-[0_2px_8px_rgba(31,38,135,0.04)] backdrop-blur-md hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
-                        >
-                            <ControlsIcon className={`w-4 h-4 text-zinc-600 dark:text-zinc-400 transition-transform duration-300 ${isCollapsed ? '' : 'rotate-90'}`} />
-                            {isCollapsed ? 'Configure Deck' : 'Hide Controls'}
-                        </button>
+            if (dateFrom && trip.startDate && trip.startDate < dateFrom) return false;
+            if (dateTo && trip.endDate && trip.endDate > dateTo) return false;
+
+            if (depFilter.length > 0) {
+                const hasMatchingOrigin = trip.transports?.some(t => t.origin && depFilter.includes(t.origin));
+                if (!hasMatchingOrigin) return false;
+            }
+
+            if (arrFilter.length > 0) {
+                const hasMatchingDest = trip.transports?.some(t => t.destination && arrFilter.includes(t.destination));
+                if (!hasMatchingDest) return false;
+            }
+
+            return true;
+        });
+    }, [trips, statusFilter, yearFilter, depFilter, arrFilter, dateFrom, dateTo]);
+
+    // Summary Metrics
+    const { totalDistanceKm, activeSectorsCount } = useMemo(() => {
+        let totalDist = 0;
+        let sectors = 0;
+
+        filteredTrips.forEach(t => {
+            t.transports?.forEach(tr => {
+                if (tr.originLat && tr.originLng && tr.destLat && tr.destLng) {
+                    totalDist += getGreatCircleDistance(tr.originLat, tr.originLng, tr.destLat, tr.destLng);
+                    sectors++;
+                }
+            });
+        });
+
+        return {
+            totalDistanceKm: Math.round(totalDist),
+            activeSectorsCount: sectors
+        };
+    }, [filteredTrips]);
+
+    return (
+        <div className="relative w-full h-full overflow-hidden bg-[#090d16] select-none">
+            {/* 1. 100% FULL-SCREEN DECK.GL WEBGL MAP */}
+            <div className="absolute inset-0 w-full h-full">
+                <Suspense fallback={
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-950 space-y-4">
+                        <Compass className="w-10 h-10 text-blue-500 animate-[spin_4s_linear_infinite]" />
+                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-zinc-400">Loading Geospatial Engine...</p>
                     </div>
+                }>
+                    <DeckFlightMap
+                        key={`gpu-${isDark ? 'dark' : 'light'}`}
+                        trips={filteredTrips}
+                        onTripClick={onTripClick}
+                        showFrequencyWeight={appearance.routeWidthMode === 'frequency'}
+                        animateRoutes={animateRoutes}
+                        visitedCountries={visitedCountryCodes}
+                        showCountries={showCountries}
+                        viewMode={viewMode}
+                        visitedPlaces={visitedPlaces}
+                        activeLayer={appearance.basemap}
+                        onChangeActiveLayer={(layer) => handleUpdateAppearance({ ...appearance, basemap: layer })}
+                        projection={appearance.projection}
+                        elevatedRoutes={elevatedProjection}
+                        onProjectionChange={(p) => handleUpdateAppearance({ ...appearance, projection: p })}
+                        onElevatedRoutesChange={setElevatedProjection}
+                        showFlightRoutes={showIndependentFlights}
+                        showLandSeaRoutes={showLandSeaRoutes}
+                        showCityMarkers={appearance.airportSize !== 'off'}
+                        showGradientRoutes={appearance.routeColorMode === 'gradient'}
+                        clusterMode={clusterMode}
+                        showRoadTracing={showRoadTracing}
+                        focusTransportCoordinates={focusCoord}
+                        appearanceSettings={appearance}
+                        onChangeAppearanceSettings={handleUpdateAppearance}
+                    />
+                </Suspense>
+            </div>
 
-                    {/* DYNAMIC OPERATION METRICS */}
-                    <div className="grid grid-cols-2 md:flex md:flex-row items-center gap-4 w-full lg:w-auto">
-                        <div className="bg-white/35 dark:bg-zinc-900/10 backdrop-blur-xl rounded-2xl px-5 py-3 border border-white/40 dark:border-white/5 flex items-center gap-3.5 shadow-sm hover:shadow-md transition-all duration-300 group">
-                            <div className="w-10 h-10 rounded-xl bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-500/15 group-hover:scale-105 transition-transform">
-                                <Globe className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                            </div>
-                            <div className="min-w-0">
-                                <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-500 truncate">Total Sphere Range</p>
-                                <p className="text-sm md:text-base font-black text-zinc-900 dark:text-white tracking-tight mt-0.5 truncate leading-none">
-                                    {totalDistanceKm.toLocaleString()}<span className="text-[10px] font-bold text-indigo-500 ml-0.5">KM</span>
-                                </p>
-                                <p className="text-[9px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5 font-bold font-mono">
-                                    {(Math.round(totalDistanceKm * 0.621371)).toLocaleString()} MI
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="bg-white/35 dark:bg-zinc-900/10 backdrop-blur-xl rounded-2xl px-5 py-3 border border-white/40 dark:border-white/5 flex items-center gap-3.5 shadow-sm hover:shadow-md transition-all duration-300 group">
-                            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-500/15 group-hover:scale-105 transition-transform">
-                                <Zap className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                            </div>
-                            <div className="min-w-0">
-                                <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-500 truncate">Connected Hubs</p>
-                                <p className="text-sm md:text-base font-black text-zinc-900 dark:text-white tracking-tight mt-0.5 truncate leading-none">
-                                    {activeSectorsCount} <span className="text-[10px] font-bold text-indigo-500">Sectors</span>
-                                </p>
-                                <p className="text-[9px] text-indigo-550 dark:text-indigo-400 mt-0.5 font-extrabold flex items-center gap-1 leading-none">
-                                    <Activity className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> Vectors Live
-                                </p>
-                            </div>
-                        </div>
+            {/* 2. FLOATING TOP HUD BAR (Command & Live Telemetry) */}
+            <div className="absolute top-5 left-5 z-20 flex items-center gap-3 pointer-events-none">
+                {/* Brand & Status Pill */}
+                <div className="pointer-events-auto bg-zinc-950/80 hover:bg-zinc-950/95 backdrop-blur-2xl border border-white/10 rounded-2xl px-4 py-2.5 shadow-2xl flex items-center gap-3.5 transition-all">
+                    <div className="w-8 h-8 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-400 shrink-0">
+                        <Compass className="w-4 h-4 animate-[spin_20s_linear_infinite]" />
                     </div>
-                </div>
-
-                {/* REDESIGNED BENTO COMMAND HUB */}
-                <div className={`transition-all duration-300 flex flex-col gap-6 relative z-10 ${isCollapsed ? 'hidden' : 'flex'}`}>
-                    <div className="h-px bg-white/20 dark:bg-white/5 w-full" />
-                    
-                    {/* BENTO GRID: Fully adaptive grid across phones, tablets, and computers */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
-                                               {/* BENTO CARD 1: Projection & Presentation Engine (Merged & Streamlined) */}
-                        <div className="md:col-span-2 xl:col-span-2 bg-white/30 dark:bg-zinc-950/20 p-5 rounded-[2.2rem] border border-white/60 dark:border-white/5 flex flex-col justify-between gap-4 shadow-sm backdrop-blur-2xl hover:border-blue-400/30 dark:hover:border-white/10 transition-all duration-300 min-h-[14rem]">
-                            <div>
-                                <div className="flex items-center justify-between mb-4">
-                                    <span className="text-[10.5px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest block flex items-center gap-1.5">
-                                        <SlidersHorizontal className="w-3.5 h-3.5" /> I. PROJECTION & PRESENTATION
-                                    </span>
-                                    <button 
-                                        onClick={handleRefresh}
-                                        className="text-[9px] font-black text-white hover:text-white/90 bg-gradient-to-r from-blue-600 to-indigo-650 px-2.5 py-1 rounded-lg transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer shadow-[0_2px_10px_rgba(37,99,235,0.2)] border border-white/20"
-                                        title="Clear coordinate caches and reload all geocoding / route paths"
-                                    >
-                                        <RefreshCw className="w-3 h-3 hover:rotate-180 transition-transform duration-500" />
-                                        Sync
-                                    </button>
-                                </div>
-                                <div className="grid grid-cols-1 lg:grid-cols-10 gap-5">
-                                    {/* Projection Section (Left side) */}
-                                    <div className="lg:col-span-4 flex flex-col gap-2.5">
-                                        <p className="text-[9px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest leading-none">Projection Control</p>
-                                        <div className="grid grid-cols-1 gap-2">
-                                            {/* Flat Map / 3D Globe / 3D Elevated Projection Selector */}
-                                            <div className="flex p-0.5 bg-zinc-200/50 dark:bg-zinc-950/60 rounded-xl border border-white/30 dark:border-white/5 w-full justify-between">
-                                                {[
-                                                    { id: 'flat', label: 'Flat Map', icon: MapIcon },
-                                                    { id: 'globe', label: '3D Globe', icon: Globe },
-                                                    { id: 'elevated', label: '3D Elevated', icon: Plane }
-                                                ].map((proj) => {
-                                                    const IconComponent = proj.icon;
-                                                    const isSelected = projectionMode === proj.id;
-                                                    return (
-                                                        <button
-                                                            key={proj.id}
-                                                            onClick={() => setProjectionMode(proj.id as any)}
-                                                            className={`px-2 py-1.5 rounded-lg text-[9.5px] font-black uppercase tracking-wider transition-all flex-1 flex items-center justify-center gap-1 cursor-pointer ${
-                                                                isSelected 
-                                                                ? 'bg-blue-600 text-white shadow-md font-black border border-blue-400/30' 
-                                                                : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
-                                                            }`}
-                                                            title={`Switch to ${proj.label}`}
-                                                        >
-                                                            <IconComponent className="w-3 h-3" />
-                                                            <span>{proj.label}</span>
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-
-                                            {/* Network toggle */}
-                                            <button
-                                                onClick={() => setViewMode(viewMode === 'network' ? 'scratch' : 'network')}
-                                                className={`p-2 rounded-xl border text-left font-bold transition-all duration-205 flex items-center gap-2 cursor-pointer ${
-                                                    viewMode === 'network'
-                                                    ? 'bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-400 shadow-sm'
-                                                    : 'bg-white/30 dark:bg-white/5 border-white/40 dark:border-white/5 text-zinc-450 hover:text-zinc-650 dark:hover:text-zinc-350'
-                                                }`}
-                                                title={viewMode === 'network' ? "Hide Network Routes & Plots" : "Display Network Routes & Plots"}
-                                            >
-                                                <Compass className={`w-4 h-4 ${viewMode === 'network' ? 'text-blue-500' : 'text-zinc-450'}`} />
-                                                <div className="min-w-0 flex-1 leading-none">
-                                                    <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Network</p>
-                                                    <p className="text-[9.5px] font-extrabold mt-0.5 truncate">{viewMode === 'network' ? 'Active' : 'Disabled'}</p>
-                                                </div>
-                                            </button>
-
-                                            {/* Scratch toggle */}
-                                            <button
-                                                onClick={() => setShowCountries(!showCountries)}
-                                                className={`p-2 rounded-xl border text-left font-bold transition-all duration-205 flex items-center gap-2 cursor-pointer ${
-                                                    showCountries
-                                                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 shadow-sm'
-                                                    : 'bg-white/30 dark:bg-white/5 border-white/40 dark:border-white/5 text-zinc-450 hover:text-zinc-650 dark:hover:text-zinc-350'
-                                                }`}
-                                                title={showCountries ? "Hide Visited Lands layer" : "Display Visited Lands layer"}
-                                            >
-                                                <MapPin className={`w-4 h-4 ${showCountries ? 'text-amber-500' : 'text-zinc-450'}`} />
-                                                <div className="min-w-0 flex-1 leading-none">
-                                                    <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Scratch</p>
-                                                    <p className="text-[9.5px] font-extrabold mt-0.5 truncate">{showCountries ? 'Active' : 'Disabled'}</p>
-                                                </div>
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* Presentation Section (Right side) */}
-                                    <div className="lg:col-span-6 flex flex-col gap-2.5">
-                                        <p className="text-[9px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest leading-none">Presentation Channels</p>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            {/* 1. FLIGHTS */}
-                                            <button
-                                                onClick={() => setShowIndependentFlights(!showIndependentFlights)}
-                                                className={`p-2 rounded-xl border text-left font-bold transition-all duration-205 flex items-center gap-2 cursor-pointer ${
-                                                    showIndependentFlights
-                                                    ? 'bg-purple-500/10 border-purple-500/30 text-purple-600 dark:text-purple-400 shadow-sm'
-                                                    : 'bg-white/30 dark:bg-white/5 border-white/40 dark:border-white/5 text-zinc-450 hover:text-zinc-650 dark:hover:text-zinc-350'
-                                                }`}
-                                                title="Toggle Independent Flights"
-                                            >
-                                                <Compass className="w-4 h-4 text-purple-500" />
-                                                <div className="min-w-0 flex-1 leading-none">
-                                                    <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Flights</p>
-                                                    <p className="text-[9.5px] font-extrabold mt-0.5 truncate">{showIndependentFlights ? 'Active' : 'Hidden'}</p>
-                                                </div>
-                                            </button>
-
-                                            {/* 2. TRANSIT */}
-                                            <button
-                                                onClick={() => setShowLandSeaRoutes(!showLandSeaRoutes)}
-                                                className={`p-2 rounded-xl border text-left font-bold transition-all duration-205 flex items-center gap-2 cursor-pointer ${
-                                                    showLandSeaRoutes
-                                                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 shadow-sm'
-                                                    : 'bg-white/30 dark:bg-white/5 border-white/40 dark:border-white/5 text-zinc-450 hover:text-zinc-650 dark:hover:text-zinc-350'
-                                                }`}
-                                                title={showLandSeaRoutes ? "Hide Land/Sea vehicle paths" : "Display Land/Sea vehicle paths"}
-                                            >
-                                                <Zap className="w-4 h-4 text-amber-500" />
-                                                <div className="min-w-0 flex-1 leading-none">
-                                                    <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Transit</p>
-                                                    <p className="text-[9.5px] font-extrabold mt-0.5 truncate">{showLandSeaRoutes ? 'Active' : 'Hidden'}</p>
-                                                </div>
-                                            </button>
-
-                                            {/* 3. CITIES */}
-                                            <button
-                                                onClick={() => setShowCityMarkers(!showCityMarkers)}
-                                                className={`p-2 rounded-xl border text-left font-bold transition-all duration-205 flex items-center gap-2 cursor-pointer ${
-                                                    showCityMarkers
-                                                    ? 'bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-400 shadow-sm'
-                                                    : 'bg-white/30 dark:bg-white/5 border-white/40 dark:border-white/5 text-zinc-450 hover:text-zinc-650 dark:hover:text-zinc-350'
-                                                }`}
-                                                title={showCityMarkers ? "Hide City labels on the map" : "Display major city endpoints"}
-                                            >
-                                                <MapPin className="w-4 h-4 text-blue-500" />
-                                                <div className="min-w-0 flex-1 leading-none">
-                                                    <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Cities</p>
-                                                    <p className="text-[9.5px] font-extrabold mt-0.5 truncate">{showCityMarkers ? 'Visible' : 'Hidden'}</p>
-                                                </div>
-                                            </button>
-
-                                            {/* 4. CLUSTER */}
-                                            <button
-                                                onClick={() => setClusterMode(!clusterMode)}
-                                                className={`p-2 rounded-xl border text-left font-bold transition-all duration-205 flex items-center gap-2 cursor-pointer ${
-                                                    clusterMode
-                                                    ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                                                    : 'bg-white/30 dark:bg-white/5 border-white/40 dark:border-white/5 text-zinc-450 hover:text-zinc-650 dark:hover:text-zinc-350'
-                                                }`}
-                                                title={clusterMode ? "Disable marker group combining" : "Group overlapping airport nodes"}
-                                            >
-                                                <Layers className="w-4 h-4 text-indigo-505" />
-                                                <div className="min-w-0 flex-1 leading-none">
-                                                    <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Cluster</p>
-                                                    <p className="text-[9.5px] font-extrabold mt-0.5 truncate">{clusterMode ? 'Active' : 'Off'}</p>
-                                                </div>
-                                            </button>
-
-                                            {/* 5. COMET FLOW */}
-                                            <button
-                                                onClick={() => setAnimateRoutes(!animateRoutes)}
-                                                className={`p-2 rounded-xl border text-left font-bold transition-all duration-205 flex items-center gap-2 cursor-pointer ${
-                                                    animateRoutes
-                                                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 shadow-sm'
-                                                    : 'bg-white/30 dark:bg-white/5 border-white/40 dark:border-white/5 text-zinc-450 hover:text-zinc-650 dark:hover:text-zinc-350'
-                                                }`}
-                                                title="Toggle Animated Pulse Lines"
-                                            >
-                                                <Play className="w-4 h-4 text-emerald-555 animate-pulse" />
-                                                <div className="min-w-0 flex-1 leading-none">
-                                                    <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Comet Flow</p>
-                                                    <p className="text-[9.5px] font-extrabold mt-0.5 truncate">{animateRoutes ? 'Active' : 'Off'}</p>
-                                                </div>
-                                            </button>
-
-                                            {/* 6. WEIGHT FLOW */}
-                                            <button
-                                                onClick={() => setShowFrequencyWeight(!showFrequencyWeight)}
-                                                className={`p-2 rounded-xl border text-left font-bold transition-all duration-205 flex items-center gap-2 cursor-pointer ${
-                                                    showFrequencyWeight
-                                                    ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-600 dark:text-cyan-400 shadow-sm'
-                                                    : 'bg-white/30 dark:bg-white/5 border-white/40 dark:border-white/5 text-zinc-450 hover:text-zinc-650 dark:hover:text-zinc-350'
-                                                }`}
-                                                title="Line thickness changes with route replication"
-                                            >
-                                                <Activity className="w-4 h-4 text-cyan-500" />
-                                                <div className="min-w-0 flex-1 leading-none">
-                                                    <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Weight Flow</p>
-                                                    <p className="text-[9.5px] font-extrabold mt-0.5 truncate">{showFrequencyWeight ? 'Active' : 'Off'}</p>
-                                                </div>
-                                            </button>
-
-                                            {/* 7. ROAD TRACING (OSRM) */}
-                                            <button
-                                                onClick={() => {
-                                                    const newVal = !showRoadTracing;
-                                                    setShowRoadTracing(newVal);
-                                                    localStorage.setItem('wandergrid_road_tracing', String(newVal));
-                                                }}
-                                                className={`col-span-2 p-2 rounded-xl border text-left font-bold transition-all duration-205 flex items-center gap-2.5 cursor-pointer ${
-                                                    showRoadTracing
-                                                    ? 'bg-rose-500/10 border-rose-500/30 text-rose-605 dark:text-rose-400 shadow-sm'
-                                                    : 'bg-white/30 dark:bg-white/5 border-white/40 dark:border-white/5 text-zinc-450 hover:text-zinc-650 dark:hover:text-zinc-350'
-                                                }`}
-                                                title={showRoadTracing ? "Disable realistic land route tracing over OSRM" : "Trace land routes along actual roads using OpenStreetMap/OSRM"}
-                                            >
-                                                <Radio className="w-4 h-4 text-rose-500 shrink-0" />
-                                                <div className="min-w-0 flex-1 leading-none">
-                                                    <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Realistic Land Trails (OSRM)</p>
-                                                    <p className="text-[9.5px] font-extrabold mt-0.5 truncate">{showRoadTracing ? 'Enabled (Actual Roads)' : 'Disabled (Arcs Only)'}</p>
-                                                </div>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-black text-white tracking-tight leading-none">WanderGrid Atlas</span>
+                            <span className="flex h-2 w-2 relative">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                            </span>
                         </div>
-
-                        {/* BENTO CARD 3: Location Connectivity Filter */}
-                        <div className="bg-white/30 dark:bg-zinc-950/20 p-5 rounded-[2.2rem] border border-white/60 dark:border-white/5 flex flex-col justify-between gap-4 shadow-sm backdrop-blur-2xl hover:border-blue-400/30 dark:hover:border-white/10 transition-all duration-300 min-h-[14rem]">
-                            <div>
-                                <span className="text-[10.5px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest block mb-2.5 flex items-center gap-1.5">
-                                    <Compass className="w-3.5 h-3.5" /> III. CONNECTIVITY
-                                </span>
-                                <div className="space-y-3">
-                                    <div>
-                                        <p className="text-[9px] font-extrabold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1">Departure Station</p>
-                                        <MultiSelect 
-                                            placeholder="Any Departure Hub"
-                                            options={uniqueAirports.origins}
-                                            value={depFilter}
-                                            onChange={setDepFilter}
-                                        />
-                                    </div>
-                                    <div>
-                                        <p className="text-[9px] font-extrabold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1">Arrival Station</p>
-                                        <MultiSelect 
-                                            placeholder="Any Arrival Hub"
-                                            options={uniqueAirports.destinations}
-                                            value={arrFilter}
-                                            onChange={setArrFilter}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* BENTO CARD 4: Time Span & Quick Filters */}
-                        <div className="bg-white/30 dark:bg-zinc-950/20 p-5 rounded-[2.2rem] border border-white/60 dark:border-white/5 flex flex-col justify-between gap-4 shadow-sm backdrop-blur-2xl hover:border-blue-400/30 dark:hover:border-white/10 transition-all duration-300 min-h-[14rem]">
-                            <div>
-                                <span className="text-[10.5px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest block mb-2.5 flex items-center gap-1.5">
-                                    <Calendar className="w-3.5 h-3.5" /> IV. TEMPORAL RANGE
-                                </span>
-                                <div className="space-y-3">
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div>
-                                            <label className="text-[9px] font-extrabold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block mb-1">From Date</label>
-                                            <Input 
-                                                type="date" 
-                                                value={dateFrom} 
-                                                onChange={(e) => setDateFrom(e.target.value)} 
-                                                className="!py-1 !px-2 !text-[11px] !font-bold !h-8 bg-white/55 dark:bg-zinc-950/40 text-zinc-850 dark:text-white border border-white/40 dark:border-white/5 focus:border-indigo-450 rounded-xl"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="text-[9px] font-extrabold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block mb-1">To Date</label>
-                                            <Input 
-                                                type="date" 
-                                                value={dateTo} 
-                                                onChange={(e) => setDateTo(e.target.value)} 
-                                                className="!py-1 !px-2 !text-[11px] !font-bold !h-8 bg-white/55 dark:bg-zinc-950/40 text-zinc-850 dark:text-white border border-white/40 dark:border-white/5 focus:border-indigo-450 rounded-xl"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Year Select & Timeline buttons */}
-                                    <div className="flex flex-col gap-2">
-                                        <div className="flex items-center gap-2 justify-between">
-                                            <span className="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Operation Year:</span>
-                                            <select 
-                                                value={yearFilter}
-                                                onChange={(e) => setYearFilter(e.target.value)}
-                                                className="bg-white/70 dark:bg-zinc-950 text-[10.5px] font-extrabold uppercase tracking-wider text-zinc-750 dark:text-zinc-300 outline-none px-2 py-1 cursor-pointer rounded-lg border border-white/40 dark:border-white/5"
-                                            >
-                                                <option value="all">All Years</option>
-                                                {years.map(y => <option key={y} value={y}>{y}</option>)}
-                                            </select>
-                                        </div>
-
-                                        <div className="flex p-0.5 bg-zinc-200/50 dark:bg-zinc-950/60 rounded-xl border border-white/30 dark:border-white/5 w-full justify-between">
-                                            {['all', 'Upcoming', 'Past'].map((s) => (
-                                                <button
-                                                    key={s}
-                                                    onClick={() => setStatusFilter(s as any)}
-                                                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex-1 text-center ${
-                                                        statusFilter === s 
-                                                        ? 'bg-white dark:bg-zinc-800 text-black dark:text-white shadow-sm font-black border border-white/10' 
-                                                        : 'text-zinc-450 hover:text-zinc-650 dark:hover:text-zinc-300'
-                                                    }`}
-                                                >
-                                                    {s === 'all' ? 'All' : s}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
+                        <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mt-0.5 leading-none">
+                            {activeSectorsCount} Active Sectors • {totalDistanceKm.toLocaleString()} KM
+                        </p>
                     </div>
                 </div>
             </div>
-            
-            {/* CONTENT AREA */}
-            <div className="flex-1 min-h-[36rem] w-full flex flex-col gap-6 relative z-10">
-                {/* FULL-SCREEN GEOSPATIAL MAP COMMAND PANEL */}
-                <div className="flex-1 min-h-[36rem] rounded-[2.5rem] overflow-hidden border border-white/50 dark:border-white/10 shadow-[0_24px_64px_rgba(0,0,0,0.08)] dark:shadow-[0_24px_64px_rgba(0,0,0,0.45)] relative bg-zinc-100/35 dark:bg-black/25 backdrop-blur-3xl flex flex-col">
-                    <Suspense fallback={
-                        <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-950/70 border border-white/5 space-y-4">
-                            <Compass className="w-10 h-10 text-indigo-500 animate-[spin_5s_linear_infinite]" />
-                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 font-mono">Booting Real-Time Vector Engine...</p>
+
+            {/* 3. FLOATING TOP RIGHT CONTROLS TOGGLE */}
+            <div className="absolute top-5 right-5 z-20 flex items-center gap-2">
+                <button
+                    onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                    className={`px-4 py-2.5 rounded-2xl shadow-2xl backdrop-blur-2xl text-xs font-bold flex items-center gap-2.5 cursor-pointer transition-all active:scale-95 border ${
+                        isSidebarOpen 
+                            ? 'bg-blue-600 text-white border-blue-400/40 shadow-blue-500/25 ring-2 ring-blue-500/30'
+                            : 'bg-zinc-950/85 hover:bg-zinc-900 text-white border-white/10'
+                    }`}
+                >
+                    <SlidersHorizontal className={`w-4 h-4 ${isSidebarOpen ? 'text-white' : 'text-blue-400'} transition-transform duration-300 ${isSidebarOpen ? 'rotate-90' : ''}`} />
+                    <span>Controls & Appearance</span>
+                </button>
+            </div>
+
+            {/* 4. SLIDE-IN RIGHT SIDEBAR CONTROL PANEL */}
+            <div 
+                className={`fixed md:absolute top-0 right-0 h-full w-full sm:w-[420px] max-w-full bg-[#0e121a]/95 backdrop-blur-3xl border-l border-white/10 shadow-[-15px_0_45px_rgba(0,0,0,0.8)] z-40 flex flex-col transition-transform duration-300 ease-out select-none ${
+                    isSidebarOpen ? 'translate-x-0' : 'translate-x-full pointer-events-none'
+                }`}
+            >
+                {/* Sidebar Header */}
+                <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-white/5">
+                    <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-lg bg-blue-500/15 border border-blue-500/25 flex items-center justify-center text-blue-400">
+                            <SlidersHorizontal className="w-3.5 h-3.5" />
                         </div>
-                    }>
-                        <DeckFlightMap
-                            key={`gpu-${isDark ? 'dark' : 'light'}`}
-                            trips={filteredTrips}
-                            onTripClick={onTripClick}
-                            showFrequencyWeight={showFrequencyWeight}
-                            animateRoutes={animateRoutes}
-                            visitedCountries={visitedCountryCodes}
-                            showCountries={showCountries}
-                            viewMode={viewMode}
-                            visitedPlaces={visitedPlaces}
-                            activeLayer={activeLayer}
-                            onChangeActiveLayer={setActiveLayer}
-                            projection={projectionMode === 'flat' ? 'flat' : 'globe'}
-                            elevatedRoutes={projectionMode === 'elevated'}
-                            onProjectionChange={(p) => setProjectionMode(p === 'flat' ? 'flat' : (projectionMode === 'elevated' ? 'elevated' : 'globe'))}
-                            onElevatedRoutesChange={(el) => setProjectionMode(el ? 'elevated' : 'globe')}
-                            showFlightRoutes={showIndependentFlights}
-                            showLandSeaRoutes={showLandSeaRoutes}
-                            showCityMarkers={showCityMarkers}
-                            showGradientRoutes={true}
-                            clusterMode={clusterMode}
-                            showRoadTracing={showRoadTracing}
-                            focusTransportCoordinates={focusCoord}
-                        />
-                    </Suspense>
-                    
-                    {trips.length === 0 && (
-                        <div className="absolute inset-0 flex items-center justify-center z-[500] pointer-events-none">
-                            <div className="bg-black/80 backdrop-blur-md p-8 rounded-3xl border border-white/10 text-center animate-pulse">
-                                <span className="material-icons-outlined text-4xl text-gray-500 mb-4">public_off</span>
-                                <h3 className="text-xl font-bold text-white">No Geospatial Data Loaded</h3>
-                                <p className="text-gray-400 text-sm mt-2 max-w-xs">Add trips with aviation coordinates or airport endpoints in the main logs to display sectors.</p>
+                        <h2 className="text-sm font-black text-white tracking-tight">Mission Control</h2>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={handleRefresh}
+                            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                            title="Sync coordinates & network"
+                        >
+                            <RefreshCw className="w-3.5 h-3.5 hover:rotate-180 transition-transform duration-500" />
+                        </button>
+                        <button
+                            onClick={handleResetAll}
+                            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                            title="Reset to defaults"
+                        >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                            onClick={() => setIsSidebarOpen(false)}
+                            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                            title="Close sidebar"
+                        >
+                            <X className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Unified Segmented Navigation Tab Bar */}
+                <div className="px-6 py-3 border-b border-white/5">
+                    <div className="flex p-1 bg-zinc-950/80 rounded-2xl border border-white/5 gap-1">
+                        {[
+                            { id: 'map', label: 'Map', icon: MapIcon },
+                            { id: 'flights', label: 'Flights', icon: Plane },
+                            { id: 'layers', label: 'Layers', icon: Layers },
+                            { id: 'filters', label: 'Filters', icon: Filter }
+                        ].map((tab) => {
+                            const isSelected = activeSidebarTab === tab.id;
+                            const IconComponent = tab.icon;
+                            return (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveSidebarTab(tab.id as any)}
+                                    className={`flex-1 py-2 rounded-xl text-xs font-bold tracking-wide transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                        isSelected
+                                            ? 'bg-zinc-800 text-white shadow-md font-black border border-white/10'
+                                            : 'text-zinc-400 hover:text-zinc-200'
+                                    }`}
+                                >
+                                    <IconComponent className="w-3.5 h-3.5" />
+                                    <span>{tab.label}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* Sidebar Scrollable Body */}
+                <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar text-white">
+                    {/* TAB 1: MAP */}
+                    {activeSidebarTab === 'map' && (
+                        <div className="space-y-6">
+                            {/* BASEMAP */}
+                            <div>
+                                <div className="flex items-center justify-between mb-3">
+                                    <h3 className="text-[11px] font-black text-zinc-400 tracking-wider uppercase">Basemap Style</h3>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {[
+                                        { id: 'default', label: 'Default', bg: '#161a23', icon: 'grid' },
+                                        { id: 'satellite', label: 'Satellite', bg: '#0f2316', icon: 'sat' },
+                                        { id: 'topography', label: 'Topography', bg: '#1f2937', icon: 'topo' },
+                                        { id: 'night', label: 'Dark Midnight', bg: '#090b10', icon: 'night' }
+                                    ].map(b => (
+                                        <button
+                                            key={b.id}
+                                            onClick={() => handleUpdateAppearance({ ...appearance, basemap: b.id as any })}
+                                            className={`p-2.5 rounded-2xl border transition-all text-center flex flex-col items-center gap-2 cursor-pointer ${
+                                                appearance.basemap === b.id
+                                                    ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30'
+                                                    : 'border-white/10 bg-zinc-900/60 hover:border-white/20'
+                                            }`}
+                                        >
+                                            <div className="w-full h-14 rounded-xl border border-white/5 flex items-center justify-center overflow-hidden" style={{ background: b.bg }}>
+                                                {b.id === 'satellite' ? (
+                                                    <svg className="w-full h-full" viewBox="0 0 100 50">
+                                                        <rect width="100" height="50" fill="#1b3022" />
+                                                        <circle cx="80" cy="15" r="25" fill="#2d4a36" />
+                                                        <path d="M15,50 L60,0 L75,0 L30,50 Z" fill="#4a5568" />
+                                                    </svg>
+                                                ) : (
+                                                    <svg className="w-full h-full opacity-60" viewBox="0 0 100 50">
+                                                        <path d="M0,25 L100,25 M30,0 L30,50 M70,0 L70,50" stroke="#384252" strokeWidth="1.5" />
+                                                    </svg>
+                                                )}
+                                            </div>
+                                            <span className="text-xs font-bold text-zinc-200">{b.label}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* AIRPORT DETAIL */}
+                            <div>
+                                <h3 className="text-[11px] font-black text-zinc-400 tracking-wider uppercase mb-3">Airport Detail</h3>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button
+                                        onClick={() => handleUpdateAppearance({ ...appearance, airportDetail: 'standard' })}
+                                        className={`p-2.5 rounded-2xl border transition-all text-center flex flex-col items-center gap-2 cursor-pointer ${
+                                            appearance.airportDetail === 'standard'
+                                                ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30'
+                                                : 'border-white/10 bg-zinc-900/60 hover:border-white/20'
+                                        }`}
+                                    >
+                                        <div className="w-full h-14 rounded-xl bg-zinc-950 border border-white/5 flex items-center justify-center">
+                                            <svg className="w-full h-full" viewBox="0 0 100 50">
+                                                <path d="M35,45 L65,5" stroke="#334155" strokeWidth="14" strokeLinecap="round" />
+                                                <path d="M35,45 L65,5" stroke="#f8fafc" strokeWidth="2" strokeDasharray="5 3" />
+                                            </svg>
+                                        </div>
+                                        <span className="text-xs font-bold text-zinc-200">Standard</span>
+                                    </button>
+
+                                    <button
+                                        onClick={() => handleUpdateAppearance({ ...appearance, airportDetail: 'detailed' })}
+                                        className={`p-2.5 rounded-2xl border transition-all text-center flex flex-col items-center gap-2 cursor-pointer ${
+                                            appearance.airportDetail === 'detailed'
+                                                ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30'
+                                                : 'border-white/10 bg-zinc-900/60 hover:border-white/20'
+                                        }`}
+                                    >
+                                        <div className="w-full h-14 rounded-xl bg-zinc-950 border border-white/5 flex items-center justify-center">
+                                            <svg className="w-full h-full" viewBox="0 0 100 50">
+                                                <path d="M30,48 L70,2" stroke="#1e293b" strokeWidth="18" />
+                                                <path d="M45,50 L85,20 L92,10" fill="none" stroke="#eab308" strokeWidth="2" />
+                                                <path d="M30,48 L70,2" stroke="#f8fafc" strokeWidth="1.5" strokeDasharray="4 2" />
+                                                <line x1="55" y1="18" x2="65" y2="10" stroke="#f8fafc" strokeWidth="2" strokeDasharray="2 1" />
+                                            </svg>
+                                        </div>
+                                        <span className="text-xs font-bold text-zinc-200">Detailed</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* PROJECTION */}
+                            <div>
+                                <h3 className="text-[11px] font-black text-zinc-400 tracking-wider uppercase mb-3">Projection Engine</h3>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button
+                                        onClick={() => handleUpdateAppearance({ ...appearance, projection: 'flat' })}
+                                        className={`p-2.5 rounded-2xl border transition-all text-center flex flex-col items-center gap-2 cursor-pointer ${
+                                            appearance.projection === 'flat'
+                                                ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30'
+                                                : 'border-white/10 bg-zinc-900/60 hover:border-white/20'
+                                        }`}
+                                    >
+                                        <div className="w-full h-14 rounded-xl bg-zinc-950 border border-white/5 flex items-center justify-center">
+                                            <svg className="w-full h-full" viewBox="0 0 100 50">
+                                                <line x1="15" y1="18" x2="85" y2="18" stroke="#334155" strokeWidth="1" />
+                                                <line x1="15" y1="34" x2="85" y2="34" stroke="#334155" strokeWidth="1" />
+                                                <path d="M20,38 Q50,10 80,38" fill="none" stroke="#38bdf8" strokeWidth="2.5" strokeLinecap="round" />
+                                            </svg>
+                                        </div>
+                                        <span className="text-xs font-bold text-zinc-200">Flat Map</span>
+                                    </button>
+
+                                    <button
+                                        onClick={() => handleUpdateAppearance({ ...appearance, projection: 'globe' })}
+                                        className={`p-2.5 rounded-2xl border transition-all text-center flex flex-col items-center gap-2 cursor-pointer ${
+                                            appearance.projection === 'globe'
+                                                ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30'
+                                                : 'border-white/10 bg-zinc-900/60 hover:border-white/20'
+                                        }`}
+                                    >
+                                        <div className="w-full h-14 rounded-xl bg-zinc-950 border border-white/5 flex items-center justify-center">
+                                            <svg className="w-full h-full" viewBox="0 0 100 50">
+                                                <circle cx="50" cy="25" r="20" fill="none" stroke="#334155" strokeWidth="1.5" />
+                                                <ellipse cx="50" cy="25" rx="10" ry="20" fill="none" stroke="#334155" strokeWidth="1" />
+                                                <path d="M35,28 Q50,12 65,28" fill="none" stroke="#38bdf8" strokeWidth="2.5" strokeLinecap="round" />
+                                            </svg>
+                                        </div>
+                                        <span className="text-xs font-bold text-zinc-200">3D Globe</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* TAB 2: FLIGHTS & ROUTES */}
+                    {activeSidebarTab === 'flights' && (
+                        <div className="space-y-6">
+                            {/* AIRPORT MARKERS */}
+                            <div className="space-y-3">
+                                <h3 className="text-[11px] font-black text-zinc-400 tracking-wider uppercase">Airports Appearance</h3>
+                                
+                                <div>
+                                    <span className="text-xs text-zinc-300 font-semibold mb-2 block">Size</span>
+                                    <div className="grid grid-cols-4 gap-2">
+                                        {[
+                                            { id: 'off', label: 'Off' },
+                                            { id: 'small', label: 'Small' },
+                                            { id: 'medium', label: 'Medium' },
+                                            { id: 'large', label: 'Large' }
+                                        ].map((sz) => (
+                                            <button
+                                                key={sz.id}
+                                                onClick={() => handleUpdateAppearance({ ...appearance, airportSize: sz.id as any })}
+                                                className={`py-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                                                    appearance.airportSize === sz.id
+                                                        ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30'
+                                                        : 'border-white/10 bg-zinc-900/60 hover:border-white/20'
+                                                }`}
+                                            >
+                                                <span className="text-xs font-bold text-zinc-200">{sz.label}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <span className="text-xs text-zinc-300 font-semibold mb-2 block">Mode</span>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <button
+                                            onClick={() => handleUpdateAppearance({ ...appearance, airportMode: 'frequency' })}
+                                            className={`p-2.5 rounded-xl border transition-all text-center cursor-pointer ${
+                                                appearance.airportMode === 'frequency'
+                                                    ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30'
+                                                    : 'border-white/10 bg-zinc-900/60 hover:border-white/20'
+                                            }`}
+                                        >
+                                            <span className="text-xs font-bold text-zinc-200">By frequency</span>
+                                        </button>
+
+                                        <button
+                                            onClick={() => handleUpdateAppearance({ ...appearance, airportMode: 'uniform' })}
+                                            className={`p-2.5 rounded-xl border transition-all text-center cursor-pointer ${
+                                                appearance.airportMode === 'uniform'
+                                                    ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30'
+                                                    : 'border-white/10 bg-zinc-900/60 hover:border-white/20'
+                                            }`}
+                                        >
+                                            <span className="text-xs font-bold text-zinc-200">Uniform</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* ROUTES APPEARANCE */}
+                            <div className="space-y-4 pt-3 border-t border-white/5">
+                                <h3 className="text-[11px] font-black text-zinc-400 tracking-wider uppercase">Routes Appearance</h3>
+
+                                {/* Width */}
+                                <div>
+                                    <span className="text-xs text-zinc-300 font-semibold mb-2 block">Width</span>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <button
+                                            onClick={() => handleUpdateAppearance({ ...appearance, routeWidthMode: 'uniform' })}
+                                            className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                                                appearance.routeWidthMode === 'uniform'
+                                                    ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30'
+                                                    : 'border-white/10 bg-zinc-900/60 hover:border-white/20'
+                                            }`}
+                                        >
+                                            <span className="text-xs font-bold text-zinc-200">Uniform</span>
+                                        </button>
+                                        <button
+                                            onClick={() => handleUpdateAppearance({ ...appearance, routeWidthMode: 'frequency' })}
+                                            className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                                                appearance.routeWidthMode === 'frequency'
+                                                    ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30'
+                                                    : 'border-white/10 bg-zinc-900/60 hover:border-white/20'
+                                            }`}
+                                        >
+                                            <span className="text-xs font-bold text-zinc-200">By frequency</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Scale */}
+                                <div>
+                                    <span className="text-xs text-zinc-300 font-semibold mb-2 block">Scale</span>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {[
+                                            { id: 'thin', label: 'Thin' },
+                                            { id: 'normal', label: 'Normal' },
+                                            { id: 'thick', label: 'Thick' }
+                                        ].map((sc) => (
+                                            <button
+                                                key={sc.id}
+                                                onClick={() => handleUpdateAppearance({ ...appearance, routeScale: sc.id as any })}
+                                                className={`py-2 rounded-xl border text-center transition-all cursor-pointer ${
+                                                    appearance.routeScale === sc.id
+                                                        ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30'
+                                                        : 'border-white/10 bg-zinc-900/60 hover:border-white/20'
+                                                }`}
+                                            >
+                                                <span className="text-xs font-bold text-zinc-200">{sc.label}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Color */}
+                                <div>
+                                    <span className="text-xs text-zinc-300 font-semibold mb-2 block">Color Mode</span>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {[
+                                            { id: 'default', label: 'Default' },
+                                            { id: 'frequency', label: 'Frequency' },
+                                            { id: 'gradient', label: 'Gradient' }
+                                        ].map((cl) => (
+                                            <button
+                                                key={cl.id}
+                                                onClick={() => handleUpdateAppearance({ ...appearance, routeColorMode: cl.id as any })}
+                                                className={`py-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                                                    appearance.routeColorMode === cl.id
+                                                        ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30'
+                                                        : 'border-white/10 bg-zinc-900/60 hover:border-white/20'
+                                                }`}
+                                            >
+                                                <span className="text-[11px] font-bold text-zinc-200">{cl.label}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* PRESENTATION CHANNELS */}
+                            <div className="space-y-3 pt-3 border-t border-white/5">
+                                <h3 className="text-[11px] font-black text-zinc-400 tracking-wider uppercase">Active Channels</h3>
+
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button
+                                        onClick={() => setShowIndependentFlights(!showIndependentFlights)}
+                                        className={`p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer ${
+                                            showIndependentFlights
+                                                ? 'bg-purple-500/15 border-purple-500/40 text-purple-300'
+                                                : 'bg-zinc-900/60 border-white/10 text-zinc-400'
+                                        }`}
+                                    >
+                                        <Plane className="w-3.5 h-3.5 text-purple-400" />
+                                        <span className="text-xs font-bold">Flights</span>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setShowLandSeaRoutes(!showLandSeaRoutes)}
+                                        className={`p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer ${
+                                            showLandSeaRoutes
+                                                ? 'bg-amber-500/15 border-amber-500/40 text-amber-300'
+                                                : 'bg-zinc-900/60 border-white/10 text-zinc-400'
+                                        }`}
+                                    >
+                                        <Zap className="w-3.5 h-3.5 text-amber-400" />
+                                        <span className="text-xs font-bold">Transit</span>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setAnimateRoutes(!animateRoutes)}
+                                        className={`p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer ${
+                                            animateRoutes
+                                                ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
+                                                : 'bg-zinc-900/60 border-white/10 text-zinc-400'
+                                        }`}
+                                    >
+                                        <Play className="w-3.5 h-3.5 text-emerald-400" />
+                                        <span className="text-xs font-bold">Comet Flow</span>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setClusterMode(!clusterMode)}
+                                        className={`p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer ${
+                                            clusterMode
+                                                ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-300'
+                                                : 'bg-zinc-900/60 border-white/10 text-zinc-400'
+                                        }`}
+                                    >
+                                        <Layers className="w-3.5 h-3.5 text-indigo-400" />
+                                        <span className="text-xs font-bold">Cluster</span>
+                                    </button>
+                                </div>
+
+                                <button
+                                    onClick={() => {
+                                        const newVal = !showRoadTracing;
+                                        setShowRoadTracing(newVal);
+                                        localStorage.setItem('wandergrid_road_tracing', String(newVal));
+                                    }}
+                                    className={`w-full p-2.5 rounded-xl border text-left flex items-center gap-2.5 cursor-pointer ${
+                                        showRoadTracing
+                                            ? 'bg-rose-500/15 border-rose-500/40 text-rose-300'
+                                            : 'bg-zinc-900/60 border-white/10 text-zinc-400'
+                                    }`}
+                                >
+                                    <Radio className="w-4 h-4 text-rose-400 shrink-0" />
+                                    <div className="min-w-0 flex-1 leading-none">
+                                        <p className="text-xs font-bold">Realistic Land Trails (OSRM)</p>
+                                        <p className="text-[9px] text-zinc-400 mt-1">Trace routes over actual roads</p>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* TAB 3: LAYERS (ENVIRONMENT & SCRATCH) */}
+                    {activeSidebarTab === 'layers' && (
+                        <div className="space-y-6">
+                            <div>
+                                <h3 className="text-[11px] font-black text-zinc-400 tracking-wider uppercase mb-3">
+                                    Environment Overlays
+                                </h3>
+
+                                <div className="space-y-3">
+                                    {/* Time of Day */}
+                                    <div className="p-3.5 rounded-2xl bg-zinc-900/60 border border-white/10 space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                                                    <span>Time of Day</span>
+                                                    {appearance.timeOfDay && (
+                                                        <span className="px-1.5 py-0.5 text-[9px] font-black rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                                                            Twilight Gradient
+                                                        </span>
+                                                    )}
+                                                </h4>
+                                                <p className="text-[10px] text-zinc-400 mt-0.5">Atmospheric multi-band solar penumbra</p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleUpdateAppearance({ ...appearance, timeOfDay: !appearance.timeOfDay })}
+                                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                                                    appearance.timeOfDay ? 'bg-blue-600' : 'bg-zinc-700'
+                                                }`}
+                                            >
+                                                <span
+                                                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                                                        appearance.timeOfDay ? 'translate-x-5' : 'translate-x-0'
+                                                    }`}
+                                                />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Rain Radar */}
+                                    <div className="p-3.5 rounded-2xl bg-zinc-900/60 border border-white/10 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                                                    <span>Rain Radar</span>
+                                                    {appearance.rainRadar && (
+                                                        <span className="flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-black rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                                            Live
+                                                        </span>
+                                                    )}
+                                                </h4>
+                                                <p className="text-[10px] text-zinc-400 mt-0.5">RainViewer global precipitation raster</p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleUpdateAppearance({ ...appearance, rainRadar: !appearance.rainRadar })}
+                                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                                                    appearance.rainRadar ? 'bg-blue-600' : 'bg-zinc-700'
+                                                }`}
+                                            >
+                                                <span
+                                                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                                                        appearance.rainRadar ? 'translate-x-5' : 'translate-x-0'
+                                                    }`}
+                                                />
+                                            </button>
+                                        </div>
+
+                                        {/* Nested Rain Radar Configuration Options */}
+                                        {appearance.rainRadar && (
+                                            <div className="pt-2.5 border-t border-white/5 space-y-3 animate-fade-in">
+                                                {/* Opacity Slider */}
+                                                <div>
+                                                    <div className="flex items-center justify-between text-[10px] font-bold text-zinc-300 mb-1">
+                                                        <span>Radar Intensity / Opacity</span>
+                                                        <span className="text-blue-400">{Math.round((appearance.rainRadarOpacity || 0.85) * 100)}%</span>
+                                                    </div>
+                                                    <input 
+                                                        type="range" 
+                                                        min="0.2" 
+                                                        max="1.0" 
+                                                        step="0.05"
+                                                        value={appearance.rainRadarOpacity || 0.85}
+                                                        onChange={(e) => handleUpdateAppearance({ ...appearance, rainRadarOpacity: parseFloat(e.target.value) })}
+                                                        className="w-full accent-blue-500 cursor-pointer h-1.5 bg-zinc-800 rounded-lg"
+                                                    />
+                                                </div>
+
+                                                {/* Radar Color Palette */}
+                                                <div>
+                                                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1.5">Color Palette</span>
+                                                    <div className="grid grid-cols-3 gap-1.5">
+                                                        {[
+                                                            { id: 2, label: 'Universal' },
+                                                            { id: 1, label: 'Classic' },
+                                                            { id: 6, label: 'NEXRAD' }
+                                                        ].map(p => (
+                                                            <button
+                                                                key={p.id}
+                                                                onClick={() => handleUpdateAppearance({ ...appearance, rainRadarColorScheme: p.id })}
+                                                                className={`py-1.5 px-1 rounded-lg text-[10px] font-bold text-center border transition-all cursor-pointer ${
+                                                                    (appearance.rainRadarColorScheme || 2) === p.id
+                                                                        ? 'bg-blue-600 text-white border-blue-400/40 shadow-sm'
+                                                                        : 'bg-zinc-800/80 border-white/5 text-zinc-400 hover:text-white'
+                                                                }`}
+                                                            >
+                                                                {p.label}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Visited Lands / Scratch Layer */}
+                                    <div className="flex items-center justify-between p-3.5 rounded-2xl bg-zinc-900/60 border border-white/10">
+                                        <div>
+                                            <h4 className="text-xs font-bold text-white">Visited Lands (Scratch)</h4>
+                                            <p className="text-[10px] text-zinc-400 mt-0.5">Highlight explored countries</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowCountries(!showCountries)}
+                                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                                                showCountries ? 'bg-amber-600' : 'bg-zinc-700'
+                                            }`}
+                                        >
+                                            <span
+                                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                                                    showCountries ? 'translate-x-5' : 'translate-x-0'
+                                                }`}
+                                            />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* TAB 4: FILTERS & TIMELINE */}
+                    {activeSidebarTab === 'filters' && (
+                        <div className="space-y-5">
+                            {/* Status Filter */}
+                            <div>
+                                <label className="text-[11px] font-black text-zinc-400 tracking-wider uppercase block mb-2">
+                                    Trip Status
+                                </label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {['all', 'Past', 'Upcoming'].map((s) => (
+                                        <button
+                                            key={s}
+                                            onClick={() => setStatusFilter(s as any)}
+                                            className={`py-2 rounded-xl text-xs font-bold tracking-wide transition-all text-center cursor-pointer ${
+                                                statusFilter === s
+                                                    ? 'bg-blue-600 text-white font-black shadow-md border border-blue-400/30'
+                                                    : 'bg-zinc-900/60 border border-white/10 text-zinc-400 hover:text-white'
+                                            }`}
+                                        >
+                                            {s === 'all' ? 'All' : s}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Year Filter */}
+                            <div>
+                                <label className="text-[11px] font-black text-zinc-400 tracking-wider uppercase block mb-2">
+                                    Operation Year
+                                </label>
+                                <select
+                                    value={yearFilter}
+                                    onChange={(e) => setYearFilter(e.target.value)}
+                                    className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2.5 text-xs font-bold text-white outline-none cursor-pointer"
+                                >
+                                    <option value="all">All Years</option>
+                                    {years.map(y => <option key={y} value={y}>{y}</option>)}
+                                </select>
+                            </div>
+
+                            {/* Departure Station */}
+                            <div>
+                                <label className="text-[11px] font-black text-zinc-400 tracking-wider uppercase block mb-2">
+                                    Departure Station
+                                </label>
+                                <MultiSelect
+                                    placeholder="Any Departure Hub"
+                                    options={uniqueAirports.origins}
+                                    value={depFilter}
+                                    onChange={setDepFilter}
+                                />
+                            </div>
+
+                            {/* Arrival Station */}
+                            <div>
+                                <label className="text-[11px] font-black text-zinc-400 tracking-wider uppercase block mb-2">
+                                    Arrival Station
+                                </label>
+                                <MultiSelect
+                                    placeholder="Any Arrival Hub"
+                                    options={uniqueAirports.destinations}
+                                    value={arrFilter}
+                                    onChange={setArrFilter}
+                                />
+                            </div>
+
+                            {/* Date Range */}
+                            <div>
+                                <label className="text-[11px] font-black text-zinc-400 tracking-wider uppercase block mb-2">
+                                    Temporal Date Range
+                                </label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <span className="text-[9px] text-zinc-400 uppercase font-bold block mb-1">From</span>
+                                        <Input
+                                            type="date"
+                                            value={dateFrom}
+                                            onChange={(e) => setDateFrom(e.target.value)}
+                                            className="!py-1.5 !px-2.5 !text-xs !font-bold bg-zinc-900 text-white border border-white/10 rounded-xl"
+                                        />
+                                    </div>
+                                    <div>
+                                        <span className="text-[9px] text-zinc-400 uppercase font-bold block mb-1">To</span>
+                                        <Input
+                                            type="date"
+                                            value={dateTo}
+                                            onChange={(e) => setDateTo(e.target.value)}
+                                            className="!py-1.5 !px-2.5 !text-xs !font-bold bg-zinc-900 text-white border border-white/10 rounded-xl"
+                                        />
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -1090,16 +1222,4 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
     );
 };
 
-const getStatusBadgeClass = (status: string) => {
-    switch (status) {
-        case 'Confirmed':
-        case 'Upcoming':
-            return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-900/40';
-        case 'Past':
-            return 'bg-blue-50 text-blue-700 dark:bg-blue-950/20 dark:text-blue-400 border border-blue-200/50 dark:border-blue-900/40';
-        case 'Planning':
-            return 'bg-amber-50 text-amber-700 dark:bg-[#1e150a] dark:text-amber-400 border border-amber-200/50 dark:border-amber-900/40';
-        default:
-            return 'bg-slate-50 text-slate-700 dark:bg-slate-800 dark:text-slate-200 border border-slate-200/50 dark:border-white/10';
-    }
-};
+export default ExpeditionMapView;

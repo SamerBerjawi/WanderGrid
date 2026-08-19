@@ -352,7 +352,7 @@ export default function App() {
         onLogout={handleLogout}
         currentUser={currentUser}
       />
-      <main className="flex-1 h-full overflow-y-auto relative z-10 p-4 md:p-8 pb-28 md:pb-8 custom-scrollbar">
+      <main className={`flex-1 h-full relative z-10 ${view === ViewState.MAP ? 'p-0 overflow-hidden' : 'p-4 md:p-8 pb-28 md:pb-8 overflow-y-auto custom-scrollbar'}`}>
         <AnimatePresence mode="wait">
           <motion.div
             key={routeKey}
