@@ -15,7 +15,12 @@ export interface MapAppearanceSettings {
     timeOfDay: boolean; // Live solar day/night shading
     rainRadar: boolean; // Latest RainViewer precipitation
     rainRadarOpacity?: number; // 0.2 to 1.0
-    rainRadarColorScheme?: number; // 2 = Universal/Rainbow, 1 = Original, 6 = NEXRAD
+
+    // Scratch Map Mode Filters & Toggles
+    scratchCitySize?: 'off' | 'small' | 'medium' | 'large';
+    showLivedCountries?: boolean; // Show/hide lived (current & past) residence highlights
+    showWishlistCountries?: boolean; // Show/hide dream wishlist targets
+    showLayoverCountries?: boolean; // Show/hide layover-only transit territories
 }
 
 export const DEFAULT_MAP_APPEARANCE: MapAppearanceSettings = {
@@ -30,7 +35,10 @@ export const DEFAULT_MAP_APPEARANCE: MapAppearanceSettings = {
     timeOfDay: false,
     rainRadar: false,
     rainRadarOpacity: 0.85,
-    rainRadarColorScheme: 2,
+    scratchCitySize: 'medium',
+    showLivedCountries: true,
+    showWishlistCountries: true,
+    showLayoverCountries: true,
 };
 
 const MAP_APPEARANCE_STORAGE_KEY = 'wandergrid_map_appearance_v1';

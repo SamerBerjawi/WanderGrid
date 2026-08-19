@@ -5,6 +5,7 @@ export interface RainRadarMetadata {
     timestamp: number;
     formattedTime: string;
     relativeTime: string;
+    colorScheme: number;
 }
 
 interface RainViewerRadarFrame {
@@ -22,21 +23,58 @@ interface RainViewerResponse {
     };
 }
 
-let cachedMetadata: RainRadarMetadata | null = null;
+interface RainViewerFrameCache {
+    host: string;
+    basePath: string;
+    time: number;
+}
+
+let cachedFrame: RainViewerFrameCache | null = null;
 let lastFetchTime = 0;
 const CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutes cache
 
 /**
- * Fetches the latest precipitation radar metadata & tile URL from RainViewer API.
+ * Builds the exact RainViewer tile URL pattern from frame data and options.
+ */
+function buildTilePattern(host: string, basePath: string, colorScheme: number, smooth: number, snow: number): string {
+    if (basePath.includes('{z}')) {
+        return `${host}${basePath}`;
+    }
+    // RainViewer URL pattern: {host}{path}/256/{z}/{x}/{y}/{colorScheme}/{smooth}_{snow}.png
+    return `${host}${basePath}/256/{z}/{x}/{y}/${colorScheme}/${smooth}_${snow}.png`;
+}
+
+/**
+ * Builds the full RainRadarMetadata object from cached frame and requested colorScheme.
+ */
+function formatMetadata(frame: RainViewerFrameCache, colorScheme: number, smooth: number, snow: number): RainRadarMetadata {
+    const now = Date.now();
+    const frameDate = new Date(frame.time * 1000);
+    const minutesAgo = Math.max(0, Math.round((now - frameDate.getTime()) / 60000));
+
+    return {
+        tileUrl: buildTilePattern(frame.host, frame.basePath, colorScheme, smooth, snow),
+        timestamp: frame.time,
+        formattedTime: frameDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        relativeTime: minutesAgo === 0 ? 'Just now' : `${minutesAgo}m ago`,
+        colorScheme
+    };
+}
+
+/**
+ * Fetches the latest precipitation radar metadata & tile URL from RainViewer API,
+ * dynamically generating tile URLs according to the requested color scheme.
  */
 export async function getLatestRainRadarMetadata(
-    colorScheme: number = 2, // 2 = Universal (rainbow), 1 = Original, 4 = METVUW, 6 = NEXRAD
+    colorScheme: number = 2, // 2 = Universal (rainbow), 1 = Original/Classic, 6 = NEXRAD, 4 = Weather Channel
     smooth: number = 1,
     snow: number = 1
 ): Promise<RainRadarMetadata | null> {
     const now = Date.now();
-    if (cachedMetadata && (now - lastFetchTime) < CACHE_TTL_MS) {
-        return cachedMetadata;
+
+    // If we have cached frame coordinates and it's fresh, compute the new tileUrl immediately
+    if (cachedFrame && (now - lastFetchTime) < CACHE_TTL_MS) {
+        return formatMetadata(cachedFrame, colorScheme, smooth, snow);
     }
 
     const controller = new AbortController();
@@ -56,29 +94,13 @@ export async function getLatestRainRadarMetadata(
         
         if (pastFrames.length > 0) {
             const latest = pastFrames[pastFrames.length - 1];
-            let basePath = latest.path;
-            
-            // Format: host + path + /256/{z}/{x}/{y}/{colorScheme}/{smooth}_{snow}.png
-            let tilePattern = '';
-            if (basePath.includes('{z}')) {
-                tilePattern = `${host}${basePath}`;
-            } else {
-                tilePattern = `${host}${basePath}/256/{z}/{x}/{y}/${colorScheme}/${smooth}_${snow}.png`;
-            }
-
-            const frameDate = new Date(latest.time * 1000);
-            const minutesAgo = Math.max(0, Math.round((now - frameDate.getTime()) / 60000));
-            
-            const meta: RainRadarMetadata = {
-                tileUrl: tilePattern,
-                timestamp: latest.time,
-                formattedTime: frameDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                relativeTime: minutesAgo === 0 ? 'Just now' : `${minutesAgo}m ago`
+            cachedFrame = {
+                host,
+                basePath: latest.path,
+                time: latest.time
             };
-
-            cachedMetadata = meta;
             lastFetchTime = now;
-            return meta;
+            return formatMetadata(cachedFrame, colorScheme, smooth, snow);
         }
     } catch (err) {
         console.warn('RainViewer fetch error or timeout:', err);
@@ -86,10 +108,14 @@ export async function getLatestRainRadarMetadata(
         clearTimeout(timeoutId);
     }
 
-    return cachedMetadata;
+    if (cachedFrame) {
+        return formatMetadata(cachedFrame, colorScheme, smooth, snow);
+    }
+
+    return null;
 }
 
-export async function getLatestRainRadarTileUrl(): Promise<string | null> {
-    const meta = await getLatestRainRadarMetadata();
+export async function getLatestRainRadarTileUrl(colorScheme: number = 2): Promise<string | null> {
+    const meta = await getLatestRainRadarMetadata(colorScheme);
     return meta ? meta.tileUrl : null;
 }

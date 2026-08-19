@@ -4,7 +4,7 @@ import { MapView, _GlobeView } from '@deck.gl/core';
 import { ScatterplotLayer, GeoJsonLayer, PathLayer, BitmapLayer, TextLayer } from '@deck.gl/layers';
 import { TileLayer, TripsLayer } from '@deck.gl/geo-layers';
 import { Maximize2, Scan, Globe, ArrowLeft, ArrowRight, X, Plane, Clock, Calendar, ChevronRight } from 'lucide-react';
-import { Trip } from '../types';
+import { Trip, CountryResidenceStatus, PredefinedMapMode } from '../types';
 import { getCoordinatesSync } from '../services/geocoding';
 import { 
     MapAppearanceSettings, 
@@ -16,6 +16,37 @@ import { getTwilightGradientGeoJSON } from '../services/solarTerminator';
 import { getLatestRainRadarMetadata, RainRadarMetadata } from '../services/rainViewer';
 import { generateAirportRunway, isKnownAirport, RunwayGeometry } from '../services/airportRunways';
 import { buildRouteCorridors, RouteCorridor, getApproxLocalTime } from '../services/routeCorridor';
+import { getFlagEmoji, getRegion } from '../services/geoData';
+
+// --- Enhanced Country Matching Helper for Scratch Map & Overlays ---
+let geoJsonMemoryCache: any = null;
+
+export const isCountryVisited = (f: any, visitedList: string[]): boolean => {
+    if (!visitedList || visitedList.length === 0) return false;
+    const p = f.properties || {};
+    const lookupSet = new Set(visitedList.map(c => (c || '').trim().toUpperCase()));
+
+    // If UK is in visitedList, match UK subunits
+    const isUKSubunit = p.GU_A3 === 'ENG' || p.GU_A3 === 'SCT' || p.GU_A3 === 'WLS' || p.GU_A3 === 'NIR' ||
+                       p.ISO_A2 === 'GB-ENG' || p.ISO_A2 === 'GB-SCT' || p.ISO_A2 === 'GB-WLS' || p.ISO_A2 === 'GB-NIR' ||
+                       p.NAME === 'England' || p.NAME === 'Scotland' || p.NAME === 'Wales' || p.NAME === 'Northern Ireland';
+    if (isUKSubunit && (lookupSet.has('GB') || lookupSet.has('UK') || lookupSet.has('UNITED KINGDOM') || lookupSet.has('GREAT BRITAIN'))) {
+        return true;
+    }
+
+    const candidates = [
+        p.ISO_A2, p.ISO_A2_EH, p.wb_a2, p.POSTAL, p.iso_a2,
+        p.ISO_A3, p.ISO_A3_EH, p.ADM0_A3, p.wb_a3, p.gu_a3, p.GU_A3,
+        p.NAME, p.NAME_LONG, p.NAME_SORT, p.SOVEREIGNT, p.ADMIN, p.GEOUNIT
+    ];
+
+    for (const c of candidates) {
+        if (typeof c === 'string' && lookupSet.has(c.trim().toUpperCase())) {
+            return true;
+        }
+    }
+    return false;
+};
 
 // --- Exact Gradient Color Logic & Regional Poles ---
 const COLOR_POLES = [
@@ -48,13 +79,13 @@ const getGeoGradientRGB = (lat: number, lng: number): [number, number, number] =
         b += pole.color[2] * weight;
     }
 
-    const res: [number, number, number] = [
+    const rgb: [number, number, number] = [
         Math.min(255, Math.max(0, Math.round(r / totalWeight))),
         Math.min(255, Math.max(0, Math.round(g / totalWeight))),
         Math.min(255, Math.max(0, Math.round(b / totalWeight)))
     ];
-    geoGradientCache.set(key, res);
-    return res;
+    geoGradientCache.set(key, rgb);
+    return rgb;
 };
 
 // High-contrast, vibrant thermal energy heatmap density color progression
@@ -227,8 +258,10 @@ export interface DeckFlightMapProps {
     animateRoutes?: boolean;
     visitedCountries?: string[];
     showCountries?: boolean;
-    viewMode?: 'network' | 'scratch';
+    viewMode?: PredefinedMapMode | 'network' | 'scratch';
     visitedPlaces?: { lat: number; lng: number; name: string }[];
+    countryStatusMap?: Record<string, CountryResidenceStatus>;
+    onUpdateCountryStatus?: (countryCode: string, countryName: string, status: CountryResidenceStatus | 'none') => void;
     activeLayer?: DeckLayerType | string;
     onChangeActiveLayer?: (layer: DeckLayerType) => void;
     showFlightRoutes?: boolean;
@@ -255,8 +288,10 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     animateRoutes = false,
     visitedCountries = [],
     showCountries = false,
-    viewMode = 'network',
+    viewMode = 'all',
     visitedPlaces = [],
+    countryStatusMap = {},
+    onUpdateCountryStatus,
     activeLayer: activeLayerProp,
     onChangeActiveLayer,
     showFlightRoutes = true,
@@ -403,14 +438,100 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     const [hoverInfo, setHoverInfo] = useState<any>(null);
     const [geoJsonData, setGeoJsonData] = useState<any>(null);
     const [selectedCorridor, setSelectedCorridor] = useState<RouteCorridor | null>(null);
+    const [selectedCountry, setSelectedCountry] = useState<any | null>(null);
     const [previousViewState, setPreviousViewState] = useState<any | null>(null);
 
-    // Load country GeoJSON
+    // Load high-detail country & map-unit GeoJSON (50m detailed vector with England, Scotland, Wales, NI units)
     useEffect(() => {
-        fetch('https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson')
-            .then(res => res.json())
-            .then(data => setGeoJsonData(data))
-            .catch(err => console.warn('DeckGL: GeoJSON load failed', err));
+        if (geoJsonMemoryCache) {
+            setGeoJsonData(geoJsonMemoryCache);
+            return;
+        }
+
+        const normalizeData = (data: any) => {
+            if (!data || !data.features) return data;
+            data.features.forEach((f: any) => {
+                const p = f.properties || {};
+                const gu = (p.GU_A3 || '').toUpperCase();
+                const nm = (p.NAME || '').toLowerCase();
+                if (gu === 'ENG' || nm === 'england') {
+                    p.ISO_A2 = 'GB-ENG';
+                    p.ISO_A2_EH = 'GB-ENG';
+                    p.wb_a2 = 'GB-ENG';
+                    p.NAME = 'England';
+                    p.NAME_LONG = 'England';
+                    p.SOVEREIGNT = 'United Kingdom';
+                } else if (gu === 'SCT' || nm === 'scotland') {
+                    p.ISO_A2 = 'GB-SCT';
+                    p.ISO_A2_EH = 'GB-SCT';
+                    p.wb_a2 = 'GB-SCT';
+                    p.NAME = 'Scotland';
+                    p.NAME_LONG = 'Scotland';
+                    p.SOVEREIGNT = 'United Kingdom';
+                } else if (gu === 'WLS' || nm === 'wales') {
+                    p.ISO_A2 = 'GB-WLS';
+                    p.ISO_A2_EH = 'GB-WLS';
+                    p.wb_a2 = 'GB-WLS';
+                    p.NAME = 'Wales';
+                    p.NAME_LONG = 'Wales';
+                    p.SOVEREIGNT = 'United Kingdom';
+                } else if (gu === 'NIR' || nm === 'n. ireland' || nm === 'northern ireland') {
+                    p.ISO_A2 = 'GB-NIR';
+                    p.ISO_A2_EH = 'GB-NIR';
+                    p.wb_a2 = 'GB-NIR';
+                    p.NAME = 'Northern Ireland';
+                    p.NAME_LONG = 'Northern Ireland';
+                    p.SOVEREIGNT = 'United Kingdom';
+                }
+            });
+            return data;
+        };
+
+        const loadGeoJson = async () => {
+            const mapUnitsHighResUrl = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_map_units.geojson';
+            const mapUnitsStdResUrl = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_map_units.geojson';
+            const countriesFallbackUrl = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson';
+
+            try {
+                const res = await fetch(mapUnitsHighResUrl);
+                if (res.ok) {
+                    const raw = await res.json();
+                    const data = normalizeData(raw);
+                    geoJsonMemoryCache = data;
+                    setGeoJsonData(data);
+                    return;
+                }
+            } catch {
+                // Fallback to standard resolution map units
+            }
+
+            try {
+                const res = await fetch(mapUnitsStdResUrl);
+                if (res.ok) {
+                    const raw = await res.json();
+                    const data = normalizeData(raw);
+                    geoJsonMemoryCache = data;
+                    setGeoJsonData(data);
+                    return;
+                }
+            } catch {
+                // Fallback to countries
+            }
+
+            try {
+                const res = await fetch(countriesFallbackUrl);
+                if (res.ok) {
+                    const raw = await res.json();
+                    const data = normalizeData(raw);
+                    geoJsonMemoryCache = data;
+                    setGeoJsonData(data);
+                }
+            } catch (err) {
+                console.warn('DeckGL: GeoJSON load failed', err);
+            }
+        };
+
+        loadGeoJson();
     }, []);
 
     // Enrich trips coordinates synchronously
@@ -1129,8 +1250,12 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             }
         }
 
-        // 5. Country Polygons (GeoJSON) - Scratch Map Regional Colors
+        // 5. Country Polygons (GeoJSON) - Scratch Map Regional Colors, Residence Tints & Detailed Boundaries
         if (geoJsonData && (showCountries || viewMode === 'scratch')) {
+            const showLived = activeAppearance.showLivedCountries !== false;
+            const showWishlist = activeAppearance.showWishlistCountries !== false;
+            const showLayover = activeAppearance.showLayoverCountries !== false;
+
             layerList.push(
                 new GeoJsonLayer({
                     id: 'country-polygons',
@@ -1138,55 +1263,140 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     filled: true,
                     stroked: true,
                     wrapLongitude: true,
-                    getLineColor: isDark ? [65, 75, 95, 180] : [200, 205, 215, 200],
-                    getLineWidth: 1,
-                    lineWidthUnits: 'pixels',
-                    getFillColor: (f: any) => {
-                        let iso = f.properties?.ISO_A2;
-                        if (!iso || iso === '-99') iso = f.properties?.ISO_A2_EH;
-                        const isVisited = iso && visitedCountries.includes(iso);
+                    getLineColor: (f: any) => {
+                        const p = f.properties || {};
+                        const iso2 = (p.ISO_A2 && p.ISO_A2 !== '-99' ? p.ISO_A2 : (p.ISO_A2_EH || p.wb_a2 || '')).toUpperCase();
+                        const name = (p.NAME || p.NAME_LONG || '').toUpperCase();
+                        const status = (iso2 && countryStatusMap?.[iso2]) || (name && countryStatusMap?.[name]);
 
-                        if (isVisited) {
+                        if (status === 'wishlist') {
+                            if (showWishlist) {
+                                return [244, 63, 94, 240];
+                            }
+                            return isDark ? [50, 60, 80, 160] : [195, 200, 215, 180];
+                        }
+
+                        if (status === 'layover') {
+                            if (showLayover) {
+                                return [245, 158, 11, 240]; // Vibrant Amber-Gold for Layover
+                            }
+                            return isDark ? [50, 60, 80, 160] : [195, 200, 215, 180];
+                        }
+
+                        if (showLived && (status === 'lived_current' || status === 'lived_past')) {
+                            return status === 'lived_current' ? [16, 185, 129, 240] : [99, 102, 241, 240];
+                        }
+
+                        return isDark ? [50, 60, 80, 160] : [195, 200, 215, 180];
+                    },
+                    getLineWidth: (f: any) => {
+                        const p = f.properties || {};
+                        const iso2 = (p.ISO_A2 && p.ISO_A2 !== '-99' ? p.ISO_A2 : (p.ISO_A2_EH || p.wb_a2 || '')).toUpperCase();
+                        const name = (p.NAME || p.NAME_LONG || '').toUpperCase();
+                        const status = (iso2 && countryStatusMap?.[iso2]) || (name && countryStatusMap?.[name]);
+                        const isSpecial = (showLived && (status === 'lived_current' || status === 'lived_past')) || 
+                                          (showWishlist && status === 'wishlist') ||
+                                          (showLayover && status === 'layover');
+                        return isSpecial ? 1.4 : 0.8;
+                    },
+                    lineWidthUnits: 'pixels',
+                    lineWidthMinPixels: 0.8,
+                    getFillColor: (f: any) => {
+                        const p = f.properties || {};
+                        const iso2 = (p.ISO_A2 && p.ISO_A2 !== '-99' ? p.ISO_A2 : (p.ISO_A2_EH || p.wb_a2 || '')).toUpperCase();
+                        const name = (p.NAME || p.NAME_LONG || '').toUpperCase();
+                        const status = (iso2 && countryStatusMap?.[iso2]) || (name && countryStatusMap?.[name]);
+
+                        if (status === 'wishlist') {
+                            if (showWishlist) {
+                                return isDark ? [244, 63, 94, 90] : [244, 63, 94, 80]; // Rose Shimmer for Wishlist
+                            }
+                            // If wishlist is toggled off, the country should NOT be colored (render as unvisited foil)
+                            return viewMode === 'scratch'
+                                ? (isDark ? [18, 22, 34, 230] : [232, 236, 242, 230])
+                                : [0, 0, 0, 0];
+                        }
+
+                        if (status === 'layover') {
+                            if (showLayover) {
+                                return isDark ? [245, 158, 11, 140] : [245, 158, 11, 120]; // Warm Amber Tone for Transit
+                            }
+                            return viewMode === 'scratch'
+                                ? (isDark ? [18, 22, 34, 230] : [232, 236, 242, 230])
+                                : [0, 0, 0, 0];
+                        }
+
+                        if (showLived && status === 'lived_current') {
+                            return [16, 185, 129, 225]; // Vibrant Emerald for Active Residence
+                        }
+                        if (showLived && status === 'lived_past') {
+                            return [99, 102, 241, 225]; // Vibrant Indigo for Past Residence
+                        }
+
+                        const visited = isCountryVisited(f, visitedCountries);
+                        if (visited) {
                             const center = getFeatureCentroid(f);
                             const rgb = getGeoGradientRGB(center.lat, center.lng);
-                            return [...rgb, viewMode === 'scratch' ? 190 : 120];
+                            return [...rgb, viewMode === 'scratch' ? 215 : 130];
                         }
                         return viewMode === 'scratch'
-                            ? (isDark ? [15, 23, 42, 235] : [230, 235, 245, 235])
+                            ? (isDark ? [18, 22, 34, 230] : [232, 236, 242, 230])
                             : [0, 0, 0, 0];
                     },
-                    pickable: false,
+                    pickable: true,
+                    autoHighlight: viewMode === 'scratch',
+                    highlightColor: [250, 154, 29, 45],
+                    onHover: (info: any) => {
+                        if (viewMode === 'scratch' || showCountries) {
+                            setHoverInfo(info.object ? info : null);
+                        }
+                    },
                     updateTriggers: {
-                        getFillColor: [visitedCountries, viewMode, isDark]
+                        getFillColor: [visitedCountries, countryStatusMap, viewMode, isDark, showLived, showWishlist, showLayover],
+                        getLineColor: [countryStatusMap, isDark, showLived, showWishlist, showLayover],
+                        getLineWidth: [countryStatusMap, showLived, showWishlist, showLayover]
                     }
                 })
             );
         }
 
-        // 6. Scratch Map Visited Place Pins
-        if (viewMode === 'scratch' && visitedPlaces.length > 0) {
+        // 6. Scratch Map Visited Place Pins (Customizable Size & Visibility)
+        const scratchCitySizeSetting = activeAppearance.scratchCitySize !== undefined ? activeAppearance.scratchCitySize : 'medium';
+        if (viewMode === 'scratch' && scratchCitySizeSetting !== 'off' && visitedPlaces.length > 0) {
+            const sizeConfigs = {
+                small: { radius: 3.5, minPixels: 2.5, maxPixels: 7, strokeWidth: 1.0 },
+                medium: { radius: 5.5, minPixels: 4.5, maxPixels: 10, strokeWidth: 1.5 },
+                large: { radius: 8.5, minPixels: 6.5, maxPixels: 14, strokeWidth: 2.0 },
+            };
+            const sizeCfg = sizeConfigs[scratchCitySizeSetting as 'small' | 'medium' | 'large'] || sizeConfigs.medium;
+
             layerList.push(
                 new ScatterplotLayer({
                     id: 'scratch-visited-places',
                     data: visitedPlaces,
                     getPosition: (d: any) => [d.lng, d.lat, 0],
-                    getFillColor: [245, 158, 11, 240],
-                    getLineColor: [255, 255, 255, 230],
-                    getRadius: 4.5,
+                    getFillColor: [250, 154, 29, 250],
+                    getLineColor: [255, 255, 255, 240],
+                    getRadius: sizeCfg.radius,
                     radiusUnits: 'pixels',
-                    radiusMinPixels: 4,
+                    radiusMinPixels: sizeCfg.minPixels,
+                    radiusMaxPixels: sizeCfg.maxPixels,
                     stroked: true,
                     lineWidthUnits: 'pixels',
-                    getLineWidth: 1.5,
+                    getLineWidth: sizeCfg.strokeWidth,
                     wrapLongitude: true,
                     pickable: true,
-                    onHover: (info: any) => info.object && setHoverInfo(info)
+                    onHover: (info: any) => info.object && setHoverInfo(info),
+                    updateTriggers: {
+                        getRadius: [scratchCitySizeSetting],
+                        getLineWidth: [scratchCitySizeSetting]
+                    }
                 })
             );
         }
 
         // 7. Underlying Glow Track Layer
-        if (viewMode === 'network' && trackSegments.length > 0) {
+        if (viewMode !== 'scratch' && trackSegments.length > 0) {
             layerList.push(
                 new PathLayer({
                     id: `route-track-glow-${isElevatedActive ? 'elevated' : 'flat'}`,
@@ -1228,7 +1438,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         }
 
         // 8. Flight & Transit Flow Layer
-        if (viewMode === 'network' && routeSegments.length > 0) {
+        if (viewMode !== 'scratch' && routeSegments.length > 0) {
             layerList.push(
                 new PathLayer({
                     id: `route-flow-lines-${isElevatedActive ? 'elevated' : 'flat'}`,
@@ -1270,7 +1480,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         }
 
         // 9. Comet Flow TripsLayer
-        if (viewMode === 'network' && animateRoutes && cometTrips.length > 0) {
+        if (viewMode !== 'scratch' && animateRoutes && cometTrips.length > 0) {
             layerList.push(
                 new TripsLayer({
                     id: `comet-flow-trips-${isElevatedActive ? 'elevated' : 'flat'}`,
@@ -1299,7 +1509,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         }
 
         // 10. Wide Hit-Test Layer
-        if (viewMode === 'network' && hitTestPaths.length > 0) {
+        if (viewMode !== 'scratch' && hitTestPaths.length > 0) {
             layerList.push(
                 new PathLayer({
                     id: `route-hit-test-layer-${isElevatedActive ? 'elevated' : 'flat'}`,
@@ -1537,6 +1747,11 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         zoom: Math.min(18, Math.max(0, newViewState.zoom ?? prev.zoom))
                     }));
                 }}
+                onClick={(info: any) => {
+                    if (info.object?.properties && (viewMode === 'scratch' || showCountries)) {
+                        setSelectedCountry(info.object);
+                    }
+                }}
                 layers={layers}
                 pickingRadius={10}
                 parameters={{
@@ -1588,6 +1803,190 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     <ArrowLeft className="w-3.5 h-3.5 text-primary-500 group-hover:-translate-x-0.5 transition-transform" />
                     <span>Back to previous view</span>
                 </button>
+            )}
+
+            {/* Left Scratch Map Country Inspector & Labeling Card */}
+            {selectedCountry && (
+                <div 
+                    className="absolute top-5 left-5 z-30 w-80 max-h-[calc(100%-2.5rem)] flex flex-col rounded-3xl bg-white/95 dark:bg-dark-card/95 backdrop-blur-2xl border border-black/10 dark:border-white/15 shadow-glass-modal overflow-hidden text-light-text dark:text-dark-text animate-fade-in"
+                    style={{ WebkitBackdropFilter: 'blur(40px)' }}
+                >
+                    {(() => {
+                        const p = selectedCountry.properties || {};
+                        const name = p.NAME || p.NAME_LONG || p.ADMIN || p.SOVEREIGNT || 'Country';
+                        const iso2 = (p.ISO_A2 && p.ISO_A2 !== '-99' ? p.ISO_A2 : (p.ISO_A2_EH || p.wb_a2 || '')).toUpperCase();
+                        const isVisited = isCountryVisited(selectedCountry, visitedCountries);
+                        const currentStatus: CountryResidenceStatus | 'unexplored' = 
+                            (iso2 && countryStatusMap?.[iso2]) || 
+                            (name && countryStatusMap?.[name.toUpperCase()]) || 
+                            (isVisited ? 'visited' : 'unexplored');
+                        const flag = iso2 ? getFlagEmoji(iso2) : '🏳️';
+                        const region = p.REGION_UN || p.SUBREGION || p.CONTINENT || (iso2 ? getRegion(iso2) : '');
+
+                        return (
+                            <>
+                                {/* Header */}
+                                <div className="p-4 pb-3 flex items-center justify-between border-b border-black/5 dark:border-white/10 bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                        <span className="text-2xl leading-none">{flag}</span>
+                                        <div className="min-w-0">
+                                            <h3 className="text-sm font-bold text-light-text dark:text-dark-text tracking-tight truncate">{name}</h3>
+                                            <p className="text-[10px] text-light-text-secondary dark:text-dark-text-secondary truncate">{region || 'Territory'}</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedCountry(null)}
+                                        className="p-1.5 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text transition-all cursor-pointer"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+
+                                <div className="p-4 space-y-4 overflow-y-auto custom-scrollbar flex-1">
+                                    {/* Status Readout Banner */}
+                                    <div className="p-3 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 flex items-center justify-between">
+                                        <span className="text-[10px] uppercase font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider">Classification</span>
+                                        {currentStatus === 'lived_current' ? (
+                                            <span className="px-2.5 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                                                🏠 Current Residence
+                                            </span>
+                                        ) : currentStatus === 'lived_past' ? (
+                                            <span className="px-2.5 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 flex items-center gap-1">
+                                                🏛️ Past Residence
+                                            </span>
+                                        ) : currentStatus === 'layover' ? (
+                                            <span className="px-2.5 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                                                🛫 Layover Only
+                                            </span>
+                                        ) : currentStatus === 'wishlist' ? (
+                                            <span className="px-2.5 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 flex items-center gap-1">
+                                                🌟 Wish List
+                                            </span>
+                                        ) : isVisited ? (
+                                            <span className="px-2.5 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-primary-500/15 text-primary-600 dark:text-primary-400 border border-primary-500/30 flex items-center gap-1">
+                                                ✨ Explored
+                                            </span>
+                                        ) : (
+                                            <span className="px-2.5 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary border border-black/10 dark:border-white/10">
+                                                🧭 Unexplored
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {/* Interactive Label Selector */}
+                                    <div className="space-y-2">
+                                        <label className="block text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                                            Residence & Classification Tag
+                                        </label>
+
+                                        <div className="grid grid-cols-1 gap-2">
+                                            {/* 1. Live Here */}
+                                            <button
+                                                type="button"
+                                                onClick={() => onUpdateCountryStatus?.(iso2, name, currentStatus === 'lived_current' ? 'none' : 'lived_current')}
+                                                className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between cursor-pointer transition-all duration-150 active:scale-[0.98] ${
+                                                    currentStatus === 'lived_current'
+                                                        ? 'bg-emerald-500/15 border-emerald-500 text-emerald-600 dark:text-emerald-400 font-bold shadow-sm'
+                                                        : 'bg-white/60 dark:bg-dark-card/60 border-black/5 dark:border-white/10 hover:border-black/15 text-light-text dark:text-dark-text'
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-2.5">
+                                                    <span className="text-lg">🏠</span>
+                                                    <div>
+                                                        <p className="text-xs font-bold">Currently Live Here</p>
+                                                        <p className="text-[9px] text-light-text-secondary dark:text-dark-text-secondary">Active home / residence</p>
+                                                    </div>
+                                                </div>
+                                                {currentStatus === 'lived_current' && <span className="text-xs font-bold text-emerald-500">✓</span>}
+                                            </button>
+
+                                            {/* 2. Lived in Past */}
+                                            <button
+                                                type="button"
+                                                onClick={() => onUpdateCountryStatus?.(iso2, name, currentStatus === 'lived_past' ? 'none' : 'lived_past')}
+                                                className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between cursor-pointer transition-all duration-150 active:scale-[0.98] ${
+                                                    currentStatus === 'lived_past'
+                                                        ? 'bg-indigo-500/15 border-indigo-500 text-indigo-600 dark:text-indigo-400 font-bold shadow-sm'
+                                                        : 'bg-white/60 dark:bg-dark-card/60 border-black/5 dark:border-white/10 hover:border-black/15 text-light-text dark:text-dark-text'
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-2.5">
+                                                    <span className="text-lg">🏛️</span>
+                                                    <div>
+                                                        <p className="text-xs font-bold">Lived Here in the Past</p>
+                                                        <p className="text-[9px] text-light-text-secondary dark:text-dark-text-secondary">Former home / study / work</p>
+                                                    </div>
+                                                </div>
+                                                {currentStatus === 'lived_past' && <span className="text-xs font-bold text-indigo-500">✓</span>}
+                                            </button>
+
+                                            {/* 3. Visited / Explored */}
+                                            <button
+                                                type="button"
+                                                onClick={() => onUpdateCountryStatus?.(iso2, name, currentStatus === 'visited' ? 'none' : 'visited')}
+                                                className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between cursor-pointer transition-all duration-150 active:scale-[0.98] ${
+                                                    currentStatus === 'visited'
+                                                        ? 'bg-primary-500/15 border-primary-500 text-primary-600 dark:text-primary-400 font-bold shadow-sm'
+                                                        : 'bg-white/60 dark:bg-dark-card/60 border-black/5 dark:border-white/10 hover:border-black/15 text-light-text dark:text-dark-text'
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-2.5">
+                                                    <span className="text-lg">✈️</span>
+                                                    <div>
+                                                        <p className="text-xs font-bold">Visited / Explored</p>
+                                                        <p className="text-[9px] text-light-text-secondary dark:text-dark-text-secondary">Destination stay / trip</p>
+                                                    </div>
+                                                </div>
+                                                {currentStatus === 'visited' && <span className="text-xs font-bold text-primary-500">✓</span>}
+                                            </button>
+
+                                            {/* 4. Layover Only */}
+                                            <button
+                                                type="button"
+                                                onClick={() => onUpdateCountryStatus?.(iso2, name, currentStatus === 'layover' ? 'none' : 'layover')}
+                                                className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between cursor-pointer transition-all duration-150 active:scale-[0.98] ${
+                                                    currentStatus === 'layover'
+                                                        ? 'bg-amber-500/15 border-amber-500 text-amber-600 dark:text-amber-400 font-bold shadow-sm'
+                                                        : 'bg-white/60 dark:bg-dark-card/60 border-black/5 dark:border-white/10 hover:border-black/15 text-light-text dark:text-dark-text'
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-2.5">
+                                                    <span className="text-lg">🛫</span>
+                                                    <div>
+                                                        <p className="text-xs font-bold">Layover Only (Transit)</p>
+                                                        <p className="text-[9px] text-light-text-secondary dark:text-dark-text-secondary">Airport connection / transfer</p>
+                                                    </div>
+                                                </div>
+                                                {currentStatus === 'layover' && <span className="text-xs font-bold text-amber-500">✓</span>}
+                                            </button>
+
+                                            {/* 5. Wishlist Destination */}
+                                            <button
+                                                type="button"
+                                                onClick={() => onUpdateCountryStatus?.(iso2, name, currentStatus === 'wishlist' ? 'none' : 'wishlist')}
+                                                className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between cursor-pointer transition-all duration-150 active:scale-[0.98] ${
+                                                    currentStatus === 'wishlist'
+                                                        ? 'bg-rose-500/15 border-rose-500 text-rose-600 dark:text-rose-400 font-bold shadow-sm'
+                                                        : 'bg-white/60 dark:bg-dark-card/60 border-black/5 dark:border-white/10 hover:border-black/15 text-light-text dark:text-dark-text'
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-2.5">
+                                                    <span className="text-lg">🌟</span>
+                                                    <div>
+                                                        <p className="text-xs font-bold">Wish List Destination</p>
+                                                        <p className="text-[9px] text-light-text-secondary dark:text-dark-text-secondary">Dream expedition target</p>
+                                                    </div>
+                                                </div>
+                                                {currentStatus === 'wishlist' && <span className="text-xs font-bold text-rose-500">✓</span>}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </>
+                        );
+                    })()}
+                </div>
             )}
 
             {/* Left Route Mission Control Corridor Inspector Card */}
@@ -1711,7 +2110,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             )}
 
             {/* Interactive Object Hover HUD Tooltip */}
-            {hoverInfo?.object && !selectedCorridor && (
+            {hoverInfo?.object && !selectedCorridor && !selectedCountry && (
                 <div 
                     className="absolute pointer-events-none z-50 transition-all duration-75"
                     style={{ left: hoverInfo.x + 12, top: hoverInfo.y + 12 }}
@@ -1757,6 +2156,58 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                             Flights <span className="text-light-text dark:text-dark-text ml-1 font-bold">{c.totalFlights}</span>
                                         </span>
                                     </div>
+                                </div>
+                            </div>
+                        );
+                    })() : hoverInfo.object.properties ? (() => {
+                        const p = hoverInfo.object.properties;
+                        const name = p.NAME || p.NAME_LONG || p.ADMIN || p.SOVEREIGNT || 'Country';
+                        const iso2 = (p.ISO_A2 && p.ISO_A2 !== '-99' ? p.ISO_A2 : (p.ISO_A2_EH || p.wb_a2 || '')).toUpperCase();
+                        const isVisited = isCountryVisited(hoverInfo.object, visitedCountries);
+                        const currentStatus: CountryResidenceStatus | 'unexplored' = 
+                            (iso2 && countryStatusMap?.[iso2]) || 
+                            (name && countryStatusMap?.[name.toUpperCase()]) || 
+                            (isVisited ? 'visited' : 'unexplored');
+                        const flag = iso2 ? getFlagEmoji(iso2) : '🏳️';
+                        const region = p.REGION_UN || p.SUBREGION || p.CONTINENT || (iso2 ? getRegion(iso2) : '');
+
+                        return (
+                            <div className="bg-white/90 dark:bg-dark-card/90 text-light-text dark:text-dark-text border border-black/10 dark:border-white/15 rounded-3xl shadow-glass-modal backdrop-blur-2xl p-4 min-w-[240px] text-xs animate-fade-in space-y-2.5" style={{ WebkitBackdropFilter: 'blur(30px)' }}>
+                                <div className="flex items-center justify-between border-b border-black/5 dark:border-white/10 pb-2">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xl leading-none">{flag}</span>
+                                        <span className="font-bold text-sm text-light-text dark:text-dark-text tracking-tight">{name}</span>
+                                    </div>
+                                    {currentStatus === 'lived_current' ? (
+                                        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                                            🏠 HOME
+                                        </span>
+                                    ) : currentStatus === 'lived_past' ? (
+                                        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 flex items-center gap-1">
+                                            🏛️ PAST HOME
+                                        </span>
+                                    ) : currentStatus === 'wishlist' ? (
+                                        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 flex items-center gap-1">
+                                            🌟 WISHLIST
+                                        </span>
+                                    ) : isVisited ? (
+                                        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-primary-500/15 text-primary-600 dark:text-primary-400 border border-primary-500/30 flex items-center gap-1">
+                                            ✨ EXPLORED
+                                        </span>
+                                    ) : (
+                                        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary border border-black/10 dark:border-white/10">
+                                            UNEXPLORED
+                                        </span>
+                                    )}
+                                </div>
+                                {region && (
+                                    <div className="flex items-center justify-between text-[11px] text-light-text-secondary dark:text-dark-text-secondary">
+                                        <span>Region</span>
+                                        <span className="font-semibold text-light-text dark:text-dark-text">{region}</span>
+                                    </div>
+                                )}
+                                <div className="pt-1 text-[10px] text-primary-500 font-bold flex items-center gap-1">
+                                    <span>👆 Click territory to inspect & label</span>
                                 </div>
                             </div>
                         );

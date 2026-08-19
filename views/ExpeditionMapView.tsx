@@ -21,9 +21,9 @@ import {
 } from 'lucide-react';
 const DeckFlightMap = lazy(() => import('../components/DeckFlightMap').then(m => ({ default: m.DeckFlightMap || m.default })));
 import { dataService } from '../services/mockDb';
-import { Trip } from '../types';
+import { Trip, CountryResidenceStatus, PredefinedMapMode } from '../types';
 import { Input, MultiSelect } from '../components/ui';
-import { getCoordinates, getCoordinatesSync } from '../services/geocoding';
+import { getCoordinates, getCoordinatesSync, STATIC_GEO_DATA } from '../services/geocoding';
 import { runAfterFirstPaint, mapWithConcurrency } from '../services/utils';
 import { 
     MapAppearanceSettings, 
@@ -96,8 +96,8 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
     // Appearance Settings State
     const [appearance, setAppearance] = useState<MapAppearanceSettings>(() => loadMapAppearanceSettings());
 
-    // Additional Map Modes
-    const [viewMode, setViewMode] = useState<'network' | 'scratch'>('network');
+    // Predefined Map View Mode ('flights' | 'land_sea' | 'scratch' | 'all')
+    const [viewMode, setViewMode] = useState<PredefinedMapMode>('all');
     const [elevatedProjection, setElevatedProjection] = useState<boolean>(true);
     const [animateRoutes, setAnimateRoutes] = useState(false);
     const [showCountries, setShowCountries] = useState(false);
@@ -108,8 +108,9 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
         return localStorage.getItem('wandergrid_road_tracing') === 'true';
     });
 
-    // Visited Data
+    // Visited Data & Country Residence Status
     const [visitedCountryCodes, setVisitedCountryCodes] = useState<string[]>([]);
+    const [countryStatusMap, setCountryStatusMap] = useState<Record<string, CountryResidenceStatus>>({});
     const [visitedPlaces, setVisitedPlaces] = useState<{ lat: number; lng: number; name: string }[]>([]);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
 
@@ -124,6 +125,27 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
 
     const isDark = useDarkMode();
 
+    const handleSelectViewMode = (mode: PredefinedMapMode) => {
+        setViewMode(mode);
+        if (mode === 'flights') {
+            setShowIndependentFlights(true);
+            setShowLandSeaRoutes(false);
+            setShowCountries(false);
+        } else if (mode === 'land_sea') {
+            setShowIndependentFlights(false);
+            setShowLandSeaRoutes(true);
+            setShowCountries(false);
+        } else if (mode === 'scratch') {
+            setShowIndependentFlights(false);
+            setShowLandSeaRoutes(false);
+            setShowCountries(true);
+        } else if (mode === 'all') {
+            setShowIndependentFlights(true);
+            setShowLandSeaRoutes(true);
+            setShowCountries(false);
+        }
+    };
+
     const handleUpdateAppearance = (newSettings: MapAppearanceSettings) => {
         setAppearance(newSettings);
         saveMapAppearanceSettings(newSettings);
@@ -131,12 +153,9 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
 
     const handleResetAll = () => {
         handleUpdateAppearance({ ...DEFAULT_MAP_APPEARANCE });
-        setViewMode('network');
-        setShowCountries(false);
+        handleSelectViewMode('all');
         setAnimateRoutes(false);
         setClusterMode(false);
-        setShowLandSeaRoutes(true);
-        setShowIndependentFlights(true);
         setShowRoadTracing(false);
         setStatusFilter('all');
         setYearFilter('all');
@@ -391,28 +410,197 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
         const processGeoData = async () => {
             try {
                 const visited = await dataService.getVisited();
-                if (visited && visited.length > 0) {
-                    const countryCodes = visited
-                        .filter(item => item.type === 'country' && !item.isTransit)
-                        .map(item => item.code.toUpperCase());
-                    
-                    const places = visited
-                        .filter(item => item.type === 'city')
-                        .map(item => ({
-                            lat: item.lat || 0,
-                            lng: item.lng || 0,
-                            name: item.name
-                        }));
+                const countrySet = new Set<string>();
+                const statusMap: Record<string, CountryResidenceStatus> = {};
+                const placeMap = new Map<string, { lat: number; lng: number; name: string }>();
 
-                    setVisitedCountryCodes(countryCodes);
-                    setVisitedPlaces(places);
+                // 1. From database visited collection
+                if (visited && visited.length > 0) {
+                    visited.forEach(item => {
+                        const code = item.code ? item.code.toUpperCase() : (item.countryCode ? item.countryCode.toUpperCase() : '');
+                        const name = item.name ? item.name.toUpperCase() : (item.countryName ? item.countryName.toUpperCase() : '');
+
+                        if (item.isTransit || item.residenceStatus === 'layover') {
+                            if (code) statusMap[code] = 'layover';
+                            if (name) statusMap[name] = 'layover';
+                        } else {
+                            if (item.type === 'country' && code && item.residenceStatus !== 'wishlist') {
+                                countrySet.add(code);
+                            } else if (item.countryCode && item.residenceStatus !== 'wishlist') {
+                                countrySet.add(item.countryCode.toUpperCase());
+                            }
+
+                            if (item.residenceStatus) {
+                                if (code) statusMap[code] = item.residenceStatus;
+                                if (name) statusMap[name] = item.residenceStatus;
+                            }
+                        }
+
+                        if (item.type === 'city' && item.lat && item.lng) {
+                            placeMap.set(`${item.lat.toFixed(3)},${item.lng.toFixed(3)}`, {
+                                lat: item.lat,
+                                lng: item.lng,
+                                name: item.name
+                            });
+                        }
+                    });
                 }
+
+                // 2. Automatic Trip Analysis: Differentiate Destination stays vs Layover connections
+                const destinationCountries = new Set<string>();
+                const layoverCandidateCountries = new Set<string>();
+
+                (trips || []).forEach(trip => {
+                    // Stays and Trip destination anchors
+                    if (trip.location) {
+                        const res = STATIC_GEO_DATA[trip.location.toUpperCase()];
+                        if (res?.iso) destinationCountries.add(res.iso.toUpperCase());
+                    }
+                    trip.locations?.forEach(l => {
+                        if (l.name) {
+                            const res = STATIC_GEO_DATA[l.name.toUpperCase()];
+                            if (res?.iso) destinationCountries.add(res.iso.toUpperCase());
+                        }
+                    });
+
+                    const transports = trip.transports || [];
+                    transports.forEach((tr, idx) => {
+                        const originCode = tr.origin?.toUpperCase() || '';
+                        const destCode = tr.destination?.toUpperCase() || '';
+                        const originGeo = originCode ? STATIC_GEO_DATA[originCode] : null;
+                        const destGeo = destCode ? STATIC_GEO_DATA[destCode] : null;
+
+                        const isFlight = !tr.mode || tr.mode === 'Flight';
+
+                        if (originGeo?.iso) {
+                            destinationCountries.add(originGeo.iso.toUpperCase());
+                        }
+
+                        if (isFlight) {
+                            // Check if this flight leg is an explicit layover or intermediate transfer
+                            const isIntermediateFlight = idx < transports.length - 1 && transports[idx + 1].origin?.toUpperCase() === destCode;
+                            const isExplicitLayover = tr.isLayover === true;
+
+                            if (destGeo?.iso) {
+                                const iso = destGeo.iso.toUpperCase();
+                                if (isIntermediateFlight || isExplicitLayover) {
+                                    layoverCandidateCountries.add(iso);
+                                } else {
+                                    destinationCountries.add(iso);
+                                }
+                            }
+                        } else {
+                            // Ground / Sea transit counts as visited destination
+                            if (destGeo?.iso) destinationCountries.add(destGeo.iso.toUpperCase());
+                        }
+
+                        // Collect place coordinates
+                        if (tr.originLat && tr.originLng && tr.origin) {
+                            placeMap.set(`${tr.originLat.toFixed(3)},${tr.originLng.toFixed(3)}`, {
+                                lat: tr.originLat,
+                                lng: tr.originLng,
+                                name: tr.origin
+                            });
+                        }
+                        if (tr.destLat && tr.destLng && tr.destination) {
+                            placeMap.set(`${tr.destLat.toFixed(3)},${tr.destLng.toFixed(3)}`, {
+                                lat: tr.destLat,
+                                lng: tr.destLng,
+                                name: tr.destination
+                            });
+                        }
+                    });
+                });
+
+                // Add all verified destination countries to countrySet
+                destinationCountries.forEach(code => countrySet.add(code));
+
+                // Auto-detect layover-only countries: in layoverCandidateCountries, but NEVER stayed as a destination
+                layoverCandidateCountries.forEach(code => {
+                    if (!destinationCountries.has(code) && !statusMap[code]) {
+                        statusMap[code] = 'layover';
+                    }
+                });
+
+                setVisitedCountryCodes(Array.from(countrySet));
+                setCountryStatusMap(statusMap);
+                setVisitedPlaces(Array.from(placeMap.values()));
             } catch (err) {
                 console.warn("Could not query Visited collection:", err);
             }
         };
+
         processGeoData();
+
+        const handleDbUpdate = () => {
+            processGeoData();
+        };
+        window.addEventListener('wandergrid_db_updated', handleDbUpdate);
+        return () => window.removeEventListener('wandergrid_db_updated', handleDbUpdate);
     }, [trips]);
+
+    const handleUpdateCountryStatus = async (countryCode: string, countryName: string, status: CountryResidenceStatus | 'none') => {
+        try {
+            const visitedList = await dataService.getVisited();
+            const upperCode = (countryCode || '').toUpperCase();
+            const upperName = (countryName || '').toUpperCase();
+
+            const existing = (visitedList || []).find((v: any) => 
+                (v.type === 'country' && v.code && v.code.toUpperCase() === upperCode) ||
+                (v.name && v.name.toUpperCase() === upperName)
+            );
+
+            if (status === 'none') {
+                if (existing) {
+                    await dataService.deleteVisited(existing.id);
+                }
+            } else {
+                if (existing) {
+                    await dataService.updateVisited({
+                        ...existing,
+                        residenceStatus: status,
+                        isTransit: status === 'layover',
+                        name: countryName || existing.name
+                    });
+                } else {
+                    await dataService.addVisited({
+                        id: `visited-country-${upperCode || Date.now()}`,
+                        type: 'country',
+                        code: upperCode,
+                        name: countryName,
+                        residenceStatus: status,
+                        isTransit: status === 'layover',
+                        isManual: true,
+                        visitDate: new Date().toISOString().split('T')[0]
+                    });
+                }
+            }
+
+            setCountryStatusMap(prev => {
+                const next = { ...prev };
+                if (status === 'none') {
+                    if (upperCode) delete next[upperCode];
+                    if (upperName) delete next[upperName];
+                } else {
+                    if (upperCode) next[upperCode] = status;
+                    if (upperName) next[upperName] = status;
+                }
+                return next;
+            });
+
+            if (status === 'visited' || status === 'lived_current' || status === 'lived_past') {
+                if (upperCode && !visitedCountryCodes.includes(upperCode)) {
+                    setVisitedCountryCodes(prev => [...prev, upperCode]);
+                }
+            } else if (status === 'layover' || status === 'wishlist' || status === 'none') {
+                setVisitedCountryCodes(prev => prev.filter(c => c !== upperCode));
+            }
+
+            window.dispatchEvent(new CustomEvent('wandergrid_db_updated'));
+        } catch (e) {
+            console.error("Failed to update country status:", e);
+        }
+    };
 
     // Unique filter options
     const uniqueAirports = useMemo(() => {
@@ -509,6 +697,8 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                         visitedCountries={visitedCountryCodes}
                         showCountries={showCountries}
                         viewMode={viewMode}
+                        countryStatusMap={countryStatusMap}
+                        onUpdateCountryStatus={handleUpdateCountryStatus}
                         visitedPlaces={visitedPlaces}
                         activeLayer={appearance.basemap}
                         onChangeActiveLayer={(layer) => handleUpdateAppearance({ ...appearance, basemap: layer as any })}
@@ -527,7 +717,9 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                         onChangeAppearanceSettings={handleUpdateAppearance}
                     />
                 </Suspense>
-            </div>            {/* 2. FLOATING TOP HUD BAR (Command & Live Telemetry) */}
+            </div>
+
+            {/* 2. FLOATING TOP HUD BAR (Brand & Telemetry) */}
             <div className="absolute top-5 left-5 z-20 flex items-center gap-3 pointer-events-none">
                 {/* Brand & Status Pill */}
                 <div className="pointer-events-auto bg-white/80 dark:bg-dark-card/85 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl px-4 py-2.5 shadow-glass-card flex items-center gap-3.5 transition-all">
@@ -546,6 +738,31 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                             {activeSectorsCount} Active Sectors • {totalDistanceKm.toLocaleString()} KM
                         </p>
                     </div>
+                </div>
+            </div>
+
+            {/* 2.5 FLOATING TOP-CENTER PREDEFINED VIEW MODES SELECTOR */}
+            <div className="absolute top-5 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
+                <div className="flex p-1 bg-white/85 dark:bg-dark-card/90 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl shadow-glass-card gap-1">
+                    {[
+                        { id: 'flights', label: 'Flights', icon: Plane },
+                        { id: 'land_sea', label: 'Land & Sea', icon: Compass },
+                        { id: 'scratch', label: 'Scratch', icon: MapIcon },
+                        { id: 'all', label: 'All Expeditions', icon: Globe }
+                    ].map((m) => (
+                        <button
+                            key={m.id}
+                            onClick={() => handleSelectViewMode(m.id as PredefinedMapMode)}
+                            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-150 flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+                                viewMode === m.id
+                                    ? 'bg-primary-500 text-white shadow-sm'
+                                    : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-black/5 dark:hover:bg-white/5'
+                            }`}
+                        >
+                            <m.icon className="w-3.5 h-3.5" />
+                            <span>{m.label}</span>
+                        </button>
+                    ))}
                 </div>
             </div>
 
@@ -788,25 +1005,170 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                 </div>
                             </div>
 
-                            {/* COUNTRY TERRITORIES */}
-                            <div className="p-4 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 flex items-center justify-between">
-                                <div>
-                                    <h4 className="text-xs font-bold text-light-text dark:text-dark-text">Visited Territories</h4>
-                                    <p className="text-[10px] text-light-text-secondary dark:text-dark-text-secondary mt-0.5">Highlight explored country boundaries</p>
+                            {/* PREDEFINED EXPEDITION VIEW MODES */}
+                            <div className="p-4 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-2.5">
+                                <div className="flex items-center justify-between">
+                                    <h4 className="text-xs font-bold uppercase tracking-wider text-light-text dark:text-dark-text">Expedition View Mode</h4>
+                                    <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
+                                        {viewMode}
+                                    </span>
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowCountries(!showCountries)}
-                                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                                        showCountries ? 'bg-primary-500' : 'bg-black/20 dark:bg-white/20'
-                                    }`}
-                                >
-                                    <span
-                                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
-                                            showCountries ? 'translate-x-5' : 'translate-x-0'
+                                <div className="grid grid-cols-2 gap-2">
+                                    {[
+                                        { id: 'flights', label: 'Flights', desc: 'Aviation arcs & hubs', icon: Plane },
+                                        { id: 'land_sea', label: 'Land & Sea', desc: 'Road trips & rail', icon: Compass },
+                                        { id: 'scratch', label: 'Scratch Map', desc: 'Territory explorer', icon: MapIcon },
+                                        { id: 'all', label: 'All Expeditions', desc: 'Full unified network', icon: Globe }
+                                    ].map(m => (
+                                        <button
+                                            key={m.id}
+                                            type="button"
+                                            onClick={() => handleSelectViewMode(m.id as PredefinedMapMode)}
+                                            className={`p-2.5 rounded-xl border text-left flex items-start gap-2 cursor-pointer transition-all duration-150 active:scale-[0.98] ${
+                                                viewMode === m.id
+                                                    ? 'bg-primary-500/15 border-primary-500 text-primary-600 dark:text-primary-400 font-bold ring-1 ring-primary-500/30 shadow-sm'
+                                                    : 'bg-white/70 dark:bg-dark-card/60 border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
+                                            }`}
+                                        >
+                                            <m.icon className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${viewMode === m.id ? 'text-primary-500' : 'text-light-text-secondary dark:text-dark-text-secondary'}`} />
+                                            <div>
+                                                <p className="text-xs font-bold leading-tight">{m.label}</p>
+                                                <p className="text-[9px] opacity-75 mt-0.5 leading-tight">{m.desc}</p>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* SCRATCH EXPLORED CITIES & PINS */}
+                            <div className="p-4 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h4 className="text-xs font-bold uppercase tracking-wider text-light-text dark:text-dark-text">Scratch City Pins</h4>
+                                        <p className="text-[10px] text-light-text-secondary dark:text-dark-text-secondary">Marker sizing & visibility on foil</p>
+                                    </div>
+                                    <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20 capitalize">
+                                        {appearance.scratchCitySize === 'off' ? 'Hidden' : appearance.scratchCitySize || 'Normal'}
+                                    </span>
+                                </div>
+
+                                <div className="grid grid-cols-4 gap-1.5">
+                                    {[
+                                        { id: 'off', label: 'Hidden' },
+                                        { id: 'small', label: 'Micro' },
+                                        { id: 'medium', label: 'Normal' },
+                                        { id: 'large', label: 'Expansive' }
+                                    ].map(sz => (
+                                        <button
+                                            key={sz.id}
+                                            type="button"
+                                            onClick={() => handleUpdateAppearance({ ...appearance, scratchCitySize: sz.id as any })}
+                                            className={`py-2 rounded-xl text-xs font-semibold text-center border transition-all duration-150 cursor-pointer active:scale-[0.98] ${
+                                                (appearance.scratchCitySize || 'medium') === sz.id
+                                                    ? 'bg-primary-500 text-white font-bold border-primary-400 shadow-sm'
+                                                    : 'bg-white/70 dark:bg-dark-card/60 border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
+                                            }`}
+                                        >
+                                            {sz.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* SCRATCH HIGHLIGHT TOGGLES (LIVED & WISHLIST) */}
+                            <div className="p-4 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-3">
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-light-text dark:text-dark-text">Territory Highlights</h4>
+
+                                {/* Lived Residences Toggle */}
+                                <div className="flex items-center justify-between pt-1">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="w-7 h-7 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-sm">
+                                            🏠
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-bold text-light-text dark:text-dark-text">Lived Residences</p>
+                                            <p className="text-[10px] text-light-text-secondary dark:text-dark-text-secondary">Current & past living territories</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleUpdateAppearance({ 
+                                            ...appearance, 
+                                            showLivedCountries: appearance.showLivedCountries === false ? true : false 
+                                        })}
+                                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                                            appearance.showLivedCountries !== false ? 'bg-emerald-500' : 'bg-black/20 dark:bg-white/20'
                                         }`}
-                                    />
-                                </button>
+                                    >
+                                        <span
+                                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                                                appearance.showLivedCountries !== false ? 'translate-x-5' : 'translate-x-0'
+                                            }`}
+                                        />
+                                    </button>
+                                </div>
+
+                                <div className="h-px bg-black/5 dark:bg-white/5" />
+
+                                {/* Layover Territories Toggle */}
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="w-7 h-7 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-sm">
+                                            🛫
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-bold text-light-text dark:text-dark-text">Layover Territories</p>
+                                            <p className="text-[10px] text-light-text-secondary dark:text-dark-text-secondary">Airport connections & transits</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleUpdateAppearance({ 
+                                            ...appearance, 
+                                            showLayoverCountries: appearance.showLayoverCountries === false ? true : false 
+                                        })}
+                                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                                            appearance.showLayoverCountries !== false ? 'bg-amber-500' : 'bg-black/20 dark:bg-white/20'
+                                        }`}
+                                    >
+                                        <span
+                                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                                                appearance.showLayoverCountries !== false ? 'translate-x-5' : 'translate-x-0'
+                                            }`}
+                                        />
+                                    </button>
+                                </div>
+
+                                <div className="h-px bg-black/5 dark:bg-white/5" />
+
+                                {/* Wishlist Destinations Toggle */}
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="w-7 h-7 rounded-lg bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-sm">
+                                            🌟
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-bold text-light-text dark:text-dark-text">Wishlist Destinations</p>
+                                            <p className="text-[10px] text-light-text-secondary dark:text-dark-text-secondary">Dream expedition targets</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleUpdateAppearance({ 
+                                            ...appearance, 
+                                            showWishlistCountries: appearance.showWishlistCountries === false ? true : false 
+                                        })}
+                                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                                            appearance.showWishlistCountries !== false ? 'bg-rose-500' : 'bg-black/20 dark:bg-white/20'
+                                        }`}
+                                    >
+                                        <span
+                                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                                                appearance.showWishlistCountries !== false ? 'translate-x-5' : 'translate-x-0'
+                                            }`}
+                                        />
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -1123,53 +1485,8 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                                         className="w-full accent-primary-500 cursor-pointer h-1.5 bg-black/10 dark:bg-white/10 rounded-lg"
                                                     />
                                                 </div>
-
-                                                {/* Radar Color Palette */}
-                                                <div>
-                                                    <span className="text-[10px] font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider block mb-1.5">Radar Palette</span>
-                                                    <div className="grid grid-cols-3 gap-1.5">
-                                                        {[
-                                                            { id: 2, label: 'Universal' },
-                                                            { id: 1, label: 'Classic' },
-                                                            { id: 6, label: 'NEXRAD' }
-                                                        ].map(p => (
-                                                            <button
-                                                                key={p.id}
-                                                                onClick={() => handleUpdateAppearance({ ...appearance, rainRadarColorScheme: p.id })}
-                                                                className={`py-1.5 px-1 rounded-lg text-[10px] font-bold text-center border transition-all duration-150 cursor-pointer active:scale-[0.98] ${
-                                                                    (appearance.rainRadarColorScheme || 2) === p.id
-                                                                        ? 'bg-primary-500 text-white border-primary-400 shadow-sm'
-                                                                        : 'bg-white/70 dark:bg-dark-card/60 border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
-                                                                }`}
-                                                            >
-                                                                {p.label}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </div>
                                             </div>
                                         )}
-                                    </div>
-
-                                    {/* Visited Lands / Scratch Layer */}
-                                    <div className="p-4 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 flex items-center justify-between">
-                                        <div>
-                                            <h4 className="text-xs font-bold text-light-text dark:text-dark-text">Visited Lands (Scratch)</h4>
-                                            <p className="text-[10px] text-light-text-secondary dark:text-dark-text-secondary mt-0.5">Highlight explored countries</p>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowCountries(!showCountries)}
-                                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                                                showCountries ? 'bg-primary-500' : 'bg-black/20 dark:bg-white/20'
-                                            }`}
-                                        >
-                                            <span
-                                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
-                                                    showCountries ? 'translate-x-5' : 'translate-x-0'
-                                                }`}
-                                            />
-                                        </button>
                                     </div>
                                 </div>
                             </div>

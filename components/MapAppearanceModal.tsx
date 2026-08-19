@@ -315,6 +315,128 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                     ))}
                                 </div>
                             </div>
+
+                            {/* SCRATCH CITY PINS */}
+                            <div className="p-4 rounded-3xl bg-gradient-to-b from-white/[0.07] to-white/[0.02] border border-white/10 shadow-xl space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h3 className="text-xs font-black uppercase tracking-wider text-white">Scratch City Pins</h3>
+                                        <p className="text-[10px] text-zinc-400">Marker sizing & visibility on foil</p>
+                                    </div>
+                                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-blue-500/20 text-blue-400 border border-blue-500/30 capitalize">
+                                        {settings.scratchCitySize === 'off' ? 'Hidden' : settings.scratchCitySize || 'Normal'}
+                                    </span>
+                                </div>
+
+                                <div className="grid grid-cols-4 gap-1.5">
+                                    {[
+                                        { id: 'off', label: 'Hidden' },
+                                        { id: 'small', label: 'Micro' },
+                                        { id: 'medium', label: 'Normal' },
+                                        { id: 'large', label: 'Expansive' }
+                                    ].map((sz) => (
+                                        <button
+                                            key={sz.id}
+                                            type="button"
+                                            onClick={() => updateField('scratchCitySize', sz.id as any)}
+                                            className={`py-2 rounded-xl text-xs font-bold text-center border transition-all cursor-pointer ${
+                                                (settings.scratchCitySize || 'medium') === sz.id
+                                                    ? 'bg-blue-600 text-white border-blue-400'
+                                                    : 'bg-zinc-900/60 border-white/10 text-zinc-400 hover:text-white'
+                                            }`}
+                                        >
+                                            {sz.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* SCRATCH HIGHLIGHT TOGGLES (LIVED & WISHLIST) */}
+                            <div className="p-4 rounded-3xl bg-gradient-to-b from-white/[0.07] to-white/[0.02] border border-white/10 shadow-xl space-y-3">
+                                <h3 className="text-xs font-black uppercase tracking-wider text-white">Territory Highlights</h3>
+
+                                {/* Lived Residences Toggle */}
+                                <div className="flex items-center justify-between pt-1">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="w-7 h-7 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-sm">
+                                            🏠
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-bold text-white">Lived Residences</p>
+                                            <p className="text-[10px] text-zinc-400">Current & past homes on foil</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => updateField('showLivedCountries', settings.showLivedCountries === false ? true : false)}
+                                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                                            settings.showLivedCountries !== false ? 'bg-emerald-500' : 'bg-zinc-700'
+                                        }`}
+                                    >
+                                        <span
+                                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                                                settings.showLivedCountries !== false ? 'translate-x-5' : 'translate-x-0'
+                                            }`}
+                                        />
+                                    </button>
+                                </div>
+
+                                <div className="h-px bg-white/5" />
+
+                                {/* Layover Territories Toggle */}
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-sm">
+                                            🛫
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-bold text-white">Layover Territories</p>
+                                            <p className="text-[10px] text-zinc-400">Airport transit & connections</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => updateField('showLayoverCountries', settings.showLayoverCountries === false ? true : false)}
+                                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                                            settings.showLayoverCountries !== false ? 'bg-amber-500' : 'bg-zinc-700'
+                                        }`}
+                                    >
+                                        <span
+                                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                                                settings.showLayoverCountries !== false ? 'translate-x-5' : 'translate-x-0'
+                                            }`}
+                                        />
+                                    </button>
+                                </div>
+
+                                <div className="h-px bg-white/5" />
+
+                                {/* Wishlist Destinations Toggle */}
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="w-7 h-7 rounded-lg bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-sm">
+                                            🌟
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-bold text-white">Wishlist Destinations</p>
+                                            <p className="text-[10px] text-zinc-400">Dream expedition targets</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => updateField('showWishlistCountries', settings.showWishlistCountries === false ? true : false)}
+                                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                                            settings.showWishlistCountries !== false ? 'bg-rose-500' : 'bg-zinc-700'
+                                        }`}
+                                    >
+                                        <span
+                                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                                                settings.showWishlistCountries !== false ? 'translate-x-5' : 'translate-x-0'
+                                            }`}
+                                        />
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     )}
 
@@ -529,30 +651,6 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                     onChange={(e) => updateField('rainRadarOpacity', parseFloat(e.target.value))}
                                                     className="w-full accent-blue-500 cursor-pointer h-1.5 bg-zinc-800 rounded-lg"
                                                 />
-                                            </div>
-
-                                            {/* Radar Color Palette */}
-                                            <div>
-                                                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1.5">Radar Palette</span>
-                                                <div className="grid grid-cols-3 gap-1.5">
-                                                    {[
-                                                        { id: 2, label: 'Universal' },
-                                                        { id: 1, label: 'Classic' },
-                                                        { id: 6, label: 'NEXRAD' }
-                                                    ].map(p => (
-                                                        <button
-                                                            key={p.id}
-                                                            onClick={() => updateField('rainRadarColorScheme', p.id)}
-                                                            className={`py-1.5 px-1 rounded-lg text-[10px] font-bold text-center border transition-all cursor-pointer ${
-                                                                (settings.rainRadarColorScheme || 2) === p.id
-                                                                    ? 'bg-blue-600 text-white border-blue-400 shadow-sm'
-                                                                    : 'bg-zinc-800/80 border-white/5 text-zinc-400 hover:text-white'
-                                                            }`}
-                                                        >
-                                                            {p.label}
-                                                        </button>
-                                                    ))}
-                                                </div>
                                             </div>
                                         </div>
                                     )}

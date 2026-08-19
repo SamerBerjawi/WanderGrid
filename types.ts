@@ -297,6 +297,8 @@ export enum ViewState {
   VACATION_CALENDAR = 'vacation_calendar'
 }
 
+export type CountryResidenceStatus = 'lived_past' | 'lived_current' | 'visited' | 'layover' | 'wishlist';
+
 export interface VisitedItem {
   id: string;
   type: 'country' | 'city';
@@ -310,7 +312,10 @@ export interface VisitedItem {
   isManual?: boolean;
   notes?: string;
   isTransit?: boolean;
+  residenceStatus?: CountryResidenceStatus;
 }
+
+export type PredefinedMapMode = 'flights' | 'land_sea' | 'scratch' | 'all';
 
 // --- Live Flight Tracking Types ---
 export interface FlightStatusResponse {

@@ -42,7 +42,13 @@ export interface RouteCorridor {
  * Converts 2-letter ISO country code to Unicode Flag Emoji.
  */
 export function getFlagEmoji(countryCode: string): string {
-    if (!countryCode || countryCode.length !== 2) return '🌐';
+    if (!countryCode) return '🌐';
+    const code = countryCode.toUpperCase();
+    if (code === 'GB-ENG') return '🏴󠁧󠁢󠁥󠁮󠁧󠁿';
+    if (code === 'GB-SCT') return '🏴󠁧󠁢󠁳󠁣󠁴󠁿';
+    if (code === 'GB-WLS') return '🏴󠁧󠁢󠁷󠁬󠁳󠁿';
+    if (code === 'GB-NIR') return '🇬🇧';
+    if (countryCode.length !== 2) return '🌐';
     try {
         const codePoints = countryCode
             .toUpperCase()
