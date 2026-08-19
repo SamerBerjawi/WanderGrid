@@ -491,27 +491,48 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         }
     }, [enrichedTrips, effectiveProjection]);
 
-    // Basemap Tile URLs
-    const tileUrl = useMemo(() => {
+    // Basemap Tile URLs & Native Max Zoom Level
+    const { tileUrl, maxZoomForLayer } = useMemo(() => {
         switch (currentLayer) {
             case 'satellite':
-                return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+                return {
+                    tileUrl: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                    maxZoomForLayer: 19
+                };
             case 'topography':
-                return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}';
+                return {
+                    tileUrl: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+                    maxZoomForLayer: 17
+                };
             case 'hillshade':
-                return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Shaded_Relief/MapServer/tile/{z}/{y}/{x}';
+                return {
+                    tileUrl: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Shaded_Relief/MapServer/tile/{z}/{y}/{x}',
+                    maxZoomForLayer: 13
+                };
             case 'physical':
-                return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}';
+                return {
+                    tileUrl: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}',
+                    maxZoomForLayer: 8
+                };
             case 'ocean':
-                return 'https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}';
+                return {
+                    tileUrl: 'https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}',
+                    maxZoomForLayer: 10
+                };
             case 'night':
-                return 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png';
+                return {
+                    tileUrl: 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+                    maxZoomForLayer: 19
+                };
             case 'standard':
             case 'default':
             default:
-                return isDark
-                    ? 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png'
-                    : 'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png';
+                return {
+                    tileUrl: isDark
+                        ? 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png'
+                        : 'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png',
+                    maxZoomForLayer: 19
+                };
         }
     }, [currentLayer, isDark]);
 
@@ -845,7 +866,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 id: `basemap-tile-layer-${currentLayer}-${isDark ? 'dark' : 'light'}-${effectiveProjection}`,
                 data: tileUrl,
                 minZoom: 0,
-                maxZoom: 19,
+                maxZoom: maxZoomForLayer,
                 tileSize: 256,
                 renderSubLayers: (props: any) => {
                     const { boundingBox } = props.tile;
