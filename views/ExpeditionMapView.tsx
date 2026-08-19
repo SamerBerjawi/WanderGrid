@@ -91,7 +91,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
 
     // Sidebar state & tab
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    const [activeSidebarTab, setActiveSidebarTab] = useState<'map' | 'flights' | 'layers' | 'filters'>('map');
+    const [activeSidebarTab, setActiveSidebarTab] = useState<'atlas' | 'aviation' | 'atmosphere' | 'filters'>('atlas');
 
     // Appearance Settings State
     const [appearance, setAppearance] = useState<MapAppearanceSettings>(() => loadMapAppearanceSettings());
@@ -511,7 +511,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                         viewMode={viewMode}
                         visitedPlaces={visitedPlaces}
                         activeLayer={appearance.basemap}
-                        onChangeActiveLayer={(layer) => handleUpdateAppearance({ ...appearance, basemap: layer })}
+                        onChangeActiveLayer={(layer) => handleUpdateAppearance({ ...appearance, basemap: layer as any })}
                         projection={appearance.projection}
                         elevatedRoutes={elevatedProjection}
                         onProjectionChange={(p) => handleUpdateAppearance({ ...appearance, projection: p })}
@@ -615,12 +615,12 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                             { id: 'atmosphere', label: 'Atmosphere', icon: Layers },
                             { id: 'filters', label: 'Filters', icon: Filter }
                         ].map((tab) => {
-                            const isSelected = (activeSidebarTab === tab.id) || (activeSidebarTab === 'map' && tab.id === 'atlas') || (activeSidebarTab === 'flights' && tab.id === 'aviation') || (activeSidebarTab === 'layers' && tab.id === 'atmosphere');
+                            const isSelected = activeSidebarTab === tab.id;
                             const IconComponent = tab.icon;
                             return (
                                 <button
                                     key={tab.id}
-                                    onClick={() => setActiveSidebarTab(tab.id as any)}
+                                    onClick={() => setActiveSidebarTab(tab.id as 'atlas' | 'aviation' | 'atmosphere' | 'filters')}
                                     className={`flex-1 py-2 rounded-xl text-xs font-bold tracking-wide transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                                         isSelected
                                             ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg font-black border border-white/20'
@@ -638,7 +638,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                 {/* Sidebar Scrollable Body */}
                 <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar text-white">
                     {/* TAB 1: ATLAS (CARTOGRAPHY & PROJECTION) */}
-                    {(activeSidebarTab === 'atlas' || activeSidebarTab === 'map') && (
+                    {activeSidebarTab === 'atlas' && (
                         <div className="space-y-6">
                             {/* PROJECTION ENGINE */}
                             <div className="p-4 rounded-3xl bg-gradient-to-b from-white/[0.07] to-white/[0.02] border border-white/10 shadow-xl space-y-3">
@@ -810,7 +810,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                     )}
 
                     {/* TAB 2: AVIATION (FLIGHTS, RUNWAYS & ARCS) */}
-                    {(activeSidebarTab === 'aviation' || activeSidebarTab === 'flights') && (
+                    {activeSidebarTab === 'aviation' && (
                         <div className="space-y-6">
                             {/* AERODROME RUNWAY INFRASTRUCTURE */}
                             <div className="p-4 rounded-3xl bg-gradient-to-b from-white/[0.07] to-white/[0.02] border border-white/10 shadow-xl space-y-3">
@@ -1034,7 +1034,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                     )}
 
                     {/* TAB 3: ATMOSPHERE (SOLAR & WEATHER TELEMETRY) */}
-                    {(activeSidebarTab === 'atmosphere' || activeSidebarTab === 'layers') && (
+                    {activeSidebarTab === 'atmosphere' && (
                         <div className="space-y-6">
                             <div>
                                 <h3 className="text-[11px] font-black text-zinc-400 tracking-wider uppercase mb-3">

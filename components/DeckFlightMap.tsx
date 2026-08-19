@@ -571,8 +571,18 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             default:
                 return {
                     tileUrl: isDark
-                        ? 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png'
-                        : 'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png',
+                        ? [
+                            'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+                            'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+                            'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+                            'https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png'
+                          ]
+                        : [
+                            'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
+                            'https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
+                            'https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
+                            'https://d.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png'
+                          ],
                     maxZoomForLayer: 19
                 };
         }
@@ -946,25 +956,34 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     const layers = useMemo(() => {
         const layerList: any[] = [];
 
-        // 1. WebGL Basemap TileLayer
+        // 1. WebGL Basemap TileLayer (Dynamic multi-resolution vector/raster tile pyramid up to Zoom 19)
         layerList.push(
             new TileLayer({
                 id: `basemap-tile-layer-${currentLayer}-${isDark ? 'dark' : 'light'}-${effectiveProjection}`,
-                data: tileUrl,
+                data: Array.isArray(tileUrl) ? tileUrl : [tileUrl],
                 minZoom: 0,
                 maxZoom: maxZoomForLayer,
                 tileSize: 256,
+                maxRequests: 20,
+                refinementStrategy: 'best-available',
+                extent: [-180, -85.051129, 180, 85.051129],
                 renderSubLayers: (props: any) => {
-                    const { boundingBox } = props.tile;
+                    const tile = props.tile;
+                    const bbox = tile.bbox || {};
+                    const west = bbox.west ?? tile.boundingBox?.[0]?.[0] ?? -180;
+                    const south = bbox.south ?? tile.boundingBox?.[0]?.[1] ?? -85.051129;
+                    const east = bbox.east ?? tile.boundingBox?.[1]?.[0] ?? 180;
+                    const north = bbox.north ?? tile.boundingBox?.[1]?.[1] ?? 85.051129;
+
                     return new BitmapLayer(props, {
-                        data: null,
+                        data: (null as any),
                         image: props.data,
-                        bounds: [boundingBox[0][0], boundingBox[0][1], boundingBox[1][0], boundingBox[1][1]],
+                        bounds: [west, south, east, north],
                         textureParameters: {
                             minFilter: 'linear',
                             magFilter: 'linear'
                         }
-                    });
+                    } as any);
                 }
             })
         );
@@ -1006,14 +1025,21 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     minZoom: 0,
                     maxZoom: 18,
                     tileSize: 256,
+                    maxRequests: 20,
                     opacity,
                     renderSubLayers: (props: any) => {
-                        const { boundingBox } = props.tile;
+                        const tile = props.tile;
+                        const bbox = tile.bbox || {};
+                        const west = bbox.west ?? tile.boundingBox?.[0]?.[0] ?? -180;
+                        const south = bbox.south ?? tile.boundingBox?.[0]?.[1] ?? -85.051129;
+                        const east = bbox.east ?? tile.boundingBox?.[1]?.[0] ?? 180;
+                        const north = bbox.north ?? tile.boundingBox?.[1]?.[1] ?? 85.051129;
+
                         return new BitmapLayer(props, {
-                            data: null,
+                            data: (null as any),
                             image: props.data,
-                            bounds: [boundingBox[0][0], boundingBox[0][1], boundingBox[1][0], boundingBox[1][1]]
-                        });
+                            bounds: [west, south, east, north]
+                        } as any);
                     }
                 })
             );
@@ -1502,7 +1528,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             {/* Deck.gl 60 FPS WebGL Canvas with Mouse Scroll Zoom enabled */}
             <DeckGL
                 views={views}
-                viewState={viewState}
+                viewState={viewState as any}
                 controller={true}
                 onViewStateChange={({ viewState: newViewState }: any) => {
                     setViewState(prev => ({
