@@ -154,7 +154,7 @@ const persistCacheToIndexedDb = async () => {
     db.close();
 };
 
-const STATIC_GEO_DATA: Record<string, any> = {
+export const STATIC_GEO_DATA: Record<string, any> = {
     // Top Airports
     "AMS": { "lat": "52.3086", "lon": "4.7639", "name": "Schiphol", "city": "Amsterdam", "country": "Netherlands", "tz": "Europe/Amsterdam", "iso": "NL" },
     "LHR": { "lat": "51.4706", "lon": "-0.4619", "name": "Heathrow", "city": "London", "country": "United Kingdom", "tz": "Europe/London", "iso": "GB" },

@@ -3,7 +3,7 @@ import { DeckGL } from '@deck.gl/react';
 import { MapView, _GlobeView } from '@deck.gl/core';
 import { ScatterplotLayer, GeoJsonLayer, PathLayer, BitmapLayer, TextLayer } from '@deck.gl/layers';
 import { TileLayer, TripsLayer } from '@deck.gl/geo-layers';
-import { Maximize2, Scan, Globe } from 'lucide-react';
+import { Maximize2, Scan, Globe, ArrowLeft, X, Plane, Clock, Calendar, ChevronRight } from 'lucide-react';
 import { Trip } from '../types';
 import { getCoordinatesSync } from '../services/geocoding';
 import { 
@@ -14,7 +14,8 @@ import {
 } from '../types/mapAppearance';
 import { getTwilightGradientGeoJSON } from '../services/solarTerminator';
 import { getLatestRainRadarMetadata, RainRadarMetadata } from '../services/rainViewer';
-import { generateAirportRunway, RunwayGeometry } from '../services/airportRunways';
+import { generateAirportRunway, isKnownAirport, RunwayGeometry } from '../services/airportRunways';
+import { buildRouteCorridors, RouteCorridor, getApproxLocalTime } from '../services/routeCorridor';
 
 // --- Exact Gradient Color Logic & Regional Poles ---
 const COLOR_POLES = [
@@ -397,6 +398,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
     const [hoverInfo, setHoverInfo] = useState<any>(null);
     const [geoJsonData, setGeoJsonData] = useState<any>(null);
+    const [selectedCorridor, setSelectedCorridor] = useState<RouteCorridor | null>(null);
+    const [previousViewState, setPreviousViewState] = useState<any | null>(null);
 
     // Load country GeoJSON
     useEffect(() => {
@@ -435,6 +438,56 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             return { ...trip, transports: enrichedTransports };
         });
     }, [trips]);
+
+    // Build Route Corridors Index
+    const corridorMap = useMemo(() => {
+        return buildRouteCorridors(enrichedTrips);
+    }, [enrichedTrips]);
+
+    // Handle corridor selection & camera fly-to
+    const handleSelectCorridor = (corridorId: string) => {
+        const corridor = corridorMap.get(corridorId);
+        if (!corridor) return;
+
+        if (!selectedCorridor) {
+            setPreviousViewState({ ...viewState });
+        }
+
+        const centerLng = (corridor.originCoords[0] + corridor.destCoords[0]) / 2;
+        const centerLat = (corridor.originCoords[1] + corridor.destCoords[1]) / 2;
+
+        let targetZoom = 5.2;
+        if (corridor.distanceKm < 600) targetZoom = 6.6;
+        else if (corridor.distanceKm < 1800) targetZoom = 5.3;
+        else if (corridor.distanceKm < 4000) targetZoom = 4.2;
+        else if (corridor.distanceKm < 8000) targetZoom = 3.2;
+        else targetZoom = 2.4;
+
+        setViewState(prev => ({
+            ...prev,
+            longitude: centerLng,
+            latitude: centerLat,
+            zoom: targetZoom,
+            pitch: effectiveProjection === 'globe' ? 24 : 0,
+            bearing: 0,
+            transitionDuration: 1200
+        }));
+
+        setSelectedCorridor(corridor);
+    };
+
+    // Reset corridor focus and restore previous viewpoint
+    const handleResetCorridor = () => {
+        if (previousViewState) {
+            setViewState(prev => ({
+                ...prev,
+                ...previousViewState,
+                transitionDuration: 1000
+            }));
+            setPreviousViewState(null);
+        }
+        setSelectedCorridor(null);
+    };
 
     // Request OSRM geometries for land trips
     useEffect(() => {
@@ -500,32 +553,16 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     tileUrl: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
                     maxZoomForLayer: 19
                 };
-            case 'topography':
-                return {
-                    tileUrl: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
-                    maxZoomForLayer: 17
-                };
-            case 'hillshade':
-                return {
-                    tileUrl: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Shaded_Relief/MapServer/tile/{z}/{y}/{x}',
-                    maxZoomForLayer: 13
-                };
-            case 'physical':
-                return {
-                    tileUrl: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}',
-                    maxZoomForLayer: 8
-                };
             case 'ocean':
                 return {
                     tileUrl: 'https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}',
                     maxZoomForLayer: 10
                 };
-            case 'night':
+            case 'citylights':
                 return {
-                    tileUrl: 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-                    maxZoomForLayer: 19
+                    tileUrl: 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_Black_Marble/default/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.png',
+                    maxZoomForLayer: 8
                 };
-            case 'standard':
             case 'default':
             default:
                 return {
@@ -641,9 +678,14 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
                 // Process Route Geometries if route channel is active
                 if (shouldRenderRoute) {
+                    const oCode = (t.origin || '').toUpperCase().trim();
+                    const dCode = (t.destination || '').toUpperCase().trim();
+                    const corridorId = oCode < dCode ? `${oCode}<->${dCode}` : `${dCode}<->${oCode}`;
+
                     hitPaths.push({
                         path: fullPath,
                         routeKey: uniqueRouteKey,
+                        corridorId,
                         tripId: trip.id,
                         tripName: trip.name,
                         origin: t.origin,
@@ -665,6 +707,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         comets.push({
                             path: fullPath,
                             timestamps,
+                            corridorId,
                             color: [...cometColor, 255],
                             width: strokeWidth + 2.0
                         });
@@ -690,6 +733,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                 color: [...sectionRGB, 235],
                                 rawColor: sectionRGB,
                                 routeKey: uniqueRouteKey,
+                                corridorId,
                                 width: strokeWidth,
                                 tripId: trip.id,
                                 tripName: trip.name,
@@ -706,6 +750,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                 color: [...sectionRGB, isElevatedActive ? 60 : 40],
                                 rawColor: sectionRGB,
                                 routeKey: uniqueRouteKey,
+                                corridorId,
                                 width: strokeWidth + 1.2
                             });
                         }
@@ -715,6 +760,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                             color: [...modeRGB, 225],
                             rawColor: modeRGB,
                             routeKey: uniqueRouteKey,
+                            corridorId,
                             width: strokeWidth,
                             tripId: trip.id,
                             tripName: trip.name,
@@ -731,6 +777,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                             color: [...modeRGB, 40],
                             rawColor: modeRGB,
                             routeKey: uniqueRouteKey,
+                            corridorId,
                             width: strokeWidth + 1.2
                         });
                     }
@@ -756,7 +803,10 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
                 const useRegionalGradient = activeAppearance.routeColorMode === 'gradient' && showGradientRoutes;
 
-                // Airport Hubs & Detailed Runways (Always Processed)
+                // Airport Hubs vs City Nodes (Distinct visual styling & runway exclusivity)
+                const isOriginAirport = isKnownAirport(t.origin) || (isFlight && (t.origin?.length === 3 || t.origin?.length === 4));
+                const isDestAirport = isKnownAirport(t.destination) || (isFlight && (t.destination?.length === 3 || t.destination?.length === 4));
+
                 const oKey = `${t.originLng.toFixed(3)},${t.originLat.toFixed(3)}`;
                 if (!pointsMap.has(oKey)) {
                     const hubRGB = useRegionalGradient 
@@ -767,15 +817,21 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     pointsMap.set(oKey, {
                         position: [t.originLng, t.originLat, 0],
                         name: t.origin,
-                        color: [...hubRGB, 255],
-                        strokeColor: isDark ? [255, 255, 255, 220] : [15, 23, 42, 220],
-                        radius: r,
+                        isAirport: isOriginAirport,
+                        type: isOriginAirport ? 'airport' : 'city',
+                        color: isOriginAirport ? [...hubRGB, 255] : [245, 158, 11, 240], // Aviation gradient for airport, warm amber for city
+                        strokeColor: isDark 
+                            ? (isOriginAirport ? [255, 255, 255, 220] : [251, 191, 36, 220]) 
+                            : (isOriginAirport ? [15, 23, 42, 220] : [180, 83, 9, 220]),
+                        radius: isOriginAirport ? r : Math.max(2.2, r * 0.75),
                         tripId: trip.id
                     });
 
-                    if (activeAppearance.airportDetail === 'detailed' && !processedRunwayKeys.has(oKey)) {
+                    // ONLY generate runway geometry for verified airports
+                    if (isOriginAirport && activeAppearance.airportDetail === 'detailed' && !processedRunwayKeys.has(oKey)) {
                         processedRunwayKeys.add(oKey);
-                        runwayGeometries.push(generateAirportRunway(t.origin, t.originLat, t.originLng, 90));
+                        const rw = generateAirportRunway(t.origin, t.originLat, t.originLng);
+                        if (rw) runwayGeometries.push(rw);
                     }
                 }
 
@@ -789,15 +845,21 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     pointsMap.set(dKey, {
                         position: [t.destLng, t.destLat, 0],
                         name: t.destination,
-                        color: [...hubRGB, 255],
-                        strokeColor: isDark ? [255, 255, 255, 220] : [15, 23, 42, 220],
-                        radius: r,
+                        isAirport: isDestAirport,
+                        type: isDestAirport ? 'airport' : 'city',
+                        color: isDestAirport ? [...hubRGB, 255] : [245, 158, 11, 240],
+                        strokeColor: isDark 
+                            ? (isDestAirport ? [255, 255, 255, 220] : [251, 191, 36, 220]) 
+                            : (isDestAirport ? [15, 23, 42, 220] : [180, 83, 9, 220]),
+                        radius: isDestAirport ? r : Math.max(2.2, r * 0.75),
                         tripId: trip.id
                     });
 
-                    if (activeAppearance.airportDetail === 'detailed' && !processedRunwayKeys.has(dKey)) {
+                    // ONLY generate runway geometry for verified airports
+                    if (isDestAirport && activeAppearance.airportDetail === 'detailed' && !processedRunwayKeys.has(dKey)) {
                         processedRunwayKeys.add(dKey);
-                        runwayGeometries.push(generateAirportRunway(t.destination, t.destLat, t.destLng, 270));
+                        const rw = generateAirportRunway(t.destination, t.destLat, t.destLng);
+                        if (rw) runwayGeometries.push(rw);
                     }
                 }
             });
@@ -874,7 +936,11 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     return new BitmapLayer(props, {
                         data: null,
                         image: props.data,
-                        bounds: [boundingBox[0][0], boundingBox[0][1], boundingBox[1][0], boundingBox[1][1]]
+                        bounds: [boundingBox[0][0], boundingBox[0][1], boundingBox[1][0], boundingBox[1][1]],
+                        textureParameters: {
+                            minFilter: 'linear',
+                            magFilter: 'linear'
+                        }
                     });
                 }
             })
@@ -1070,6 +1136,11 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     data: trackSegments,
                     getPath: (d: any) => d.path,
                     getColor: (d: any) => {
+                        if (selectedCorridor) {
+                            return d.corridorId === selectedCorridor.id
+                                ? [52, 211, 153, 140]
+                                : [100, 115, 135, 10];
+                        }
                         const isHovered = hoveredRouteKey === d.routeKey;
                         if (isHovered) {
                             return [...(d.rawColor || [255, 255, 255]), 200];
@@ -1077,6 +1148,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         return d.color;
                     },
                     getWidth: (d: any) => {
+                        if (selectedCorridor) {
+                            return d.corridorId === selectedCorridor.id ? d.width + 3.6 : 0.8;
+                        }
                         const isHovered = hoveredRouteKey === d.routeKey;
                         return isHovered ? d.width + 3.2 : d.width;
                     },
@@ -1088,8 +1162,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     pickable: false,
                     parameters: { depthTest: true },
                     updateTriggers: {
-                        getColor: [hoveredRouteKey],
-                        getWidth: [hoveredRouteKey]
+                        getColor: [hoveredRouteKey, selectedCorridor?.id],
+                        getWidth: [hoveredRouteKey, selectedCorridor?.id]
                     }
                 })
             );
@@ -1103,6 +1177,11 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     data: routeSegments,
                     getPath: (d: any) => d.path,
                     getColor: (d: any) => {
+                        if (selectedCorridor) {
+                            return d.corridorId === selectedCorridor.id
+                                ? [52, 211, 153, 255]
+                                : [120, 130, 145, 25];
+                        }
                         const isHovered = hoveredRouteKey === d.routeKey;
                         if (isHovered) {
                             return [255, 255, 255, 255];
@@ -1110,6 +1189,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         return d.color;
                     },
                     getWidth: (d: any) => {
+                        if (selectedCorridor) {
+                            return d.corridorId === selectedCorridor.id ? Math.max(3.8, d.width * 2.2) : 0.8;
+                        }
                         const isHovered = hoveredRouteKey === d.routeKey;
                         return isHovered ? d.width + 1.2 : d.width;
                     },
@@ -1121,8 +1203,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     pickable: false,
                     parameters: { depthTest: true },
                     updateTriggers: {
-                        getColor: [hoveredRouteKey],
-                        getWidth: [hoveredRouteKey]
+                        getColor: [hoveredRouteKey, selectedCorridor?.id],
+                        getWidth: [hoveredRouteKey, selectedCorridor?.id]
                     }
                 })
             );
@@ -1136,7 +1218,14 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     data: cometTrips,
                     getPath: (d: any) => d.path,
                     getTimestamps: (d: any) => d.timestamps,
-                    getColor: (d: any) => d.color,
+                    getColor: (d: any) => {
+                        if (selectedCorridor) {
+                            return d.corridorId === selectedCorridor.id
+                                ? [52, 211, 153, 255]
+                                : [120, 130, 145, 12];
+                        }
+                        return d.color;
+                    },
                     currentTime: animTime,
                     trailLength: 350,
                     getWidth: (d: any) => d.width,
@@ -1172,7 +1261,13 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                             setHoverInfo(null);
                         }
                     },
-                    onClick: (info: any) => info.object && onTripClick && onTripClick(info.object.tripId)
+                    onClick: (info: any) => {
+                        if (info.object?.corridorId) {
+                            handleSelectCorridor(info.object.corridorId);
+                        } else if (info.object?.tripId && onTripClick) {
+                            onTripClick(info.object.tripId);
+                        }
+                    }
                 })
             );
         }
@@ -1228,12 +1323,38 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         id: 'airport-markers',
                         data: airportPoints,
                         getPosition: (d: any) => d.position,
-                        getFillColor: (d: any) => d.color,
-                        getLineColor: (d: any) => d.strokeColor,
-                        getRadius: (d: any) => d.radius,
+                        getFillColor: (d: any) => {
+                            if (selectedCorridor) {
+                                const code = (d.iata || d.name || '').toUpperCase().trim();
+                                if (code === selectedCorridor.originCode || code === selectedCorridor.destCode) {
+                                    return [52, 211, 153, 255];
+                                }
+                                return isDark ? [100, 115, 135, 60] : [160, 175, 195, 60];
+                            }
+                            return d.color;
+                        },
+                        getLineColor: (d: any) => {
+                            if (selectedCorridor) {
+                                const code = (d.iata || d.name || '').toUpperCase().trim();
+                                if (code === selectedCorridor.originCode || code === selectedCorridor.destCode) {
+                                    return [255, 255, 255, 255];
+                                }
+                                return isDark ? [100, 115, 135, 30] : [160, 175, 195, 30];
+                            }
+                            return d.strokeColor;
+                        },
+                        getRadius: (d: any) => {
+                            if (selectedCorridor) {
+                                const code = (d.iata || d.name || '').toUpperCase().trim();
+                                if (code === selectedCorridor.originCode || code === selectedCorridor.destCode) {
+                                    return d.radius * 1.5;
+                                }
+                            }
+                            return d.radius;
+                        },
                         radiusUnits: 'pixels',
                         radiusMinPixels: 2.0,
-                        radiusMaxPixels: 10,
+                        radiusMaxPixels: 12,
                         stroked: true,
                         lineWidthUnits: 'pixels',
                         getLineWidth: 1.2,
@@ -1245,7 +1366,12 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                 setHoverInfo(info);
                             }
                         },
-                        onClick: (info: any) => info.object && onTripClick && onTripClick(info.object.tripId)
+                        onClick: (info: any) => info.object && onTripClick && onTripClick(info.object.tripId),
+                        updateTriggers: {
+                            getFillColor: [selectedCorridor?.id, isDark],
+                            getLineColor: [selectedCorridor?.id, isDark],
+                            getRadius: [selectedCorridor?.id]
+                        }
                     })
                 );
             }
@@ -1276,7 +1402,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         animateRoutes, 
         clusterMode,
         activeAppearance,
-        radarMeta
+        radarMeta,
+        selectedCorridor
     ]);
 
     // Reset to 100% standard baseline perspective
@@ -1388,44 +1515,266 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 </div>
             </div>
 
-            {/* GPU Interactive Route Tooltip */}
-            {hoverInfo?.object && (
+            {/* Top-Center Floating "Back to previous view" Button */}
+            {selectedCorridor && (
+                <button
+                    onClick={handleResetCorridor}
+                    className="absolute top-5 left-1/2 -translate-x-1/2 z-30 px-4 py-2 rounded-full bg-zinc-950/90 hover:bg-zinc-900 backdrop-blur-xl border border-white/20 hover:border-emerald-400/50 text-white shadow-2xl transition-all flex items-center gap-2 cursor-pointer text-xs font-bold group animate-fade-in"
+                >
+                    <ArrowLeft className="w-3.5 h-3.5 text-emerald-400 group-hover:-translate-x-0.5 transition-transform" />
+                    <span>Back to previous view</span>
+                </button>
+            )}
+
+            {/* Left Route Mission Control Corridor Inspector Card */}
+            {selectedCorridor && (
+                <div className="absolute top-5 left-5 z-30 w-80 max-h-[calc(100%-2.5rem)] flex flex-col rounded-3xl bg-[#090d16]/95 backdrop-blur-2xl border border-white/15 shadow-[0_25px_60px_rgba(0,0,0,0.85)] overflow-hidden text-white animate-fade-in">
+                    {/* Top Control Header */}
+                    <div className="p-4 pb-3 flex items-center justify-between border-b border-white/10">
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-black uppercase tracking-wider text-emerald-400">Route Corridor</span>
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                ACTIVE FOCUS
+                            </span>
+                        </div>
+                        <button
+                            onClick={handleResetCorridor}
+                            className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+
+                    {/* Origin & Destination Hubs with Live Times */}
+                    <div className="p-4 space-y-3">
+                        {/* Origin Hub */}
+                        {(() => {
+                            const originTime = getApproxLocalTime(selectedCorridor.originCoords[0]);
+                            return (
+                                <div className="p-3 rounded-2xl bg-white/[0.04] border border-white/5 space-y-1">
+                                    <span className="text-[10px] text-zinc-400 truncate block">
+                                        {selectedCorridor.originName}
+                                    </span>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xl leading-none">{selectedCorridor.originFlag}</span>
+                                            <span className="text-lg font-black tracking-tight text-white">{selectedCorridor.originCode}</span>
+                                            <ChevronRight className="w-3.5 h-3.5 text-zinc-500" />
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="text-xs font-bold text-white block">{originTime.timeStr}</span>
+                                            <span className="text-[9px] text-zinc-400">{originTime.dateStr} · {originTime.utcOffsetStr}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })()}
+
+                        {/* Distance & Timezone Separator */}
+                        <div className="flex items-center justify-between px-2 text-[10px] text-zinc-400 font-medium">
+                            <div className="flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                                <span>{selectedCorridor.distanceKm.toLocaleString()} km</span>
+                            </div>
+                            <span>
+                                {Math.abs(Math.round((selectedCorridor.originCoords[0] - selectedCorridor.destCoords[0]) / 15)) === 0 
+                                    ? 'same local time' 
+                                    : `${Math.abs(Math.round((selectedCorridor.originCoords[0] - selectedCorridor.destCoords[0]) / 15))}h time diff`}
+                            </span>
+                        </div>
+
+                        {/* Destination Hub */}
+                        {(() => {
+                            const destTime = getApproxLocalTime(selectedCorridor.destCoords[0]);
+                            return (
+                                <div className="p-3 rounded-2xl bg-white/[0.04] border border-white/5 space-y-1">
+                                    <span className="text-[10px] text-zinc-400 truncate block">
+                                        {selectedCorridor.destName}
+                                    </span>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xl leading-none">{selectedCorridor.destFlag}</span>
+                                            <span className="text-lg font-black tracking-tight text-white">{selectedCorridor.destCode}</span>
+                                            <ChevronRight className="w-3.5 h-3.5 text-zinc-500" />
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="text-xs font-bold text-white block">{destTime.timeStr}</span>
+                                            <span className="text-[9px] text-zinc-400">{destTime.dateStr} · {destTime.utcOffsetStr}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })()}
+                    </div>
+
+                    {/* Route Activity Metric Tiles */}
+                    <div className="px-4 pb-3">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400 block mb-2">
+                            Route Activity
+                        </span>
+                        <div className="grid grid-cols-2 gap-2 mb-2">
+                            <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/5">
+                                <span className="text-[10px] text-zinc-400 block">Flights</span>
+                                <span className="text-base font-black text-white">{selectedCorridor.totalFlights}</span>
+                            </div>
+                            <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/5">
+                                <span className="text-[10px] text-zinc-400 block">Airlines</span>
+                                <span className="text-base font-black text-white">{selectedCorridor.airlines.length}</span>
+                            </div>
+                        </div>
+                        <div className="text-[10px] text-zinc-400 px-1 flex items-center justify-between">
+                            <span>{selectedCorridor.distanceKm.toLocaleString()} km</span>
+                            {selectedCorridor.lastFlownDate && (
+                                <span>Last flown {new Date(selectedCorridor.lastFlownDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Flight Legs List */}
+                    <div className="p-4 pt-3 border-t border-white/10 flex-1 overflow-y-auto custom-scrollbar space-y-2">
+                        <div className="flex items-center justify-between mb-1">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                                <Plane className="w-3 h-3 text-emerald-400" /> Flights ({selectedCorridor.flights.length})
+                            </span>
+                        </div>
+                        {selectedCorridor.flights.map((f, idx) => (
+                            <div
+                                key={idx}
+                                onClick={() => onTripClick && onTripClick(f.tripId)}
+                                className="p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 hover:border-white/20 transition-all cursor-pointer flex items-center justify-between group"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <Plane className="w-3.5 h-3.5 text-zinc-400 group-hover:text-emerald-400 transition-colors shrink-0" />
+                                    <div>
+                                        <div className="flex items-center gap-1.5 text-xs font-bold text-white">
+                                            <span>{f.origin}</span>
+                                            <span className="text-zinc-500 font-normal">→</span>
+                                            <span>{f.destination}</span>
+                                            {f.identifier && (
+                                                <span className="text-[10px] font-mono text-emerald-400 ml-1">{f.identifier}</span>
+                                            )}
+                                        </div>
+                                        <span className="text-[10px] text-zinc-400 block">{f.provider} • {f.tripName}</span>
+                                    </div>
+                                </div>
+                                {f.departureDate && (
+                                    <span className="text-[10px] text-zinc-400 font-mono">
+                                        {new Date(f.departureDate).toLocaleDateString(undefined, { month: '2-digit', day: '2-digit', year: 'numeric' })}
+                                    </span>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* GPU Interactive Route Tooltip (Corridor & Waypoint) */}
+            {hoverInfo?.object && !selectedCorridor && (
                 <div
                     className="absolute z-50 pointer-events-none transform -translate-x-1/2 -translate-y-full mb-3"
                     style={{ left: hoverInfo.x, top: hoverInfo.y }}
                 >
-                    <div className="bg-[#0f172a]/95 text-white border border-white/15 rounded-2xl shadow-2xl backdrop-blur-xl p-3.5 min-w-[220px] text-xs animate-fade-in">
-                        {hoverInfo.object.origin && hoverInfo.object.destination ? (
-                            <div>
-                                <div className="flex items-center justify-between gap-4 mb-2 pb-1.5 border-b border-white/10">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">
-                                        {hoverInfo.object.tripName}
+                    {hoverInfo.object.corridorId && corridorMap.has(hoverInfo.object.corridorId) ? (() => {
+                        const c = corridorMap.get(hoverInfo.object.corridorId)!;
+                        return (
+                            <div className="bg-[#090d16]/95 text-white border border-white/20 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.85)] backdrop-blur-2xl p-3.5 min-w-[270px] max-w-[320px] text-xs animate-fade-in space-y-2.5">
+                                {/* Header: Route */}
+                                <div>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block mb-1.5">
+                                        Route
                                     </span>
-                                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                                        {hoverInfo.object.mode}
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-2 font-bold text-sm text-white mb-1.5">
-                                    <span>{hoverInfo.object.origin}</span>
-                                    <span className="material-icons-outlined text-xs text-zinc-500">arrow_forward</span>
-                                    <span>{hoverInfo.object.destination}</span>
-                                </div>
-                                <div className="text-[11px] text-zinc-400">
-                                    {hoverInfo.object.provider} {hoverInfo.object.identifier && `• ${hoverInfo.object.identifier}`}
-                                </div>
-                                {hoverInfo.object.date && (
-                                    <div className="text-[10px] text-zinc-500 mt-1">
-                                        {new Date(hoverInfo.object.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+
+                                    {/* Origin */}
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className="text-base leading-none">{c.originFlag}</span>
+                                        <span className="font-black text-sm text-white">{c.originCode}</span>
+                                        <span className="text-zinc-300 truncate text-[11px] font-medium">{c.originName}</span>
                                     </div>
-                                )}
+
+                                    {/* Subline */}
+                                    <div className="text-[10px] font-medium text-zinc-400 pl-6 mb-1 flex items-center gap-1.5">
+                                        <span>{c.distanceKm.toLocaleString()} km</span>
+                                        <span>•</span>
+                                        <span>{c.totalFlights} {c.totalFlights === 1 ? 'trip' : 'trips'}</span>
+                                        <span>•</span>
+                                        <span>{c.airlines.length} {c.airlines.length === 1 ? 'airline' : 'airlines'}</span>
+                                    </div>
+
+                                    {/* Destination */}
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-base leading-none">{c.destFlag}</span>
+                                        <span className="font-black text-sm text-white">{c.destCode}</span>
+                                        <span className="text-zinc-300 truncate text-[11px] font-medium">{c.destName}</span>
+                                    </div>
+                                </div>
+
+                                {/* Divider & Flight Legs Manifest */}
+                                <div className="border-t border-white/10 pt-2">
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">
+                                            Flights <span className="text-white ml-1 font-bold">{c.totalFlights}</span>
+                                        </span>
+                                    </div>
+
+                                    <div className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar pr-0.5">
+                                        {c.flights.slice(0, 5).map((f, idx) => (
+                                            <div key={idx} className="flex items-center justify-between text-[11px] py-1 px-1.5 rounded-lg bg-white/[0.04] border border-white/5">
+                                                <div className="flex items-center gap-1.5 overflow-hidden">
+                                                    <Plane className="w-3 h-3 text-zinc-400 shrink-0" />
+                                                    <span className="font-bold text-white shrink-0">{f.origin}</span>
+                                                    <span className="font-bold text-white shrink-0">{f.destination}</span>
+                                                    <span className="text-zinc-400 truncate text-[10px]">{f.provider}</span>
+                                                </div>
+                                                {f.departureDate && (
+                                                    <span className="text-[10px] text-zinc-400 font-mono shrink-0">
+                                                        {new Date(f.departureDate).toLocaleDateString(undefined, { month: '2-digit', day: '2-digit', year: 'numeric' })}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Action Hint */}
+                                <div className="pt-1 text-center border-t border-white/5">
+                                    <span className="text-[10px] text-emerald-400 font-semibold tracking-wide flex items-center justify-center gap-1">
+                                        Click for route details <ChevronRight className="w-3 h-3" />
+                                    </span>
+                                </div>
                             </div>
-                        ) : (
-                            <div className="flex items-center gap-2 font-bold">
-                                <span className="w-2.5 h-2.5 rounded-full bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.8)]" />
-                                <span className="text-sm">{hoverInfo.object.name || (hoverInfo.object.count ? `${hoverInfo.object.count} Airports` : '')}</span>
+                        );
+                    })() : (
+                        <div className="bg-[#0f172a]/95 text-white border border-white/15 rounded-2xl shadow-2xl backdrop-blur-xl p-3.5 min-w-[220px] text-xs animate-fade-in">
+                            <div className="space-y-1">
+                                <div className="flex items-center justify-between gap-3 pb-1 border-b border-white/10">
+                                    <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">
+                                        {hoverInfo.object.isAirport 
+                                            ? '✈️ Airport Hub' 
+                                            : hoverInfo.object.type === 'city' 
+                                                ? '📍 City / Destination' 
+                                                : (hoverInfo.object.count ? '🌐 Cluster' : 'Location')}
+                                    </span>
+                                    {hoverInfo.object.isAirport && (
+                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                                            AERODROME
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="flex items-center gap-2 font-bold pt-0.5">
+                                    <span 
+                                        className={`w-2.5 h-2.5 rounded-full ${
+                                            hoverInfo.object.isAirport 
+                                                ? 'bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.8)]' 
+                                                : 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]'
+                                        }`} 
+                                    />
+                                    <span className="text-sm text-white">
+                                        {hoverInfo.object.name || (hoverInfo.object.count ? `${hoverInfo.object.count} Locations` : '')}
+                                    </span>
+                                </div>
                             </div>
-                        )}
-                    </div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

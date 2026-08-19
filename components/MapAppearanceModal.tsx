@@ -221,17 +221,72 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                             <div>
                                 <div className="flex items-center justify-between mb-3">
                                     <h3 className="text-[11px] font-black text-zinc-400 tracking-wider uppercase">Cartographic Basemap</h3>
-                                    <span className="text-[10px] font-bold text-zinc-500">6 Tilesets</span>
+                                    <span className="text-[10px] font-bold text-zinc-500">4 Curated Tilesets</span>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-2.5">
                                     {[
-                                        { id: 'default', label: 'Midnight Obsidian', desc: 'Sleek dark navigation', bg: '#0d1117' },
-                                        { id: 'satellite', label: 'Earth Observation', desc: 'True satellite imagery', bg: '#0c1f17' },
-                                        { id: 'topography', label: 'Topographic Atlas', desc: 'Elevation & contours', bg: '#1c2430' },
-                                        { id: 'hillshade', label: 'Shaded Relief', desc: 'Mountain ranges', bg: '#231f20' },
-                                        { id: 'ocean', label: 'Ocean Bathymetry', desc: 'Marine sea floor', bg: '#081c24' },
-                                        { id: 'night', label: 'City Lights Night', desc: 'Urban lights', bg: '#05070a' }
+                                        { 
+                                            id: 'default', 
+                                            label: 'Adaptive Atlas', 
+                                            desc: 'Auto theme matching (Day/Night)',
+                                            renderSwatch: () => (
+                                                <div className="w-full h-8 rounded-xl border border-white/15 flex items-center px-2.5 justify-between bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-800 relative overflow-hidden">
+                                                    <div className="flex items-center gap-1.5 z-10">
+                                                        <span className="text-[10px]">🌙</span>
+                                                        <span className="text-[10px] font-bold text-zinc-300">Dark</span>
+                                                        <span className="text-[9px] text-zinc-500">/</span>
+                                                        <span className="text-[10px]">☀️</span>
+                                                        <span className="text-[10px] font-bold text-zinc-300">Light</span>
+                                                    </div>
+                                                    <div className="w-2 h-2 rounded-full border border-white/40 z-10" />
+                                                </div>
+                                            )
+                                        },
+                                        { 
+                                            id: 'citylights', 
+                                            label: 'NASA Earth at Night', 
+                                            desc: 'VIIRS HD city light radiance',
+                                            renderSwatch: () => (
+                                                <div className="w-full h-8 rounded-xl border border-amber-500/30 flex items-center px-2.5 justify-between bg-[#040711] relative overflow-hidden">
+                                                    <div className="absolute top-2 left-10 w-1 h-1 rounded-full bg-amber-400 shadow-[0_0_4px_#f59e0b] animate-pulse" />
+                                                    <div className="absolute bottom-2 left-20 w-1.5 h-1.5 rounded-full bg-amber-300 shadow-[0_0_6px_#f59e0b]" />
+                                                    <div className="flex items-center gap-1.5 z-10">
+                                                        <span className="text-[10px]">✨</span>
+                                                        <span className="text-[10px] font-black text-amber-200">NASA Lights</span>
+                                                    </div>
+                                                    <div className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_6px_#f59e0b] z-10" />
+                                                </div>
+                                            )
+                                        },
+                                        { 
+                                            id: 'satellite', 
+                                            label: 'Earth Observation', 
+                                            desc: 'High-res orbital imagery',
+                                            renderSwatch: () => (
+                                                <div className="w-full h-8 rounded-xl border border-emerald-500/20 flex items-center px-2.5 justify-between bg-gradient-to-r from-[#0a1a14] to-[#0d2a1f] relative overflow-hidden">
+                                                    <div className="flex items-center gap-1.5 z-10">
+                                                        <span className="text-[10px]">🛰️</span>
+                                                        <span className="text-[10px] font-bold text-emerald-200">Satellite</span>
+                                                    </div>
+                                                    <div className="w-2 h-2 rounded-full border border-emerald-400/50 z-10" />
+                                                </div>
+                                            )
+                                        },
+                                        { 
+                                            id: 'ocean', 
+                                            label: 'Ocean Bathymetry', 
+                                            desc: 'Marine sea floor topography',
+                                            renderSwatch: () => (
+                                                <div className="w-full h-8 rounded-xl border border-cyan-500/20 flex items-center px-2.5 justify-between bg-gradient-to-r from-[#041424] to-[#08223a] relative overflow-hidden">
+                                                    <div className="flex items-center gap-1.5 z-10">
+                                                        <span className="text-[10px]">🌊</span>
+                                                        <span className="text-[10px] font-bold text-cyan-200">Bathymetry</span>
+                                                    </div>
+                                                    <div className="w-2 h-2 rounded-full border border-cyan-400/50 z-10" />
+                                                </div>
+                                            )
+                                        }
                                     ].map(b => (
                                         <button
                                             key={b.id}
@@ -242,10 +297,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                     : 'border-white/10 bg-zinc-900/60 hover:border-white/20'
                                             }`}
                                         >
-                                            <div className="w-full h-8 rounded-xl border border-white/10 flex items-center px-2.5 justify-between" style={{ background: b.bg }}>
-                                                <span className="text-[10px] font-black text-zinc-300">{b.label.split(' ')[0]}</span>
-                                                <div className="w-2 h-2 rounded-full border border-white/40" />
-                                            </div>
+                                            {b.renderSwatch()}
                                             <div>
                                                 <p className="text-xs font-bold text-zinc-100">{b.label}</p>
                                                 <p className="text-[9px] text-zinc-400">{b.desc}</p>

@@ -1,6 +1,6 @@
 export interface MapAppearanceSettings {
-    // Map Tab
-    basemap: 'default' | 'satellite' | 'topography' | 'night' | 'ocean' | 'hillshade';
+    // Atlas & Cartography
+    basemap: 'default' | 'satellite' | 'ocean' | 'citylights';
     airportDetail: 'standard' | 'detailed'; // standard circles vs detailed runway markings
     projection: 'flat' | 'globe';
 
