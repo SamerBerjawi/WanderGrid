@@ -14,6 +14,12 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="WanderGrid" />
 
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -21,7 +27,7 @@
         theme: {
           extend: {
             fontFamily: {
-              sans: ['Inter', 'sans-serif'],
+              sans: ['"Plus Jakarta Sans"', 'Inter', '-apple-system', 'BlinkMacSystemFont', '"SF Pro Text"', 'system-ui', 'sans-serif'],
             },
             fontSize: {
               '2xs': '0.625rem',
@@ -29,31 +35,37 @@
             colors: {
               gray: tailwind.colors.neutral,
               primary: {
-                50: 'rgb(var(--primary-50, 254 248 240) / <alpha-value>)',
-                100: 'rgb(var(--primary-100, 253 238 217) / <alpha-value>)',
-                200: 'rgb(var(--primary-200, 251 221 177) / <alpha-value>)',
-                300: 'rgb(var(--primary-300, 250 202 137) / <alpha-value>)',
-                400: 'rgb(var(--primary-400, 252 176 69) / <alpha-value>)',
-                500: 'rgb(var(--primary-500, 250 154 29) / <alpha-value>)',
-                600: 'rgb(var(--primary-600, 231 131 16) / <alpha-value>)',
-                700: 'rgb(var(--primary-700, 193 103 14) / <alpha-value>)',
-                800: 'rgb(var(--primary-800, 153 81 17) / <alpha-value>)',
-                900: 'rgb(var(--primary-900, 125 67 18) / <alpha-value>)',
+                50: '#fef8f0',
+                100: '#fdeed9',
+                200: '#fbddb1',
+                300: '#faca89',
+                400: '#fcb045',
+                500: '#fa9a1d',
+                600: '#e78310',
+                700: '#c1670e',
+                800: '#995111',
+                900: '#7d4312',
               },
-              'light-bg': 'rgb(var(--light-bg, 250 250 250) / <alpha-value>)',
-              'light-card': 'rgb(var(--light-card, 255 255 255) / <alpha-value>)',
-              'light-text': 'rgb(var(--light-text, 45 45 45) / <alpha-value>)',
-              'light-text-secondary': 'rgb(var(--light-text-secondary, 100 116 139) / <alpha-value>)',
-              'light-separator': 'rgb(var(--light-separator, 229 229 229) / <alpha-value>)',
-              'light-fill': 'rgb(var(--light-fill, 248 250 252) / <alpha-value>)',
+              'light-bg': '#FAFAFA',
+              'light-card': 'rgba(255, 255, 255, 0.75)',
+              'light-text': '#181D27',
+              'light-text-secondary': '#414651',
+              'light-separator': 'rgba(0, 0, 0, 0.08)',
+              'light-fill': '#F8FAFC',
 
-              'dark-bg': 'rgb(var(--dark-bg, 5 5 5) / <alpha-value>)',
-              'dark-card': 'rgb(var(--dark-card, 19 23 34) / <alpha-value>)',
-              'dark-text': 'rgb(var(--dark-text, 255 255 255) / <alpha-value>)',
-              'dark-text-secondary': 'rgb(var(--dark-text-secondary, 148 163 184) / <alpha-value>)',
-              'dark-separator': 'rgb(var(--dark-separator, 255 255 255) / <alpha-value>)',
-              'dark-fill': 'rgb(var(--dark-fill, 30 34 48) / <alpha-value>)',
+              'dark-bg': '#050505',
+              'dark-card': 'rgba(23, 23, 23, 0.75)',
+              'dark-text': '#FFFFFF',
+              'dark-text-secondary': '#CECFD2',
+              'dark-separator': 'rgba(255, 255, 255, 0.1)',
+              'dark-fill': 'rgba(30, 34, 48, 0.5)',
 
+              semantic: {
+                red: '#FF3B30',
+                green: '#34C759',
+                yellow: '#FFCC00',
+                blue: '#007AFF',
+              },
               'semantic-red': '#FF3B30',
               'semantic-green': '#34C759',
               'semantic-yellow': '#FFCC00',
@@ -62,13 +74,18 @@
             boxShadow: {
               'card': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05)',
               'modal': '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              'glass-card': '0 8px 30px -4px rgba(0, 0, 0, 0.3), inset 0 1px 0 0 rgba(255, 255, 255, 0.1)',
+              'glass-modal': '0 20px 50px -10px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.15)',
+              'glass-light-card': '0 8px 24px -4px rgba(0, 0, 0, 0.06), inset 0 1px 0 0 rgba(255, 255, 255, 0.8)',
               'neu-raised-light': '2px 2px 4px rgba(0,0,0,0.1), -2px -2px 4px rgba(255,255,255,0.8)',
               'neu-inset-light': 'inset 2px 2px 4px rgba(0,0,0,0.05), inset -2px -2px 4px rgba(255,255,255,0.5)',
               'neu-raised-dark': '2px 2px 4px rgba(0,0,0,0.5), -2px -2px 4px rgba(255,255,255,0.05)',
               'neu-inset-dark': 'inset 2px 2px 4px rgba(0,0,0,0.5), inset -2px -2px 4px rgba(255,255,255,0.05)',
             },
             borderRadius: {
-              'xl': '16px',
+              'xl': '12px',
+              '2xl': '16px',
+              '3xl': '24px',
             },
             backgroundSize: {
               '200%': '200% 100%',
@@ -99,9 +116,6 @@
         }
       }
     </script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script type="module" src="/index.tsx"></script>
     <style>
       :root {
@@ -118,15 +132,15 @@
 
         --light-bg: 250 250 250;
         --light-card: 255 255 255;
-        --light-text: 45 45 45;
-        --light-text-secondary: 100 116 139;
-        --light-separator: 229 229 229;
+        --light-text: 24 29 39;
+        --light-text-secondary: 65 70 81;
+        --light-separator: 229 231 235;
         --light-fill: 248 250 252;
 
         --dark-bg: 5 5 5;
-        --dark-card: 19 23 34;
+        --dark-card: 23 23 23;
         --dark-text: 255 255 255;
-        --dark-text-secondary: 148 163 184;
+        --dark-text-secondary: 206 207 210;
         --dark-separator: 255 255 255;
         --dark-fill: 30 34 48;
       }
@@ -226,50 +240,89 @@
         border-bottom-color: rgba(255, 255, 255, 0.4);
       }
 
+      /* Glass & Blur Depth System */
+      .glass-card {
+        background: rgba(255, 255, 255, 0.6);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        box-shadow: 0 8px 30px -4px rgba(0, 0, 0, 0.05), inset 0 1px 0 0 rgba(255, 255, 255, 0.8);
+      }
+      .dark .glass-card {
+        background: rgba(23, 23, 23, 0.6);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 8px 30px -4px rgba(0, 0, 0, 0.3), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+      }
+
+      .glass-modal {
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(40px);
+        -webkit-backdrop-filter: blur(40px);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.15), inset 0 1px 0 0 rgba(255, 255, 255, 0.9);
+      }
+      .dark .glass-modal {
+        background: rgba(28, 28, 31, 0.9);
+        backdrop-filter: blur(40px);
+        -webkit-backdrop-filter: blur(40px);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
+      }
+
       /* iOS Style Blur */
       .ios-regular {
         background-color: var(--light-card);
-        border: none; /* Subtle crisp edge */
-        border-radius: 2rem;
-        
-        /* The core iOS blur configuration */
-        -webkit-backdrop-filter: blur(5px) saturate(180%) brightness(105%);
-        backdrop-filter: blur(5px) saturate(180%) brightness(105%);
-        
-        /* Inset shadows to replicate the "Liquid Glass" rim reflection */
+        border: none;
+        border-radius: 1.5rem;
+        -webkit-backdrop-filter: blur(12px) saturate(180%) brightness(105%);
+        backdrop-filter: blur(12px) saturate(180%) brightness(105%);
         box-shadow: 
-          inset 2px 2px 1px rgba(255, 255, 255, 0.05),   /* Top-left light edge */
-          inset -2px -2px 2px rgba(0, 0, 0, 0.05),     /* Bottom-right depth */
-          0 8px 32px rgba(0, 0, 0, 0.1);                /* Soft drop shadow */
+          inset 0 1px 0 0 rgba(255, 255, 255, 0.2),
+          0 8px 32px rgba(0, 0, 0, 0.1);
       }
 
       .bleed-glass {
-        -webkit-backdrop-filter: blur(5px) saturate(180%) brightness(105%) !important;
-        backdrop-filter: blur(5px) saturate(180%) brightness(105%) !important;
+        -webkit-backdrop-filter: blur(12px) saturate(180%) brightness(105%) !important;
+        backdrop-filter: blur(12px) saturate(180%) brightness(105%) !important;
       }
 
       html {
-        font-size: 95%; /* Perfect scale requested by user specification */
+        font-size: 95%;
       }
       body {
-        font-family: 'Inter', sans-serif;
-        background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
-        color: #171717;
+        font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+        font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+        background-color: #FAFAFA;
+        color: #181D27;
       }
-      /* Custom Scrollbar for Glass feel */
+      .dark body, html.dark body {
+        background-color: #050505;
+        color: #FFFFFF;
+      }
+
+      /* Ultra-thin Glass Scrollbars */
       ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
+        width: 6px;
+        height: 6px;
       }
       ::-webkit-scrollbar-track {
         background: transparent; 
       }
       ::-webkit-scrollbar-thumb {
-        background: rgba(115, 115, 115, 0.3); 
-        border-radius: 4px;
+        background: rgba(0, 0, 0, 0.15); 
+        border-radius: 9999px;
+      }
+      .dark ::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.15); 
+        border-radius: 9999px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: rgba(82, 82, 82, 0.5); 
+        background: rgba(0, 0, 0, 0.25); 
+      }
+      .dark ::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.25); 
       }
       /* Leaflet Custom Overrides */
       .leaflet-popup-content-wrapper {

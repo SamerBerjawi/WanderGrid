@@ -1524,7 +1524,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     };
 
     return (
-        <div className="relative w-full h-full overflow-hidden select-none">
+        <div className="relative w-full h-full overflow-hidden select-none bg-light-bg dark:bg-[#050505]">
             {/* Deck.gl 60 FPS WebGL Canvas with Mouse Scroll Zoom enabled */}
             <DeckGL
                 views={views}
@@ -1539,36 +1539,39 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 }}
                 layers={layers}
                 pickingRadius={10}
+                parameters={{
+                    clearColor: isDark ? [0.0196, 0.0196, 0.0196, 1] : [0.98, 0.98, 0.98, 1]
+                }}
                 getCursor={({ isHovering, isDragging }) => (isDragging ? 'grabbing' : isHovering ? 'pointer' : 'grab')}
             />
 
             {/* Zoom & View Navigation Controls (Bottom Left) */}
             <div className="absolute bottom-6 left-6 z-20 flex flex-col gap-2">
-                <div className="flex flex-col rounded-2xl border border-white/10 bg-zinc-900/90 dark:bg-zinc-950/90 backdrop-blur-xl shadow-2xl overflow-hidden divide-y divide-white/10">
+                <div className="flex flex-col rounded-2xl border border-black/10 dark:border-white/10 bg-white/80 dark:bg-dark-card/85 backdrop-blur-xl shadow-glass-card overflow-hidden divide-y divide-black/10 dark:divide-white/10">
                     <button
                         onClick={() => setViewState(v => ({ ...v, zoom: Math.min(v.zoom + 0.8, 18) }))}
-                        className="w-10 h-10 flex items-center justify-center text-zinc-200 hover:bg-white/10 cursor-pointer font-black text-lg transition-colors"
+                        className="w-10 h-10 flex items-center justify-center text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer font-bold text-lg transition-colors active:scale-95"
                         title="Zoom In (+)"
                     >
                         +
                     </button>
                     <button
                         onClick={() => setViewState(v => ({ ...v, zoom: Math.max(v.zoom - 0.8, 0.1) }))}
-                        className="w-10 h-10 flex items-center justify-center text-zinc-200 hover:bg-white/10 cursor-pointer font-black text-lg transition-colors"
+                        className="w-10 h-10 flex items-center justify-center text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer font-bold text-lg transition-colors active:scale-95"
                         title="Zoom Out (−)"
                     >
                         −
                     </button>
                     <button
                         onClick={handleReset100}
-                        className="w-10 h-10 flex items-center justify-center text-zinc-300 hover:text-white hover:bg-white/10 cursor-pointer font-bold text-[10px] tracking-tight transition-colors"
+                        className="w-10 h-10 flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer font-bold text-[10px] tracking-tight transition-colors active:scale-95"
                         title="100% Standard View"
                     >
                         100%
                     </button>
                     <button
                         onClick={handleFitBounds}
-                        className="w-10 h-10 flex items-center justify-center text-zinc-300 hover:text-white hover:bg-white/10 cursor-pointer transition-colors"
+                        className="w-10 h-10 flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer transition-colors active:scale-95"
                         title="Fit View to All Routes"
                     >
                         <Scan className="w-4 h-4" />
@@ -1580,27 +1583,27 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             {selectedCorridor && (
                 <button
                     onClick={handleResetCorridor}
-                    className="absolute top-5 left-1/2 -translate-x-1/2 z-30 px-4 py-2 rounded-full bg-zinc-950/90 hover:bg-zinc-900 backdrop-blur-xl border border-white/20 hover:border-emerald-400/50 text-white shadow-2xl transition-all flex items-center gap-2 cursor-pointer text-xs font-bold group animate-fade-in"
+                    className="absolute top-5 left-1/2 -translate-x-1/2 z-30 px-4 py-2 rounded-full bg-white/90 dark:bg-dark-card/90 hover:bg-white dark:hover:bg-dark-card backdrop-blur-xl border border-black/10 dark:border-white/15 hover:border-primary-500/50 text-light-text dark:text-dark-text shadow-glass-modal transition-all flex items-center gap-2 cursor-pointer text-xs font-bold group animate-fade-in active:scale-95"
                 >
-                    <ArrowLeft className="w-3.5 h-3.5 text-emerald-400 group-hover:-translate-x-0.5 transition-transform" />
+                    <ArrowLeft className="w-3.5 h-3.5 text-primary-500 group-hover:-translate-x-0.5 transition-transform" />
                     <span>Back to previous view</span>
                 </button>
             )}
 
             {/* Left Route Mission Control Corridor Inspector Card */}
             {selectedCorridor && (
-                <div className="absolute top-5 left-5 z-30 w-80 max-h-[calc(100%-2.5rem)] flex flex-col rounded-3xl bg-[#090d16]/95 backdrop-blur-2xl border border-white/15 shadow-[0_25px_60px_rgba(0,0,0,0.85)] overflow-hidden text-white animate-fade-in">
+                <div className="absolute top-5 left-5 z-30 w-80 max-h-[calc(100%-2.5rem)] flex flex-col rounded-3xl bg-white/90 dark:bg-dark-card/90 backdrop-blur-2xl border border-black/10 dark:border-white/15 shadow-glass-modal overflow-hidden text-light-text dark:text-dark-text animate-fade-in" style={{ WebkitBackdropFilter: 'blur(40px)' }}>
                     {/* Top Control Header */}
-                    <div className="p-4 pb-3 flex items-center justify-between border-b border-white/10">
+                    <div className="p-4 pb-3 flex items-center justify-between border-b border-black/5 dark:border-white/10 bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">
                         <div className="flex items-center gap-2">
-                            <span className="text-xs font-black uppercase tracking-wider text-emerald-400">Route Corridor</span>
-                            <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                            <span className="text-xs font-bold uppercase tracking-wider text-primary-500">Route Corridor</span>
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
                                 ACTIVE FOCUS
                             </span>
                         </div>
                         <button
                             onClick={handleResetCorridor}
-                            className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer"
+                            className="p-1.5 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text transition-all cursor-pointer"
                         >
                             <X className="w-4 h-4" />
                         </button>
@@ -1612,19 +1615,19 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         {(() => {
                             const originTime = getApproxLocalTime(selectedCorridor.originCoords[0]);
                             return (
-                                <div className="p-3 rounded-2xl bg-white/[0.04] border border-white/5 space-y-1">
-                                    <span className="text-[10px] text-zinc-400 truncate block">
+                                <div className="p-3 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-1">
+                                    <span className="text-[10px] text-light-text-secondary dark:text-dark-text-secondary truncate block font-medium">
                                         {selectedCorridor.originName}
                                     </span>
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <span className="text-xl leading-none">{selectedCorridor.originFlag}</span>
-                                            <span className="text-lg font-black tracking-tight text-white">{selectedCorridor.originCode}</span>
-                                            <ChevronRight className="w-3.5 h-3.5 text-zinc-500" />
+                                            <span className="text-lg font-bold tracking-tight text-light-text dark:text-dark-text">{selectedCorridor.originCode}</span>
+                                            <ChevronRight className="w-3.5 h-3.5 text-light-text-secondary/60 dark:text-dark-text-secondary/60" />
                                         </div>
                                         <div className="text-right">
-                                            <span className="text-xs font-bold text-white block">{originTime.timeStr}</span>
-                                            <span className="text-[9px] text-zinc-400">{originTime.dateStr} · {originTime.utcOffsetStr}</span>
+                                            <span className="text-xs font-bold text-light-text dark:text-dark-text block">{originTime.timeStr}</span>
+                                            <span className="text-[9px] text-light-text-secondary dark:text-dark-text-secondary">{originTime.dateStr} · {originTime.utcOffsetStr}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1632,9 +1635,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         })()}
 
                         {/* Distance & Timezone Separator */}
-                        <div className="flex items-center justify-between px-2 text-[10px] text-zinc-400 font-medium">
+                        <div className="flex items-center justify-between px-2 text-[10px] text-light-text-secondary dark:text-dark-text-secondary font-medium">
                             <div className="flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                                 <span>{selectedCorridor.distanceKm.toLocaleString()} km</span>
                             </div>
                             <span>
@@ -1648,19 +1651,19 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         {(() => {
                             const destTime = getApproxLocalTime(selectedCorridor.destCoords[0]);
                             return (
-                                <div className="p-3 rounded-2xl bg-white/[0.04] border border-white/5 space-y-1">
-                                    <span className="text-[10px] text-zinc-400 truncate block">
+                                <div className="p-3 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-1">
+                                    <span className="text-[10px] text-light-text-secondary dark:text-dark-text-secondary truncate block font-medium">
                                         {selectedCorridor.destName}
                                     </span>
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <span className="text-xl leading-none">{selectedCorridor.destFlag}</span>
-                                            <span className="text-lg font-black tracking-tight text-white">{selectedCorridor.destCode}</span>
-                                            <ChevronRight className="w-3.5 h-3.5 text-zinc-500" />
+                                            <span className="text-lg font-bold tracking-tight text-light-text dark:text-dark-text">{selectedCorridor.destCode}</span>
+                                            <ChevronRight className="w-3.5 h-3.5 text-light-text-secondary/60 dark:text-dark-text-secondary/60" />
                                         </div>
                                         <div className="text-right">
-                                            <span className="text-xs font-bold text-white block">{destTime.timeStr}</span>
-                                            <span className="text-[9px] text-zinc-400">{destTime.dateStr} · {destTime.utcOffsetStr}</span>
+                                            <span className="text-xs font-bold text-light-text dark:text-dark-text block">{destTime.timeStr}</span>
+                                            <span className="text-[9px] text-light-text-secondary dark:text-dark-text-secondary">{destTime.dateStr} · {destTime.utcOffsetStr}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1671,31 +1674,31 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     {/* Operational Corridor Telemetry */}
                     <div className="px-4 pb-4 space-y-2">
                         <div className="grid grid-cols-2 gap-2 text-center">
-                            <div className="p-2.5 rounded-2xl bg-white/[0.04] border border-white/5">
-                                <span className="text-[9px] text-zinc-400 uppercase font-black tracking-wider block">Total Flights</span>
-                                <span className="text-base font-black text-emerald-400">{selectedCorridor.flights.length}</span>
+                            <div className="p-2.5 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5">
+                                <span className="text-[9px] text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold tracking-wider block">Total Flights</span>
+                                <span className="text-base font-bold text-primary-500">{selectedCorridor.flights.length}</span>
                             </div>
-                            <div className="p-2.5 rounded-2xl bg-white/[0.04] border border-white/5">
-                                <span className="text-[9px] text-zinc-400 uppercase font-black tracking-wider block">Direct Distance</span>
-                                <span className="text-base font-black text-white">{selectedCorridor.distanceKm} km</span>
+                            <div className="p-2.5 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5">
+                                <span className="text-[9px] text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold tracking-wider block">Direct Distance</span>
+                                <span className="text-base font-bold text-light-text dark:text-dark-text">{selectedCorridor.distanceKm} km</span>
                             </div>
                         </div>
 
                         {/* Flight Log Timeline */}
-                        <div className="p-3 rounded-2xl bg-white/[0.04] border border-white/5 space-y-2">
-                            <span className="text-[9px] text-zinc-400 uppercase font-black tracking-wider block">Flight Log ({selectedCorridor.flights.length})</span>
+                        <div className="p-3 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-2">
+                            <span className="text-[9px] text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold tracking-wider block">Flight Log ({selectedCorridor.flights.length})</span>
                             <div className="max-h-40 overflow-y-auto space-y-1.5 custom-scrollbar pr-1">
                                 {selectedCorridor.flights.map((f, idx) => (
-                                    <div key={idx} className="flex items-center justify-between text-xs py-1 px-2 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.06] transition-colors">
+                                    <div key={idx} className="flex items-center justify-between text-xs py-1 px-2 rounded-xl bg-white/50 dark:bg-white/[0.04] border border-black/5 dark:border-white/5 hover:bg-white/80 dark:hover:bg-white/[0.08] transition-colors">
                                         <div className="flex items-center gap-1.5 min-w-0">
-                                            <Plane className="w-3 h-3 text-emerald-400 shrink-0" />
-                                            <span className="font-bold text-white truncate">{f.provider || 'Flight'}</span>
+                                            <Plane className="w-3 h-3 text-primary-500 shrink-0" />
+                                            <span className="font-semibold text-light-text dark:text-dark-text truncate">{f.provider || 'Flight'}</span>
                                             {f.identifier && (
-                                                <span className="text-[10px] text-zinc-400 font-mono">#{f.identifier}</span>
+                                                <span className="text-[10px] text-light-text-secondary dark:text-dark-text-secondary font-mono">#{f.identifier}</span>
                                             )}
                                         </div>
                                         {f.departureDate && (
-                                            <span className="text-[10px] text-zinc-400 font-mono shrink-0">
+                                            <span className="text-[10px] text-light-text-secondary dark:text-dark-text-secondary font-mono shrink-0">
                                                 {new Date(f.departureDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                                             </span>
                                         )}
@@ -1717,32 +1720,32 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         const c = corridorMap.get(hoverInfo.object.corridorId);
                         if (!c) return null;
                         return (
-                            <div className="bg-[#090d16]/95 text-white border border-white/15 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-2xl p-4 min-w-[280px] text-xs animate-fade-in space-y-3">
+                            <div className="bg-white/90 dark:bg-dark-card/90 text-light-text dark:text-dark-text border border-black/10 dark:border-white/15 rounded-3xl shadow-glass-modal backdrop-blur-2xl p-4 min-w-[280px] text-xs animate-fade-in space-y-3" style={{ WebkitBackdropFilter: 'blur(30px)' }}>
                                 {/* Header */}
-                                <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+                                <div className="flex items-center justify-between border-b border-black/5 dark:border-white/10 pb-2.5">
                                     <div className="flex items-center gap-2">
                                         <span className="text-base leading-none">{c.originFlag}</span>
-                                        <span className="font-black text-sm text-white tracking-tight">{c.originCode}</span>
-                                        <ArrowRight className="w-3.5 h-3.5 text-zinc-400" />
+                                        <span className="font-bold text-sm text-light-text dark:text-dark-text tracking-tight">{c.originCode}</span>
+                                        <ArrowRight className="w-3.5 h-3.5 text-light-text-secondary dark:text-dark-text-secondary" />
                                         <span className="text-base leading-none">{c.destFlag}</span>
-                                        <span className="font-black text-sm text-white tracking-tight">{c.destCode}</span>
+                                        <span className="font-bold text-sm text-light-text dark:text-dark-text tracking-tight">{c.destCode}</span>
                                     </div>
-                                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
                                         CORRIDOR
                                     </span>
                                 </div>
 
                                 {/* Names */}
-                                <div className="text-[11px] text-zinc-300 leading-snug">
-                                    <span className="font-semibold">{c.originName}</span>
-                                    <span className="text-zinc-500 mx-1">→</span>
-                                    <span className="font-semibold">{c.destName}</span>
+                                <div className="text-[11px] text-light-text-secondary dark:text-dark-text-secondary leading-snug">
+                                    <span className="font-semibold text-light-text dark:text-dark-text">{c.originName}</span>
+                                    <span className="opacity-50 mx-1">→</span>
+                                    <span className="font-semibold text-light-text dark:text-dark-text">{c.destName}</span>
                                 </div>
 
                                 {/* Distance & Time Difference */}
-                                <div className="flex items-center justify-between text-[11px] px-2.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/5 font-mono text-zinc-300">
+                                <div className="flex items-center justify-between text-[11px] px-2.5 py-1.5 rounded-xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 font-mono text-light-text-secondary dark:text-dark-text-secondary">
                                     <span>{c.distanceKm.toLocaleString()} km</span>
-                                    <span className="text-zinc-400">
+                                    <span>
                                         {Math.abs(Math.round((c.originCoords[0] - c.destCoords[0]) / 15)) === 0 ? 'Same timezone' : `${Math.abs(Math.round((c.originCoords[0] - c.destCoords[0]) / 15))}h time diff`}
                                     </span>
                                 </div>
@@ -1750,18 +1753,18 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                 {/* Flight list summary */}
                                 <div>
                                     <div className="flex items-center justify-between mb-1.5">
-                                        <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">
-                                            Flights <span className="text-white ml-1 font-bold">{c.totalFlights}</span>
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                                            Flights <span className="text-light-text dark:text-dark-text ml-1 font-bold">{c.totalFlights}</span>
                                         </span>
                                     </div>
                                 </div>
                             </div>
                         );
                     })() : (
-                        <div className="bg-[#0f172a]/95 text-white border border-white/15 rounded-2xl shadow-2xl backdrop-blur-xl p-3.5 min-w-[220px] text-xs animate-fade-in">
+                        <div className="bg-white/90 dark:bg-dark-card/90 text-light-text dark:text-dark-text border border-black/10 dark:border-white/15 rounded-2xl shadow-glass-card backdrop-blur-xl p-3.5 min-w-[220px] text-xs animate-fade-in" style={{ WebkitBackdropFilter: 'blur(24px)' }}>
                             <div className="space-y-1">
-                                <div className="flex items-center justify-between gap-3 pb-1 border-b border-white/10">
-                                    <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">
+                                <div className="flex items-center justify-between gap-3 pb-1 border-b border-black/5 dark:border-white/10">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
                                         {hoverInfo.object.isAirport 
                                             ? '✈️ Airport Hub' 
                                             : hoverInfo.object.type === 'city' 
@@ -1769,7 +1772,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                                 : (hoverInfo.object.count ? '🌐 Cluster' : 'Location')}
                                     </span>
                                     {hoverInfo.object.isAirport && (
-                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
                                             {hoverInfo.object.iata || 'AERODROME'}
                                         </span>
                                     )}
@@ -1779,16 +1782,16 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                         <span 
                                             className={`w-2.5 h-2.5 rounded-full shrink-0 ${
                                                 hoverInfo.object.isAirport 
-                                                    ? 'bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.8)]' 
+                                                    ? 'bg-primary-500 shadow-[0_0_8px_rgba(250,154,29,0.8)]' 
                                                     : 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]'
                                             }`} 
                                         />
-                                        <span className="text-sm text-white truncate">
+                                        <span className="text-sm text-light-text dark:text-dark-text truncate font-bold">
                                             {hoverInfo.object.name || (hoverInfo.object.count ? `${hoverInfo.object.count} Locations` : '')}
                                         </span>
                                     </div>
                                     {hoverInfo.object.flightCount && hoverInfo.object.flightCount > 0 && (
-                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-white/10 text-emerald-300 border border-white/10 shrink-0">
+                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20 shrink-0">
                                             {hoverInfo.object.flightCount} {hoverInfo.object.flightCount === 1 ? 'flight' : 'flights'}
                                         </span>
                                     )}

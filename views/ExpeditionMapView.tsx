@@ -491,13 +491,13 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
     }, [filteredTrips]);
 
     return (
-        <div className="relative w-full h-full overflow-hidden bg-[#090d16] select-none">
+        <div className="relative w-full h-full overflow-hidden bg-light-bg dark:bg-[#050505] select-none">
             {/* 1. 100% FULL-SCREEN DECK.GL WEBGL MAP */}
             <div className="absolute inset-0 w-full h-full">
                 <Suspense fallback={
-                    <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-950 space-y-4">
-                        <Compass className="w-10 h-10 text-blue-500 animate-[spin_4s_linear_infinite]" />
-                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-zinc-400">Loading Geospatial Engine...</p>
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-light-bg dark:bg-[#050505] space-y-4">
+                        <Compass className="w-10 h-10 text-primary-500 animate-[spin_4s_linear_infinite]" />
+                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-light-text-secondary dark:text-dark-text-secondary">Loading Geospatial Engine...</p>
                     </div>
                 }>
                     <DeckFlightMap
@@ -527,24 +527,22 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                         onChangeAppearanceSettings={handleUpdateAppearance}
                     />
                 </Suspense>
-            </div>
-
-            {/* 2. FLOATING TOP HUD BAR (Command & Live Telemetry) */}
+            </div>            {/* 2. FLOATING TOP HUD BAR (Command & Live Telemetry) */}
             <div className="absolute top-5 left-5 z-20 flex items-center gap-3 pointer-events-none">
                 {/* Brand & Status Pill */}
-                <div className="pointer-events-auto bg-zinc-950/80 hover:bg-zinc-950/95 backdrop-blur-2xl border border-white/10 rounded-2xl px-4 py-2.5 shadow-2xl flex items-center gap-3.5 transition-all">
-                    <div className="w-8 h-8 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-400 shrink-0">
+                <div className="pointer-events-auto bg-white/80 dark:bg-dark-card/85 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl px-4 py-2.5 shadow-glass-card flex items-center gap-3.5 transition-all">
+                    <div className="w-8 h-8 rounded-xl bg-primary-500/15 border border-primary-500/25 flex items-center justify-center text-primary-500 shrink-0">
                         <Compass className="w-4 h-4 animate-[spin_20s_linear_infinite]" />
                     </div>
                     <div>
                         <div className="flex items-center gap-2">
-                            <span className="text-xs font-black text-white tracking-tight leading-none">WanderGrid Atlas</span>
+                            <span className="text-xs font-bold text-light-text dark:text-dark-text tracking-tight leading-none">WanderGrid Atlas</span>
                             <span className="flex h-2 w-2 relative">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
                             </span>
                         </div>
-                        <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mt-0.5 leading-none">
+                        <p className="text-[9px] font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider mt-0.5 leading-none">
                             {activeSectorsCount} Active Sectors • {totalDistanceKm.toLocaleString()} KM
                         </p>
                     </div>
@@ -555,50 +553,54 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
             <div className="absolute top-5 right-5 z-20 flex items-center gap-2">
                 <button
                     onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                    className={`px-4 py-2.5 rounded-2xl shadow-2xl backdrop-blur-2xl text-xs font-bold flex items-center gap-2.5 cursor-pointer transition-all active:scale-95 border ${
+                    className={`px-4 py-2.5 rounded-2xl shadow-glass-card backdrop-blur-xl text-xs font-semibold flex items-center gap-2.5 cursor-pointer transition-all duration-150 active:scale-[0.98] border ${
                         isSidebarOpen 
-                            ? 'bg-blue-600 text-white border-blue-400/40 shadow-blue-500/25 ring-2 ring-blue-500/30'
-                            : 'bg-zinc-950/85 hover:bg-zinc-900 text-white border-white/10'
+                            ? 'bg-primary-500 text-white border-primary-400/40 shadow-primary-500/25 ring-2 ring-primary-500/30'
+                            : 'bg-white/80 dark:bg-dark-card/85 hover:bg-white/95 dark:hover:bg-dark-card/95 text-light-text dark:text-dark-text border-black/10 dark:border-white/10'
                     }`}
                 >
-                    <SlidersHorizontal className={`w-4 h-4 ${isSidebarOpen ? 'text-white' : 'text-blue-400'} transition-transform duration-300 ${isSidebarOpen ? 'rotate-90' : ''}`} />
+                    <SlidersHorizontal className={`w-4 h-4 ${isSidebarOpen ? 'text-white' : 'text-primary-500'} transition-transform duration-300 ${isSidebarOpen ? 'rotate-90' : ''}`} />
                     <span>Controls & Appearance</span>
                 </button>
             </div>
 
             {/* 4. SLIDE-IN RIGHT SIDEBAR CONTROL PANEL */}
             <div 
-                className={`fixed md:absolute top-0 right-0 h-full w-full sm:w-[420px] max-w-full bg-[#0e121a]/95 backdrop-blur-3xl border-l border-white/10 shadow-[-15px_0_45px_rgba(0,0,0,0.8)] z-40 flex flex-col transition-transform duration-300 ease-out select-none ${
+                className={`fixed md:absolute top-0 right-0 h-full w-full sm:w-[420px] max-w-full bg-white/90 dark:bg-dark-card/90 backdrop-blur-2xl border-l border-black/10 dark:border-white/15 shadow-glass-modal z-40 flex flex-col transition-transform duration-300 ease-out select-none ${
                     isSidebarOpen ? 'translate-x-0' : 'translate-x-full pointer-events-none'
                 }`}
+                style={{ WebkitBackdropFilter: 'blur(40px)' }}
             >
                 {/* Sidebar Header */}
-                <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-white/5">
+                <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-black/5 dark:border-white/5 bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">
                     <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-lg bg-blue-500/15 border border-blue-500/25 flex items-center justify-center text-blue-400">
-                            <SlidersHorizontal className="w-3.5 h-3.5" />
+                        <div className="w-8 h-8 rounded-xl bg-primary-500/15 border border-primary-500/25 flex items-center justify-center text-primary-500">
+                            <SlidersHorizontal className="w-4 h-4" />
                         </div>
-                        <h2 className="text-sm font-black text-white tracking-tight">Mission Control</h2>
+                        <div>
+                            <h2 className="text-sm font-bold text-light-text dark:text-dark-text tracking-tight">Mission Control</h2>
+                            <p className="text-[10px] text-light-text-secondary dark:text-dark-text-secondary font-medium">Map Telemetry & Controls</p>
+                        </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                         <button
                             onClick={handleRefresh}
-                            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                            className="p-2 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text transition-colors cursor-pointer"
                             title="Sync coordinates & network"
                         >
                             <RefreshCw className="w-3.5 h-3.5 hover:rotate-180 transition-transform duration-500" />
                         </button>
                         <button
                             onClick={handleResetAll}
-                            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                            className="p-2 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text transition-colors cursor-pointer"
                             title="Reset to defaults"
                         >
                             <RotateCcw className="w-3.5 h-3.5" />
                         </button>
                         <button
                             onClick={() => setIsSidebarOpen(false)}
-                            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                            className="p-2 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text transition-colors cursor-pointer"
                             title="Close sidebar"
                         >
                             <X className="w-3.5 h-3.5" />
@@ -607,8 +609,8 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                 </div>
 
                 {/* Unified Segmented Navigation Tab Bar */}
-                <div className="px-6 py-3 border-b border-white/5">
-                    <div className="flex p-1 bg-zinc-950/80 rounded-2xl border border-white/5 gap-1">
+                <div className="px-6 py-3 border-b border-black/5 dark:border-white/5 shrink-0">
+                    <div className="flex p-1 bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5 gap-1">
                         {[
                             { id: 'atlas', label: 'Atlas', icon: MapIcon },
                             { id: 'aviation', label: 'Aviation', icon: Plane },
@@ -621,10 +623,10 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveSidebarTab(tab.id as 'atlas' | 'aviation' | 'atmosphere' | 'filters')}
-                                    className={`flex-1 py-2 rounded-xl text-xs font-bold tracking-wide transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                    className={`flex-1 py-2 rounded-xl text-xs font-semibold tracking-wide transition-all duration-150 flex items-center justify-center gap-1.5 cursor-pointer ${
                                         isSelected
-                                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg font-black border border-white/20'
-                                            : 'text-zinc-400 hover:text-zinc-200'
+                                            ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm font-bold border border-black/5 dark:border-white/10'
+                                            : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text opacity-70 hover:opacity-100'
                                     }`}
                                 >
                                     <IconComponent className="w-3.5 h-3.5" />
@@ -636,23 +638,23 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                 </div>
 
                 {/* Sidebar Scrollable Body */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar text-white">
+                <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar text-light-text dark:text-dark-text">
                     {/* TAB 1: ATLAS (CARTOGRAPHY & PROJECTION) */}
                     {activeSidebarTab === 'atlas' && (
                         <div className="space-y-6">
                             {/* PROJECTION ENGINE */}
-                            <div className="p-4 rounded-3xl bg-gradient-to-b from-white/[0.07] to-white/[0.02] border border-white/10 shadow-xl space-y-3">
+                            <div className="p-4 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 shadow-sm space-y-3">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
-                                        <div className="p-1.5 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                                        <div className="p-1.5 rounded-xl bg-primary-500/10 text-primary-500 border border-primary-500/20">
                                             <Compass className="w-4 h-4" />
                                         </div>
                                         <div>
-                                            <h3 className="text-xs font-black uppercase tracking-wider text-white">Projection Engine</h3>
-                                            <p className="text-[10px] text-zinc-400">Orbital WebGL 3D Globe or 2D Mercator</p>
+                                            <h3 className="text-xs font-bold uppercase tracking-wider text-light-text dark:text-dark-text">Projection Engine</h3>
+                                            <p className="text-[10px] text-light-text-secondary dark:text-dark-text-secondary">Orbital WebGL 3D Globe or 2D Mercator</p>
                                         </div>
                                     </div>
-                                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
                                         {appearance.projection === 'globe' ? '3D Orbital' : '2D Planar'}
                                     </span>
                                 </div>
@@ -660,37 +662,37 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                 <div className="grid grid-cols-2 gap-2.5 pt-1">
                                     <button
                                         onClick={() => handleUpdateAppearance({ ...appearance, projection: 'globe' })}
-                                        className={`p-3 rounded-2xl border text-left transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between h-20 ${
+                                        className={`p-3 rounded-xl border text-left transition-all duration-150 cursor-pointer relative overflow-hidden flex flex-col justify-between h-20 active:scale-[0.98] ${
                                             appearance.projection === 'globe'
-                                                ? 'bg-blue-600/20 border-blue-400 ring-2 ring-blue-500/30 text-white'
-                                                : 'bg-zinc-900/60 border-white/10 text-zinc-400 hover:border-white/20'
+                                                ? 'bg-primary-500/10 border-primary-500 ring-2 ring-primary-500/30 text-primary-600 dark:text-primary-400 font-bold shadow-sm'
+                                                : 'bg-white/70 dark:bg-dark-card/60 border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
                                         }`}
                                     >
                                         <div className="flex items-center justify-between">
-                                            <span className="material-icons-outlined text-lg text-blue-400">public</span>
-                                            {appearance.projection === 'globe' && <div className="w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_8px_#60a5fa]" />}
+                                            <span className="material-icons-outlined text-lg text-primary-500">public</span>
+                                            {appearance.projection === 'globe' && <div className="w-2 h-2 rounded-full bg-primary-500 shadow-[0_0_8px_#fa9a1d]" />}
                                         </div>
                                         <div>
-                                            <p className="text-xs font-black text-white">3D Celestial Globe</p>
-                                            <p className="text-[9px] text-zinc-400">True spherical geometry</p>
+                                            <p className="text-xs font-bold text-light-text dark:text-dark-text">3D Celestial Globe</p>
+                                            <p className="text-[9px] text-light-text-secondary dark:text-dark-text-secondary">True spherical geometry</p>
                                         </div>
                                     </button>
 
                                     <button
                                         onClick={() => handleUpdateAppearance({ ...appearance, projection: 'flat' })}
-                                        className={`p-3 rounded-2xl border text-left transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between h-20 ${
+                                        className={`p-3 rounded-xl border text-left transition-all duration-150 cursor-pointer relative overflow-hidden flex flex-col justify-between h-20 active:scale-[0.98] ${
                                             appearance.projection === 'flat'
-                                                ? 'bg-blue-600/20 border-blue-400 ring-2 ring-blue-500/30 text-white'
-                                                : 'bg-zinc-900/60 border-white/10 text-zinc-400 hover:border-white/20'
+                                                ? 'bg-primary-500/10 border-primary-500 ring-2 ring-primary-500/30 text-primary-600 dark:text-primary-400 font-bold shadow-sm'
+                                                : 'bg-white/70 dark:bg-dark-card/60 border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
                                         }`}
                                     >
                                         <div className="flex items-center justify-between">
-                                            <span className="material-icons-outlined text-lg text-indigo-400">map</span>
-                                            {appearance.projection === 'flat' && <div className="w-2 h-2 rounded-full bg-indigo-400 shadow-[0_0_8px_#818cf8]" />}
+                                            <span className="material-icons-outlined text-lg text-primary-500">map</span>
+                                            {appearance.projection === 'flat' && <div className="w-2 h-2 rounded-full bg-primary-500 shadow-[0_0_8px_#fa9a1d]" />}
                                         </div>
                                         <div>
-                                            <p className="text-xs font-black text-white">2D Mercator Atlas</p>
-                                            <p className="text-[9px] text-zinc-400">High-speed flat navigation</p>
+                                            <p className="text-xs font-bold text-light-text dark:text-dark-text">2D Mercator Atlas</p>
+                                            <p className="text-[9px] text-light-text-secondary dark:text-dark-text-secondary">High-speed flat navigation</p>
                                         </div>
                                     </button>
                                 </div>
@@ -699,8 +701,8 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                             {/* BASEMAP PALETTE */}
                             <div>
                                 <div className="flex items-center justify-between mb-3">
-                                    <h3 className="text-[11px] font-black text-zinc-400 tracking-wider uppercase">Cartographic Basemap</h3>
-                                    <span className="text-[10px] font-bold text-zinc-500">4 Curated Tilesets</span>
+                                    <h3 className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase">Cartographic Basemap</h3>
+                                    <span className="text-[10px] font-medium text-light-text-secondary/70 dark:text-dark-text-secondary/70">4 Curated Tilesets</span>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-2.5">
@@ -710,15 +712,15 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                             label: 'Adaptive Atlas', 
                                             desc: 'Auto theme matching (Day/Night)',
                                             renderSwatch: () => (
-                                                <div className="w-full h-8 rounded-xl border border-white/15 flex items-center px-2.5 justify-between bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-800 relative overflow-hidden">
+                                                <div className="w-full h-8 rounded-xl border border-black/10 dark:border-white/15 flex items-center px-2.5 justify-between bg-gradient-to-r from-zinc-200 to-zinc-300 dark:from-zinc-950 dark:to-zinc-800 relative overflow-hidden">
                                                     <div className="flex items-center gap-1.5 z-10">
                                                         <span className="text-[10px]">🌙</span>
-                                                        <span className="text-[10px] font-bold text-zinc-300">Dark</span>
-                                                        <span className="text-[9px] text-zinc-500">/</span>
+                                                        <span className="text-[10px] font-bold text-zinc-700 dark:text-zinc-300">Dark</span>
+                                                        <span className="text-[9px] text-zinc-400">/</span>
                                                         <span className="text-[10px]">☀️</span>
-                                                        <span className="text-[10px] font-bold text-zinc-300">Light</span>
+                                                        <span className="text-[10px] font-bold text-zinc-700 dark:text-zinc-300">Light</span>
                                                     </div>
-                                                    <div className="w-2 h-2 rounded-full border border-white/40 z-10" />
+                                                    <div className="w-2 h-2 rounded-full border border-black/30 dark:border-white/40 z-10" />
                                                 </div>
                                             )
                                         },
@@ -732,7 +734,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                                     <div className="absolute bottom-2 left-20 w-1.5 h-1.5 rounded-full bg-amber-300 shadow-[0_0_6px_#f59e0b]" />
                                                     <div className="flex items-center gap-1.5 z-10">
                                                         <span className="text-[10px]">✨</span>
-                                                        <span className="text-[10px] font-black text-amber-200">NASA Lights</span>
+                                                        <span className="text-[10px] font-bold text-amber-200">NASA Lights</span>
                                                     </div>
                                                     <div className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_6px_#f59e0b] z-10" />
                                                 </div>
@@ -770,16 +772,16 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                         <button
                                             key={b.id}
                                             onClick={() => handleUpdateAppearance({ ...appearance, basemap: b.id as any })}
-                                            className={`p-3 rounded-2xl border transition-all text-left flex flex-col justify-between gap-2 cursor-pointer ${
+                                            className={`p-3 rounded-2xl border transition-all duration-150 text-left flex flex-col justify-between gap-2 cursor-pointer active:scale-[0.98] ${
                                                 appearance.basemap === b.id
-                                                    ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30'
-                                                    : 'border-white/10 bg-zinc-900/60 hover:border-white/20'
+                                                    ? 'border-primary-500 bg-primary-500/10 ring-2 ring-primary-500/30'
+                                                    : 'border-black/5 dark:border-white/10 bg-white/70 dark:bg-dark-card/60 hover:border-black/15 dark:hover:border-white/20'
                                             }`}
                                         >
                                             {b.renderSwatch()}
                                             <div>
-                                                <p className="text-xs font-bold text-zinc-100">{b.label}</p>
-                                                <p className="text-[9px] text-zinc-400">{b.desc}</p>
+                                                <p className="text-xs font-bold text-light-text dark:text-dark-text">{b.label}</p>
+                                                <p className="text-[9px] text-light-text-secondary dark:text-dark-text-secondary">{b.desc}</p>
                                             </div>
                                         </button>
                                     ))}
@@ -787,16 +789,16 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                             </div>
 
                             {/* COUNTRY TERRITORIES */}
-                            <div className="p-4 rounded-2xl bg-zinc-900/60 border border-white/10 flex items-center justify-between">
+                            <div className="p-4 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 flex items-center justify-between">
                                 <div>
-                                    <h4 className="text-xs font-bold text-white">Visited Territories</h4>
-                                    <p className="text-[10px] text-zinc-400 mt-0.5">Highlight explored country boundaries</p>
+                                    <h4 className="text-xs font-bold text-light-text dark:text-dark-text">Visited Territories</h4>
+                                    <p className="text-[10px] text-light-text-secondary dark:text-dark-text-secondary mt-0.5">Highlight explored country boundaries</p>
                                 </div>
                                 <button
                                     type="button"
                                     onClick={() => setShowCountries(!showCountries)}
                                     className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                                        showCountries ? 'bg-amber-600' : 'bg-zinc-700'
+                                        showCountries ? 'bg-primary-500' : 'bg-black/20 dark:bg-white/20'
                                     }`}
                                 >
                                     <span
@@ -813,13 +815,13 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                     {activeSidebarTab === 'aviation' && (
                         <div className="space-y-6">
                             {/* AERODROME RUNWAY INFRASTRUCTURE */}
-                            <div className="p-4 rounded-3xl bg-gradient-to-b from-white/[0.07] to-white/[0.02] border border-white/10 shadow-xl space-y-3">
+                            <div className="p-4 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 shadow-sm space-y-3">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <h3 className="text-xs font-black uppercase tracking-wider text-white">Aerodrome Markings</h3>
-                                        <p className="text-[10px] text-zinc-400">Physical runways & taxiway architecture</p>
+                                        <h3 className="text-xs font-bold uppercase tracking-wider text-light-text dark:text-dark-text">Aerodrome Markings</h3>
+                                        <p className="text-[10px] text-light-text-secondary dark:text-dark-text-secondary">Physical runways & taxiway architecture</p>
                                     </div>
-                                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
                                         {appearance.airportDetail === 'detailed' ? 'True Layout' : 'Beacon'}
                                     </span>
                                 </div>
@@ -827,26 +829,26 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                 <div className="grid grid-cols-2 gap-2.5">
                                     <button
                                         onClick={() => handleUpdateAppearance({ ...appearance, airportDetail: 'standard' })}
-                                        className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                                        className={`p-3 rounded-xl border text-left transition-all duration-150 cursor-pointer active:scale-[0.98] ${
                                             appearance.airportDetail === 'standard'
-                                                ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30 text-white'
-                                                : 'border-white/10 bg-zinc-900/60 text-zinc-400 hover:border-white/20'
+                                                ? 'border-primary-500 bg-primary-500/10 ring-2 ring-primary-500/30 text-primary-600 dark:text-primary-400 font-bold'
+                                                : 'border-black/5 dark:border-white/10 bg-white/70 dark:bg-dark-card/60 text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
                                         }`}
                                     >
-                                        <p className="text-xs font-black text-white">Minimal Beacon</p>
-                                        <p className="text-[9px] text-zinc-400 mt-0.5">Clean circular hub nodes</p>
+                                        <p className="text-xs font-bold text-light-text dark:text-dark-text">Minimal Beacon</p>
+                                        <p className="text-[9px] text-light-text-secondary dark:text-dark-text-secondary mt-0.5">Clean circular hub nodes</p>
                                     </button>
 
                                     <button
                                         onClick={() => handleUpdateAppearance({ ...appearance, airportDetail: 'detailed' })}
-                                        className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                                        className={`p-3 rounded-xl border text-left transition-all duration-150 cursor-pointer active:scale-[0.98] ${
                                             appearance.airportDetail === 'detailed'
-                                                ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30 text-white'
-                                                : 'border-white/10 bg-zinc-900/60 text-zinc-400 hover:border-white/20'
+                                                ? 'border-primary-500 bg-primary-500/10 ring-2 ring-primary-500/30 text-primary-600 dark:text-primary-400 font-bold'
+                                                : 'border-black/5 dark:border-white/10 bg-white/70 dark:bg-dark-card/60 text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
                                         }`}
                                     >
-                                        <p className="text-xs font-black text-white">True Runways</p>
-                                        <p className="text-[9px] text-zinc-400 mt-0.5">Exact asphalt & taxiways</p>
+                                        <p className="text-xs font-bold text-light-text dark:text-dark-text">True Runways</p>
+                                        <p className="text-[9px] text-light-text-secondary dark:text-dark-text-secondary mt-0.5">Exact asphalt & taxiways</p>
                                     </button>
                                 </div>
                             </div>
@@ -854,8 +856,8 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                             {/* AIRPORT HUB SIZING */}
                             <div>
                                 <div className="flex items-center justify-between mb-2">
-                                    <h3 className="text-[11px] font-black text-zinc-400 tracking-wider uppercase">Airport Hub Nodes</h3>
-                                    <span className="text-[10px] text-zinc-400 capitalize">{appearance.airportSize} • {appearance.airportMode}</span>
+                                    <h3 className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase">Airport Hub Nodes</h3>
+                                    <span className="text-[10px] text-light-text-secondary dark:text-dark-text-secondary capitalize">{appearance.airportSize} • {appearance.airportMode}</span>
                                 </div>
 
                                 <div className="grid grid-cols-4 gap-1.5 mb-2.5">
@@ -868,10 +870,10 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                         <button
                                             key={sz.id}
                                             onClick={() => handleUpdateAppearance({ ...appearance, airportSize: sz.id as any })}
-                                            className={`py-2 rounded-xl text-xs font-bold text-center border transition-all cursor-pointer ${
+                                            className={`py-2 rounded-xl text-xs font-semibold text-center border transition-all duration-150 cursor-pointer active:scale-[0.98] ${
                                                 appearance.airportSize === sz.id
-                                                    ? 'bg-blue-600 text-white border-blue-400'
-                                                    : 'bg-zinc-900/60 border-white/10 text-zinc-400 hover:text-white'
+                                                    ? 'bg-primary-500 text-white font-bold border-primary-400 shadow-sm'
+                                                    : 'bg-white/70 dark:bg-dark-card/60 border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
                                             }`}
                                         >
                                             {sz.label}
@@ -882,20 +884,20 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                 <div className="grid grid-cols-2 gap-2">
                                     <button
                                         onClick={() => handleUpdateAppearance({ ...appearance, airportMode: 'frequency' })}
-                                        className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                                        className={`py-2 px-3 rounded-xl border text-xs font-semibold transition-all duration-150 cursor-pointer active:scale-[0.98] ${
                                             appearance.airportMode === 'frequency'
-                                                ? 'border-blue-500 bg-blue-500/10 text-blue-300'
-                                                : 'border-white/10 bg-zinc-900/60 text-zinc-400'
+                                                ? 'border-primary-500 bg-primary-500/10 text-primary-600 dark:text-primary-400 font-bold'
+                                                : 'border-black/5 dark:border-white/10 bg-white/70 dark:bg-dark-card/60 text-light-text-secondary dark:text-dark-text-secondary'
                                         }`}
                                     >
                                         Weighted by Traffic
                                     </button>
                                     <button
                                         onClick={() => handleUpdateAppearance({ ...appearance, airportMode: 'uniform' })}
-                                        className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                                        className={`py-2 px-3 rounded-xl border text-xs font-semibold transition-all duration-150 cursor-pointer active:scale-[0.98] ${
                                             appearance.airportMode === 'uniform'
-                                                ? 'border-blue-500 bg-blue-500/10 text-blue-300'
-                                                : 'border-white/10 bg-zinc-900/60 text-zinc-400'
+                                                ? 'border-primary-500 bg-primary-500/10 text-primary-600 dark:text-primary-400 font-bold'
+                                                : 'border-black/5 dark:border-white/10 bg-white/70 dark:bg-dark-card/60 text-light-text-secondary dark:text-dark-text-secondary'
                                         }`}
                                     >
                                         Uniform Scale
@@ -904,29 +906,29 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                             </div>
 
                             {/* ROUTE ARCS STYLING */}
-                            <div className="space-y-4 pt-3 border-t border-white/5">
-                                <h3 className="text-[11px] font-black text-zinc-400 tracking-wider uppercase">Route Presentation</h3>
+                            <div className="space-y-4 pt-3 border-t border-black/5 dark:border-white/5">
+                                <h3 className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase">Route Presentation</h3>
 
                                 {/* Color Palette */}
                                 <div>
-                                    <span className="text-xs text-zinc-300 font-semibold mb-2 block">Color Palette</span>
+                                    <span className="text-xs text-light-text dark:text-dark-text font-semibold mb-2 block">Color Palette</span>
                                     <div className="grid grid-cols-3 gap-2">
                                         {[
                                             { id: 'gradient', label: 'Aurora Gradient', desc: 'Regional spectrum' },
                                             { id: 'frequency', label: 'Heatmap Density', desc: 'Thermal energy spectrum' },
-                                            { id: 'default', label: 'Cobalt Standard', desc: 'Uniform blue' }
+                                            { id: 'default', label: 'Warm Amber', desc: 'Brand accent' }
                                         ].map((cl) => (
                                             <button
                                                 key={cl.id}
                                                 onClick={() => handleUpdateAppearance({ ...appearance, routeColorMode: cl.id as any })}
-                                                className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                                                className={`p-2.5 rounded-xl border text-left transition-all duration-150 cursor-pointer active:scale-[0.98] ${
                                                     appearance.routeColorMode === cl.id
-                                                        ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30'
-                                                        : 'border-white/10 bg-zinc-900/60 hover:border-white/20'
+                                                        ? 'border-primary-500 bg-primary-500/10 ring-2 ring-primary-500/30 font-bold'
+                                                        : 'border-black/5 dark:border-white/10 bg-white/70 dark:bg-dark-card/60 hover:border-black/15 dark:hover:border-white/20'
                                                 }`}
                                             >
-                                                <p className="text-xs font-bold text-white">{cl.label}</p>
-                                                <p className="text-[9px] text-zinc-400">{cl.desc}</p>
+                                                <p className="text-xs font-bold text-light-text dark:text-dark-text">{cl.label}</p>
+                                                <p className="text-[9px] text-light-text-secondary dark:text-dark-text-secondary">{cl.desc}</p>
                                             </button>
                                         ))}
                                     </div>
@@ -934,7 +936,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
 
                                 {/* Scale */}
                                 <div>
-                                    <span className="text-xs text-zinc-300 font-semibold mb-2 block">Stroke Weight</span>
+                                    <span className="text-xs text-light-text dark:text-dark-text font-semibold mb-2 block">Stroke Weight</span>
                                     <div className="grid grid-cols-3 gap-2">
                                         {[
                                             { id: 'thin', label: 'Fine (1px)' },
@@ -944,10 +946,10 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                             <button
                                                 key={sc.id}
                                                 onClick={() => handleUpdateAppearance({ ...appearance, routeScale: sc.id as any })}
-                                                className={`py-2 rounded-xl border text-center transition-all cursor-pointer ${
+                                                className={`py-2 rounded-xl border text-center transition-all duration-150 cursor-pointer active:scale-[0.98] ${
                                                     appearance.routeScale === sc.id
-                                                        ? 'border-blue-500 bg-blue-500/10 text-white font-bold'
-                                                        : 'border-white/10 bg-zinc-900/60 text-zinc-400 hover:border-white/20'
+                                                        ? 'border-primary-500 bg-primary-500/10 text-primary-600 dark:text-primary-400 font-bold'
+                                                        : 'border-black/5 dark:border-white/10 bg-white/70 dark:bg-dark-card/60 text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
                                                 }`}
                                             >
                                                 <span className="text-xs">{sc.label}</span>
@@ -958,55 +960,55 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                             </div>
 
                             {/* ADVANCED ROUTE DYNAMICS */}
-                            <div className="space-y-2.5 pt-3 border-t border-white/5">
-                                <h3 className="text-[11px] font-black text-zinc-400 tracking-wider uppercase">Motion & Dynamics</h3>
+                            <div className="space-y-2.5 pt-3 border-t border-black/5 dark:border-white/5">
+                                <h3 className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase">Motion & Dynamics</h3>
 
                                 <div className="grid grid-cols-2 gap-2">
                                     <button
                                         onClick={() => setShowIndependentFlights(!showIndependentFlights)}
-                                        className={`p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer ${
+                                        className={`p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer transition-all duration-150 active:scale-[0.98] ${
                                             showIndependentFlights
-                                                ? 'bg-purple-500/15 border-purple-500/40 text-purple-300'
-                                                : 'bg-zinc-900/60 border-white/10 text-zinc-400'
+                                                ? 'bg-primary-500/15 border-primary-500/40 text-primary-600 dark:text-primary-400 font-bold'
+                                                : 'bg-white/70 dark:bg-dark-card/60 border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary'
                                         }`}
                                     >
-                                        <Plane className="w-3.5 h-3.5 text-purple-400" />
+                                        <Plane className="w-3.5 h-3.5 text-primary-500" />
                                         <span className="text-xs font-bold">Flights Only</span>
                                     </button>
 
                                     <button
                                         onClick={() => setShowLandSeaRoutes(!showLandSeaRoutes)}
-                                        className={`p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer ${
+                                        className={`p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer transition-all duration-150 active:scale-[0.98] ${
                                             showLandSeaRoutes
-                                                ? 'bg-amber-500/15 border-amber-500/40 text-amber-300'
-                                                : 'bg-zinc-900/60 border-white/10 text-zinc-400'
+                                                ? 'bg-amber-500/15 border-amber-500/40 text-amber-600 dark:text-amber-400 font-bold'
+                                                : 'bg-white/70 dark:bg-dark-card/60 border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary'
                                         }`}
                                     >
-                                        <Zap className="w-3.5 h-3.5 text-amber-400" />
+                                        <Zap className="w-3.5 h-3.5 text-amber-500" />
                                         <span className="text-xs font-bold">Overland Transit</span>
                                     </button>
 
                                     <button
                                         onClick={() => setAnimateRoutes(!animateRoutes)}
-                                        className={`p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer ${
+                                        className={`p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer transition-all duration-150 active:scale-[0.98] ${
                                             animateRoutes
-                                                ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
-                                                : 'bg-zinc-900/60 border-white/10 text-zinc-400'
+                                                ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 font-bold'
+                                                : 'bg-white/70 dark:bg-dark-card/60 border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary'
                                         }`}
                                     >
-                                        <Play className="w-3.5 h-3.5 text-emerald-400" />
-                                        <span className="text-xs font-bold">Comet Flow (60 FPS)</span>
+                                        <Play className="w-3.5 h-3.5 text-emerald-500" />
+                                        <span className="text-xs font-bold">Comet Flow</span>
                                     </button>
 
                                     <button
                                         onClick={() => setClusterMode(!clusterMode)}
-                                        className={`p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer ${
+                                        className={`p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer transition-all duration-150 active:scale-[0.98] ${
                                             clusterMode
-                                                ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-300'
-                                                : 'bg-zinc-900/60 border-white/10 text-zinc-400'
+                                                ? 'bg-primary-500/15 border-primary-500/40 text-primary-600 dark:text-primary-400 font-bold'
+                                                : 'bg-white/70 dark:bg-dark-card/60 border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary'
                                         }`}
                                     >
-                                        <Layers className="w-3.5 h-3.5 text-indigo-400" />
+                                        <Layers className="w-3.5 h-3.5 text-primary-500" />
                                         <span className="text-xs font-bold">Cluster Hubs</span>
                                     </button>
                                 </div>
@@ -1017,16 +1019,16 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                         setShowRoadTracing(newVal);
                                         localStorage.setItem('wandergrid_road_tracing', String(newVal));
                                     }}
-                                    className={`w-full p-2.5 rounded-xl border text-left flex items-center gap-2.5 cursor-pointer ${
+                                    className={`w-full p-2.5 rounded-xl border text-left flex items-center gap-2.5 cursor-pointer transition-all duration-150 active:scale-[0.98] ${
                                         showRoadTracing
-                                            ? 'bg-rose-500/15 border-rose-500/40 text-rose-300'
-                                            : 'bg-zinc-900/60 border-white/10 text-zinc-400'
+                                            ? 'bg-rose-500/15 border-rose-500/40 text-rose-600 dark:text-rose-400 font-bold'
+                                            : 'bg-white/70 dark:bg-dark-card/60 border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary'
                                     }`}
                                 >
-                                    <Radio className="w-4 h-4 text-rose-400 shrink-0" />
+                                    <Radio className="w-4 h-4 text-rose-500 shrink-0" />
                                     <div className="min-w-0 flex-1 leading-none">
                                         <p className="text-xs font-bold">Highway Route Tracing (OSRM)</p>
-                                        <p className="text-[9px] text-zinc-400 mt-1">Conform overland journeys to real roads</p>
+                                        <p className="text-[9px] text-light-text-secondary dark:text-dark-text-secondary mt-1">Conform overland journeys to real roads</p>
                                     </div>
                                 </button>
                             </div>
@@ -1037,30 +1039,30 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                     {activeSidebarTab === 'atmosphere' && (
                         <div className="space-y-6">
                             <div>
-                                <h3 className="text-[11px] font-black text-zinc-400 tracking-wider uppercase mb-3">
+                                <h3 className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase mb-3">
                                     Atmospheric Overlays
                                 </h3>
 
                                 <div className="space-y-3">
                                     {/* Time of Day */}
-                                    <div className="p-4 rounded-3xl bg-zinc-900/60 border border-white/10 space-y-2">
+                                    <div className="p-4 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-2">
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                                                <h4 className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
                                                     <span>Solar Twilight Shading</span>
                                                     {appearance.timeOfDay && (
-                                                        <span className="px-2 py-0.5 text-[9px] font-black rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                                                        <span className="px-2 py-0.5 text-[9px] font-bold rounded-full bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
                                                             14-Band Penumbra
                                                         </span>
                                                     )}
                                                 </h4>
-                                                <p className="text-[10px] text-zinc-400 mt-0.5">Atmospheric multi-band twilight gradient</p>
+                                                <p className="text-[10px] text-light-text-secondary dark:text-dark-text-secondary mt-0.5">Atmospheric multi-band twilight gradient</p>
                                             </div>
                                             <button
                                                 type="button"
                                                 onClick={() => handleUpdateAppearance({ ...appearance, timeOfDay: !appearance.timeOfDay })}
                                                 className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                                                    appearance.timeOfDay ? 'bg-blue-600' : 'bg-zinc-700'
+                                                    appearance.timeOfDay ? 'bg-primary-500' : 'bg-black/20 dark:bg-white/20'
                                                 }`}
                                             >
                                                 <span
@@ -1073,25 +1075,25 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                     </div>
 
                                     {/* Rain Radar */}
-                                    <div className="p-4 rounded-3xl bg-zinc-900/60 border border-white/10 space-y-3">
+                                    <div className="p-4 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-3">
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                                                <h4 className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
                                                     <span>Doppler Rain Radar</span>
                                                     {appearance.rainRadar && (
-                                                        <span className="flex items-center gap-1 px-2 py-0.5 text-[9px] font-black rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                                        <span className="flex items-center gap-1 px-2 py-0.5 text-[9px] font-bold rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                                             Live Stream
                                                         </span>
                                                     )}
                                                 </h4>
-                                                <p className="text-[10px] text-zinc-400 mt-0.5">Global precipitation radar telemetry</p>
+                                                <p className="text-[10px] text-light-text-secondary dark:text-dark-text-secondary mt-0.5">Global precipitation radar telemetry</p>
                                             </div>
                                             <button
                                                 type="button"
                                                 onClick={() => handleUpdateAppearance({ ...appearance, rainRadar: !appearance.rainRadar })}
                                                 className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                                                    appearance.rainRadar ? 'bg-blue-600' : 'bg-zinc-700'
+                                                    appearance.rainRadar ? 'bg-primary-500' : 'bg-black/20 dark:bg-white/20'
                                                 }`}
                                             >
                                                 <span
@@ -1104,12 +1106,12 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
 
                                         {/* Nested Rain Radar Configuration Options */}
                                         {appearance.rainRadar && (
-                                            <div className="pt-2.5 border-t border-white/5 space-y-3 animate-fade-in">
+                                            <div className="pt-2.5 border-t border-black/5 dark:border-white/5 space-y-3 animate-fade-in">
                                                 {/* Opacity Slider */}
                                                 <div>
-                                                    <div className="flex items-center justify-between text-[10px] font-bold text-zinc-300 mb-1">
+                                                    <div className="flex items-center justify-between text-[10px] font-bold text-light-text dark:text-dark-text mb-1">
                                                         <span>Radar Intensity</span>
-                                                        <span className="text-blue-400">{Math.round((appearance.rainRadarOpacity || 0.85) * 100)}%</span>
+                                                        <span className="text-primary-500">{Math.round((appearance.rainRadarOpacity || 0.85) * 100)}%</span>
                                                     </div>
                                                     <input 
                                                         type="range" 
@@ -1118,13 +1120,13 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                                         step="0.05"
                                                         value={appearance.rainRadarOpacity || 0.85}
                                                         onChange={(e) => handleUpdateAppearance({ ...appearance, rainRadarOpacity: parseFloat(e.target.value) })}
-                                                        className="w-full accent-blue-500 cursor-pointer h-1.5 bg-zinc-800 rounded-lg"
+                                                        className="w-full accent-primary-500 cursor-pointer h-1.5 bg-black/10 dark:bg-white/10 rounded-lg"
                                                     />
                                                 </div>
 
                                                 {/* Radar Color Palette */}
                                                 <div>
-                                                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1.5">Radar Palette</span>
+                                                    <span className="text-[10px] font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider block mb-1.5">Radar Palette</span>
                                                     <div className="grid grid-cols-3 gap-1.5">
                                                         {[
                                                             { id: 2, label: 'Universal' },
@@ -1134,10 +1136,10 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                                             <button
                                                                 key={p.id}
                                                                 onClick={() => handleUpdateAppearance({ ...appearance, rainRadarColorScheme: p.id })}
-                                                                className={`py-1.5 px-1 rounded-lg text-[10px] font-bold text-center border transition-all cursor-pointer ${
+                                                                className={`py-1.5 px-1 rounded-lg text-[10px] font-bold text-center border transition-all duration-150 cursor-pointer active:scale-[0.98] ${
                                                                     (appearance.rainRadarColorScheme || 2) === p.id
-                                                                        ? 'bg-blue-600 text-white border-blue-400 shadow-sm'
-                                                                        : 'bg-zinc-800/80 border-white/5 text-zinc-400 hover:text-white'
+                                                                        ? 'bg-primary-500 text-white border-primary-400 shadow-sm'
+                                                                        : 'bg-white/70 dark:bg-dark-card/60 border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
                                                                 }`}
                                                             >
                                                                 {p.label}
@@ -1150,16 +1152,16 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                     </div>
 
                                     {/* Visited Lands / Scratch Layer */}
-                                    <div className="p-4 rounded-3xl bg-zinc-900/60 border border-white/10 flex items-center justify-between">
+                                    <div className="p-4 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 flex items-center justify-between">
                                         <div>
-                                            <h4 className="text-xs font-bold text-white">Visited Lands (Scratch)</h4>
-                                            <p className="text-[10px] text-zinc-400 mt-0.5">Highlight explored countries</p>
+                                            <h4 className="text-xs font-bold text-light-text dark:text-dark-text">Visited Lands (Scratch)</h4>
+                                            <p className="text-[10px] text-light-text-secondary dark:text-dark-text-secondary mt-0.5">Highlight explored countries</p>
                                         </div>
                                         <button
                                             type="button"
                                             onClick={() => setShowCountries(!showCountries)}
                                             className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                                                showCountries ? 'bg-amber-600' : 'bg-zinc-700'
+                                                showCountries ? 'bg-primary-500' : 'bg-black/20 dark:bg-white/20'
                                             }`}
                                         >
                                             <span
@@ -1179,7 +1181,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                         <div className="space-y-5">
                             {/* Status Filter */}
                             <div>
-                                <label className="text-[11px] font-black text-zinc-400 tracking-wider uppercase block mb-2">
+                                <label className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase block mb-2">
                                     Trip Status
                                 </label>
                                 <div className="grid grid-cols-3 gap-2">
@@ -1187,10 +1189,10 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                         <button
                                             key={s}
                                             onClick={() => setStatusFilter(s as any)}
-                                            className={`py-2 rounded-xl text-xs font-bold tracking-wide transition-all text-center cursor-pointer ${
+                                            className={`py-2 rounded-xl text-xs font-semibold tracking-wide transition-all duration-150 text-center cursor-pointer active:scale-[0.98] ${
                                                 statusFilter === s
-                                                    ? 'bg-blue-600 text-white font-black shadow-md border border-blue-400/30'
-                                                    : 'bg-zinc-900/60 border border-white/10 text-zinc-400 hover:text-white'
+                                                    ? 'bg-primary-500 text-white font-bold shadow-sm border border-primary-400/30'
+                                                    : 'bg-white/70 dark:bg-dark-card/60 border border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
                                             }`}
                                         >
                                             {s === 'all' ? 'All' : s}
@@ -1201,13 +1203,13 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
 
                             {/* Year Filter */}
                             <div>
-                                <label className="text-[11px] font-black text-zinc-400 tracking-wider uppercase block mb-2">
+                                <label className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase block mb-2">
                                     Operation Year
                                 </label>
                                 <select
                                     value={yearFilter}
                                     onChange={(e) => setYearFilter(e.target.value)}
-                                    className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2.5 text-xs font-bold text-white outline-none cursor-pointer"
+                                    className="w-full bg-white dark:bg-dark-card border border-black/10 dark:border-white/10 rounded-xl px-3 py-2.5 text-xs font-bold text-light-text dark:text-dark-text outline-none cursor-pointer focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500"
                                 >
                                     <option value="all">All Years</option>
                                     {years.map(y => <option key={y} value={y}>{y}</option>)}
@@ -1216,7 +1218,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
 
                             {/* Departure Station */}
                             <div>
-                                <label className="text-[11px] font-black text-zinc-400 tracking-wider uppercase block mb-2">
+                                <label className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase block mb-2">
                                     Departure Station
                                 </label>
                                 <MultiSelect
@@ -1229,7 +1231,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
 
                             {/* Arrival Station */}
                             <div>
-                                <label className="text-[11px] font-black text-zinc-400 tracking-wider uppercase block mb-2">
+                                <label className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase block mb-2">
                                     Arrival Station
                                 </label>
                                 <MultiSelect
@@ -1242,26 +1244,26 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
 
                             {/* Date Range */}
                             <div>
-                                <label className="text-[11px] font-black text-zinc-400 tracking-wider uppercase block mb-2">
+                                <label className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase block mb-2">
                                     Temporal Date Range
                                 </label>
                                 <div className="grid grid-cols-2 gap-2">
                                     <div>
-                                        <span className="text-[9px] text-zinc-400 uppercase font-bold block mb-1">From</span>
+                                        <span className="text-[9px] text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold block mb-1">From</span>
                                         <Input
                                             type="date"
                                             value={dateFrom}
                                             onChange={(e) => setDateFrom(e.target.value)}
-                                            className="!py-1.5 !px-2.5 !text-xs !font-bold bg-zinc-900 text-white border border-white/10 rounded-xl"
+                                            className="!py-1.5 !px-2.5 !text-xs !font-bold bg-white dark:bg-dark-card text-light-text dark:text-dark-text border border-black/10 dark:border-white/10 rounded-xl"
                                         />
                                     </div>
                                     <div>
-                                        <span className="text-[9px] text-zinc-400 uppercase font-bold block mb-1">To</span>
+                                        <span className="text-[9px] text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold block mb-1">To</span>
                                         <Input
                                             type="date"
                                             value={dateTo}
                                             onChange={(e) => setDateTo(e.target.value)}
-                                            className="!py-1.5 !px-2.5 !text-xs !font-bold bg-zinc-900 text-white border border-white/10 rounded-xl"
+                                            className="!py-1.5 !px-2.5 !text-xs !font-bold bg-white dark:bg-dark-card text-light-text dark:text-dark-text border border-black/10 dark:border-white/10 rounded-xl"
                                         />
                                     </div>
                                 </div>

@@ -71,17 +71,17 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
 
     return createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 font-sans select-none">
-            {/* Frosted Backdrop */}
+            {/* Frosted Backdrop (Crystal TransactionModal level) */}
             <div 
-                className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
-                style={{ WebkitBackdropFilter: 'blur(4px)' }}
+                className="fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md transition-opacity" 
+                style={{ WebkitBackdropFilter: 'blur(12px)' }}
                 onClick={onClose} 
             />
 
             {/* Modal Dialog */}
             <div 
-                className="relative w-full max-w-lg bg-light-card/90 dark:bg-dark-card/90 backdrop-blur-xl border border-black/10 dark:border-white/10 shadow-2xl rounded-3xl overflow-hidden flex flex-col max-h-[88vh] z-10"
-                style={{ WebkitBackdropFilter: 'blur(24px)' }}
+                className="relative w-full max-w-lg bg-white/90 dark:bg-dark-card/90 backdrop-blur-2xl border border-black/10 dark:border-white/15 shadow-glass-modal rounded-3xl overflow-hidden flex flex-col max-h-[88vh] z-10"
+                style={{ WebkitBackdropFilter: 'blur(40px)' }}
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header with WanderGrid Studio Brand */}

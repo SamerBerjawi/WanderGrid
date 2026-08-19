@@ -374,21 +374,21 @@ export const Modal: React.FC<ModalProps> = ({
 
   return createPortal(
     <div className={cn("fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-300 font-sans", isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none')}>
-      {/* 1. Frosted Backdrop */}
+      {/* 1. Frosted Backdrop (Crystal TransactionModal level) */}
       <div 
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
-        style={{ WebkitBackdropFilter: 'blur(4px)' }}
+        className="fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md transition-opacity" 
+        style={{ WebkitBackdropFilter: 'blur(12px)' }}
         onClick={onClose} 
       />
       
       {/* 2. Elevated Glassmorphic Modal Container */}
       <div 
         className={cn(
-          "relative bg-light-card/90 dark:bg-dark-card/90 backdrop-blur-xl border border-black/10 dark:border-white/10 shadow-2xl rounded-3xl w-full overflow-hidden transform transition-all duration-300 max-h-[90vh] flex flex-col z-10",
+          "relative bg-white/90 dark:bg-dark-card/90 backdrop-blur-2xl border border-black/10 dark:border-white/15 shadow-glass-modal rounded-3xl w-full overflow-hidden transform transition-all duration-300 max-h-[90vh] flex flex-col z-10",
           maxWidth,
           isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'
         )}
-        style={{ WebkitBackdropFilter: 'blur(24px)' }}
+        style={{ WebkitBackdropFilter: 'blur(40px)' }}
       >
         {/* Header */}
         <div className="p-6 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">
@@ -432,7 +432,7 @@ export const Modal: React.FC<ModalProps> = ({
         {/* Sticky Frosted Footer (optional) */}
         {footerActions && (
           <div 
-            className="p-6 border-t border-black/5 dark:border-white/5 bg-light-card/80 dark:bg-dark-card/80 backdrop-blur-md flex items-center justify-between gap-3 shrink-0"
+            className="p-6 border-t border-black/5 dark:border-white/5 bg-white/80 dark:bg-dark-card/80 backdrop-blur-md flex items-center justify-between gap-3 shrink-0"
             style={{ WebkitBackdropFilter: 'blur(12px)' }}
           >
             {footerActions}

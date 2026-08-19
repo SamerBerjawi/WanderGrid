@@ -69,14 +69,14 @@ All modal overlays, slide-out drawer components, form surfaces, and dialogs acro
 
 ### 7.1 Core Visual Tokens & Surfaces
 
-* **Container Backgrounds & Glassmorphism:** Theme tokens with opacity channels `bg-light-card/85 dark:bg-dark-card/85 backdrop-blur-xl` with `-webkit-backdrop-filter: blur(24px)` for slide-out drawers and elevated dialogs.
+* **Container Backgrounds & Glassmorphism:** Theme tokens with opacity channels `bg-white/90 dark:bg-dark-card/90 backdrop-blur-2xl` with `-webkit-backdrop-filter: blur(40px)` for slide-out drawers and elevated dialogs.
 * **Secondary / Fill Cards:** `bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 rounded-3xl p-5`.
-* **Elevated / Floating Cards:** `bg-white dark:bg-dark-card border border-black/5 dark:border-white/5 shadow-sm rounded-2xl`.
-* **Hairline Dividers & Borders:** Ultra-low opacity borders across both themes: `border-black/5 dark:border-white/5` (inner items) and `border-black/10 dark:border-white/10` (structural shells).
+* **Elevated / Floating Cards:** `bg-white/80 dark:bg-dark-card/80 backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-glass-card rounded-2xl`.
+* **Hairline Dividers & Borders:** Ultra-low opacity borders across both themes: `border-black/5 dark:border-white/5` (inner items) and `border-black/10 dark:border-white/15` (structural shells).
 * **Glassmorphic Elements:** Frosted glass (`backdrop-blur` with `-webkit-backdrop-filter`):
-  1. Backdrop overlay (`bg-black/60 backdrop-blur-sm`).
-  2. Slide-out drawer & dialog shells (`bg-light-card/85 dark:bg-dark-card/85 backdrop-blur-xl`).
-  3. Sticky bottom action footers (`bg-light-card/80 dark:bg-dark-card/80 backdrop-blur-md`).
+  1. Backdrop overlay (`bg-gray-900/50 dark:bg-black/80 backdrop-blur-md` with `-webkit-backdrop-filter: blur(12px)`).
+  2. Slide-out drawer & dialog shells (`bg-white/90 dark:bg-dark-card/90 backdrop-blur-2xl` with `-webkit-backdrop-filter: blur(40px)`).
+  3. Sticky bottom action footers (`bg-white/80 dark:bg-dark-card/80 backdrop-blur-md` with `-webkit-backdrop-filter: blur(12px)`).
 
 ### 7.2 Typography & Label System
 
@@ -84,7 +84,7 @@ All modal overlays, slide-out drawer components, form surfaces, and dialogs acro
 * **Subtitles & Metadata:** `text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium truncate mt-0.5`
 * **Section & Form Field Labels:** `block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary`
 * **Hero / Main Title Input:** `${INPUT_BASE_STYLE} h-14 !text-xl font-bold` for the primary resource name to anchor visual hierarchy.
-* **Standard Field Inputs:** `${INPUT_BASE_STYLE} h-10 text-xs font-bold` for all secondary parameters.
+* **Standard Field Inputs:** `${INPUT_BASE_STYLE} min-h-[44px] text-xs font-semibold` for all secondary parameters.
 
 ### 7.3 Micro-Components & Interactive Patterns
 
@@ -105,7 +105,7 @@ All modal overlays, slide-out drawer components, form surfaces, and dialogs acro
   * Active Selection Ring: `ring-2 ring-offset-2 ring-offset-light-card dark:ring-offset-dark-card ring-primary-500 scale-110 shadow-sm`
   * Custom Color Input Trigger: `relative w-7 h-7 rounded-full overflow-hidden cursor-pointer hover:scale-110 transition-transform bg-gradient-to-br from-pink-500 via-red-500 to-yellow-500 flex items-center justify-center` with an embedded invisible native color input (`absolute inset-0 opacity-0 cursor-pointer`).
 * **Live Preview / Readout Strip:**
-  `p-4 rounded-2xl bg-white dark:bg-dark-card border border-black/5 dark:border-white/5 shadow-sm flex items-center justify-between` featuring a monospace metric pill: `px-2.5 py-1 rounded-full bg-black/5 dark:bg-white/5 text-xs font-mono font-bold text-light-text dark:text-dark-text`.
+  `p-4 rounded-2xl bg-white/70 dark:bg-dark-card/70 backdrop-blur-md border border-black/5 dark:border-white/10 shadow-sm flex items-center justify-between` featuring a monospace metric pill: `px-2.5 py-1 rounded-full bg-black/5 dark:bg-white/5 text-xs font-mono font-bold text-light-text dark:text-dark-text`.
 
 ### 7.4 Standard Slide-Out Drawer Template
 
@@ -164,21 +164,22 @@ export const StandardDrawer: React.FC<DrawerProps> = ({
 
   return createPortal(
     <div className="fixed inset-0 z-50 overflow-hidden font-sans">
-      {/* 1. Frosted Backdrop */}
+      {/* 1. Frosted Backdrop (Crystal TransactionModal level) */}
       <div 
-        className={`fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${
+        className={`fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md transition-opacity duration-300 ${
           isVisible ? 'opacity-100' : 'opacity-0'
         }`}
+        style={{ WebkitBackdropFilter: 'blur(12px)' }}
         onClick={handleClose}
       />
 
       {/* 2. Slide-out Shell */}
       <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
         <div 
-          className={`w-screen max-w-lg bg-light-card/85 dark:bg-dark-card/85 backdrop-blur-xl shadow-2xl border-l border-black/10 dark:border-white/10 flex flex-col transform transition-transform duration-300 ease-out ${
+          className={`w-screen max-w-lg bg-white/90 dark:bg-dark-card/90 backdrop-blur-2xl shadow-glass-modal border-l border-black/10 dark:border-white/15 flex flex-col transform transition-transform duration-300 ease-out ${
             isVisible ? 'translate-x-0' : 'translate-x-full'
           }`}
-          style={{ WebkitBackdropFilter: 'blur(24px)' }}
+          style={{ WebkitBackdropFilter: 'blur(40px)' }}
         >
           {/* Header */}
           <div className="p-6 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">

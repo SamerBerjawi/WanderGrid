@@ -58,21 +58,22 @@ export const StandardDrawer: React.FC<DrawerProps> = ({
 
   return createPortal(
     <div className="fixed inset-0 z-50 overflow-hidden font-sans">
-      {/* 1. Frosted Backdrop */}
+      {/* 1. Frosted Backdrop (Crystal TransactionModal level) */}
       <div 
-        className={`fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${
+        className={`fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md transition-opacity duration-300 ${
           isVisible ? 'opacity-100' : 'opacity-0'
         }`}
+        style={{ WebkitBackdropFilter: 'blur(12px)' }}
         onClick={handleClose}
       />
 
       {/* 2. Slide-out Shell */}
       <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
         <div 
-          className={`w-screen max-w-lg bg-light-card/85 dark:bg-dark-card/85 backdrop-blur-xl shadow-2xl border-l border-black/10 dark:border-white/10 flex flex-col transform transition-transform duration-300 ease-out ${
+          className={`w-screen max-w-lg bg-white/90 dark:bg-dark-card/90 backdrop-blur-2xl shadow-glass-modal border-l border-black/10 dark:border-white/15 flex flex-col transform transition-transform duration-300 ease-out ${
             isVisible ? 'translate-x-0' : 'translate-x-full'
           }`}
-          style={{ WebkitBackdropFilter: 'blur(24px)' }}
+          style={{ WebkitBackdropFilter: 'blur(40px)' }}
         >
           {/* Header */}
           <div className="p-6 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">

@@ -337,7 +337,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-gradient-to-br from-zinc-50/40 via-neutral-100/30 to-zinc-100/40 dark:from-zinc-950 dark:via-[#0c0c0f] dark:to-zinc-950 transition-colors duration-700 text-gray-900 dark:text-gray-100 relative">
+    <div className="flex h-screen w-full overflow-hidden bg-[#FAFAFA] dark:bg-[#050505] transition-colors duration-700 text-light-text dark:text-dark-text relative">
       {/* Dynamic Ambient Spot Glow Filter representing current state */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
           <div className={`absolute -top-64 -left-64 w-[850px] h-[850px] rounded-full ${currentAccent.glow1} blur-[165px] animate-[pulse_12s_infinite] transition-colors duration-[1.5s]`} />
