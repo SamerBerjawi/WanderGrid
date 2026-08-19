@@ -28,7 +28,7 @@ export default defineConfig(({ mode }) => {
         preserveSymlinks: false
       },
       optimizeDeps: {
-        include: ['react', 'react-dom', 'motion', 'motion/react']
+        include: ['react', 'react-dom', 'motion', 'motion/react', 'maplibre-gl', '@deck.gl/react', '@deck.gl/layers', '@deck.gl/core', '@deck.gl/geo-layers']
       }
     };
 });

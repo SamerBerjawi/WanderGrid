@@ -85,117 +85,108 @@ const SeatLayoutOverlay = ({ cabinClass, seatNumber }: { cabinClass: string, sea
   );
 };
 
-const AirlineLogo: React.FC<{ provider?: string, fallback: React.ReactNode }> = ({ provider, fallback }) => {
-  const [logoUrl, setLogoUrl] = useState<string>('');
-  const [attempt, setAttempt] = useState(0);
-  const [carriers, setCarriers] = useState<Carrier[]>([]);
-  const [brandfetchApiKey, setBrandfetchApiKey] = useState<string>('');
+// Module-level shared cache for AirlineLogo to prevent N+1 queries for 500+ flights
+let sharedCarriers: Carrier[] | null = null;
+let sharedBrandfetchKey: string = '';
+let settingsFetchPromise: Promise<any> | null = null;
+const logoUrlCache = new Map<string, string>();
 
-  useEffect(() => {
-    dataService.getWorkspaceSettings().then(settings => {
+const initSharedSettings = () => {
+  if (sharedCarriers !== null) return;
+  try {
+    const stored = localStorage.getItem('wandergrid_settings');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (parsed.carriers) sharedCarriers = parsed.carriers;
+      if (parsed.brandfetchApiKey) sharedBrandfetchKey = parsed.brandfetchApiKey;
+    }
+  } catch {}
+  if (!sharedCarriers) sharedCarriers = [];
+
+  if (!settingsFetchPromise) {
+    settingsFetchPromise = dataService.getWorkspaceSettings().then(settings => {
       if (settings) {
-        if (settings.carriers) {
-          setCarriers(settings.carriers);
-        }
-        if (settings.brandfetchApiKey) {
-          setBrandfetchApiKey(settings.brandfetchApiKey);
-        }
+        if (settings.carriers) sharedCarriers = settings.carriers;
+        if (settings.brandfetchApiKey) sharedBrandfetchKey = settings.brandfetchApiKey;
       }
-    }).catch(e => console.warn("Failed to load carriers for AirlineLogo:", e));
-  }, []);
+    }).catch(() => {});
+  }
+};
 
-  const getAirlineLogoUrl = (airlineName: string, currentAttempt: number, currentCarriers: Carrier[]): string => {
-    let domain = '';
-    
-    if (currentCarriers && currentCarriers.length > 0) {
-      const custom = currentCarriers.find(
-        (c: any) => c.code?.toLowerCase().trim() === airlineName.toLowerCase().trim() ||
-                    c.name?.toLowerCase().trim() === airlineName.toLowerCase().trim()
-      );
-      if (custom && custom.domain) {
-        domain = custom.domain.trim();
-      }
+const getAirlineLogoUrlCached = (airlineName: string, currentAttempt: number): string => {
+  initSharedSettings();
+  const cacheKey = `${airlineName.toLowerCase().trim()}:${currentAttempt}`;
+  if (logoUrlCache.has(cacheKey)) {
+    return logoUrlCache.get(cacheKey)!;
+  }
+
+  let domain = '';
+  const carriers = sharedCarriers || [];
+  
+  if (carriers.length > 0) {
+    const custom = carriers.find(
+      (c: any) => c.code?.toLowerCase().trim() === airlineName.toLowerCase().trim() ||
+                  c.name?.toLowerCase().trim() === airlineName.toLowerCase().trim()
+    );
+    if (custom && custom.domain) {
+      domain = custom.domain.trim();
     }
+  }
 
-    if (!domain) {
-      try {
-        const stored = localStorage.getItem('wandergrid_settings');
-        if (stored) {
-          const settings = JSON.parse(stored);
-          if (settings.carriers && Array.isArray(settings.carriers)) {
-            const custom = settings.carriers.find(
-              (c: any) => c.code?.toLowerCase().trim() === airlineName.toLowerCase().trim() ||
-                          c.name?.toLowerCase().trim() === airlineName.toLowerCase().trim()
-            );
-            if (custom && custom.domain) {
-              domain = custom.domain.trim();
-            }
-          }
-        }
-      } catch (e) {
-        console.warn("Error loading custom carriers logo from localStorage:", e);
-      }
-    }
+  if (!domain) {
+    const cleaned = airlineName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const mappings: Record<string, string> = {
+      'deltaairlines': 'delta.com', 'delta': 'delta.com', 'americanairlines': 'aa.com', 'american': 'aa.com',
+      'unitedairlines': 'united.com', 'united': 'united.com', 'southwestairlines': 'southwest.com', 'southwest': 'southwest.com',
+      'britishairways': 'britishairways.com', 'emirates': 'emirates.com', 'qatarairways': 'qatarairways.com', 'qatar': 'qatarairways.com',
+      'lufthansa': 'lufthansa.com', 'airfrance': 'airfrance.com', 'klm': 'klm.com', 'singaporeairlines': 'singaporeair.com',
+      'cathaypacific': 'cathaypacific.com', 'ana': 'ana.co.jp', 'japanairlines': 'jal.com', 'jal': 'jal.com',
+      'ryanair': 'ryanair.com', 'easyjet': 'easyjet.com'
+    };
+    domain = mappings[cleaned] || `${cleaned}.com`;
+  }
 
-    if (!domain) {
-      const cleaned = airlineName.toLowerCase().replace(/[^a-z0-9]/g, '');
-      const mappings: Record<string, string> = {
-        'deltaairlines': 'delta.com', 'delta': 'delta.com', 'americanairlines': 'aa.com', 'american': 'aa.com',
-        'unitedairlines': 'united.com', 'united': 'united.com', 'southwestairlines': 'southwest.com', 'southwest': 'southwest.com',
-        'britishairways': 'britishairways.com', 'emirates': 'emirates.com', 'qatarairways': 'qatarairways.com', 'qatar': 'qatarairways.com',
-        'lufthansa': 'lufthansa.com', 'airfrance': 'airfrance.com', 'klm': 'klm.com', 'singaporeairlines': 'singaporeair.com',
-        'cathaypacific': 'cathaypacific.com', 'ana': 'ana.co.jp', 'japanairlines': 'jal.com', 'jal': 'jal.com',
-        'ryanair': 'ryanair.com', 'easyjet': 'easyjet.com'
-      };
-      domain = mappings[cleaned] || `${cleaned}.com`;
-    }
+  const overrides: Record<string, string> = {};
+  carriers.forEach(c => {
+    if (c.code) overrides[c.code.toLowerCase().trim()] = c.domain;
+    if (c.name) overrides[c.name.toLowerCase().trim()] = c.domain;
+  });
 
-    // Convert carriers list to record of overrides
-    const overrides: Record<string, string> = {};
-    if (currentCarriers && Array.isArray(currentCarriers)) {
-      currentCarriers.forEach(c => {
-        if (c.code) overrides[c.code.toLowerCase().trim()] = c.domain;
-        if (c.name) overrides[c.name.toLowerCase().trim()] = c.domain;
-      });
-    }
+  const steps: string[] = [];
+  if (sharedBrandfetchKey) {
+    const bfUrl = getMerchantLogoUrl(airlineName, sharedBrandfetchKey, overrides, { type: 'icon', fallback: '404' });
+    if (bfUrl) steps.push(bfUrl);
+  }
+  
+  steps.push(`https://logo.clearbit.com/${domain}`);
+  steps.push(`https://asset.brandfetch.io/${domain}/logo?theme=light`);
+  steps.push(`https://www.google.com/s2/favicons?sz=128&domain=${domain}`);
 
-    // Try to build a fallback steps queue
-    const steps: string[] = [];
-    
-    if (brandfetchApiKey) {
-      const bfUrl = getMerchantLogoUrl(airlineName, brandfetchApiKey, overrides, { type: 'icon', fallback: '404' });
-      if (bfUrl) steps.push(bfUrl);
-    }
-    
-    steps.push(`https://logo.clearbit.com/${domain}`);
-    steps.push(`https://asset.brandfetch.io/${domain}/logo?theme=light`);
-    steps.push(`https://www.google.com/s2/favicons?sz=128&domain=${domain}`);
+  const chosenUrl = steps[currentAttempt] || '';
+  logoUrlCache.set(cacheKey, chosenUrl);
+  return chosenUrl;
+};
 
-    return steps[currentAttempt] || '';
-  };
+const AirlineLogo: React.FC<{ provider?: string, fallback: React.ReactNode }> = ({ provider, fallback }) => {
+  const [attempt, setAttempt] = useState(0);
+  const [failed, setFailed] = useState(false);
 
-  useEffect(() => {
-    if (provider) {
-      setLogoUrl(getAirlineLogoUrl(provider, 0, carriers));
-      setAttempt(0);
-    }
-  }, [provider, carriers, brandfetchApiKey]);
+  if (!provider || failed) return <>{fallback}</>;
+
+  const currentUrl = getAirlineLogoUrlCached(provider, attempt);
+  if (!currentUrl) return <>{fallback}</>;
 
   const handleError = () => {
-    if (provider && attempt < 3) {
-      const nextAttempt = attempt + 1;
-      setAttempt(nextAttempt);
-      setLogoUrl(getAirlineLogoUrl(provider, nextAttempt, carriers));
+    if (attempt < 3) {
+      setAttempt(prev => prev + 1);
     } else {
-      setLogoUrl('__failed__');
+      setFailed(true);
     }
   };
-
-  if (!provider || logoUrl === '__failed__') return <>{fallback}</>;
 
   return (
     <img 
-      src={logoUrl || getAirlineLogoUrl(provider, 0, carriers)} 
+      src={currentUrl} 
       alt={provider} 
       className="w-full h-full object-contain" 
       referrerPolicy="no-referrer"
@@ -1397,11 +1388,11 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           const statusA = getFlightStatusTags(a).label;
           const statusB = getFlightStatusTags(b).label;
           if (sortSubOption === 'canceledFirst') {
-            valA = statusA === 'Canceled' ? 0 : 1;
-            valB = statusB === 'Canceled' ? 0 : 1;
+            valA = statusA === 'CANCELED' ? 0 : 1;
+            valB = statusB === 'CANCELED' ? 0 : 1;
           } else if (sortSubOption === 'scheduledFirst') {
-            valA = statusA === 'Scheduled' ? 0 : 1;
-            valB = statusB === 'Scheduled' ? 0 : 1;
+            valA = statusA === 'SCHEDULED' ? 0 : 1;
+            valB = statusB === 'SCHEDULED' ? 0 : 1;
           } else {
             valA = statusA;
             valB = statusB;
@@ -1428,8 +1419,8 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
             valA = tiers[a.travelClass as keyof typeof tiers] ?? 4;
             valB = tiers[b.travelClass as keyof typeof tiers] ?? 4;
           } else if (sortSubOption === 'cost') {
-            valA = parseFloat(a.cost || '0') || 0;
-            valB = parseFloat(b.cost || '0') || 0;
+            valA = typeof a.cost === 'number' ? a.cost : (parseFloat(String(a.cost || '0')) || 0);
+            valB = typeof b.cost === 'number' ? b.cost : (parseFloat(String(b.cost || '0')) || 0);
           } else { // default 'seatNumber'
             valA = a.seatNumber || 'ZZZ';
             valB = b.seatNumber || 'ZZZ';
@@ -2349,9 +2340,9 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
               {/* Travel Timeline Indicator */}
               <div className="flex items-center bg-zinc-100 dark:bg-black/20 p-1 rounded-2xl border border-zinc-200/40 dark:border-white/5 shadow-xs">
                 {[
-                  { id: 'all', label: 'All' },
-                  { id: 'upcoming', label: 'Upcoming' },
-                  { id: 'past', label: 'Past' }
+                  { id: 'all' as const, label: 'All' },
+                  { id: 'upcoming' as const, label: 'Upcoming' },
+                  { id: 'past' as const, label: 'Past' }
                 ].map(opt => (
                   <button 
                     key={opt.id}

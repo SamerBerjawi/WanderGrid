@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 const ExpeditionMap = lazy(() => import('../components/ExpeditionMap').then(m => ({ default: m.ExpeditionMap })));
 const ExpeditionMap3D = lazy(() => import('../components/ExpeditionMap3D').then(m => ({ default: m.ExpeditionMap3D })));
+const DeckFlightMap = lazy(() => import('../components/DeckFlightMap').then(m => ({ default: m.DeckFlightMap || m.default })));
 import { dataService } from '../services/mockDb';
 import { Trip } from '../types';
 import { Input, MultiSelect } from '../components/ui';
@@ -85,7 +86,7 @@ const getGreatCircleDistance = (lat1: number, lng1: number, lat2: number, lng2: 
 };
 
 export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClick }) => {
-    const [mapType, setMapType] = useState<'2D' | '3D'>('2D');
+    const [mapType, setMapType] = useState<'GPU' | '2D' | '3D'>('GPU');
     const [viewMode, setViewMode] = useState<'network' | 'scratch'>('network');
     const [trips, setTrips] = useState<Trip[]>([]);
     const [loading, setLoading] = useState(true);
@@ -749,22 +750,32 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                     <div className="lg:col-span-4 flex flex-col gap-2.5">
                                         <p className="text-[9px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest leading-none">Projection Control</p>
                                         <div className="grid grid-cols-1 gap-2">
-                                            {/* 2D / 3D Dimension toggle */}
-                                            <button
-                                                onClick={() => setMapType(mapType === '2D' ? '3D' : '2D')}
-                                                className={`p-2 rounded-xl border text-left font-bold transition-all duration-205 flex items-center gap-2 cursor-pointer ${
-                                                    mapType === '3D'
-                                                    ? 'bg-purple-500/10 border-purple-500/30 text-purple-600 dark:text-purple-400 shadow-sm'
-                                                    : 'bg-white/30 dark:bg-white/5 border-white/40 dark:border-white/5 text-zinc-450 hover:text-zinc-650 dark:hover:text-zinc-350'
-                                                }`}
-                                                title={mapType === '3D' ? "Switch to 2D Flat Map View" : "Switch to 3D Globe Projection View"}
-                                            >
-                                                <Globe className={`w-4 h-4 ${mapType === '3D' ? 'text-purple-500 animate-[spin_10s_linear_infinite]' : 'text-zinc-450'}`} />
-                                                <div className="min-w-0 flex-1 leading-none">
-                                                    <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Dimension</p>
-                                                    <p className="text-[9.5px] font-extrabold mt-0.5 truncate">{mapType === '3D' ? '3D Globe' : '2D Map'}</p>
-                                                </div>
-                                            </button>
+                                            {/* GPU / 3D / 2D Engine Selector */}
+                                            <div className="flex p-0.5 bg-zinc-200/50 dark:bg-zinc-950/60 rounded-xl border border-white/30 dark:border-white/5 w-full justify-between">
+                                                {[
+                                                    { id: 'GPU', label: 'GPU (Deck.gl)', icon: Zap },
+                                                    { id: '3D', label: '3D Globe', icon: Globe },
+                                                    { id: '2D', label: 'Classic', icon: MapIcon }
+                                                ].map((eng) => {
+                                                    const IconComponent = eng.icon;
+                                                    const isSelected = mapType === eng.id;
+                                                    return (
+                                                        <button
+                                                            key={eng.id}
+                                                            onClick={() => setMapType(eng.id as any)}
+                                                            className={`px-2 py-1.5 rounded-lg text-[9.5px] font-black uppercase tracking-wider transition-all flex-1 flex items-center justify-center gap-1 cursor-pointer ${
+                                                                isSelected 
+                                                                ? 'bg-blue-600 text-white shadow-md font-black border border-blue-400/30' 
+                                                                : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+                                                            }`}
+                                                            title={`Switch to ${eng.label}`}
+                                                        >
+                                                            <IconComponent className="w-3 h-3" />
+                                                            <span>{eng.label}</span>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
 
                                             {/* Network toggle */}
                                             <button
@@ -1039,7 +1050,27 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 font-mono">Booting Real-Time Vector Engine...</p>
                         </div>
                     }>
-                        {mapType === '2D' ? (
+                        {mapType === 'GPU' ? (
+                            <DeckFlightMap
+                                key={`gpu-${isDark ? 'dark' : 'light'}`}
+                                trips={filteredTrips}
+                                onTripClick={onTripClick}
+                                showFrequencyWeight={showFrequencyWeight}
+                                animateRoutes={animateRoutes}
+                                visitedCountries={visitedCountryCodes}
+                                showCountries={showCountries}
+                                viewMode={viewMode}
+                                visitedPlaces={visitedPlaces}
+                                activeLayer={activeLayer}
+                                showFlightRoutes={showIndependentFlights}
+                                showLandSeaRoutes={showLandSeaRoutes}
+                                showCityMarkers={showCityMarkers}
+                                showGradientRoutes={true}
+                                clusterMode={clusterMode}
+                                showRoadTracing={showRoadTracing}
+                                focusTransportCoordinates={focusCoord}
+                            />
+                        ) : mapType === '2D' ? (
                             <ExpeditionMap 
                                 key={`2d-${isDark ? 'dark' : 'light'}`}
                                 trips={filteredTrips} 

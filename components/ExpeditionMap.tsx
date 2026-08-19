@@ -175,7 +175,12 @@ const COLOR_POLES = [
     { lat: -25, lng: 135, color: [0, 229, 255] },    // Oceania: Vivid Cyan
 ];
 
+const geoGradientCache = new Map<string, string>();
 const getGeoGradientColor = (lat: number, lng: number): string => {
+    const key = `${lat.toFixed(1)},${lng.toFixed(1)}`;
+    const cached = geoGradientCache.get(key);
+    if (cached) return cached;
+
     let totalWeight = 0;
     let r = 0, g = 0, b = 0;
 
@@ -186,8 +191,6 @@ const getGeoGradientColor = (lat: number, lng: number): string => {
         const distSq = dLat * dLat + dLng * dLng;
         
         // Inverse Distance Weighting with Sharpening
-        // Lower smoothing constant (800) + Power of 1.5 makes colors "stick" to their regions better
-        // before blending, resulting in more vibrant core colors.
         const weight = 1 / Math.pow(distSq + 800, 1.5); 
         
         totalWeight += weight;
@@ -200,7 +203,9 @@ const getGeoGradientColor = (lat: number, lng: number): string => {
     g = Math.min(255, Math.max(0, Math.round(g / totalWeight)));
     b = Math.min(255, Math.max(0, Math.round(b / totalWeight)));
 
-    return `rgb(${r}, ${g}, ${b})`;
+    const result = `rgb(${r}, ${g}, ${b})`;
+    geoGradientCache.set(key, result);
+    return result;
 };
 
 const getFeatureCenter = (feature: any): { lat: number, lng: number } => {
@@ -289,8 +294,14 @@ const fetchOSRMRoute = async (lat1: number, lng1: number, lat2: number, lng2: nu
     return null;
 };
 
+const curvePointsCache = new Map<string, L.LatLng[]>();
+
 // Spherical Geodesic (Great-Circle) Path Generator following Earth's curvature
 const getCurvePoints = (start: L.LatLng, end: L.LatLng): L.LatLng[] => {
+    const key = `${start.lat.toFixed(3)},${start.lng.toFixed(3)}|${end.lat.toFixed(3)},${end.lng.toFixed(3)}`;
+    const cached = curvePointsCache.get(key);
+    if (cached) return cached;
+
     const lat1 = start.lat * Math.PI / 180;
     const lng1 = start.lng * Math.PI / 180;
     let lat2 = end.lat * Math.PI / 180;
@@ -314,7 +325,7 @@ const getCurvePoints = (start: L.LatLng, end: L.LatLng): L.LatLng[] => {
 
     const points: L.LatLng[] = [];
     // Dynamic sampling steps for beautiful geodesic curvature without over-density
-    const steps = Math.min(80, Math.max(15, Math.ceil(d * 40)));
+    const steps = Math.min(60, Math.max(12, Math.ceil(d * 30)));
 
     // If points are virtually coincident, return a direct line interpolation
     if (d < 0.0001) {
@@ -324,6 +335,7 @@ const getCurvePoints = (start: L.LatLng, end: L.LatLng): L.LatLng[] => {
             const lng = start.lng + t * (lng2Deg - start.lng);
             points.push(L.latLng(lat, lng));
         }
+        curvePointsCache.set(key, points);
         return points;
     }
 
@@ -363,6 +375,7 @@ const getCurvePoints = (start: L.LatLng, end: L.LatLng): L.LatLng[] => {
         points.push(L.latLng(latDeg, lngDeg));
     }
 
+    curvePointsCache.set(key, points);
     return points;
 };
 
@@ -1000,11 +1013,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
             }
         });
 
-        // Force react update on zoom / zoom ending to recalculate spatial marker clustering grids
-        map.on('zoom', () => {
-            const z = map.getZoom();
-            setMapZoom(Math.round(z * 10) / 10);
-        });
+        // Update zoom state ONLY on zoomend to eliminate stutter and continuous component re-renders during active zooming
         map.on('zoomend', () => {
             const z = map.getZoom();
             setMapZoom(Math.round(z * 10) / 10);
@@ -1273,9 +1282,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
             const flightStyle = getStatusStyle(trip, isDark, activeLayer);
 
             if (trip.transports && trip.transports.length > 0) {
-                console.log("ExpeditionMap: drawing transports length:", trip.transports.length);
                 trip.transports.forEach(t => {
-                    console.log("ExpeditionMap info for transport:", t.origin, "->", t.destination, "mode:", t.mode, "coords:", {originLat: t.originLat, originLng: t.originLng, destLat: t.destLat, destLng: t.destLng});
                     if (t.originLat && t.originLng && t.destLat && t.destLng) {
                         const isFlight = t.mode === 'Flight';
                         const isLand = ['Car Rental', 'Personal Car', 'Bus', 'Train'].includes(t.mode);
@@ -1339,7 +1346,7 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                         const flowSections: L.Polyline[] = [];
 
                         if (showGradientRoutes) {
-                            const numSections = 12;
+                            const numSections = 6;
                             const pointsPerSection = Math.ceil(fullCurvedPath.length / numSections);
                             
                             for (let s = 0; s < numSections; s++) {
@@ -1351,20 +1358,22 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                                 const midPt = sectionPoints[Math.floor(sectionPoints.length / 2)];
                                 const sectionColor = getGeoGradientColor(midPt.lat, midPt.lng);
                                 
-                                const sectionTrack = L.polyline(sectionPoints, {
-                                    color: sectionColor,
-                                    weight: animateRoutes ? (1 + (dynamicWeight * 0.2)) : 0.5,
-                                    opacity: (isDark || activeLayer === 'satellite') ? 0.35 : 0.45,
-                                    className: `flight-path-track ${className}`,
-                                    interactive: false,
-                                    smoothFactor: 1.0
-                                }).addTo(routeGroup);
-                                trackSections.push(sectionTrack);
+                                if (animateRoutes) {
+                                    const sectionTrack = L.polyline(sectionPoints, {
+                                        color: sectionColor,
+                                        weight: 1 + (dynamicWeight * 0.2),
+                                        opacity: (isDark || activeLayer === 'satellite') ? 0.35 : 0.45,
+                                        className: `flight-path-track ${className}`,
+                                        interactive: false,
+                                        smoothFactor: 1.0
+                                    }).addTo(routeGroup);
+                                    trackSections.push(sectionTrack);
+                                }
                                 
                                 const sectionFlow = L.polyline(sectionPoints, {
                                     color: sectionColor,
                                     weight: dynamicWeight,
-                                    opacity: animateRoutes ? 0.9 : 0.65,
+                                    opacity: animateRoutes ? 0.9 : 0.75,
                                     className: animateRoutes ? `flight-path-flow ${className}` : '',
                                     interactive: false,
                                     lineCap: 'round',
@@ -1373,20 +1382,22 @@ export const ExpeditionMap: React.FC<ExpeditionMapProps> = ({
                                 flowSections.push(sectionFlow);
                             }
                         } else {
-                            const trackLine = L.polyline(fullCurvedPath, {
-                                color: color, 
-                                weight: animateRoutes ? (1 + (dynamicWeight * 0.2)) : 0.5, 
-                                opacity: (isDark || activeLayer === 'satellite') ? 0.2 : 0.3,
-                                className: `flight-path-track ${className}`,
-                                interactive: false,
-                                smoothFactor: 1.0
-                            }).addTo(routeGroup);
-                            trackSections.push(trackLine);
+                            if (animateRoutes) {
+                                const trackLine = L.polyline(fullCurvedPath, {
+                                    color: color, 
+                                    weight: 1 + (dynamicWeight * 0.2), 
+                                    opacity: (isDark || activeLayer === 'satellite') ? 0.2 : 0.3,
+                                    className: `flight-path-track ${className}`,
+                                    interactive: false,
+                                    smoothFactor: 1.0
+                                }).addTo(routeGroup);
+                                trackSections.push(trackLine);
+                            }
 
                             const flowLine = L.polyline(fullCurvedPath, {
                                 color: color,
                                 weight: dynamicWeight,
-                                opacity: animateRoutes ? 1 : 0.6,
+                                opacity: animateRoutes ? 1 : 0.7,
                                 className: animateRoutes ? `flight-path-flow ${className}` : '',
                                 interactive: false,
                                 lineCap: 'round',
