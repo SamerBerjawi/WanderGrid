@@ -572,8 +572,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 const isLand = ['Car Rental', 'Personal Car', 'Bus', 'Train'].includes(t.mode);
                 const isSea = ['Cruise', 'Ferry'].includes(t.mode);
 
-                if (isFlight && !showFlightRoutes) return;
-                if (!isFlight && !showLandSeaRoutes) return;
+                const shouldRenderRoute = (isFlight && showFlightRoutes) || (!isFlight && showLandSeaRoutes);
 
                 const p1Key = `${t.originLat.toFixed(3)},${t.originLng.toFixed(3)}`;
                 const p2Key = `${t.destLat.toFixed(3)},${t.destLng.toFixed(3)}`;
@@ -618,101 +617,104 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                 ? [59, 130, 246] 
                                 : fallbackRGB));
 
-                hitPaths.push({
-                    path: fullPath,
-                    routeKey: uniqueRouteKey,
-                    tripId: trip.id,
-                    tripName: trip.name,
-                    origin: t.origin,
-                    destination: t.destination,
-                    provider: t.provider || (isFlight ? 'Flight' : t.mode),
-                    identifier: t.identifier || '',
-                    date: t.departureDate,
-                    mode: t.mode || (isFlight ? 'Flight' : 'Transit')
-                });
-
-                if (animateRoutes && fullPath.length > 1) {
-                    const timestamps = fullPath.map((_, idx) => (idx / (fullPath.length - 1)) * 1800);
-                    const cometColor = isFlight
-                        ? (activeAppearance.routeColorMode === 'gradient' 
-                            ? getGeoGradientRGB(t.destLat, t.destLng) 
-                            : modeRGB)
-                        : modeRGB;
-
-                    comets.push({
+                // Process Route Geometries if route channel is active
+                if (shouldRenderRoute) {
+                    hitPaths.push({
                         path: fullPath,
-                        timestamps,
-                        color: [...cometColor, 255],
-                        width: strokeWidth + 2.0
+                        routeKey: uniqueRouteKey,
+                        tripId: trip.id,
+                        tripName: trip.name,
+                        origin: t.origin,
+                        destination: t.destination,
+                        provider: t.provider || (isFlight ? 'Flight' : t.mode),
+                        identifier: t.identifier || '',
+                        date: t.departureDate,
+                        mode: t.mode || (isFlight ? 'Flight' : 'Transit')
                     });
-                }
 
-                const useRegionalGradient = activeAppearance.routeColorMode === 'gradient' && showGradientRoutes;
+                    if (animateRoutes && fullPath.length > 1) {
+                        const timestamps = fullPath.map((_, idx) => (idx / (fullPath.length - 1)) * 1800);
+                        const cometColor = isFlight
+                            ? (activeAppearance.routeColorMode === 'gradient' 
+                                ? getGeoGradientRGB(t.destLat, t.destLng) 
+                                : modeRGB)
+                            : modeRGB;
 
-                if (useRegionalGradient && isFlight && fullPath.length > 2) {
-                    const numSections = 6;
-                    const pointsPerSection = Math.ceil(fullPath.length / numSections);
+                        comets.push({
+                            path: fullPath,
+                            timestamps,
+                            color: [...cometColor, 255],
+                            width: strokeWidth + 2.0
+                        });
+                    }
 
-                    for (let s = 0; s < numSections; s++) {
-                        const startIdx = s * pointsPerSection;
-                        const endIdx = Math.min(fullPath.length - 1, (s + 1) * pointsPerSection);
-                        if (startIdx >= endIdx) break;
+                    const useRegionalGradient = activeAppearance.routeColorMode === 'gradient' && showGradientRoutes;
 
-                        const sectionPoints = fullPath.slice(startIdx, endIdx + 1);
-                        const midPt = sectionPoints[Math.floor(sectionPoints.length / 2)];
-                        const sectionRGB = getGeoGradientRGB(midPt[1], midPt[0]);
+                    if (useRegionalGradient && isFlight && fullPath.length > 2) {
+                        const numSections = 6;
+                        const pointsPerSection = Math.ceil(fullPath.length / numSections);
 
+                        for (let s = 0; s < numSections; s++) {
+                            const startIdx = s * pointsPerSection;
+                            const endIdx = Math.min(fullPath.length - 1, (s + 1) * pointsPerSection);
+                            if (startIdx >= endIdx) break;
+
+                            const sectionPoints = fullPath.slice(startIdx, endIdx + 1);
+                            const midPt = sectionPoints[Math.floor(sectionPoints.length / 2)];
+                            const sectionRGB = getGeoGradientRGB(midPt[1], midPt[0]);
+
+                            flowSegs.push({
+                                path: sectionPoints,
+                                color: [...sectionRGB, 235],
+                                rawColor: sectionRGB,
+                                routeKey: uniqueRouteKey,
+                                width: strokeWidth,
+                                tripId: trip.id,
+                                tripName: trip.name,
+                                origin: t.origin,
+                                destination: t.destination,
+                                provider: t.provider || 'Flight',
+                                identifier: t.identifier || '',
+                                date: t.departureDate,
+                                mode: t.mode || 'Flight'
+                            });
+
+                            trackSegs.push({
+                                path: sectionPoints,
+                                color: [...sectionRGB, isElevatedActive ? 60 : 40],
+                                rawColor: sectionRGB,
+                                routeKey: uniqueRouteKey,
+                                width: strokeWidth + 1.2
+                            });
+                        }
+                    } else {
                         flowSegs.push({
-                            path: sectionPoints,
-                            color: [...sectionRGB, 235],
-                            rawColor: sectionRGB,
+                            path: fullPath,
+                            color: [...modeRGB, 225],
+                            rawColor: modeRGB,
                             routeKey: uniqueRouteKey,
                             width: strokeWidth,
                             tripId: trip.id,
                             tripName: trip.name,
                             origin: t.origin,
                             destination: t.destination,
-                            provider: t.provider || 'Flight',
+                            provider: t.provider || t.mode,
                             identifier: t.identifier || '',
                             date: t.departureDate,
-                            mode: t.mode || 'Flight'
+                            mode: t.mode || 'Transit'
                         });
 
                         trackSegs.push({
-                            path: sectionPoints,
-                            color: [...sectionRGB, isElevatedActive ? 60 : 40],
-                            rawColor: sectionRGB,
+                            path: fullPath,
+                            color: [...modeRGB, 40],
+                            rawColor: modeRGB,
                             routeKey: uniqueRouteKey,
                             width: strokeWidth + 1.2
                         });
                     }
-                } else {
-                    flowSegs.push({
-                        path: fullPath,
-                        color: [...modeRGB, 225],
-                        rawColor: modeRGB,
-                        routeKey: uniqueRouteKey,
-                        width: strokeWidth,
-                        tripId: trip.id,
-                        tripName: trip.name,
-                        origin: t.origin,
-                        destination: t.destination,
-                        provider: t.provider || t.mode,
-                        identifier: t.identifier || '',
-                        date: t.departureDate,
-                        mode: t.mode || 'Transit'
-                    });
-
-                    trackSegs.push({
-                        path: fullPath,
-                        color: [...modeRGB, 40],
-                        rawColor: modeRGB,
-                        routeKey: uniqueRouteKey,
-                        width: strokeWidth + 1.2
-                    });
                 }
 
-                // Airport Sizing
+                // Airport Sizing (Independent of route line visibility)
                 const baseAirportRadius = activeAppearance.airportSize === 'off' 
                     ? 0 
                     : activeAppearance.airportSize === 'small' 
@@ -730,7 +732,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     return baseAirportRadius;
                 };
 
-                // Airport Hubs & Detailed Runways
+                const useRegionalGradient = activeAppearance.routeColorMode === 'gradient' && showGradientRoutes;
+
+                // Airport Hubs & Detailed Runways (Always Processed)
                 const oKey = `${t.originLng.toFixed(3)},${t.originLat.toFixed(3)}`;
                 if (!pointsMap.has(oKey)) {
                     const hubRGB = useRegionalGradient 
@@ -747,7 +751,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         tripId: trip.id
                     });
 
-                    if (activeAppearance.airportDetail === 'detailed' && isFlight && !processedRunwayKeys.has(oKey)) {
+                    if (activeAppearance.airportDetail === 'detailed' && !processedRunwayKeys.has(oKey)) {
                         processedRunwayKeys.add(oKey);
                         runwayGeometries.push(generateAirportRunway(t.origin, t.originLat, t.originLng, 90));
                     }
@@ -769,7 +773,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         tripId: trip.id
                     });
 
-                    if (activeAppearance.airportDetail === 'detailed' && isFlight && !processedRunwayKeys.has(dKey)) {
+                    if (activeAppearance.airportDetail === 'detailed' && !processedRunwayKeys.has(dKey)) {
                         processedRunwayKeys.add(dKey);
                         runwayGeometries.push(generateAirportRunway(t.destination, t.destLat, t.destLng, 270));
                     }
@@ -854,7 +858,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             })
         );
 
-        // 2. Solar Terminator Ultra-Smooth 14-Band Twilight Shading Gradient
+        // 2. Solar Terminator Ultra-Smooth Spherical Twilight Shading
         if (activeAppearance.timeOfDay) {
             const twilightData = getTwilightGradientGeoJSON();
             layerList.push(
@@ -863,10 +867,11 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     data: twilightData,
                     filled: true,
                     stroked: false,
+                    wrapLongitude: true,
                     getFillColor: (f: any) => {
                         const idx = f.properties?.stepIndex ?? 0;
-                        // Smooth progressive alpha shading
-                        const alpha = Math.min(48, 12 + idx * 2.8);
+                        // Smooth progressive alpha shading without any vertical seam cuts
+                        const alpha = Math.min(55, 14 + idx * 4.2);
                         return [2, 6, 23, alpha];
                     },
                     pickable: false,
@@ -901,7 +906,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             );
         }
 
-        // 4. Detailed Airport Runway Markings Layer (Meter-Accurate Layouts)
+        // 4. Detailed Airport Runway Markings Layer (Ground Truth GPS Coordinates)
         if (activeAppearance.airportDetail === 'detailed' && detailedRunways.length > 0) {
             const allStrips: { path: [number, number, number][]; width: number }[] = [];
             const allTaxiways: [number, number, number][][] = [];
@@ -924,14 +929,14 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     getColor: isDark ? [15, 23, 42, 255] : [51, 65, 85, 255],
                     getWidth: (d: any) => d.width || 45,
                     widthUnits: 'meters',
-                    widthMinPixels: 2.5,
-                    widthMaxPixels: 50,
+                    widthMinPixels: 2.0,
+                    widthMaxPixels: 60,
                     capRounded: false,
                     pickable: false
                 })
             );
 
-            // Taxiway Network Lines (Yellow #eab308)
+            // Taxiway Network Lines (Aviation Yellow #eab308)
             if (allTaxiways.length > 0) {
                 layerList.push(
                     new PathLayer({
@@ -939,16 +944,31 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         data: allTaxiways,
                         getPath: (d: any) => d,
                         getColor: [234, 179, 8, 230],
-                        getWidth: 20,
+                        getWidth: 18,
                         widthUnits: 'meters',
-                        widthMinPixels: 1.5,
+                        widthMinPixels: 1.2,
                         widthMaxPixels: 15,
                         pickable: false
                     })
                 );
             }
 
-            // Piano Keys & Centerline White Markings
+            // Runway White Centerline
+            layerList.push(
+                new PathLayer({
+                    id: 'runway-centerline-layer',
+                    data: allStrips,
+                    getPath: (d: any) => d.path,
+                    getColor: [248, 250, 252, 230],
+                    getWidth: 2.5,
+                    widthUnits: 'meters',
+                    widthMinPixels: 1.0,
+                    widthMaxPixels: 5,
+                    pickable: false
+                })
+            );
+
+            // Piano Keys White Markings at thresholds
             if (allThresholds.length > 0) {
                 layerList.push(
                     new PathLayer({
@@ -956,7 +976,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         data: allThresholds,
                         getPath: (d: any) => d,
                         getColor: [255, 255, 255, 240],
-                        getWidth: 4,
+                        getWidth: 3.5,
                         widthUnits: 'meters',
                         widthMinPixels: 1.0,
                         widthMaxPixels: 8,

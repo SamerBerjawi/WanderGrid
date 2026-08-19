@@ -610,12 +610,12 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                 <div className="px-6 py-3 border-b border-white/5">
                     <div className="flex p-1 bg-zinc-950/80 rounded-2xl border border-white/5 gap-1">
                         {[
-                            { id: 'map', label: 'Map', icon: MapIcon },
-                            { id: 'flights', label: 'Flights', icon: Plane },
-                            { id: 'layers', label: 'Layers', icon: Layers },
+                            { id: 'atlas', label: 'Atlas', icon: MapIcon },
+                            { id: 'aviation', label: 'Aviation', icon: Plane },
+                            { id: 'atmosphere', label: 'Atmosphere', icon: Layers },
                             { id: 'filters', label: 'Filters', icon: Filter }
                         ].map((tab) => {
-                            const isSelected = activeSidebarTab === tab.id;
+                            const isSelected = (activeSidebarTab === tab.id) || (activeSidebarTab === 'map' && tab.id === 'atlas') || (activeSidebarTab === 'flights' && tab.id === 'aviation') || (activeSidebarTab === 'layers' && tab.id === 'atmosphere');
                             const IconComponent = tab.icon;
                             return (
                                 <button
@@ -623,7 +623,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                     onClick={() => setActiveSidebarTab(tab.id as any)}
                                     className={`flex-1 py-2 rounded-xl text-xs font-bold tracking-wide transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                                         isSelected
-                                            ? 'bg-zinc-800 text-white shadow-md font-black border border-white/10'
+                                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg font-black border border-white/20'
                                             : 'text-zinc-400 hover:text-zinc-200'
                                     }`}
                                 >
@@ -637,277 +637,277 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
 
                 {/* Sidebar Scrollable Body */}
                 <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar text-white">
-                    {/* TAB 1: MAP */}
-                    {activeSidebarTab === 'map' && (
+                    {/* TAB 1: ATLAS (CARTOGRAPHY & PROJECTION) */}
+                    {(activeSidebarTab === 'atlas' || activeSidebarTab === 'map') && (
                         <div className="space-y-6">
-                            {/* BASEMAP */}
+                            {/* PROJECTION ENGINE */}
+                            <div className="p-4 rounded-3xl bg-gradient-to-b from-white/[0.07] to-white/[0.02] border border-white/10 shadow-xl space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-1.5 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                                            <Compass className="w-4 h-4" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-xs font-black uppercase tracking-wider text-white">Projection Engine</h3>
+                                            <p className="text-[10px] text-zinc-400">Orbital WebGL 3D Globe or 2D Mercator</p>
+                                        </div>
+                                    </div>
+                                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                                        {appearance.projection === 'globe' ? '3D Orbital' : '2D Planar'}
+                                    </span>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2.5 pt-1">
+                                    <button
+                                        onClick={() => handleUpdateAppearance({ ...appearance, projection: 'globe' })}
+                                        className={`p-3 rounded-2xl border text-left transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between h-20 ${
+                                            appearance.projection === 'globe'
+                                                ? 'bg-blue-600/20 border-blue-400 ring-2 ring-blue-500/30 text-white'
+                                                : 'bg-zinc-900/60 border-white/10 text-zinc-400 hover:border-white/20'
+                                        }`}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <span className="material-icons-outlined text-lg text-blue-400">public</span>
+                                            {appearance.projection === 'globe' && <div className="w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_8px_#60a5fa]" />}
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-black text-white">3D Celestial Globe</p>
+                                            <p className="text-[9px] text-zinc-400">True spherical geometry</p>
+                                        </div>
+                                    </button>
+
+                                    <button
+                                        onClick={() => handleUpdateAppearance({ ...appearance, projection: 'flat' })}
+                                        className={`p-3 rounded-2xl border text-left transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between h-20 ${
+                                            appearance.projection === 'flat'
+                                                ? 'bg-blue-600/20 border-blue-400 ring-2 ring-blue-500/30 text-white'
+                                                : 'bg-zinc-900/60 border-white/10 text-zinc-400 hover:border-white/20'
+                                        }`}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <span className="material-icons-outlined text-lg text-indigo-400">map</span>
+                                            {appearance.projection === 'flat' && <div className="w-2 h-2 rounded-full bg-indigo-400 shadow-[0_0_8px_#818cf8]" />}
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-black text-white">2D Mercator Atlas</p>
+                                            <p className="text-[9px] text-zinc-400">High-speed flat navigation</p>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* BASEMAP PALETTE */}
                             <div>
                                 <div className="flex items-center justify-between mb-3">
-                                    <h3 className="text-[11px] font-black text-zinc-400 tracking-wider uppercase">Basemap Style</h3>
+                                    <h3 className="text-[11px] font-black text-zinc-400 tracking-wider uppercase">Cartographic Basemap</h3>
+                                    <span className="text-[10px] font-bold text-zinc-500">6 High-Res Tilesets</span>
                                 </div>
-                                <div className="grid grid-cols-2 gap-3">
+
+                                <div className="grid grid-cols-2 gap-2.5">
                                     {[
-                                        { id: 'default', label: 'Default', bg: '#161a23', icon: 'grid' },
-                                        { id: 'satellite', label: 'Satellite', bg: '#0f2316', icon: 'sat' },
-                                        { id: 'topography', label: 'Topography', bg: '#1f2937', icon: 'topo' },
-                                        { id: 'night', label: 'Dark Midnight', bg: '#090b10', icon: 'night' }
+                                        { id: 'default', label: 'Midnight Obsidian', desc: 'Sleek dark navigation', bg: '#0d1117' },
+                                        { id: 'satellite', label: 'Earth Observation', desc: 'True satellite imagery', bg: '#0c1f17' },
+                                        { id: 'topography', label: 'Topographic Atlas', desc: 'Contours & elevation', bg: '#1c2430' },
+                                        { id: 'hillshade', label: 'Shaded Relief', desc: 'Mountainous terrain', bg: '#231f20' },
+                                        { id: 'ocean', label: 'Ocean Bathymetry', desc: 'Marine topography', bg: '#081c24' },
+                                        { id: 'night', label: 'City Lights Night', desc: 'Urban glow night map', bg: '#05070a' }
                                     ].map(b => (
                                         <button
                                             key={b.id}
                                             onClick={() => handleUpdateAppearance({ ...appearance, basemap: b.id as any })}
-                                            className={`p-2.5 rounded-2xl border transition-all text-center flex flex-col items-center gap-2 cursor-pointer ${
+                                            className={`p-3 rounded-2xl border transition-all text-left flex flex-col justify-between gap-2 cursor-pointer ${
                                                 appearance.basemap === b.id
                                                     ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30'
                                                     : 'border-white/10 bg-zinc-900/60 hover:border-white/20'
                                             }`}
                                         >
-                                            <div className="w-full h-14 rounded-xl border border-white/5 flex items-center justify-center overflow-hidden" style={{ background: b.bg }}>
-                                                {b.id === 'satellite' ? (
-                                                    <svg className="w-full h-full" viewBox="0 0 100 50">
-                                                        <rect width="100" height="50" fill="#1b3022" />
-                                                        <circle cx="80" cy="15" r="25" fill="#2d4a36" />
-                                                        <path d="M15,50 L60,0 L75,0 L30,50 Z" fill="#4a5568" />
-                                                    </svg>
-                                                ) : (
-                                                    <svg className="w-full h-full opacity-60" viewBox="0 0 100 50">
-                                                        <path d="M0,25 L100,25 M30,0 L30,50 M70,0 L70,50" stroke="#384252" strokeWidth="1.5" />
-                                                    </svg>
-                                                )}
+                                            <div className="w-full h-8 rounded-xl border border-white/10 flex items-center px-2.5 justify-between" style={{ background: b.bg }}>
+                                                <span className="text-[10px] font-black text-zinc-300">{b.label.split(' ')[0]}</span>
+                                                <div className="w-2 h-2 rounded-full border border-white/40" />
                                             </div>
-                                            <span className="text-xs font-bold text-zinc-200">{b.label}</span>
+                                            <div>
+                                                <p className="text-xs font-bold text-zinc-100">{b.label}</p>
+                                                <p className="text-[9px] text-zinc-400">{b.desc}</p>
+                                            </div>
                                         </button>
                                     ))}
                                 </div>
                             </div>
 
-                            {/* AIRPORT DETAIL */}
-                            <div>
-                                <h3 className="text-[11px] font-black text-zinc-400 tracking-wider uppercase mb-3">Airport Detail</h3>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <button
-                                        onClick={() => handleUpdateAppearance({ ...appearance, airportDetail: 'standard' })}
-                                        className={`p-2.5 rounded-2xl border transition-all text-center flex flex-col items-center gap-2 cursor-pointer ${
-                                            appearance.airportDetail === 'standard'
-                                                ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30'
-                                                : 'border-white/10 bg-zinc-900/60 hover:border-white/20'
-                                        }`}
-                                    >
-                                        <div className="w-full h-14 rounded-xl bg-zinc-950 border border-white/5 flex items-center justify-center">
-                                            <svg className="w-full h-full" viewBox="0 0 100 50">
-                                                <path d="M35,45 L65,5" stroke="#334155" strokeWidth="14" strokeLinecap="round" />
-                                                <path d="M35,45 L65,5" stroke="#f8fafc" strokeWidth="2" strokeDasharray="5 3" />
-                                            </svg>
-                                        </div>
-                                        <span className="text-xs font-bold text-zinc-200">Standard</span>
-                                    </button>
-
-                                    <button
-                                        onClick={() => handleUpdateAppearance({ ...appearance, airportDetail: 'detailed' })}
-                                        className={`p-2.5 rounded-2xl border transition-all text-center flex flex-col items-center gap-2 cursor-pointer ${
-                                            appearance.airportDetail === 'detailed'
-                                                ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30'
-                                                : 'border-white/10 bg-zinc-900/60 hover:border-white/20'
-                                        }`}
-                                    >
-                                        <div className="w-full h-14 rounded-xl bg-zinc-950 border border-white/5 flex items-center justify-center">
-                                            <svg className="w-full h-full" viewBox="0 0 100 50">
-                                                <path d="M30,48 L70,2" stroke="#1e293b" strokeWidth="18" />
-                                                <path d="M45,50 L85,20 L92,10" fill="none" stroke="#eab308" strokeWidth="2" />
-                                                <path d="M30,48 L70,2" stroke="#f8fafc" strokeWidth="1.5" strokeDasharray="4 2" />
-                                                <line x1="55" y1="18" x2="65" y2="10" stroke="#f8fafc" strokeWidth="2" strokeDasharray="2 1" />
-                                            </svg>
-                                        </div>
-                                        <span className="text-xs font-bold text-zinc-200">Detailed</span>
-                                    </button>
+                            {/* COUNTRY TERRITORIES */}
+                            <div className="p-4 rounded-2xl bg-zinc-900/60 border border-white/10 flex items-center justify-between">
+                                <div>
+                                    <h4 className="text-xs font-bold text-white">Visited Territories</h4>
+                                    <p className="text-[10px] text-zinc-400 mt-0.5">Highlight explored country boundaries</p>
                                 </div>
-                            </div>
-
-                            {/* PROJECTION */}
-                            <div>
-                                <h3 className="text-[11px] font-black text-zinc-400 tracking-wider uppercase mb-3">Projection Engine</h3>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <button
-                                        onClick={() => handleUpdateAppearance({ ...appearance, projection: 'flat' })}
-                                        className={`p-2.5 rounded-2xl border transition-all text-center flex flex-col items-center gap-2 cursor-pointer ${
-                                            appearance.projection === 'flat'
-                                                ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30'
-                                                : 'border-white/10 bg-zinc-900/60 hover:border-white/20'
+                                <button
+                                    type="button"
+                                    onClick={() => setShowCountries(!showCountries)}
+                                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                                        showCountries ? 'bg-amber-600' : 'bg-zinc-700'
+                                    }`}
+                                >
+                                    <span
+                                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                                            showCountries ? 'translate-x-5' : 'translate-x-0'
                                         }`}
-                                    >
-                                        <div className="w-full h-14 rounded-xl bg-zinc-950 border border-white/5 flex items-center justify-center">
-                                            <svg className="w-full h-full" viewBox="0 0 100 50">
-                                                <line x1="15" y1="18" x2="85" y2="18" stroke="#334155" strokeWidth="1" />
-                                                <line x1="15" y1="34" x2="85" y2="34" stroke="#334155" strokeWidth="1" />
-                                                <path d="M20,38 Q50,10 80,38" fill="none" stroke="#38bdf8" strokeWidth="2.5" strokeLinecap="round" />
-                                            </svg>
-                                        </div>
-                                        <span className="text-xs font-bold text-zinc-200">Flat Map</span>
-                                    </button>
-
-                                    <button
-                                        onClick={() => handleUpdateAppearance({ ...appearance, projection: 'globe' })}
-                                        className={`p-2.5 rounded-2xl border transition-all text-center flex flex-col items-center gap-2 cursor-pointer ${
-                                            appearance.projection === 'globe'
-                                                ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30'
-                                                : 'border-white/10 bg-zinc-900/60 hover:border-white/20'
-                                        }`}
-                                    >
-                                        <div className="w-full h-14 rounded-xl bg-zinc-950 border border-white/5 flex items-center justify-center">
-                                            <svg className="w-full h-full" viewBox="0 0 100 50">
-                                                <circle cx="50" cy="25" r="20" fill="none" stroke="#334155" strokeWidth="1.5" />
-                                                <ellipse cx="50" cy="25" rx="10" ry="20" fill="none" stroke="#334155" strokeWidth="1" />
-                                                <path d="M35,28 Q50,12 65,28" fill="none" stroke="#38bdf8" strokeWidth="2.5" strokeLinecap="round" />
-                                            </svg>
-                                        </div>
-                                        <span className="text-xs font-bold text-zinc-200">3D Globe</span>
-                                    </button>
-                                </div>
+                                    />
+                                </button>
                             </div>
                         </div>
                     )}
 
-                    {/* TAB 2: FLIGHTS & ROUTES */}
-                    {activeSidebarTab === 'flights' && (
+                    {/* TAB 2: AVIATION (FLIGHTS, RUNWAYS & ARCS) */}
+                    {(activeSidebarTab === 'aviation' || activeSidebarTab === 'flights') && (
                         <div className="space-y-6">
-                            {/* AIRPORT MARKERS */}
-                            <div className="space-y-3">
-                                <h3 className="text-[11px] font-black text-zinc-400 tracking-wider uppercase">Airports Appearance</h3>
-                                
+                            {/* AERODROME RUNWAY INFRASTRUCTURE */}
+                            <div className="p-4 rounded-3xl bg-gradient-to-b from-white/[0.07] to-white/[0.02] border border-white/10 shadow-xl space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h3 className="text-xs font-black uppercase tracking-wider text-white">Aerodrome Markings</h3>
+                                        <p className="text-[10px] text-zinc-400">Physical runways & taxiway architecture</p>
+                                    </div>
+                                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                                        {appearance.airportDetail === 'detailed' ? 'True Layout' : 'Beacon'}
+                                    </span>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2.5">
+                                    <button
+                                        onClick={() => handleUpdateAppearance({ ...appearance, airportDetail: 'standard' })}
+                                        className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                                            appearance.airportDetail === 'standard'
+                                                ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30 text-white'
+                                                : 'border-white/10 bg-zinc-900/60 text-zinc-400 hover:border-white/20'
+                                        }`}
+                                    >
+                                        <p className="text-xs font-black text-white">Minimal Beacon</p>
+                                        <p className="text-[9px] text-zinc-400 mt-0.5">Clean circular hub nodes</p>
+                                    </button>
+
+                                    <button
+                                        onClick={() => handleUpdateAppearance({ ...appearance, airportDetail: 'detailed' })}
+                                        className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                                            appearance.airportDetail === 'detailed'
+                                                ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30 text-white'
+                                                : 'border-white/10 bg-zinc-900/60 text-zinc-400 hover:border-white/20'
+                                        }`}
+                                    >
+                                        <p className="text-xs font-black text-white">True Runways</p>
+                                        <p className="text-[9px] text-zinc-400 mt-0.5">Exact asphalt & taxiways</p>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* AIRPORT HUB SIZING */}
+                            <div>
+                                <div className="flex items-center justify-between mb-2">
+                                    <h3 className="text-[11px] font-black text-zinc-400 tracking-wider uppercase">Airport Hub Nodes</h3>
+                                    <span className="text-[10px] text-zinc-400 capitalize">{appearance.airportSize} • {appearance.airportMode}</span>
+                                </div>
+
+                                <div className="grid grid-cols-4 gap-1.5 mb-2.5">
+                                    {[
+                                        { id: 'off', label: 'Hidden' },
+                                        { id: 'small', label: 'Micro' },
+                                        { id: 'medium', label: 'Normal' },
+                                        { id: 'large', label: 'Expansive' }
+                                    ].map((sz) => (
+                                        <button
+                                            key={sz.id}
+                                            onClick={() => handleUpdateAppearance({ ...appearance, airportSize: sz.id as any })}
+                                            className={`py-2 rounded-xl text-xs font-bold text-center border transition-all cursor-pointer ${
+                                                appearance.airportSize === sz.id
+                                                    ? 'bg-blue-600 text-white border-blue-400'
+                                                    : 'bg-zinc-900/60 border-white/10 text-zinc-400 hover:text-white'
+                                            }`}
+                                        >
+                                            {sz.label}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button
+                                        onClick={() => handleUpdateAppearance({ ...appearance, airportMode: 'frequency' })}
+                                        className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                                            appearance.airportMode === 'frequency'
+                                                ? 'border-blue-500 bg-blue-500/10 text-blue-300'
+                                                : 'border-white/10 bg-zinc-900/60 text-zinc-400'
+                                        }`}
+                                    >
+                                        Weighted by Traffic
+                                    </button>
+                                    <button
+                                        onClick={() => handleUpdateAppearance({ ...appearance, airportMode: 'uniform' })}
+                                        className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                                            appearance.airportMode === 'uniform'
+                                                ? 'border-blue-500 bg-blue-500/10 text-blue-300'
+                                                : 'border-white/10 bg-zinc-900/60 text-zinc-400'
+                                        }`}
+                                    >
+                                        Uniform Scale
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* ROUTE ARCS STYLING */}
+                            <div className="space-y-4 pt-3 border-t border-white/5">
+                                <h3 className="text-[11px] font-black text-zinc-400 tracking-wider uppercase">Route Presentation</h3>
+
+                                {/* Color Palette */}
                                 <div>
-                                    <span className="text-xs text-zinc-300 font-semibold mb-2 block">Size</span>
-                                    <div className="grid grid-cols-4 gap-2">
+                                    <span className="text-xs text-zinc-300 font-semibold mb-2 block">Color Palette</span>
+                                    <div className="grid grid-cols-3 gap-2">
                                         {[
-                                            { id: 'off', label: 'Off' },
-                                            { id: 'small', label: 'Small' },
-                                            { id: 'medium', label: 'Medium' },
-                                            { id: 'large', label: 'Large' }
-                                        ].map((sz) => (
+                                            { id: 'gradient', label: 'Aurora Gradient', desc: 'Regional spectrum' },
+                                            { id: 'frequency', label: 'Heatmap Density', desc: 'Traffic colored' },
+                                            { id: 'default', label: 'Cobalt Standard', desc: 'Uniform blue' }
+                                        ].map((cl) => (
                                             <button
-                                                key={sz.id}
-                                                onClick={() => handleUpdateAppearance({ ...appearance, airportSize: sz.id as any })}
-                                                className={`py-2.5 rounded-xl border text-center transition-all cursor-pointer ${
-                                                    appearance.airportSize === sz.id
+                                                key={cl.id}
+                                                onClick={() => handleUpdateAppearance({ ...appearance, routeColorMode: cl.id as any })}
+                                                className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                                                    appearance.routeColorMode === cl.id
                                                         ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30'
                                                         : 'border-white/10 bg-zinc-900/60 hover:border-white/20'
                                                 }`}
                                             >
-                                                <span className="text-xs font-bold text-zinc-200">{sz.label}</span>
+                                                <p className="text-xs font-bold text-white">{cl.label}</p>
+                                                <p className="text-[9px] text-zinc-400">{cl.desc}</p>
                                             </button>
                                         ))}
                                     </div>
                                 </div>
 
-                                <div>
-                                    <span className="text-xs text-zinc-300 font-semibold mb-2 block">Mode</span>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <button
-                                            onClick={() => handleUpdateAppearance({ ...appearance, airportMode: 'frequency' })}
-                                            className={`p-2.5 rounded-xl border transition-all text-center cursor-pointer ${
-                                                appearance.airportMode === 'frequency'
-                                                    ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30'
-                                                    : 'border-white/10 bg-zinc-900/60 hover:border-white/20'
-                                            }`}
-                                        >
-                                            <span className="text-xs font-bold text-zinc-200">By frequency</span>
-                                        </button>
-
-                                        <button
-                                            onClick={() => handleUpdateAppearance({ ...appearance, airportMode: 'uniform' })}
-                                            className={`p-2.5 rounded-xl border transition-all text-center cursor-pointer ${
-                                                appearance.airportMode === 'uniform'
-                                                    ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30'
-                                                    : 'border-white/10 bg-zinc-900/60 hover:border-white/20'
-                                            }`}
-                                        >
-                                            <span className="text-xs font-bold text-zinc-200">Uniform</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* ROUTES APPEARANCE */}
-                            <div className="space-y-4 pt-3 border-t border-white/5">
-                                <h3 className="text-[11px] font-black text-zinc-400 tracking-wider uppercase">Routes Appearance</h3>
-
-                                {/* Width */}
-                                <div>
-                                    <span className="text-xs text-zinc-300 font-semibold mb-2 block">Width</span>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <button
-                                            onClick={() => handleUpdateAppearance({ ...appearance, routeWidthMode: 'uniform' })}
-                                            className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
-                                                appearance.routeWidthMode === 'uniform'
-                                                    ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30'
-                                                    : 'border-white/10 bg-zinc-900/60 hover:border-white/20'
-                                            }`}
-                                        >
-                                            <span className="text-xs font-bold text-zinc-200">Uniform</span>
-                                        </button>
-                                        <button
-                                            onClick={() => handleUpdateAppearance({ ...appearance, routeWidthMode: 'frequency' })}
-                                            className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
-                                                appearance.routeWidthMode === 'frequency'
-                                                    ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30'
-                                                    : 'border-white/10 bg-zinc-900/60 hover:border-white/20'
-                                            }`}
-                                        >
-                                            <span className="text-xs font-bold text-zinc-200">By frequency</span>
-                                        </button>
-                                    </div>
-                                </div>
-
                                 {/* Scale */}
                                 <div>
-                                    <span className="text-xs text-zinc-300 font-semibold mb-2 block">Scale</span>
+                                    <span className="text-xs text-zinc-300 font-semibold mb-2 block">Stroke Weight</span>
                                     <div className="grid grid-cols-3 gap-2">
                                         {[
-                                            { id: 'thin', label: 'Thin' },
-                                            { id: 'normal', label: 'Normal' },
-                                            { id: 'thick', label: 'Thick' }
+                                            { id: 'thin', label: 'Fine (1px)' },
+                                            { id: 'normal', label: 'Balanced (2px)' },
+                                            { id: 'thick', label: 'Bold (3.5px)' }
                                         ].map((sc) => (
                                             <button
                                                 key={sc.id}
                                                 onClick={() => handleUpdateAppearance({ ...appearance, routeScale: sc.id as any })}
                                                 className={`py-2 rounded-xl border text-center transition-all cursor-pointer ${
                                                     appearance.routeScale === sc.id
-                                                        ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30'
-                                                        : 'border-white/10 bg-zinc-900/60 hover:border-white/20'
+                                                        ? 'border-blue-500 bg-blue-500/10 text-white font-bold'
+                                                        : 'border-white/10 bg-zinc-900/60 text-zinc-400 hover:border-white/20'
                                                 }`}
                                             >
-                                                <span className="text-xs font-bold text-zinc-200">{sc.label}</span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Color */}
-                                <div>
-                                    <span className="text-xs text-zinc-300 font-semibold mb-2 block">Color Mode</span>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        {[
-                                            { id: 'default', label: 'Default' },
-                                            { id: 'frequency', label: 'Frequency' },
-                                            { id: 'gradient', label: 'Gradient' }
-                                        ].map((cl) => (
-                                            <button
-                                                key={cl.id}
-                                                onClick={() => handleUpdateAppearance({ ...appearance, routeColorMode: cl.id as any })}
-                                                className={`py-2.5 rounded-xl border text-center transition-all cursor-pointer ${
-                                                    appearance.routeColorMode === cl.id
-                                                        ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30'
-                                                        : 'border-white/10 bg-zinc-900/60 hover:border-white/20'
-                                                }`}
-                                            >
-                                                <span className="text-[11px] font-bold text-zinc-200">{cl.label}</span>
+                                                <span className="text-xs">{sc.label}</span>
                                             </button>
                                         ))}
                                     </div>
                                 </div>
                             </div>
 
-                            {/* PRESENTATION CHANNELS */}
-                            <div className="space-y-3 pt-3 border-t border-white/5">
-                                <h3 className="text-[11px] font-black text-zinc-400 tracking-wider uppercase">Active Channels</h3>
+                            {/* ADVANCED ROUTE DYNAMICS */}
+                            <div className="space-y-2.5 pt-3 border-t border-white/5">
+                                <h3 className="text-[11px] font-black text-zinc-400 tracking-wider uppercase">Motion & Dynamics</h3>
 
                                 <div className="grid grid-cols-2 gap-2">
                                     <button
@@ -919,7 +919,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                         }`}
                                     >
                                         <Plane className="w-3.5 h-3.5 text-purple-400" />
-                                        <span className="text-xs font-bold">Flights</span>
+                                        <span className="text-xs font-bold">Flights Only</span>
                                     </button>
 
                                     <button
@@ -931,7 +931,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                         }`}
                                     >
                                         <Zap className="w-3.5 h-3.5 text-amber-400" />
-                                        <span className="text-xs font-bold">Transit</span>
+                                        <span className="text-xs font-bold">Overland Transit</span>
                                     </button>
 
                                     <button
@@ -943,7 +943,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                         }`}
                                     >
                                         <Play className="w-3.5 h-3.5 text-emerald-400" />
-                                        <span className="text-xs font-bold">Comet Flow</span>
+                                        <span className="text-xs font-bold">Comet Flow (60 FPS)</span>
                                     </button>
 
                                     <button
@@ -955,7 +955,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                         }`}
                                     >
                                         <Layers className="w-3.5 h-3.5 text-indigo-400" />
-                                        <span className="text-xs font-bold">Cluster</span>
+                                        <span className="text-xs font-bold">Cluster Hubs</span>
                                     </button>
                                 </div>
 
@@ -973,36 +973,36 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                 >
                                     <Radio className="w-4 h-4 text-rose-400 shrink-0" />
                                     <div className="min-w-0 flex-1 leading-none">
-                                        <p className="text-xs font-bold">Realistic Land Trails (OSRM)</p>
-                                        <p className="text-[9px] text-zinc-400 mt-1">Trace routes over actual roads</p>
+                                        <p className="text-xs font-bold">Highway Route Tracing (OSRM)</p>
+                                        <p className="text-[9px] text-zinc-400 mt-1">Conform overland journeys to real roads</p>
                                     </div>
                                 </button>
                             </div>
                         </div>
                     )}
 
-                    {/* TAB 3: LAYERS (ENVIRONMENT & SCRATCH) */}
-                    {activeSidebarTab === 'layers' && (
+                    {/* TAB 3: ATMOSPHERE (SOLAR & WEATHER TELEMETRY) */}
+                    {(activeSidebarTab === 'atmosphere' || activeSidebarTab === 'layers') && (
                         <div className="space-y-6">
                             <div>
                                 <h3 className="text-[11px] font-black text-zinc-400 tracking-wider uppercase mb-3">
-                                    Environment Overlays
+                                    Atmospheric Overlays
                                 </h3>
 
                                 <div className="space-y-3">
                                     {/* Time of Day */}
-                                    <div className="p-3.5 rounded-2xl bg-zinc-900/60 border border-white/10 space-y-2">
+                                    <div className="p-4 rounded-3xl bg-zinc-900/60 border border-white/10 space-y-2">
                                         <div className="flex items-center justify-between">
                                             <div>
                                                 <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
-                                                    <span>Time of Day</span>
+                                                    <span>Solar Twilight Shading</span>
                                                     {appearance.timeOfDay && (
-                                                        <span className="px-1.5 py-0.5 text-[9px] font-black rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                                                            Twilight Gradient
+                                                        <span className="px-2 py-0.5 text-[9px] font-black rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                                                            14-Band Penumbra
                                                         </span>
                                                     )}
                                                 </h4>
-                                                <p className="text-[10px] text-zinc-400 mt-0.5">Atmospheric multi-band solar penumbra</p>
+                                                <p className="text-[10px] text-zinc-400 mt-0.5">Atmospheric multi-band twilight gradient</p>
                                             </div>
                                             <button
                                                 type="button"
@@ -1021,19 +1021,19 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                     </div>
 
                                     {/* Rain Radar */}
-                                    <div className="p-3.5 rounded-2xl bg-zinc-900/60 border border-white/10 space-y-3">
+                                    <div className="p-4 rounded-3xl bg-zinc-900/60 border border-white/10 space-y-3">
                                         <div className="flex items-center justify-between">
                                             <div>
                                                 <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
-                                                    <span>Rain Radar</span>
+                                                    <span>Doppler Rain Radar</span>
                                                     {appearance.rainRadar && (
-                                                        <span className="flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-black rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                                        <span className="flex items-center gap-1 px-2 py-0.5 text-[9px] font-black rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                                                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                                            Live
+                                                            Live Stream
                                                         </span>
                                                     )}
                                                 </h4>
-                                                <p className="text-[10px] text-zinc-400 mt-0.5">RainViewer global precipitation raster</p>
+                                                <p className="text-[10px] text-zinc-400 mt-0.5">Global precipitation radar telemetry</p>
                                             </div>
                                             <button
                                                 type="button"
@@ -1056,7 +1056,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                                 {/* Opacity Slider */}
                                                 <div>
                                                     <div className="flex items-center justify-between text-[10px] font-bold text-zinc-300 mb-1">
-                                                        <span>Radar Intensity / Opacity</span>
+                                                        <span>Radar Intensity</span>
                                                         <span className="text-blue-400">{Math.round((appearance.rainRadarOpacity || 0.85) * 100)}%</span>
                                                     </div>
                                                     <input 
@@ -1072,7 +1072,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
 
                                                 {/* Radar Color Palette */}
                                                 <div>
-                                                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1.5">Color Palette</span>
+                                                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1.5">Radar Palette</span>
                                                     <div className="grid grid-cols-3 gap-1.5">
                                                         {[
                                                             { id: 2, label: 'Universal' },
@@ -1084,7 +1084,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                                                 onClick={() => handleUpdateAppearance({ ...appearance, rainRadarColorScheme: p.id })}
                                                                 className={`py-1.5 px-1 rounded-lg text-[10px] font-bold text-center border transition-all cursor-pointer ${
                                                                     (appearance.rainRadarColorScheme || 2) === p.id
-                                                                        ? 'bg-blue-600 text-white border-blue-400/40 shadow-sm'
+                                                                        ? 'bg-blue-600 text-white border-blue-400 shadow-sm'
                                                                         : 'bg-zinc-800/80 border-white/5 text-zinc-400 hover:text-white'
                                                                 }`}
                                                             >
@@ -1098,7 +1098,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                     </div>
 
                                     {/* Visited Lands / Scratch Layer */}
-                                    <div className="flex items-center justify-between p-3.5 rounded-2xl bg-zinc-900/60 border border-white/10">
+                                    <div className="p-4 rounded-3xl bg-zinc-900/60 border border-white/10 flex items-center justify-between">
                                         <div>
                                             <h4 className="text-xs font-bold text-white">Visited Lands (Scratch)</h4>
                                             <p className="text-[10px] text-zinc-400 mt-0.5">Highlight explored countries</p>
