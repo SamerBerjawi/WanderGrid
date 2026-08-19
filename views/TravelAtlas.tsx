@@ -3,11 +3,11 @@ import { createPortal } from 'react-dom';
 import { ViewState, VisitedItem, Trip, CountryResidenceStatus } from '../types';
 import { dataService } from '../services/mockDb';
 import { getFlagEmoji, getRegion } from '../services/geoData';
-import { resolvePlaceName, getCoordinates } from '../services/geocoding';
+import { resolvePlaceName, getCoordinates, cleanCityName } from '../services/geocoding';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Compass, MapPin, Globe, Calendar, Plus, Trash2, Edit3, 
-  Map, RefreshCw, Layers, CheckCircle2, AlertTriangle, Info,
+  Map as MapIcon, RefreshCw, Layers, CheckCircle2, AlertTriangle, Info,
   Bookmark, Shield, ChevronRight, X, Sparkles, Filter, Check,
   Star, Heart, Plane
 } from 'lucide-react';
@@ -144,31 +144,161 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
     }).sort((a,b) => a.name.localeCompare(b.name));
   }, [wishlistCountriesList, searchQuery, regionFilter]);
 
+  // Dynamically combine manual city registry entries with live trips, flights, and road trips
+  const allTrackedCities = useMemo(() => {
+    const cityMap = new Map<string, VisitedItem>();
+
+    // 1. Manually registered cities from Visited collection
+    visitedItems.filter(item => item.type === 'city').forEach(item => {
+      const canonicalCity = cleanCityName(item.name, item.countryCode);
+      const code = (item.countryCode || 'XX').toUpperCase();
+      const key = `${canonicalCity.toLowerCase()}_${code.toLowerCase()}`;
+      cityMap.set(key, {
+        ...item,
+        name: canonicalCity
+      });
+    });
+
+    // 2. Cities from active/completed trips
+    const pastTrips = trips.filter(t => t.status !== 'Planning' && t.status !== 'Cancelled');
+    pastTrips.forEach(t => {
+      if (t.location) {
+        const canonicalCity = cleanCityName(t.location, t.coordinates?.countryCode);
+        const code = (t.coordinates?.countryCode || 'XX').toUpperCase();
+        const key = `${canonicalCity.toLowerCase()}_${code.toLowerCase()}`;
+        if (!cityMap.has(key)) {
+          cityMap.set(key, {
+            id: `trip_city_${key}`,
+            type: 'city',
+            code: code,
+            name: canonicalCity,
+            countryCode: code,
+            countryName: t.coordinates?.country || 'Imported',
+            visitDate: t.endDate || t.startDate,
+            lat: t.coordinates?.lat,
+            lng: t.coordinates?.lng,
+            notes: `Trip: ${t.name || t.location}`,
+            isManual: false
+          });
+        }
+      }
+
+      // Waypoints inside Route Manager
+      t.locations?.forEach(l => {
+        if (l.name) {
+          const canonicalCity = cleanCityName(l.name);
+          const key = `${canonicalCity.toLowerCase()}_xx`;
+          if (!cityMap.has(key)) {
+            cityMap.set(key, {
+              id: `trip_loc_${l.id || key}`,
+              type: 'city',
+              code: 'XX',
+              name: canonicalCity,
+              countryCode: 'XX',
+              countryName: 'Trip Stop',
+              visitDate: t.endDate,
+              lat: l.coordinates?.lat,
+              lng: l.coordinates?.lng,
+              notes: `Stop in ${t.name}`,
+              isManual: false
+            });
+          }
+        }
+      });
+    });
+
+    // 3. Cities from land/road trips
+    roadTrips.filter(r => r.status !== 'Cancelled').forEach(r => {
+      if (r.origin) {
+        const canonicalCity = cleanCityName(r.origin, r.countryCode);
+        const key = `${canonicalCity.toLowerCase()}_xx`;
+        if (!cityMap.has(key)) {
+          cityMap.set(key, {
+            id: `rt_origin_${key}`,
+            type: 'city',
+            code: 'XX',
+            name: canonicalCity,
+            countryCode: 'XX',
+            countryName: 'Road Trip Origin',
+            visitDate: r.departureDate || r.date,
+            lat: r.originLat || r.lat,
+            lng: r.originLng || r.lng,
+            notes: `Road trip: ${r.name || r.origin}`,
+            isManual: false
+          });
+        }
+      }
+      if (r.destination) {
+        const canonicalCity = cleanCityName(r.destination, r.countryCode);
+        const key = `${canonicalCity.toLowerCase()}_xx`;
+        if (!cityMap.has(key)) {
+          cityMap.set(key, {
+            id: `rt_dest_${key}`,
+            type: 'city',
+            code: 'XX',
+            name: canonicalCity,
+            countryCode: 'XX',
+            countryName: 'Road Trip Dest',
+            visitDate: r.arrivalDate || r.date,
+            lat: r.destLat || r.lat,
+            lng: r.destLng || r.lng,
+            notes: `Road trip: ${r.name || r.destination}`,
+            isManual: false
+          });
+        }
+      }
+    });
+
+    // 4. Cities from flights
+    flights.filter(f => f.status !== 'Cancelled').forEach(f => {
+      if (f.destCity || f.destination) {
+        const canonicalCity = cleanCityName(f.destCity || f.destination, f.destCountryCode);
+        const code = (f.destCountryCode || 'XX').toUpperCase();
+        const key = `${canonicalCity.toLowerCase()}_${code.toLowerCase()}`;
+        if (!cityMap.has(key)) {
+          cityMap.set(key, {
+            id: `flight_dest_${key}`,
+            type: 'city',
+            code: code,
+            name: canonicalCity,
+            countryCode: code,
+            countryName: f.destCountry || 'Flight Destination',
+            visitDate: f.arrivalDate || f.date,
+            lat: f.destLat,
+            lng: f.destLng,
+            notes: `Flight to ${f.destination}`,
+            isManual: false
+          });
+        }
+      }
+    });
+
+    return Array.from(cityMap.values());
+  }, [visitedItems, trips, roadTrips, flights]);
+
   const filteredCities = useMemo(() => {
-    return visitedItems.filter(item => {
-      if (item.type !== 'city') return false;
+    return allTrackedCities.filter(item => {
       const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || (item.countryName || '').toLowerCase().includes(searchQuery.toLowerCase());
       const region = item.countryCode ? getRegion(item.countryCode) : 'Unknown';
       const matchesRegion = regionFilter === 'All' || region === regionFilter;
       return matchesSearch && matchesRegion;
     }).sort((a,b) => a.name.localeCompare(b.name));
-  }, [visitedItems, searchQuery, regionFilter]);
+  }, [allTrackedCities, searchQuery, regionFilter]);
 
   // Statistics
   const stats = useMemo(() => {
     const visited = visitedItems.filter(item => item.type === 'country' && item.residenceStatus !== 'wishlist' && !item.isTransit && item.residenceStatus !== 'layover');
     const wishlist = visitedItems.filter(item => item.type === 'country' && item.residenceStatus === 'wishlist');
     const transit = visitedItems.filter(item => item.type === 'country' && (item.isTransit || item.residenceStatus === 'layover'));
-    const cities = visitedItems.filter(item => item.type === 'city');
     
     return {
       totalCountries: visited.length,
       wishlistCount: wishlist.length,
       transitCount: transit.length,
-      totalCities: cities.length,
+      totalCities: allTrackedCities.length,
       worldPercentage: Math.max(0.1, Math.min(100, Math.round((visited.length / 198) * 1000) / 10))
     };
-  }, [visitedItems]);
+  }, [visitedItems, allTrackedCities]);
 
   // Launch Add/Edit Dialog
   const handleOpenAdd = (type: 'country' | 'layover' | 'wishlist' | 'city') => {
@@ -342,11 +472,59 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
     setScanActive(true);
     try {
       // Countries & Cities already logged in current visitedItems set to ignore duplicate suggestions
-      const existingCountryCodes = new Set(visitedItems.filter(item => item.type === 'country').map(item => item.code.toUpperCase()));
-      const existingCityNames = new Set(visitedItems.filter(item => item.type === 'city').map(item => item.name.toLowerCase()));
+      const existingCountryCodes = new Set(
+        visitedItems.filter(item => item.type === 'country').map(item => item.code.toUpperCase())
+      );
+      const existingCityKeys = new Set(
+        visitedItems.filter(item => item.type === 'city').map(item => `${cleanCityName(item.name, item.countryCode).toLowerCase()}_${(item.countryCode || '').toLowerCase()}`)
+      );
+      const existingCityNames = new Set(
+        visitedItems.filter(item => item.type === 'city').map(item => cleanCityName(item.name, item.countryCode).toLowerCase())
+      );
 
       const foundCountries: Record<string, { code: string; name: string; source: 'flight' | 'trip' | 'layover' | 'roadtrip'; date: string }> = {};
       const foundCities: Record<string, { name: string; countryCode: string; countryName: string; source: 'flight' | 'trip' | 'layover' | 'roadtrip'; date: string; lat?: number; lng?: number }> = {};
+
+      const registerCandidate = async (
+        rawLocation: string | undefined, 
+        source: 'flight' | 'trip' | 'layover' | 'roadtrip', 
+        dateStr?: string, 
+        latFallback?: number, 
+        lngFallback?: number
+      ) => {
+        if (!rawLocation || typeof rawLocation !== 'string' || !rawLocation.trim()) return;
+        const res = await resolvePlaceName(rawLocation.trim());
+        if (res && res.city) {
+          const countryCode = (res.countryCode || 'XX').toUpperCase();
+          const canonicalCity = cleanCityName(res.city, countryCode);
+          const countryName = res.country || 'Unknown';
+          const cityKey = `${canonicalCity.toLowerCase()}_${countryCode.toLowerCase()}`;
+          const cityNameLower = canonicalCity.toLowerCase();
+
+          // Register country if unrecorded
+          if (countryCode !== 'XX' && !existingCountryCodes.has(countryCode) && !foundCountries[countryCode]) {
+            foundCountries[countryCode] = {
+              code: countryCode,
+              name: countryName,
+              source: source,
+              date: dateStr || new Date().toISOString()
+            };
+          }
+
+          // Register city if unrecorded
+          if (!existingCityKeys.has(cityKey) && !existingCityNames.has(cityNameLower) && !foundCities[cityKey]) {
+            foundCities[cityKey] = {
+              name: canonicalCity,
+              countryCode: countryCode,
+              countryName: countryName,
+              source: source,
+              date: dateStr || new Date().toISOString(),
+              lat: latFallback || res.lat,
+              lng: lngFallback || res.lng
+            };
+          }
+        }
+      };
 
       // 1. Process flight log data
       for (const f of flights) {
@@ -354,145 +532,43 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
         
         // Origin as potential layover or start
         if (f.origin && !f.layover) {
-          const res = await resolvePlaceName(f.origin);
-          if (res && res.countryCode) {
-            const code = res.countryCode.toUpperCase();
-            if (!existingCountryCodes.has(code)) {
-              foundCountries[code] = { code, name: res.country, source: 'flight', date: f.departureDate || f.date || new Date().toISOString() };
-            }
-            const cityName = res.city || f.originCity || f.origin;
-            if (!existingCityNames.has(cityName.toLowerCase())) {
-              foundCities[cityName.toLowerCase()] = {
-                name: cityName,
-                countryCode: code,
-                countryName: res.country,
-                source: 'flight',
-                date: f.departureDate || f.date || new Date().toISOString(),
-                lat: f.originLat,
-                lng: f.originLng
-              };
-            }
-          }
+          await registerCandidate(f.origin, 'flight', f.departureDate || f.date, f.originLat, f.originLng);
         }
 
-        // Destination as visited
+        // Destination as visited or layover
         if (f.destination) {
-          const res = await resolvePlaceName(f.destination);
-          if (res && res.countryCode) {
-            const code = res.countryCode.toUpperCase();
-            if (!existingCountryCodes.has(code)) {
-              foundCountries[code] = { code, name: res.country, source: 'flight', date: f.arrivalDate || f.date || new Date().toISOString() };
-            }
-            const cityName = res.city || f.destCity || f.destination;
-            if (!existingCityNames.has(cityName.toLowerCase())) {
-              foundCities[cityName.toLowerCase()] = {
-                name: cityName,
-                countryCode: code,
-                countryName: res.country,
-                source: f.isLayover ? 'layover' : 'flight',
-                date: f.arrivalDate || f.date || new Date().toISOString(),
-                lat: f.destLat,
-                lng: f.destLng
-              };
-            }
-          }
+          await registerCandidate(f.destination, f.isLayover ? 'layover' : 'flight', f.arrivalDate || f.date, f.destLat, f.destLng);
         }
       }
 
-      // 1.5. Process road trip / land travel log data
+      // 2. Process road trip / land travel log data
       for (const r of roadTrips) {
         if (!r || r.status === 'Cancelled') continue;
         
-        // Origin
         if (r.origin) {
-          const res = await resolvePlaceName(r.origin);
-          if (res && res.countryCode) {
-            const code = res.countryCode.toUpperCase();
-            if (!existingCountryCodes.has(code)) {
-              foundCountries[code] = { code, name: res.country, source: 'roadtrip', date: r.departureDate || r.date || new Date().toISOString() };
-            }
-            const cityName = res.city || r.originCity || r.origin;
-            if (!existingCityNames.has(cityName.toLowerCase())) {
-              foundCities[cityName.toLowerCase()] = {
-                name: cityName,
-                countryCode: code,
-                countryName: res.country,
-                source: 'roadtrip',
-                date: r.departureDate || r.date || new Date().toISOString(),
-                lat: r.originLat || r.lat,
-                lng: r.originLng || r.lng
-              };
-            }
-          }
+          await registerCandidate(r.origin, 'roadtrip', r.departureDate || r.date, r.originLat || r.lat, r.originLng || r.lng);
         }
 
-        // Destination
         if (r.destination) {
-          const res = await resolvePlaceName(r.destination);
-          if (res && res.countryCode) {
-            const code = res.countryCode.toUpperCase();
-            if (!existingCountryCodes.has(code)) {
-              foundCountries[code] = { code, name: res.country, source: 'roadtrip', date: r.arrivalDate || r.date || new Date().toISOString() };
-            }
-            const cityName = res.city || r.destCity || r.destination;
-            if (!existingCityNames.has(cityName.toLowerCase())) {
-              foundCities[cityName.toLowerCase()] = {
-                name: cityName,
-                countryCode: code,
-                countryName: res.country,
-                source: 'roadtrip',
-                date: r.arrivalDate || r.date || new Date().toISOString(),
-                lat: r.destLat || r.lat,
-                lng: r.destLng || r.lng
-              };
-            }
-          }
+          await registerCandidate(r.destination, 'roadtrip', r.arrivalDate || r.date, r.destLat || r.lat, r.destLng || r.lng);
         }
       }
 
-      // 2. Process custom trips / planners (Accommodations / georoutes)
+      // 3. Process custom trips / planners (Accommodations / georoutes / stops)
       const pastTrips = trips.filter(t => t.status !== 'Planning' && t.status !== 'Cancelled');
       for (const t of pastTrips) {
         if (t.location) {
-          const res = await resolvePlaceName(t.location);
-          if (res && res.countryCode) {
-            const code = res.countryCode.toUpperCase();
-            if (!existingCountryCodes.has(code)) {
-              foundCountries[code] = { code, name: res.country, source: 'trip', date: t.endDate };
-            }
-            const cityName = res.city || t.location;
-            if (!existingCityNames.has(cityName.toLowerCase())) {
-              foundCities[cityName.toLowerCase()] = {
-                name: cityName,
-                countryCode: code,
-                countryName: res.country,
-                source: 'trip',
-                date: t.endDate,
-                lat: t.coordinates?.lat,
-                lng: t.coordinates?.lng
-              };
-            }
-          }
+          await registerCandidate(t.location, 'trip', t.endDate, t.coordinates?.lat, t.coordinates?.lng);
         }
 
         // Stops / waypoints inside Route Manager
-        t.locations?.forEach(l => {
-          if (l.name) {
-            // Treat as city candidate
-            const cleanName = l.name.toLowerCase();
-            if (!existingCityNames.has(cleanName)) {
-              foundCities[cleanName] = {
-                name: l.name,
-                countryCode: 'XX', // Will resolve country code on save, or place temporary 
-                countryName: 'Imported',
-                source: 'trip',
-                date: t.endDate,
-                lat: l.coordinates?.lat,
-                lng: l.coordinates?.lng
-              };
+        if (t.locations && Array.isArray(t.locations)) {
+          for (const l of t.locations) {
+            if (l.name) {
+              await registerCandidate(l.name, 'trip', t.endDate, l.coordinates?.lat, l.coordinates?.lng);
             }
           }
-        });
+        }
       }
 
       const countriesList = Object.values(foundCountries);

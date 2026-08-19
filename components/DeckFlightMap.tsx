@@ -3,7 +3,7 @@ import { DeckGL } from '@deck.gl/react';
 import { MapView, _GlobeView } from '@deck.gl/core';
 import { ScatterplotLayer, GeoJsonLayer, PathLayer, BitmapLayer, TextLayer } from '@deck.gl/layers';
 import { TileLayer, TripsLayer } from '@deck.gl/geo-layers';
-import { Maximize2, Scan, Globe, ArrowLeft, ArrowRight, X, Plane, Clock, Calendar, ChevronRight } from 'lucide-react';
+import { Maximize2, Scan, Globe, ArrowLeft, ArrowRight, X, Plane, Clock, Calendar, ChevronRight, Train, Ship, Car } from 'lucide-react';
 import { Trip, CountryResidenceStatus, PredefinedMapMode } from '../types';
 import { getCoordinatesSync } from '../services/geocoding';
 import { 
@@ -17,6 +17,7 @@ import { getLatestRainRadarMetadata, RainRadarMetadata } from '../services/rainV
 import { generateAirportRunway, isKnownAirport, RunwayGeometry } from '../services/airportRunways';
 import { buildRouteCorridors, RouteCorridor, getApproxLocalTime } from '../services/routeCorridor';
 import { getFlagEmoji, getRegion } from '../services/geoData';
+import { fetchMultiModalRoute, getCachedMultiModalRoute } from '../services/multiModalRouting';
 
 // --- Enhanced Country Matching Helper for Scratch Map & Overlays ---
 let geoJsonMemoryCache: any = null;
@@ -614,20 +615,36 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         setSelectedCorridor(null);
     };
 
-    // Request OSRM geometries for land trips
+    // Request Multi-Modal geometries for routes (Highways, Rail, Maritime)
     useEffect(() => {
-        if (!showRoadTracing) return;
+        const isTracingEnabled = showRoadTracing || activeAppearance.routeTracing !== false;
+        if (!isTracingEnabled) return;
+
         enrichedTrips.forEach(trip => {
             trip.transports?.forEach(t => {
-                const isLand = ['Car Rental', 'Personal Car', 'Bus', 'Train'].includes(t.mode || '');
-                if (isLand && t.originLat && t.originLng && t.destLat && t.destLng) {
-                    fetchOsrmGeometry(t.originLat, t.originLng, t.destLat, t.destLng, () => {
-                        setOsrmVersion(v => v + 1);
-                    });
+                if (t.originLat && t.originLng && t.destLat && t.destLng) {
+                    const mode = (t.mode || '').toLowerCase();
+                    const isTrain = mode.includes('train') || mode.includes('rail');
+                    const isRoad = mode.includes('car') || mode.includes('drive') || mode.includes('bus') || mode.includes('road') || mode.includes('taxi');
+
+                    if (isTrain || isRoad) {
+                        void fetchMultiModalRoute(
+                            t.mode,
+                            t.originLat,
+                            t.originLng,
+                            t.destLat,
+                            t.destLng,
+                            () => setOsrmVersion(v => v + 1)
+                        );
+                    }
                 }
             });
         });
-    }, [enrichedTrips, showRoadTracing]);
+    }, [
+        enrichedTrips, 
+        showRoadTracing, 
+        activeAppearance.routeTracing
+    ]);
 
     // Focus camera on transport coordinates
     useEffect(() => {
@@ -768,8 +785,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 if (!t.originLat || !t.originLng || !t.destLat || !t.destLng) return;
 
                 const isFlight = !t.mode || t.mode === 'Flight';
-                const isLand = ['Car Rental', 'Personal Car', 'Bus', 'Train'].includes(t.mode);
-                const isSea = ['Cruise', 'Ferry'].includes(t.mode);
+                const isTrain = (t.mode || '').toLowerCase().includes('train') || (t.mode || '').toLowerCase().includes('rail');
+                const isCarBus = ['Car Rental', 'Personal Car', 'Bus', 'Road Trip', 'Driving', 'Car', 'Taxi'].some(m => (t.mode || '').toLowerCase().includes(m.toLowerCase()));
+                const isSea = ['Cruise', 'Ferry', 'Boat', 'Ship'].some(m => (t.mode || '').toLowerCase().includes(m.toLowerCase()));
 
                 const shouldRenderRoute = (isFlight && showFlightRoutes) || (!isFlight && showLandSeaRoutes);
 
@@ -785,17 +803,25 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     : 1.2;
                 const strokeWidth = baseStroke * scaleMultiplier;
 
-                // Check for OSRM road geometry
-                const osrmKey = `${t.originLat.toFixed(3)},${t.originLng.toFixed(3)}|${t.destLat.toFixed(3)},${t.destLng.toFixed(3)}`;
-                const cachedRoadCoords = showRoadTracing && isLand ? osrmCache.get(osrmKey) : null;
+                // Check for high-fidelity multi-modal route geometry (Rail & Highway only)
+                const isTracingEnabled = showRoadTracing || activeAppearance.routeTracing !== false;
+                const isTrackableOverland = isTrain || isCarBus;
+                const cachedMultiModalCoords = (isTrackableOverland && isTracingEnabled) ? getCachedMultiModalRoute(
+                    t.mode,
+                    t.originLat,
+                    t.originLng,
+                    t.destLat,
+                    t.destLng
+                ) : null;
 
                 // Coordinates
                 let fullPath: [number, number, number][] = [];
-                if (isFlight) {
+                if (cachedMultiModalCoords && cachedMultiModalCoords.length > 0) {
+                    fullPath = cachedMultiModalCoords;
+                } else if (isFlight) {
                     fullPath = getGeodesicPoints(t.originLat, t.originLng, t.destLat, t.destLng, isElevatedActive, effectiveProjection === 'globe');
-                } else if (cachedRoadCoords && cachedRoadCoords.length > 0) {
-                    fullPath = cachedRoadCoords.map(c => [c[0], c[1], 0]);
                 } else {
+                    // Maritime, Cruises, Ferries & Standard Land
                     fullPath = [[t.originLng, t.originLat, 0]];
                     if (t.waypoints) {
                         t.waypoints.forEach((w: any) => {
@@ -805,16 +831,18 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     fullPath.push([t.destLng, t.destLat, 0]);
                 }
 
-                // Determine Color
-                let modeRGB: [number, number, number] = isLand 
-                    ? [245, 158, 11] 
-                    : isSea 
-                        ? [6, 182, 212] 
-                        : (activeAppearance.routeColorMode === 'frequency' 
-                            ? getFrequencyRGB(freq)
-                            : (activeAppearance.routeColorMode === 'default' 
-                                ? [59, 130, 246] 
-                                : fallbackRGB));
+                // Determine Color (Distinct Palette per Modality)
+                let modeRGB: [number, number, number] = isTrain
+                    ? [168, 85, 247] // Vibrant High-Speed Rail Electric Purple / Indigo
+                    : isCarBus
+                        ? [245, 158, 11] // Warm Amber / Roadway Gold
+                        : isSea 
+                            ? [6, 182, 212] // Sea Teal / Maritime Cyan
+                            : (activeAppearance.routeColorMode === 'frequency' 
+                                ? getFrequencyRGB(freq)
+                                : (activeAppearance.routeColorMode === 'default' 
+                                    ? [59, 130, 246] 
+                                    : fallbackRGB));
 
                 // Process Route Geometries if route channel is active
                 if (shouldRenderRoute) {
@@ -1756,7 +1784,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 pickingRadius={10}
                 parameters={{
                     clearColor: isDark ? [0.0196, 0.0196, 0.0196, 1] : [0.98, 0.98, 0.98, 1]
-                }}
+                } as any}
                 getCursor={({ isHovering, isDragging }) => (isDragging ? 'grabbing' : isHovering ? 'pointer' : 'grab')}
             />
 
@@ -2071,41 +2099,70 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     </div>
 
                     {/* Operational Corridor Telemetry */}
-                    <div className="px-4 pb-4 space-y-2">
-                        <div className="grid grid-cols-2 gap-2 text-center">
-                            <div className="p-2.5 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5">
-                                <span className="text-[9px] text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold tracking-wider block">Total Flights</span>
-                                <span className="text-base font-bold text-primary-500">{selectedCorridor.flights.length}</span>
-                            </div>
-                            <div className="p-2.5 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5">
-                                <span className="text-[9px] text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold tracking-wider block">Direct Distance</span>
-                                <span className="text-base font-bold text-light-text dark:text-dark-text">{selectedCorridor.distanceKm} km</span>
-                            </div>
-                        </div>
+                    {(() => {
+                        const rawMode = selectedCorridor.flights[0]?.mode || 'Flight';
+                        const modeStr = String(rawMode).toLowerCase();
+                        const isFlight = modeStr.includes('flight') || rawMode === 'Flight';
+                        const isTrain = modeStr.includes('train') || modeStr.includes('rail');
+                        const isSea = ['cruise', 'ferry', 'boat', 'ship'].some(m => modeStr.includes(m));
+                        const isRoad = ['car', 'drive', 'bus', 'road', 'taxi'].some(m => modeStr.includes(m));
 
-                        {/* Flight Log Timeline */}
-                        <div className="p-3 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-2">
-                            <span className="text-[9px] text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold tracking-wider block">Flight Log ({selectedCorridor.flights.length})</span>
-                            <div className="max-h-40 overflow-y-auto space-y-1.5 custom-scrollbar pr-1">
-                                {selectedCorridor.flights.map((f, idx) => (
-                                    <div key={idx} className="flex items-center justify-between text-xs py-1 px-2 rounded-xl bg-white/50 dark:bg-white/[0.04] border border-black/5 dark:border-white/5 hover:bg-white/80 dark:hover:bg-white/[0.08] transition-colors">
-                                        <div className="flex items-center gap-1.5 min-w-0">
-                                            <Plane className="w-3 h-3 text-primary-500 shrink-0" />
-                                            <span className="font-semibold text-light-text dark:text-dark-text truncate">{f.provider || 'Flight'}</span>
-                                            {f.identifier && (
-                                                <span className="text-[10px] text-light-text-secondary dark:text-dark-text-secondary font-mono">#{f.identifier}</span>
-                                            )}
-                                        </div>
-                                        {f.departureDate && (
-                                            <span className="text-[10px] text-light-text-secondary dark:text-dark-text-secondary font-mono shrink-0">
-                                                {new Date(f.departureDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                                            </span>
-                                        )}
+                        const totalTitle = isTrain ? 'Total Journeys' : isSea ? 'Total Voyages' : isRoad ? 'Total Drives' : 'Total Flights';
+                        const logTitle = isTrain ? 'Rail Log' : isSea ? 'Maritime Log' : isRoad ? 'Road Trip Log' : 'Flight Log';
+
+                        return (
+                            <div className="px-4 pb-4 space-y-2">
+                                <div className="grid grid-cols-2 gap-2 text-center">
+                                    <div className="p-2.5 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5">
+                                        <span className="text-[9px] text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold tracking-wider block">{totalTitle}</span>
+                                        <span className="text-base font-bold text-primary-500">{selectedCorridor.flights.length}</span>
                                     </div>
-                                ))}
+                                    <div className="p-2.5 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5">
+                                        <span className="text-[9px] text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold tracking-wider block">Direct Distance</span>
+                                        <span className="text-base font-bold text-light-text dark:text-dark-text">{selectedCorridor.distanceKm} km</span>
+                                    </div>
+                                </div>
+
+                                {/* Journey Log Timeline */}
+                                <div className="p-3 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-2">
+                                    <span className="text-[9px] text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold tracking-wider block">{logTitle} ({selectedCorridor.flights.length})</span>
+                                    <div className="max-h-40 overflow-y-auto space-y-1.5 custom-scrollbar pr-1">
+                                        {selectedCorridor.flights.map((f, idx) => {
+                                            const fMode = String(f.mode || '').toLowerCase();
+                                            const isF_Rail = fMode.includes('train') || fMode.includes('rail');
+                                            const isF_Sea = ['cruise', 'ferry', 'boat', 'ship'].some(m => fMode.includes(m));
+                                            const isF_Road = ['car', 'drive', 'bus', 'road', 'taxi'].some(m => fMode.includes(m));
+
+                                            return (
+                                                <div key={idx} className="flex items-center justify-between text-xs py-1 px-2 rounded-xl bg-white/50 dark:bg-white/[0.04] border border-black/5 dark:border-white/5 hover:bg-white/80 dark:hover:bg-white/[0.08] transition-colors">
+                                                    <div className="flex items-center gap-1.5 min-w-0">
+                                                        {isF_Rail ? (
+                                                            <Train className="w-3 h-3 text-purple-500 shrink-0" />
+                                                        ) : isF_Sea ? (
+                                                            <Ship className="w-3 h-3 text-cyan-500 shrink-0" />
+                                                        ) : isF_Road ? (
+                                                            <Car className="w-3 h-3 text-amber-500 shrink-0" />
+                                                        ) : (
+                                                            <Plane className="w-3 h-3 text-primary-500 shrink-0" />
+                                                        )}
+                                                        <span className="font-semibold text-light-text dark:text-dark-text truncate">{f.provider || (isF_Rail ? 'Train' : isF_Sea ? 'Ferry/Cruise' : isF_Road ? 'Drive' : 'Flight')}</span>
+                                                        {f.identifier && (
+                                                            <span className="text-[10px] text-light-text-secondary dark:text-dark-text-secondary font-mono">#{f.identifier}</span>
+                                                        )}
+                                                    </div>
+                                                    {f.departureDate && (
+                                                        <span className="text-[10px] text-light-text-secondary dark:text-dark-text-secondary font-mono shrink-0">
+                                                            {new Date(f.departureDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
+                        );
+                    })()}
                 </div>
             )}
 
@@ -2118,6 +2175,30 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     {hoverInfo.object.corridorId ? (() => {
                         const c = corridorMap.get(hoverInfo.object.corridorId);
                         if (!c) return null;
+
+                        const rawMode = hoverInfo.object.mode || c.flights[0]?.mode || 'Flight';
+                        const modeStr = String(rawMode).toLowerCase();
+                        const isFlight = modeStr.includes('flight') || rawMode === 'Flight';
+                        const isTrain = modeStr.includes('train') || modeStr.includes('rail');
+                        const isSea = ['cruise', 'ferry', 'boat', 'ship'].some(m => modeStr.includes(m));
+                        const isRoad = ['car', 'drive', 'bus', 'road', 'taxi'].some(m => modeStr.includes(m));
+
+                        const typeLabel = isTrain 
+                            ? '🚆 RAIL ROUTE' 
+                            : isSea 
+                                ? '🚢 MARITIME ROUTE' 
+                                : isRoad 
+                                    ? '🚗 ROAD ROUTE' 
+                                    : '✈️ FLIGHT CORRIDOR';
+
+                        const countLabel = isTrain
+                            ? (c.totalFlights === 1 ? 'Train Journey' : 'Train Journeys')
+                            : isSea
+                                ? (c.totalFlights === 1 ? 'Voyage' : 'Voyages')
+                                : isRoad
+                                    ? (c.totalFlights === 1 ? 'Drive' : 'Drives')
+                                    : (c.totalFlights === 1 ? 'Flight' : 'Flights');
+
                         return (
                             <div className="bg-white/90 dark:bg-dark-card/90 text-light-text dark:text-dark-text border border-black/10 dark:border-white/15 rounded-3xl shadow-glass-modal backdrop-blur-2xl p-4 min-w-[280px] text-xs animate-fade-in space-y-3" style={{ WebkitBackdropFilter: 'blur(30px)' }}>
                                 {/* Header */}
@@ -2130,7 +2211,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                         <span className="font-bold text-sm text-light-text dark:text-dark-text tracking-tight">{c.destCode}</span>
                                     </div>
                                     <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
-                                        CORRIDOR
+                                        {typeLabel}
                                     </span>
                                 </div>
 
@@ -2149,11 +2230,11 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                     </span>
                                 </div>
 
-                                {/* Flight list summary */}
+                                {/* Summary */}
                                 <div>
                                     <div className="flex items-center justify-between mb-1.5">
                                         <span className="text-[10px] font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
-                                            Flights <span className="text-light-text dark:text-dark-text ml-1 font-bold">{c.totalFlights}</span>
+                                            {countLabel} <span className="text-light-text dark:text-dark-text ml-1 font-bold">{c.totalFlights}</span>
                                         </span>
                                     </div>
                                 </div>

@@ -535,12 +535,12 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                             </div>
 
                             {/* ROUTE PRESENTATION */}
-                            <div className="space-y-4 pt-3 border-t border-white/5">
-                                <h3 className="text-[11px] font-black text-zinc-400 tracking-wider uppercase">Route Arcs Presentation</h3>
+                            <div className="space-y-4 pt-3 border-t border-black/5 dark:border-white/5">
+                                <h3 className="text-[11px] font-black text-light-text-secondary dark:text-zinc-400 tracking-wider uppercase">Route Arcs Presentation</h3>
 
                                 {/* Color Palette */}
                                 <div>
-                                    <span className="text-xs text-zinc-300 font-semibold mb-2 block">Color Palette</span>
+                                    <span className="text-xs text-light-text dark:text-zinc-300 font-semibold mb-2 block">Color Palette</span>
                                     <div className="grid grid-cols-3 gap-2">
                                         {[
                                             { id: 'gradient', label: 'Aurora Gradient', desc: 'Regional spectrum' },
@@ -553,13 +553,48 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                 className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer ${
                                                     settings.routeColorMode === cl.id
                                                         ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30'
-                                                        : 'border-white/10 bg-zinc-900/60 hover:border-white/20'
+                                                        : 'border-black/10 dark:border-white/10 bg-light-fill dark:bg-zinc-900/60 hover:border-black/20 dark:hover:border-white/20'
                                                 }`}
                                             >
-                                                <p className="text-xs font-bold text-white">{cl.label}</p>
-                                                <p className="text-[9px] text-zinc-400">{cl.desc}</p>
+                                                <p className="text-xs font-bold text-light-text dark:text-white">{cl.label}</p>
+                                                <p className="text-[9px] text-light-text-secondary dark:text-zinc-400">{cl.desc}</p>
                                             </button>
                                         ))}
+                                    </div>
+                                </div>
+
+                                {/* MULTI-MODAL ROUTE INTELLIGENCE */}
+                                <div className="space-y-3 pt-3 border-t border-black/5 dark:border-white/5">
+                                    <h3 className="text-[11px] font-black text-light-text-secondary dark:text-zinc-400 tracking-wider uppercase">
+                                        Multi-Modal Route Intelligence
+                                    </h3>
+
+                                    {/* Unified Route Tracing (Road, Rail & Sea) */}
+                                    <div className="p-3.5 rounded-2xl bg-light-fill dark:bg-zinc-900/60 border border-black/5 dark:border-white/10 flex items-center justify-between">
+                                        <div>
+                                            <h4 className="text-xs font-bold text-light-text dark:text-white flex items-center gap-1.5">
+                                                <span>Realistic Route Tracing</span>
+                                                <span className="px-2 py-0.5 text-[9px] font-black rounded-full bg-primary-500/20 text-primary-600 dark:text-primary-400 border border-primary-500/30">
+                                                    Road & Rail
+                                                </span>
+                                            </h4>
+                                            <p className="text-[10px] text-light-text-secondary dark:text-zinc-400 mt-0.5">
+                                                Follows real highways (OSRM) and railway tracks (OSM Rail)
+                                            </p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => updateField('routeTracing', settings.routeTracing === false ? true : false)}
+                                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                                                settings.routeTracing !== false ? 'bg-primary-500' : 'bg-zinc-300 dark:bg-zinc-700'
+                                            }`}
+                                        >
+                                            <span
+                                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                                                    settings.routeTracing !== false ? 'translate-x-5' : 'translate-x-0'
+                                                }`}
+                                            />
+                                        </button>
                                     </div>
                                 </div>
                             </div>

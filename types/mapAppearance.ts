@@ -11,10 +11,14 @@ export interface MapAppearanceSettings {
     routeScale: 'thin' | 'normal' | 'thick';
     routeColorMode: 'default' | 'frequency' | 'gradient';
 
+    // Route Intelligence & Tracing (Road & Rail)
+    routeTracing?: boolean; // Realistic road (OSRM) and rail (OSM) tracing
+
     // Layers Tab
     timeOfDay: boolean; // Live solar day/night shading
     rainRadar: boolean; // Latest RainViewer precipitation
     rainRadarOpacity?: number; // 0.2 to 1.0
+    rainRadarColorScheme?: number; // 1 to 8
 
     // Scratch Map Mode Filters & Toggles
     scratchCitySize?: 'off' | 'small' | 'medium' | 'large';
@@ -32,9 +36,11 @@ export const DEFAULT_MAP_APPEARANCE: MapAppearanceSettings = {
     routeWidthMode: 'frequency',
     routeScale: 'normal',
     routeColorMode: 'gradient',
+    routeTracing: true,
     timeOfDay: false,
     rainRadar: false,
     rainRadarOpacity: 0.85,
+    rainRadarColorScheme: 2,
     scratchCitySize: 'medium',
     showLivedCountries: true,
     showWishlistCountries: true,

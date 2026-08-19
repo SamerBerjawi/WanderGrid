@@ -5,7 +5,7 @@ import {
   Map, ArrowRight, Server, Sparkles, Navigation, Train, 
   Bus, HelpCircle, RefreshCw, Leaf, Anchor, Grid, Info
 } from 'lucide-react';
-import { Card, Button, Input, Select, Badge, TimeInput, Autocomplete } from '../components/ui';
+import { Card, Button, Input, Select, Badge, TimeInput, Autocomplete, Modal } from '../components/ui';
 import { Trip, Transport, TransportMode, RoadTripWaypoint, ViewState } from '../types';
 import { dataService } from '../services/mockDb';
 import { motion, AnimatePresence } from 'motion/react';

@@ -747,24 +747,33 @@ class DataService {
 
   private async processGeocoding(trip: Trip): Promise<Trip> {
       const updatedTrip = { ...trip };
-      if (updatedTrip.location && !updatedTrip.coordinates) {
+      if (updatedTrip.location) {
           const coords = await getCoordinates(updatedTrip.location);
           if (coords) updatedTrip.coordinates = coords;
+      }
+      if (updatedTrip.locations && Array.isArray(updatedTrip.locations)) {
+          updatedTrip.locations = await Promise.all(updatedTrip.locations.map(async (loc) => {
+              if (loc.name) {
+                  const c = await getCoordinates(loc.name);
+                  if (c) return { ...loc, coordinates: { lat: c.lat, lng: c.lng } };
+              }
+              return loc;
+          }));
       }
       if (updatedTrip.transports) {
           const updatedTransports = await Promise.all(updatedTrip.transports.map(async (t) => {
               const u = { ...t };
-              if (u.origin && (!u.originLat || !u.originLng)) {
+              if (u.origin) {
                   const c = await getCoordinates(u.origin);
                   if (c) { u.originLat = c.lat; u.originLng = c.lng; }
               }
-              if (u.destination && (!u.destLat || !u.destLng)) {
+              if (u.destination) {
                   const c = await getCoordinates(u.destination);
                   if (c) { u.destLat = c.lat; u.destLng = c.lng; }
               }
               if (u.waypoints && u.waypoints.length > 0) {
                   const updatedWaypoints = await Promise.all(u.waypoints.map(async (wp) => {
-                      if (!wp.coordinates && wp.name) {
+                      if (wp.name) {
                           const c = await getCoordinates(wp.name);
                           if (c) return { ...wp, coordinates: { lat: c.lat, lng: c.lng } };
                       }

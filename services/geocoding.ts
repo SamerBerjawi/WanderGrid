@@ -167,7 +167,7 @@ export const STATIC_GEO_DATA: Record<string, any> = {
     "CWL": { "lat": "51.3967", "lon": "-3.3433", "name": "Cardiff Airport", "city": "Cardiff", "country": "Wales", "tz": "Europe/London", "iso": "GB-WLS" },
     "BFS": { "lat": "54.6575", "lon": "-6.2158", "name": "Belfast Intl Airport", "city": "Belfast", "country": "Northern Ireland", "tz": "Europe/London", "iso": "GB-NIR" },
     "BHD": { "lat": "54.6181", "lon": "-5.8725", "name": "George Best Belfast City", "city": "Belfast", "country": "Northern Ireland", "tz": "Europe/London", "iso": "GB-NIR" },
-    "JFK": { "lat": "40.6398", "lon": "-73.7789", "name": "John F Kennedy Intl", "city": "New York", "country": "United States", "tz": "America/New_York", "iso": "US" },
+    "JFK": { "lat": "40.6398", "lon": "-73.7789", "name": "John F Kennedy Intl", "city": "New York, NY", "country": "United States", "tz": "America/New_York", "iso": "US" },
     "DXB": { "lat": "25.2528", "lon": "55.3644", "name": "Dubai Intl", "city": "Dubai", "country": "United Arab Emirates", "tz": "Asia/Dubai", "iso": "AE" },
     "CDG": { "lat": "49.0097", "lon": "2.5478", "name": "Charles De Gaulle", "city": "Paris", "country": "France", "tz": "Europe/Paris", "iso": "FR" },
     "FRA": { "lat": "50.0333", "lon": "8.5706", "name": "Frankfurt am Main", "city": "Frankfurt", "country": "Germany", "tz": "Europe/Berlin", "iso": "DE" },
@@ -176,18 +176,18 @@ export const STATIC_GEO_DATA: Record<string, any> = {
     "SIN": { "lat": "1.3502", "lon": "103.994", "name": "Changi Intl", "city": "Singapore", "country": "Singapore", "tz": "Asia/Singapore", "iso": "SG" },
     "HKG": { "lat": "22.3089", "lon": "113.915", "name": "Hong Kong Intl", "city": "Hong Kong", "country": "Hong Kong", "tz": "Asia/Hong_Kong", "iso": "HK" },
     "HND": { "lat": "35.5523", "lon": "139.78", "name": "Haneda", "city": "Tokyo", "country": "Japan", "tz": "Asia/Tokyo", "iso": "JP" },
-    "SYD": { "lat": "-33.9461", "lon": "151.177", "name": "Kingsford Smith", "city": "Sydney", "country": "Australia", "tz": "Australia/Sydney", "iso": "AU" },
+    "SYD": { "lat": "-33.9461", "lon": "151.177", "name": "Kingsford Smith", "city": "Sydney, NSW", "country": "Australia", "tz": "Australia/Sydney", "iso": "AU" },
     
     // Requested Missing Airports
     "MAN": { "lat": "53.3588", "lon": "-2.2728", "name": "Manchester Airport", "city": "Manchester", "country": "England", "tz": "Europe/London", "iso": "GB-ENG" },
     "BEY": { "lat": "33.82", "lon": "35.49", "name": "Beirut Airport", "city": "Beirut", "country": "Lebanon", "iso": "LB" },
     "PRG": { "lat": "50.10", "lon": "14.26", "name": "Prague Airport", "city": "Prague", "country": "Czechia", "iso": "CZ" },
     "BCN": { "lat": "41.29", "lon": "2.07", "name": "Barcelona Airport", "city": "Barcelona", "country": "Spain", "iso": "ES" },
-    "ORD": { "lat": "41.97", "lon": "-87.90", "name": "O'Hare Airport", "city": "Chicago", "country": "United States", "iso": "US" },
-    "DTW": { "lat": "42.21", "lon": "-83.35", "name": "Detroit Airport", "city": "Detroit", "country": "United States", "iso": "US" },
-    "IAD": { "lat": "38.95", "lon": "-77.45", "name": "Dulles Airport", "city": "Washington D.C.", "country": "United States", "iso": "US" },
-    "GRR": { "lat": "42.88", "lon": "-85.52", "name": "Grand Rapids Airport", "city": "Grand Rapids", "country": "United States", "iso": "US" },
-    "ATL": { "lat": "33.64", "lon": "-84.42", "name": "Atlanta Airport", "city": "Atlanta", "country": "United States", "iso": "US" },
+    "ORD": { "lat": "41.97", "lon": "-87.90", "name": "O'Hare Airport", "city": "Chicago, IL", "country": "United States", "iso": "US" },
+    "DTW": { "lat": "42.21", "lon": "-83.35", "name": "Detroit Airport", "city": "Detroit, MI", "country": "United States", "iso": "US" },
+    "IAD": { "lat": "38.95", "lon": "-77.45", "name": "Dulles Airport", "city": "Washington, DC", "country": "United States", "iso": "US" },
+    "GRR": { "lat": "42.88", "lon": "-85.52", "name": "Grand Rapids Airport", "city": "Grand Rapids, MI", "country": "United States", "iso": "US" },
+    "ATL": { "lat": "33.64", "lon": "-84.42", "name": "Atlanta Airport", "city": "Atlanta, GA", "country": "United States", "iso": "US" },
     "AMM": { "lat": "31.72", "lon": "35.99", "name": "Queen Alia Airport", "city": "Amman", "country": "Jordan", "iso": "JO" },
     "TUN": { "lat": "36.85", "lon": "10.22", "name": "Tunis Airport", "city": "Tunis", "country": "Tunisia", "iso": "TN" },
     "DJE": { "lat": "33.86", "lon": "10.77", "name": "Djerba Airport", "city": "Djerba", "country": "Tunisia", "iso": "TN" },
@@ -217,14 +217,14 @@ export const STATIC_GEO_DATA: Record<string, any> = {
     "OPO": { "lat": "41.24", "lon": "-8.67", "name": "Porto Airport", "city": "Porto", "country": "Portugal", "iso": "PT" },
     "BUD": { "lat": "47.43", "lon": "19.26", "name": "Ferenc Liszt Airport", "city": "Budapest", "country": "Hungary", "iso": "HU" },
     "TFS": { "lat": "28.04", "lon": "-16.57", "name": "Tenerife South Airport", "city": "Tenerife", "country": "Spain", "iso": "ES" },
-    "LAX": { "lat": "33.94", "lon": "-118.40", "name": "Los Angeles Airport", "city": "Los Angeles", "country": "United States", "iso": "US" },
-    "SFO": { "lat": "37.62", "lon": "-122.37", "name": "San Francisco Airport", "city": "San Francisco", "country": "United States", "iso": "US" },
+    "LAX": { "lat": "33.94", "lon": "-118.40", "name": "Los Angeles Airport", "city": "Los Angeles, CA", "country": "United States", "iso": "US" },
+    "SFO": { "lat": "37.62", "lon": "-122.37", "name": "San Francisco Airport", "city": "San Francisco, CA", "country": "United States", "iso": "US" },
     "ORY": { "lat": "48.72", "lon": "2.36", "name": "Orly Airport", "city": "Paris", "country": "France", "iso": "FR" },
     "SOF": { "lat": "42.69", "lon": "23.41", "name": "Sofia Airport", "city": "Sofia", "country": "Bulgaria", "iso": "BG" },
     "AGP": { "lat": "36.67", "lon": "-4.49", "name": "Málaga Airport", "city": "Málaga", "country": "Spain", "iso": "ES" },
     "TLL": { "lat": "59.41", "lon": "24.83", "name": "Tallinn Airport", "city": "Tallinn", "country": "Estonia", "iso": "EE" },
     "DUB": { "lat": "53.42", "lon": "-6.24", "name": "Dublin Airport", "city": "Dublin", "country": "Ireland", "iso": "IE" },
-    "CLE": { "lat": "41.41", "lon": "-81.85", "name": "Cleveland Airport", "city": "Cleveland", "country": "United States", "iso": "US" },
+    "CLE": { "lat": "41.41", "lon": "-81.85", "name": "Cleveland Airport", "city": "Cleveland, OH", "country": "United States", "iso": "US" },
     "BRI": { "lat": "41.13", "lon": "16.76", "name": "Bari Airport", "city": "Bari", "country": "Italy", "iso": "IT" },
     "CAI": { "lat": "30.12", "lon": "31.40", "name": "Cairo Airport", "city": "Cairo", "country": "Egypt", "iso": "EG" },
     "ASW": { "lat": "23.96", "lon": "32.81", "name": "Aswan Airport", "city": "Aswan", "country": "Egypt", "iso": "EG" },
@@ -247,7 +247,7 @@ export const STATIC_GEO_DATA: Record<string, any> = {
     "Glasgow": { "lat": "55.8642", "lon": "-4.2518", "city": "Glasgow", "country": "Scotland", "countryCode": "GB-SCT" },
     "Cardiff": { "lat": "51.4816", "lon": "-3.1791", "city": "Cardiff", "country": "Wales", "countryCode": "GB-WLS" },
     "Belfast": { "lat": "54.5973", "lon": "-5.9301", "city": "Belfast", "country": "Northern Ireland", "countryCode": "GB-NIR" },
-    "New York": { "lat": "40.7128", "lon": "-74.0060", "city": "New York", "country": "United States", "countryCode": "US" },
+    "New York": { "lat": "40.7128", "lon": "-74.0060", "city": "New York, NY", "country": "United States", "countryCode": "US" },
     "Tokyo": { "lat": "35.6762", "lon": "139.6503", "city": "Tokyo", "country": "Japan", "countryCode": "JP" },
     "Dubai": { "lat": "25.2048", "lon": "55.2708", "city": "Dubai", "country": "United Arab Emirates", "countryCode": "AE" },
     "Rome": { "lat": "41.9028", "lon": "12.4964", "city": "Rome", "country": "Italy", "countryCode": "IT" },
@@ -406,6 +406,136 @@ async function fetchOpenMeteoGeocoding(query: string): Promise<any[]> {
     return [];
 }
 
+export const US_STATE_CODES: Record<string, string> = {
+    'alabama': 'AL', 'alaska': 'AK', 'arizona': 'AZ', 'arkansas': 'AR', 'california': 'CA',
+    'colorado': 'CO', 'connecticut': 'CT', 'delaware': 'DE', 'florida': 'FL', 'georgia': 'GA',
+    'hawaii': 'HI', 'idaho': 'ID', 'illinois': 'IL', 'indiana': 'IN', 'iowa': 'IA',
+    'kansas': 'KS', 'kentucky': 'KY', 'louisiana': 'LA', 'maine': 'ME', 'maryland': 'MD',
+    'massachusetts': 'MA', 'michigan': 'MI', 'minnesota': 'MN', 'mississippi': 'MS', 'missouri': 'MO',
+    'montana': 'MT', 'nebraska': 'NE', 'nevada': 'NV', 'new hampshire': 'NH', 'new jersey': 'NJ',
+    'new mexico': 'NM', 'new york': 'NY', 'north carolina': 'NC', 'north dakota': 'ND', 'ohio': 'OH',
+    'oklahoma': 'OK', 'oregon': 'OR', 'pennsylvania': 'PA', 'rhode island': 'RI', 'south carolina': 'SC',
+    'south dakota': 'SD', 'tennessee': 'TN', 'texas': 'TX', 'utah': 'UT', 'vermont': 'VT',
+    'virginia': 'VA', 'washington': 'WA', 'west virginia': 'WV', 'wisconsin': 'WI', 'wyoming': 'WY',
+    'district of columbia': 'DC', 'puerto rico': 'PR', 'guam': 'GU', 'virgin islands': 'VI'
+};
+
+export const CA_PROVINCE_CODES: Record<string, string> = {
+    'alberta': 'AB', 'british columbia': 'BC', 'manitoba': 'MB', 'new brunswick': 'NB',
+    'newfoundland and labrador': 'NL', 'nova scotia': 'NS', 'ontario': 'ON',
+    'prince edward island': 'PE', 'quebec': 'QC', 'saskatchewan': 'SK',
+    'northwest territories': 'NT', 'nunavut': 'NU', 'yukon': 'YT'
+};
+
+export const AU_STATE_CODES: Record<string, string> = {
+    'new south wales': 'NSW', 'queensland': 'QLD', 'south australia': 'SA',
+    'tasmania': 'TAS', 'victoria': 'VIC', 'western australia': 'WA',
+    'australian capital territory': 'ACT', 'northern territory': 'NT'
+};
+
+const VALID_US_STATE_SET = new Set(Object.values(US_STATE_CODES));
+const VALID_CA_PROV_SET = new Set(Object.values(CA_PROVINCE_CODES));
+const VALID_AU_STATE_SET = new Set(Object.values(AU_STATE_CODES));
+
+export function extractStateAbbreviation(stateOrRegion: string | undefined, countryCode?: string): string | undefined {
+    if (!stateOrRegion) return undefined;
+    const clean = stateOrRegion.trim();
+    const upper = clean.toUpperCase();
+    const lower = clean.toLowerCase();
+
+    // Check if 2-letter uppercase valid code
+    if (VALID_US_STATE_SET.has(upper) || VALID_CA_PROV_SET.has(upper) || VALID_AU_STATE_SET.has(upper)) {
+        return upper;
+    }
+
+    if (US_STATE_CODES[lower]) return US_STATE_CODES[lower];
+    if (CA_PROVINCE_CODES[lower]) return CA_PROVINCE_CODES[lower];
+    if (AU_STATE_CODES[lower]) return AU_STATE_CODES[lower];
+
+    return undefined;
+}
+
+/**
+ * Normalizes and simplifies city names.
+ * For countries with states/provinces (US, CA, AU), includes the 2-letter state/province abbreviation to disambiguate cities (e.g. "Portland, OR", "Miami, FL", "Vancouver, BC").
+ * For other countries, removes administrative noise (e.g. "Aarhus C, Central Jutland, Denmark" -> "Aarhus").
+ */
+export function cleanCityName(rawName: string, countryCode?: string, adminRegion?: string): string {
+    if (!rawName) return '';
+    let name = rawName.trim();
+
+    // 1. If it contains a dash prefix like "LHR - London Heathrow", strip the code
+    const iataDash = name.match(/^[A-Z]{3}\s*-\s*(.+)$/i);
+    if (iataDash) {
+        name = iataDash[1].trim();
+    }
+
+    let extractedState: string | undefined = extractStateAbbreviation(adminRegion, countryCode);
+
+    // 2. If it is a comma-separated address/hierarchy (e.g. "Portland, OR, United States" or "Aarhus C, Central Jutland, Denmark")
+    if (name.includes(',')) {
+        const parts = name.split(',').map(p => p.trim()).filter(Boolean);
+        if (parts.length > 0) {
+            name = parts[0];
+            // Check if subsequent part is a state/province (e.g. "OR", "Oregon", "FL", "Florida", "BC", "NSW")
+            if (parts.length > 1 && !extractedState) {
+                for (let i = 1; i < parts.length; i++) {
+                    const candidateState = extractStateAbbreviation(parts[i], countryCode);
+                    if (candidateState) {
+                        extractedState = candidateState;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    // 3. Strip airport / station / terminal noise keywords
+    name = name.replace(/\b(International\s+Airport|Airport|Aerodrome|Airstrip|Railway\s+Station|Train\s+Station|Bus\s+Station|Station|Terminal|Central\s+Station)\b/gi, '').trim();
+
+    // 4. Strip postal district suffixes (e.g. "Aarhus C", "Aarhus N", "Aarhus V", "Aarhus SV", "Aarhus Ø", "København K", "København NV", "Stockholm C", "Oslo S")
+    name = name.replace(/\s+(C|N|S|E|W|V|Ø|NV|SV|SE|NE|NW|SW|EC[0-9]|WC[0-9]|SE[0-9]|SW[0-9]|NW[0-9]|NE[0-9]|E[0-9]|W[0-9]|N[0-9]|S[0-9])\b/i, '').trim();
+
+    // 5. Strip leading/trailing postal numbers or area numbers (e.g., "75001 Paris" -> "Paris", "Berlin 10115" -> "Berlin", "Munich 2" -> "Munich")
+    name = name.replace(/^[0-9]{4,6}\s+/, '').replace(/\s+[0-9]{1,6}$/, '').trim();
+
+    // 6. Clean up known aliases / localized city names
+    const lower = name.toLowerCase();
+    if (lower === 'københavn' || lower === 'kobenhavn') name = 'Copenhagen';
+    else if (lower === 'aarhus' || lower === 'århus') name = 'Aarhus';
+    else if (lower === 'münchen' || lower === 'munchen') name = 'Munich';
+    else if (lower === 'roma') name = 'Rome';
+    else if (lower === 'firenze') name = 'Florence';
+    else if (lower === 'venezia') name = 'Venice';
+    else if (lower === 'wien') name = 'Vienna';
+    else if (lower === 'praha') name = 'Prague';
+    else if (lower === 'warszawa') name = 'Warsaw';
+    else if (lower === 'lisboa') name = 'Lisbon';
+    else if (lower === 'moskva') name = 'Moscow';
+    else if (lower === 'beijing' || lower === 'peking') name = 'Beijing';
+    else if (lower === 'tokyo') name = 'Tokyo';
+    else if (lower === 'new york city' || lower === 'nyc') name = 'New York';
+    else if (lower === 'washington dc' || lower === 'washington d.c.') name = 'Washington';
+    else {
+        // Capitalize first letter of each word properly
+        if (name.length > 0) {
+            name = name.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        }
+    }
+
+    // 7. For US / CA / AU or if a valid state was extracted, append the state abbreviation
+    const upperCode = countryCode?.toUpperCase();
+    const isStateCountry = upperCode === 'US' || upperCode === 'USA' || upperCode === 'CA' || upperCode === 'AU';
+    
+    // Check if name already has ", ST" at the end
+    const alreadyHasState = /,\s*[A-Z]{2,3}$/.test(name);
+    if (!alreadyHasState && extractedState && (isStateCountry || upperCode === undefined)) {
+        return `${name}, ${extractedState}`;
+    }
+
+    return name || rawName.trim();
+}
+
 export async function searchLocations(query: string): Promise<string[]> {
     if (!query) return [];
     const trimmedQuery = query.trim();
@@ -441,12 +571,14 @@ export async function searchLocations(query: string): Promise<string[]> {
 
     // 2. Offline-first local database query matching based on keywords or city name
     LOCAL_GEO_MAP.forEach(item => {
-        const cityMatch = item.city.toLowerCase().includes(lowerQuery);
+        const cleanCity = cleanCityName(item.city, item.countryCode);
+        const formatted = `${cleanCity}, ${item.country}`;
+        const cityMatch = item.city.toLowerCase().includes(lowerQuery) || cleanCity.toLowerCase().includes(lowerQuery);
         const countryMatch = item.country.toLowerCase().includes(lowerQuery);
         const keywordMatch = item.keywords.some(kw => kw.includes(lowerQuery) || lowerQuery.includes(kw));
 
         if (cityMatch || countryMatch || keywordMatch) {
-            citySuggestions.add(`${item.city}, ${item.country}`);
+            citySuggestions.add(formatted);
         }
     });
 
@@ -455,7 +587,8 @@ export async function searchLocations(query: string): Promise<string[]> {
         internalCache.forEach((val, key) => {
             if (key.toLowerCase().includes(lowerQuery)) {
                 if (val.city && val.country) {
-                    citySuggestions.add(`${val.city}, ${val.country}`);
+                    const cleanCity = cleanCityName(val.city, val.countryCode || val.iso);
+                    citySuggestions.add(`${cleanCity}, ${val.country}`);
                 } else if (typeof val === 'string') {
                     if (val.toLowerCase().includes('airport')) {
                         airportSuggestions.add(val);
@@ -482,8 +615,12 @@ export async function searchLocations(query: string): Promise<string[]> {
             const meteoResults = await fetchOpenMeteoGeocoding(trimmedQuery);
             if (meteoResults && meteoResults.length > 0) {
                 meteoResults.forEach((item: any, idx: number) => {
-                    const displayName = `${item.name}${item.admin1 ? `, ${item.admin1}` : ''}, ${item.country}`;
-                    networkCitySuggestions.push(displayName);
+                    const cleanCity = cleanCityName(item.name, item.country_code, item.admin1);
+                    const country = item.country || '';
+                    const displayName = country ? `${cleanCity}, ${country}` : cleanCity;
+                    if (!networkCitySuggestions.includes(displayName)) {
+                        networkCitySuggestions.push(displayName);
+                    }
 
                     // Hydrate cache with exact lookup data so it is instant afterwards
                     const cacheData = {
@@ -491,15 +628,15 @@ export async function searchLocations(query: string): Promise<string[]> {
                         lng: item.longitude,
                         lon: item.longitude,
                         tz: item.timezone || 'UTC',
-                        city: item.name,
+                        city: cleanCity,
                         country: item.country,
                         countryCode: item.country_code?.toUpperCase(),
-                        name: item.name
+                        name: cleanCity
                     };
                     internalCache.set(displayName.trim(), cacheData);
                     internalCache.set(displayName.trim().toUpperCase(), cacheData);
                     if (idx === 0) {
-                        const nameUpper = item.name.trim().toUpperCase();
+                        const nameUpper = cleanCity.trim().toUpperCase();
                         // Never overwrite 3-letter codes with random geocoding names (avoids contaminating airport/IATA codes)
                         if (nameUpper.length !== 3) {
                             internalCache.set(nameUpper, cacheData);
@@ -532,7 +669,11 @@ export async function searchLocations(query: string): Promise<string[]> {
                     if (name.toLowerCase().includes('airport') || name.toLowerCase().includes('aerod')) {
                         if (!networkAirportSuggestions.includes(name)) networkAirportSuggestions.push(name);
                     } else {
-                        if (!networkCitySuggestions.includes(name)) networkCitySuggestions.push(name);
+                        const rawCity = item.address?.city || item.address?.town || item.address?.village || item.name || (item.display_name ? item.display_name.split(',')[0] : '');
+                        const cleanCity = cleanCityName(rawCity, item.address?.country_code, item.address?.state || item.address?.province);
+                        const country = item.address?.country || '';
+                        const displayName = country ? `${cleanCity}, ${country}` : cleanCity;
+                        if (!networkCitySuggestions.includes(displayName)) networkCitySuggestions.push(displayName);
                     }
                 });
             }
@@ -879,14 +1020,19 @@ export function refineUKCountry(city: string, country: string, countryCode?: str
 }
 
 export async function resolvePlaceName(query: string): Promise<{ city: string, country: string, countryCode?: string, displayName: string } | null> {
+    if (!query) return null;
     const raw = await resolvePlaceNameRaw(query);
     if (!raw) return null;
-    const refined = refineUKCountry(raw.city, raw.country, raw.countryCode, query);
+    const cleanedCity = cleanCityName(raw.city, raw.countryCode);
+    const refined = refineUKCountry(cleanedCity, raw.country, raw.countryCode, query);
+    const finalCity = cleanCityName(refined.city, refined.countryCode);
+    const finalCountry = refined.country || 'Unknown';
     return {
         ...raw,
-        city: refined.city,
-        country: refined.country,
-        countryCode: refined.countryCode
+        city: finalCity,
+        country: finalCountry,
+        countryCode: refined.countryCode,
+        displayName: finalCountry !== 'Unknown' ? `${finalCity}, ${finalCountry}` : finalCity
     };
 }
 
@@ -899,54 +1045,101 @@ async function resolvePlaceNameRaw(query: string): Promise<{ city: string, count
     // 1. Check IATA prefixes
     const iataMatch = cleanQuery.match(/^([A-Z]{3})\s*-\s*/);
     if (iataMatch) {
-        const code = iataMatch[1];
+        const code = iataMatch[1].toUpperCase();
         if (STATIC_GEO_DATA[code]) {
             const ap = STATIC_GEO_DATA[code];
+            const cleanCity = cleanCityName(ap.city, ap.iso);
             return {
-                city: ap.city,
+                city: cleanCity,
                 country: ap.country,
                 countryCode: ap.iso,
-                displayName: cleanQuery
+                displayName: `${cleanCity}, ${ap.country}`
             };
         }
     }
 
     const uppercaseQuery = cleanQuery.toUpperCase();
 
-    // 2. Check exact cache match
-    const cached = internalCache.get(cleanQuery) || internalCache.get(uppercaseQuery);
-    if (cached?.city) return { city: cached.city, country: cached.country, countryCode: cached.countryCode || cached.iso, displayName: cached.name || cleanQuery };
-
-    // Direct match against airports
+    // Direct match against IATA airports
     if (STATIC_GEO_DATA[uppercaseQuery]) {
         const ap = STATIC_GEO_DATA[uppercaseQuery];
+        const cleanCity = cleanCityName(ap.city, ap.iso);
         return {
-            city: ap.city,
+            city: cleanCity,
             country: ap.country,
             countryCode: ap.iso,
-            displayName: `${uppercaseQuery} - ${ap.name}, ${ap.city}`
+            displayName: `${cleanCity}, ${ap.country}`
         };
     }
 
-    // 3. Perform localized fallback lookup first (highly responsive!)
+    // 2. Check exact cache match
+    const cached = internalCache.get(cleanQuery) || internalCache.get(uppercaseQuery);
+    if (cached?.city) {
+        const cleanCity = cleanCityName(cached.city, cached.countryCode || cached.iso);
+        const country = cached.country || '';
+        return {
+            city: cleanCity,
+            country,
+            countryCode: cached.countryCode || cached.iso,
+            displayName: country ? `${cleanCity}, ${country}` : cleanCity
+        };
+    }
+
+    // 3. Simplified canonical city candidate lookup against static/local datasets
+    const baseCityCandidate = cleanCityName(cleanQuery);
+    if (baseCityCandidate) {
+        const lowerBase = baseCityCandidate.toLowerCase();
+        
+        // Match in STATIC_GEO_DATA by city name
+        const staticMatch = Object.values(STATIC_GEO_DATA).find(ap => 
+            ap.city?.toLowerCase() === lowerBase || 
+            cleanCityName(ap.city || '', ap.iso).toLowerCase() === lowerBase
+        );
+        if (staticMatch) {
+            const cleanCity = cleanCityName(staticMatch.city, staticMatch.iso);
+            return {
+                city: cleanCity,
+                country: staticMatch.country,
+                countryCode: staticMatch.iso,
+                displayName: `${cleanCity}, ${staticMatch.country}`
+            };
+        }
+
+        // Match in LOCAL_GEO_MAP
+        const localMatch = LOCAL_GEO_MAP.find(item => 
+            item.city.toLowerCase() === lowerBase ||
+            cleanCityName(item.city, item.countryCode).toLowerCase() === lowerBase ||
+            item.keywords.includes(lowerBase)
+        );
+        if (localMatch) {
+            const cleanCity = cleanCityName(localMatch.city, localMatch.countryCode);
+            return {
+                city: cleanCity,
+                country: localMatch.country,
+                countryCode: localMatch.countryCode,
+                displayName: `${cleanCity}, ${localMatch.country}`
+            };
+        }
+    }
+
+    // 4. Perform localized fallback lookup first (highly responsive!)
     const norm = cleanQuery.toLowerCase();
     for (const item of LOCAL_GEO_MAP) {
         if (item.keywords.some(kw => {
             if (norm.length <= 3) {
-                // For very short queries, only match if it matches a keyword exactly
                 return kw === norm;
             }
-            // For longer queries, match if the query contains the keyword (e.g. "vancouver airport" containing "vancouver")
             return norm.includes(kw);
         })) {
-            const obj = { city: item.city, country: item.country, countryCode: item.countryCode, displayName: cleanQuery };
+            const cleanCity = cleanCityName(item.city, item.countryCode);
+            const obj = { city: cleanCity, country: item.country, countryCode: item.countryCode, displayName: `${cleanCity}, ${item.country}` };
             internalCache.set(cleanQuery, obj);
             saveCache();
             return obj;
         }
     }
 
-    // 4. Perform network search matching via Open-Meteo and Nominatim fallback
+    // 5. Perform network search matching via Open-Meteo and Nominatim fallback
     try {
         const isIataLike = cleanQuery.length === 3 && cleanQuery === cleanQuery.toUpperCase();
         const searchQuery = isIataLike ? `${cleanQuery} airport` : cleanQuery;
@@ -955,11 +1148,11 @@ async function resolvePlaceNameRaw(query: string): Promise<{ city: string, count
         const meteoData = await fetchOpenMeteoGeocoding(searchQuery);
         if (meteoData && meteoData.length > 0) {
             const item = meteoData[0];
-            const name = item.name;
+            const cleanCity = cleanCityName(item.name, item.country_code, item.admin1);
             const country = item.country || '';
             const code = item.country_code?.toUpperCase() || '';
-            const displayName = `${item.name}${item.admin1 ? `, ${item.admin1}` : ''}, ${item.country}`;
-            const obj = { city: name, country, countryCode: code, displayName };
+            const displayName = country ? `${cleanCity}, ${country}` : cleanCity;
+            const obj = { city: cleanCity, country, countryCode: code, displayName };
             internalCache.set(cleanQuery, obj);
             saveCache();
             return obj;
@@ -974,8 +1167,12 @@ async function resolvePlaceNameRaw(query: string): Promise<{ city: string, count
             const data = await res.json();
             if (data.length > 0) {
                 const r = data[0], a = r.address || {};
-                const city = a.city || a.town || a.village || cleanQuery, country = a.country || '', code = a.country_code?.toUpperCase() || '';
-                const obj = { city, country, countryCode: code, displayName: r.display_name };
+                const rawCity = a.city || a.town || a.village || cleanQuery;
+                const cleanCity = cleanCityName(rawCity, a.country_code, a.state || a.province);
+                const country = a.country || '';
+                const code = a.country_code?.toUpperCase() || '';
+                const displayName = country ? `${cleanCity}, ${country}` : cleanCity;
+                const obj = { city: cleanCity, country, countryCode: code, displayName };
                 internalCache.set(cleanQuery, obj);
                 saveCache();
                 return obj;
@@ -983,12 +1180,13 @@ async function resolvePlaceNameRaw(query: string): Promise<{ city: string, count
         }
     } catch (e) {}
 
-    // 5. Last-ditch: if everything failed
+    // 6. Last-ditch: if everything failed
     if (uppercaseQuery.length === 2 && COUNTRY_REGION_MAP[uppercaseQuery]) {
         return { city: cleanQuery, country: uppercaseQuery, countryCode: uppercaseQuery, displayName: cleanQuery };
     }
 
-    return { city: cleanQuery, country: 'Unknown', displayName: cleanQuery };
+    const fallbackCity = cleanCityName(cleanQuery);
+    return { city: fallbackCity, country: 'Unknown', displayName: fallbackCity };
 }
 
 export const getRegion = (code: string) => COUNTRY_REGION_MAP[code] || 'Unknown';

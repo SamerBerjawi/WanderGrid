@@ -17,7 +17,10 @@ import {
     Filter,
     Radio,
     Eye,
-    RotateCcw
+    RotateCcw,
+    Ship,
+    Train,
+    Car
 } from 'lucide-react';
 const DeckFlightMap = lazy(() => import('../components/DeckFlightMap').then(m => ({ default: m.DeckFlightMap || m.default })));
 import { dataService } from '../services/mockDb';
@@ -1375,24 +1378,28 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                     </button>
                                 </div>
 
-                                <button
-                                    onClick={() => {
-                                        const newVal = !showRoadTracing;
-                                        setShowRoadTracing(newVal);
-                                        localStorage.setItem('wandergrid_road_tracing', String(newVal));
-                                    }}
-                                    className={`w-full p-2.5 rounded-xl border text-left flex items-center gap-2.5 cursor-pointer transition-all duration-150 active:scale-[0.98] ${
-                                        showRoadTracing
-                                            ? 'bg-rose-500/15 border-rose-500/40 text-rose-600 dark:text-rose-400 font-bold'
-                                            : 'bg-white/70 dark:bg-dark-card/60 border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary'
-                                    }`}
-                                >
-                                    <Radio className="w-4 h-4 text-rose-500 shrink-0" />
-                                    <div className="min-w-0 flex-1 leading-none">
-                                        <p className="text-xs font-bold">Highway Route Tracing (OSRM)</p>
-                                        <p className="text-[9px] text-light-text-secondary dark:text-dark-text-secondary mt-1">Conform overland journeys to real roads</p>
-                                    </div>
-                                </button>
+                                <div className="space-y-2 pt-2 border-t border-black/5 dark:border-white/5">
+                                    {/* Unified Route Tracing (Road, Rail & Sea) */}
+                                    <button
+                                        onClick={() => {
+                                            const newVal = !(showRoadTracing || appearance.routeTracing !== false);
+                                            setShowRoadTracing(newVal);
+                                            localStorage.setItem('wandergrid_road_tracing', String(newVal));
+                                            handleUpdateAppearance({ ...appearance, routeTracing: newVal });
+                                        }}
+                                        className={`w-full p-2.5 rounded-xl border text-left flex items-center gap-2.5 cursor-pointer transition-all duration-150 active:scale-[0.98] ${
+                                            showRoadTracing || appearance.routeTracing !== false
+                                                ? 'bg-primary-500/15 border-primary-500/40 text-primary-600 dark:text-primary-400 font-bold'
+                                                : 'bg-white/70 dark:bg-dark-card/60 border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary'
+                                        }`}
+                                    >
+                                        <Radio className="w-4 h-4 text-primary-500 shrink-0" />
+                                        <div className="min-w-0 flex-1 leading-none">
+                                            <p className="text-xs font-bold">Route Tracing (Road & Rail)</p>
+                                            <p className="text-[9px] text-light-text-secondary dark:text-dark-text-secondary mt-1">Conforms driving and rail journeys to real roads and tracks</p>
+                                        </div>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}
