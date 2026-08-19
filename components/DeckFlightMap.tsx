@@ -3,6 +3,7 @@ import { DeckGL } from '@deck.gl/react';
 import { MapView, _GlobeView } from '@deck.gl/core';
 import { ScatterplotLayer, GeoJsonLayer, PathLayer, BitmapLayer, TextLayer } from '@deck.gl/layers';
 import { TileLayer, TripsLayer } from '@deck.gl/geo-layers';
+import { Maximize2, Scan, Globe } from 'lucide-react';
 import { Trip } from '../types';
 import { getCoordinatesSync } from '../services/geocoding';
 import { 
@@ -1278,6 +1279,62 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         radarMeta
     ]);
 
+    // Reset to 100% standard baseline perspective
+    const handleReset100 = () => {
+        setViewState(prev => ({
+            ...prev,
+            longitude: 0,
+            latitude: 20,
+            zoom: effectiveProjection === 'globe' ? 0.35 : 1.5,
+            pitch: 0,
+            bearing: 0
+        }));
+    };
+
+    // Fit view to all existing routes & destinations
+    const handleFitBounds = () => {
+        let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+        let hasCoords = false;
+
+        enrichedTrips.forEach(trip => {
+            trip.transports?.forEach(t => {
+                if (t.originLat && t.originLng) {
+                    minLat = Math.min(minLat, t.originLat);
+                    maxLat = Math.max(maxLat, t.originLat);
+                    minLng = Math.min(minLng, t.originLng);
+                    maxLng = Math.max(maxLng, t.originLng);
+                    hasCoords = true;
+                }
+                if (t.destLat && t.destLng) {
+                    minLat = Math.min(minLat, t.destLat);
+                    maxLat = Math.max(maxLat, t.destLat);
+                    minLng = Math.min(minLng, t.destLng);
+                    maxLng = Math.max(maxLng, t.destLng);
+                    hasCoords = true;
+                }
+            });
+        });
+
+        if (hasCoords) {
+            const centerLng = (minLng + maxLng) / 2;
+            const centerLat = (minLat + maxLat) / 2;
+            const dLng = Math.max(maxLng - minLng, 20);
+            const dLat = Math.max(maxLat - minLat, 15);
+            const fitZoom = effectiveProjection === 'globe' 
+                ? Math.min(3.5, Math.max(0.35, Math.log2(220 / Math.max(dLng, dLat))))
+                : Math.min(6.5, Math.max(1.2, Math.log2(360 / Math.max(dLng, dLat * 1.5))));
+
+            setViewState(prev => ({
+                ...prev,
+                longitude: centerLng,
+                latitude: centerLat,
+                zoom: fitZoom
+            }));
+        } else {
+            handleReset100();
+        }
+    };
+
     return (
         <div className="relative w-full h-full overflow-hidden bg-[#090d16] select-none">
             {/* Deck.gl 60 FPS WebGL Canvas with Mouse Scroll Zoom enabled */}
@@ -1297,22 +1354,36 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 getCursor={({ isHovering, isDragging }) => (isDragging ? 'grabbing' : isHovering ? 'pointer' : 'grab')}
             />
 
-            {/* Zoom Controls (Bottom Right) */}
+            {/* Zoom & View Navigation Controls (Bottom Right) */}
             <div className="absolute bottom-6 right-6 z-20 flex flex-col gap-2">
-                <div className="flex flex-col rounded-2xl border border-white/10 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl shadow-2xl overflow-hidden">
+                <div className="flex flex-col rounded-2xl border border-white/10 bg-zinc-900/90 dark:bg-zinc-950/90 backdrop-blur-xl shadow-2xl overflow-hidden divide-y divide-white/10">
                     <button
                         onClick={() => setViewState(v => ({ ...v, zoom: Math.min(v.zoom + 0.8, 18) }))}
-                        className="w-10 h-10 flex items-center justify-center text-zinc-700 dark:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/10 border-b border-zinc-200/50 dark:border-white/5 cursor-pointer font-black text-lg"
-                        title="Zoom In"
+                        className="w-10 h-10 flex items-center justify-center text-zinc-200 hover:bg-white/10 cursor-pointer font-black text-lg transition-colors"
+                        title="Zoom In (+)"
                     >
                         +
                     </button>
                     <button
                         onClick={() => setViewState(v => ({ ...v, zoom: Math.max(v.zoom - 0.8, 0.1) }))}
-                        className="w-10 h-10 flex items-center justify-center text-zinc-700 dark:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer font-black text-lg"
-                        title="Zoom Out"
+                        className="w-10 h-10 flex items-center justify-center text-zinc-200 hover:bg-white/10 cursor-pointer font-black text-lg transition-colors"
+                        title="Zoom Out (−)"
                     >
                         −
+                    </button>
+                    <button
+                        onClick={handleReset100}
+                        className="w-10 h-10 flex items-center justify-center text-zinc-300 hover:text-white hover:bg-white/10 cursor-pointer font-bold text-[10px] tracking-tight transition-colors"
+                        title="100% Standard View"
+                    >
+                        100%
+                    </button>
+                    <button
+                        onClick={handleFitBounds}
+                        className="w-10 h-10 flex items-center justify-center text-zinc-300 hover:text-white hover:bg-white/10 cursor-pointer transition-colors"
+                        title="Fit View to All Routes"
+                    >
+                        <Scan className="w-4 h-4" />
                     </button>
                 </div>
             </div>

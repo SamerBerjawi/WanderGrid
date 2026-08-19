@@ -19,7 +19,7 @@ export interface TwilightFeatureCollection {
  */
 export function getSunPosition(date: Date = new Date()): { declination: number; gha: number; sunLatDeg: number; sunLngDeg: number } {
     const rad = Math.PI / 180;
-    
+
     // Julian Day
     const time = date.getTime();
     const jd = (time / 86400000) + 2440587.5;
@@ -65,9 +65,9 @@ export function getSunPosition(date: Date = new Date()): { declination: number; 
  * Produces a closed, smooth spherical curve with NO vertical seams.
  */
 function getSphericalCapRing(
-    centerLatDeg: number, 
-    centerLngDeg: number, 
-    radiusDeg: number, 
+    centerLatDeg: number,
+    centerLngDeg: number,
+    radiusDeg: number,
     steps: number = 180
 ): [number, number][] {
     const rad = Math.PI / 180;
