@@ -83,7 +83,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
   return (
     <>
       {/* Desktop Sidebar with Crystal edge styles */}
-      <aside className={`hidden md:flex flex-shrink-0 flex-col h-full border-r border-gray-200/5 bg-white/[0.02] dark:bg-zinc-950/20 backdrop-blur-3xl transition-all duration-300 relative border-t-white/5 shadow-[0_8px_32px_0_rgba(0,0,0,0.08)] ${isCollapsed ? 'w-24' : 'w-72'}`}>
+      <aside className={`hidden md:flex flex-shrink-0 flex-col h-full border-r border-gray-200/5 bg-white/[0.02] dark:bg-zinc-950/20 backdrop-blur-3xl transition-all duration-300 relative z-30 border-t-white/5 shadow-[0_8px_32px_0_rgba(0,0,0,0.08)] ${isCollapsed ? 'w-24' : 'w-72'}`}>
         
         <button 
            onClick={() => setIsCollapsed(!isCollapsed)}

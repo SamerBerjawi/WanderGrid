@@ -3,7 +3,7 @@ import { DeckGL } from '@deck.gl/react';
 import { MapView, _GlobeView } from '@deck.gl/core';
 import { ScatterplotLayer, GeoJsonLayer, PathLayer, BitmapLayer, TextLayer } from '@deck.gl/layers';
 import { TileLayer, TripsLayer } from '@deck.gl/geo-layers';
-import { Maximize2, Scan, Globe, ArrowLeft, X, Plane, Clock, Calendar, ChevronRight } from 'lucide-react';
+import { Maximize2, Scan, Globe, ArrowLeft, ArrowRight, X, Plane, Clock, Calendar, ChevronRight } from 'lucide-react';
 import { Trip } from '../types';
 import { getCoordinatesSync } from '../services/geocoding';
 import { 
@@ -57,12 +57,15 @@ const getGeoGradientRGB = (lat: number, lng: number): [number, number, number] =
     return res;
 };
 
-// Frequency-based color palette progression
+// High-contrast, vibrant thermal energy heatmap density color progression
+// Smoothly ascends: Cool Electric Cyan -> Emerald Mint -> Radiant Sun Gold -> Vivid Blaze Orange -> Hot Crimson Red -> Intense Hyper Magenta
 const getFrequencyRGB = (freq: number): [number, number, number] => {
-    if (freq <= 1) return [56, 189, 248];  // Ice Cyan (1 flight)
-    if (freq <= 3) return [168, 85, 247]; // Violet / Purple (2-3 flights)
-    if (freq <= 6) return [244, 63, 94];   // Rose / Coral (4-6 flights)
-    return [245, 158, 11];                 // Fiery Amber / Gold (7+ flights)
+    if (freq <= 1) return [6, 182, 212];    // Electric Cyan / Teal (1 flight) - #06b6d4
+    if (freq === 2) return [16, 185, 129];  // Emerald Mint Green (2 flights) - #10b981
+    if (freq <= 4) return [234, 179, 8];    // Radiant Sun Gold (3-4 flights) - #eab308
+    if (freq <= 7) return [249, 115, 22];   // Vivid Blaze Orange (5-7 flights) - #f97316
+    if (freq <= 11) return [239, 68, 68];   // Hot Crimson Red (8-11 flights) - #ef4444
+    return [236, 72, 153];                  // Intense Hyper Magenta / Plasma Pink (12+ flights) - #ec4899
 };
 
 // Calculate approximate polygon centroid for Scratch Map regional coloring
@@ -608,6 +611,11 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
                     airportFreqMap.set(p1, (airportFreqMap.get(p1) || 0) + 1);
                     airportFreqMap.set(p2, (airportFreqMap.get(p2) || 0) + 1);
+
+                    const oCode = (t.origin || '').toUpperCase().trim();
+                    const dCode = (t.destination || '').toUpperCase().trim();
+                    if (oCode) airportFreqMap.set(oCode, (airportFreqMap.get(oCode) || 0) + 1);
+                    if (dCode) airportFreqMap.set(dCode, (airportFreqMap.get(dCode) || 0) + 1);
                 }
             });
         });
@@ -788,16 +796,17 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 const baseAirportRadius = activeAppearance.airportSize === 'off' 
                     ? 0 
                     : activeAppearance.airportSize === 'small' 
-                        ? 2.0 
+                        ? 2.5 
                         : activeAppearance.airportSize === 'large' 
-                            ? 6.2 
-                            : 3.8;
+                            ? 7.2 
+                            : 4.2;
 
-                const getCalculatedRadius = (pKey: string) => {
+                const getCalculatedRadius = (pKey: string, code?: string) => {
                     if (baseAirportRadius === 0) return 0;
                     if (activeAppearance.airportMode === 'frequency') {
-                        const count = airportFreqMap.get(pKey) || 1;
-                        return Math.min(10, baseAirportRadius * (1 + 0.35 * Math.log2(count)));
+                        const count = airportFreqMap.get(pKey) || (code ? airportFreqMap.get(code) : undefined) || 1;
+                        const multiplier = 1 + 0.45 * Math.log2(count);
+                        return Math.min(22, baseAirportRadius * multiplier);
                     }
                     return baseAirportRadius;
                 };
@@ -808,16 +817,24 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 const isOriginAirport = isKnownAirport(t.origin) || (isFlight && (t.origin?.length === 3 || t.origin?.length === 4));
                 const isDestAirport = isKnownAirport(t.destination) || (isFlight && (t.destination?.length === 3 || t.destination?.length === 4));
 
-                const oKey = `${t.originLng.toFixed(3)},${t.originLat.toFixed(3)}`;
+                const oCode = (t.origin || '').toUpperCase().trim();
+                const dCode = (t.destination || '').toUpperCase().trim();
+
+                const oKey = `${t.originLat.toFixed(3)},${t.originLng.toFixed(3)}`;
                 if (!pointsMap.has(oKey)) {
-                    const hubRGB = useRegionalGradient 
-                        ? getGeoGradientRGB(t.originLat, t.originLng) 
-                        : modeRGB;
-                    const r = getCalculatedRadius(oKey);
+                    const oCount = airportFreqMap.get(oKey) || airportFreqMap.get(oCode) || 1;
+                    const hubRGB = activeAppearance.routeColorMode === 'frequency'
+                        ? getFrequencyRGB(oCount)
+                        : (useRegionalGradient 
+                            ? getGeoGradientRGB(t.originLat, t.originLng) 
+                            : modeRGB);
+                    const r = getCalculatedRadius(oKey, oCode);
                     
                     pointsMap.set(oKey, {
                         position: [t.originLng, t.originLat, 0],
                         name: t.origin,
+                        iata: oCode,
+                        flightCount: oCount,
                         isAirport: isOriginAirport,
                         type: isOriginAirport ? 'airport' : 'city',
                         color: isOriginAirport ? [...hubRGB, 255] : [245, 158, 11, 240], // Aviation gradient for airport, warm amber for city
@@ -836,16 +853,21 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     }
                 }
 
-                const dKey = `${t.destLng.toFixed(3)},${t.destLat.toFixed(3)}`;
+                const dKey = `${t.destLat.toFixed(3)},${t.destLng.toFixed(3)}`;
                 if (!pointsMap.has(dKey)) {
-                    const hubRGB = useRegionalGradient 
-                        ? getGeoGradientRGB(t.destLat, t.destLng) 
-                        : modeRGB;
-                    const r = getCalculatedRadius(dKey);
+                    const dCount = airportFreqMap.get(dKey) || airportFreqMap.get(dCode) || 1;
+                    const hubRGB = activeAppearance.routeColorMode === 'frequency'
+                        ? getFrequencyRGB(dCount)
+                        : (useRegionalGradient 
+                            ? getGeoGradientRGB(t.destLat, t.destLng) 
+                            : modeRGB);
+                    const r = getCalculatedRadius(dKey, dCode);
 
                     pointsMap.set(dKey, {
                         position: [t.destLng, t.destLat, 0],
                         name: t.destination,
+                        iata: dCode,
+                        flightCount: dCount,
                         isAirport: isDestAirport,
                         type: isDestAirport ? 'airport' : 'city',
                         color: isDestAirport ? [...hubRGB, 255] : [245, 158, 11, 240],
@@ -1369,8 +1391,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                             return d.radius;
                         },
                         radiusUnits: 'pixels',
-                        radiusMinPixels: 2.0,
-                        radiusMaxPixels: 12,
+                        radiusMinPixels: 1.5,
+                        radiusMaxPixels: 24,
                         stroked: true,
                         lineWidthUnits: 'pixels',
                         getLineWidth: 1.2,
@@ -1385,9 +1407,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         },
                         onClick: (info: any) => info.object && onTripClick && onTripClick(info.object.tripId),
                         updateTriggers: {
-                            getFillColor: [selectedCorridor?.id, isDark],
+                            getFillColor: [selectedCorridor?.id, isDark, activeAppearance.routeColorMode, activeAppearance.airportMode],
                             getLineColor: [selectedCorridor?.id, isDark],
-                            getRadius: [selectedCorridor?.id]
+                            getRadius: [selectedCorridor?.id, activeAppearance.airportMode, activeAppearance.airportSize]
                         }
                     })
                 );
@@ -1460,18 +1482,14 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         });
 
         if (hasCoords) {
-            const centerLng = (minLng + maxLng) / 2;
-            const centerLat = (minLat + maxLat) / 2;
-            const dLng = Math.max(maxLng - minLng, 20);
-            const dLat = Math.max(maxLat - minLat, 15);
             const fitZoom = effectiveProjection === 'globe' 
-                ? Math.min(3.5, Math.max(0.35, Math.log2(220 / Math.max(dLng, dLat))))
-                : Math.min(6.5, Math.max(1.2, Math.log2(360 / Math.max(dLng, dLat * 1.5))));
+                ? 0.35 
+                : Math.min(4, Math.max(1.5, Math.log2(360 / Math.max(maxLng - minLng, 30))));
 
             setViewState(prev => ({
                 ...prev,
-                longitude: centerLng,
-                latitude: centerLat,
+                longitude: (minLng + maxLng) / 2,
+                latitude: (minLat + maxLat) / 2,
                 zoom: fitZoom
             }));
         } else {
@@ -1480,7 +1498,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     };
 
     return (
-        <div className="relative w-full h-full overflow-hidden bg-[#090d16] select-none">
+        <div className="relative w-full h-full overflow-hidden select-none">
             {/* Deck.gl 60 FPS WebGL Canvas with Mouse Scroll Zoom enabled */}
             <DeckGL
                 views={views}
@@ -1498,8 +1516,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 getCursor={({ isHovering, isDragging }) => (isDragging ? 'grabbing' : isHovering ? 'pointer' : 'grab')}
             />
 
-            {/* Zoom & View Navigation Controls (Bottom Right) */}
-            <div className="absolute bottom-6 right-6 z-20 flex flex-col gap-2">
+            {/* Zoom & View Navigation Controls (Bottom Left) */}
+            <div className="absolute bottom-6 left-6 z-20 flex flex-col gap-2">
                 <div className="flex flex-col rounded-2xl border border-white/10 bg-zinc-900/90 dark:bg-zinc-950/90 backdrop-blur-xl shadow-2xl overflow-hidden divide-y divide-white/10">
                     <button
                         onClick={() => setViewState(v => ({ ...v, zoom: Math.min(v.zoom + 0.8, 18) }))}
@@ -1624,139 +1642,92 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         })()}
                     </div>
 
-                    {/* Route Activity Metric Tiles */}
-                    <div className="px-4 pb-3">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400 block mb-2">
-                            Route Activity
-                        </span>
-                        <div className="grid grid-cols-2 gap-2 mb-2">
-                            <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/5">
-                                <span className="text-[10px] text-zinc-400 block">Flights</span>
-                                <span className="text-base font-black text-white">{selectedCorridor.totalFlights}</span>
+                    {/* Operational Corridor Telemetry */}
+                    <div className="px-4 pb-4 space-y-2">
+                        <div className="grid grid-cols-2 gap-2 text-center">
+                            <div className="p-2.5 rounded-2xl bg-white/[0.04] border border-white/5">
+                                <span className="text-[9px] text-zinc-400 uppercase font-black tracking-wider block">Total Flights</span>
+                                <span className="text-base font-black text-emerald-400">{selectedCorridor.flights.length}</span>
                             </div>
-                            <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/5">
-                                <span className="text-[10px] text-zinc-400 block">Airlines</span>
-                                <span className="text-base font-black text-white">{selectedCorridor.airlines.length}</span>
+                            <div className="p-2.5 rounded-2xl bg-white/[0.04] border border-white/5">
+                                <span className="text-[9px] text-zinc-400 uppercase font-black tracking-wider block">Direct Distance</span>
+                                <span className="text-base font-black text-white">{selectedCorridor.distanceKm} km</span>
                             </div>
                         </div>
-                        <div className="text-[10px] text-zinc-400 px-1 flex items-center justify-between">
-                            <span>{selectedCorridor.distanceKm.toLocaleString()} km</span>
-                            {selectedCorridor.lastFlownDate && (
-                                <span>Last flown {new Date(selectedCorridor.lastFlownDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                            )}
-                        </div>
-                    </div>
 
-                    {/* Flight Legs List */}
-                    <div className="p-4 pt-3 border-t border-white/10 flex-1 overflow-y-auto custom-scrollbar space-y-2">
-                        <div className="flex items-center justify-between mb-1">
-                            <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
-                                <Plane className="w-3 h-3 text-emerald-400" /> Flights ({selectedCorridor.flights.length})
-                            </span>
-                        </div>
-                        {selectedCorridor.flights.map((f, idx) => (
-                            <div
-                                key={idx}
-                                onClick={() => onTripClick && onTripClick(f.tripId)}
-                                className="p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 hover:border-white/20 transition-all cursor-pointer flex items-center justify-between group"
-                            >
-                                <div className="flex items-center gap-2">
-                                    <Plane className="w-3.5 h-3.5 text-zinc-400 group-hover:text-emerald-400 transition-colors shrink-0" />
-                                    <div>
-                                        <div className="flex items-center gap-1.5 text-xs font-bold text-white">
-                                            <span>{f.origin}</span>
-                                            <span className="text-zinc-500 font-normal">→</span>
-                                            <span>{f.destination}</span>
+                        {/* Flight Log Timeline */}
+                        <div className="p-3 rounded-2xl bg-white/[0.04] border border-white/5 space-y-2">
+                            <span className="text-[9px] text-zinc-400 uppercase font-black tracking-wider block">Flight Log ({selectedCorridor.flights.length})</span>
+                            <div className="max-h-40 overflow-y-auto space-y-1.5 custom-scrollbar pr-1">
+                                {selectedCorridor.flights.map((f, idx) => (
+                                    <div key={idx} className="flex items-center justify-between text-xs py-1 px-2 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.06] transition-colors">
+                                        <div className="flex items-center gap-1.5 min-w-0">
+                                            <Plane className="w-3 h-3 text-emerald-400 shrink-0" />
+                                            <span className="font-bold text-white truncate">{f.provider || 'Flight'}</span>
                                             {f.identifier && (
-                                                <span className="text-[10px] font-mono text-emerald-400 ml-1">{f.identifier}</span>
+                                                <span className="text-[10px] text-zinc-400 font-mono">#{f.identifier}</span>
                                             )}
                                         </div>
-                                        <span className="text-[10px] text-zinc-400 block">{f.provider} • {f.tripName}</span>
+                                        {f.departureDate && (
+                                            <span className="text-[10px] text-zinc-400 font-mono shrink-0">
+                                                {new Date(f.departureDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                            </span>
+                                        )}
                                     </div>
-                                </div>
-                                {f.departureDate && (
-                                    <span className="text-[10px] text-zinc-400 font-mono">
-                                        {new Date(f.departureDate).toLocaleDateString(undefined, { month: '2-digit', day: '2-digit', year: 'numeric' })}
-                                    </span>
-                                )}
+                                ))}
                             </div>
-                        ))}
+                        </div>
                     </div>
                 </div>
             )}
 
-            {/* GPU Interactive Route Tooltip (Corridor & Waypoint) */}
+            {/* Interactive Object Hover HUD Tooltip */}
             {hoverInfo?.object && !selectedCorridor && (
-                <div
-                    className="absolute z-50 pointer-events-none transform -translate-x-1/2 -translate-y-full mb-3"
-                    style={{ left: hoverInfo.x, top: hoverInfo.y }}
+                <div 
+                    className="absolute pointer-events-none z-50 transition-all duration-75"
+                    style={{ left: hoverInfo.x + 12, top: hoverInfo.y + 12 }}
                 >
-                    {hoverInfo.object.corridorId && corridorMap.has(hoverInfo.object.corridorId) ? (() => {
-                        const c = corridorMap.get(hoverInfo.object.corridorId)!;
+                    {hoverInfo.object.corridorId ? (() => {
+                        const c = corridorMap.get(hoverInfo.object.corridorId);
+                        if (!c) return null;
                         return (
-                            <div className="bg-[#090d16]/95 text-white border border-white/20 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.85)] backdrop-blur-2xl p-3.5 min-w-[270px] max-w-[320px] text-xs animate-fade-in space-y-2.5">
-                                {/* Header: Route */}
-                                <div>
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block mb-1.5">
-                                        Route
-                                    </span>
-
-                                    {/* Origin */}
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <span className="text-base leading-none">{c.originFlag}</span>
-                                        <span className="font-black text-sm text-white">{c.originCode}</span>
-                                        <span className="text-zinc-300 truncate text-[11px] font-medium">{c.originName}</span>
-                                    </div>
-
-                                    {/* Subline */}
-                                    <div className="text-[10px] font-medium text-zinc-400 pl-6 mb-1 flex items-center gap-1.5">
-                                        <span>{c.distanceKm.toLocaleString()} km</span>
-                                        <span>•</span>
-                                        <span>{c.totalFlights} {c.totalFlights === 1 ? 'trip' : 'trips'}</span>
-                                        <span>•</span>
-                                        <span>{c.airlines.length} {c.airlines.length === 1 ? 'airline' : 'airlines'}</span>
-                                    </div>
-
-                                    {/* Destination */}
+                            <div className="bg-[#090d16]/95 text-white border border-white/15 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-2xl p-4 min-w-[280px] text-xs animate-fade-in space-y-3">
+                                {/* Header */}
+                                <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
                                     <div className="flex items-center gap-2">
+                                        <span className="text-base leading-none">{c.originFlag}</span>
+                                        <span className="font-black text-sm text-white tracking-tight">{c.originCode}</span>
+                                        <ArrowRight className="w-3.5 h-3.5 text-zinc-400" />
                                         <span className="text-base leading-none">{c.destFlag}</span>
-                                        <span className="font-black text-sm text-white">{c.destCode}</span>
-                                        <span className="text-zinc-300 truncate text-[11px] font-medium">{c.destName}</span>
+                                        <span className="font-black text-sm text-white tracking-tight">{c.destCode}</span>
                                     </div>
+                                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                                        CORRIDOR
+                                    </span>
                                 </div>
 
-                                {/* Divider & Flight Legs Manifest */}
-                                <div className="border-t border-white/10 pt-2">
+                                {/* Names */}
+                                <div className="text-[11px] text-zinc-300 leading-snug">
+                                    <span className="font-semibold">{c.originName}</span>
+                                    <span className="text-zinc-500 mx-1">→</span>
+                                    <span className="font-semibold">{c.destName}</span>
+                                </div>
+
+                                {/* Distance & Time Difference */}
+                                <div className="flex items-center justify-between text-[11px] px-2.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/5 font-mono text-zinc-300">
+                                    <span>{c.distanceKm.toLocaleString()} km</span>
+                                    <span className="text-zinc-400">
+                                        {Math.abs(Math.round((c.originCoords[0] - c.destCoords[0]) / 15)) === 0 ? 'Same timezone' : `${Math.abs(Math.round((c.originCoords[0] - c.destCoords[0]) / 15))}h time diff`}
+                                    </span>
+                                </div>
+
+                                {/* Flight list summary */}
+                                <div>
                                     <div className="flex items-center justify-between mb-1.5">
                                         <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">
                                             Flights <span className="text-white ml-1 font-bold">{c.totalFlights}</span>
                                         </span>
                                     </div>
-
-                                    <div className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar pr-0.5">
-                                        {c.flights.slice(0, 5).map((f, idx) => (
-                                            <div key={idx} className="flex items-center justify-between text-[11px] py-1 px-1.5 rounded-lg bg-white/[0.04] border border-white/5">
-                                                <div className="flex items-center gap-1.5 overflow-hidden">
-                                                    <Plane className="w-3 h-3 text-zinc-400 shrink-0" />
-                                                    <span className="font-bold text-white shrink-0">{f.origin}</span>
-                                                    <span className="font-bold text-white shrink-0">{f.destination}</span>
-                                                    <span className="text-zinc-400 truncate text-[10px]">{f.provider}</span>
-                                                </div>
-                                                {f.departureDate && (
-                                                    <span className="text-[10px] text-zinc-400 font-mono shrink-0">
-                                                        {new Date(f.departureDate).toLocaleDateString(undefined, { month: '2-digit', day: '2-digit', year: 'numeric' })}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Action Hint */}
-                                <div className="pt-1 text-center border-t border-white/5">
-                                    <span className="text-[10px] text-emerald-400 font-semibold tracking-wide flex items-center justify-center gap-1">
-                                        Click for route details <ChevronRight className="w-3 h-3" />
-                                    </span>
                                 </div>
                             </div>
                         );
@@ -1773,21 +1744,28 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                     </span>
                                     {hoverInfo.object.isAirport && (
                                         <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                                            AERODROME
+                                            {hoverInfo.object.iata || 'AERODROME'}
                                         </span>
                                     )}
                                 </div>
-                                <div className="flex items-center gap-2 font-bold pt-0.5">
-                                    <span 
-                                        className={`w-2.5 h-2.5 rounded-full ${
-                                            hoverInfo.object.isAirport 
-                                                ? 'bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.8)]' 
-                                                : 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]'
-                                        }`} 
-                                    />
-                                    <span className="text-sm text-white">
-                                        {hoverInfo.object.name || (hoverInfo.object.count ? `${hoverInfo.object.count} Locations` : '')}
-                                    </span>
+                                <div className="flex items-center justify-between gap-2 font-bold pt-0.5">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <span 
+                                            className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                                                hoverInfo.object.isAirport 
+                                                    ? 'bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.8)]' 
+                                                    : 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]'
+                                            }`} 
+                                        />
+                                        <span className="text-sm text-white truncate">
+                                            {hoverInfo.object.name || (hoverInfo.object.count ? `${hoverInfo.object.count} Locations` : '')}
+                                        </span>
+                                    </div>
+                                    {hoverInfo.object.flightCount && hoverInfo.object.flightCount > 0 && (
+                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-white/10 text-emerald-300 border border-white/10 shrink-0">
+                                            {hoverInfo.object.flightCount} {hoverInfo.object.flightCount === 1 ? 'flight' : 'flights'}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                         </div>

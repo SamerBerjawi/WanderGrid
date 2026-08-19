@@ -49,8 +49,8 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                 ...settings,
                 projection: 'globe',
                 basemap: 'satellite',
-                airportDetail: 'minimal',
-                routeColorMode: 'single',
+                airportDetail: 'standard',
+                routeColorMode: 'default',
                 routeScale: 'normal',
                 timeOfDay: true,
                 rainRadar: false
@@ -58,11 +58,11 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
         } else if (preset === 'minimal') {
             onChangeSettings({
                 ...settings,
-                projection: '2d',
+                projection: 'flat',
                 basemap: 'default',
-                airportDetail: 'none',
-                routeColorMode: 'single',
-                routeScale: 'slim',
+                airportDetail: 'standard',
+                routeColorMode: 'default',
+                routeScale: 'thin',
                 timeOfDay: false,
                 rainRadar: false
             });
@@ -387,6 +387,29 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                         </button>
                                     ))}
                                 </div>
+
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button
+                                        onClick={() => updateField('airportMode', 'frequency')}
+                                        className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                                            settings.airportMode === 'frequency'
+                                                ? 'border-blue-500 bg-blue-500/10 text-blue-300'
+                                                : 'border-white/10 bg-zinc-900/60 text-zinc-400 hover:text-white'
+                                        }`}
+                                    >
+                                        Weighted by Traffic
+                                    </button>
+                                    <button
+                                        onClick={() => updateField('airportMode', 'uniform')}
+                                        className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                                            settings.airportMode === 'uniform'
+                                                ? 'border-blue-500 bg-blue-500/10 text-blue-300'
+                                                : 'border-white/10 bg-zinc-900/60 text-zinc-400 hover:text-white'
+                                        }`}
+                                    >
+                                        Uniform Scale
+                                    </button>
+                                </div>
                             </div>
 
                             {/* ROUTE PRESENTATION */}
@@ -399,7 +422,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                     <div className="grid grid-cols-3 gap-2">
                                         {[
                                             { id: 'gradient', label: 'Aurora Gradient', desc: 'Regional spectrum' },
-                                            { id: 'frequency', label: 'Heatmap Density', desc: 'Traffic colored' },
+                                            { id: 'frequency', label: 'Heatmap Density', desc: 'Thermal energy spectrum' },
                                             { id: 'default', label: 'Cobalt Standard', desc: 'Uniform blue' }
                                         ].map((cl) => (
                                             <button

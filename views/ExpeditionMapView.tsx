@@ -913,7 +913,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                     <div className="grid grid-cols-3 gap-2">
                                         {[
                                             { id: 'gradient', label: 'Aurora Gradient', desc: 'Regional spectrum' },
-                                            { id: 'frequency', label: 'Heatmap Density', desc: 'Traffic colored' },
+                                            { id: 'frequency', label: 'Heatmap Density', desc: 'Thermal energy spectrum' },
                                             { id: 'default', label: 'Cobalt Standard', desc: 'Uniform blue' }
                                         ].map((cl) => (
                                             <button
