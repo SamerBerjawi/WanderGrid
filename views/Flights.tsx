@@ -3425,34 +3425,34 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
 
       {/* Unbundle Confirmation Modal */}
       {unbundleConfirmTarget !== null && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-[60] animate-fade-in">
-          <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl border border-zinc-200 dark:border-white/5 animate-scale-up">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60] animate-fade-in font-sans">
+          <div className="bg-light-card dark:bg-dark-card rounded-3xl p-6 max-w-md w-full shadow-2xl border border-black/10 dark:border-white/10 animate-scale-up">
             <div className="flex flex-col items-center text-center">
-              <div className="w-16 h-16 bg-amber-500/10 dark:bg-amber-500/20 rounded-full flex items-center justify-center text-amber-500 mb-5 border border-amber-500/20">
-                <FolderMinus className="w-8 h-8" />
+              <div className="w-12 h-12 bg-amber-500/10 dark:bg-amber-500/20 rounded-2xl flex items-center justify-center text-amber-500 mb-4 border border-amber-500/20">
+                <FolderMinus className="w-6 h-6" />
               </div>
               
-              <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-wider mb-2">
+              <h3 className="text-lg font-bold text-light-text dark:text-dark-text tracking-tight uppercase mb-2">
                 Unbundle Flights
               </h3>
               
-              <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6 leading-relaxed">
-                Are you sure you want to unbundle the <span className="font-extrabold text-blue-500">{unbundleConfirmTarget}</span> selected flights?
+              <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mb-6 leading-relaxed font-medium">
+                Are you sure you want to unbundle the <span className="font-bold text-primary-500">{unbundleConfirmTarget}</span> selected flights?
                 This will separate them from their respective trip itinerary bundles and return them to independent flights.
               </p>
 
-              <div className="flex items-center gap-3 w-full">
+              <div className="flex items-center gap-3 w-full justify-end">
                 <button
                   type="button"
                   onClick={() => setUnbundleConfirmTarget(null)}
-                  className="flex-1 py-3.5 px-5 rounded-2xl text-sm font-bold bg-zinc-100 dark:bg-white/5 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-250 dark:hover:bg-white/10 transition-all cursor-pointer text-center"
+                  className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/10 dark:hover:bg-white/10 transition-all cursor-pointer text-center"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={executeUnbundle}
-                  className="flex-1 py-3.5 px-5 rounded-2xl text-sm font-black uppercase tracking-wider bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20 transition-all cursor-pointer text-center"
+                  className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20 transition-all cursor-pointer text-center"
                 >
                   Unbundle
                 </button>
@@ -3464,22 +3464,22 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
 
       {/* Delete Confirmation Modal */}
       {deleteConfirmTarget && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-[60] animate-fade-in">
-          <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl border border-zinc-200 dark:border-white/5 animate-scale-up">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60] animate-fade-in font-sans">
+          <div className="bg-light-card dark:bg-dark-card rounded-3xl p-6 max-w-md w-full shadow-2xl border border-black/10 dark:border-white/10 animate-scale-up">
             <div className="flex flex-col items-center text-center">
-              <div className="w-16 h-16 bg-red-500/10 dark:bg-red-500/20 rounded-full flex items-center justify-center text-red-500 mb-5 border border-red-500/20 animate-pulse">
-                <Trash2 className="w-8 h-8" />
+              <div className="w-12 h-12 bg-rose-500/10 dark:bg-rose-500/20 rounded-2xl flex items-center justify-center text-rose-500 mb-4 border border-rose-500/20">
+                <Trash2 className="w-6 h-6" />
               </div>
               
-              <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-wider mb-2">
+              <h3 className="text-lg font-bold text-light-text dark:text-dark-text tracking-tight uppercase mb-2">
                 Confirm Deletion
               </h3>
               
-              <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6 leading-relaxed">
+              <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mb-6 leading-relaxed font-medium">
                 {deleteConfirmTarget.type === 'single' ? (
                   <>
                     Are you sure you want to permanently delete flight{" "}
-                    <span className="font-extrabold text-blue-500">
+                    <span className="font-bold text-primary-500">
                       {deleteConfirmTarget.singleRecord?.flight.provider}{" "}
                       {deleteConfirmTarget.singleRecord?.flight.identifier}
                     </span>
@@ -3488,7 +3488,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                 ) : (
                   <>
                     Are you sure you want to permanently delete the{" "}
-                    <span className="font-extrabold text-blue-500">
+                    <span className="font-bold text-primary-500">
                       {deleteConfirmTarget.multiCount}
                     </span>{" "}
                     selected flights? This will remove these travel legs from all itineraries and cannot be undone.
@@ -3496,11 +3496,11 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                 )}
               </p>
 
-              <div className="flex items-center gap-3 w-full">
+              <div className="flex items-center gap-3 w-full justify-end">
                 <button
                   type="button"
                   onClick={() => setDeleteConfirmTarget(null)}
-                  className="flex-1 py-3.5 px-5 rounded-2xl text-sm font-bold bg-zinc-100 dark:bg-white/5 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-250 dark:hover:bg-white/10 transition-all cursor-pointer text-center"
+                  className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/10 dark:hover:bg-white/10 transition-all cursor-pointer text-center"
                 >
                   Cancel
                 </button>
@@ -3513,7 +3513,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                       await executeMultiDelete();
                     }
                   }}
-                  className="flex-1 py-3.5 px-5 rounded-2xl text-sm font-black uppercase tracking-wider bg-red-500 hover:bg-red-650 text-white shadow-lg shadow-red-500/20 transition-all cursor-pointer text-center"
+                  className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-500/20 transition-all cursor-pointer text-center"
                 >
                   Delete
                 </button>
@@ -3525,18 +3525,18 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
 
       {/* Bundling Modal */}
       {isBundling && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-[60] animate-fade-in">
-          <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl border border-zinc-200 dark:border-white/5 animate-scale-up">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60] animate-fade-in font-sans">
+          <div className="bg-light-card dark:bg-dark-card rounded-3xl p-6 max-w-md w-full shadow-2xl border border-black/10 dark:border-white/10 animate-scale-up">
             <div className="flex flex-col">
               <div className="flex items-center gap-3 mb-5">
-                <div className="w-12 h-12 bg-blue-500/10 dark:bg-blue-500/20 rounded-full flex items-center justify-center text-blue-500 border border-blue-500/20">
-                  <FolderPlus className="w-6 h-6" />
+                <div className="w-11 h-11 bg-primary-500/10 text-primary-600 dark:text-primary-400 rounded-2xl flex items-center justify-center border border-primary-500/20">
+                  <FolderPlus className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-wider">
+                  <h3 className="text-base font-bold text-light-text dark:text-dark-text tracking-tight uppercase">
                     Bundle Flights
                   </h3>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium">
                     Group {selectedFlightIds.size} selected flights into a single trip itinerary.
                   </p>
                 </div>
@@ -3544,7 +3544,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
 
               <div className="space-y-4 mb-6">
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-450 dark:text-zinc-500 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary mb-1.5">
                     Trip / Bundle Name
                   </label>
                   <input
@@ -3552,13 +3552,13 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     value={bundleName}
                     onChange={(e) => setBundleName(e.target.value)}
                     placeholder="e.g. Paris Getaway"
-                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/5 rounded-2xl text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-gray-900 dark:text-white"
+                    className="w-full px-4 py-2.5 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-2xl text-xs font-bold focus:outline-none focus:border-primary-500 text-light-text dark:text-dark-text"
                     autoFocus
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-450 dark:text-zinc-500 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary mb-1.5">
                     Destination / Location
                   </label>
                   <input
@@ -3566,30 +3566,30 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     value={bundleLocation}
                     onChange={(e) => setBundleLocation(e.target.value)}
                     placeholder="e.g. Paris, France"
-                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/5 rounded-2xl text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-gray-900 dark:text-white"
+                    className="w-full px-4 py-2.5 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-2xl text-xs font-bold focus:outline-none focus:border-primary-500 text-light-text dark:text-dark-text"
                   />
                 </div>
 
-                <div className="flex items-start gap-3 mt-4 p-3 bg-zinc-50 dark:bg-black/10 rounded-2xl border border-zinc-200/50 dark:border-white/5">
+                <div className="flex items-start gap-3 mt-4 p-4 bg-light-fill dark:bg-dark-fill/50 rounded-2xl border border-black/5 dark:border-white/5">
                   <input
                     type="checkbox"
                     id="createTripInPlanner"
                     checked={createTripInPlanner}
                     onChange={(e) => setCreateTripInPlanner(e.target.checked)}
-                    className="mt-1 h-4 w-4 text-blue-500 rounded border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 focus:ring-blue-500 cursor-pointer"
+                    className="mt-0.5 h-4 w-4 text-primary-500 rounded border-black/10 dark:border-white/10 focus:ring-primary-500 cursor-pointer"
                   />
-                  <label htmlFor="createTripInPlanner" className="text-xs text-zinc-650 dark:text-zinc-400 leading-relaxed cursor-pointer select-none">
-                    <span className="font-extrabold text-zinc-800 dark:text-zinc-250 block">Create Trip in Planner</span>
+                  <label htmlFor="createTripInPlanner" className="text-xs text-light-text-secondary dark:text-dark-text-secondary leading-relaxed cursor-pointer select-none font-medium">
+                    <span className="font-bold text-light-text dark:text-dark-text block">Create Trip in Planner</span>
                     If checked, this bundle will also appear as a structured vacation itinerary in the Planner view.
                   </label>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 w-full">
+              <div className="flex items-center gap-3 w-full justify-end">
                 <button
                   type="button"
                   onClick={() => setIsBundling(false)}
-                  className="flex-1 py-3.5 px-5 rounded-2xl text-sm font-bold bg-zinc-100 dark:bg-white/5 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-250 dark:hover:bg-white/10 transition-all cursor-pointer text-center"
+                  className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/10 dark:hover:bg-white/10 transition-all cursor-pointer text-center"
                 >
                   Cancel
                 </button>
@@ -3597,7 +3597,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                   type="button"
                   disabled={!bundleName.trim()}
                   onClick={executeBundle}
-                  className="flex-1 py-3.5 px-5 rounded-2xl text-sm font-black uppercase tracking-wider bg-blue-500 hover:bg-blue-650 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-lg shadow-blue-500/20 transition-all cursor-pointer text-center"
+                  className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-primary-500 hover:bg-primary-600 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-lg shadow-primary-500/20 transition-all cursor-pointer text-center"
                 >
                   Create Bundle
                 </button>
@@ -3609,18 +3609,18 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
 
       {/* Edit Bundle Settings Modal */}
       {isEditingBundle && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-[60] animate-fade-in">
-          <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl border border-zinc-200 dark:border-white/5 animate-scale-up">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60] animate-fade-in font-sans">
+          <div className="bg-light-card dark:bg-dark-card rounded-3xl p-6 max-w-md w-full shadow-2xl border border-black/10 dark:border-white/10 animate-scale-up">
             <div className="flex flex-col">
               <div className="flex items-center gap-3 mb-5">
-                <div className="w-12 h-12 bg-blue-500/10 dark:bg-blue-500/20 rounded-full flex items-center justify-center text-blue-500 border border-blue-500/20">
-                  <Compass className="w-6 h-6" />
+                <div className="w-11 h-11 bg-primary-500/10 text-primary-600 dark:text-primary-400 rounded-2xl flex items-center justify-center border border-primary-500/20">
+                  <Compass className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-wider">
+                  <h3 className="text-base font-bold text-light-text dark:text-dark-text tracking-tight uppercase">
                     Edit Bundle Settings
                   </h3>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium">
                     Modify properties of this bundled flight itinerary.
                   </p>
                 </div>
@@ -3628,7 +3628,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
 
               <div className="space-y-4 mb-6">
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-450 dark:text-zinc-500 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary mb-1.5">
                     Itinerary Bundle Name
                   </label>
                   <input
@@ -3636,13 +3636,13 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     value={formBundleName}
                     onChange={(e) => setFormBundleName(e.target.value)}
                     placeholder="e.g. Paris Getaway"
-                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/5 rounded-2xl text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-gray-900 dark:text-white"
+                    className="w-full px-4 py-2.5 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-2xl text-xs font-bold focus:outline-none focus:border-primary-500 text-light-text dark:text-dark-text"
                     autoFocus
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-450 dark:text-zinc-500 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary mb-1.5">
                     Destination / Location
                   </label>
                   <input
@@ -3650,15 +3650,15 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     value={formBundleLocation}
                     onChange={(e) => setFormBundleLocation(e.target.value)}
                     placeholder="e.g. Paris, France"
-                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/5 rounded-2xl text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-gray-900 dark:text-white"
+                    className="w-full px-4 py-2.5 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-2xl text-xs font-bold focus:outline-none focus:border-primary-500 text-light-text dark:text-dark-text"
                   />
                 </div>
 
-                <div className="p-4 rounded-2xl bg-red-500/5 dark:bg-red-500/10 border border-red-500/15">
-                  <h4 className="text-xs font-black uppercase tracking-wider text-red-600 dark:text-red-400 mb-1">
+                <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 mb-1">
                     Disassemble Bundle actions
                   </h4>
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed mb-3">
+                  <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary leading-relaxed mb-3 font-medium">
                     Unpack this bundle entirely. The flight legs won&apos;t be deleted, but they will become standalone independent items.
                   </p>
                   <button
@@ -3668,21 +3668,21 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                         handleDisassembleBundle();
                       }
                     }}
-                    className="w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-red-500 hover:bg-red-650 text-white transition-all cursor-pointer text-center"
+                    className="w-full py-2 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-rose-500 hover:bg-rose-600 text-white transition-all cursor-pointer text-center"
                   >
-                    Disassemble & Unpack Bundle
+                    Disassemble Bundle
                   </button>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 w-full">
+              <div className="flex items-center gap-3 w-full justify-end">
                 <button
                   type="button"
                   onClick={() => {
                     setIsEditingBundle(false);
                     setEditingBundleId('');
                   }}
-                  className="flex-1 py-3.5 px-5 rounded-2xl text-sm font-bold bg-zinc-100 dark:bg-white/5 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-250 dark:hover:bg-white/10 transition-all cursor-pointer text-center"
+                  className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/10 dark:hover:bg-white/10 transition-all cursor-pointer text-center"
                 >
                   Cancel
                 </button>
@@ -3690,7 +3690,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                   type="button"
                   disabled={!formBundleName.trim()}
                   onClick={handleSaveBundleSettings}
-                  className="flex-1 py-3.5 px-5 rounded-2xl text-sm font-black uppercase tracking-wider bg-blue-500 hover:bg-blue-650 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-lg shadow-blue-500/20 transition-all cursor-pointer text-center"
+                  className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-primary-500 hover:bg-primary-600 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-lg shadow-primary-500/20 transition-all cursor-pointer text-center"
                 >
                   Save Changes
                 </button>
@@ -3703,7 +3703,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
       {/* Add / Edit Form Modal */}
       {isEditing && (
         <div 
-          className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in font-sans"
           onBlurCapture={() => {
             if (!editingFlight) {
               const draft = {
@@ -3718,18 +3718,28 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
             }
           }}
         >
-          <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] p-6 max-w-lg w-full shadow-2xl border border-gray-200/20 dark:border-white/5 animate-scale-up max-h-[90vh] overflow-y-auto custom-scrollbar">
+          <div className="bg-light-card dark:bg-dark-card rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-black/10 dark:border-white/10 animate-scale-up max-h-[90vh] overflow-y-auto custom-scrollbar">
             
-            <div className="flex items-center justify-between border-b border-gray-150/50 dark:border-white/5 pb-4 mb-6">
-              <h3 className="text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
-                <Plane className="w-6 h-6 rotate-45 text-blue-500" />
-                {editingFlight ? 'Edit Flights' : 'New Flight Record'}
-              </h3>
+            <div className="flex items-center justify-between border-b border-black/5 dark:border-white/5 pb-4 mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white bg-primary-500 shadow-md">
+                  <Plane className="w-5 h-5 rotate-45" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-light-text dark:text-dark-text tracking-tight">
+                    {editingFlight ? 'Edit Flight Record' : 'New Flight Record'}
+                  </h3>
+                  <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium">
+                    Configure flight leg telemetry & boarding details
+                  </p>
+                </div>
+              </div>
               <button 
                 onClick={() => setIsEditing(false)}
-                className="text-gray-400 hover:text-gray-500 dark:hover:text-white text-sm font-bold cursor-pointer"
+                className="w-9 h-9 rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                aria-label="Close modal"
               >
-                Close
+                <X className="w-4 h-4" />
               </button>
             </div>
 

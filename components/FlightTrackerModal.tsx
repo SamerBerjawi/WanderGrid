@@ -82,12 +82,12 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Where's My Flight?" maxWidth="max-w-2xl">
-            <div className="space-y-6">
+        <Modal isOpen={isOpen} onClose={onClose} title="Where's My Flight?" subtitle="Live Telemetry & Flight Tracker" icon="flight" maxWidth="max-w-2xl">
+            <div className="space-y-6 font-sans">
                 {/* Provider SelectorTabs */}
                 <div className="space-y-2">
-                    <label className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest block ml-1">Flight Data Engine</label>
-                    <div className="grid grid-cols-4 gap-1 p-1 bg-gray-100 dark:bg-white/5 rounded-2xl border border-gray-200/50 dark:border-white/5">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Flight Data Engine</label>
+                    <div className="grid grid-cols-4 gap-1 p-1 bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5">
                         {[
                             { id: 'ai_guessing', label: 'Gemini AI', icon: 'auto_awesome' },
                             { id: 'adsbdb', label: 'ADSBdb (Free)', icon: 'sensors' },
@@ -97,56 +97,58 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
                             <button
                                 key={p.id}
                                 onClick={() => setProvider(p.id as any)}
-                                className={`flex flex-col md:flex-row items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl text-xs font-bold transition-all ${provider === p.id ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-md scale-[1.02]' : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+                                className={`flex flex-col md:flex-row items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                                    provider === p.id 
+                                        ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm' 
+                                        : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
+                                }`}
                             >
                                 <span className="material-icons-outlined text-sm">{p.icon}</span>
                                 <span className="hidden sm:inline">{p.label}</span>
-                                <span className="sm:hidden text-[10px]">{p.label.split(' ')[0]}</span>
+                                <span className="sm:hidden text-2xs">{p.label.split(' ')[0]}</span>
                             </button>
                         ))}
                     </div>
                 </div>
 
                 {provider === 'aviationstack' && !aviationKey && (
-                    <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 text-amber-800 dark:text-amber-200 text-sm font-medium flex items-center gap-3">
-                        <span className="material-icons-outlined">warning</span>
+                    <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs font-semibold flex items-center gap-3">
+                        <span className="material-icons-outlined text-base">warning</span>
                         <span>AviationStack API Key is missing. Standard lookup will automatically fallback to AI Flight Guessing.</span>
                     </div>
                 )}
                 
                 {provider === 'ai_guessing' && !geminiKey && (
-                    <div className="p-4 rounded-xl bg-blue-50/50 dark:bg-blue-950/10 border border-blue-100/50 dark:border-blue-900/20 text-blue-800 dark:text-blue-300 text-xs font-semibold flex items-center gap-2">
-                        <span className="material-icons-outlined text-sm">info</span>
+                    <div className="p-4 rounded-2xl bg-primary-500/10 border border-primary-500/20 text-primary-700 dark:text-primary-300 text-xs font-semibold flex items-center gap-2">
+                        <span className="material-icons-outlined text-base">info</span>
                         <span>Gemini AI works in sandbox mode. Add a Gemini API Key in Settings for live pinpoint accuracy.</span>
                     </div>
                 )}
 
                 {/* Suggestion Card */}
                 {!flightData && suggestedFlight && !error && (
-                    <div className="p-1 rounded-2xl bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500">
-                        <div className="bg-white dark:bg-gray-900 rounded-xl p-4 flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center">
-                                    <span className="material-icons-outlined">flight_takeoff</span>
-                                </div>
-                                <div>
-                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Itinerary Match</p>
-                                    <p className="font-black text-gray-900 dark:text-white text-lg">{suggestedFlight.iata}: {suggestedFlight.origin} &rarr; {suggestedFlight.destination}</p>
-                                </div>
+                    <div className="p-4 rounded-2xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl bg-primary-500 text-white flex items-center justify-center shadow-md">
+                                <span className="material-icons-outlined text-lg">flight_takeoff</span>
                             </div>
-                            <Button size="sm" onClick={() => handleTrack(suggestedFlight.iata)}>Track Now</Button>
+                            <div>
+                                <p className="text-2xs font-bold text-primary-600 dark:text-primary-400 uppercase tracking-wider">Itinerary Match</p>
+                                <p className="font-bold text-light-text dark:text-dark-text text-sm">{suggestedFlight.iata}: {suggestedFlight.origin} &rarr; {suggestedFlight.destination}</p>
+                            </div>
                         </div>
+                        <Button size="sm" onClick={() => handleTrack(suggestedFlight.iata)}>Track Now</Button>
                     </div>
                 )}
 
                 {/* Search Inputs */}
-                <div className="flex gap-4 items-end bg-gray-50 dark:bg-white/5 p-4 rounded-2xl border border-gray-100 dark:border-white/5">
+                <div className="flex flex-col sm:flex-row gap-4 items-end bg-light-fill dark:bg-dark-fill/50 p-5 rounded-3xl border border-black/5 dark:border-white/5">
                     <Input 
                         label="Flight Number" 
                         placeholder="e.g. AA100" 
                         value={flightNum} 
                         onChange={e => setFlightNum(e.target.value.toUpperCase())}
-                        className="!text-lg font-black font-mono tracking-wide"
+                        className="!text-sm font-mono uppercase font-bold"
                     />
                     <Input 
                         label="Date" 
@@ -157,7 +159,7 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
                     <Button 
                         onClick={() => handleTrack()} 
                         disabled={isLoading || !flightNum} 
-                        className="h-[52px] !rounded-2xl px-6 shadow-xl shadow-blue-500/20"
+                        className="h-10 px-6 shrink-0 w-full sm:w-auto"
                         isLoading={isLoading}
                     >
                         Search

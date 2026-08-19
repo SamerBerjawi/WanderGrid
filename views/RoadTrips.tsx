@@ -1313,299 +1313,303 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
       )}
 
       {/* Creation and Edit Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-md flex items-center justify-center p-4">
-          <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto relative p-6 md:p-8" title={editingTransport ? "Edit Land Itinerary details" : "Add Land / Sea Voyage"}>
-            <form onSubmit={handleSaveTransport} className="space-y-6">
-              
-              {/* Type Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
-                {(Object.keys(MODE_META) as Array<keyof typeof MODE_META>).map(modeKey => {
-                  const isActive = formMode === modeKey;
-                  const item = MODE_META[modeKey];
-                  const Icon = item.icon;
-                  return (
-                    <button
-                      key={modeKey}
-                      type="button"
-                      onClick={() => setFormMode(modeKey)}
-                      className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-all cursor-pointer ${
-                        isActive 
-                          ? 'bg-blue-500/10 border-blue-500/40 text-blue-600 dark:text-blue-400 shadow-sm shadow-blue-500/10 scale-[1.02]' 
-                          : 'bg-white/40 border-zinc-200/50 hover:bg-zinc-50 text-zinc-500 dark:bg-zinc-800/10 dark:border-white/5 dark:hover:bg-white/[0.04]'
-                      }`}
-                    >
-                      <Icon className="w-5 h-5 mb-1" />
-                      <span className="text-[10px] font-bold text-center leading-none">{modeKey}</span>
-                    </button>
-                  );
-                })}
-              </div>
+      <Modal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        title={editingTransport ? "Edit Land Itinerary Details" : "Add Land / Sea Voyage"}
+        subtitle="Voyage Parameters & Route Planning"
+        icon="directions_car"
+        maxWidth="max-w-4xl"
+      >
+        <form onSubmit={handleSaveTransport} className="space-y-6 font-sans text-left">
+          {/* Type Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+            {(Object.keys(MODE_META) as Array<keyof typeof MODE_META>).map(modeKey => {
+              const isActive = formMode === modeKey;
+              const item = MODE_META[modeKey];
+              const Icon = item.icon;
+              return (
+                <button
+                  key={modeKey}
+                  type="button"
+                  onClick={() => setFormMode(modeKey)}
+                  className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-all cursor-pointer ${
+                    isActive 
+                      ? 'bg-primary-500/10 border-primary-500/30 text-primary-600 dark:text-primary-400 shadow-sm' 
+                      : 'bg-white dark:bg-dark-card border-black/5 dark:border-white/5 hover:bg-black/5 dark:hover:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'
+                  }`}
+                >
+                  <Icon className="w-5 h-5 mb-1" />
+                  <span className="text-2xs font-bold uppercase tracking-wider text-center leading-none">{modeKey}</span>
+                </button>
+              );
+            })}
+          </div>
 
-              {/* Geo Info Rows */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Autocomplete 
-                  label="Origin City / Port" 
-                  placeholder="e.g. Paris Gare du Nord, Rome"
-                  value={formOrigin}
-                  onChange={val => setFormOrigin(val)}
-                  fetchSuggestions={searchLocations}
-                />
-                <Autocomplete
-                  label="Destination City / Port"
-                  placeholder="e.g. London St Pancras, Milan"
-                  value={formDestination}
-                  onChange={val => setFormDestination(val)}
-                  fetchSuggestions={searchLocations}
-                />
-              </div>
+          {/* Geo Info Rows */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Autocomplete 
+              label="Origin City / Port" 
+              placeholder="e.g. Paris Gare du Nord, Rome"
+              value={formOrigin}
+              onChange={val => setFormOrigin(val)}
+              fetchSuggestions={searchLocations}
+            />
+            <Autocomplete 
+              label="Destination City / Port" 
+              placeholder="e.g. London St Pancras, Milan"
+              value={formDestination}
+              onChange={val => setFormDestination(val)}
+              fetchSuggestions={searchLocations}
+            />
+          </div>
 
-              {/* Departure Arrival timeline input */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 rounded-3xl bg-zinc-50/50 dark:bg-zinc-950/20 border border-zinc-100 dark:border-white/5">
-                <div className="space-y-3">
-                  <span className="text-[10px] font-black uppercase text-blue-500 tracking-wider">Departure timeline</span>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input 
-                      type="date" 
-                      label="Departure date"
-                      value={formDepDate}
-                      onChange={e => setFormDepDate(e.target.value)}
-                      required
-                    />
-                    <TimeInput 
-                      label="Dep. Time"
-                      value={formDepTime}
-                      onChange={val => setFormDepTime(val)}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <span className="text-[10px] font-black uppercase text-indigo-505 text-indigo-500 tracking-wider">Arrival timeline</span>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input 
-                      type="date" 
-                      label="Arrival date"
-                      value={formArrDate}
-                      onChange={e => setFormArrDate(e.target.value)}
-                    />
-                    <TimeInput 
-                      label="Arr. Time"
-                      value={formArrTime}
-                      onChange={val => setFormArrTime(val)}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Provider details */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Departure Arrival timeline input */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-5 rounded-3xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5">
+            <div className="space-y-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-primary-600 dark:text-primary-400 block">Departure Timeline</span>
+              <div className="grid grid-cols-2 gap-2">
                 <Input 
-                  label="Operator / Provider" 
-                  placeholder="e.g. Eurostar, Flixbus, Hertz, DFDS"
-                  value={formProvider}
-                  onChange={e => setFormProvider(e.target.value)}
+                  type="date" 
+                  label="Departure date"
+                  value={formDepDate}
+                  onChange={e => setFormDepDate(e.target.value)}
+                  required
                 />
-                <Input 
-                  label="Vehicle Plate / Id" 
-                  placeholder="e.g. Plate #, TGV 9102"
-                  value={formIdentifier}
-                  onChange={e => setFormIdentifier(e.target.value)}
+                <TimeInput 
+                  label="Dep. Time"
+                  value={formDepTime}
+                  onChange={val => setFormDepTime(val)}
                 />
-                <Input 
-                  label="Confirmation tickets / booking ref" 
-                  placeholder="e.g. CONFIRM-X9"
-                  value={formConfirmationCode}
-                  onChange={e => setFormConfirmationCode(e.target.value)}
-                />
-              </div>
-
-              {/* Associated Trip linking dropdown */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                <div className="md:col-span-2">
-                  <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide ml-1">Associate Trip Grouping</span>
-                  <select
-                    value={formTripId}
-                    onChange={e => setFormTripId(e.target.value)}
-                    className="w-full mt-1.5 px-4 py-3 rounded-2xl bg-gray-50/50 border border-gray-200 focus:bg-white focus:border-blue-500 outline-none text-xs md:text-sm text-gray-800 dark:bg-gray-800/40 dark:border-white/10 dark:text-gray-100 cursor-pointer h-[48px]"
-                  >
-                    <option value="unassigned">Keep as Independent Travel</option>
-                    {trips.map(t => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <Input 
-                  label="Total Expense Code ($)" 
-                  placeholder="e.g. 150"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formCost}
-                  onChange={e => setFormCost(e.target.value)}
-                />
-              </div>
-
-              {/* Waypoint segment designer box */}
-              <div className="border border-dashed p-4 rounded-3xl space-y-4">
-                <span className="text-[10px] font-black uppercase text-zinc-550 dark:text-zinc-400 tracking-wider flex items-center gap-1.5">
-                  <Map className="w-4 h-4 text-emerald-500" /> Waypoint segment designer (Stops, Sightseeing, Food, Lodging)
-                </span>
-
-                {/* current waypoints pills inside modal */}
-                {formWaypoints.length > 0 && (
-                  <div className="flex flex-wrap gap-2 py-1 max-h-32 overflow-y-auto custom-scrollbar">
-                    {formWaypoints.map(wp => (
-                      <div key={wp.id} className="text-xs flex items-center gap-1.5 px-3 py-1 bg-gray-100 dark:bg-white/5 border border-zinc-200 dark:border-white/5 rounded-xl font-medium animate-fade-in text-zinc-700 dark:text-gray-300">
-                        <span>{wp.name}</span>
-                        <span className="text-[9px] font-bold uppercase opacity-60">({wp.type})</span>
-                        <button 
-                          type="button" 
-                          onClick={() => handleRemoveWaypoint(wp.id)} 
-                          className="hover:text-red-500 hover:scale-110 ml-1 cursor-pointer"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Waypoint insertion row */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end bg-gray-50 dark:bg-black/20 p-3 rounded-2xl">
-                  <div className="md:col-span-5">
-                    <Input 
-                      label="Waypoint location" 
-                      placeholder="e.g. Reims Cathedral, Shell Station"
-                      value={newWaypointName}
-                      onChange={e => setNewWaypointName(e.target.value)}
-                      className="h-[38px] py-1 text-xs"
-                    />
-                  </div>
-                  <div className="md:col-span-3">
-                    <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest pl-1">Stop type</span>
-                    <select
-                      value={newWaypointType}
-                      onChange={e => setNewWaypointType(e.target.value as any)}
-                      className="w-full mt-1 px-2.5 py-1.5 rounded-xl bg-white border border-gray-200 outline-none text-xs text-gray-800 dark:bg-gray-800 dark:border-white/10 dark:text-zinc-100 cursor-pointer h-[38px] font-bold"
-                    >
-                      <option value="Stop">Sightseeing Stop</option>
-                      <option value="Food">Food / Pitstop</option>
-                      <option value="Lodging">Lodging stop</option>
-                      <option value="Sightseeing">Sightseeing Point</option>
-                      <option value="Fuel">Gas / Fuel Station</option>
-                    </select>
-                  </div>
-                  <div className="md:col-span-3">
-                    <Input 
-                      label="Optional stop notes" 
-                      placeholder="Snack, 20min"
-                      value={newWaypointNotes}
-                      onChange={e => setNewWaypointNotes(e.target.value)}
-                      className="h-[38px] py-1 text-xs"
-                    />
-                  </div>
-                  <div className="md:col-span-1">
-                    <Button 
-                      type="button" 
-                      onClick={handleAddWaypoint} 
-                      className="bg-zinc-800 text-white hover:bg-zinc-700 dark:bg-white/15 dark:hover:bg-white/20 h-[38px] w-full p-0 flex items-center justify-center rounded-xl"
-                    >
-                      Add
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Waypoint drive notes */}
-              <div className="flex flex-col gap-2">
-                <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide ml-1">Overall Itinerary notes / Driving directions</span>
-                <textarea
-                  className="w-full px-4 py-3 rounded-2xl bg-gray-50/50 border border-gray-200 text-sm focus:bg-white focus:border-blue-500 outline-none text-gray-800 placeholder-gray-400 dark:bg-gray-800/40 dark:border-white/10 dark:text-gray-100 dark:focus:bg-gray-800"
-                  rows={3}
-                  placeholder="Insert any relevant ticket details, driving rules, parking arrangements, or maps notes."
-                  value={formNotes}
-                  onChange={e => setFormNotes(e.target.value)}
-                />
-              </div>
-
-              {/* Actions Footer */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-zinc-200/50 dark:border-white/5">
-                <Button variant="secondary" type="button" onClick={() => setIsModalOpen(false)} className="rounded-xl">
-                  Cancel
-                </Button>
-                <Button variant="primary" type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-lg shadow-emerald-500/10">
-                  {editingTransport ? "Save Itinerary" : "Create Journey"}
-                </Button>
-              </div>
-
-            </form>
-          </Card>
-        </div>
-      )}
-
-      {/* Suggestions Confirmation Modal */}
-      {pendingSuggestions !== null && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-md flex items-center justify-center p-4">
-          <Card className="w-full max-w-2xl overflow-y-auto relative p-6 md:p-8" title="Confirm Auto-Generated Segments">
-            <div className="space-y-6">
-              <div className="space-y-1">
-                <p className="text-xs text-zinc-500">
-                  We analyzed your planned trip stops and generated consecutive segments below. Please confirm if you want to create and save these transit segments.
-                </p>
-              </div>
-
-              <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-2">
-                {pendingSuggestions.length === 0 ? (
-                  <p className="text-xs text-zinc-500 italic py-4 text-center">No missing segments detected. Your trip is fully synchronized!</p>
-                ) : (
-                  pendingSuggestions.map((seg, idx) => {
-                    const modeMeta = MODE_META[seg.mode as keyof typeof MODE_META];
-                    const ModeIcon = modeMeta?.icon || Train;
-                    return (
-                      <div key={idx} className="p-4 rounded-2xl border border-zinc-200 dark:border-white/5 bg-zinc-50/50 dark:bg-white/[0.02] flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-xl ${modeMeta?.bgClass || 'bg-blue-500/10'} ${modeMeta?.borderClass || 'border-blue-500/20'} border flex items-center justify-center ${modeMeta?.colorClass || 'text-blue-500'}`}>
-                          <ModeIcon className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 text-xs font-bold font-sans">
-                            <span className="truncate">{seg.origin}</span>
-                            <ArrowRight className="w-3.5 h-3.5 text-zinc-400" />
-                            <span className="truncate">{seg.destination}</span>
-                          </div>
-                          <div className="flex items-center gap-2 mt-1 text-[10px] text-zinc-500 font-medium">
-                            <span>{seg.departureDate}</span>
-                            <span>•</span>
-                            <span>Est. {seg.distance} km ({Math.round(seg.duration / 60)}h)</span>
-                          </div>
-                        </div>
-                        <Badge variant="primary" className="text-[10px] font-bold bg-zinc-150 text-zinc-700 dark:bg-white/[0.05] dark:text-zinc-300">
-                          Proposed
-                        </Badge>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-zinc-100 dark:border-white/5">
-                <Button variant="secondary" onClick={() => setPendingSuggestions(null)} className="rounded-xl text-xs">
-                  Cancel
-                </Button>
-                {pendingSuggestions.length > 0 && (
-                  <Button 
-                    variant="primary" 
-                    onClick={handleConfirmSaveSuggestions}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs shadow-md shadow-emerald-500/10 animate-fade-in"
-                  >
-                    Confirm & Save {pendingSuggestions.length} Segment{pendingSuggestions.length > 1 ? 's' : ''}
-                  </Button>
-                )}
               </div>
             </div>
-          </Card>
+
+            <div className="space-y-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-primary-600 dark:text-primary-400 block">Arrival Timeline</span>
+              <div className="grid grid-cols-2 gap-2">
+                <Input 
+                  type="date" 
+                  label="Arrival date"
+                  value={formArrDate}
+                  onChange={e => setFormArrDate(e.target.value)}
+                />
+                <TimeInput 
+                  label="Arr. Time"
+                  value={formArrTime}
+                  onChange={val => setFormArrTime(val)}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Provider details */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Input 
+              label="Operator / Provider" 
+              placeholder="e.g. Eurostar, Flixbus, Hertz, DFDS"
+              value={formProvider}
+              onChange={e => setFormProvider(e.target.value)}
+            />
+            <Input 
+              label="Vehicle Plate / Id" 
+              placeholder="e.g. Plate #, TGV 9102"
+              value={formIdentifier}
+              onChange={e => setFormIdentifier(e.target.value)}
+            />
+            <Input 
+              label="Confirmation tickets / booking ref" 
+              placeholder="e.g. CONFIRM-X9"
+              value={formConfirmationCode}
+              onChange={e => setFormConfirmationCode(e.target.value)}
+            />
+          </div>
+
+          {/* Associated Trip linking dropdown */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+            <div className="md:col-span-2">
+              <span className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary mb-2">Associate Trip Grouping</span>
+              <select
+                value={formTripId}
+                onChange={e => setFormTripId(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 outline-none text-xs font-bold text-light-text dark:text-dark-text cursor-pointer h-10"
+              >
+                <option value="unassigned">Keep as Independent Travel</option>
+                {trips.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+            <Input 
+              label="Total Expense ($)" 
+              placeholder="e.g. 150"
+              type="number"
+              min="0"
+              step="0.01"
+              value={formCost}
+              onChange={e => setFormCost(e.target.value)}
+            />
+          </div>
+
+          {/* Waypoint segment designer box */}
+          <div className="p-5 rounded-3xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-4">
+            <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1.5">
+              <Map className="w-4 h-4 text-emerald-500" /> Waypoint segment designer (Stops, Sightseeing, Food, Lodging)
+            </span>
+
+            {/* current waypoints pills inside modal */}
+            {formWaypoints.length > 0 && (
+              <div className="flex flex-wrap gap-2 py-1 max-h-32 overflow-y-auto custom-scrollbar">
+                {formWaypoints.map(wp => (
+                  <div key={wp.id} className="text-xs flex items-center gap-1.5 px-3 py-1 bg-white dark:bg-dark-card border border-black/5 dark:border-white/5 rounded-xl font-medium animate-fade-in text-light-text dark:text-dark-text shadow-sm">
+                    <span>{wp.name}</span>
+                    <span className="text-2xs font-bold uppercase opacity-60">({wp.type})</span>
+                    <button 
+                      type="button" 
+                      onClick={() => handleRemoveWaypoint(wp.id)} 
+                      className="hover:text-rose-500 hover:scale-110 ml-1 cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Waypoint insertion row */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end bg-white dark:bg-dark-card p-3 rounded-2xl border border-black/5 dark:border-white/5">
+              <div className="md:col-span-5">
+                <Input 
+                  label="Waypoint location" 
+                  placeholder="e.g. Reims Cathedral, Shell Station"
+                  value={newWaypointName}
+                  onChange={e => setNewWaypointName(e.target.value)}
+                  className="h-10 text-xs"
+                />
+              </div>
+              <div className="md:col-span-3">
+                <span className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary mb-1">Stop type</span>
+                <select
+                  value={newWaypointType}
+                  onChange={e => setNewWaypointType(e.target.value as any)}
+                  className="w-full px-3 py-2 rounded-xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 outline-none text-xs text-light-text dark:text-dark-text cursor-pointer h-10 font-bold"
+                >
+                  <option value="Stop">Sightseeing Stop</option>
+                  <option value="Food">Food / Pitstop</option>
+                  <option value="Lodging">Lodging stop</option>
+                  <option value="Sightseeing">Sightseeing Point</option>
+                  <option value="Fuel">Gas / Fuel Station</option>
+                </select>
+              </div>
+              <div className="md:col-span-3">
+                <Input 
+                  label="Optional stop notes" 
+                  placeholder="Snack, 20min"
+                  value={newWaypointNotes}
+                  onChange={e => setNewWaypointNotes(e.target.value)}
+                  className="h-10 text-xs"
+                />
+              </div>
+              <div className="md:col-span-1">
+                <Button 
+                  type="button" 
+                  onClick={handleAddWaypoint} 
+                  className="h-10 w-full p-0 flex items-center justify-center rounded-xl"
+                >
+                  Add
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Waypoint drive notes */}
+          <div className="flex flex-col gap-2">
+            <span className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Overall Itinerary notes / Driving directions</span>
+            <textarea
+              className="w-full px-4 py-3 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 text-xs focus:bg-white dark:focus:bg-dark-card focus:border-primary-500 outline-none text-light-text dark:text-dark-text placeholder-light-text-secondary/50 dark:placeholder-dark-text-secondary/50 font-medium"
+              rows={3}
+              placeholder="Insert any relevant ticket details, driving rules, parking arrangements, or maps notes."
+              value={formNotes}
+              onChange={e => setFormNotes(e.target.value)}
+            />
+          </div>
+
+          {/* Actions Footer */}
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-black/5 dark:border-white/5">
+            <Button variant="secondary" type="button" onClick={() => setIsModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit">
+              {editingTransport ? "Save Itinerary" : "Create Journey"}
+            </Button>
+          </div>
+
+        </form>
+      </Modal>
+
+      {/* Suggestions Confirmation Modal */}
+      <Modal 
+        isOpen={pendingSuggestions !== null} 
+        onClose={() => setPendingSuggestions(null)} 
+        title="Confirm Auto-Generated Segments"
+        subtitle="Consecutive Stop Segments Generated"
+        icon="auto_awesome"
+        maxWidth="max-w-2xl"
+      >
+        <div className="space-y-6 font-sans text-left">
+          <div className="space-y-1">
+            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium">
+              We analyzed your planned trip stops and generated consecutive segments below. Please confirm if you want to create and save these transit segments.
+            </p>
+          </div>
+
+          <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
+            {!pendingSuggestions || pendingSuggestions.length === 0 ? (
+              <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary italic py-4 text-center">No missing segments detected. Your trip is fully synchronized!</p>
+            ) : (
+              pendingSuggestions.map((seg, idx) => {
+                const modeMeta = MODE_META[seg.mode as keyof typeof MODE_META];
+                const ModeIcon = modeMeta?.icon || Train;
+                return (
+                  <div key={idx} className="p-4 rounded-2xl border border-black/5 dark:border-white/5 bg-white dark:bg-dark-card shadow-sm flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-2xl ${modeMeta?.bgClass || 'bg-primary-500/10'} ${modeMeta?.borderClass || 'border-primary-500/20'} border flex items-center justify-center ${modeMeta?.colorClass || 'text-primary-500'}`}>
+                      <ModeIcon className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 text-xs font-bold font-sans">
+                        <span className="truncate">{seg.origin}</span>
+                        <ArrowRight className="w-3.5 h-3.5 text-light-text-secondary dark:text-dark-text-secondary" />
+                        <span className="truncate">{seg.destination}</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1 text-2xs text-light-text-secondary dark:text-dark-text-secondary font-medium">
+                        <span>{seg.departureDate}</span>
+                        <span>•</span>
+                        <span>Est. {seg.distance} km ({Math.round(seg.duration / 60)}h)</span>
+                      </div>
+                    </div>
+                    <Badge variant="primary" className="text-2xs font-bold">
+                      Proposed
+                    </Badge>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-black/5 dark:border-white/5">
+            <Button variant="secondary" onClick={() => setPendingSuggestions(null)}>
+              Cancel
+            </Button>
+            {pendingSuggestions && pendingSuggestions.length > 0 && (
+              <Button 
+                variant="primary" 
+                onClick={handleConfirmSaveSuggestions}
+              >
+                Save All Segments
+              </Button>
+            )}
+          </div>
         </div>
-      )}
+      </Modal>
 
     </div>
   );

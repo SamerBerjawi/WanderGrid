@@ -1111,37 +1111,49 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
       </div>
 
       {/* MODAL: Restore Backup JSON Confirmation */}
-      <Modal isOpen={isRestoreModalOpen} onClose={() => setIsRestoreModalOpen(false)} title="Restore Database Backup">
-          <div className="space-y-6">
+      <Modal 
+        isOpen={isRestoreModalOpen} 
+        onClose={() => setIsRestoreModalOpen(false)} 
+        title="Restore Database Backup"
+        subtitle="Overwrite Current Database State"
+        icon="settings_backup_restore"
+      >
+          <div className="space-y-6 font-sans">
               {restoreStatus === 'idle' && (
                   <>
-                      <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/15 border border-amber-200 dark:border-amber-900/30">
-                          <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                      <div className="p-5 rounded-3xl bg-amber-500/10 border border-amber-500/20">
+                          <p className="text-xs font-semibold text-amber-700 dark:text-amber-300 leading-relaxed">
                               Confirm overwriting database state with restore file <span className="font-bold underline">{pendingFile?.name}</span>? All existing trips, flight statistics, and personnel rosters will be replaced.
                           </p>
                       </div>
-                      <div className="flex gap-4">
-                          <Button variant="ghost" className="flex-1 !rounded-xl" onClick={() => setIsRestoreModalOpen(false)}>Cancel</Button>
-                          <Button variant="danger" className="flex-1 !rounded-xl border-none" onClick={handleConfirmRestore}>Yes, Overwrite State</Button>
+                      <div className="flex gap-3 justify-end pt-4 border-t border-black/5 dark:border-white/5">
+                          <Button variant="secondary" onClick={() => setIsRestoreModalOpen(false)}>Cancel</Button>
+                          <Button variant="danger" onClick={handleConfirmRestore}>Yes, Overwrite State</Button>
                       </div>
                   </>
               )}
-              {restoreStatus === 'reading' && <div className="text-center py-8"><span className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin block mx-auto mb-2" /><p className="font-bold text-sm">Reading file...</p></div>}
-              {restoreStatus === 'importing' && <div className="text-center py-8"><span className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin block mx-auto mb-2" /><p className="font-bold text-sm">Parsing state database tables...</p></div>}
-              {restoreStatus === 'success' && <div className="text-center py-8 text-emerald-500"><span className="material-icons-outlined text-4xl mb-2 block">check_circle</span><p className="font-extrabold">Restore Succeeded!</p><p className="text-xs text-gray-500 mt-2">Reloading current session parameters...</p></div>}
-              {restoreStatus === 'error' && <div className="text-center py-8 text-rose-500"><span className="material-icons-outlined text-4xl mb-2">error</span><p className="font-bold">Restore Failed</p><p className="text-xs mt-2">{restoreErrorMessage}</p><Button variant="ghost" className="mt-4" onClick={() => setRestoreStatus('idle')}>Try Again</Button></div>}
+              {restoreStatus === 'reading' && <div className="text-center py-8"><span className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin block mx-auto mb-2" /><p className="font-bold text-xs text-light-text dark:text-dark-text">Reading file...</p></div>}
+              {restoreStatus === 'importing' && <div className="text-center py-8"><span className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin block mx-auto mb-2" /><p className="font-bold text-xs text-light-text dark:text-dark-text">Parsing state database tables...</p></div>}
+              {restoreStatus === 'success' && <div className="text-center py-8 text-emerald-600 dark:text-emerald-400"><span className="material-icons-outlined text-4xl mb-2 block">check_circle</span><p className="font-bold text-sm">Restore Succeeded!</p><p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-1">Reloading session parameters...</p></div>}
+              {restoreStatus === 'error' && <div className="text-center py-8 text-rose-500"><span className="material-icons-outlined text-4xl mb-2">error</span><p className="font-bold text-sm">Restore Failed</p><p className="text-xs mt-1">{restoreErrorMessage}</p><Button variant="secondary" className="mt-4" onClick={() => setRestoreStatus('idle')}>Try Again</Button></div>}
           </div>
       </Modal>
 
       {/* MODAL: Wipe Application Data Danger Sequence */}
-      <Modal isOpen={isResetModalOpen} onClose={() => { setIsResetModalOpen(false); setResetConfirmText(''); }} title="Dangerous Area: Wipe Database State">
-          <div className="space-y-6 text-left">
-              <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30">
+      <Modal 
+        isOpen={isResetModalOpen} 
+        onClose={() => { setIsResetModalOpen(false); setResetConfirmText(''); }} 
+        title="Wipe Database State"
+        subtitle="Irreversible Database Factory Reset"
+        icon="warning"
+      >
+          <div className="space-y-6 text-left font-sans">
+              <div className="p-5 rounded-3xl bg-rose-500/10 border border-rose-500/20">
                   <div className="flex items-start gap-3">
-                      <span className="material-icons-outlined text-red-500 mt-0.5">warning</span>
+                      <span className="material-icons-outlined text-rose-500 mt-0.5 text-xl">warning</span>
                       <div className="space-y-1">
-                          <p className="text-xs font-black text-red-800 dark:text-red-400 uppercase tracking-widest">Permanent Destruction Warning</p>
-                          <p className="text-[11px] text-red-700/80 dark:text-red-350/60 leading-relaxed font-semibold">
+                          <p className="text-xs font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">Permanent Destruction Warning</p>
+                          <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary leading-relaxed font-medium">
                               This workflow is permanent and completely irreversible. It immediately destroys all registered personnel folders, calendar feeds, custom carrier configs, map paths, and independent flights.
                           </p>
                       </div>
@@ -1149,7 +1161,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
               </div>
               
               <div className="space-y-2">
-                  <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase ml-1 block">To unlock Wipe Process, type DELETE below:</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">To unlock Wipe Process, type DELETE below:</label>
                   <Input 
                       placeholder="Type DELETE" 
                       value={resetConfirmText} 
@@ -1158,41 +1170,46 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                   />
               </div>
 
-              <div className="flex gap-4 pt-4 border-t border-gray-100 dark:border-white/5">
+              <div className="flex gap-3 pt-4 border-t border-black/5 dark:border-white/5 justify-end">
                   <Button 
-                      variant="ghost" 
-                      className="flex-1 !rounded-xl" 
+                      variant="secondary" 
                       onClick={() => { setIsResetModalOpen(false); setResetConfirmText(''); }}
                   >
                       Abort
                   </Button>
                   <Button 
                       variant="danger" 
-                      className="flex-1 bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-500/10 disabled:opacity-40 disabled:bg-gray-200 dark:disabled:bg-gray-800 !rounded-xl font-bold border-none" 
                       onClick={handleWipeDatabase}
                       disabled={resetConfirmText !== 'DELETE'}
                   >
-                      WIPE DATABASE
+                      Wipe Database
                   </Button>
               </div>
           </div>
       </Modal>
 
-      {/* MODAL: Enroll & Edit Personnel Account - Redesigned and Added Functional Component */}
+      {/* MODAL: Enroll & Edit Personnel Account */}
       <Modal 
         isOpen={isEditingUser} 
         onClose={() => setIsEditingUser(false)} 
         title={editingUser.id ? "Edit Inhabitant Profile" : "Enroll Workspace Inhabitant"}
+        subtitle="Personnel Credentials & Work Roster"
+        icon="badge"
       >
-        <div className="space-y-6 text-left">
-          
+        <div className="space-y-6 text-left font-sans">
           <div className="space-y-4">
-            <Input 
-              label="Personnel Name" 
-              placeholder="e.g. Elena Rostova" 
-              value={editingUser.name || ''} 
-              onChange={e => setEditingUser({...editingUser, name: e.target.value})} 
-            />
+            <div className="space-y-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                Personnel Name <span className="text-rose-500">*</span>
+              </label>
+              <Input 
+                placeholder="e.g. Elena Rostova" 
+                value={editingUser.name || ''} 
+                onChange={e => setEditingUser({...editingUser, name: e.target.value})} 
+                className="h-14 !text-xl font-bold"
+                autoFocus
+              />
+            </div>
 
             <Input 
               label="Discovered Email Address" 
@@ -1213,7 +1230,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
               <Select 
                 label="Roster Role" 
                 value={editingUser.role || 'Partner'} 
-                onChange={e => setConfig({...config})} // Avoid direct override crash, but set local
+                onChange={e => setConfig({...config})}
                 onInput={(e: any) => setEditingUser({...editingUser, role: e.target.value})}
                 options={[
                   { label: 'Admin (System)', value: 'Admin' },
@@ -1225,7 +1242,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
               <Select 
                 label="Holiday Weekend Rule" 
                 value={editingUser.holidayWeekendRule || 'none'} 
-                onInput={(e: any) => setEditingUser({...editingUser, holidayWeekendRule: e.target.value})}
+                onChange={(e: any) => setEditingUser({...editingUser, holidayWeekendRule: e.target.value})}
                 options={[
                   { label: 'Standard No Override', value: 'none' },
                   { label: 'Cycle Monday Policy', value: 'monday' },
@@ -1251,23 +1268,27 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
             </div>
 
             {/* Custom Interactive Holiday Config selector checkbox container */}
-            <div className="space-y-2 pt-2">
-              <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide ml-1">Discovered Holiday Configurations ({savedConfigs.length})</span>
-              <p className="text-[10px] text-zinc-400 font-sans leading-normal ml-1">Attach specific country legislative calendars for automated holiday calculation syncs:</p>
+            <div className="p-5 rounded-3xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
+                Holiday Configurations ({savedConfigs.length})
+              </span>
+              <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium leading-relaxed">
+                Attach country calendars for automatic holiday synchronization:
+              </p>
               
-              <div className="bg-slate-50/50 dark:bg-black/20 p-3 rounded-xl border border-zinc-200/50 dark:border-white/5 max-h-36 overflow-y-auto space-y-2.5 custom-scrollbar">
+              <div className="bg-white dark:bg-dark-card p-3 rounded-2xl border border-black/5 dark:border-white/5 max-h-36 overflow-y-auto space-y-2 custom-scrollbar">
                 {savedConfigs.length === 0 ? (
-                  <span className="text-[10px] font-mono text-zinc-400 block text-center py-4">No countries configs saved. Register them in planners.</span>
+                  <span className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary block text-center py-4 uppercase tracking-wider">No country configurations saved</span>
                 ) : (
                   savedConfigs.map(sc => {
                     const activeIds = editingUser.holidayConfigIds ?? [];
                     const isChecked = activeIds.includes(sc.id);
                     return (
-                      <label key={sc.id} className="flex items-center gap-3 p-1 rounded hover:bg-zinc-150/40 cursor-pointer transition-colors">
+                      <label key={sc.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition-colors">
                         <input 
                           type="checkbox" 
                           checked={isChecked}
-                          className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                          className="rounded text-primary-500 focus:ring-primary-500 w-4 h-4 cursor-pointer"
                           onChange={() => {
                             const nextIds = isChecked 
                               ? activeIds.filter(id => id !== sc.id)
@@ -1276,8 +1297,8 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                           }}
                         />
                         <div className="leading-tight">
-                          <span className="text-xs font-bold text-gray-800 dark:text-zinc-200 block">{sc.countryName} ({sc.year})</span>
-                          <span className="text-[9px] font-mono text-zinc-400 tracking-wider">CODE: {sc.countryCode} · {sc.holidays?.length || 0} statutory holidays</span>
+                          <span className="text-xs font-bold text-light-text dark:text-dark-text block">{sc.countryName} ({sc.year})</span>
+                          <span className="text-2xs font-mono text-light-text-secondary dark:text-dark-text-secondary">CODE: {sc.countryCode} · {sc.holidays?.length || 0} holidays</span>
                         </div>
                       </label>
                     );
@@ -1288,31 +1309,37 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
 
           </div>
 
-          <div className="flex gap-4 pt-4 border-t border-gray-150/50 dark:border-white/10 shrink-0">
-            <Button variant="ghost" className="flex-1 !rounded-xl cursor-pointer" onClick={() => setIsEditingUser(false)}>Cancel</Button>
+          <div className="flex gap-3 pt-4 border-t border-black/5 dark:border-white/5 shrink-0 justify-end">
+            <Button variant="secondary" onClick={() => setIsEditingUser(false)}>Cancel</Button>
             <Button 
               variant="primary" 
-              className="flex-1 border-none !rounded-xl text-white font-bold cursor-pointer bg-blue-600 shadow-md shadow-blue-500/10" 
               disabled={!editingUser.name}
               onClick={handleSaveUser}
             >
-              Commit & Persistence
+              Save Inhabitant
             </Button>
           </div>
         </div>
       </Modal>
 
       {/* MODAL: Delete inhabitant account confirmation */}
-      <Modal isOpen={!!memberToDelete} onClose={() => setMemberToDelete(null)} title="Revoke Personnel Account">
-        <div className="space-y-6 text-left">
-          <div className="p-4 rounded-xl bg-red-50 dark:bg-red-955/20 border border-red-200 dark:border-red-900/30">
-            <p className="text-sm font-semibold text-red-800 dark:text-red-400">
-              Confirm revoking membership access and deletion of account for <span className="font-bold underline">{memberToDelete?.name}</span>? This does not delete associated individual flights, but details won't match.
+      <Modal 
+        isOpen={!!memberToDelete} 
+        onClose={() => setMemberToDelete(null)} 
+        title="Revoke Personnel Account"
+        subtitle="Permanent Member Removal"
+        icon="person_remove"
+        maxWidth="max-w-md"
+      >
+        <div className="space-y-6 text-left font-sans">
+          <div className="p-5 rounded-3xl bg-rose-500/10 border border-rose-500/20">
+            <p className="text-xs font-medium text-light-text-secondary dark:text-dark-text-secondary leading-relaxed">
+              Confirm revoking membership access and deletion of account for <span className="font-bold underline text-light-text dark:text-dark-text">{memberToDelete?.name}</span>? This does not delete associated individual flights.
             </p>
           </div>
-          <div className="flex gap-4">
-            <Button variant="ghost" className="flex-1 !rounded-xl" onClick={() => setMemberToDelete(null)}>Cancel</Button>
-            <Button variant="danger" className="flex-1 !rounded-xl text-white font-bold border-none bg-red-650" onClick={handleConfirmDeleteMember}>Confirm Revocation</Button>
+          <div className="flex gap-3 justify-end pt-4 border-t border-black/5 dark:border-white/5">
+            <Button variant="secondary" onClick={() => setMemberToDelete(null)}>Cancel</Button>
+            <Button variant="danger" onClick={handleConfirmDeleteMember}>Confirm Revocation</Button>
           </div>
         </div>
       </Modal>

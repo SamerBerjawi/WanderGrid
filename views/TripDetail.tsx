@@ -2024,7 +2024,14 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
             )}
 
             {/* Modals */}
-            <Modal isOpen={isTransportModalOpen} onClose={() => setIsTransportModalOpen(false)} title="Manage Transport" maxWidth="max-w-4xl">
+            <Modal 
+                isOpen={isTransportModalOpen} 
+                onClose={() => setIsTransportModalOpen(false)} 
+                title="Manage Transport" 
+                subtitle="Voyage Logistics & Road Trips"
+                icon="directions_car"
+                maxWidth="max-w-4xl"
+            >
                 <TransportConfigurator 
                     initialData={editingTransports || []}
                     onSave={handleSaveTransports}
@@ -2035,7 +2042,14 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 />
             </Modal>
             
-            <Modal isOpen={isAccommodationModalOpen} onClose={() => setIsAccommodationModalOpen(false)} title="Manage Accommodation" maxWidth="max-w-3xl">
+            <Modal 
+                isOpen={isAccommodationModalOpen} 
+                onClose={() => setIsAccommodationModalOpen(false)} 
+                title="Manage Accommodation" 
+                subtitle="Stays, Lodging & Overnights"
+                icon="hotel"
+                maxWidth="max-w-3xl"
+            >
                 <AccommodationConfigurator 
                     initialData={editingAccommodations || []}
                     onSave={handleSaveAccommodations}
@@ -2055,28 +2069,65 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 initialData={trip}
             />
 
-
-
-            <Modal isOpen={isActivityModalOpen} onClose={() => setIsActivityModalOpen(false)} title={activityForm.id ? "Edit Item" : "Add Schedule Item"}>
-                <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <Input label="Title" placeholder="e.g. Louvre Museum" value={activityForm.title || ''} onChange={e => setActivityForm({...activityForm, title: e.target.value})} className="!font-bold" />
-                        <Select label="Type" options={[{label: 'Activity', value: 'Activity'}, {label: 'Reservation', value: 'Reservation'}, {label: 'Tour', value: 'Tour'}]} value={activityForm.type || 'Activity'} onChange={e => setActivityForm({...activityForm, type: e.target.value as any})} />
+            <Modal 
+                isOpen={isActivityModalOpen} 
+                onClose={() => setIsActivityModalOpen(false)} 
+                title={activityForm.id ? "Edit Activity Item" : "Add Activity Item"}
+                subtitle="Itinerary Schedule & Reservations"
+                icon="event_note"
+            >
+                <div className="space-y-6 font-sans">
+                    <div className="space-y-2">
+                        <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                            Activity Title <span className="text-rose-500">*</span>
+                        </label>
+                        <Input 
+                            placeholder="e.g. Louvre Museum" 
+                            value={activityForm.title || ''} 
+                            onChange={e => setActivityForm({...activityForm, title: e.target.value})} 
+                            className="h-14 !text-xl font-bold"
+                            autoFocus
+                        />
                     </div>
-                    <div className="grid grid-cols-2 gap-6">
-                        <Input label="Date" type="date" value={activityForm.date || currentDayForActivity || ''} onChange={e => setActivityForm({...activityForm, date: e.target.value})} />
-                        <TimeInput label="Time" value={activityForm.time || '12:00'} onChange={val => setActivityForm({...activityForm, time: val})} />
-                    </div>
-                    <Autocomplete label="Location" placeholder="e.g. Rue de Rivoli, Paris" value={activityForm.location || ''} onChange={val => setActivityForm({...activityForm, location: val})} fetchSuggestions={fetchLocationSuggestions} />
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="relative">
-                            <Input label="Cost" type="number" placeholder="0.00" value={activityForm.cost || ''} onChange={e => setActivityForm({...activityForm, cost: parseFloat(e.target.value)})} className="pl-8" />
-                            <span className="absolute left-3 top-9 text-gray-400 font-bold">{getCurrencySymbol(settings?.currency || 'USD')}</span>
+
+                    <div className="p-5 rounded-3xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-4">
+                        <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
+                            Schedule & Location
+                        </span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <Select 
+                                label="Type" 
+                                options={[{label: 'Activity', value: 'Activity'}, {label: 'Reservation', value: 'Reservation'}, {label: 'Tour', value: 'Tour'}]} 
+                                value={activityForm.type || 'Activity'} 
+                                onChange={e => setActivityForm({...activityForm, type: e.target.value as any})} 
+                            />
+                            <Autocomplete 
+                                label="Location" 
+                                placeholder="e.g. Rue de Rivoli, Paris" 
+                                value={activityForm.location || ''} 
+                                onChange={val => setActivityForm({...activityForm, location: val})} 
+                                fetchSuggestions={fetchLocationSuggestions} 
+                            />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <Input label="Date" type="date" value={activityForm.date || currentDayForActivity || ''} onChange={e => setActivityForm({...activityForm, date: e.target.value})} />
+                            <TimeInput label="Time" value={activityForm.time || '12:00'} onChange={val => setActivityForm({...activityForm, time: val})} />
                         </div>
                     </div>
-                    <Input label="Notes / Description" placeholder="Booking ref, instructions..." value={activityForm.description || ''} onChange={e => setActivityForm({...activityForm, description: e.target.value})} />
-                    <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-white/5">
-                        <Button variant="ghost" onClick={() => setIsActivityModalOpen(false)}>Cancel</Button>
+
+                    <div className="p-5 rounded-3xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-4">
+                        <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
+                            Details & Pricing
+                        </span>
+                        <div className="relative">
+                            <Input label="Cost" type="number" placeholder="0.00" value={activityForm.cost || ''} onChange={e => setActivityForm({...activityForm, cost: parseFloat(e.target.value)})} className="pl-8" />
+                            <span className="absolute left-3 top-9 text-light-text-secondary dark:text-dark-text-secondary font-bold text-xs">{getCurrencySymbol(settings?.currency || 'USD')}</span>
+                        </div>
+                        <Input label="Notes / Description" placeholder="Booking ref, instructions..." value={activityForm.description || ''} onChange={e => setActivityForm({...activityForm, description: e.target.value})} />
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-4 border-t border-black/5 dark:border-white/5">
+                        <Button variant="secondary" onClick={() => setIsActivityModalOpen(false)}>Cancel</Button>
                         <Button variant="primary" onClick={handleSaveActivity} disabled={!activityForm.title || !activityForm.date}>Save Item</Button>
                     </div>
                 </div>

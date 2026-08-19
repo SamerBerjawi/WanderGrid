@@ -633,28 +633,44 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
             </div>
 
             {/* MODAL: SELF PROFILE DETAILS MODAL */}
-            <Modal isOpen={isEditing} onClose={() => setIsEditing(false)} title="Edit Inhabitant Details">
-                <div className="space-y-6 text-left">
+            <Modal 
+                isOpen={isEditing} 
+                onClose={() => setIsEditing(false)} 
+                title="Edit Inhabitant Details"
+                subtitle="Personnel Parameters & Identification"
+                icon="person"
+            >
+                <div className="space-y-6 text-left font-sans">
                     <div className="space-y-4">
-                        <Input 
-                            label="Traveler Display Name" 
-                            placeholder="e.g. Elena Rostova" 
-                            value={editName} 
-                            onChange={e => setEditName(e.target.value)} 
-                        />
-                        <Input 
-                            label="Change Portal Password" 
-                            type="password"
-                            placeholder="Type a secure password" 
-                            value={editPassword} 
-                            onChange={e => setEditPassword(e.target.value)} 
-                        />
-                        
-                        <div className="grid grid-cols-1 gap-4">
+                        <div className="space-y-2">
+                            <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                                Traveler Display Name <span className="text-rose-500">*</span>
+                            </label>
+                            <Input 
+                                placeholder="e.g. Elena Rostova" 
+                                value={editName} 
+                                onChange={e => setEditName(e.target.value)} 
+                                className="h-14 !text-xl font-bold"
+                                autoFocus
+                            />
+                        </div>
+
+                        <div className="p-5 rounded-3xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-4">
+                            <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
+                                Account Access
+                            </span>
+                            <Input 
+                                label="Change Portal Password" 
+                                type="password"
+                                placeholder="Type a secure password" 
+                                value={editPassword} 
+                                onChange={e => setEditPassword(e.target.value)} 
+                            />
+                            
                             <Select 
                                 label="Holiday Weekend Rule" 
                                 value={editWeekendRule} 
-                                onInput={(e: any) => setEditWeekendRule(e.target.value)}
+                                onChange={(e: any) => setEditWeekendRule(e.target.value)}
                                 options={[
                                     { label: 'Standard No Override', value: 'none' },
                                     { label: 'Cycle Monday Policy', value: 'monday' },
@@ -664,20 +680,22 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                         </div>
 
                         {/* Biometric & Passport details */}
-                        <div className="border-t border-gray-100 dark:border-white/5 pt-4 space-y-4">
-                            <h4 className="text-xs font-black uppercase tracking-wider text-zinc-400 font-mono">Passport & Biometrics</h4>
+                        <div className="p-5 rounded-3xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-4">
+                            <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
+                                Passport & Biometrics
+                            </span>
                             
                             {/* Portrait Photo Dropzone */}
-                            <div className="space-y-1">
-                                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400">Portrait Biography Photo</label>
+                            <div className="space-y-1.5">
+                                <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Portrait Biography Photo</label>
                                 <div 
                                     onDragOver={handleDragOver}
                                     onDragLeave={handleDragLeave}
                                     onDrop={handleDrop}
                                     className={`border-2 border-dashed rounded-2xl p-4 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all ${
                                         isDragging 
-                                            ? 'border-blue-500 bg-blue-50/10 dark:bg-blue-950/20' 
-                                            : 'border-zinc-200 hover:border-zinc-300 dark:border-white/10 dark:hover:border-zinc-700 bg-zinc-50/30 dark:bg-black/10'
+                                            ? 'border-primary-500 bg-primary-500/10' 
+                                            : 'border-black/10 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20 bg-white/50 dark:bg-black/10'
                                     }`}
                                     onClick={() => document.getElementById('profile-pic-input')?.click()}
                                 >
@@ -690,9 +708,9 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                                     />
                                     {editProfilePicture ? (
                                         <div className="flex items-center gap-4 w-full">
-                                            <img src={editProfilePicture} className="w-16 h-16 rounded-xl object-cover shrink-0 border border-zinc-200 dark:border-white/10" alt="Preview" />
+                                            <img src={editProfilePicture} className="w-16 h-16 rounded-xl object-cover shrink-0 border border-black/10 dark:border-white/10 shadow-sm" alt="Preview" />
                                             <div className="flex-1 text-left">
-                                                <span className="text-xs text-emerald-500 font-bold flex items-center gap-1">
+                                                <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
                                                     <span className="material-icons-outlined text-sm">check_circle</span> Loaded Successfully
                                                 </span>
                                                 <button 
@@ -701,7 +719,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                                                         e.stopPropagation();
                                                         setEditProfilePicture('');
                                                     }}
-                                                    className="text-[10px] text-rose-500 font-black tracking-wider uppercase mt-1 hover:underline cursor-pointer"
+                                                    className="text-2xs text-rose-500 font-bold tracking-wider uppercase mt-1 hover:underline cursor-pointer"
                                                 >
                                                     Remove Photo
                                                 </button>
@@ -709,9 +727,9 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                                         </div>
                                     ) : (
                                         <div className="text-center py-2">
-                                            <span className="material-icons-outlined text-2xl text-zinc-400 block mb-1">add_a_photo</span>
-                                            <span className="text-[11px] font-bold text-zinc-500 block">Drag & drop or click to select image</span>
-                                            <span className="text-[9px] text-zinc-400 block font-mono mt-0.5">PNG, JPG, WebP</span>
+                                            <span className="material-icons-outlined text-2xl text-light-text-secondary dark:text-dark-text-secondary block mb-1 opacity-60">add_a_photo</span>
+                                            <span className="text-xs font-bold text-light-text dark:text-dark-text block">Drag & drop or click to select image</span>
+                                            <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary block font-mono mt-0.5 opacity-60">PNG, JPG, WebP</span>
                                         </div>
                                     )}
                                 </div>
@@ -765,48 +783,64 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
 
                         {/* Admin-only properties editable in User profile as well */}
                         {user.role === 'Admin' && (
-                            <div className="grid grid-cols-2 gap-4">
-                                <Input 
-                                    label="Accrued Vacation Allowance" 
-                                    type="number"
-                                    value={editLeaveBalance} 
-                                    onChange={e => setEditLeaveBalance(parseInt(e.target.value) || 0)} 
-                                />
-                                <Input 
-                                    label="Spent Days Consumed" 
-                                    type="number"
-                                    value={editTakenLeave} 
-                                    onChange={e => setEditTakenLeave(parseInt(e.target.value) || 0)} 
-                                />
+                            <div className="p-5 rounded-3xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-4">
+                                <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
+                                    Administrative Allowance
+                                </span>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <Input 
+                                        label="Accrued Vacation Allowance" 
+                                        type="number"
+                                        value={editLeaveBalance} 
+                                        onChange={e => setEditLeaveBalance(parseInt(e.target.value) || 0)} 
+                                    />
+                                    <Input 
+                                        label="Spent Days Consumed" 
+                                        type="number"
+                                        value={editTakenLeave} 
+                                        onChange={e => setEditTakenLeave(parseInt(e.target.value) || 0)} 
+                                    />
+                                </div>
                             </div>
                         )}
                     </div>
 
-                    <div className="flex gap-4 pt-4 border-t border-gray-150/50 dark:border-white/10 shrink-0">
-                        <Button variant="ghost" className="flex-1 !rounded-xl cursor-pointer" onClick={() => setIsEditing(false)}>Cancel</Button>
+                    <div className="flex gap-3 pt-4 border-t border-black/5 dark:border-white/5 shrink-0 justify-end">
+                        <Button variant="secondary" onClick={() => setIsEditing(false)}>Cancel</Button>
                         <Button 
                             variant="primary" 
-                            className="flex-1 border-none !rounded-xl text-white font-bold cursor-pointer bg-blue-650 shadow-md shadow-blue-500/10" 
                             disabled={!editName.trim()}
                             onClick={handleSaveProfile}
                             isLoading={saveLoading}
                         >
-                            Commit Changes
+                            Save Changes
                         </Button>
                     </div>
                 </div>
             </Modal>
 
             {/* MODAL: EDIT TRIP DETAILS MODAL */}
-            <Modal isOpen={isEditingTrip} onClose={() => setIsEditingTrip(false)} title="Edit Expedition Details">
-                <div className="space-y-6 text-left">
+            <Modal 
+                isOpen={isEditingTrip} 
+                onClose={() => setIsEditingTrip(false)} 
+                title="Edit Expedition Details"
+                subtitle="Modify Expedition Logistics"
+                icon="map"
+            >
+                <div className="space-y-6 text-left font-sans">
                     <div className="space-y-4">
-                        <Input 
-                            label="Trip Name" 
-                            placeholder="e.g. Summer Vacation" 
-                            value={editTripName} 
-                            onChange={e => setEditTripName(e.target.value)} 
-                        />
+                        <div className="space-y-2">
+                            <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                                Expedition Name <span className="text-rose-500">*</span>
+                            </label>
+                            <Input 
+                                placeholder="e.g. Summer Vacation" 
+                                value={editTripName} 
+                                onChange={e => setEditTripName(e.target.value)} 
+                                className="h-14 !text-xl font-bold"
+                                autoFocus
+                            />
+                        </div>
                         <Input 
                             label="Destination / Location" 
                             placeholder="e.g. Paris, France" 
@@ -830,7 +864,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                         <Select 
                             label="Trip Status" 
                             value={editTripStatus} 
-                            onInput={(e: any) => setEditTripStatus(e.target.value)}
+                            onChange={(e: any) => setEditTripStatus(e.target.value)}
                             options={[
                                 { label: 'Planning', value: 'Planning' },
                                 { label: 'Upcoming', value: 'Upcoming' },
@@ -840,11 +874,10 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                         />
                     </div>
 
-                    <div className="flex gap-4 pt-4 border-t border-gray-150/50 dark:border-white/10 shrink-0">
-                        <Button variant="ghost" className="flex-1 !rounded-xl cursor-pointer" onClick={() => setIsEditingTrip(false)}>Cancel</Button>
+                    <div className="flex gap-3 pt-4 border-t border-black/5 dark:border-white/5 shrink-0 justify-end">
+                        <Button variant="secondary" onClick={() => setIsEditingTrip(false)}>Cancel</Button>
                         <Button 
                             variant="primary" 
-                            className="flex-1 border-none !rounded-xl text-white font-bold cursor-pointer bg-blue-650 shadow-md shadow-blue-500/10" 
                             disabled={!editTripName.trim() || !editTripLocation.trim()}
                             onClick={handleSaveTrip}
                             isLoading={saveLoading}
@@ -856,26 +889,32 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
             </Modal>
 
             {/* MODAL: EXTRAPOLATED TRIPS DELETION CONFIRMATION */}
-            <Modal isOpen={isDeletingTripConfirm} onClose={() => setIsDeletingTripConfirm(false)} title="Delete Expedition">
-                <div className="space-y-6 text-left">
-                    <div className="p-4 rounded-2xl bg-rose-500/5 dark:bg-rose-500/10 border border-rose-500/15">
-                        <h4 className="text-sm font-black uppercase tracking-wider text-rose-600 dark:text-rose-400 mb-2">
+            <Modal 
+                isOpen={isDeletingTripConfirm} 
+                onClose={() => setIsDeletingTripConfirm(false)} 
+                title="Delete Expedition"
+                subtitle="Permanent Archive"
+                icon="delete_forever"
+                maxWidth="max-w-md"
+            >
+                <div className="space-y-6 text-left font-sans">
+                    <div className="p-5 rounded-3xl bg-rose-500/10 border border-rose-500/20">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 mb-2">
                             Aviation Archive Warning
                         </h4>
-                        <p className="text-xs text-zinc-650 dark:text-zinc-400 leading-relaxed">
-                            You are about to delete this expedition and permanently unregister all linked travel parameters from this user profile. Standard metrics like accrued overnights and flight logs associated with this precise schedule will be adjusted.
+                        <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary leading-relaxed font-medium">
+                            You are about to delete this expedition and permanently unregister all linked travel parameters from this user profile. Standard metrics like accrued overnights and flight logs associated with this schedule will be adjusted.
                         </p>
                     </div>
 
-                    <p className="text-sm text-zinc-800 dark:text-zinc-200">
-                        Are you sure you want to delete this trip forever? This action cannot be revoked.
+                    <p className="text-xs font-bold text-light-text dark:text-dark-text">
+                        Are you sure you want to delete this trip forever? This action cannot be undone.
                     </p>
 
-                    <div className="flex gap-4 pt-4 border-t border-gray-150/50 dark:border-white/10 shrink-0">
-                        <Button variant="ghost" className="flex-1 !rounded-xl cursor-pointer" onClick={() => setIsDeletingTripConfirm(false)}>Cancel</Button>
+                    <div className="flex gap-3 pt-4 border-t border-black/5 dark:border-white/5 shrink-0 justify-end">
+                        <Button variant="secondary" onClick={() => setIsDeletingTripConfirm(false)}>Cancel</Button>
                         <Button
-                            variant="primary"
-                            className="flex-1 border-none !rounded-xl text-white font-bold cursor-pointer bg-rose-600 hover:bg-rose-750 shadow-md shadow-rose-500/10"
+                            variant="danger"
                             onClick={handleConfirmDeleteTrip}
                             isLoading={saveLoading}
                         >

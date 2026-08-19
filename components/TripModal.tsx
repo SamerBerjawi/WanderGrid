@@ -311,27 +311,27 @@ export const TripModal: React.FC<TripModalProps> = ({ isOpen, onClose, onSubmit,
         >
             <div className="space-y-6 relative">
                 
-                {/* Redesigned Premium Modal Tabs */}
-                <div className="flex border-b border-gray-100 dark:border-white/5 bg-zinc-50/50 dark:bg-zinc-950/20 p-1 rounded-2xl">
+                {/* Segmented Switcher / Tab Bar */}
+                <div className="bg-black/5 dark:bg-white/5 p-1 rounded-2xl flex border border-black/5 dark:border-white/5">
                     <button
                         type="button"
                         onClick={() => setModalTab('logistics')}
-                        className={`flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
                             modalTab === 'logistics' 
-                            ? 'bg-white dark:bg-zinc-800 text-[#fa9a1d] shadow-sm' 
-                            : 'text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-300'
+                            ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm' 
+                            : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
                         }`}
                     >
                         <span className="material-icons-outlined text-sm">assignment</span>
-                        <span>1 &bull; Logistics Scope</span>
+                        <span>1 &bull; Logistics</span>
                     </button>
                     <button
                         type="button"
                         onClick={() => setModalTab('team')}
-                        className={`flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
                             modalTab === 'team' 
-                            ? 'bg-white dark:bg-zinc-800 text-[#fa9a1d] shadow-sm' 
-                            : 'text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-300'
+                            ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm' 
+                            : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
                         }`}
                     >
                         <span className="material-icons-outlined text-sm">groups</span>
@@ -340,14 +340,14 @@ export const TripModal: React.FC<TripModalProps> = ({ isOpen, onClose, onSubmit,
                     <button
                         type="button"
                         onClick={() => setModalTab('flights')}
-                        className={`flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
                             modalTab === 'flights' 
-                            ? 'bg-white dark:bg-zinc-800 text-[#fa9a1d] shadow-sm' 
-                            : 'text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-300'
+                            ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm' 
+                            : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
                         }`}
                     >
                         <span className="material-icons-outlined text-sm">flight_takeoff</span>
-                        <span>3 &bull; Flight Boarding</span>
+                        <span>3 &bull; Flights</span>
                     </button>
                 </div>
 
@@ -363,20 +363,20 @@ export const TripModal: React.FC<TripModalProps> = ({ isOpen, onClose, onSubmit,
                                 exit={{ opacity: 0, x: 10 }}
                                 className="space-y-6"
                             >
-                                <div className="flex flex-col md:flex-row gap-6 items-center md:items-start bg-zinc-50/40 dark:bg-zinc-900/20 p-5 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50">
+                                <div className="flex flex-col md:flex-row gap-6 items-center md:items-start bg-light-fill dark:bg-dark-fill/50 p-5 rounded-3xl border border-black/5 dark:border-white/5">
                                     <div className="space-y-2.5 shrink-0 flex flex-col items-center">
-                                        <label className="text-[10px] font-black tracking-widest text-[#fa9a1d] uppercase block">Selected Badge</label>
+                                        <label className="text-2xs font-bold uppercase tracking-wider text-primary-600 dark:text-primary-400 block">Selected Badge</label>
                                         
                                         {/* Giant premium icon preview */}
-                                        <div className="w-24 h-24 rounded-3xl bg-gradient-to-tr from-orange-400/10 to-[#fa9a1d]/5 dark:from-[#fa9a1d]/15 dark:to-zinc-800 border-2 border-[#fa9a1d]/30 dark:border-[#fa9a1d]/20 flex items-center justify-center text-4xl shadow-md relative group select-none">
+                                        <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-primary-500/20 to-primary-500/5 dark:from-primary-500/30 dark:to-dark-card border-2 border-primary-500/30 flex items-center justify-center text-4xl shadow-md relative group select-none transition-transform hover:scale-105">
                                             <span className="animate-scale-in">{icon}</span>
-                                            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-[#fa9a1d] text-white rounded-lg flex items-center justify-center text-xs shadow-sm shadow-[#fa9a1d]/30">
+                                            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-primary-500 text-white rounded-lg flex items-center justify-center text-xs shadow-sm shadow-primary-500/30">
                                                 ★
                                             </div>
                                         </div>
 
-                                        <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-wider text-center max-w-[120px]">
-                                            Custom Cover Badge
+                                        <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary font-bold uppercase tracking-wider text-center max-w-[120px]">
+                                            Cover Badge
                                         </p>
                                     </div>
 
@@ -468,20 +468,24 @@ export const TripModal: React.FC<TripModalProps> = ({ isOpen, onClose, onSubmit,
                                 </div>
 
                                 <div className="space-y-4">
-                                    <Input 
-                                        label="Journey Title" 
-                                        placeholder="e.g. Autumn in Tokyo" 
-                                        value={name} 
-                                        onChange={e => setName(e.target.value)} 
-                                        className="!text-lg font-black focus:border-[#fa9a1d] focus:ring-[#fa9a1d]/10"
-                                    />
+                                    <div className="space-y-2">
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                                            Journey Title <span className="text-rose-500">*</span>
+                                        </label>
+                                        <Input 
+                                            placeholder="e.g. Autumn in Tokyo" 
+                                            value={name} 
+                                            onChange={e => setName(e.target.value)} 
+                                            className="h-14 !text-xl font-bold"
+                                            autoFocus
+                                        />
+                                    </div>
                                     <Autocomplete 
                                         label="General Destination" 
                                         placeholder="Search destinations (e.g. Tokyo, Shibuya)" 
                                         value={location} 
                                         onChange={setLocation}
                                         fetchSuggestions={fetchLocationSuggestions}
-                                        className="focus:border-[#fa9a1d] font-bold"
                                     />
                                 </div>
                             </motion.div>
@@ -711,25 +715,25 @@ export const TripModal: React.FC<TripModalProps> = ({ isOpen, onClose, onSubmit,
                 </div>
 
                 {/* Footer buttons / Submission block */}
-                <div className="flex gap-3 pt-5 border-t border-zinc-100 dark:border-white/5 justify-between">
+                <div className="flex gap-3 pt-5 border-t border-black/5 dark:border-white/5 justify-between items-center">
                     {initialData && onDelete && (
                         <button 
                             type="button" 
                             onClick={() => setShowDeleteConfirm(true)} 
-                            className="px-5 py-3 rounded-2xl border border-red-200/50 hover:border-red-300 bg-rose-500/5 hover:bg-rose-500/10 text-rose-600 dark:text-[#fb6b6b] text-xs font-extrabold uppercase transition-all flex items-center gap-1.5"
+                            className="px-5 py-2.5 rounded-2xl border border-rose-500/20 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer"
                         >
-                            <span className="material-icons-outlined text-sm font-bold">delete</span>
-                            <span>Archive Trip</span>
+                            <span className="material-icons-outlined text-sm">delete</span>
+                            <span>Archive</span>
                         </button>
                     )}
                     <div className="flex gap-3 flex-1 justify-end items-center">
-                        <Button variant="ghost" type="button" className="text-xs font-extrabold uppercase tracking-wide py-3" onClick={onClose}>Dismiss</Button>
+                        <Button variant="ghost" type="button" className="text-xs uppercase" onClick={onClose}>Dismiss</Button>
                         
                         {modalTab !== 'flights' ? (
                             <button
                                 type="button"
                                 onClick={() => setModalTab(modalTab === 'logistics' ? 'team' : 'flights')}
-                                className="px-6 py-3 bg-[#fa9a1d] hover:bg-[#e78310] text-zinc-950 hover:text-zinc-950 font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md items-center gap-1 flex active:scale-95"
+                                className="px-6 py-2.5 bg-primary-500 hover:bg-primary-600 text-white font-bold text-xs uppercase tracking-wider rounded-2xl transition-all shadow-lg shadow-primary-500/20 items-center gap-1.5 flex active:scale-95 cursor-pointer"
                             >
                                 <span>Continue</span>
                                 <span className="material-icons-outlined text-xs">arrow_forward</span>
@@ -737,7 +741,7 @@ export const TripModal: React.FC<TripModalProps> = ({ isOpen, onClose, onSubmit,
                         ) : (
                             <button 
                                 type="button" 
-                                className="px-6 py-3 text-xs uppercase tracking-wider rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 transition-all font-black disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-blue-500/20 active:scale-95 flex items-center gap-1.5" 
+                                className="px-6 py-2.5 text-xs uppercase tracking-wider rounded-2xl bg-primary-500 hover:bg-primary-600 text-white transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary-500/20 active:scale-95 flex items-center gap-1.5 cursor-pointer" 
                                 onClick={handleSubmit} 
                                 disabled={isLoading || !name || !startDate || !endDate}
                             >

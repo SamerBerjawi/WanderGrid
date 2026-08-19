@@ -1,11 +1,12 @@
 // Solar Terminator Multi-Band Twilight Shading Gradient for WanderGrid
+import * as d3 from 'd3';
 
 export interface GeoJsonPolygonFeature {
     type: 'Feature';
     properties: { zenith: number; radiusDeg: number; stepIndex: number };
     geometry: {
-        type: 'Polygon';
-        coordinates: [number, number][][];
+        type: 'Polygon' | 'MultiPolygon';
+        coordinates: any;
     };
 }
 
@@ -60,77 +61,94 @@ export function getSunPosition(date: Date = new Date()): { declination: number; 
 }
 
 /**
- * Computes a true spherical circle (great circle distance) on the Earth's surface.
- * Centered at (centerLat, centerLng) with angular radius radiusDeg.
- * Produces a closed, smooth spherical curve with NO vertical seams.
+ * Clips a spherical circle at the ±180° antimeridian into a clean GeoJSON Polygon or MultiPolygon.
+ * Uses D3-geo antimeridian clipping to prevent cross-meridian chord artifacts or triangle tears.
  */
-function getSphericalCapRing(
-    centerLatDeg: number,
-    centerLngDeg: number,
+function createClippedSphericalCap(
+    centerLng: number,
+    centerLat: number,
     radiusDeg: number,
-    steps: number = 180
-): [number, number][] {
-    const rad = Math.PI / 180;
-    const phi1 = centerLatDeg * rad;
-    const lam0 = centerLngDeg * rad;
-    const d = radiusDeg * rad;
-    const sinPhi1 = Math.sin(phi1);
-    const cosPhi1 = Math.cos(phi1);
-    const sinD = Math.sin(d);
-    const cosD = Math.cos(d);
+    zenith: number,
+    stepIndex: number
+): GeoJsonPolygonFeature {
+    const circle = d3.geoCircle()
+        .center([centerLng, centerLat])
+        .radius(radiusDeg)
+        .precision(1)();
 
-    const coords: [number, number][] = [];
-    for (let i = 0; i <= steps; i++) {
-        const brng = (i * 360 / steps) * rad;
-        const sinPhi2 = sinPhi1 * cosD + cosPhi1 * sinD * Math.cos(brng);
-        const phi2 = Math.asin(Math.max(-1, Math.min(1, sinPhi2)));
-        const y = Math.sin(brng) * sinD * cosPhi1;
-        const x = cosD - sinPhi1 * sinPhi2;
-        const lam2 = lam0 + Math.atan2(y, x);
+    const polygons: [number, number][][][] = [];
+    let currentPolygon: [number, number][][] = [];
+    let currentRing: [number, number][] = [];
 
-        let lngDeg = (lam2 / rad + 540) % 360 - 180;
-        let latDeg = Math.max(-89.5, Math.min(89.5, phi2 / rad));
-        coords.push([lngDeg, latDeg]);
-    }
-    return coords;
+    const sink = {
+        point: (x: number, y: number) => {
+            currentRing.push([x, y]);
+        },
+        lineStart: () => {
+            currentRing = [];
+        },
+        lineEnd: () => {
+            if (currentRing.length > 0) {
+                // Ensure the linear ring is closed
+                const first = currentRing[0];
+                const last = currentRing[currentRing.length - 1];
+                if (first[0] !== last[0] || first[1] !== last[1]) {
+                    currentRing.push([first[0], first[1]]);
+                }
+                currentPolygon.push(currentRing);
+            }
+        },
+        polygonStart: () => {
+            currentPolygon = [];
+        },
+        polygonEnd: () => {
+            if (currentPolygon.length > 0) {
+                polygons.push(currentPolygon);
+            }
+        },
+        sphere: () => {}
+    };
+
+    // Geographic identity stream with antimeridian clipping
+    // Note: In D3 projections, y is inverted by default for screen coords; -phi preserves geographic latitude (+North, -South)
+    const proj = d3.geoProjection((lam, phi) => [lam * 180 / Math.PI, -phi * 180 / Math.PI])
+        .scale(1)
+        .translate([0, 0]);
+
+    d3.geoStream(circle as any, proj.stream(sink));
+
+    const geometry = polygons.length === 1
+        ? { type: 'Polygon' as const, coordinates: polygons[0] }
+        : { type: 'MultiPolygon' as const, coordinates: polygons };
+
+    return {
+        type: 'Feature',
+        properties: {
+            zenith,
+            radiusDeg,
+            stepIndex
+        },
+        geometry
+    };
 }
 
 /**
  * Generates an Ultra-Smooth Multi-Band Solar Twilight Shading FeatureCollection.
- * True spherical circular caps centered at the anti-solar point.
- * Smoothly models civil, nautical, and astronomical twilight penumbra.
+ * True spherical circular caps centered at the anti-solar point, cleanly clipped at the antimeridian.
+ * Smoothly models civil, nautical, and astronomical twilight penumbra with correct orientation.
  */
 export function getTwilightGradientGeoJSON(date: Date = new Date()): TwilightFeatureCollection {
     const sunPos = getSunPosition(date);
     const antiLat = -sunPos.sunLatDeg;
     const antiLng = (sunPos.sunLngDeg + 180 + 540) % 360 - 180;
 
-    // Zenith angles from 86° (golden sunset) down to 120° (deep midnight)
+    // Multi-band zenith steps (from 86° golden sunset down to 122° deep midnight)
     // Radius from anti-solar point: rho = 180° - zenith
-    // 86° -> 94° radius (widest penumbra edge)
-    // 90° -> 90° radius (geometric horizon)
-    // 96° -> 84° radius (civil twilight)
-    // 102° -> 78° radius (nautical twilight)
-    // 108° -> 72° radius (astronomical twilight)
-    // 114° -> 66° radius (night)
-    // 120° -> 60° radius (midnight core)
     const zenithSteps = [86, 90, 94, 98, 102, 106, 110, 114, 118, 122];
 
     const features: GeoJsonPolygonFeature[] = zenithSteps.map((z, idx) => {
         const radiusDeg = Math.max(1, 180 - z);
-        const ring = getSphericalCapRing(antiLat, antiLng, radiusDeg, 180);
-        return {
-            type: 'Feature',
-            properties: {
-                zenith: z,
-                radiusDeg,
-                stepIndex: idx
-            },
-            geometry: {
-                type: 'Polygon',
-                coordinates: [ring]
-            }
-        };
+        return createClippedSphericalCap(antiLng, antiLat, radiusDeg, z, idx);
     });
 
     return {
@@ -143,10 +161,5 @@ export function getNightTerminatorGeoJSON(date: Date = new Date()): GeoJsonPolyg
     const sunPos = getSunPosition(date);
     const antiLat = -sunPos.sunLatDeg;
     const antiLng = (sunPos.sunLngDeg + 180 + 540) % 360 - 180;
-    const ring = getSphericalCapRing(antiLat, antiLng, 90, 180);
-    return {
-        type: 'Feature',
-        properties: { zenith: 90, radiusDeg: 90, stepIndex: 0 },
-        geometry: { type: 'Polygon', coordinates: [ring] }
-    };
+    return createClippedSphericalCap(antiLng, antiLat, 90, 90, 0);
 }

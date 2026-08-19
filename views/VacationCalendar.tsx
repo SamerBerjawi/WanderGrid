@@ -1469,58 +1469,49 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
         isOpen={selectedItemDetails !== null}
         onClose={() => setSelectedItemDetails(null)}
         title={selectedItemDetails?.type === 'trip' ? 'Trip Assignment Parameters' : 'Calendar Event Specifications'}
+        subtitle={selectedItemDetails?.startDate ? `${selectedItemDetails.startDate} — ${selectedItemDetails.endDate}` : 'Event Details'}
+        icon={selectedItemDetails?.type === 'trip' ? 'flight' : 'calendar_month'}
       >
         {selectedItemDetails && (
-          <div className="space-y-5 text-gray-800 dark:text-zinc-200 animate-fade-in select-text">
+          <div className="space-y-5 text-light-text dark:text-dark-text animate-fade-in select-text font-sans text-left">
             
-            <div className="space-y-1.5">
-              <Badge color={selectedItemDetails.type === 'trip' ? 'blue' : selectedItemDetails.type === 'holiday' ? 'amber' : 'indigo'}>
+            <div className="space-y-2">
+              <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
                 {selectedItemDetails.type}
-              </Badge>
-              <h3 className="text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2 mt-1">
-                {selectedItemDetails.type === 'trip' && <span className="text-2xl filter drop-shadow inline-block">{selectedItemDetails.meta?.icon || '✈️'}</span>}
+              </span>
+              <h3 className="text-xl font-bold text-light-text dark:text-dark-text flex items-center gap-2 mt-1">
+                {selectedItemDetails.type === 'trip' && <span className="text-xl filter drop-shadow inline-block">{selectedItemDetails.meta?.icon || '✈️'}</span>}
                 <span>{selectedItemDetails.title}</span>
               </h3>
-              
-              {selectedItemDetails.startDate && (
-                <p className="text-xs font-black text-indigo-505 flex items-center gap-1 pt-1 uppercase tracking-wide">
-                  <CalendarIcon className="w-3.5 h-3.5 leading-none shrink-0" />
-                  <span>
-                    {selectedItemDetails.startDate === selectedItemDetails.endDate 
-                      ? selectedItemDetails.startDate 
-                      : `${selectedItemDetails.startDate} to ${selectedItemDetails.endDate}`}
-                  </span>
-                </p>
-              )}
             </div>
 
-            <p className="text-sm font-medium leading-relaxed text-gray-600 dark:text-zinc-400 border-l-2 border-zinc-200 dark:border-zinc-800 pl-3 italic">
-              {selectedItemDetails.description || 'No description assigned.'}
-            </p>
+            <div className="p-4 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5">
+              <p className="text-xs font-medium leading-relaxed text-light-text-secondary dark:text-dark-text-secondary italic">
+                {selectedItemDetails.description || 'No description assigned.'}
+              </p>
+            </div>
 
             {/* Render Trip Specifics fields */}
             {selectedItemDetails.type === 'trip' && selectedItemDetails.meta && (
-              <div className="space-y-4 pt-2">
-                <div className="grid grid-cols-2 gap-3.5">
-                  <div className="p-3 bg-gray-55/75 dark:bg-zinc-855 rounded-xl border border-zinc-200/50">
-                    <span className="text-[9px] font-black uppercase text-gray-400 block tracking-wider">Destination Spot</span>
-                    <span className="text-xs font-black text-gray-800 dark:text-white block mt-0.5">{selectedItemDetails.meta.location}</span>
+              <div className="space-y-4 pt-1">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3.5 bg-white dark:bg-dark-card rounded-2xl border border-black/5 dark:border-white/5 shadow-sm">
+                    <span className="text-2xs font-bold uppercase text-light-text-secondary dark:text-dark-text-secondary block tracking-wider">Destination</span>
+                    <span className="text-xs font-bold text-light-text dark:text-dark-text block mt-0.5">{selectedItemDetails.meta.location}</span>
                   </div>
-                  <div className="p-3 bg-gray-55/75 dark:bg-zinc-855 rounded-xl border border-zinc-200/50">
-                    <span className="text-[9px] font-black uppercase text-gray-400 block tracking-wider">Event Span</span>
-                    <span className="text-xs font-black text-[#fa9a1d] block mt-0.5">{selectedItemDetails.meta.duration} Days</span>
+                  <div className="p-3.5 bg-white dark:bg-dark-card rounded-2xl border border-black/5 dark:border-white/5 shadow-sm">
+                    <span className="text-2xs font-bold uppercase text-light-text-secondary dark:text-dark-text-secondary block tracking-wider">Duration</span>
+                    <span className="text-xs font-bold text-primary-500 block mt-0.5">{selectedItemDetails.meta.duration} Days</span>
                   </div>
-                  <div className="p-3 bg-gray-55/75 dark:bg-zinc-855 rounded-xl border border-zinc-200/50 col-span-2">
-                    <span className="text-[9px] font-black uppercase text-gray-400 block tracking-wider">Co-Travelers participating</span>
-                    <span className="text-xs font-black text-gray-800 dark:text-zinc-200 block mt-0.5">{selectedItemDetails.meta.participantsNames || 'Only myself'}</span>
+                  <div className="p-3.5 bg-white dark:bg-dark-card rounded-2xl border border-black/5 dark:border-white/5 shadow-sm col-span-2">
+                    <span className="text-2xs font-bold uppercase text-light-text-secondary dark:text-dark-text-secondary block tracking-wider">Co-Travelers Participating</span>
+                    <span className="text-xs font-bold text-light-text dark:text-dark-text block mt-0.5">{selectedItemDetails.meta.participantsNames || 'Only myself'}</span>
                   </div>
                 </div>
 
-                <div className="flex gap-2 justify-end pt-3 border-t border-zinc-150/40 dark:border-zinc-810">
+                <div className="flex gap-3 justify-end pt-3 border-t border-black/5 dark:border-white/5">
                   <Button 
                     variant="secondary" 
-                    size="md" 
-                    className="rounded-xl text-xs font-black uppercase"
                     onClick={() => setSelectedItemDetails(null)}
                   >
                     Dismiss
@@ -1529,8 +1520,6 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
                   {onTripClick && (
                     <Button 
                       variant="primary" 
-                      size="md" 
-                      className="rounded-xl text-xs font-black uppercase bg-gradient-to-r from-blue-600 to-indigo-600 border-none shadow-md"
                       onClick={() => {
                         onTripClick(selectedItemDetails.meta.id);
                         setSelectedItemDetails(null);

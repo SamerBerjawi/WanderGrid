@@ -220,11 +220,11 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
         <div className="space-y-6 animate-fade-in max-h-[80vh] overflow-y-auto custom-scrollbar p-1">
             
             {/* List of Accommodations */}
-            <div className="space-y-4">
+            <div className="space-y-3">
                 {items.filter(i => i.id !== editingId).map((item) => (
-                    <div key={item.id} className="relative p-5 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-white/10 group flex justify-between items-center hover:shadow-md transition-all">
-                        <div className="flex items-center gap-5">
-                            <div className="w-14 h-14 rounded-2xl bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex items-center justify-center text-3xl shrink-0 shadow-sm overflow-hidden">
+                    <div key={item.id} className="relative p-4 bg-white dark:bg-dark-card rounded-2xl border border-black/5 dark:border-white/5 shadow-sm group flex justify-between items-center hover:shadow-md transition-all">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-2xl bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20 flex items-center justify-center text-2xl shrink-0 shadow-sm overflow-hidden">
                                 {item.logoUrl ? (
                                     <img src={item.logoUrl} alt="Logo" className="w-full h-full object-cover" />
                                 ) : (
@@ -234,25 +234,25 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                                 )}
                             </div>
                             <div>
-                                <h4 className="font-bold text-lg text-gray-900 dark:text-white">{item.name}</h4>
-                                <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2 mt-1">
-                                    <Badge color="gray" className="!px-1.5 !py-0 !text-[9px]">
+                                <h4 className="font-bold text-sm text-light-text dark:text-dark-text">{item.name}</h4>
+                                <div className="text-xs text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-2 mt-0.5 font-medium">
+                                    <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary border border-black/5 dark:border-white/5">
                                         {new Date(item.checkInDate).toLocaleDateString(undefined, {month:'short', day:'numeric'})} &rarr; {new Date(item.checkOutDate).toLocaleDateString(undefined, {month:'short', day:'numeric'})}
-                                    </Badge>
+                                    </span>
                                     
                                     {item.cost && (
-                                        <span className="text-emerald-600 font-bold ml-2">{currencySymbol}{item.cost}</span>
+                                        <span className="text-emerald-600 font-bold ml-1">{currencySymbol}{item.cost}</span>
                                     )}
                                 </div>
-                                <p className="text-xs text-gray-400 mt-1 truncate max-w-[200px]">{item.address}</p>
+                                <p className="text-2xs text-light-text-secondary/60 dark:text-dark-text-secondary/60 mt-0.5 truncate max-w-[220px] font-medium">{item.address}</p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <button onClick={() => handleEditItem(item)} className="p-3 text-blue-500 hover:bg-blue-50 rounded-xl dark:hover:bg-white/5 transition-colors">
-                                <span className="material-icons-outlined text-xl">edit</span>
+                        <div className="flex items-center gap-1.5">
+                            <button onClick={() => handleEditItem(item)} className="w-8 h-8 rounded-xl flex items-center justify-center text-primary-500 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer" title="Edit">
+                                <span className="material-icons-outlined text-lg">edit</span>
                             </button>
-                            <button onClick={() => handleDeleteItem(item.id)} className="p-3 text-gray-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl dark:hover:bg-white/5 transition-colors">
-                                <span className="material-icons-outlined text-xl">close</span>
+                            <button onClick={() => handleDeleteItem(item.id)} className="w-8 h-8 rounded-xl flex items-center justify-center text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer" title="Delete">
+                                <span className="material-icons-outlined text-lg">close</span>
                             </button>
                         </div>
                     </div>
@@ -261,15 +261,15 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
 
             {/* Editor Form */}
             {(editingId || items.length === 0) && (
-                <div className="p-8 bg-gray-50 dark:bg-white/5 rounded-3xl border border-gray-100 dark:border-white/5 animate-fade-in relative">
-                    <div className="flex justify-between items-center mb-8">
-                        <h4 className="text-sm font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
-                            <span className="material-icons-outlined text-lg">edit_location_alt</span>
+                <div className="p-6 rounded-3xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-4 animate-fade-in relative">
+                    <div className="flex justify-between items-center mb-2">
+                        <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1.5">
+                            <span className="material-icons-outlined text-base text-primary-500">edit_location_alt</span>
                             {items.find(i => i.id === editingId) ? 'Edit Accommodation' : 'New Stay Details'}
-                        </h4>
+                        </span>
                         {items.length > 0 && (
-                            <button onClick={() => setEditingId(null)} className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-200 dark:hover:bg-white/10 rounded-full transition-colors">
-                                <span className="material-icons-outlined">close</span>
+                            <button onClick={() => setEditingId(null)} className="w-8 h-8 rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer">
+                                <span className="material-icons-outlined text-base">close</span>
                             </button>
                         )}
                     </div>
@@ -433,15 +433,15 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
             )}
 
             {/* Footer Actions */}
-            <div className="flex gap-4 pt-6 border-t border-gray-100 dark:border-white/5 sticky bottom-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur p-4 -mx-1 justify-between rounded-b-2xl z-20">
+            <div className="p-4 border-t border-black/5 dark:border-white/5 sticky bottom-0 bg-light-card/80 dark:bg-dark-card/80 backdrop-blur-md flex items-center justify-between gap-3 rounded-2xl z-20">
                 {initialData && initialData.length > 0 && onDelete && (
-                    <Button variant="danger" onClick={() => setShowDeleteConfirm(true)} icon={<span className="material-icons-outlined">delete</span>}>
+                    <Button variant="danger" size="sm" onClick={() => setShowDeleteConfirm(true)} icon={<span className="material-icons-outlined text-base">delete</span>}>
                         Delete All
                     </Button>
                 )}
-                <div className="flex gap-4 flex-1 justify-end">
-                    <Button variant="ghost" onClick={onCancel} className="w-full md:w-auto">Cancel</Button>
-                    <Button variant="primary" onClick={handleSaveAll} className="w-full md:w-auto shadow-xl">
+                <div className="flex gap-3 flex-1 justify-end items-center">
+                    <Button variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>
+                    <Button variant="primary" size="sm" onClick={handleSaveAll}>
                         Save Accommodations
                     </Button>
                 </div>
