@@ -14,7 +14,7 @@ import {
 } from '../types/mapAppearance';
 import { getTwilightGradientGeoJSON } from '../services/solarTerminator';
 import { getLatestRainRadarMetadata, RainRadarMetadata } from '../services/rainViewer';
-import { generateAirportRunway, isKnownAirport, RunwayGeometry } from '../services/airportRunways';
+import { generateAirportRunway, isKnownAirport, RunwayGeometry, getPhysicalRunways } from '../services/airportRunways';
 import { buildRouteCorridors, RouteCorridor, getApproxLocalTime } from '../services/routeCorridor';
 import { getFlagEmoji, getRegion } from '../services/geoData';
 import { fetchMultiModalRoute, getCachedMultiModalRoute } from '../services/multiModalRouting';
@@ -382,6 +382,18 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             bearing: 0
         }));
     }, [effectiveProjection]);
+
+    // Asynchronously load heavy physical runway dataset only on demand (when detailed runways or zoom >= 10 are active)
+    const [runwayDatasetLoaded, setRunwayDatasetLoaded] = useState(false);
+    useEffect(() => {
+        if (activeAppearance.airportDetail === 'detailed' || viewState.zoom >= 10) {
+            getPhysicalRunways().then(() => {
+                setRunwayDatasetLoaded(true);
+            }).catch(err => {
+                console.warn("[DeckFlightMap] Could not load physical runway dataset:", err);
+            });
+        }
+    }, [activeAppearance.airportDetail, viewState.zoom]);
 
     // Configure Deck.gl Views with ultra-smooth mouse scroll zoom
     const views = useMemo(() => {
@@ -1117,7 +1129,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         animateRoutes, 
         clusterMode, 
         showRoadTracing,
-        activeAppearance
+        activeAppearance,
+        runwayDatasetLoaded
     ]);
 
     // Animation timer for Comet Flow TripsLayer (scoped after cometTrips is computed)

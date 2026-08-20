@@ -1,5 +1,31 @@
 // Airport Detailed Runway & Markings Geometry Generator for WanderGrid
-import { GLOBAL_PHYSICAL_RUNWAYS, PhysicalRunway } from './airportRunwayDataset';
+import type { PhysicalRunway } from './airportRunwayDataset';
+
+export type { PhysicalRunway };
+
+let runwayDatasetCache: Record<string, PhysicalRunway[]> | null = null;
+let runwayLoadingPromise: Promise<Record<string, PhysicalRunway[]>> | null = null;
+
+/**
+ * Asynchronously loads the physical runway dataset on demand, caching it in memory.
+ */
+export async function getPhysicalRunways(): Promise<Record<string, PhysicalRunway[]>> {
+    if (runwayDatasetCache) return runwayDatasetCache;
+    if (!runwayLoadingPromise) {
+        runwayLoadingPromise = import('./airportRunwayDataset').then(m => {
+            runwayDatasetCache = m.GLOBAL_PHYSICAL_RUNWAYS;
+            return m.GLOBAL_PHYSICAL_RUNWAYS;
+        });
+    }
+    return runwayLoadingPromise;
+}
+
+/**
+ * Returns the currently cached physical runway dataset synchronously, or null if not yet loaded.
+ */
+export function getPhysicalRunwaysSync(): Record<string, PhysicalRunway[]> | null {
+    return runwayDatasetCache;
+}
 
 export interface RunwayGeometry {
     id: string;
@@ -21,7 +47,8 @@ export interface RunwayGeometry {
 export function isKnownAirport(code: string): boolean {
     if (!code) return false;
     const clean = code.toUpperCase().trim();
-    return !!GLOBAL_PHYSICAL_RUNWAYS[clean];
+    const dataset = runwayDatasetCache;
+    return dataset ? !!dataset[clean] : false;
 }
 
 /**
@@ -35,7 +62,9 @@ export function generateAirportRunway(
     lng: number
 ): RunwayGeometry | null {
     const cleanCode = (code || '').toUpperCase().trim();
-    const realRunways = GLOBAL_PHYSICAL_RUNWAYS[cleanCode];
+    const dataset = runwayDatasetCache;
+    if (!dataset) return null;
+    const realRunways = dataset[cleanCode];
 
     // Cities and non-airport locations MUST NOT have runway visualizations
     if (!realRunways || realRunways.length === 0) {

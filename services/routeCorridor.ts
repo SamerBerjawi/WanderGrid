@@ -1,6 +1,6 @@
 // Route Corridor Intelligence & Airport Geodesy Service for WanderGrid
 import { STATIC_GEO_DATA } from './geocoding';
-import { GLOBAL_PHYSICAL_RUNWAYS } from './airportRunwayDataset';
+import { getPhysicalRunwaysSync } from './airportRunways';
 import { Trip } from '../types';
 
 export interface CorridorFlightLeg {
@@ -90,10 +90,13 @@ export function resolveLocationMetadata(code: string, fallbackLat?: number, fall
         if (!isNaN(lat) && !isNaN(lon)) {
             coords = [lon, lat];
         }
-    } else if (GLOBAL_PHYSICAL_RUNWAYS[cleanCode] && GLOBAL_PHYSICAL_RUNWAYS[cleanCode].length > 0) {
-        const rw = GLOBAL_PHYSICAL_RUNWAYS[cleanCode][0];
-        coords = [rw.start[0], rw.start[1]];
-        name = `${cleanCode} Airport`;
+    } else {
+        const runways = getPhysicalRunwaysSync();
+        if (runways && runways[cleanCode] && runways[cleanCode].length > 0) {
+            const rw = runways[cleanCode][0];
+            coords = [rw.start[0], rw.start[1]];
+            name = `${cleanCode} Airport`;
+        }
     }
 
     const flag = getFlagEmoji(iso);
