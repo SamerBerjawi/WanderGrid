@@ -353,9 +353,6 @@ export async function preloadStaticDatasets() {
   }
 }
 
-// Start preloading immediately in the background upon import
-preloadStaticDatasets();
-
 // Background fetch handlers and tracking sets to avoid redundant API queries
 const pendingAirportFetches = new Set<string>();
 const failedAirportFetches = new Set<string>();
