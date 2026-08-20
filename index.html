@@ -1,480 +1,558 @@
-
 <!DOCTYPE html>
 <html lang="en" class="antialiased dark">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>WanderGrid</title>
-    <!-- PWA Configurations -->
-    <link rel="manifest" href="/manifest.json" />
-    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
-    <link rel="apple-touch-icon" href="/icon.svg" />
-    <meta name="theme-color" content="#fa9a1d" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="WanderGrid" />
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WanderGrid</title>
+  <!-- PWA Configurations -->
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+  <link rel="apple-touch-icon" href="/icon.svg" />
+  <meta name="theme-color" content="#fa9a1d" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="WanderGrid" />
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        darkMode: 'class',
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ['"Plus Jakarta Sans"', 'Inter', '-apple-system', 'BlinkMacSystemFont', '"SF Pro Text"', 'system-ui', 'sans-serif'],
-            },
-            fontSize: {
-              '2xs': '0.625rem',
-            },
-            colors: {
-              gray: tailwind.colors.neutral,
-              primary: {
-                50: '#fef8f0',
-                100: '#fdeed9',
-                200: '#fbddb1',
-                300: '#faca89',
-                400: '#fcb045',
-                500: '#fa9a1d',
-                600: '#e78310',
-                700: '#c1670e',
-                800: '#995111',
-                900: '#7d4312',
-              },
-              'light-bg': '#FAFAFA',
-              'light-card': 'rgba(255, 255, 255, 0.75)',
-              'light-text': '#181D27',
-              'light-text-secondary': '#414651',
-              'light-separator': 'rgba(0, 0, 0, 0.08)',
-              'light-fill': '#F8FAFC',
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
-              'dark-bg': '#050505',
-              'dark-card': 'rgba(23, 23, 23, 0.75)',
-              'dark-text': '#FFFFFF',
-              'dark-text-secondary': '#CECFD2',
-              'dark-separator': 'rgba(255, 255, 255, 0.1)',
-              'dark-fill': 'rgba(30, 34, 48, 0.5)',
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'Inter', '-apple-system', 'BlinkMacSystemFont', '"SF Pro Text"', 'system-ui', 'sans-serif'],
+          },
+          fontSize: {
+            '2xs': '0.625rem',
+          },
+          colors: {
+            gray: tailwind.colors.neutral,
+            primary: {
+              50: '#fef8f0',
+              100: '#fdeed9',
+              200: '#fbddb1',
+              300: '#faca89',
+              400: '#fcb045',
+              500: '#fa9a1d',
+              600: '#e78310',
+              700: '#c1670e',
+              800: '#995111',
+              900: '#7d4312',
+            },
+            'light-bg': '#FAFAFA',
+            'light-card': 'rgba(255, 255, 255, 0.75)',
+            'light-text': '#181D27',
+            'light-text-secondary': '#414651',
+            'light-separator': 'rgba(0, 0, 0, 0.08)',
+            'light-fill': '#F8FAFC',
 
-              semantic: {
-                red: '#FF3B30',
-                green: '#34C759',
-                yellow: '#FFCC00',
-                blue: '#007AFF',
+            'dark-bg': '#050505',
+            'dark-card': 'rgba(23, 23, 23, 0.75)',
+            'dark-text': '#FFFFFF',
+            'dark-text-secondary': '#CECFD2',
+            'dark-separator': 'rgba(255, 255, 255, 0.1)',
+            'dark-fill': 'rgba(30, 34, 48, 0.5)',
+
+            semantic: {
+              red: '#FF3B30',
+              green: '#34C759',
+              yellow: '#FFCC00',
+              blue: '#007AFF',
+            },
+            'semantic-red': '#FF3B30',
+            'semantic-green': '#34C759',
+            'semantic-yellow': '#FFCC00',
+            'semantic-blue': '#007AFF',
+          },
+          boxShadow: {
+            'card': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05)',
+            'modal': '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            'glass-card': '0 8px 30px -4px rgba(0, 0, 0, 0.3), inset 0 1px 0 0 rgba(255, 255, 255, 0.1)',
+            'glass-modal': '0 20px 50px -10px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.15)',
+            'glass-light-card': '0 8px 24px -4px rgba(0, 0, 0, 0.06), inset 0 1px 0 0 rgba(255, 255, 255, 0.8)',
+            'neu-raised-light': '2px 2px 4px rgba(0,0,0,0.1), -2px -2px 4px rgba(255,255,255,0.8)',
+            'neu-inset-light': 'inset 2px 2px 4px rgba(0,0,0,0.05), inset -2px -2px 4px rgba(255,255,255,0.5)',
+            'neu-raised-dark': '2px 2px 4px rgba(0,0,0,0.5), -2px -2px 4px rgba(255,255,255,0.05)',
+            'neu-inset-dark': 'inset 2px 2px 4px rgba(0,0,0,0.5), inset -2px -2px 4px rgba(255,255,255,0.05)',
+          },
+          borderRadius: {
+            'xl': '12px',
+            '2xl': '16px',
+            '3xl': '24px',
+          },
+          backgroundSize: {
+            '200%': '200% 100%',
+          },
+          animation: {
+            celebrate: 'celebrate 1s ease-in-out',
+            'fade-in-up': 'fadeInUp 0.2s ease-out',
+            'bg-pan': 'bg-pan 3s linear infinite',
+          },
+          keyframes: {
+            celebrate: {
+              '0%, 100%': { transform: 'scale(1)' },
+              '25%': {
+                transform: 'scale(1.03)',
+                backgroundColor: 'rgba(52, 199, 89, 0.2)'
               },
-              'semantic-red': '#FF3B30',
-              'semantic-green': '#34C759',
-              'semantic-yellow': '#FFCC00',
-              'semantic-blue': '#007AFF',
             },
-            boxShadow: {
-              'card': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05)',
-              'modal': '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-              'glass-card': '0 8px 30px -4px rgba(0, 0, 0, 0.3), inset 0 1px 0 0 rgba(255, 255, 255, 0.1)',
-              'glass-modal': '0 20px 50px -10px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.15)',
-              'glass-light-card': '0 8px 24px -4px rgba(0, 0, 0, 0.06), inset 0 1px 0 0 rgba(255, 255, 255, 0.8)',
-              'neu-raised-light': '2px 2px 4px rgba(0,0,0,0.1), -2px -2px 4px rgba(255,255,255,0.8)',
-              'neu-inset-light': 'inset 2px 2px 4px rgba(0,0,0,0.05), inset -2px -2px 4px rgba(255,255,255,0.5)',
-              'neu-raised-dark': '2px 2px 4px rgba(0,0,0,0.5), -2px -2px 4px rgba(255,255,255,0.05)',
-              'neu-inset-dark': 'inset 2px 2px 4px rgba(0,0,0,0.5), inset -2px -2px 4px rgba(255,255,255,0.05)',
+            fadeInUp: {
+              'from': { opacity: 0, transform: 'translateY(10px)' },
+              'to': { opacity: 1, transform: 'translateY(0)' },
             },
-            borderRadius: {
-              'xl': '12px',
-              '2xl': '16px',
-              '3xl': '24px',
-            },
-            backgroundSize: {
-              '200%': '200% 100%',
-            },
-            animation: {
-              celebrate: 'celebrate 1s ease-in-out',
-              'fade-in-up': 'fadeInUp 0.2s ease-out',
-              'bg-pan': 'bg-pan 3s linear infinite',
-            },
-            keyframes: {
-              celebrate: {
-                '0%, 100%': { transform: 'scale(1)' },
-                '25%': { 
-                  transform: 'scale(1.03)', 
-                  backgroundColor: 'rgba(52, 199, 89, 0.2)'
-                },
-              },
-              fadeInUp: {
-                  'from': { opacity: 0, transform: 'translateY(10px)' },
-                  'to': { opacity: 1, transform: 'translateY(0)' },
-              },
-              'bg-pan': {
-                '0%': { backgroundPosition: '200% center' },
-                '100%': { backgroundPosition: '0% center' },
-              }
+            'bg-pan': {
+              '0%': { backgroundPosition: '200% center' },
+              '100%': { backgroundPosition: '0% center' },
             }
           }
         }
       }
-    </script>
-    <script type="module" src="/index.tsx"></script>
-    <style>
-      :root {
-        --primary-50: 254 248 240;
-        --primary-100: 253 238 217;
-        --primary-200: 251 221 177;
-        --primary-300: 250 202 137;
-        --primary-400: 252 176 69;
-        --primary-500: 250 154 29;
-        --primary-600: 231 131 16;
-        --primary-700: 193 103 14;
-        --primary-800: 153 81 17;
-        --primary-900: 125 67 18;
+    }
+  </script>
+  <script type="module" src="/index.tsx"></script>
+  <style>
+    :root {
+      --primary-50: 254 248 240;
+      --primary-100: 253 238 217;
+      --primary-200: 251 221 177;
+      --primary-300: 250 202 137;
+      --primary-400: 252 176 69;
+      --primary-500: 250 154 29;
+      --primary-600: 231 131 16;
+      --primary-700: 193 103 14;
+      --primary-800: 153 81 17;
+      --primary-900: 125 67 18;
 
-        --light-bg: 250 250 250;
-        --light-card: 255 255 255;
-        --light-text: 24 29 39;
-        --light-text-secondary: 65 70 81;
-        --light-separator: 229 231 235;
-        --light-fill: 248 250 252;
+      --light-bg: 250 250 250;
+      --light-card: 255 255 255;
+      --light-text: 24 29 39;
+      --light-text-secondary: 65 70 81;
+      --light-separator: 229 231 235;
+      --light-fill: 248 250 252;
 
-        --dark-bg: 5 5 5;
-        --dark-card: 23 23 23;
-        --dark-text: 255 255 255;
-        --dark-text-secondary: 206 207 210;
-        --dark-separator: 255 255 255;
-        --dark-fill: 30 34 48;
-      }
+      --dark-bg: 5 5 5;
+      --dark-card: 23 23 23;
+      --dark-text: 255 255 255;
+      --dark-text-secondary: 206 207 210;
+      --dark-separator: 255 255 255;
+      --dark-fill: 30 34 48;
+    }
 
-      /* Global WebKit Backdrop Filter Utilities */
-      .backdrop-blur-none { -webkit-backdrop-filter: none; backdrop-filter: none; }
-      .backdrop-blur-sm { -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
-      .backdrop-blur { -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
-      .backdrop-blur-md { -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
-      .backdrop-blur-lg { -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
-      .backdrop-blur-xl { -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px); }
-      .backdrop-blur-2xl { -webkit-backdrop-filter: blur(40px); backdrop-filter: blur(40px); }
-      .backdrop-blur-3xl { -webkit-backdrop-filter: blur(64px); backdrop-filter: blur(64px); }
-      .material-symbols-filled {
-        font-variation-settings: 'FILL' 1;
-      }
-      /* Privacy Mode Styles */
-      body.privacy-mode .privacy-blur {
-        filter: blur(6px);
-        transition: filter 0.2s ease-in-out;
-        cursor: default;
-        user-select: none;
-      }
-      body.privacy-mode .privacy-blur:hover {
-        filter: none;
-        user-select: auto;
-      }
-      /* Loyalty card 3D helpers */
-      .perspective-1000 { perspective: 1000px; }
-      .transform-style-3d { transform-style: preserve-3d; }
-      .backface-hidden { backface-visibility: hidden; }
-      .no-scrollbar::-webkit-scrollbar {
-        display: none;
-      }
-      .no-scrollbar {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-      }
-      /* react-grid-layout styles */
-      .react-grid-layout {
-        position: relative;
-        transition: height 200ms ease;
-      }
-      .react-grid-item {
-        transition: all 200ms ease;
-        transition-property: left, top;
-      }
-      .react-grid-item.cssTransforms {
-        transition-property: transform;
-      }
-      .react-grid-item.resizing {
-        z-index: 1;
-        will-change: width, height;
-      }
-      .react-grid-item.react-draggable-dragging {
-        transition: none;
-        z-index: 3;
-        will-change: transform;
-      }
-      .react-grid-item.dropping {
-        visibility: hidden;
-      }
-      .react-grid-placeholder {
-        background: rgba(0,0,0,0.1);
-        border-radius: 24px;
-        transition-duration: 100ms;
-        z-index: 2;
-        -webkit-user-select: none;
-        -moz-user-select: none;
-        -ms-user-select: none;
-        -o-user-select: none;
-        user-select: none;
-      }
-      .dark .react-grid-placeholder {
-        background: rgba(255,255,255,0.05);
-      }
-      .react-grid-item > .react-resizable-handle {
-        position: absolute;
-        width: 20px;
-        height: 20px;
-        bottom: 0;
-        right: 0;
-        cursor: se-resize;
-      }
-      .react-grid-item > .react-resizable-handle::after {
-        content: "";
-        position: absolute;
-        right: 8px;
-        bottom: 8px;
-        width: 5px;
-        height: 5px;
-        border-right: 2px solid rgba(0,0,0,0.4);
-        border-bottom: 2px solid rgba(0,0,0,0.4);
-      }
-      .dark .react-grid-item > .react-resizable-handle::after {
-        border-right-color: rgba(255, 255, 255, 0.4);
-        border-bottom-color: rgba(255, 255, 255, 0.4);
-      }
+    /* Global WebKit Backdrop Filter Utilities */
+    .backdrop-blur-none {
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
 
-      /* Glass & Blur Depth System */
-      .glass-card {
-        background: rgba(255, 255, 255, 0.6);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(0, 0, 0, 0.08);
-        box-shadow: 0 8px 30px -4px rgba(0, 0, 0, 0.05), inset 0 1px 0 0 rgba(255, 255, 255, 0.8);
-      }
-      .dark .glass-card {
-        background: rgba(23, 23, 23, 0.6);
-        backdrop-filter: blur(24px);
-        -webkit-backdrop-filter: blur(24px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        box-shadow: 0 8px 30px -4px rgba(0, 0, 0, 0.3), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
-      }
+    .backdrop-blur-sm {
+      -webkit-backdrop-filter: blur(4px);
+      backdrop-filter: blur(4px);
+    }
 
-      .glass-modal {
-        background: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(40px);
-        -webkit-backdrop-filter: blur(40px);
-        border: 1px solid rgba(0, 0, 0, 0.1);
-        box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.15), inset 0 1px 0 0 rgba(255, 255, 255, 0.9);
-      }
-      .dark .glass-modal {
-        background: rgba(28, 28, 31, 0.9);
-        backdrop-filter: blur(40px);
-        -webkit-backdrop-filter: blur(40px);
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
-      }
+    .backdrop-blur {
+      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(8px);
+    }
 
-      /* iOS Style Blur */
-      .ios-regular {
-        background-color: var(--light-card);
-        border: none;
-        border-radius: 1.5rem;
-        -webkit-backdrop-filter: blur(12px) saturate(180%) brightness(105%);
-        backdrop-filter: blur(12px) saturate(180%) brightness(105%);
-        box-shadow: 
-          inset 0 1px 0 0 rgba(255, 255, 255, 0.2),
-          0 8px 32px rgba(0, 0, 0, 0.1);
-      }
+    .backdrop-blur-md {
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
+    }
 
-      .bleed-glass {
-        -webkit-backdrop-filter: blur(12px) saturate(180%) brightness(105%) !important;
-        backdrop-filter: blur(12px) saturate(180%) brightness(105%) !important;
-      }
+    .backdrop-blur-lg {
+      -webkit-backdrop-filter: blur(16px);
+      backdrop-filter: blur(16px);
+    }
 
-      html {
-        font-size: 95%;
-      }
-      body {
-        font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
-        font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-        background-color: #FAFAFA;
-        color: #181D27;
-      }
-      .dark body, html.dark body {
-        background-color: #050505;
-        color: #FFFFFF;
-      }
+    .backdrop-blur-xl {
+      -webkit-backdrop-filter: blur(24px);
+      backdrop-filter: blur(24px);
+    }
 
-      /* Ultra-thin Glass Scrollbars */
-      ::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
-      }
-      ::-webkit-scrollbar-track {
-        background: transparent; 
-      }
-      ::-webkit-scrollbar-thumb {
-        background: rgba(0, 0, 0, 0.15); 
-        border-radius: 9999px;
-      }
-      .dark ::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.15); 
-        border-radius: 9999px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: rgba(0, 0, 0, 0.25); 
-      }
-      .dark ::-webkit-scrollbar-thumb:hover {
-        background: rgba(255, 255, 255, 0.25); 
-      }
-      /* Leaflet Custom Overrides */
-      .leaflet-popup-content-wrapper {
-        background: rgba(23, 23, 23, 0.95);
-        backdrop-filter: blur(12px);
-        color: white;
-        border-radius: 16px;
-        border: 1px solid rgba(255,255,255,0.1);
-        padding: 0;
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
-      }
-      .leaflet-popup-tip {
-        background: rgba(23, 23, 23, 0.95);
-        border: 1px solid rgba(255,255,255,0.1);
-      }
-      .leaflet-container {
-        background: transparent !important;
-        font-family: 'Inter', sans-serif;
-      }
-      .leaflet-control-zoom {
-        border: none !important;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
-      }
-      .leaflet-control-zoom a {
-        background-color: rgba(30, 30, 30, 0.9) !important;
-        color: white !important;
-        border-bottom: 1px solid rgba(255,255,255,0.1) !important;
-      }
-      .leaflet-control-zoom a:hover {
-        background-color: rgba(50, 50, 50, 0.9) !important;
-      }
-      
-      /* --- AIRTRAIL STYLE FLIGHT PATHS --- */
+    .backdrop-blur-2xl {
+      -webkit-backdrop-filter: blur(40px);
+      backdrop-filter: blur(40px);
+    }
 
-      /* 1. Background Track (Static) */
-      .flight-path-track {
-        stroke-opacity: 0.65 !important;
-        stroke-linecap: round;
-        stroke-linejoin: round;
-        fill: none;
-      }
+    .backdrop-blur-3xl {
+      -webkit-backdrop-filter: blur(64px);
+      backdrop-filter: blur(64px);
+    }
 
-      /* 2. Animated Flow (Moving Dash) */
-      .flight-path-flow {
-        fill: none;
-        stroke-linecap: round;
-        stroke-linejoin: round;
-        /* Repeating flowing pattern ensuring constant visibility and beautiful pacing */
-        stroke-dasharray: 10, 20; 
-        stroke-dashoffset: 0;
-        animation: flow 4s linear infinite;
-        /* Neon Glow Effect */
-        filter: drop-shadow(0 0 2px currentColor) drop-shadow(0 0 4px currentColor);
-      }
+    .material-symbols-filled {
+      font-variation-settings: 'FILL' 1;
+    }
 
-      /* Highlighted State (Hover) */
-      .flight-path-selected {
-        stroke-opacity: 1 !important;
-        filter: drop-shadow(0 0 8px white) drop-shadow(0 0 15px white) !important;
-        stroke: #ffffff !important;
-        z-index: 9999 !important;
-        animation: none !important;
-        stroke-dasharray: none !important;
-      }
+    /* Privacy Mode Styles */
+    body.privacy-mode .privacy-blur {
+      filter: blur(6px);
+      transition: filter 0.2s ease-in-out;
+      cursor: default;
+      user-select: none;
+    }
 
-      /* Animation Keyframe - matches the 30px combined dash+gap cycle perfectly */
-      @keyframes flow {
-        to {
-          stroke-dashoffset: -30; 
-        }
-      }
+    body.privacy-mode .privacy-blur:hover {
+      filter: none;
+      user-select: auto;
+    }
 
-      /* Status Colors (used via inline styles usually, but classes help for specificity) */
-      /* Historic (Blue) */
-      .flight-path-blue {
-        color: #3b82f6; /* Used for currentColor context */
-        stroke: #3b82f6; 
-      }
+    /* Loyalty card 3D helpers */
+    .perspective-1000 {
+      perspective: 1000px;
+    }
 
-      /* Confirmed (Green/Emerald) */
-      .flight-path-green {
-        color: #10b981; 
-        stroke: #10b981;
-      }
+    .transform-style-3d {
+      transform-style: preserve-3d;
+    }
 
-      /* Planned (White/Gray) */
-      .flight-path-white {
-        color: #ffffff;
-        stroke: #ffffff;
-      }
+    .backface-hidden {
+      backface-visibility: hidden;
+    }
 
-      /* Land Routes (Amber/Orange) */
-      .flight-path-land {
-        color: #f59e0b;
-        stroke: #f59e0b;
-      }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
 
-      /* Sea Routes (Cyan) */
-      .flight-path-sea {
-        color: #06b6d4;
-        stroke: #06b6d4;
-      }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
 
-      /* Route Labels on Map */
-      .route-label-tooltip {
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        color: rgba(255, 255, 255, 0.7) !important;
-        font-weight: 800 !important;
-        font-size: 10px !important;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.8);
-        white-space: nowrap;
-        pointer-events: none; /* Let clicks pass through to the line */
+    /* react-grid-layout styles */
+    .react-grid-layout {
+      position: relative;
+      transition: height 200ms ease;
+    }
+
+    .react-grid-item {
+      transition: all 200ms ease;
+      transition-property: left, top;
+    }
+
+    .react-grid-item.cssTransforms {
+      transition-property: transform;
+    }
+
+    .react-grid-item.resizing {
+      z-index: 1;
+      will-change: width, height;
+    }
+
+    .react-grid-item.react-draggable-dragging {
+      transition: none;
+      z-index: 3;
+      will-change: transform;
+    }
+
+    .react-grid-item.dropping {
+      visibility: hidden;
+    }
+
+    .react-grid-placeholder {
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 24px;
+      transition-duration: 100ms;
+      z-index: 2;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      -o-user-select: none;
+      user-select: none;
+    }
+
+    .dark .react-grid-placeholder {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .react-grid-item>.react-resizable-handle {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      bottom: 0;
+      right: 0;
+      cursor: se-resize;
+    }
+
+    .react-grid-item>.react-resizable-handle::after {
+      content: "";
+      position: absolute;
+      right: 8px;
+      bottom: 8px;
+      width: 5px;
+      height: 5px;
+      border-right: 2px solid rgba(0, 0, 0, 0.4);
+      border-bottom: 2px solid rgba(0, 0, 0, 0.4);
+    }
+
+    .dark .react-grid-item>.react-resizable-handle::after {
+      border-right-color: rgba(255, 255, 255, 0.4);
+      border-bottom-color: rgba(255, 255, 255, 0.4);
+    }
+
+    /* Glass & Blur Depth System */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.6);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      box-shadow: 0 8px 30px -4px rgba(0, 0, 0, 0.05), inset 0 1px 0 0 rgba(255, 255, 255, 0.8);
+    }
+
+    .dark .glass-card {
+      background: rgba(23, 23, 23, 0.6);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 8px 30px -4px rgba(0, 0, 0, 0.3), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+    }
+
+    .glass-modal {
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(40px);
+      -webkit-backdrop-filter: blur(40px);
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.15), inset 0 1px 0 0 rgba(255, 255, 255, 0.9);
+    }
+
+    .dark .glass-modal {
+      background: rgba(28, 28, 31, 0.9);
+      backdrop-filter: blur(40px);
+      -webkit-backdrop-filter: blur(40px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
+    }
+
+    /* iOS Style Blur */
+    .ios-regular {
+      background-color: var(--light-card);
+      border: none;
+      border-radius: 1.5rem;
+      -webkit-backdrop-filter: blur(12px) saturate(180%) brightness(105%);
+      backdrop-filter: blur(12px) saturate(180%) brightness(105%);
+      box-shadow:
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.2),
+        0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+
+    .bleed-glass {
+      -webkit-backdrop-filter: blur(12px) saturate(180%) brightness(105%) !important;
+      backdrop-filter: blur(12px) saturate(180%) brightness(105%) !important;
+    }
+
+    html {
+      font-size: 95%;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+      font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+      background-color: #FAFAFA;
+      color: #181D27;
+    }
+
+    .dark body,
+    html.dark body {
+      background-color: #050505;
+      color: #FFFFFF;
+    }
+
+    /* Ultra-thin Glass Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.15);
+      border-radius: 9999px;
+    }
+
+    .dark ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 9999px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    .dark ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+
+    /* Leaflet Custom Overrides */
+    .leaflet-popup-content-wrapper {
+      background: rgba(23, 23, 23, 0.95);
+      backdrop-filter: blur(12px);
+      color: white;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 0;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+
+    .leaflet-popup-tip {
+      background: rgba(23, 23, 23, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .leaflet-container {
+      background: transparent !important;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .leaflet-control-zoom {
+      border: none !important;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .leaflet-control-zoom a {
+      background-color: rgba(30, 30, 30, 0.9) !important;
+      color: white !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    }
+
+    .leaflet-control-zoom a:hover {
+      background-color: rgba(50, 50, 50, 0.9) !important;
+    }
+
+    /* --- AIRTRAIL STYLE FLIGHT PATHS --- */
+
+    /* 1. Background Track (Static) */
+    .flight-path-track {
+      stroke-opacity: 0.65 !important;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+    }
+
+    /* 2. Animated Flow (Moving Dash) */
+    .flight-path-flow {
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      /* Repeating flowing pattern ensuring constant visibility and beautiful pacing */
+      stroke-dasharray: 10, 20;
+      stroke-dashoffset: 0;
+      animation: flow 4s linear infinite;
+      /* Neon Glow Effect */
+      filter: drop-shadow(0 0 2px currentColor) drop-shadow(0 0 4px currentColor);
+    }
+
+    /* Highlighted State (Hover) */
+    .flight-path-selected {
+      stroke-opacity: 1 !important;
+      filter: drop-shadow(0 0 8px white) drop-shadow(0 0 15px white) !important;
+      stroke: #ffffff !important;
+      z-index: 9999 !important;
+      animation: none !important;
+      stroke-dasharray: none !important;
+    }
+
+    /* Animation Keyframe - matches the 30px combined dash+gap cycle perfectly */
+    @keyframes flow {
+      to {
+        stroke-dashoffset: -30;
       }
-    </style>
+    }
+
+    /* Status Colors (used via inline styles usually, but classes help for specificity) */
+    /* Historic (Blue) */
+    .flight-path-blue {
+      color: #3b82f6;
+      /* Used for currentColor context */
+      stroke: #3b82f6;
+    }
+
+    /* Confirmed (Green/Emerald) */
+    .flight-path-green {
+      color: #10b981;
+      stroke: #10b981;
+    }
+
+    /* Planned (White/Gray) */
+    .flight-path-white {
+      color: #ffffff;
+      stroke: #ffffff;
+    }
+
+    /* Land Routes (Amber/Orange) */
+    .flight-path-land {
+      color: #f59e0b;
+      stroke: #f59e0b;
+    }
+
+    /* Sea Routes (Cyan) */
+    .flight-path-sea {
+      color: #06b6d4;
+      stroke: #06b6d4;
+    }
+
+    /* Route Labels on Map */
+    .route-label-tooltip {
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      color: rgba(255, 255, 255, 0.7) !important;
+      font-weight: 800 !important;
+      font-size: 10px !important;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(0, 0, 0, 0.8);
+      white-space: nowrap;
+      pointer-events: none;
+      /* Let clicks pass through to the line */
+    }
+  </style>
 </head>
-  <body>
-    <div id="root"></div>
-    <script>
-      // Active unregister and cache clearing to fix white screen loading problems
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then((registrations) => {
-          for (let registration of registrations) {
-            registration.unregister().then((success) => {
-              if (success) {
-                console.log('[PWA] Successfully unregistered service worker');
-              }
-            });
-          }
-        }).catch((err) => {
-          console.warn('[PWA] Failed to unregister service workers:', err);
-        });
-      }
 
-      // Force deletion of all Cache Storage blocks from PWA caching
-      if ('caches' in window) {
-        caches.keys().then((keys) => {
-          return Promise.all(
-            keys.map((key) => {
-              console.log('[PWA] Deleting cache storage:', key);
-              return caches.delete(key);
-            })
-          );
-        }).then(() => {
-          console.log('[PWA] All cache storage deleted');
-        }).catch((err) => {
-          console.warn('[PWA] Error clearing cache storage:', err);
-        });
-      }
-    </script>
-  </body>
+<body>
+  <div id="root"></div>
+  <script>
+    // Active unregister and cache clearing to fix white screen loading problems
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        for (let registration of registrations) {
+          registration.unregister().then((success) => {
+            if (success) {
+              console.log('[PWA] Successfully unregistered service worker');
+            }
+          });
+        }
+      }).catch((err) => {
+        console.warn('[PWA] Failed to unregister service workers:', err);
+      });
+    }
+
+    // Force deletion of all Cache Storage blocks from PWA caching
+    if ('caches' in window) {
+      caches.keys().then((keys) => {
+        return Promise.all(
+          keys.map((key) => {
+            console.log('[PWA] Deleting cache storage:', key);
+            return caches.delete(key);
+          })
+        );
+      }).then(() => {
+        console.log('[PWA] All cache storage deleted');
+      }).catch((err) => {
+        console.warn('[PWA] Error clearing cache storage:', err);
+      });
+    }
+  </script>
+</body>
+
 </html>
