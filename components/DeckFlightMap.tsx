@@ -449,81 +449,116 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             return;
         }
 
-        const normalizeData = (data: any) => {
-            if (!data || !data.features) return data;
-            data.features.forEach((f: any) => {
-                const p = f.properties || {};
-                const gu = (p.GU_A3 || '').toUpperCase();
-                const nm = (p.NAME || '').toLowerCase();
-                if (gu === 'ENG' || nm === 'england') {
-                    p.ISO_A2 = 'GB-ENG';
-                    p.ISO_A2_EH = 'GB-ENG';
-                    p.wb_a2 = 'GB-ENG';
-                    p.NAME = 'England';
-                    p.NAME_LONG = 'England';
-                    p.SOVEREIGNT = 'United Kingdom';
-                } else if (gu === 'SCT' || nm === 'scotland') {
-                    p.ISO_A2 = 'GB-SCT';
-                    p.ISO_A2_EH = 'GB-SCT';
-                    p.wb_a2 = 'GB-SCT';
-                    p.NAME = 'Scotland';
-                    p.NAME_LONG = 'Scotland';
-                    p.SOVEREIGNT = 'United Kingdom';
-                } else if (gu === 'WLS' || nm === 'wales') {
-                    p.ISO_A2 = 'GB-WLS';
-                    p.ISO_A2_EH = 'GB-WLS';
-                    p.wb_a2 = 'GB-WLS';
-                    p.NAME = 'Wales';
-                    p.NAME_LONG = 'Wales';
-                    p.SOVEREIGNT = 'United Kingdom';
-                } else if (gu === 'NIR' || nm === 'n. ireland' || nm === 'northern ireland') {
-                    p.ISO_A2 = 'GB-NIR';
-                    p.ISO_A2_EH = 'GB-NIR';
-                    p.wb_a2 = 'GB-NIR';
-                    p.NAME = 'Northern Ireland';
-                    p.NAME_LONG = 'Northern Ireland';
-                    p.SOVEREIGNT = 'United Kingdom';
-                }
-            });
-            return data;
+        const normalizeCountriesData = (countriesData: any, ukUnitsData?: any) => {
+            if (!countriesData || !countriesData.features) return countriesData;
+
+            // 1. Clean and normalize countries dataset
+            const cleanedFeatures = countriesData.features
+                .filter((f: any) => {
+                    const p = f.properties || {};
+                    // Exclude generic UK main country polygon if UK home nation subunits are provided
+                    const isUKMain = ukUnitsData && (p.SOVEREIGNT === 'United Kingdom' || p.NAME === 'United Kingdom') && p.TYPE === 'Sovereign country';
+                    return !isUKMain;
+                })
+                .map((f: any) => {
+                    const p = f.properties || {};
+                    // Fix -99 ISO codes with official 2-letter codes where available
+                    if ((!p.ISO_A2 || p.ISO_A2 === '-99') && p.ISO_A2_EH && p.ISO_A2_EH !== '-99') {
+                        p.ISO_A2 = p.ISO_A2_EH;
+                    }
+                    if (p.NAME === 'Norway' && (!p.ISO_A2 || p.ISO_A2 === '-99')) {
+                        p.ISO_A2 = 'NO';
+                    }
+                    if (p.NAME === 'France' && (!p.ISO_A2 || p.ISO_A2 === '-99')) {
+                        p.ISO_A2 = 'FR';
+                    }
+                    if (p.NAME === 'Kosovo' && (!p.ISO_A2 || p.ISO_A2 === '-99')) {
+                        p.ISO_A2 = 'XK';
+                    }
+                    return f;
+                });
+
+            // 2. Inject UK home nations (England, Scotland, Wales, Northern Ireland) if loaded
+            if (ukUnitsData && ukUnitsData.features) {
+                ukUnitsData.features.forEach((f: any) => {
+                    const p = f.properties || {};
+                    const gu = (p.GU_A3 || '').toUpperCase();
+                    const nm = (p.NAME || '').toLowerCase();
+
+                    if (gu === 'ENG' || nm === 'england') {
+                        p.ISO_A2 = 'GB-ENG';
+                        p.ISO_A2_EH = 'GB-ENG';
+                        p.wb_a2 = 'GB-ENG';
+                        p.NAME = 'England';
+                        p.NAME_LONG = 'England';
+                        p.SOVEREIGNT = 'United Kingdom';
+                        cleanedFeatures.push(f);
+                    } else if (gu === 'SCT' || nm === 'scotland') {
+                        p.ISO_A2 = 'GB-SCT';
+                        p.ISO_A2_EH = 'GB-SCT';
+                        p.wb_a2 = 'GB-SCT';
+                        p.NAME = 'Scotland';
+                        p.NAME_LONG = 'Scotland';
+                        p.SOVEREIGNT = 'United Kingdom';
+                        cleanedFeatures.push(f);
+                    } else if (gu === 'WLS' || nm === 'wales') {
+                        p.ISO_A2 = 'GB-WLS';
+                        p.ISO_A2_EH = 'GB-WLS';
+                        p.wb_a2 = 'GB-WLS';
+                        p.NAME = 'Wales';
+                        p.NAME_LONG = 'Wales';
+                        p.SOVEREIGNT = 'United Kingdom';
+                        cleanedFeatures.push(f);
+                    } else if (gu === 'NIR' || nm === 'n. ireland' || nm === 'northern ireland') {
+                        p.ISO_A2 = 'GB-NIR';
+                        p.ISO_A2_EH = 'GB-NIR';
+                        p.wb_a2 = 'GB-NIR';
+                        p.NAME = 'Northern Ireland';
+                        p.NAME_LONG = 'Northern Ireland';
+                        p.SOVEREIGNT = 'United Kingdom';
+                        cleanedFeatures.push(f);
+                    }
+                });
+            }
+
+            return {
+                ...countriesData,
+                features: cleanedFeatures
+            };
         };
 
         const loadGeoJson = async () => {
+            const countriesHighResUrl = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson';
             const mapUnitsHighResUrl = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_map_units.geojson';
-            const mapUnitsStdResUrl = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_map_units.geojson';
-            const countriesFallbackUrl = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson';
+            const countriesStdResUrl = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson';
 
             try {
-                const res = await fetch(mapUnitsHighResUrl);
-                if (res.ok) {
-                    const raw = await res.json();
-                    const data = normalizeData(raw);
+                // Fetch unified countries dataset and map units (for UK constituent home nations) in parallel
+                const [countriesRes, mapUnitsRes] = await Promise.allSettled([
+                    fetch(countriesHighResUrl),
+                    fetch(mapUnitsHighResUrl)
+                ]);
+
+                if (countriesRes.status === 'fulfilled' && countriesRes.value.ok) {
+                    const countriesRaw = await countriesRes.value.json();
+                    let mapUnitsRaw = null;
+                    if (mapUnitsRes.status === 'fulfilled' && mapUnitsRes.value.ok) {
+                        mapUnitsRaw = await mapUnitsRes.value.json();
+                    }
+                    const data = normalizeCountriesData(countriesRaw, mapUnitsRaw);
                     geoJsonMemoryCache = data;
                     setGeoJsonData(data);
                     return;
                 }
             } catch {
-                // Fallback to standard resolution map units
+                // Fallback to standard resolution countries
             }
 
             try {
-                const res = await fetch(mapUnitsStdResUrl);
+                const res = await fetch(countriesStdResUrl);
                 if (res.ok) {
                     const raw = await res.json();
-                    const data = normalizeData(raw);
-                    geoJsonMemoryCache = data;
-                    setGeoJsonData(data);
-                    return;
-                }
-            } catch {
-                // Fallback to countries
-            }
-
-            try {
-                const res = await fetch(countriesFallbackUrl);
-                if (res.ok) {
-                    const raw = await res.json();
-                    const data = normalizeData(raw);
+                    const data = normalizeCountriesData(raw);
                     geoJsonMemoryCache = data;
                     setGeoJsonData(data);
                 }
