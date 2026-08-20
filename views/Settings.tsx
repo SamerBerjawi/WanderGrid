@@ -6,8 +6,9 @@ import { calendarService } from '../services/calendarExport';
 import { User, WorkspaceSettings, EntitlementType, SavedConfig, Trip } from '../types';
 import { GearSettingsTab } from '../components/GearSettingsTab';
 import { WorkspaceSettingsTab } from '../components/WorkspaceSettingsTab';
-import { FlightImportWizard } from '../components/FlightImportWizard';
 import { CarriersTab } from '../components/CarriersTab';
+
+const FlightImportWizard = React.lazy(() => import('../components/FlightImportWizard').then(m => ({ default: m.FlightImportWizard })));
 
 interface SettingsProps {
     onThemeChange?: (theme: 'light' | 'dark' | 'auto') => void;
@@ -293,7 +294,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
       const allTrips = await dataService.getTrips();
       
       if (type === 'xlsx') {
-          const buffer = flightImporter.exportXlsx(allTrips);
+          const buffer = await flightImporter.exportXlsx(allTrips);
           const blob = new Blob([buffer], { type: 'application/octet-stream' });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
@@ -1345,12 +1346,16 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
       </Modal>
 
       {/* Unified Flight Sheet Mapper wizard triggers */}
-      <FlightImportWizard 
-          isOpen={isFlightWizardOpen} 
-          onClose={() => setIsFlightWizardOpen(false)} 
-          onImportComplete={refreshData} 
-          users={users} 
-      />
+      {isFlightWizardOpen && (
+        <React.Suspense fallback={null}>
+          <FlightImportWizard 
+              isOpen={isFlightWizardOpen} 
+              onClose={() => setIsFlightWizardOpen(false)} 
+              onImportComplete={refreshData} 
+              users={users} 
+          />
+        </React.Suspense>
+      )}
     </div>
   );
 };

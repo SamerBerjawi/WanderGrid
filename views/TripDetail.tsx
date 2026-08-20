@@ -14,7 +14,7 @@ import { Trip, User, Transport, Accommodation, WorkspaceSettings, Activity, Tran
 import { searchLocations, resolvePlaceName, getCoordinates } from '../services/geocoding';
 import { GoogleGenAI } from "@google/genai";
 const DeckFlightMap = React.lazy(() => import('../components/DeckFlightMap').then(m => ({ default: m.DeckFlightMap || m.default })));
-import { FlightImportWizard } from '../components/FlightImportWizard';
+const FlightImportWizard = React.lazy(() => import('../components/FlightImportWizard').then(m => ({ default: m.FlightImportWizard })));
 import { getMerchantLogoUrl } from '../utils/brandfetch';
 
 interface AirlineLogoProps {
@@ -2206,17 +2206,19 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                        {filteredCandidates.length === 0 && <div className="text-center py-10 text-gray-400">No flights match your filters.</div>}
                    </div>
                    <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-white/5">
-                       <Button variant="ghost" onClick={() => setImportPreview({ open: false, candidates: [] })}>Cancel</Button>
-                       {trip && (
-                           <FlightImportWizard 
-                               isOpen={isImportWizardOpen}
-                               onClose={() => setIsImportWizardOpen(false)}
-                               onImportComplete={loadData}
-                               users={users}
-                               existingTripId={trip.id}
-                           />
-                       )}
-                       <Button variant="primary" onClick={confirmImportFlights} disabled={selectedCount === 0}>Import {selectedCount} Trips</Button>
+                        <Button variant="ghost" onClick={() => setImportPreview({ open: false, candidates: [] })}>Cancel</Button>
+                        {trip && isImportWizardOpen && (
+                            <React.Suspense fallback={null}>
+                                <FlightImportWizard 
+                                    isOpen={isImportWizardOpen}
+                                    onClose={() => setIsImportWizardOpen(false)}
+                                    onImportComplete={loadData}
+                                    users={users}
+                                    existingTripId={trip.id}
+                                />
+                            </React.Suspense>
+                        )}
+                        <Button variant="primary" onClick={confirmImportFlights} disabled={selectedCount === 0}>Import {selectedCount} Trips</Button>
                    </div>
                </div>
             </Modal>

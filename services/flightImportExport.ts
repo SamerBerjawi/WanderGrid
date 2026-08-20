@@ -1,9 +1,9 @@
 
-import * as XLSX from 'xlsx';
 import { Trip, Transport } from '../types';
 
 export const flightImporter = {
     parseFile: async (file: File): Promise<Transport[]> => {
+        const XLSX = await import('xlsx');
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -201,7 +201,7 @@ export const flightImporter = {
         return csvContent;
     },
 
-    exportXlsx: (trips: Trip[]): ArrayBuffer => {
+    exportXlsx: async (trips: Trip[]): Promise<ArrayBuffer> => {
         const rows: any[] = [];
         trips.forEach(t => {
             (t.transports || []).forEach(tr => {
@@ -234,6 +234,7 @@ export const flightImporter = {
             });
         });
 
+        const XLSX = await import('xlsx');
         const workbook = XLSX.utils.book_new();
         const worksheet = XLSX.utils.json_to_sheet(rows);
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Flights');
