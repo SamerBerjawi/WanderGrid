@@ -7,6 +7,7 @@ const path = require('path');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const helmet = require('helmet');
+const compression = require('compression');
 
 // --- Centralized Structured JSON Logger ---
 const logger = {
@@ -222,9 +223,18 @@ app.use(helmet({
     contentSecurityPolicy: false, // Turned off for seamless loading inside the preview sandbox iframe
     crossOriginEmbedderPolicy: false
 }));
+app.use(compression({ threshold: 1024 }));
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
-app.use(express.static(path.join(__dirname, 'client_build')));
+app.use(express.static(path.join(__dirname, 'client_build'), {
+    maxAge: '1y',
+    immutable: true,
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.html')) {
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        }
+    }
+}));
 
 // Global API Route Protection
 app.use('/api', authenticateToken);
@@ -1245,6 +1255,7 @@ app.get('/api/airports/lookup/:iata', async (req, res) => {
             [lookupCode]
         );
         if (rows.length > 0) {
+            res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
             return res.json(rows[0]);
         }
     } catch (err) {
@@ -1254,6 +1265,7 @@ app.get('/api/airports/lookup/:iata', async (req, res) => {
     // 2. Try In-Memory Fallback Map
     const cached = memoryAirports.get(lookupCode);
     if (cached) {
+        res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
         return res.json(cached);
     }
 
@@ -1273,6 +1285,7 @@ app.get('/api/carriers/lookup/:iata', async (req, res) => {
             [lookupCode]
         );
         if (rows.length > 0) {
+            res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
             return res.json(rows[0]);
         }
     } catch (err) {
@@ -1282,6 +1295,7 @@ app.get('/api/carriers/lookup/:iata', async (req, res) => {
     // 2. Try In-Memory Fallback Map
     const cached = memoryCarriers.get(lookupCode);
     if (cached) {
+        res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
         return res.json(cached);
     }
 
