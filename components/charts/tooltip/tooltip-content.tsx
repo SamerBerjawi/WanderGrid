@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { intFmt } from "../chart-formatters";
+import { toProperCase } from "@/lib/utils";
 
 export interface TooltipRow {
   color: string;
@@ -17,12 +18,14 @@ export interface TooltipContentProps {
 }
 
 export function TooltipContent({ title, rows, children }: TooltipContentProps) {
+  const formattedTitle = title ? toProperCase(title) : undefined;
+
   return (
     <div className="overflow-hidden">
       <div className="px-3 py-2.5">
-        {title && (
+        {formattedTitle && (
           <div className="mb-2 text-left font-medium text-chart-tooltip-foreground text-xs">
-            {title}
+            {formattedTitle}
           </div>
         )}
         <div className="space-y-1.5">

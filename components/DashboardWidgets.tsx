@@ -1,5 +1,6 @@
 import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, AreaChart, Area, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { TooltipContent } from '@/components/charts/tooltip';
 
 export interface ExtremeFlight {
     distance: number;
@@ -149,15 +150,15 @@ export const DonutChart: React.FC<{
                             content={({ active, payload }) => {
                                 if (active && payload && payload.length) {
                                     const curr = payload[0].payload;
+                                    const pct = Math.round((curr.value / total) * 100);
                                     return (
-                                        <div className="bg-slate-900/80 dark:bg-black/85 backdrop-blur-xl border border-white/20 dark:border-white/10 px-3 py-2 rounded-xl shadow-xl text-xs font-bold text-white z-50">
-                                            <div className="flex items-center gap-2">
-                                                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: curr.color }} />
-                                                <span>{curr.name}: {curr.value}</span>
-                                            </div>
-                                            <div className="text-[10px] text-gray-450 mt-0.5 text-left font-medium">
-                                                {Math.round((curr.value / total) * 100)}% of flights
-                                            </div>
+                                        <div className="rounded-2xl border border-black/10 dark:border-white/15 bg-white/90 dark:bg-dark-card/90 backdrop-blur-2xl shadow-glass-modal overflow-hidden">
+                                            <TooltipContent
+                                                title={curr.name}
+                                                rows={[
+                                                    { color: curr.color, label: 'Flights', value: `${curr.value} (${pct}%)` }
+                                                ]}
+                                            />
                                         </div>
                                     );
                                 }
@@ -217,14 +218,14 @@ export const FlightTrendChart: React.FC<{ data: FlightTrendPoint[] }> = ({ data 
                             stroke="#94a3b8" 
                             fontSize={9} 
                             tickLine={false} 
-                            axisLine={false}
+                            axisLine={false} 
                             dy={8}
                         />
                         <YAxis 
                             stroke="#94a3b8" 
                             fontSize={9} 
                             tickLine={false} 
-                            axisLine={false}
+                            axisLine={false} 
                             dx={-8}
                             tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
                         />
@@ -234,18 +235,14 @@ export const FlightTrendChart: React.FC<{ data: FlightTrendPoint[] }> = ({ data 
                                 if (active && payload && payload.length) {
                                     const curr = payload[0].payload;
                                     return (
-                                        <div className="bg-slate-900/80 dark:bg-black/90 backdrop-blur-xl border border-white/20 dark:border-white/10 p-3 rounded-2xl shadow-xl text-xs font-bold text-white z-50">
-                                            <p className="text-[10px] text-gray-440 uppercase tracking-widest mb-1.5">{curr.date}</p>
-                                            <div className="space-y-1">
-                                                <p className="flex justify-between gap-4">
-                                                    <span className="font-semibold text-gray-300">Total Traveled:</span>
-                                                    <span className="text-blue-400 font-black">{curr.cumulative.toLocaleString()} km</span>
-                                                </p>
-                                                <p className="flex justify-between gap-4">
-                                                    <span className="font-semibold text-gray-300">Increment:</span>
-                                                    <span className="text-cyan-400 font-bold">+{curr.distance.toLocaleString()} km</span>
-                                                </p>
-                                            </div>
+                                        <div className="rounded-2xl border border-black/10 dark:border-white/15 bg-white/90 dark:bg-dark-card/90 backdrop-blur-2xl shadow-glass-modal overflow-hidden">
+                                            <TooltipContent
+                                                title={curr.date}
+                                                rows={[
+                                                    { color: '#3b82f6', label: 'Total Distance', value: `${curr.cumulative.toLocaleString()} km` },
+                                                    { color: '#06b6d4', label: 'Increment', value: `+${curr.distance.toLocaleString()} km` }
+                                                ]}
+                                            />
                                         </div>
                                     );
                                 }

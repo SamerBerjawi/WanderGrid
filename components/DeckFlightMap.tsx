@@ -2099,12 +2099,12 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                             return (
                                 <div className="p-3 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-1">
                                     <span className="text-[10px] text-light-text-secondary dark:text-dark-text-secondary truncate block font-medium">
-                                        {selectedCorridor.originName}
+                                        {formatPlaceName(selectedCorridor.originName)}
                                     </span>
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <span className="text-xl leading-none">{selectedCorridor.originFlag}</span>
-                                            <span className="text-lg font-bold tracking-tight text-light-text dark:text-dark-text">{selectedCorridor.originCode}</span>
+                                            <span className="text-lg font-bold tracking-tight text-light-text dark:text-dark-text">{formatPlaceName(selectedCorridor.originCode)}</span>
                                             <ChevronRight className="w-3.5 h-3.5 text-light-text-secondary/60 dark:text-dark-text-secondary/60" />
                                         </div>
                                         <div className="text-right">
@@ -2135,12 +2135,12 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                             return (
                                 <div className="p-3 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-1">
                                     <span className="text-[10px] text-light-text-secondary dark:text-dark-text-secondary truncate block font-medium">
-                                        {selectedCorridor.destName}
+                                        {formatPlaceName(selectedCorridor.destName)}
                                     </span>
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <span className="text-xl leading-none">{selectedCorridor.destFlag}</span>
-                                            <span className="text-lg font-bold tracking-tight text-light-text dark:text-dark-text">{selectedCorridor.destCode}</span>
+                                            <span className="text-lg font-bold tracking-tight text-light-text dark:text-dark-text">{formatPlaceName(selectedCorridor.destCode)}</span>
                                             <ChevronRight className="w-3.5 h-3.5 text-light-text-secondary/60 dark:text-dark-text-secondary/60" />
                                         </div>
                                         <div className="text-right">
@@ -2260,10 +2260,10 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                 <div className="flex items-center justify-between border-b border-black/5 dark:border-white/10 pb-2.5">
                                     <div className="flex items-center gap-2">
                                         <span className="text-base leading-none">{c.originFlag}</span>
-                                        <span className="font-bold text-sm text-light-text dark:text-dark-text tracking-tight">{c.originCode}</span>
+                                        <span className="font-bold text-sm text-light-text dark:text-dark-text tracking-tight">{formatPlaceName(c.originCode)}</span>
                                         <ArrowRight className="w-3.5 h-3.5 text-light-text-secondary dark:text-dark-text-secondary" />
                                         <span className="text-base leading-none">{c.destFlag}</span>
-                                        <span className="font-bold text-sm text-light-text dark:text-dark-text tracking-tight">{c.destCode}</span>
+                                        <span className="font-bold text-sm text-light-text dark:text-dark-text tracking-tight">{formatPlaceName(c.destCode)}</span>
                                     </div>
                                     <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
                                         {typeLabel}
@@ -2272,9 +2272,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
                                 {/* Names */}
                                 <div className="text-[11px] text-light-text-secondary dark:text-dark-text-secondary leading-snug">
-                                    <span className="font-semibold text-light-text dark:text-dark-text">{c.originName}</span>
+                                    <span className="font-semibold text-light-text dark:text-dark-text">{formatPlaceName(c.originName)}</span>
                                     <span className="opacity-50 mx-1">→</span>
-                                    <span className="font-semibold text-light-text dark:text-dark-text">{c.destName}</span>
+                                    <span className="font-semibold text-light-text dark:text-dark-text">{formatPlaceName(c.destName)}</span>
                                 </div>
 
                                 {/* Distance & Time Difference */}

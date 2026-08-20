@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import L from 'leaflet';
 import { getCoordinates, getCoordinatesSync, searchLocations } from '../services/geocoding';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { TooltipContent } from '@/components/charts/tooltip';
 
 const DeckFlightMap = lazy(() => import('../components/DeckFlightMap').then(m => ({ default: m.DeckFlightMap || m.default })));
 
@@ -910,12 +911,27 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                         <YAxis yAxisId="left" stroke="#3b82f6" label={{ value: 'Distance (km)', angle: -90, position: 'insideLeft', style: {fontSize: 10, fill: '#3b82f6'} }} fontSize={10} tickLine={false} />
                         <YAxis yAxisId="right" orientation="right" stroke="#10b981" label={{ value: 'Duration (hours)', angle: 90, position: 'insideRight', style: {fontSize: 10, fill: '#10b981'} }} fontSize={10} tickLine={false} />
                         <Tooltip 
-                          contentStyle={{ 
-                            backgroundColor: isDark ? '#18181b' : '#ffffff', 
-                            borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)', 
-                            borderRadius: '16px',
-                            fontSize: '11px'
-                          }} 
+                          cursor={{ fill: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)' }}
+                          content={({ active, payload, label }) => {
+                            if (active && payload && payload.length) {
+                              const rows = payload.map((entry) => ({
+                                color: entry.color || '#3b82f6',
+                                label: String(entry.name || entry.dataKey || ''),
+                                value: entry.dataKey === 'Duration' 
+                                  ? `${Number(entry.value).toFixed(1)} hrs` 
+                                  : `${Number(entry.value).toLocaleString()} km`
+                              }));
+                              return (
+                                <div className="rounded-2xl border border-black/10 dark:border-white/15 bg-white/90 dark:bg-dark-card/90 backdrop-blur-2xl shadow-glass-modal overflow-hidden">
+                                  <TooltipContent
+                                    title={String(label)}
+                                    rows={rows}
+                                  />
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
                         />
                         <Legend wrapperStyle={{ fontSize: '10px' }} />
                         <Bar yAxisId="left" dataKey="Distance" fill="#3b82f6" name="Distance (km)" radius={[4, 4, 0, 0]} />

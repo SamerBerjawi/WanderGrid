@@ -11,6 +11,7 @@ import { getMerchantLogoUrl } from '../utils/brandfetch';
 import { dataService } from '../services/mockDb';
 import { FlightyPassport, PassportIdCard, PassportStampsPage, PassportTravelMap } from '../components/FlightyPassport';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { TooltipContent } from '@/components/charts/tooltip';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   getCityName, getCarrierName, getFlightStatusTags, getFlightDepartureUtcDate, getFlightArrivalUtcDate,
@@ -2650,9 +2651,23 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#999999', fontWeight: 700 }} />
                     <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#999999', fontWeight: 700 }} />
                     <Tooltip 
-                      cursor={{ fill: 'rgba(59, 130, 246, 0.03)' }}
-                      contentStyle={{ borderRadius: '14px', border: '1px solid rgba(228, 228, 231, 0.5)', padding: '6px 12px', boxShadow: '0 8px 16px -4px rgba(0, 0, 0, 0.05)', background: 'rgba(255, 255, 255, 0.95)' }}
-                      itemStyle={{ color: '#111827', fontWeight: 'bold', fontSize: '10px' }}
+                      cursor={{ fill: 'rgba(59, 130, 246, 0.05)' }}
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const curr = payload[0].payload;
+                          return (
+                            <div className="rounded-2xl border border-black/10 dark:border-white/15 bg-white/90 dark:bg-dark-card/90 backdrop-blur-2xl shadow-glass-modal overflow-hidden">
+                              <TooltipContent
+                                title={curr.month}
+                                rows={[
+                                  { color: '#3b82f6', label: 'Flights', value: curr.flights }
+                                ]}
+                              />
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
                     />
                     <Bar dataKey="flights" name="Flights" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                   </BarChart>
