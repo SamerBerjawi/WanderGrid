@@ -102,7 +102,7 @@ export const ICONIC_STICKERS: Sticker[] = [
     description: 'A 15th-century Inca citadel nestled high in the Andes mountains, showcasing sophisticated dry-stone masonry with astronomical alignments.',
     funFact: 'Its granite stones are cut so precisely without mortar that they slide back into alignment during earthquakes!',
     icon: 'Trees',
-    colorTheme: 'green',
+    colorTheme: 'emerald',
     emojis: '🇵🇪 ⛰️ 🦙'
   },
   {
@@ -160,7 +160,7 @@ export const ICONIC_STICKERS: Sticker[] = [
     description: 'A spectacular glacial valley enclosed by towering granite monoliths like El Capitan and Half Dome, populated by ancient giant sequoias.',
     funFact: 'Its giant waterfalls can produce luminous "moonbows" — rare night-time rainbows created by moonlight!',
     icon: 'TreePine',
-    colorTheme: 'green',
+    colorTheme: 'emerald',
     emojis: '🇺🇸 🏕️ 🥾'
   },
   {
@@ -216,7 +216,7 @@ export const ICONIC_STICKERS: Sticker[] = [
     description: 'A dazzling forest reserve of 16 interconnected terraced lakes, characterized by natural travertine barriers and cascading waterfalls.',
     funFact: 'Depending on the day\'s angle of sunlight and mineral concentrations, the lakes shift between green, gray, blue, and azure!',
     icon: 'Droplet',
-    colorTheme: 'blue',
+    colorTheme: 'sky',
     emojis: '🇭🇷 💧 🪵'
   },
 

@@ -532,7 +532,7 @@ class DataService {
       if (endpoint === '/settings') {
           if (method === 'GET') {
               const s = localStorage.getItem(key('settings'));
-              return s ? { ...DEFAULT_WORKSPACE_SETTINGS, ...JSON.parse(s) } : { ...DEFAULT_WORKSPACE_SETTINGS };
+              return (s ? { ...DEFAULT_WORKSPACE_SETTINGS, ...JSON.parse(s) } : { ...DEFAULT_WORKSPACE_SETTINGS }) as T;
           }
           if (method === 'PUT') {
               localStorage.setItem(key('settings'), JSON.stringify(body));
@@ -636,7 +636,7 @@ class DataService {
           return cleanBackup as T;
       }
 
-      if (endpoint === '/restore') {
+      if (endpoint === '/restore' && method === 'POST') {
           const data = body;
           collections.forEach(c => {
               if (data[c.storage] && Array.isArray(data[c.storage])) {
@@ -646,7 +646,7 @@ class DataService {
 
                   const newList = data[c.storage].map((item: any) => {
                       if (c.storage === 'users') {
-                          const existingUser = existingMap.get(item.id);
+                          const existingUser: any = existingMap.get(item.id);
                           if (!item.password) {
                               if (existingUser && existingUser.password) {
                                   return { ...item, password: existingUser.password };
@@ -858,6 +858,10 @@ class DataService {
   async getTrip(tripId: string): Promise<Trip | undefined> {
     const trips = await this.getTrips();
     return trips.find(t => t.id === tripId);
+  }
+
+  async getTripById(tripId: string): Promise<Trip | undefined> {
+    return this.getTrip(tripId);
   }
 
   async addTrip(trip: Trip): Promise<Trip> {

@@ -58,8 +58,8 @@ export const flightImporter = {
                             arrivalTime: arr.time || '14:00',
                             confirmationCode: String(row['PNR'] || ''),
                             seatNumber: String(row['Seat'] || ''),
-                            seatType: String(row['Seat Type'] || ''),
-                            travelClass: String(row['Cabin Class'] || ''),
+                            seatType: (row['Seat Type'] ? String(row['Seat Type']) : undefined) as Transport['seatType'],
+                            travelClass: (row['Cabin Class'] ? String(row['Cabin Class']) : undefined) as Transport['travelClass'],
                             vehicleModel: String(row['Aircraft Type Name'] || ''),
                             reason: String(row['Flight Reason'] || ''),
                             // Custom notes or canceled status can go here if extending types
@@ -74,6 +74,144 @@ export const flightImporter = {
             reader.onerror = (e) => reject(e);
             reader.readAsArrayBuffer(file);
         });
+    },
+
+    parseTransportsJson: (content: string): Transport[] => {
+        try {
+            const data = JSON.parse(content);
+            if (Array.isArray(data)) {
+                if (data.length > 0 && data[0].origin && data[0].destination) {
+                    return data as Transport[];
+                }
+                if (data.length > 0 && data[0].transports) {
+                    const all: Transport[] = [];
+                    data.forEach((t: any) => {
+                        if (t.transports && Array.isArray(t.transports)) {
+                            all.push(...t.transports);
+                        }
+                    });
+                    return all;
+                }
+            } else if (data && typeof data === 'object') {
+                if (data.transports && Array.isArray(data.transports)) {
+                    return data.transports;
+                }
+                if (data.trips && Array.isArray(data.trips)) {
+                    const all: Transport[] = [];
+                    data.trips.forEach((t: any) => {
+                        if (t.transports && Array.isArray(t.transports)) {
+                            all.push(...t.transports);
+                        }
+                    });
+                    return all;
+                }
+            }
+            return [];
+        } catch (e) {
+            console.error("Failed to parse transports json", e);
+            return [];
+        }
+    },
+
+    parseTransportsCsv: (content: string): Transport[] => {
+        try {
+            const lines = content.split('\n').map(l => l.trim()).filter(Boolean);
+            if (lines.length <= 1) return [];
+            const headers = lines[0].split(',').map(h => h.replace(/^["']|["']$/g, '').trim().toLowerCase());
+            
+            const results: Transport[] = [];
+            for (let i = 1; i < lines.length; i++) {
+                const row = lines[i].split(',').map(c => c.replace(/^["']|["']$/g, '').trim());
+                const rowObj: Record<string, string> = {};
+                headers.forEach((h, idx) => {
+                    rowObj[h] = row[idx] || '';
+                });
+
+                const depDate = rowObj['date'] || rowObj['departuredate'] || rowObj['departure date'] || '';
+                const depTime = rowObj['departuretime'] || rowObj['departure time'] || '12:00';
+                const origin = rowObj['from'] || rowObj['origin'] || '';
+                const destination = rowObj['to'] || rowObj['destination'] || '';
+                if (!origin && !destination) continue;
+
+                results.push({
+                    id: Math.random().toString(36).substr(2, 9),
+                    itineraryId: Math.random().toString(36).substr(2, 9),
+                    type: 'One-Way',
+                    mode: 'Flight',
+                    provider: rowObj['airline'] || rowObj['provider'] || '',
+                    identifier: rowObj['flight'] || rowObj['flight number'] || rowObj['identifier'] || '',
+                    origin,
+                    destination,
+                    departureDate: depDate,
+                    departureTime: depTime,
+                    arrivalDate: rowObj['arrivaldate'] || rowObj['arrival date'] || depDate,
+                    arrivalTime: rowObj['arrivaltime'] || rowObj['arrival time'] || '14:00',
+                    confirmationCode: rowObj['pnr'] || rowObj['confirmationcode'] || '',
+                    seatNumber: rowObj['seat'] || rowObj['seatnumber'] || '',
+                    seatType: (rowObj['seattype'] || rowObj['seat type'] || undefined) as Transport['seatType'],
+                    travelClass: (rowObj['cabinclass'] || rowObj['cabin class'] || rowObj['travelclass'] || undefined) as Transport['travelClass'],
+                    vehicleModel: rowObj['aircraft'] || rowObj['aircraft type name'] || rowObj['vehiclemodel'] || '',
+                    reason: rowObj['reason'] || rowObj['flight reason'] || ''
+                });
+            }
+            return results;
+        } catch (e) {
+            console.error("Failed to parse transports csv", e);
+            return [];
+        }
+    },
+
+    importJson: async (content: string, userId: string): Promise<Trip[]> => {
+        try {
+            const data = JSON.parse(content);
+            if (Array.isArray(data)) {
+                if (data.length > 0 && data[0].startDate && (data[0].transports || data[0].location)) {
+                    return data.map(t => ({ ...t, participants: t.participants?.length ? t.participants : [userId] }));
+                }
+                const transports = flightImporter.parseTransportsJson(content);
+                return flightImporter.groupTransportsIntoTrips(transports, userId);
+            } else if (data && typeof data === 'object') {
+                if (data.trips && Array.isArray(data.trips)) {
+                    return data.trips.map((t: any) => ({ ...t, participants: t.participants?.length ? t.participants : [userId] }));
+                }
+                const transports = flightImporter.parseTransportsJson(content);
+                return flightImporter.groupTransportsIntoTrips(transports, userId);
+            }
+            return [];
+        } catch (e) {
+            console.error("Failed to import JSON", e);
+            return [];
+        }
+    },
+
+    importAirTrailJson: async (content: string, userId: string): Promise<Trip[]> => {
+        try {
+            const data = JSON.parse(content);
+            const rawTrips = Array.isArray(data) ? data : (data.trips || data.flights || []);
+            if (Array.isArray(rawTrips) && rawTrips.length > 0) {
+                if (rawTrips[0].transports || rawTrips[0].startDate) {
+                    return rawTrips.map((t: any) => ({
+                        ...t,
+                        id: t.id || Math.random().toString(36).substr(2, 9),
+                        participants: t.participants?.length ? t.participants : [userId]
+                    }));
+                }
+            }
+            const transports = flightImporter.parseTransportsJson(content);
+            return flightImporter.groupTransportsIntoTrips(transports, userId);
+        } catch (e) {
+            console.error("Failed to import AirTrail JSON", e);
+            return [];
+        }
+    },
+
+    importCsv: async (content: string, userId: string): Promise<Trip[]> => {
+        const transports = flightImporter.parseTransportsCsv(content);
+        return flightImporter.groupTransportsIntoTrips(transports, userId);
+    },
+
+    groupTransports: (transports: Transport[], userId: string): Trip[] => {
+        return flightImporter.groupTransportsIntoTrips(transports, userId);
     },
 
     groupTransportsIntoTrips: (transports: Transport[], userId: string): Trip[] => {
@@ -158,6 +296,19 @@ export const flightImporter = {
             activities: [],
             locations: []
         };
+    },
+
+    exportJson: (trips: Trip[]): string => {
+        return JSON.stringify(trips, null, 2);
+    },
+
+    exportAirTrailJson: (trips: Trip[]): string => {
+        const payload = {
+            version: '2.0',
+            exportedAt: new Date().toISOString(),
+            trips: trips
+        };
+        return JSON.stringify(payload, null, 2);
     },
 
     exportCsv: (trips: Trip[]): string => {

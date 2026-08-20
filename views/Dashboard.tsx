@@ -70,7 +70,7 @@ const itemVariants = {
   show: { 
     opacity: 1, 
     y: 0, 
-    transition: { type: "spring", stiffness: 300, damping: 25 } 
+    transition: { type: "spring" as const, stiffness: 300, damping: 25 } 
   }
 };
 
@@ -680,7 +680,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                         });
                     }
                     const entry = countryMap.get(countryKey)!;
-                    if (resolved.city) entry.cities.add(resolved.city);
+                    if (resolved.city) (entry.cities as Set<string>).add(resolved.city);
                     const tripEnd = new Date(trip.endDate);
                     if (tripEnd > entry.lastVisit) entry.lastVisit = tripEnd;
                 }
@@ -695,7 +695,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
         });
 
         let totalC = 0; const finalized: VisitedCountry[] = [];
-        countryMap.forEach(val => { totalC += val.cities.size; finalized.push(val); });
+        countryMap.forEach(val => { 
+            const cityCount = Array.isArray(val.cities) ? val.cities.length : (val.cities?.size || 0);
+            totalC += cityCount; 
+            finalized.push(val); 
+        });
         const visitedData = finalized.sort((a, b) => a.name.localeCompare(b.name));
 
         // Background write newly resolved dataset to Visited DB collection as permanent registry seed

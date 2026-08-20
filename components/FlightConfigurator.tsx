@@ -118,7 +118,8 @@ const AVERAGE_SPEEDS: Record<TransportMode, number> = {
     'Bus': 60,
     'Car Rental': 80,
     'Personal Car': 80,
-    'Cruise': 30
+    'Cruise': 30,
+    'Ferry': 35
 };
 
 const getCurrencySymbol = (code: string) => {

@@ -57,7 +57,8 @@ const ECO_MULTIPLIERS: Record<TransportMode, number> = {
     'Bus': 28,
     'Car Rental': 120,
     'Personal Car': 125,
-    'Cruise': 150
+    'Cruise': 150,
+    'Ferry': 100
 };
 
 const TRANSPORT_DETAILS: Record<TransportMode, { label: string; icon: any; colorText: string; colorBg: string; speed: number }> = {
@@ -66,7 +67,8 @@ const TRANSPORT_DETAILS: Record<TransportMode, { label: string; icon: any; color
     'Bus': { label: 'Coach Connection', icon: Bus, colorText: 'text-emerald-600 dark:text-emerald-400', colorBg: 'bg-emerald-50 dark:bg-emerald-950/40', speed: 70 },
     'Car Rental': { label: 'Private Car Rental', icon: Navigation, colorText: 'text-blue-600 dark:text-blue-400', colorBg: 'bg-blue-50 dark:bg-blue-950/40', speed: 90 },
     'Personal Car': { label: 'Road Trip Drive', icon: Navigation, colorText: 'text-indigo-600 dark:text-indigo-400', colorBg: 'bg-indigo-50 dark:bg-indigo-950/40', speed: 95 },
-    'Cruise': { label: 'Ferry/Cruise Voyage', icon: Compass, colorText: 'text-cyan-600 dark:text-cyan-400', colorBg: 'bg-cyan-50 dark:bg-cyan-950/40', speed: 30 }
+    'Cruise': { label: 'Ferry/Cruise Voyage', icon: Compass, colorText: 'text-cyan-600 dark:text-cyan-400', colorBg: 'bg-cyan-50 dark:bg-cyan-950/40', speed: 30 },
+    'Ferry': { label: 'Ferry Voyage', icon: Compass, colorText: 'text-teal-600 dark:text-teal-400', colorBg: 'bg-teal-50 dark:bg-teal-950/40', speed: 35 }
 };
 
 export const LocationManager: React.FC<RouteManagerProps> = ({ 
@@ -727,11 +729,13 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                                     : 'border-gray-200/60 dark:border-white/5'
                                 }`}
                                 draggable="true"
-                                onDragStart={(e) => {
+                                onDragStart={(e: any) => {
                                     setDraggedLegIndex(legIdx);
-                                    e.dataTransfer.effectAllowed = 'move';
+                                    if (e.dataTransfer) {
+                                        e.dataTransfer.effectAllowed = 'move';
+                                    }
                                 }}
-                                onDragOver={(e) => {
+                                onDragOver={(e: any) => {
                                     e.preventDefault();
                                     if (draggedLegIndex !== legIdx) {
                                         setDragOverLegIndex(legIdx);

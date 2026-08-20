@@ -23,7 +23,7 @@ import {
 import { Button, Badge, Card, Modal, Select } from '../components/ui';
 import { dataService } from '../services/mockDb';
 import { useWanderSync } from '../hooks/useWanderSync';
-import { Trip, User, EntitlementType, SavedConfig, CustomEvent as TripCustomEvent } from '../types';
+import { Trip, User, EntitlementType, SavedConfig, CustomEvent as TripCustomEvent, PublicHoliday } from '../types';
 
 interface VacationCalendarProps {
   onTripClick?: (tripId: string) => void;

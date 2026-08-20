@@ -161,7 +161,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
         today.setHours(0, 0, 0, 0);
         const tripEnd = new Date(trip.endDate);
         if (tripEnd >= today) {
-            return { text: 'Upcoming', color: 'emerald' as const };
+            return { text: 'Upcoming', color: 'green' as const };
         } else {
             return { text: 'Past', color: 'purple' as const };
         }
@@ -411,7 +411,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                                 <h3 className="font-extrabold text-gray-900 dark:text-white text-base">Leave & Entitlements</h3>
                                 <p className="text-[9.5px] font-mono text-gray-400 uppercase tracking-widest font-black">Vacation Days Allocations</p>
                             </div>
-                            <Badge color={leavePercentage > 80 ? 'rose' : leavePercentage > 40 ? 'amber' : 'green'}>
+                            <Badge color={leavePercentage > 80 ? 'red' : leavePercentage > 40 ? 'amber' : 'green'}>
                                 {leavePercentage}% Consumed
                             </Badge>
                         </div>

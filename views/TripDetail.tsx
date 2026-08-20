@@ -1723,7 +1723,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                                     <div className="w-full flex items-center gap-1.5 relative px-2">
                                                                         <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 border border-indigo-400 shrink-0"></div>
                                                                         <div className="flex-1 h-[2px] border-t-2 border-dashed border-zinc-200 dark:border-zinc-800 relative flex items-center justify-center">
-                                                                            <span className="material-icons-outlined text-zinc-400 dark:text-zinc-600 text-sm absolute -top-1.5 scale-90 rotate-90">{getTransportIcon(t.mode) === 'flight' ? 'flight' : 'arrow_forward'}</span>
+                                                                            <span className="material-icons-outlined text-zinc-400 dark:text-zinc-600 text-sm absolute -top-1.5 scale-90 rotate-90">{getTransportIcon(t.mode) === 'flight_takeoff' ? 'flight' : 'arrow_forward'}</span>
                                                                         </div>
                                                                         <div className="w-1.5 h-1.5 rounded-full bg-purple-500 border border-purple-400 shrink-0"></div>
                                                                     </div>

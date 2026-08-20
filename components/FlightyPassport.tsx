@@ -529,7 +529,11 @@ export const PassportTravelMap: React.FC<PassportTravelMapProps> = ({ flights, y
                     stroke="#cbd5e1"
                     strokeWidth={0.5} 
                     className="dark:fill-zinc-800/80 dark:stroke-zinc-750 transition-colors"
-                    style={{ outline: "none" }}
+                    style={{
+                      default: { outline: "none" },
+                      hover: { outline: "none" },
+                      pressed: { outline: "none" }
+                    }}
                   />
                 ))
               }

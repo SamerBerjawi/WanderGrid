@@ -102,6 +102,11 @@ const VIEW_ACCENTS: Record<ViewState, { glow1: string; glow2: string; glow3: str
     glow2: 'bg-purple-500/4 dark:bg-purple-500/5',
     glow3: 'bg-blue-500/2 dark:bg-blue-500/2' 
   },
+  [ViewState.TRAVEL_ATLAS]: {
+    glow1: 'bg-emerald-500/4 dark:bg-emerald-500/5',
+    glow2: 'bg-sky-500/4 dark:bg-sky-500/5',
+    glow3: 'bg-teal-500/2 dark:bg-teal-500/2'
+  },
 };
 
 export default function App() {

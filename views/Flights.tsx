@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { 
   Search, Filter, Plus, Calendar, MapPin, Trash2, Edit2, Check, Square, CheckSquare, Edit3, ChevronRight, ChevronDown, ChevronUp, AlertCircle,
   ArrowRight, Plane, Landmark, Award, Clock, DollarSign, BarChart2, Briefcase, FileText, Compass, Heart, HelpCircle, RefreshCw, Upload, Download, Tag, UserCheck, Star, Sparkles, Grid, List,
-  ArrowUpRight, ArrowDownLeft, FolderPlus, FolderMinus
+  ArrowUpRight, ArrowDownLeft, FolderPlus, FolderMinus, X
 } from 'lucide-react';
 import { Card, Button, Input, Select, Badge, TimeInput, Autocomplete } from '../components/ui';
 import { Trip, Transport, User, Carrier, WorkspaceSettings, FlightStatusResponse } from '../types';

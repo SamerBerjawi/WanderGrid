@@ -432,7 +432,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
     // Backup restore states
     const [importMode, setImportMode] = useState<'spreadsheet' | 'backup'>('spreadsheet');
     const [backupDataState, setBackupDataState] = useState<string | null>(null);
-    const [backupParsedCount, setBackupParsedCount] = useState<{ trips: number; flights: number } | null>(null);
+    const [backupParsedCount, setBackupParsedCount] = useState<{ trips: number; flights: number; visited?: number } | null>(null);
     const [backupRestoreSuccess, setBackupRestoreSuccess] = useState(false);
     const [backupRestoreError, setBackupRestoreError] = useState('');
 

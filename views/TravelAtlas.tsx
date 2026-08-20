@@ -513,14 +513,17 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
 
           // Register city if unrecorded
           if (!existingCityKeys.has(cityKey) && !existingCityNames.has(cityNameLower) && !foundCities[cityKey]) {
+            const coords = (res as any).coordinates || (res as any);
+            const resolvedLat = coords?.lat !== undefined ? coords.lat : undefined;
+            const resolvedLng = coords?.lng !== undefined ? coords.lng : (coords?.lon !== undefined ? coords.lon : undefined);
             foundCities[cityKey] = {
               name: canonicalCity,
               countryCode: countryCode,
               countryName: countryName,
               source: source,
               date: dateStr || new Date().toISOString(),
-              lat: latFallback || res.lat,
-              lng: lngFallback || res.lng
+              lat: latFallback !== undefined ? latFallback : resolvedLat,
+              lng: lngFallback !== undefined ? lngFallback : resolvedLng
             };
           }
         }
@@ -909,9 +912,8 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
             <Select 
               id="region-filter"
               value={regionFilter}
-              onChange={(val) => setRegionFilter(val)}
+              onChange={(e) => setRegionFilter(e.target.value)}
               options={uniqueRegions.map(r => ({ label: r, value: r }))}
-              placeholder="Filter by Region"
             />
           </div>
         </div>

@@ -53,6 +53,10 @@ export interface GeoCoordinates {
   lat: number;
   lng: number;
   tz?: string; // Timezone ID (e.g. "America/New_York")
+  country?: string;
+  countryCode?: string;
+  displayName?: string;
+  city?: string;
 }
 
 export interface RoadTripWaypoint {
