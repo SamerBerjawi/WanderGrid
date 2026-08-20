@@ -92,12 +92,44 @@ const loadCache = () => {
     }
 };
 
-const saveCache = () => {
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+export const flushSaveCache = () => {
+    if (saveTimer) {
+        clearTimeout(saveTimer);
+        saveTimer = null;
+    }
     try {
         localStorage.setItem(CACHE_KEY, JSON.stringify(Array.from(internalCache.entries())));
     } catch (e) {}
     void persistCacheToIndexedDb();
 };
+
+const saveCache = (immediate = false) => {
+    if (immediate) {
+        flushSaveCache();
+        return;
+    }
+    if (saveTimer) {
+        clearTimeout(saveTimer);
+    }
+    saveTimer = setTimeout(() => {
+        saveTimer = null;
+        try {
+            localStorage.setItem(CACHE_KEY, JSON.stringify(Array.from(internalCache.entries())));
+        } catch (e) {}
+        void persistCacheToIndexedDb();
+    }, 1000);
+};
+
+if (typeof window !== 'undefined') {
+    window.addEventListener('beforeunload', flushSaveCache);
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') {
+            flushSaveCache();
+        }
+    });
+}
 
 const openGeoDb = (): Promise<IDBDatabase | null> => new Promise((resolve) => {
     if (!('indexedDB' in window)) {
