@@ -360,22 +360,6 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
     const elevatedRoutes = elevatedRoutesProp !== undefined ? elevatedRoutesProp : localElevatedRoutes;
 
-    // Animation timer for Comet Flow TripsLayer
-    const [animTime, setAnimTime] = useState(0);
-    useEffect(() => {
-        if (!animateRoutes) return;
-        let animationFrame: number;
-        const start = performance.now();
-        const loopDuration = 1800;
-
-        const animate = (now: number) => {
-            setAnimTime(((now - start) % loopDuration));
-            animationFrame = requestAnimationFrame(animate);
-        };
-        animationFrame = requestAnimationFrame(animate);
-        return () => cancelAnimationFrame(animationFrame);
-    }, [animateRoutes]);
-
     const currentLayer = (activeLayerProp as DeckLayerType) || activeAppearance.basemap || 'standard';
 
     // Default Zoom: 0.35 on 3D Globe to view the entire spherical globe comfortably
@@ -1136,8 +1120,29 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         activeAppearance
     ]);
 
-    // Build Deck.gl Layers
-    const layers = useMemo(() => {
+    // Animation timer for Comet Flow TripsLayer (scoped after cometTrips is computed)
+    const [animTime, setAnimTime] = useState(0);
+    useEffect(() => {
+        if (!animateRoutes || cometTrips.length === 0) return;
+        let animationFrame: number;
+        let lastUpdate = 0;
+        const start = performance.now();
+        const loopDuration = 1800;
+
+        const animate = (now: number) => {
+            // Throttle layer frame updates to ~30fps to cut CPU/GPU overhead by 50%
+            if (now - lastUpdate >= 32) {
+                setAnimTime((now - start) % loopDuration);
+                lastUpdate = now;
+            }
+            animationFrame = requestAnimationFrame(animate);
+        };
+        animationFrame = requestAnimationFrame(animate);
+        return () => cancelAnimationFrame(animationFrame);
+    }, [animateRoutes, cometTrips.length]);
+
+    // Build Deck.gl Base Layers (static & interaction-driven, decoupled from animation frame clock)
+    const baseLayers = useMemo(() => {
         const layerList: any[] = [];
 
         // 1. WebGL Basemap TileLayer (Dynamic multi-resolution vector/raster tile pyramid up to Zoom 19)
@@ -1542,36 +1547,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             );
         }
 
-        // 9. Comet Flow TripsLayer
-        if (viewMode !== 'scratch' && animateRoutes && cometTrips.length > 0) {
-            layerList.push(
-                new TripsLayer({
-                    id: `comet-flow-trips-${isElevatedActive ? 'elevated' : 'flat'}`,
-                    data: cometTrips,
-                    getPath: (d: any) => d.path,
-                    getTimestamps: (d: any) => d.timestamps,
-                    getColor: (d: any) => {
-                        if (selectedCorridor) {
-                            return d.corridorId === selectedCorridor.id
-                                ? [52, 211, 153, 255]
-                                : [120, 130, 145, 12];
-                        }
-                        return d.color;
-                    },
-                    currentTime: animTime,
-                    trailLength: 350,
-                    getWidth: (d: any) => d.width,
-                    widthUnits: 'pixels',
-                    widthMinPixels: 2.2,
-                    capRounded: true,
-                    jointRounded: true,
-                    wrapLongitude: true,
-                    parameters: { depthTest: true }
-                })
-            );
-        }
-
-        // 10. Wide Hit-Test Layer
+        // 9. Wide Hit-Test Layer
         if (viewMode !== 'scratch' && hitTestPaths.length > 0) {
             layerList.push(
                 new PathLayer({
@@ -1606,7 +1582,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             );
         }
 
-        // 11. Airport & City Node Markers / Cluster Markers
+        // 10. Airport & City Node Markers / Cluster Markers
         if (showCityMarkers && activeAppearance.airportSize !== 'off') {
             if (clusterMode && clusterNodes.length > 0) {
                 layerList.push(
@@ -1722,7 +1698,6 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         geoJsonData, 
         routeSegments, 
         trackSegments, 
-        cometTrips, 
         hitTestPaths, 
         airportPoints, 
         clusterNodes, 
@@ -1736,12 +1711,51 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         effectiveProjection, 
         isElevatedActive, 
         hoveredRouteKey, 
-        animTime, 
-        animateRoutes, 
         clusterMode,
         activeAppearance,
         radarMeta,
         selectedCorridor
+    ]);
+
+    // Fast dynamic layer composition: only the lightweight TripsLayer rebuilds on animation frame ticks
+    const layers = useMemo(() => {
+        const list = [...baseLayers];
+        if (viewMode !== 'scratch' && animateRoutes && cometTrips.length > 0) {
+            list.push(
+                new TripsLayer({
+                    id: `comet-flow-trips-${isElevatedActive ? 'elevated' : 'flat'}`,
+                    data: cometTrips,
+                    getPath: (d: any) => d.path,
+                    getTimestamps: (d: any) => d.timestamps,
+                    getColor: (d: any) => {
+                        if (selectedCorridor) {
+                            return d.corridorId === selectedCorridor.id
+                                ? [52, 211, 153, 255]
+                                : [120, 130, 145, 12];
+                        }
+                        return d.color;
+                    },
+                    currentTime: animTime,
+                    trailLength: 350,
+                    getWidth: (d: any) => d.width,
+                    widthUnits: 'pixels',
+                    widthMinPixels: 2.2,
+                    capRounded: true,
+                    jointRounded: true,
+                    wrapLongitude: true,
+                    parameters: { depthTest: true }
+                })
+            );
+        }
+        return list;
+    }, [
+        baseLayers,
+        viewMode,
+        animateRoutes,
+        cometTrips,
+        isElevatedActive,
+        selectedCorridor,
+        animTime
     ]);
 
     // Reset to 100% standard baseline perspective
