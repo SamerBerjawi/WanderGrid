@@ -29,6 +29,28 @@ export default defineConfig(({ mode }) => {
       },
       optimizeDeps: {
         include: ['react', 'react-dom', 'motion', 'motion/react', 'maplibre-gl', '@deck.gl/react', '@deck.gl/layers', '@deck.gl/core', '@deck.gl/geo-layers']
+      },
+      build: {
+        target: 'es2022',
+        cssMinify: true,
+        chunkSizeWarningLimit: 1200,
+        rollupOptions: {
+          output: {
+            manualChunks(id) {
+              if (id.includes('node_modules')) {
+                if (id.includes('@deck.gl') || id.includes('@luma.gl') || id.includes('@loaders.gl') || id.includes('maplibre-gl')) {
+                  return 'vendor-deckgl';
+                }
+                if (id.includes('motion') || id.includes('framer-motion')) {
+                  return 'vendor-motion';
+                }
+                if (id.includes('lucide-react')) {
+                  return 'vendor-icons';
+                }
+              }
+            }
+          }
+        }
       }
     };
 });
