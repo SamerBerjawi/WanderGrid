@@ -9,7 +9,7 @@ import {
   Compass, MapPin, Globe, Calendar, Plus, Trash2, Edit3, 
   Map as MapIcon, RefreshCw, Layers, CheckCircle2, AlertTriangle, Info,
   Bookmark, Shield, ChevronRight, X, Sparkles, Filter, Check,
-  Star, Heart, Plane
+  Star, Heart, Plane, Home, Landmark
 } from 'lucide-react';
 import { Card, Button, Input, Select } from '../components/ui';
 
@@ -964,12 +964,14 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                             <div className="flex items-center gap-2">
                               <h3 className="font-black text-lg text-gray-900 dark:text-white tracking-tight leading-tight">{item.name}</h3>
                               {item.residenceStatus === 'lived_current' ? (
-                                <span className="px-2 py-0.5 rounded-full text-3xs font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                                  🏠 Current Home
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-emerald-500/10 dark:bg-emerald-400/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25 leading-none">
+                                  <Home className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
+                                  <span>Current Home</span>
                                 </span>
                               ) : item.residenceStatus === 'lived_past' ? (
-                                <span className="px-2 py-0.5 rounded-full text-3xs font-bold uppercase tracking-wider bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30">
-                                  🏛️ Past Home
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-indigo-500/10 dark:bg-indigo-400/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/25 leading-none">
+                                  <Landmark className="w-2.5 h-2.5 text-indigo-600 dark:text-indigo-400" />
+                                  <span>Past Home</span>
                                 </span>
                               ) : null}
                             </div>
@@ -1068,8 +1070,9 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                           <div>
                             <div className="flex items-center gap-2">
                               <h3 className="font-black text-lg text-gray-900 dark:text-white tracking-tight leading-tight">{item.name}</h3>
-                              <span className="px-2 py-0.5 rounded-full text-3xs font-bold uppercase tracking-wider bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center gap-0.5">
-                                <Plane className="w-2.5 h-2.5" /> Layover
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-amber-500/10 dark:bg-amber-400/10 text-amber-700 dark:text-amber-300 border border-amber-500/25 leading-none">
+                                <Plane className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400" />
+                                <span>Layover</span>
                               </span>
                             </div>
                             <span className="text-[10px] font-bold text-amber-500 dark:text-amber-400 uppercase tracking-widest">{item.code} • {getRegion(item.code)}</span>
@@ -1164,8 +1167,9 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                           <div>
                             <div className="flex items-center gap-2">
                               <h3 className="font-black text-lg text-gray-900 dark:text-white tracking-tight leading-tight">{item.name}</h3>
-                              <span className="px-2 py-0.5 rounded-full text-3xs font-bold uppercase tracking-wider bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 flex items-center gap-0.5">
-                                <Star className="w-2.5 h-2.5 fill-current" /> Wishlist
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-rose-500/10 dark:bg-rose-400/10 text-rose-700 dark:text-rose-300 border border-rose-500/25 leading-none">
+                                <Star className="w-2.5 h-2.5 fill-rose-500/40 text-rose-600 dark:text-rose-400" />
+                                <span>Wishlist</span>
                               </span>
                             </div>
                             <span className="text-[10px] font-bold text-rose-500 dark:text-rose-400 uppercase tracking-widest">{item.code} • {getRegion(item.code)}</span>
@@ -1621,34 +1625,59 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                       </label>
                       <div className="grid grid-cols-3 gap-2">
                         {[
-                          { id: 'visited', label: 'Visited', icon: '✨', desc: 'Explored stay' },
-                          { id: 'wishlist', label: 'Wishlist', icon: '🌟', desc: 'Dream target' },
-                          { id: 'layover', label: 'Layover', icon: '🛫', desc: 'Transit only' },
-                          { id: 'lived_current', label: 'Current Home', icon: '🏠', desc: 'Live here' },
-                          { id: 'lived_past', label: 'Past Home', icon: '🏛️', desc: 'Lived here' },
-                        ].map(st => (
-                          <button
-                            key={st.id}
-                            type="button"
-                            onClick={() => {
-                              setFormResidenceStatus(st.id as CountryResidenceStatus);
-                              setFormIsTransit(st.id === 'layover');
-                            }}
-                            className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer ${
-                              formResidenceStatus === st.id
-                                ? st.id === 'wishlist'
-                                  ? 'bg-rose-500/15 border-rose-500 text-rose-600 dark:text-rose-400 font-bold shadow-sm'
-                                  : st.id === 'layover'
-                                  ? 'bg-amber-500/15 border-amber-500 text-amber-600 dark:text-amber-400 font-bold shadow-sm'
-                                  : 'bg-primary-500/15 border-primary-500 text-primary-600 dark:text-primary-400 font-bold shadow-sm'
-                                : 'bg-black/5 dark:bg-white/5 border-black/5 dark:border-white/5 text-light-text dark:text-dark-text opacity-70 hover:opacity-100'
-                            }`}
-                          >
-                            <span className="text-base block mb-0.5">{st.icon}</span>
-                            <span className="text-xs font-bold block leading-tight">{st.label}</span>
-                            <span className="text-[9px] text-light-text-secondary dark:text-dark-text-secondary block mt-0.5">{st.desc}</span>
-                          </button>
-                        ))}
+                          { id: 'visited', label: 'Visited', icon: Sparkles, color: 'primary', desc: 'Explored stay' },
+                          { id: 'wishlist', label: 'Wishlist', icon: Star, color: 'rose', desc: 'Dream target' },
+                          { id: 'layover', label: 'Layover', icon: Plane, color: 'amber', desc: 'Transit only' },
+                          { id: 'lived_current', label: 'Current Home', icon: Home, color: 'emerald', desc: 'Live here' },
+                          { id: 'lived_past', label: 'Past Home', icon: Landmark, color: 'indigo', desc: 'Lived here' },
+                        ].map(st => {
+                          const IconComp = st.icon;
+                          const isSelected = formResidenceStatus === st.id;
+                          
+                          let activeClasses = 'bg-primary-500/15 border-primary-500 text-primary-600 dark:text-primary-400 font-bold shadow-sm';
+                          let iconColorClasses = 'text-primary-500';
+                          
+                          if (st.color === 'emerald') {
+                            activeClasses = 'bg-emerald-500/15 border-emerald-500 text-emerald-700 dark:text-emerald-300 font-bold shadow-sm';
+                            iconColorClasses = 'text-emerald-500';
+                          } else if (st.color === 'indigo') {
+                            activeClasses = 'bg-indigo-500/15 border-indigo-500 text-indigo-700 dark:text-indigo-300 font-bold shadow-sm';
+                            iconColorClasses = 'text-indigo-500';
+                          } else if (st.color === 'rose') {
+                            activeClasses = 'bg-rose-500/15 border-rose-500 text-rose-700 dark:text-rose-300 font-bold shadow-sm';
+                            iconColorClasses = 'text-rose-500';
+                          } else if (st.color === 'amber') {
+                            activeClasses = 'bg-amber-500/15 border-amber-500 text-amber-700 dark:text-amber-300 font-bold shadow-sm';
+                            iconColorClasses = 'text-amber-500';
+                          }
+
+                          return (
+                            <button
+                              key={st.id}
+                              type="button"
+                              onClick={() => {
+                                setFormResidenceStatus(st.id as CountryResidenceStatus);
+                                setFormIsTransit(st.id === 'layover');
+                              }}
+                              className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                                isSelected
+                                  ? activeClasses
+                                  : 'bg-black/5 dark:bg-white/5 border-black/5 dark:border-white/5 text-light-text dark:text-dark-text opacity-70 hover:opacity-100 hover:border-black/15'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between mb-1.5">
+                                <div className={`w-7 h-7 rounded-xl flex items-center justify-center ${isSelected ? 'bg-white/80 dark:bg-white/10 shadow-xs' : 'bg-black/5 dark:bg-white/5'}`}>
+                                  <IconComp className={`w-4 h-4 ${isSelected ? iconColorClasses : 'text-light-text-secondary dark:text-dark-text-secondary'}`} />
+                                </div>
+                                {isSelected && (
+                                  <div className="w-2 h-2 rounded-full bg-current"></div>
+                                )}
+                              </div>
+                              <span className="text-xs font-bold block leading-tight">{st.label}</span>
+                              <span className="text-[9px] text-light-text-secondary dark:text-dark-text-secondary block mt-0.5">{st.desc}</span>
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   </>
