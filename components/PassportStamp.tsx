@@ -312,7 +312,7 @@ export const PassportStamp: React.FC<PassportStampProps> = ({ country }) => {
                     <div className="flex justify-between items-start border-b border-white/10 pb-2 mb-3">
                         <div className="flex items-center gap-1.5 min-w-0">
                             <span className="text-xl flex-shrink-0">{country.flag}</span>
-                            <span className="text-xs font-black tracking-tight truncate uppercase text-white">{country.name}</span>
+                            <span className="text-xs font-bold tracking-tight truncate text-white">{country.name}</span>
                         </div>
                         <span className="text-[8px] font-mono font-black bg-white/10 px-1.5 py-0.5 rounded flex-shrink-0 text-white">{country.code}</span>
                     </div>

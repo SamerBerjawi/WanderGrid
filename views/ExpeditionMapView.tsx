@@ -20,7 +20,9 @@ import {
     RotateCcw,
     Ship,
     Train,
-    Car
+    Car,
+    Maximize,
+    Minimize
 } from 'lucide-react';
 const DeckFlightMap = lazy(() => import('../components/DeckFlightMap').then(m => ({ default: m.DeckFlightMap || m.default })));
 import { dataService } from '../services/mockDb';
@@ -681,8 +683,45 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
         };
     }, [filteredTrips]);
 
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const mapContainerRef = React.useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+        return () => {
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+            document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+        };
+    }, []);
+
+    const handleToggleFullscreen = async () => {
+        try {
+            if (!document.fullscreenElement) {
+                if (mapContainerRef.current) {
+                    if (mapContainerRef.current.requestFullscreen) {
+                        await mapContainerRef.current.requestFullscreen();
+                    } else if ((mapContainerRef.current as any).webkitRequestFullscreen) {
+                        await (mapContainerRef.current as any).webkitRequestFullscreen();
+                    }
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    await document.exitFullscreen();
+                } else if ((document as any).webkitExitFullscreen) {
+                    await (document as any).webkitExitFullscreen();
+                }
+            }
+        } catch (e) {
+            console.warn("Fullscreen toggle error", e);
+        }
+    };
+
     return (
-        <div className="relative w-full h-full overflow-hidden bg-light-bg dark:bg-[#050505] select-none">
+        <div ref={mapContainerRef} className="relative w-full h-full overflow-hidden bg-light-bg dark:bg-[#050505] select-none">
             {/* 1. 100% FULL-SCREEN DECK.GL WEBGL MAP */}
             <div className="absolute inset-0 w-full h-full">
                 <Suspense fallback={
@@ -769,8 +808,20 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                 </div>
             </div>
 
-            {/* 3. FLOATING TOP RIGHT CONTROLS TOGGLE */}
+            {/* 3. FLOATING TOP RIGHT CONTROLS TOGGLE & FULLSCREEN */}
             <div className="absolute top-5 right-5 z-20 flex items-center gap-2">
+                <button
+                    onClick={handleToggleFullscreen}
+                    className="p-2.5 rounded-2xl shadow-glass-card backdrop-blur-xl text-xs font-semibold flex items-center justify-center cursor-pointer transition-all duration-150 active:scale-95 border bg-white/80 dark:bg-dark-card/85 hover:bg-white/95 dark:hover:bg-dark-card/95 text-light-text dark:text-dark-text border-black/10 dark:border-white/10"
+                    title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+                    aria-label="Toggle Fullscreen"
+                >
+                    {isFullscreen ? (
+                        <Minimize className="w-4 h-4 text-primary-500" />
+                    ) : (
+                        <Maximize className="w-4 h-4 text-primary-500" />
+                    )}
+                </button>
                 <button
                     onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                     className={`px-4 py-2.5 rounded-2xl shadow-glass-card backdrop-blur-xl text-xs font-semibold flex items-center gap-2.5 cursor-pointer transition-all duration-150 active:scale-[0.98] border ${

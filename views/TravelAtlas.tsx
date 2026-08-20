@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { ViewState, VisitedItem, Trip, CountryResidenceStatus } from '../types';
 import { dataService } from '../services/mockDb';
 import { getFlagEmoji, getRegion } from '../services/geoData';
-import { resolvePlaceName, getCoordinates, cleanCityName } from '../services/geocoding';
+import { resolvePlaceName, getCoordinates, cleanCityName, formatPlaceName } from '../services/geocoding';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Compass, MapPin, Globe, Calendar, Plus, Trash2, Edit3, 
@@ -155,7 +155,8 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
       const key = `${canonicalCity.toLowerCase()}_${code.toLowerCase()}`;
       cityMap.set(key, {
         ...item,
-        name: canonicalCity
+        name: formatPlaceName(canonicalCity),
+        countryName: item.countryName ? formatPlaceName(item.countryName) : item.countryName
       });
     });
 
@@ -171,9 +172,9 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
             id: `trip_city_${key}`,
             type: 'city',
             code: code,
-            name: canonicalCity,
+            name: formatPlaceName(canonicalCity),
             countryCode: code,
-            countryName: t.coordinates?.country || 'Imported',
+            countryName: t.coordinates?.country ? formatPlaceName(t.coordinates.country) : 'Imported',
             visitDate: t.endDate || t.startDate,
             lat: t.coordinates?.lat,
             lng: t.coordinates?.lng,
@@ -193,7 +194,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
               id: `trip_loc_${l.id || key}`,
               type: 'city',
               code: 'XX',
-              name: canonicalCity,
+              name: formatPlaceName(canonicalCity),
               countryCode: 'XX',
               countryName: 'Trip Stop',
               visitDate: t.endDate,
@@ -217,7 +218,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
             id: `rt_origin_${key}`,
             type: 'city',
             code: 'XX',
-            name: canonicalCity,
+            name: formatPlaceName(canonicalCity),
             countryCode: 'XX',
             countryName: 'Road Trip Origin',
             visitDate: r.departureDate || r.date,
@@ -236,7 +237,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
             id: `rt_dest_${key}`,
             type: 'city',
             code: 'XX',
-            name: canonicalCity,
+            name: formatPlaceName(canonicalCity),
             countryCode: 'XX',
             countryName: 'Road Trip Dest',
             visitDate: r.arrivalDate || r.date,
@@ -257,16 +258,16 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
         const key = `${canonicalCity.toLowerCase()}_${code.toLowerCase()}`;
         if (!cityMap.has(key)) {
           cityMap.set(key, {
-            id: `flight_dest_${key}`,
+            id: `flight_city_${key}`,
             type: 'city',
             code: code,
-            name: canonicalCity,
+            name: formatPlaceName(canonicalCity),
             countryCode: code,
-            countryName: f.destCountry || 'Flight Destination',
+            countryName: f.destCountry ? formatPlaceName(f.destCountry) : 'Flight Arrival',
             visitDate: f.arrivalDate || f.date,
             lat: f.destLat,
             lng: f.destLng,
-            notes: `Flight to ${f.destination}`,
+            notes: `Flight to ${f.destination || canonicalCity}`,
             isManual: false
           });
         }

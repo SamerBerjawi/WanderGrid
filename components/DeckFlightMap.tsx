@@ -5,7 +5,7 @@ import { ScatterplotLayer, GeoJsonLayer, PathLayer, BitmapLayer, TextLayer } fro
 import { TileLayer, TripsLayer } from '@deck.gl/geo-layers';
 import { Maximize2, Scan, Globe, ArrowLeft, ArrowRight, X, Plane, Clock, Calendar, ChevronRight, Train, Ship, Car } from 'lucide-react';
 import { Trip, CountryResidenceStatus, PredefinedMapMode } from '../types';
-import { getCoordinatesSync } from '../services/geocoding';
+import { getCoordinatesSync, formatPlaceName } from '../services/geocoding';
 import { 
     MapAppearanceSettings, 
     DEFAULT_MAP_APPEARANCE, 
@@ -1368,7 +1368,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                             return status === 'lived_current' ? [16, 185, 129, 240] : [99, 102, 241, 240];
                         }
 
-                        return isDark ? [50, 60, 80, 160] : [195, 200, 215, 180];
+                        return isDark ? [55, 55, 58, 170] : [210, 210, 215, 180];
                     },
                     getLineWidth: (f: any) => {
                         const p = f.properties || {};
@@ -1392,19 +1392,14 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                             if (showWishlist) {
                                 return isDark ? [244, 63, 94, 90] : [244, 63, 94, 80]; // Rose Shimmer for Wishlist
                             }
-                            // If wishlist is toggled off, the country should NOT be colored (render as unvisited foil)
-                            return viewMode === 'scratch'
-                                ? (isDark ? [18, 22, 34, 230] : [232, 236, 242, 230])
-                                : [0, 0, 0, 0];
+                            return [0, 0, 0, 0];
                         }
 
                         if (status === 'layover') {
                             if (showLayover) {
                                 return isDark ? [245, 158, 11, 140] : [245, 158, 11, 120]; // Warm Amber Tone for Transit
                             }
-                            return viewMode === 'scratch'
-                                ? (isDark ? [18, 22, 34, 230] : [232, 236, 242, 230])
-                                : [0, 0, 0, 0];
+                            return [0, 0, 0, 0];
                         }
 
                         if (showLived && status === 'lived_current') {
@@ -1418,11 +1413,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         if (visited) {
                             const center = getFeatureCentroid(f);
                             const rgb = getGeoGradientRGB(center.lat, center.lng);
-                            return [...rgb, viewMode === 'scratch' ? 215 : 130];
+                            return [...rgb, viewMode === 'scratch' ? 220 : 130];
                         }
-                        return viewMode === 'scratch'
-                            ? (isDark ? [18, 22, 34, 230] : [232, 236, 242, 230])
-                            : [0, 0, 0, 0];
+                        return [0, 0, 0, 0];
                     },
                     pickable: true,
                     autoHighlight: viewMode === 'scratch',
@@ -2319,7 +2312,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                 <div className="flex items-center justify-between border-b border-black/5 dark:border-white/10 pb-2">
                                     <div className="flex items-center gap-2">
                                         <span className="text-xl leading-none">{flag}</span>
-                                        <span className="font-bold text-sm text-light-text dark:text-dark-text tracking-tight">{name}</span>
+                                        <span className="font-bold text-sm text-light-text dark:text-dark-text tracking-tight">{formatPlaceName(name)}</span>
                                     </div>
                                     {currentStatus === 'lived_current' ? (
                                         <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">

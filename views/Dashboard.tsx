@@ -4,7 +4,7 @@ const DeckFlightMap = lazy(() => import('../components/DeckFlightMap').then(m =>
 import { FlightTrackerModal } from '../components/FlightTrackerModal';
 import { dataService } from '../services/mockDb';
 import { User, Trip, EntitlementType, PublicHoliday } from '../types';
-import { resolvePlaceName, calculateDistance, getCoordinates, getCoordinatesSync, refineUKCountry } from '../services/geocoding';
+import { resolvePlaceName, calculateDistance, getCoordinates, getCoordinatesSync, refineUKCountry, formatPlaceName } from '../services/geocoding';
 import { getRegion, getFlagEmoji } from '../services/geoData';
 import { REGION_STYLES } from './regionStyles';
 import { getTripsVersion, serializeVisitedData, deserializeVisitedData, runAfterFirstPaint, mapWithConcurrency } from '../services/utils';
@@ -671,7 +671,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                     if (!countryMap.has(countryKey)) {
                         countryMap.set(countryKey, { 
                             code: resolved.countryCode?.toUpperCase() || 'XX', 
-                            name: resolved.country, 
+                            name: formatPlaceName(resolved.country), 
                             cities: new Set(), 
                             flag: resolved.countryCode ? getFlagEmoji(resolved.countryCode) : '🏳️', 
                             tripCount: 0, 
@@ -680,7 +680,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                         });
                     }
                     const entry = countryMap.get(countryKey)!;
-                    if (resolved.city) (entry.cities as Set<string>).add(resolved.city);
+                    if (resolved.city) (entry.cities as Set<string>).add(formatPlaceName(resolved.city));
                     const tripEnd = new Date(trip.endDate);
                     if (tripEnd > entry.lastVisit) entry.lastVisit = tripEnd;
                 }
@@ -985,20 +985,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                         showGradientRoutes={globalGradientRoutes}
                         showFlightRoutes={true}
                         showLandSeaRoutes={true}
-                        initialProjection={mapViewMode === '3d' ? 'globe' : 'flat'}
-                        initialElevated={mapViewMode === '3d'}
+                        projection={mapViewMode === '3d' ? 'globe' : 'flat'}
+                        elevatedRoutes={mapViewMode === '3d'}
                     />
                 </Suspense>
                 
-                {/* Floating Glass Tactile Map Overlays */}
-                <div className="absolute bottom-5 left-5 z-20 flex flex-wrap items-center gap-3">
-                    <div className="bg-slate-900/90 dark:bg-[#09090b]/90 backdrop-blur-xl p-1 rounded-xl border border-white/10 flex items-center shadow-lg">
+                {/* Floating Glass Tactile Map Overlays (Top Right of Map) */}
+                <div className="absolute top-5 right-5 z-20 flex items-center gap-2.5">
+                    <div className="bg-slate-900/90 dark:bg-[#09090b]/90 backdrop-blur-xl p-1 rounded-2xl border border-white/10 flex items-center shadow-lg">
                         <button
                             onClick={() => {
                                 setMapViewMode('3d');
                                 localStorage.setItem('wandergrid_map_view_mode', '3d');
                             }}
-                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-tight flex items-center gap-1.5 transition-all text-white ${mapViewMode === '3d' ? 'bg-blue-600 shadow-sm' : 'opacity-60 hover:opacity-100'}`}
+                            className={`px-3 py-1.5 rounded-xl text-[10px] font-bold tracking-tight flex items-center gap-1.5 transition-all text-white cursor-pointer ${mapViewMode === '3d' ? 'bg-blue-600 shadow-sm' : 'opacity-60 hover:opacity-100'}`}
                         >
                             <Globe className="w-3.5 h-3.5" /> 3D Globe
                         </button>
@@ -1007,21 +1007,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                 setMapViewMode('2d');
                                 localStorage.setItem('wandergrid_map_view_mode', '2d');
                             }}
-                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-tight flex items-center gap-1.5 transition-all text-white ${mapViewMode === '2d' ? 'bg-blue-600 shadow-sm' : 'opacity-60 hover:opacity-100'}`}
+                            className={`px-3 py-1.5 rounded-xl text-[10px] font-bold tracking-tight flex items-center gap-1.5 transition-all text-white cursor-pointer ${mapViewMode === '2d' ? 'bg-blue-600 shadow-sm' : 'opacity-60 hover:opacity-100'}`}
                         >
                             <span className="material-icons-outlined text-sm leading-none">map</span> 2D Map
                         </button>
                     </div>
 
-                    <div className="bg-slate-900/90 dark:bg-[#09090b]/90 backdrop-blur-xl px-3.5 py-1.5 rounded-xl border border-white/10 flex items-center gap-3 shadow-lg h-[34px]">
-                        <span className="text-[9px] font-black font-mono text-zinc-300 uppercase tracking-wider select-none">Gradient Routes</span>
+                    <div className="bg-slate-900/90 dark:bg-[#09090b]/90 backdrop-blur-xl px-3 py-1.5 rounded-2xl border border-white/10 flex items-center gap-2.5 shadow-lg h-[34px]">
+                        <span className="text-[9px] font-bold font-mono text-zinc-300 uppercase tracking-wider select-none">Gradients</span>
                         <button
                             onClick={() => {
                                 const nextVal = !globalGradientRoutes;
                                 setGlobalGradientRoutes(nextVal);
                                 localStorage.setItem('wandergrid_gradient_routes', String(nextVal));
                             }}
-                            className={`w-8 h-4 p-0.5 rounded-full transition-all duration-350 flex items-center ${globalGradientRoutes ? 'bg-blue-500 justify-end' : 'bg-zinc-700 justify-start'}`}
+                            className={`w-7 h-4 p-0.5 rounded-full transition-all duration-300 flex items-center cursor-pointer ${globalGradientRoutes ? 'bg-blue-500 justify-end' : 'bg-zinc-700 justify-start'}`}
                             title="Toggle multi-color gradient routes"
                         >
                             <div className="w-3 h-3 bg-white rounded-full shadow-sm" />

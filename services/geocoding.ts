@@ -487,6 +487,45 @@ export function extractStateAbbreviation(stateOrRegion: string | undefined, coun
     return undefined;
 }
 
+const PRESERVED_UPPERCASE_CODES = new Set([
+    'US', 'USA', 'UK', 'GB', 'BE', 'DE', 'FR', 'ES', 'IT', 'NL', 'CH', 'AT', 'SE', 'NO', 'DK', 'FI',
+    'IE', 'PT', 'GR', 'PL', 'CZ', 'HU', 'RO', 'BG', 'HR', 'SK', 'SI', 'EE', 'LV', 'LT', 'CY', 'MT',
+    'LU', 'IS', 'CA', 'MX', 'BR', 'AR', 'CL', 'CO', 'PE', 'AU', 'NZ', 'JP', 'CN', 'KR', 'TW', 'HK',
+    'SG', 'MY', 'TH', 'VN', 'ID', 'PH', 'IN', 'AE', 'SA', 'QA', 'TR', 'EG', 'ZA', 'MA', 'IL', 'LB',
+    'JO', 'GB-ENG', 'GB-SCT', 'GB-WLS', 'GB-NIR', 'DC', 'PR', 'VI', 'GU',
+    ...Object.values(US_STATE_CODES),
+    ...Object.values(CA_PROVINCE_CODES),
+    ...Object.values(AU_STATE_CODES)
+]);
+
+/**
+ * Formats a city, country, or location string with title casing, preserving known short codes (e.g. US, UK, CA, NY, NSW).
+ */
+export function formatPlaceName(name: string): string {
+    if (!name) return '';
+    const trimmed = name.trim();
+    if (!trimmed) return '';
+
+    // If whole string is a preserved code (e.g. "US", "UK", "CA")
+    if (PRESERVED_UPPERCASE_CODES.has(trimmed.toUpperCase())) {
+        return trimmed.toUpperCase();
+    }
+
+    // Split on commas or spaces while preserving delimiters
+    return trimmed.split(/([,\s/]+)/).map(token => {
+        const cleanToken = token.trim();
+        if (!cleanToken) return token;
+
+        const upperToken = cleanToken.toUpperCase();
+        if (PRESERVED_UPPERCASE_CODES.has(upperToken)) {
+            return upperToken;
+        }
+
+        // Standard capitalization for normal words (e.g. "paris" -> "Paris", "UNITED STATES" -> "United States")
+        return cleanToken.charAt(0).toUpperCase() + cleanToken.slice(1).toLowerCase();
+    }).join('');
+}
+
 /**
  * Normalizes and simplifies city names.
  * For countries with states/provinces (US, CA, AU), includes the 2-letter state/province abbreviation to disambiguate cities (e.g. "Portland, OR", "Miami, FL", "Vancouver, BC").
@@ -551,7 +590,7 @@ export function cleanCityName(rawName: string, countryCode?: string, adminRegion
     else {
         // Capitalize first letter of each word properly
         if (name.length > 0) {
-            name = name.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+            name = formatPlaceName(name);
         }
     }
 
@@ -565,7 +604,7 @@ export function cleanCityName(rawName: string, countryCode?: string, adminRegion
         return `${name}, ${extractedState}`;
     }
 
-    return name || rawName.trim();
+    return name || formatPlaceName(rawName.trim());
 }
 
 export async function searchLocations(query: string): Promise<string[]> {
@@ -1058,7 +1097,7 @@ export async function resolvePlaceName(query: string): Promise<{ city: string, c
     const cleanedCity = cleanCityName(raw.city, raw.countryCode);
     const refined = refineUKCountry(cleanedCity, raw.country, raw.countryCode, query);
     const finalCity = cleanCityName(refined.city, refined.countryCode);
-    const finalCountry = refined.country || 'Unknown';
+    const finalCountry = refined.country ? formatPlaceName(refined.country) : 'Unknown';
     return {
         ...raw,
         city: finalCity,
