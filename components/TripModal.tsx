@@ -382,7 +382,7 @@ export const TripModal: React.FC<TripModalProps> = ({ isOpen, onClose, onSubmit,
 
                                     <div className="flex-1 w-full space-y-4">
                                         <div className="space-y-2">
-                                            <label className="text-[10px] font-black tracking-widest text-zinc-400 dark:text-zinc-500 uppercase block">Quick Presets</label>
+                                            <label className="text-2xs font-bold tracking-widest text-zinc-400 dark:text-zinc-500 uppercase block">Quick Presets</label>
                                             <div className="flex flex-wrap gap-1.5">
                                                 {EMOJI_PRESETS.slice(0, 10).map(e => (
                                                     <button 
@@ -418,7 +418,7 @@ export const TripModal: React.FC<TripModalProps> = ({ isOpen, onClose, onSubmit,
                                         {showEmojiPicker && pickerPosition && createPortal(
                                             <div 
                                                 ref={emojiPickerMenuRef}
-                                                className="fixed w-80 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-2xl rounded-2xl shadow-2xl border border-zinc-150/40 dark:border-white/10 p-4 z-[9999] animate-fade-in"
+                                                className="fixed w-80 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm rounded-2xl shadow-2xl border border-zinc-150/40 dark:border-white/10 p-4 z-[9999] animate-fade-in"
                                                 style={{ top: pickerPosition.top, left: pickerPosition.left }}
                                             >
                                                 <div className="flex gap-2 mb-3">
@@ -449,7 +449,7 @@ export const TripModal: React.FC<TripModalProps> = ({ isOpen, onClose, onSubmit,
                                                                 if (!emojis || emojis.length === 0) return null;
                                                                 return (
                                                                     <div key={cat}>
-                                                                        <h5 className="sticky top-0 bg-white dark:bg-zinc-900 py-1 mb-1 text-[9px] font-black text-gray-400 uppercase tracking-widest border-b border-zinc-100 dark:border-white/5">{cat}</h5>
+                                                                        <h5 className="sticky top-0 bg-white dark:bg-zinc-900 py-1 mb-1 text-2xs font-bold text-gray-400 uppercase tracking-widest border-b border-zinc-100 dark:border-white/5">{cat}</h5>
                                                                         <div className="grid grid-cols-6 gap-1 content-start">
                                                                             {emojis.map((e, i) => (
                                                                                 <button key={`${cat}-${i}`} type="button" onClick={() => { setIcon(e.char); setShowEmojiPicker(false); }} className="aspect-square flex items-center justify-center text-xl hover:bg-[#fdeed9] dark:hover:bg-zinc-800 rounded-lg transition-colors" title={e.name}>{e.char}</button>
@@ -535,14 +535,14 @@ export const TripModal: React.FC<TripModalProps> = ({ isOpen, onClose, onSubmit,
                                                     }`}
                                                 >
                                                     <div className="flex items-center gap-3">
-                                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black text-white shrink-0 shadow-sm ${
+                                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-2xs font-bold text-white shrink-0 shadow-sm ${
                                                             u.role === 'Partner' ? 'bg-[#fa9a1d]' : u.role === 'Admin' ? 'bg-sky-500' : 'bg-emerald-500'
                                                         }`}>
                                                             {u.name.charAt(0)}
                                                         </div>
                                                         <div>
-                                                            <div className="text-xs font-black text-zinc-850 dark:text-zinc-200">{u.name}</div>
-                                                            <div className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider mt-0.5">{u.role} Label</div>
+                                                            <div className="text-xs font-bold text-zinc-850 dark:text-zinc-200">{u.name}</div>
+                                                            <div className="text-xs text-zinc-400 font-bold uppercase tracking-wider mt-0.5">{u.role} Label</div>
                                                         </div>
                                                     </div>
                                                     {selected && (
@@ -571,7 +571,7 @@ export const TripModal: React.FC<TripModalProps> = ({ isOpen, onClose, onSubmit,
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-1.5 leading-none">
                                                 <span className="material-icons-outlined text-sm animate-pulse">auto_awesome</span>
-                                                <span className="text-[10px] font-black uppercase tracking-wider">Matched independent flights found ({suggestedFlights.length})</span>
+                                                <span className="text-xs font-bold uppercase tracking-wider">Matched independent flights found ({suggestedFlights.length})</span>
                                             </div>
                                             <button
                                                 type="button"
@@ -584,12 +584,12 @@ export const TripModal: React.FC<TripModalProps> = ({ isOpen, onClose, onSubmit,
                                                     });
                                                     setSelectedFlights(batch);
                                                 }}
-                                                className="text-[10px] font-black underline uppercase hover:text-[#e78310]"
+                                                className="text-xs font-bold underline uppercase hover:text-[#e78310]"
                                             >
                                                 Couple All
                                             </button>
                                         </div>
-                                        <div className="text-[11px] text-zinc-500 dark:text-zinc-450 leading-relaxed font-bold">
+                                        <div className="text-xs text-zinc-500 dark:text-zinc-450 leading-relaxed font-semibold">
                                             The system retrieved the following incoming flights occurring during the {startDate} to {endDate} scope:
                                         </div>
                                         
@@ -614,10 +614,10 @@ export const TripModal: React.FC<TripModalProps> = ({ isOpen, onClose, onSubmit,
                                                     >
                                                         <div className="flex-1 min-w-0 pr-4">
                                                             <div className="flex items-center gap-2 flex-wrap">
-                                                                <span className="text-xs font-black">{flight.provider} &bull; {flight.identifier}</span>
-                                                                <span className="text-[9px] uppercase font-black px-1.5 py-0.5 rounded-sm bg-zinc-100 dark:bg-zinc-805 text-zinc-550">{flight.departureDate}</span>
+                                                                <span className="text-xs font-bold">{flight.provider} &bull; {flight.identifier}</span>
+                                                                <span className="text-2xs uppercase font-bold px-1.5 py-0.5 rounded-sm bg-zinc-100 dark:bg-zinc-805 text-zinc-550">{flight.departureDate}</span>
                                                             </div>
-                                                            <div className="text-[10px] font-mono tracking-wide flex items-center gap-1.5 mt-1.5 text-zinc-500">
+                                                            <div className="text-xs font-mono tracking-wide flex items-center gap-1.5 mt-1.5 text-zinc-500">
                                                                 <span className="font-extrabold">{flight.origin}</span>
                                                                 <span>&rarr;</span>
                                                                 <span className="font-extrabold">{flight.destination}</span>
@@ -642,7 +642,7 @@ export const TripModal: React.FC<TripModalProps> = ({ isOpen, onClose, onSubmit,
                                         <button
                                             type="button"
                                             onClick={() => setShowAllFlightsManual(!showAllFlightsManual)}
-                                            className="text-xs font-black uppercase text-[#fa9a1d] hover:underline flex items-center gap-1 leading-none"
+                                            className="text-xs font-bold uppercase text-[#fa9a1d] hover:underline flex items-center gap-1 leading-none"
                                         >
                                             <span className="material-icons-outlined text-sm">{showAllFlightsManual ? 'unfold_less' : 'unfold_more'}</span>
                                             <span>{showAllFlightsManual ? 'Minimize' : 'Explore Full Independent Flights List'}</span>
@@ -651,7 +651,7 @@ export const TripModal: React.FC<TripModalProps> = ({ isOpen, onClose, onSubmit,
                                             <button 
                                                 type="button"
                                                 onClick={() => setSelectedFlights([])}
-                                                className="text-[10px] font-black uppercase text-zinc-400 hover:text-rose-500"
+                                                className="text-xs font-bold uppercase text-zinc-400 hover:text-rose-500"
                                             >
                                                 Clear Linked ({selectedFlights.length})
                                             </button>
@@ -660,7 +660,7 @@ export const TripModal: React.FC<TripModalProps> = ({ isOpen, onClose, onSubmit,
 
                                     {showAllFlightsManual && (
                                         <div className="p-4 rounded-3xl bg-zinc-55 dark:bg-zinc-950/20 border border-zinc-150-10 space-y-3.5 animate-slide-down">
-                                            <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Available Independent Flights Registry ({allAvailableFlights.length})</div>
+                                            <div className="text-xs font-bold text-gray-400 uppercase tracking-widest block">Available Independent Flights Registry ({allAvailableFlights.length})</div>
                                             {allAvailableFlights.length === 0 ? (
                                                 <div className="text-center py-6 text-xs text-zinc-400 font-bold uppercase tracking-wider">No separate segments tracked</div>
                                             ) : (
@@ -685,10 +685,10 @@ export const TripModal: React.FC<TripModalProps> = ({ isOpen, onClose, onSubmit,
                                                             >
                                                                 <div className="flex-1 min-w-0 pr-4">
                                                                     <div className="flex items-center gap-2 flex-wrap">
-                                                                        <span className="text-xs font-black">{flight.provider} {flight.identifier}</span>
-                                                                        <span className="text-[9px] uppercase font-black px-1.5 py-0.5 rounded-sm bg-zinc-100 dark:bg-zinc-800 text-zinc-500">{flight.departureDate}</span>
+                                                                        <span className="text-xs font-bold">{flight.provider} {flight.identifier}</span>
+                                                                        <span className="text-2xs uppercase font-bold px-1.5 py-0.5 rounded-sm bg-zinc-100 dark:bg-zinc-800 text-zinc-500">{flight.departureDate}</span>
                                                                     </div>
-                                                                    <div className="text-[10px] font-mono tracking-wide flex items-center gap-1.5 mt-1.5 text-zinc-450">
+                                                                    <div className="text-xs font-mono tracking-wide flex items-center gap-1.5 mt-1.5 text-zinc-450">
                                                                         <span className="font-extrabold">{flight.origin}</span>
                                                                         <span>&rarr;</span>
                                                                         <span className="font-extrabold">{flight.destination}</span>

@@ -890,7 +890,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
         {/* ========================================================= */}
         {/* SWISS MODERN DESIGNER PROFILE TERMINAL HEADER */}
         {/* ========================================================= */}
-        <div className="relative overflow-hidden bg-white/70 dark:bg-[#0c0c0e]/80 border border-gray-200/50 dark:border-white/5 rounded-[2rem] p-6 sm:p-8 backdrop-blur-3xl shadow-sm transition-all duration-350">
+        <div className="relative overflow-hidden bg-white/70 dark:bg-[#0c0c0e]/80 border border-gray-200/50 dark:border-white/5 rounded-3xl p-6 sm:p-8 backdrop-blur-xl shadow-sm transition-all duration-350">
             <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 relative z-10">
                 
                 {/* Explorer Terminal Profile Info */}
@@ -913,7 +913,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                 Welcome back, {currentUser?.name || currentUser?.email?.split('@')[0] || 'Explorer'}
                                 <Sparkles className="w-5 h-5 text-amber-550 dark:text-amber-400 animate-pulse text-amber-500 shrink-0" />
                             </h2>
-                            <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold uppercase bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 py-1 px-2.5 rounded-lg leading-none">
+                            <span className="inline-flex items-center gap-1 text-2xs font-mono font-bold uppercase bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 py-1 px-2.5 rounded-lg leading-none">
                                 <Shield className="w-3.5 h-3.5" /> Checked-In
                             </span>
                         </div>
@@ -928,7 +928,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                     <div className="flex items-center gap-3 bg-slate-50/50 dark:bg-white/[0.02] border border-gray-200/40 dark:border-white/5 py-2 px-4 rounded-xl shadow-sm">
                         <Calendar className="w-4 h-4 text-zinc-400" />
                         <div className="text-left font-mono">
-                            <span className="block text-[8px] text-zinc-400 uppercase font-bold tracking-widest leading-none mb-0.5">Chronometer</span>
+                            <span className="block text-2xs text-zinc-400 uppercase font-bold tracking-widest leading-none mb-0.5">Chronometer</span>
                             <span className="text-xs font-bold text-zinc-800 dark:text-zinc-100">
                                 {currentTime.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
                             </span>
@@ -938,7 +938,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                     <div className="flex items-center gap-3 bg-slate-50/50 dark:bg-white/[0.02] border border-gray-200/40 dark:border-white/5 py-2 px-4 rounded-xl shadow-sm">
                         <Compass className="w-4 h-4 text-blue-500 animate-[spin_24s_linear_infinite]" />
                         <div className="text-left font-mono">
-                            <span className="block text-[8px] text-zinc-400 uppercase font-bold tracking-widest leading-none mb-0.5">World Time</span>
+                            <span className="block text-2xs text-zinc-400 uppercase font-bold tracking-widest leading-none mb-0.5">World Time</span>
                             <span className="text-xs font-bold text-zinc-800 dark:text-zinc-100">
                                 {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
                             </span>
@@ -962,13 +962,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-stretch">
             
             {/* Interactive World Map Widget (Col-span 2) */}
-            <div className="xl:col-span-2 relative h-[36rem] rounded-[2rem] overflow-hidden border border-gray-200/60 dark:border-white/5 shadow-sm bg-slate-50/40 dark:bg-black/10 backdrop-blur-2xl flex flex-col">
+            <div className="xl:col-span-2 relative h-[36rem] rounded-3xl overflow-hidden border border-gray-200/60 dark:border-white/5 shadow-sm bg-slate-50/40 dark:bg-black/10 backdrop-blur-2xl flex flex-col">
                 <div className="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-white/35 dark:from-black/10 to-transparent pointer-events-none z-10" />
                 
                 <Suspense fallback={
                     <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900/5 dark:bg-black/30 space-y-4">
                         <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Loading Expedition Coordinates...</p>
+                        <p className="text-2xs font-bold uppercase tracking-[0.2em] text-zinc-400">Loading Expedition Coordinates...</p>
                     </div>
                 }>
                     <DeckFlightMap 
@@ -1016,7 +1016,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
             <div className="xl:col-span-1 h-full flex flex-col justify-between gap-6">
                 
                 {/* REVOLUTIONARY METALLIC MEMBERSHIP CARD */}
-                <div id="holographic-titanium-card" className="relative overflow-hidden rounded-[1.8rem] p-6 bg-gradient-to-br from-zinc-900 via-zinc-950 to-slate-950 border border-white/10 shadow-lg group flex flex-col justify-between h-[15.5rem] transition-all duration-350">
+                <div id="holographic-titanium-card" className="relative overflow-hidden rounded-2xl p-6 bg-gradient-to-br from-zinc-900 via-zinc-950 to-slate-950 border border-white/10 shadow-lg group flex flex-col justify-between h-[15.5rem] transition-all duration-350">
                     
                     {/* Iridescent security holographic chip and light vectors */}
                     <div className="absolute top-[30%] right-[8%] w-11 h-14 bg-gradient-to-tr from-cyan-400 via-purple-400 to-yellow-300 opacity-20 blur-[1.5px] rounded rotate-12 pointer-events-none group-hover:opacity-45 transition-all duration-700 mx-auto select-none" />
@@ -1026,16 +1026,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                     <div className="flex justify-between items-start relative z-10 w-full">
                         <div>
                             <div className="flex items-center gap-1.5">
-                                <span className="text-[9px] font-mono font-bold tracking-widest text-[#f59e0b] uppercase">Wander Executive</span>
+                                <span className="text-2xs font-mono font-bold tracking-widest text-[#f59e0b] uppercase">Wander Executive</span>
                                 <span className="w-1.5 h-1.5 bg-[#f59e0b] rounded-full animate-pulse" />
                             </div>
-                            <span className="block text-[8px] font-mono text-zinc-400 mt-0.5 uppercase tracking-wider">Holographic Membership Card</span>
+                            <span className="block text-2xs font-mono text-zinc-400 mt-0.5 uppercase tracking-wider">Holographic Membership Card</span>
                         </div>
                         <div className="flex flex-col items-end gap-1">
                             <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20 shadow-sm">
                                 <Cpu className="w-4 h-4 text-amber-500" />
                             </div>
-                            <span className="text-[7px] font-mono text-zinc-500 uppercase tracking-widest leading-none">Security RFID</span>
+                            <span className="text-2xs font-mono text-zinc-500 uppercase tracking-widest leading-none">Security RFID</span>
                         </div>
                     </div>
 
@@ -1051,13 +1051,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                         {/* Holder Metrics */}
                         <div className="flex justify-between items-end border-t border-white/10 pt-3">
                             <div>
-                                <span className="block text-[7px] font-mono text-zinc-500 uppercase font-black tracking-widest mb-0.5">Cardholder</span>
+                                <span className="block text-2xs font-mono text-zinc-500 uppercase font-bold tracking-widest mb-0.5">Cardholder</span>
                                 <span className="text-xs font-bold text-white uppercase tracking-wider truncate max-w-[150px]">
                                     {currentUser?.name ? currentUser.name : currentUser?.email ? currentUser.email.split('@')[0] : 'EXECUTIVE EXPLORER'}
                                 </span>
                             </div>
                             <div className="text-right">
-                                <span className="block text-[7px] font-mono text-zinc-500 uppercase font-black tracking-widest mb-0.5">Tier LEVEL</span>
+                                <span className="block text-2xs font-mono text-zinc-500 uppercase font-bold tracking-widest mb-0.5">Tier LEVEL</span>
                                 <span className="text-xs font-bold text-amber-550 uppercase tracking-wider">
                                     {currentLevel.name}
                                 </span>
@@ -1067,38 +1067,38 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                 </div>
 
                 {/* Altitude level details progress */}
-                <div className="bg-white/75 dark:bg-[#0c0c0e]/80 border border-gray-200/50 dark:border-white/5 rounded-[1.8rem] p-5 shadow-sm">
+                <div className="bg-white/75 dark:bg-[#0c0c0e]/80 border border-gray-200/50 dark:border-white/5 rounded-2xl p-5 shadow-sm">
                     <div className="flex justify-between items-end mb-2.5">
-                        <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase tracking-widest">Altitudal completion</span>
+                        <span className="text-2xs font-mono font-bold text-zinc-400 uppercase tracking-widest">Altitudal completion</span>
                         <span className="text-xs font-mono font-bold text-blue-500">{Math.round(progressToNext)}% Completed</span>
                     </div>
                     
-                    <div className="h-3.5 w-full bg-slate-100 dark:bg-zinc-950 rounded-full overflow-hidden p-[2.5px] border border-gray-200/45 dark:border-white/5">
+                    <div className="h-3.5 w-full bg-slate-100 dark:bg-zinc-950 rounded-full overflow-hidden p-0.5 border border-gray-200/45 dark:border-white/5">
                         <div className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-amber-500 transition-all duration-1000 ease-out rounded-full relative" style={{ width: `${progressToNext}%` }}>
                             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[pulse_1.5s_infinite]" />
                         </div>
                     </div>
 
                     {nextLevel && (
-                        <p className="text-[9px] text-[#94a3b8] mt-2.5 font-bold text-center uppercase tracking-wider leading-relaxed">
+                        <p className="text-2xs text-[#94a3b8] mt-2.5 font-bold text-center uppercase tracking-wider leading-relaxed">
                             Arrive in <span className="font-extrabold text-gray-800 dark:text-zinc-200">{nextLevel.countries - visitedData.length} countries</span> to achieve <span className="font-bold text-amber-555 text-amber-500">{nextLevel.name}</span>
                         </p>
                     )}
                 </div>
 
                 {/* BOARDING PASSES TRANSITING slips */}
-                <div id="transit-passes-scroller" className="bg-white/75 dark:bg-[#0c0c0e]/80 border border-gray-200/50 dark:border-white/5 rounded-[1.8rem] p-5 flex-1 flex flex-col justify-between shadow-sm min-h-[14rem]">
+                <div id="transit-passes-scroller" className="bg-white/75 dark:bg-[#0c0c0e]/80 border border-gray-200/50 dark:border-white/5 rounded-2xl p-5 flex-1 flex flex-col justify-between shadow-sm min-h-[14rem]">
                     <div>
                         <div className="flex justify-between items-center mb-3">
-                            <h3 className="text-[9px] font-mono font-bold text-zinc-400 uppercase tracking-widest">Active Boarding Register</h3>
-                            <span className="text-[8px] font-mono bg-slate-100 dark:bg-white/5 py-0.5 px-2 rounded text-zinc-500 border border-gray-200/40 dark:border-white/5 uppercase font-bold">Gate</span>
+                            <h3 className="text-2xs font-mono font-bold text-zinc-400 uppercase tracking-widest">Active Boarding Register</h3>
+                            <span className="text-2xs font-mono bg-slate-100 dark:bg-white/5 py-0.5 px-2 rounded text-zinc-500 border border-gray-200/40 dark:border-white/5 uppercase font-bold">Gate</span>
                         </div>
                         
                         {upcomingTripsList.length === 0 ? (
                             <div className="p-4 py-8 rounded-2xl bg-zinc-150/10 dark:bg-white/[0.005] border border-dashed border-gray-200 dark:border-white/5 flex flex-col items-center justify-center text-center">
                                 <Compass className="w-5 h-5 text-zinc-400 mb-1.5 animate-[spin_32s_linear_infinite]" />
-                                <p className="text-[9px] font-mono font-bold text-zinc-450 dark:text-zinc-400 uppercase tracking-wider">No Active Slips queued</p>
-                                <p className="text-[8px] text-zinc-500 mt-1 font-medium leading-relaxed">Create itineraries in standard views to configure active transit keys</p>
+                                <p className="text-xs font-mono font-bold text-zinc-450 dark:text-zinc-400 uppercase tracking-wider">No Active Slips queued</p>
+                                <p className="text-xs text-zinc-500 mt-1 font-medium leading-relaxed">Create itineraries in standard views to configure active transit keys</p>
                             </div>
                         ) : (
                             <div className="space-y-3">
@@ -1122,15 +1122,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                                     <span className="block text-xs font-bold text-zinc-800 dark:text-zinc-150 truncate leading-none">{t.name}</span>
                                                     <Ticket className="w-3 h-3 text-zinc-450 shrink-0" />
                                                 </div>
-                                                <span className="block text-[8px] font-mono font-bold text-zinc-400 uppercase mt-1 truncate tracking-wider">{t.location}</span>
+                                                <span className="block text-2xs font-mono font-bold text-zinc-400 uppercase mt-1 truncate tracking-wider">{t.location}</span>
                                             </div>
                                         </div>
                                         
                                         <div className="text-right shrink-0 pr-1 font-mono z-10">
-                                            <span className="block text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase">
+                                            <span className="block text-xs font-bold text-blue-600 dark:text-blue-400 uppercase">
                                                 {new Date(t.startDate).toLocaleDateString([], { month: 'short', day: 'numeric' })}
                                             </span>
-                                            <div className="flex gap-[1px] justify-end opacity-20 h-3.5 mt-1">
+                                            <div className="flex gap-0.5 justify-end opacity-20 h-3.5 mt-1">
                                                 <span className="w-[1px] bg-zinc-800 dark:bg-white h-full" />
                                                 <span className="w-[2px] bg-zinc-800 dark:bg-white h-full" />
                                                 <span className="w-[1px] bg-zinc-800 dark:bg-white h-full" />
@@ -1157,7 +1157,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                 <div className="flex p-1 bg-zinc-100/80 dark:bg-[#0c0c0e]/80 rounded-2xl gap-1 border border-gray-250/20 dark:border-white/5 relative shrink-0 overflow-x-auto max-w-full no-scrollbar">
                     <button
                         onClick={() => setActiveStatsTab('stamps')}
-                        className={`relative py-2.5 px-4 rounded-xl text-[10px] font-mono font-black uppercase tracking-wider transition-all duration-350 whitespace-nowrap ${
+                        className={`relative py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-350 whitespace-nowrap ${
                             activeStatsTab === 'stamps' 
                             ? 'bg-white dark:bg-zinc-900 text-gray-900 dark:text-white shadow-sm font-black' 
                             : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 font-bold'
@@ -1167,7 +1167,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                     </button>
                     <button
                         onClick={() => setActiveStatsTab('flipbook')}
-                        className={`relative py-2.5 px-4 rounded-xl text-[10px] font-mono font-black uppercase tracking-wider transition-all duration-350 whitespace-nowrap ${
+                        className={`relative py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-350 whitespace-nowrap ${
                             activeStatsTab === 'flipbook' 
                             ? 'bg-white dark:bg-zinc-900 text-gray-900 dark:text-white shadow-sm font-black' 
                             : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 font-bold'
@@ -1177,7 +1177,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                     </button>
                     <button
                         onClick={() => setActiveStatsTab('stickers')}
-                        className={`relative py-2.5 px-4 rounded-xl text-[10px] font-mono font-black uppercase tracking-wider transition-all duration-350 whitespace-nowrap ${
+                        className={`relative py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-350 whitespace-nowrap ${
                             activeStatsTab === 'stickers' 
                             ? 'bg-white dark:bg-zinc-900 text-gray-900 dark:text-white shadow-sm font-black' 
                             : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 font-bold'
@@ -1187,7 +1187,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                     </button>
                     <button
                         onClick={() => setActiveStatsTab('milestones')}
-                        className={`relative py-2.5 px-4 rounded-xl text-[10px] font-mono font-black uppercase tracking-wider transition-all duration-350 whitespace-nowrap ${
+                        className={`relative py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-350 whitespace-nowrap ${
                             activeStatsTab === 'milestones' 
                             ? 'bg-white dark:bg-zinc-900 text-gray-900 dark:text-white shadow-sm font-black' 
                             : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 font-bold'
@@ -1197,7 +1197,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                     </button>
                     <button
                         onClick={() => setActiveStatsTab('analytics')}
-                        className={`relative py-2.5 px-4 rounded-xl text-[10px] font-mono font-black uppercase tracking-wider transition-all duration-350 whitespace-nowrap ${
+                        className={`relative py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-350 whitespace-nowrap ${
                             activeStatsTab === 'analytics' 
                             ? 'bg-white dark:bg-zinc-900 text-gray-900 dark:text-white shadow-sm font-black' 
                             : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 font-bold'
@@ -1207,7 +1207,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                     </button>
                 </div>
 
-                <div className="flex items-center gap-4 text-[10px] font-mono text-zinc-400 text-right">
+                <div className="flex items-center gap-4 text-xs font-mono text-zinc-400 text-right">
                     <span className="flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5 text-emerald-500" /> Auto-Synchronized</span>
                     <span className="hidden sm:inline-block text-zinc-300">|</span>
                     <span className="hidden sm:inline-block">Total distance: <strong className="text-zinc-700 dark:text-zinc-200">{totalDistance.toLocaleString()} KM</strong></span>
@@ -1227,7 +1227,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                         className="space-y-6"
                     >
                         {/* Interactive Pill filtering controllers */}
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center bg-white/70 dark:bg-[#0c0c0e]/80 p-4 rounded-[2rem] border border-gray-200/55 dark:border-white/5 backdrop-blur-3xl shadow-sm">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center bg-white/70 dark:bg-[#0c0c0e]/80 p-4 rounded-2xl border border-gray-200/55 dark:border-white/5 backdrop-blur-xl shadow-sm">
                              <div className="relative md:col-span-1">
                                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 w-4 h-4" />
                                  <input
@@ -1249,7 +1249,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                           <button
                                               key={region}
                                               onClick={() => setSelectedRegion(region)}
-                                              className={`px-3 py-2 rounded-xl border text-[9px] font-mono font-bold uppercase tracking-wide shrink-0 transition-all duration-200 ${
+                                              className={`px-3 py-2 rounded-xl border text-2xs font-mono font-bold uppercase tracking-wide shrink-0 transition-all duration-200 ${
                                                   selectedRegion === region
                                                       ? 'bg-blue-600/10 border-blue-500/20 text-blue-600 dark:text-blue-400 shadow-sm'
                                                       : 'bg-slate-50/50 dark:bg-white/5 border-gray-250/50 dark:border-white/10 text-zinc-500 dark:text-zinc-400 hover:bg-slate-100'
@@ -1264,7 +1264,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
 
                         {/* Stamped passports grid container */}
                         {filteredVisitedData.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center p-16 rounded-[2.5rem] bg-slate-50/50 dark:bg-zinc-950/20 border border-dashed border-gray-200 dark:border-white/5 text-center">
+                            <div className="flex flex-col items-center justify-center p-16 rounded-3xl bg-slate-50/50 dark:bg-zinc-950/20 border border-dashed border-gray-200 dark:border-white/5 text-center">
                                 <Compass className="w-10 h-10 text-zinc-400 mb-3" />
                                 <h4 className="text-sm font-bold text-zinc-850 dark:text-white">Boundary Search Exhausted</h4>
                                 <p className="text-xs text-zinc-500 mt-1">We couldn't resolve any passports stamped for your active filter constraints.</p>
@@ -1304,9 +1304,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                         className="space-y-6"
                     >
                         {/* Category and unlocked percentages metrics panel */}
-                        <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-6 bg-white/70 dark:bg-[#0c0c0e]/80 p-6 rounded-[2rem] border border-gray-200/50 dark:border-white/5 shadow-sm">
+                        <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-6 bg-white/70 dark:bg-[#0c0c0e]/80 p-6 rounded-3xl border border-gray-200/50 dark:border-white/5 shadow-sm">
                             <div className="space-y-1.5">
-                                <span className="inline-block text-[9px] font-mono font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2.5 py-1 rounded-lg border border-amber-500/20">
+                                <span className="inline-block text-2xs font-mono font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2.5 py-1 rounded-lg border border-amber-500/20">
                                     ★ Collector Rank: {stickerStats.rank}
                                 </span>
                                 <h3 className="text-xl font-extrabold text-gray-900 dark:text-zinc-150 tracking-tight">Landmark Sticker Album</h3>
@@ -1314,7 +1314,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                             </div>
 
                             <div className="flex flex-col items-center justify-center shrink-0 w-full lg:w-48 space-y-2">
-                                <div className="flex justify-between w-full text-[10px] font-mono font-bold text-zinc-400">
+                                <div className="flex justify-between w-full text-2xs font-mono font-bold text-zinc-400">
                                     <span>ALBUM PROGRESS</span>
                                     <span className="text-amber-500">{stickerStats.percent}%</span>
                                 </div>
@@ -1324,7 +1324,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                         style={{ width: `${stickerStats.percent}%` }}
                                     />
                                 </div>
-                                <span className="text-[9px] font-mono font-bold text-zinc-500 uppercase tracking-widest text-center">
+                                <span className="text-2xs font-mono font-bold text-zinc-500 uppercase tracking-widest text-center">
                                     {stickerStats.unlockedCount} / {stickerStats.totalCount} stickers adhered
                                 </span>
                             </div>
@@ -1357,7 +1357,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                         >
                                             {cat}
                                             {stats && stats.unlocked > 0 && (
-                                                <span className={`text-[8px] px-1.5 py-0.2 rounded font-black leading-none ${stats.isCompleted ? 'bg-emerald-555 bg-emerald-500 text-white' : 'bg-amber-500/10 text-amber-500'}`}>
+                                                <span className={`text-2xs px-1.5 py-0.2 rounded font-bold leading-none ${stats.isCompleted ? 'bg-emerald-555 bg-emerald-500 text-white' : 'bg-amber-500/10 text-amber-500'}`}>
                                                     {stats.unlocked}
                                                 </span>
                                             )}
@@ -1393,9 +1393,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                                 : 'bg-[#fafafa] dark:bg-zinc-900/20 border-gray-200/40 dark:border-white/5 hover:bg-slate-100/50 dark:hover:bg-zinc-900/40'
                                         }`}
                                     >
-                                        <span className="text-[8px] font-mono font-bold text-zinc-400 uppercase tracking-wider">{item.unlocked === item.total ? '🏆 PERFECT' : 'ALBUM SECTION'}</span>
+                                        <span className="text-2xs font-mono font-bold text-zinc-400 uppercase tracking-wider">{item.unlocked === item.total ? '🏆 PERFECT' : 'ALBUM SECTION'}</span>
                                         <h4 className="text-xs font-extrabold uppercase text-gray-900 dark:text-white mt-0.5 truncate">{item.category}</h4>
-                                        <div className="mt-3 flex items-center justify-between text-[10px] font-mono text-zinc-400">
+                                        <div className="mt-3 flex items-center justify-between text-xs font-mono text-zinc-400">
                                             <span className="text-zinc-500">{item.unlocked} of {item.total}</span>
                                             <span className={item.isCompleted ? 'text-emerald-500 font-bold' : 'text-amber-500 font-bold'}>{item.percent}%</span>
                                         </div>
@@ -1439,11 +1439,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                             </div>
                             {ICONIC_STICKERS.filter(sticker => {
                                 const matchCategory = selectedStickerCategory === 'All' || sticker.category === selectedStickerCategory;
-                                const searchLower = stickerSearch.toLowerCase();
-                                const matchSearch = !stickerSearch || 
-                                    sticker.name.toLowerCase().includes(searchLower) || 
-                                    sticker.location.toLowerCase().includes(searchLower) || 
-                                    sticker.countryCode.toLowerCase().includes(searchLower);
+                                    const searchLower = stickerSearch.toLowerCase();
+                                    const matchSearch = !stickerSearch || 
+                                        sticker.name.toLowerCase().includes(searchLower) || 
+                                        sticker.location.toLowerCase().includes(searchLower) || 
+                                        sticker.countryCode.toLowerCase().includes(searchLower);
                                 return matchCategory && matchSearch;
                             }).length === 0 && (
                                 <div className="p-12 text-center text-zinc-400 font-mono font-bold uppercase tracking-wider border border-dashed border-gray-205 dark:border-zinc-805 rounded-xl">
@@ -1507,15 +1507,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                 <ExtremeFlightCard type="Shortest" flight={stats.shortestFlight} color="rose" />
                             </div>
                             <div className="lg:col-span-1">
-                                <div className="bg-white/70 dark:bg-[#0c0c0e]/80 border border-gray-200/50 dark:border-white/5 rounded-[2.2rem] p-6 backdrop-blur-2xl h-full flex flex-col justify-between">
+                                <div className="bg-white/70 dark:bg-[#0c0c0e]/80 border border-gray-200/50 dark:border-white/5 rounded-3xl p-6 backdrop-blur-2xl h-full flex flex-col justify-between">
                                     <div className="flex justify-between items-center mb-4">
-                                        <h3 className="text-[10px] font-mono font-bold text-zinc-400 uppercase tracking-widest">Preferred Class Segment</h3>
+                                        <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Preferred Class Segment</h3>
                                         <TrendingUp className="w-4 h-4 text-emerald-500" />
                                     </div>
                                     <div className="flex-1 flex flex-col justify-center space-y-3.5">
                                         {stats.classCounts.map((cabin, idx) => (
                                             <div key={idx} className="space-y-1.5">
-                                                <div className="flex justify-between text-[11px] font-mono">
+                                                <div className="flex justify-between text-xs font-mono">
                                                     <span className="font-bold text-zinc-650 dark:text-zinc-350">{cabin.label}</span>
                                                     <span className="font-bold text-zinc-800 dark:text-zinc-100">{cabin.value} trips</span>
                                                 </div>

@@ -52,11 +52,11 @@ export const GearSettingsTab: React.FC<GearSettingsTabProps> = ({ config, setCon
 
     return (
         <div className="h-full animate-fade-in">
-            <Card noPadding className="rounded-[2rem] border-white/50 dark:border-white/10 shadow-2xl h-full flex flex-col">
-                <div className="p-8 border-b border-gray-100 dark:border-white/5 bg-gradient-to-br from-cyan-500/5 to-blue-500/5 rounded-t-[2rem] shrink-0">
+            <Card noPadding className="rounded-3xl border-white/50 dark:border-white/10 shadow-2xl h-full flex flex-col">
+                <div className="p-8 border-b border-gray-100 dark:border-white/5 bg-gradient-to-br from-cyan-500/5 to-blue-500/5 rounded-t-3xl shrink-0">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                         <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 rounded-[1.5rem] bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white shadow-xl">
+                            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white shadow-xl">
                                 <span className="material-icons-outlined text-3xl">backpack</span>
                             </div>
                             <div>

@@ -728,7 +728,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
   return (
     <div className="space-y-6 md:space-y-8 animate-fade-in pb-12">
       {/* Upper Title Hub */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/30 dark:bg-zinc-900/10 p-4 md:p-6 rounded-[2rem] border border-gray-200/40 dark:border-white/5 backdrop-blur-md">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/30 dark:bg-zinc-900/10 p-4 md:p-6 rounded-3xl border border-gray-200/40 dark:border-white/5 backdrop-blur-md">
         <div>
           <div className="flex items-center gap-2">
             <Badge variant="primary" className="bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/10">
@@ -765,9 +765,9 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
         <Card noPadding className="shadow-md">
           <div className="p-6 flex items-center justify-between">
             <div className="space-y-1">
-              <span className="text-[10px] font-black uppercase text-zinc-400 tracking-wider">Total Journeys</span>
+              <span className="text-2xs font-bold uppercase text-zinc-400 tracking-wider">Total Journeys</span>
               <div className="text-2xl md:text-3xl font-black font-sans leading-none">{roadTrips.length}</div>
-              <p className="text-[10px] text-zinc-400 mt-1">Independent & Trip plans</p>
+              <p className="text-xs text-zinc-400 mt-1">Independent & Trip plans</p>
             </div>
             <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 dark:bg-indigo-400/5 border border-indigo-500/20 flex items-center justify-center text-indigo-500 dark:text-indigo-400">
               <Server className="w-5 h-5" />
@@ -779,11 +779,11 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
         <Card noPadding className="shadow-md">
           <div className="p-6 flex items-center justify-between">
             <div className="space-y-1">
-              <span className="text-[10px] font-black uppercase text-zinc-400 tracking-wider">Transit Distance</span>
+              <span className="text-2xs font-bold uppercase text-zinc-400 tracking-wider">Transit Distance</span>
               <div className="text-2xl md:text-3xl font-black font-sans leading-none">
                 {stats.totalDistance.toLocaleString()} <span className="text-sm font-bold text-zinc-400">km</span>
               </div>
-              <p className="text-[10px] text-zinc-400 mt-1">~{stats.totalDurationHours} hrs of travel</p>
+              <p className="text-xs text-zinc-400 mt-1">~{stats.totalDurationHours} hrs of travel</p>
             </div>
             <div className="w-12 h-12 rounded-2xl bg-amber-500/10 dark:bg-amber-400/5 border border-amber-500/20 flex items-center justify-center text-amber-500 dark:text-amber-400">
               <Compass className="w-5 h-5" />
@@ -795,13 +795,13 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
         <Card noPadding className="shadow-md border-emerald-500/20 dark:border-emerald-500/10">
           <div className="p-6 flex items-center justify-between">
             <div className="space-y-1">
-              <span className="text-[10px] font-black uppercase text-emerald-500 tracking-wider flex items-center gap-1">
+              <span className="text-2xs font-bold uppercase text-emerald-500 tracking-wider flex items-center gap-1">
                 <Leaf className="w-3 h-3 text-emerald-500 animate-pulse" /> Eco Optimization
               </span>
               <div className="text-2xl md:text-3xl font-black font-sans leading-none text-emerald-600 dark:text-emerald-400">
                 {stats.co2SavedKg.toLocaleString()} <span className="text-sm font-bold opacity-80">kg</span>
               </div>
-              <p className="text-[10px] text-zinc-400 mt-1">相当于种植了 <strong>{stats.treeEquivalent}</strong> 棵树</p>
+              <p className="text-xs text-zinc-400 mt-1">相当于种植了 <strong>{stats.treeEquivalent}</strong> 棵树</p>
             </div>
             <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 dark:bg-emerald-400/5 border border-emerald-500/20 flex items-center justify-center text-emerald-500 dark:text-emerald-400">
               <Leaf className="w-5 h-5" />
@@ -813,11 +813,11 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
         <Card noPadding className="shadow-md">
           <div className="p-6 flex items-center justify-between">
             <div className="space-y-1">
-              <span className="text-[10px] font-black uppercase text-zinc-400 tracking-wider">Financial Expense</span>
+              <span className="text-2xs font-bold uppercase text-zinc-400 tracking-wider">Financial Expense</span>
               <div className="text-2xl md:text-3xl font-black font-sans leading-none">
                 ${stats.totalExpense.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
               </div>
-              <p className="text-[10px] text-zinc-400 mt-1">{stats.greenRatio}% of green transits</p>
+              <p className="text-xs text-zinc-400 mt-1">{stats.greenRatio}% of green transits</p>
             </div>
             <div className="w-12 h-12 rounded-2xl bg-teal-500/10 dark:bg-teal-400/5 border border-teal-500/20 flex items-center justify-center text-teal-500 dark:text-teal-400">
               <DollarSign className="w-5 h-5" />
@@ -827,7 +827,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
       </div>
 
       {/* Interactive Map & Insights Hud Card */}
-      <Card noPadding className="shadow-lg border border-zinc-200/50 dark:border-white/5 overflow-hidden rounded-[2.2rem]">
+      <Card noPadding className="shadow-lg border border-zinc-200/50 dark:border-white/5 overflow-hidden rounded-3xl">
         <div className="p-5 md:p-6 border-b border-zinc-100 dark:border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-zinc-50/50 dark:bg-zinc-950/20">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center border border-emerald-500/20">
@@ -835,7 +835,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
             </div>
             <div>
               <h3 className="text-sm font-black text-zinc-900 dark:text-zinc-50 tracking-tight leading-none">Interactive Travel Hub</h3>
-              <p className="text-[10px] font-bold text-zinc-400 mt-1 uppercase tracking-wider">Map Network & Mode Emissions Analysis</p>
+              <p className="text-2xs font-bold text-zinc-400 mt-1 uppercase tracking-wider">Map Network & Mode Emissions Analysis</p>
             </div>
           </div>
 
@@ -884,7 +884,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                 <Suspense fallback={
                   <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-950/70 border border-white/5 space-y-4">
                     <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Booting Real-Time Vector Engine...</p>
+                    <p className="text-2xs font-bold uppercase tracking-[0.2em] text-zinc-400">Booting Real-Time Vector Engine...</p>
                   </div>
                 }>
                   <DeckFlightMap
@@ -901,7 +901,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                 <div className="w-full h-full p-6 flex flex-col justify-between">
                   <div>
                     <h4 className="text-xs font-black uppercase tracking-wider text-zinc-400">Transit Footprint Bar Chart</h4>
-                    <p className="text-[10px] text-zinc-500">Shows integrated travel distance (km) and total time spent (hours) across car, bus, train, ferry, and cruise modes.</p>
+                    <p className="text-xs text-zinc-500">Shows integrated travel distance (km) and total time spent (hours) across car, bus, train, ferry, and cruise modes.</p>
                   </div>
                   <div className="w-full h-[280px]">
                     <ResponsiveContainer width="100%" height="100%">
@@ -946,21 +946,21 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
             {/* Right sidebar inside the Hub: Smart Sync Engine! */}
             <div className="md:col-span-4 p-5 md:p-6 bg-zinc-50/10 dark:bg-black/10 flex flex-col justify-between space-y-4">
               <div className="space-y-3">
-                <div className="flex items-center gap-1.5 text-[11px] font-black uppercase text-emerald-500 tracking-wider">
+                <div className="flex items-center gap-1.5 text-xs font-bold uppercase text-emerald-500 tracking-wider">
                   <Sparkles className="w-4 h-4" /> 
                   <span>Smart Sync Engine</span>
                 </div>
                 <h4 className="text-xs font-bold text-zinc-800 dark:text-zinc-200 leading-tight">
                   Auto-Detect land segments from planned Trip itineraries
                 </h4>
-                <p className="text-[10px] text-zinc-500 leading-relaxed">
+                <p className="text-xs text-zinc-500 leading-relaxed">
                   Select any of your existing Trips. Our engine will crawl the trip's sequential visual route planner stops and generate connected transit segments using your chosen travel mode.
                 </p>
 
                 {/* Dropdowns */}
                 <div className="space-y-2 pt-2">
                   <div>
-                    <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest pl-1">Target Trip planner</span>
+                    <span className="text-2xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest pl-1">Target Trip planner</span>
                     <select
                       value={importTripId}
                       onChange={e => setImportTripId(e.target.value)}
@@ -974,7 +974,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                   </div>
 
                   <div>
-                    <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest pl-1">Transit travel method</span>
+                    <span className="text-2xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest pl-1">Transit travel method</span>
                     <select
                       value={importMode}
                       onChange={e => setImportMode(e.target.value as any)}
@@ -994,7 +994,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
               {/* Action button */}
               <div className="space-y-2">
                 {importState.message && (
-                  <div className={`p-2.5 rounded-xl border text-[10px] leading-snug ${
+                  <div className={`p-2.5 rounded-xl border text-xs leading-snug ${
                     importState.status === 'success'
                       ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
                       : importState.status === 'error'
@@ -1086,7 +1086,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
       {!loading && (
         <>
           {filteredRoadTrips.length === 0 ? (
-            <Card className="flex flex-col items-center justify-center py-16 border-dashed border-gray-200 dark:border-white/5 bg-transparent shadow-none rounded-[2rem]">
+            <Card className="flex flex-col items-center justify-center py-16 border-dashed border-gray-200 dark:border-white/5 bg-transparent shadow-none rounded-3xl">
               <div className="w-16 h-16 rounded-3xl bg-zinc-500/10 dark:bg-white/[0.02] border border-zinc-500/20 text-zinc-400 flex items-center justify-center mb-4">
                 <Compass className="w-8 h-8 text-zinc-400" />
               </div>
@@ -1117,7 +1117,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                       isDraftPlannedRoute 
                         ? 'border-dashed border-emerald-500/30' 
                         : 'border-zinc-200/50 dark:border-white/5'
-                    } hover:border-zinc-300 dark:hover:border-white/10 shadow-lg hover:shadow-xl rounded-[1.8rem] overflow-hidden transition-all duration-300`}
+                    } hover:border-zinc-300 dark:hover:border-white/10 shadow-lg hover:shadow-xl rounded-3xl overflow-hidden transition-all duration-300`}
                   >
                     <div className="p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
                       {/* Left side: Icon & Origin/Destination */}
@@ -1139,7 +1139,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                           </div>
 
                           {/* Carrier details and identification */}
-                          <div className="flex items-center gap-2 flex-wrap text-[11px] text-zinc-500 mt-1">
+                          <div className="flex items-center gap-2 flex-wrap text-xs text-zinc-500 mt-1">
                             {tr.provider && (
                               <span className="font-bold text-zinc-700 dark:text-zinc-300 pr-1.5 border-r border-zinc-200 dark:border-white/10 leading-none">
                                 {tr.provider}
@@ -1158,13 +1158,13 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                       {/* Middle side: Timing, Date & Distance estimation */}
                       <div className="flex items-center gap-6 justify-between md:justify-center pr-3 border-zinc-200 dark:border-white/10 md:border-r shrink-0">
                         <div className="text-left md:text-center space-y-1">
-                          <div className="flex items-center gap-1.5 md:justify-center text-[11px] font-bold text-zinc-700 dark:text-zinc-300 leading-none">
+                          <div className="flex items-center gap-1.5 md:justify-center text-xs font-bold text-zinc-700 dark:text-zinc-300 leading-none">
                             <Calendar className="w-3.5 h-3.5 text-blue-500" />
                             <span>{new Date(tr.departureDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                           </div>
                           
                           {tr.departureTime && (
-                            <div className="text-[10px] font-sans font-medium text-zinc-400 flex items-center gap-1 leading-none justify-start md:justify-center">
+                            <div className="text-xs font-sans font-medium text-zinc-400 flex items-center gap-1 leading-none justify-start md:justify-center">
                               <Clock className="w-3 h-3 text-zinc-400" />
                               <span>{tr.departureTime} - {tr.arrivalTime || 'Arrival'}</span>
                               {tr.duration && <span className="text-zinc-500 font-bold">({Math.round(tr.duration / 60)}h {tr.duration % 60}m)</span>}
@@ -1175,7 +1175,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                         {tr.distance && (
                           <div className="hidden lg:flex flex-col items-center">
                             <span className="text-xs font-black font-mono tracking-tight">{tr.distance} km</span>
-                            <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest mt-0.5">EST. DISTANCE</span>
+                            <span className="text-2xs font-bold text-zinc-500 uppercase tracking-widest mt-0.5">EST. DISTANCE</span>
                           </div>
                         )}
                       </div>
@@ -1194,13 +1194,13 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                           {tr.tripId ? (
                             <button
                               onClick={() => onTripClick && onTripClick(tr.tripId)}
-                              className="text-[10px] font-bold text-blue-500 hover:text-blue-600 mt-1 cursor-pointer flex items-center"
+                              className="text-xs font-bold text-blue-500 hover:text-blue-600 mt-1 cursor-pointer flex items-center"
                             >
                               <span className="truncate max-w-[120px]">{tr.tripName || 'Go to Trip'}</span>
                               <ChevronDown className="w-3 h-3 rotate-[270deg]" />
                             </button>
                           ) : (
-                            <span className="text-[9px] font-semibold text-zinc-400 uppercase tracking-wider mt-1">Independent Travel</span>
+                            <span className="text-2xs font-bold text-zinc-400 uppercase tracking-wider mt-1">Independent Travel</span>
                           )}
                         </div>
 
@@ -1254,7 +1254,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                                   <Map className="w-3.5 h-3.5 text-blue-500" /> Planned Waypoints & Stops
                                 </span>
                                 {tr.waypoints && tr.waypoints.length > 0 && (
-                                  <span className="text-[10px] font-bold text-blue-500">{tr.waypoints.length} stops scheduled</span>
+                                  <span className="text-xs font-bold text-blue-500">{tr.waypoints.length} stops scheduled</span>
                                 )}
                               </div>
 
@@ -1273,12 +1273,12 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                                       <div className="flex-1">
                                         <div className="flex items-center gap-2">
                                           <span className="font-bold text-zinc-900 dark:text-zinc-150">{wp.name}</span>
-                                          <Badge variant="secondary" className="text-[9px] px-1.5 py-0.5 bg-zinc-100 dark:bg-white/5 uppercase font-sans">
+                                          <Badge variant="secondary" className="text-2xs px-1.5 py-0.5 bg-zinc-100 dark:bg-white/5 uppercase font-sans font-bold">
                                             {wp.type}
                                           </Badge>
                                         </div>
                                         {wp.notes && (
-                                          <p className="text-[11px] text-zinc-500 mt-0.5 italic">{wp.notes}</p>
+                                          <p className="text-xs text-zinc-500 mt-0.5 italic">{wp.notes}</p>
                                         )}
                                       </div>
                                     </div>
@@ -1293,7 +1293,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
 
                             {/* Additional Information details card */}
                             <div className="bg-white/40 dark:bg-black/10 rounded-2xl p-4 border border-zinc-200/50 dark:border-white/5 space-y-3">
-                              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Itinerary Diagnostics</span>
+                              <span className="text-2xs font-bold uppercase tracking-widest text-zinc-400">Itinerary Diagnostics</span>
                               
                               <div className="space-y-2 text-xs">
                                 {tr.confirmationCode && (
@@ -1308,8 +1308,8 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                                 </div>
                                 {tr.notes && (
                                   <div className="space-y-1 border-t border-dashed pt-2">
-                                    <span className="font-bold text-[10px] text-zinc-400">DRIVE NOTES</span>
-                                    <p className="text-[11px] text-zinc-500 whitespace-pre-line leading-relaxed italic">
+                                    <span className="font-bold text-2xs text-zinc-400">DRIVE NOTES</span>
+                                    <p className="text-xs text-zinc-500 whitespace-pre-line leading-relaxed italic">
                                       "{tr.notes}"
                                     </p>
                                   </div>

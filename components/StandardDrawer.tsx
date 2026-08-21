@@ -70,10 +70,10 @@ export const StandardDrawer: React.FC<DrawerProps> = ({
       {/* 2. Slide-out Shell */}
       <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
         <div 
-          className={`w-screen max-w-lg bg-white/90 dark:bg-dark-card/90 backdrop-blur-2xl shadow-glass-modal border-l border-black/10 dark:border-white/15 flex flex-col transform transition-transform duration-300 ease-out ${
+          className={`w-screen max-w-lg bg-white/90 dark:bg-dark-card/90 backdrop-blur-sm shadow-glass-modal border-l border-black/10 dark:border-white/15 flex flex-col transform transition-transform duration-300 ease-out ${
             isVisible ? 'translate-x-0' : 'translate-x-full'
           }`}
-          style={{ WebkitBackdropFilter: 'blur(40px)' }}
+          style={{ WebkitBackdropFilter: 'blur(4px)' }}
         >
           {/* Header */}
           <div className="p-6 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">

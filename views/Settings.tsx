@@ -416,7 +416,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
     <div className="animate-fade-in w-full max-w-[90rem] mx-auto pb-16 flex flex-col h-full space-y-8 px-4 md:px-6">
       
       {/* Visual Header Grid Panel */}
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white/45 dark:bg-gray-900/40 p-8 rounded-[2rem] backdrop-blur-3xl border border-gray-200/50 dark:border-white/5 shadow-25 shrink-0 transition-all">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white/45 dark:bg-gray-900/40 p-8 rounded-3xl backdrop-blur-xl border border-gray-200/50 dark:border-white/5 shadow-25 shrink-0 transition-all">
         <div className="space-y-2">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-500 to-indigo-650 flex items-center justify-center text-white text-xl font-black shadow-lg">
@@ -433,7 +433,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
             {config.orgName.charAt(0) || 'W'}
           </div>
           <div className="text-left leading-none space-y-1">
-            <span className="text-[10px] font-mono tracking-widest text-zinc-400 dark:text-zinc-500 uppercase block font-black">Active Workspace</span>
+            <span className="text-2xs font-mono tracking-widest text-zinc-400 dark:text-zinc-500 uppercase block font-bold">Active Workspace</span>
             <span className="text-sm font-extrabold text-gray-800 dark:text-zinc-200 truncate max-w-[140px] block">{config.orgName || 'WanderGrid'}</span>
           </div>
         </div>
@@ -445,7 +445,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
           
           {/* Universal Sticky/Clean Back Navigation Row */}
           {activeTab !== 'menu' && (
-            <div className="flex items-center justify-between bg-zinc-100/60 dark:bg-zinc-900/40 backdrop-blur-xl p-4 rounded-3xl border border-zinc-200/40 dark:border-white/5 backdrop-filter sticky top-[76px] z-40 shadow-sm animate-fade-in">
+            <div className="flex items-center justify-between bg-zinc-100/60 dark:bg-zinc-900/40 backdrop-blur-xl p-4 rounded-3xl border border-zinc-200/40 dark:border-white/5 backdrop-filter sticky top-20 z-40 shadow-sm animate-fade-in">
               <button 
                 onClick={() => setActiveTab('menu')}
                 className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-white hover:bg-zinc-100 dark:bg-zinc-850 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 transition-all font-black text-xs uppercase tracking-wide cursor-pointer shadow-sm border border-zinc-200/50 dark:border-white/10 active:scale-95"
@@ -468,7 +468,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
           {activeTab === 'menu' && (
             <div className="space-y-6 animate-fade-in">
               <div className="bg-zinc-50 dark:bg-zinc-900/30 p-6 rounded-3xl border border-zinc-200/50 dark:border-white/5 text-center max-w-2xl mx-auto">
-                <span className="text-[11px] font-mono font-black uppercase text-zinc-400 dark:text-zinc-500 tracking-widest block">Systems Directory</span>
+                <span className="text-xs font-mono font-bold uppercase text-zinc-400 dark:text-zinc-500 tracking-widest block">Systems Directory</span>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1.5 font-semibold leading-relaxed">Select a category below to configure system keys, roster parameters, brand mappings, and master inventories.</p>
               </div>
 
@@ -494,7 +494,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`w-full flex flex-col justify-between p-6 rounded-[2.2rem] bg-gradient-to-br ${bgColors[tab.id]} border-2 transition-all duration-300 text-left cursor-pointer hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] group relative overflow-hidden`}
+                      className={`w-full flex flex-col justify-between p-6 rounded-3xl bg-gradient-to-br ${bgColors[tab.id]} border-2 transition-all duration-300 text-left cursor-pointer hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] group relative overflow-hidden`}
                     >
                       <div className="space-y-4">
                         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-md ${iconColors[tab.id]}`}>
@@ -506,7 +506,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                         </div>
                       </div>
                       <div className="mt-6 flex items-center justify-between text-xs font-bold text-gray-400 dark:text-zinc-500 group-hover:text-current transition-colors">
-                        <span className="uppercase tracking-widest text-[9px] font-mono font-black">Configure Parameters</span>
+                        <span className="uppercase tracking-widest text-2xs font-mono font-bold">Configure Parameters</span>
                         <div className="w-8 h-8 rounded-full bg-white dark:bg-zinc-800 border border-zinc-200/50 dark:border-white/5 flex items-center justify-center shrink-0 group-hover:translate-x-1 transition-all">
                           <span className="material-icons-outlined text-base">arrow_forward</span>
                         </div>
@@ -521,16 +521,16 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
           {/* SECTION 1: Workspace & Identity Style */}
           {activeTab === 'workspace' && (
             <div className="space-y-8">
-              <Card noPadding className="rounded-[2.2rem]">
+              <Card noPadding className="rounded-3xl">
                 <div className="p-8 border-b border-gray-150/40 dark:border-white/5 bg-gradient-to-r from-blue-500/5 via-indigo-500/5 to-purple-500/5">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div className="flex items-center gap-6">
-                      <div className="w-16 h-16 rounded-[1.5rem] bg-gradient-to-br from-blue-600 to-indigo-700 shadow-xl flex items-center justify-center text-white text-2xl font-black rotate-2 hover:rotate-6 transition-all border border-white/25">
+                      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 shadow-xl flex items-center justify-center text-white text-2xl font-black rotate-2 hover:rotate-6 transition-all border border-white/25">
                         {config.orgName.charAt(0) || 'W'}
                       </div>
                       <div className="space-y-1">
                         <h3 className="text-xl font-black text-gray-900 dark:text-white">Workspace Identity</h3>
-                        <p className="text-[10px] font-mono tracking-widest font-bold text-gray-400 uppercase">Global Localisation Controls</p>
+                        <p className="text-2xs font-mono tracking-widest font-bold text-gray-400 uppercase">Global Localisation Controls</p>
                       </div>
                     </div>
                     <Button 
@@ -591,7 +591,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                   <div className="pt-6 border-t border-gray-100 dark:border-white/5 space-y-4">
                     <div className="space-y-1">
                       <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest block">Transit & Travel Defaults</label>
-                      <p className="text-[11px] text-gray-400">Establish fallback rules for booking classes, starting points, and land connections inside planners.</p>
+                      <p className="text-xs text-gray-400">Establish fallback rules for booking classes, starting points, and land connections inside planners.</p>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       <Select 
@@ -632,7 +632,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                   <div className="pt-6 border-t border-gray-100 dark:border-white/5 space-y-3">
                     <div className="space-y-1">
                       <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Workspace Operational Days</label>
-                      <p className="text-[11px] text-gray-400">Specify standard workdays used in planning and leave allocation calculators.</p>
+                      <p className="text-xs text-gray-400">Specify standard workdays used in planning and leave allocation calculators.</p>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 pt-1">
                       {['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].map((d, i) => (
@@ -661,11 +661,11 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
           {/* SECTION 2: Personnel Roster */}
           {activeTab === 'personnel' && (
             <div className="space-y-8">
-              <Card noPadding className="rounded-[2.2rem]">
+              <Card noPadding className="rounded-3xl">
                 <div className="p-8 border-b border-gray-150/40 dark:border-white/5 bg-gradient-to-r from-emerald-500/5 to-teal-500/5 flex flex-col md:flex-row md:items-center justify-between gap-6">
                   <div className="space-y-1">
                     <h3 className="text-xl font-black text-gray-900 dark:text-white">Personnel Roster</h3>
-                    <p className="text-[10px] font-mono tracking-widest font-bold text-gray-400 uppercase">Inhabitants configurations</p>
+                    <p className="text-2xs font-mono tracking-widest font-bold text-gray-400 uppercase">Inhabitants configurations</p>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto items-stretch sm:items-center">
                     <div className="relative flex-1 sm:w-64">
@@ -728,7 +728,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                                 </div>
                                 <p className="text-xs text-slate-400 dark:text-zinc-500 truncate leading-none mt-1">{user.email || 'No email registered'}</p>
                                 <div className="pt-1 select-none">
-                                  <span className="text-[9px] font-mono font-black text-zinc-400 dark:text-zinc-500 tracking-wider">SYNC-ID: {user.id}</span>
+                                  <span className="text-2xs font-mono font-bold text-zinc-400 dark:text-zinc-500 tracking-wider">SYNC-ID: {user.id}</span>
                                 </div>
                               </div>
                             </div>
@@ -754,11 +754,11 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
 
                           <div className="mt-4 pt-4 border-t border-gray-100 dark:border-white/5 grid grid-cols-2 gap-2 text-left bg-gray-50/50 dark:bg-black/20 p-3 rounded-xl">
                             <div>
-                              <span className="text-[10px] text-zinc-400 font-bold block uppercase tracking-wide">Accrued Balance</span>
+                              <span className="text-2xs text-zinc-400 font-bold block uppercase tracking-wide">Accrued Balance</span>
                               <span className="text-sm font-extrabold text-gray-800 dark:text-zinc-200">{user.leaveBalance} Days</span>
                             </div>
                             <div>
-                              <span className="text-[10px] text-zinc-400 font-bold block uppercase tracking-wide">Taken Leave</span>
+                              <span className="text-2xs text-zinc-400 font-bold block uppercase tracking-wide">Taken Leave</span>
                               <span className="text-sm font-extrabold text-gray-800 dark:text-zinc-200">{user.takenLeave} Days</span>
                             </div>
                           </div>
@@ -774,18 +774,18 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
           {/* SECTION 3: System Integrations */}
           {activeTab === 'integrations' && (
             <div className="space-y-8">
-              <Card noPadding className="rounded-[2.2rem]">
+              <Card noPadding className="rounded-3xl">
                 <div className="p-8 border-b border-gray-150/40 dark:border-white/5 bg-gradient-to-r from-purple-500/5 via-indigo-500/5 to-blue-500/5 flex flex-col md:flex-row md:items-center justify-between gap-6">
                   <div className="space-y-1">
                     <h3 className="text-xl font-black text-gray-900 dark:text-white">System Integrations</h3>
-                    <p className="text-[10px] font-mono tracking-widest font-bold text-gray-400 uppercase">Secret Keys & Microservices</p>
+                    <p className="text-2xs font-mono tracking-widest font-bold text-gray-400 uppercase">Secret Keys & Microservices</p>
                   </div>
                   <Button 
                     variant="primary" 
                     size="md" 
                     className="!rounded-xl border-none shadow-lg" 
                     onClick={handleSaveOrgSettings} 
-                    isLoading={isSavingOrg}
+                    isLoading={isSavingOrg} 
                     icon={<span className="material-icons-outlined text-sm">save</span>}
                   >
                     Save API Credentials
@@ -808,7 +808,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                       </div>
                       <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 rounded-lg border border-emerald-100 dark:border-emerald-900/30">
                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        <span className="text-[9px] font-black uppercase tracking-wider font-mono">Active</span>
+                        <span className="text-2xs font-bold uppercase tracking-wider font-mono">Active</span>
                       </div>
                     </div>
 
@@ -825,7 +825,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                       </div>
                       <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 rounded-lg border border-emerald-100 dark:border-emerald-900/30">
                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        <span className="text-[9px] font-black uppercase tracking-wider font-mono">Active</span>
+                        <span className="text-2xs font-bold uppercase tracking-wider font-mono">Active</span>
                       </div>
                     </div>
 
@@ -844,9 +844,9 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                           </div>
                         </div>
                         
-                        <div className={`flex items-center gap-2 px-3  py-1.5 border rounded-xl font-mono ${isGeminiActive ? 'bg-emerald-50 dark:bg-emerald-950/25 text-emerald-600 dark:text-emerald-450 border-emerald-100 dark:border-emerald-900/30' : 'bg-rose-50 dark:bg-rose-950/25 text-rose-600 dark:text-rose-450 border-rose-100 dark:border-rose-900/30'}`}>
+                        <div className={`flex items-center gap-2 px-3 py-1.5 border rounded-xl font-mono ${isGeminiActive ? 'bg-emerald-50 dark:bg-emerald-950/25 text-emerald-600 dark:text-emerald-450 border-emerald-100 dark:border-emerald-900/30' : 'bg-rose-50 dark:bg-rose-950/25 text-rose-600 dark:text-rose-450 border-rose-100 dark:border-rose-900/30'}`}>
                           <div className={`w-1.5 h-1.5 rounded-full ${isGeminiActive ? 'bg-emerald-550 animate-pulse' : 'bg-rose-500'}`} />
-                          <span className="text-[10px] font-black uppercase tracking-wider">
+                          <span className="text-2xs font-bold uppercase tracking-wider">
                             {hasUserKey ? 'Key Configured' : hasEnvKey ? 'Active (Host)' : 'Inactive'}
                           </span>
                         </div>
@@ -861,7 +861,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                           className="!bg-gray-50 dark:!bg-black/20 font-mono text-sm leading-none py-3"
                           label="Custom User API Key Overwrite"
                         />
-                        <p className="text-[10px] text-zinc-400 mt-2 font-mono leading-tight">Provide key override to replace host key. Leave blank to inherit systems default setting.</p>
+                        <p className="text-2xs text-zinc-400 mt-2 font-mono leading-tight">Provide key override to replace host key. Leave blank to inherit systems default setting.</p>
                       </div>
                     </div>
 
@@ -881,9 +881,9 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                           href="https://aviationstack.com" 
                           target="_blank" 
                           rel="noopener noreferrer"
-                          className="text-[10px] font-black text-blue-500 hover:underline hover:text-blue-600 uppercase tracking-widest flex items-center gap-1 font-mono"
+                          className="text-xs font-bold text-blue-500 hover:underline hover:text-blue-600 uppercase tracking-widest flex items-center gap-1 font-mono"
                         >
-                          REGISTER <span className="material-icons-outlined text-[11px] block">open_in_new</span>
+                          REGISTER <span className="material-icons-outlined text-xs block">open_in_new</span>
                         </a>
                       </div>
                       <Input 
@@ -911,9 +911,9 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                           href="https://brandfetch.com/developers" 
                           target="_blank" 
                           rel="noopener noreferrer"
-                          className="text-[10px] font-black text-pink-500 hover:underline hover:text-pink-650 uppercase tracking-widest flex items-center gap-1 font-mono"
+                          className="text-xs font-bold text-pink-500 hover:underline hover:text-pink-650 uppercase tracking-widest flex items-center gap-1 font-mono"
                         >
-                          REGISTER <span className="material-icons-outlined text-[11px] block font-black">open_in_new</span>
+                          REGISTER <span className="material-icons-outlined text-xs block font-bold">open_in_new</span>
                         </a>
                       </div>
                       <Input 
@@ -961,10 +961,10 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
                 
                 {/* Database Lifecycle Card */}
-                <Card noPadding className="rounded-[2.2rem]">
+                <Card noPadding className="rounded-3xl">
                   <div className="p-8 border-b border-gray-100 dark:border-white/5 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-white/5 dark:to-transparent">
                     <h3 className="text-lg font-black text-gray-900 dark:text-white leading-none">Database Lifecycle</h3>
-                    <p className="text-[10px] font-mono tracking-widest leading-relaxed font-bold text-gray-400 uppercase mt-2">Persistence & Migration</p>
+                    <p className="text-2xs font-mono tracking-widest leading-relaxed font-bold text-gray-400 uppercase mt-2">Persistence & Migration</p>
                   </div>
 
                   <div className="p-6 space-y-6">
@@ -973,15 +973,15 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                         <span className="material-icons-outlined text-amber-500 mt-1">warning</span>
                         <div className="space-y-1">
                           <p className="text-xs font-black text-amber-800 dark:text-amber-200 tracking-wide uppercase">System Warning</p>
-                          <p className="text-[10px] text-amber-700/80 dark:text-amber-300/60 leading-normal font-semibold">Restoring from a backup will completely overwrite your database including all registered personnel roster accounts and trips.</p>
+                          <p className="text-xs text-amber-700/80 dark:text-amber-300/60 leading-normal font-semibold">Restoring from a backup will completely overwrite your database including all registered personnel roster accounts and trips.</p>
                         </div>
                       </div>
                     </div>
 
                     <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-800/20 border border-zinc-200 dark:border-zinc-800 space-y-2">
                       <p className="text-xs font-black text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">Unified Backup Features:</p>
-                      <p className="text-[10px] text-zinc-500 font-medium leading-relaxed">Generates a secure offline file containing all personal records from server state maps:</p>
-                      <ul className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-zinc-650 dark:text-zinc-400 font-bold font-mono">
+                      <p className="text-xs text-zinc-500 font-medium leading-relaxed">Generates a secure offline file containing all personal records from server state maps:</p>
+                      <ul className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-zinc-650 dark:text-zinc-400 font-bold font-mono">
                         <li className="flex items-center gap-1.5"><span className="text-blue-500 text-base">•</span> Travel Atlas (visited)</li>
                         <li className="flex items-center gap-1.5"><span className="text-blue-500 text-base">•</span> Flight Log Boards</li>
                         <li className="flex items-center gap-1.5"><span className="text-blue-500 text-base">•</span> Trip & Route Rosters</li>
@@ -1025,10 +1025,10 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                 </Card>
 
                 {/* Calendar Feeds Card */}
-                <Card noPadding className="rounded-[2.2rem] h-full flex flex-col justify-between">
+                <Card noPadding className="rounded-3xl h-full flex flex-col justify-between">
                   <div className="p-8 border-b border-gray-100 dark:border-white/5 bg-gradient-to-br from-teal-500/5 to-emerald-500/5">
                     <h3 className="text-lg font-black text-gray-900 dark:text-white leading-none">External Calendar Sync</h3>
-                    <p className="text-[10px] font-mono font-bold tracking-widest text-teal-500 dark:text-teal-400 uppercase mt-2">Personal Synced Feeds</p>
+                    <p className="text-2xs font-mono font-bold tracking-widest text-teal-500 dark:text-teal-400 uppercase mt-2">Personal Synced Feeds</p>
                   </div>
 
                   <div className="p-6 space-y-6 flex-1 flex flex-col justify-between">
@@ -1050,15 +1050,15 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                 </Card>
 
                 {/* Spreadsheet Flight Ingestion */}
-                <Card noPadding className="rounded-[2.2rem] md:col-span-2">
+                <Card noPadding className="rounded-3xl md:col-span-2">
                   <div className="p-8 border-b border-zinc-100 dark:border-white/5 bg-gradient-to-r from-blue-500/5 to-indigo-500/5">
                     <h3 className="text-lg font-black text-gray-900 dark:text-white leading-none">Spreadsheet Flight Ingestion</h3>
-                    <p className="text-[10px] font-mono tracking-widest font-bold text-gray-450 uppercase mt-2">Ingestion & Field Mapping Engine</p>
+                    <p className="text-2xs font-mono tracking-widest font-bold text-gray-450 uppercase mt-2">Ingestion & Field Mapping Engine</p>
                   </div>
 
                   <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
                     <div className="space-y-3">
-                      <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest block font-mono">Automatic Column Mapper</span>
+                      <span className="text-2xs font-bold text-blue-500 uppercase tracking-widest block font-mono">Automatic Column Mapper</span>
                       <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-semibold">
                         Load Microsoft Excel (.xlsx), standard comma-separated tables (.csv), or AirTrail backup files. Map spreadsheet headers directly to internal database flight properties, select specific flight lists, and auto-compile them directly into trips.
                       </p>
@@ -1076,26 +1076,26 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                     </div>
 
                     <div className="bg-slate-50 dark:bg-slate-950/20 p-5 rounded-2xl border border-zinc-200/50 dark:border-white/5 space-y-4">
-                      <span className="text-[10px] font-mono font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block">Roster Flight Exports</span>
+                      <span className="text-2xs font-mono font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block">Roster Flight Exports</span>
                       <div className="grid grid-cols-3 gap-2">
                         <Button 
                           onClick={() => handleFlightExport('xlsx')} 
                           variant="secondary" 
-                          className="h-10 text-[10px] font-bold !rounded-lg bg-white dark:bg-zinc-850"
+                          className="h-10 text-xs font-bold !rounded-lg bg-white dark:bg-zinc-850"
                         >
                           Excel
                         </Button>
                         <Button 
                           onClick={() => handleFlightExport('csv')} 
                           variant="secondary" 
-                          className="h-10 text-[10px] font-bold !rounded-lg bg-white dark:bg-zinc-850"
+                          className="h-10 text-xs font-bold !rounded-lg bg-white dark:bg-zinc-850"
                         >
                           CSV
                         </Button>
                         <Button 
                           onClick={() => handleFlightExport('json')} 
                           variant="secondary" 
-                          className="h-10 text-[10px] font-bold !rounded-lg bg-white dark:bg-zinc-850"
+                          className="h-10 text-xs font-bold !rounded-lg bg-white dark:bg-zinc-850"
                         >
                           JSON
                         </Button>

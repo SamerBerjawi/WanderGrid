@@ -80,8 +80,8 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
 
             {/* Modal Dialog */}
             <div 
-                className="relative w-full max-w-lg bg-white/90 dark:bg-dark-card/90 backdrop-blur-2xl border border-black/10 dark:border-white/15 shadow-glass-modal rounded-3xl overflow-hidden flex flex-col max-h-[88vh] z-10"
-                style={{ WebkitBackdropFilter: 'blur(40px)' }}
+                className="relative w-full max-w-lg bg-white/90 dark:bg-dark-card/90 backdrop-blur-sm border border-black/10 dark:border-white/15 shadow-glass-modal rounded-3xl overflow-hidden flex flex-col max-h-[88vh] z-10"
+                style={{ WebkitBackdropFilter: 'blur(4px)' }}
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header with WanderGrid Studio Brand */}
@@ -178,11 +178,11 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                             <Compass className="w-4 h-4" />
                                         </div>
                                         <div>
-                                            <h3 className="text-xs font-black uppercase tracking-wider text-white">Projection Engine</h3>
-                                            <p className="text-[10px] text-zinc-400">Choose between 3D Globe and 2D Mercator</p>
+                                            <h3 className="text-xs font-bold uppercase tracking-wider text-white">Projection Engine</h3>
+                                            <p className="text-xs text-zinc-400">Choose between 3D Globe and 2D Mercator</p>
                                         </div>
                                     </div>
-                                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                                    <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400 border border-blue-500/30">
                                         {settings.projection === 'globe' ? '3D Orbital' : '2D Planar'}
                                     </span>
                                 </div>
@@ -201,8 +201,8 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                             {settings.projection === 'globe' && <div className="w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_8px_#60a5fa]" />}
                                         </div>
                                         <div>
-                                            <p className="text-xs font-black text-white">3D Celestial Globe</p>
-                                            <p className="text-[9px] text-zinc-400">Spherical geodesics</p>
+                                            <p className="text-xs font-bold text-white">3D Celestial Globe</p>
+                                            <p className="text-2xs text-zinc-400">Spherical geodesics</p>
                                         </div>
                                     </button>
 
@@ -219,8 +219,8 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                             {settings.projection === 'flat' && <div className="w-2 h-2 rounded-full bg-indigo-400 shadow-[0_0_8px_#818cf8]" />}
                                         </div>
                                         <div>
-                                            <p className="text-xs font-black text-white">2D Mercator Atlas</p>
-                                            <p className="text-[9px] text-zinc-400">Flat planar view</p>
+                                            <p className="text-xs font-bold text-white">2D Mercator Atlas</p>
+                                            <p className="text-2xs text-zinc-400">Flat planar view</p>
                                         </div>
                                     </button>
                                 </div>
@@ -229,8 +229,8 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                             {/* BASEMAP TILES */}
                             <div>
                                 <div className="flex items-center justify-between mb-3">
-                                    <h3 className="text-[11px] font-black text-zinc-400 tracking-wider uppercase">Cartographic Basemap</h3>
-                                    <span className="text-[10px] font-bold text-zinc-500">4 Curated Tilesets</span>
+                                    <h3 className="text-xs font-bold text-zinc-400 tracking-wider uppercase">Cartographic Basemap</h3>
+                                    <span className="text-xs font-medium text-zinc-500">4 Curated Tilesets</span>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-2.5">
@@ -242,11 +242,11 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                             renderSwatch: () => (
                                                 <div className="w-full h-8 rounded-xl border border-white/15 flex items-center px-2.5 justify-between bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-800 relative overflow-hidden">
                                                     <div className="flex items-center gap-1.5 z-10">
-                                                        <span className="text-[10px]">🌙</span>
-                                                        <span className="text-[10px] font-bold text-zinc-300">Dark</span>
-                                                        <span className="text-[9px] text-zinc-500">/</span>
-                                                        <span className="text-[10px]">☀️</span>
-                                                        <span className="text-[10px] font-bold text-zinc-300">Light</span>
+                                                        <span className="text-xs">🌙</span>
+                                                        <span className="text-xs font-bold text-zinc-300">Dark</span>
+                                                        <span className="text-2xs text-zinc-500">/</span>
+                                                        <span className="text-xs">☀️</span>
+                                                        <span className="text-xs font-bold text-zinc-300">Light</span>
                                                     </div>
                                                     <div className="w-2 h-2 rounded-full border border-white/40 z-10" />
                                                 </div>
@@ -258,11 +258,13 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                             desc: 'VIIRS HD city light radiance',
                                             renderSwatch: () => (
                                                 <div className="w-full h-8 rounded-xl border border-amber-500/30 flex items-center px-2.5 justify-between bg-[#040711] relative overflow-hidden">
-                                                    <div className="absolute top-2 left-10 w-1 h-1 rounded-full bg-amber-400 shadow-[0_0_4px_#f59e0b] animate-pulse" />
-                                                    <div className="absolute bottom-2 left-20 w-1.5 h-1.5 rounded-full bg-amber-300 shadow-[0_0_6px_#f59e0b]" />
+                                                    {/* Ambient city radiance cluster on the right, away from text */}
+                                                    <div className="absolute top-1.5 right-12 w-1.5 h-1.5 rounded-full bg-amber-400/90 shadow-[0_0_6px_#f59e0b] animate-pulse" />
+                                                    <div className="absolute bottom-1.5 right-7 w-1 h-1 rounded-full bg-amber-300/80 shadow-[0_0_4px_#f59e0b]" />
+                                                    <div className="absolute top-3.5 right-16 w-0.5 h-0.5 rounded-full bg-amber-200/60 shadow-[0_0_3px_#f59e0b]" />
                                                     <div className="flex items-center gap-1.5 z-10">
-                                                        <span className="text-[10px]">✨</span>
-                                                        <span className="text-[10px] font-black text-amber-200">NASA Lights</span>
+                                                         <span className="text-xs">✨</span>
+                                                         <span className="text-xs font-bold text-amber-100 drop-shadow-sm">NASA Lights</span>
                                                     </div>
                                                     <div className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_6px_#f59e0b] z-10" />
                                                 </div>
@@ -275,8 +277,8 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                             renderSwatch: () => (
                                                 <div className="w-full h-8 rounded-xl border border-emerald-500/20 flex items-center px-2.5 justify-between bg-gradient-to-r from-[#0a1a14] to-[#0d2a1f] relative overflow-hidden">
                                                     <div className="flex items-center gap-1.5 z-10">
-                                                        <span className="text-[10px]">🛰️</span>
-                                                        <span className="text-[10px] font-bold text-emerald-200">Satellite</span>
+                                                        <span className="text-xs">🛰️</span>
+                                                        <span className="text-xs font-bold text-emerald-200">Satellite</span>
                                                     </div>
                                                     <div className="w-2 h-2 rounded-full border border-emerald-400/50 z-10" />
                                                 </div>
@@ -289,8 +291,8 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                             renderSwatch: () => (
                                                 <div className="w-full h-8 rounded-xl border border-cyan-500/20 flex items-center px-2.5 justify-between bg-gradient-to-r from-[#041424] to-[#08223a] relative overflow-hidden">
                                                     <div className="flex items-center gap-1.5 z-10">
-                                                        <span className="text-[10px]">🌊</span>
-                                                        <span className="text-[10px] font-bold text-cyan-200">Bathymetry</span>
+                                                        <span className="text-xs">🌊</span>
+                                                        <span className="text-xs font-bold text-cyan-200">Bathymetry</span>
                                                     </div>
                                                     <div className="w-2 h-2 rounded-full border border-cyan-400/50 z-10" />
                                                 </div>
@@ -309,7 +311,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                             {b.renderSwatch()}
                                             <div>
                                                 <p className="text-xs font-bold text-zinc-100">{b.label}</p>
-                                                <p className="text-[9px] text-zinc-400">{b.desc}</p>
+                                                <p className="text-2xs text-zinc-400">{b.desc}</p>
                                             </div>
                                         </button>
                                     ))}
@@ -320,10 +322,10 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                             <div className="p-4 rounded-3xl bg-gradient-to-b from-white/[0.07] to-white/[0.02] border border-white/10 shadow-xl space-y-3">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <h3 className="text-xs font-black uppercase tracking-wider text-white">Scratch City Pins</h3>
-                                        <p className="text-[10px] text-zinc-400">Marker sizing & visibility on foil</p>
+                                        <h3 className="text-xs font-bold uppercase tracking-wider text-white">Scratch City Pins</h3>
+                                        <p className="text-xs text-zinc-400">Marker sizing & visibility on foil</p>
                                     </div>
-                                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                                    <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400 border border-blue-500/30">
                                         {settings.scratchCitySize === 'off' ? 'Hidden' : settings.scratchCitySize || 'Normal'}
                                     </span>
                                 </div>
@@ -353,7 +355,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
 
                             {/* SCRATCH HIGHLIGHT TOGGLES (LIVED & WISHLIST) */}
                             <div className="p-4 rounded-3xl bg-gradient-to-b from-white/[0.07] to-white/[0.02] border border-white/10 shadow-xl space-y-3">
-                                <h3 className="text-xs font-black uppercase tracking-wider text-white">Territory Highlights</h3>
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-white">Territory Highlights</h3>
 
                                 {/* Lived Residences Toggle */}
                                 <div className="flex items-center justify-between pt-1">
@@ -363,7 +365,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                         </div>
                                         <div>
                                             <p className="text-xs font-bold text-white">Lived Residences</p>
-                                            <p className="text-[10px] text-zinc-400">Current & past homes on foil</p>
+                                            <p className="text-xs text-zinc-400">Current & past homes on foil</p>
                                         </div>
                                     </div>
                                     <button
@@ -391,7 +393,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                         </div>
                                         <div>
                                             <p className="text-xs font-bold text-white">Layover Territories</p>
-                                            <p className="text-[10px] text-zinc-400">Airport transit & connections</p>
+                                            <p className="text-xs text-zinc-400">Airport transit & connections</p>
                                         </div>
                                     </div>
                                     <button
@@ -419,7 +421,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                         </div>
                                         <div>
                                             <p className="text-xs font-bold text-white">Wishlist Destinations</p>
-                                            <p className="text-[10px] text-zinc-400">Dream expedition targets</p>
+                                            <p className="text-xs text-zinc-400">Dream expedition targets</p>
                                         </div>
                                     </div>
                                     <button
@@ -447,10 +449,10 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                             <div className="p-4 rounded-3xl bg-gradient-to-b from-white/[0.07] to-white/[0.02] border border-white/10 shadow-xl space-y-3">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <h3 className="text-xs font-black uppercase tracking-wider text-white">Aerodrome Infrastructure</h3>
-                                        <p className="text-[10px] text-zinc-400">Physical runways & taxiways</p>
+                                        <h3 className="text-xs font-bold uppercase tracking-wider text-white">Aerodrome Infrastructure</h3>
+                                        <p className="text-xs text-zinc-400">Physical runways & taxiways</p>
                                     </div>
-                                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                                    <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400 border border-blue-500/30">
                                         {settings.airportDetail === 'detailed' ? 'True Layout' : 'Beacon'}
                                     </span>
                                 </div>
@@ -464,8 +466,8 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                 : 'border-white/10 bg-zinc-900/60 text-zinc-400 hover:border-white/20'
                                         }`}
                                     >
-                                        <p className="text-xs font-black text-white">Minimal Beacon</p>
-                                        <p className="text-[9px] text-zinc-400 mt-0.5">Circular hub nodes</p>
+                                        <p className="text-xs font-bold text-white">Minimal Beacon</p>
+                                        <p className="text-2xs text-zinc-400 mt-0.5">Circular hub nodes</p>
                                     </button>
 
                                     <button
@@ -476,8 +478,8 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                 : 'border-white/10 bg-zinc-900/60 text-zinc-400 hover:border-white/20'
                                         }`}
                                     >
-                                        <p className="text-xs font-black text-white">True Runways</p>
-                                        <p className="text-[9px] text-zinc-400 mt-0.5">Meter-accurate strips</p>
+                                        <p className="text-xs font-bold text-white">True Runways</p>
+                                        <p className="text-2xs text-zinc-400 mt-0.5">Meter-accurate strips</p>
                                     </button>
                                 </div>
                             </div>
@@ -485,8 +487,8 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                             {/* HUB NODES */}
                             <div>
                                 <div className="flex items-center justify-between mb-2">
-                                    <h3 className="text-[11px] font-black text-zinc-400 tracking-wider uppercase">Airport Hub Sizing</h3>
-                                    <span className="text-[10px] text-zinc-400 capitalize">{settings.airportSize} • {settings.airportMode}</span>
+                                    <h3 className="text-xs font-bold text-zinc-400 tracking-wider uppercase">Airport Hub Sizing</h3>
+                                    <span className="text-xs text-zinc-400 capitalize">{settings.airportSize} • {settings.airportMode}</span>
                                 </div>
 
                                 <div className="grid grid-cols-4 gap-1.5 mb-2.5">
@@ -536,7 +538,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
 
                             {/* ROUTE PRESENTATION */}
                             <div className="space-y-4 pt-3 border-t border-black/5 dark:border-white/5">
-                                <h3 className="text-[11px] font-black text-light-text-secondary dark:text-zinc-400 tracking-wider uppercase">Route Arcs Presentation</h3>
+                                <h3 className="text-xs font-bold text-light-text-secondary dark:text-zinc-400 tracking-wider uppercase">Route Arcs Presentation</h3>
 
                                 {/* Color Palette */}
                                 <div>
@@ -557,7 +559,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                 }`}
                                             >
                                                 <p className="text-xs font-bold text-light-text dark:text-white">{cl.label}</p>
-                                                <p className="text-[9px] text-light-text-secondary dark:text-zinc-400">{cl.desc}</p>
+                                                <p className="text-2xs text-light-text-secondary dark:text-zinc-400">{cl.desc}</p>
                                             </button>
                                         ))}
                                     </div>
@@ -565,7 +567,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
 
                                 {/* MULTI-MODAL ROUTE INTELLIGENCE */}
                                 <div className="space-y-3 pt-3 border-t border-black/5 dark:border-white/5">
-                                    <h3 className="text-[11px] font-black text-light-text-secondary dark:text-zinc-400 tracking-wider uppercase">
+                                    <h3 className="text-xs font-bold text-light-text-secondary dark:text-zinc-400 tracking-wider uppercase">
                                         Multi-Modal Route Intelligence
                                     </h3>
 
@@ -574,11 +576,11 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                         <div>
                                             <h4 className="text-xs font-bold text-light-text dark:text-white flex items-center gap-1.5">
                                                 <span>Realistic Route Tracing</span>
-                                                <span className="px-2 py-0.5 text-[9px] font-black rounded-full bg-primary-500/20 text-primary-600 dark:text-primary-400 border border-primary-500/30">
+                                                <span className="px-2 py-0.5 text-2xs font-bold uppercase tracking-wider rounded-full bg-primary-500/20 text-primary-600 dark:text-primary-400 border border-primary-500/30">
                                                     Road & Rail
                                                 </span>
                                             </h4>
-                                            <p className="text-[10px] text-light-text-secondary dark:text-zinc-400 mt-0.5">
+                                            <p className="text-xs text-light-text-secondary dark:text-zinc-400 mt-0.5">
                                                 Follows real highways (OSRM) and railway tracks (OSM Rail)
                                             </p>
                                         </div>
@@ -604,7 +606,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                     {/* TAB 3: ATMOSPHERE */}
                     {activeTab === 'atmosphere' && (
                         <div className="space-y-6">
-                            <h3 className="text-[11px] font-black text-zinc-400 tracking-wider uppercase mb-3">
+                            <h3 className="text-xs font-bold text-zinc-400 tracking-wider uppercase mb-3">
                                 Atmospheric Telemetry
                             </h3>
 
@@ -616,12 +618,12 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                             <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
                                                 <span>Solar Twilight Shading</span>
                                                 {settings.timeOfDay && (
-                                                    <span className="px-2 py-0.5 text-[9px] font-black rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                                                    <span className="px-2 py-0.5 text-2xs font-bold uppercase tracking-wider rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
                                                         14-Band Penumbra
                                                     </span>
                                                 )}
                                             </h4>
-                                            <p className="text-[10px] text-zinc-400 mt-0.5">Atmospheric multi-band twilight gradient</p>
+                                            <p className="text-xs text-zinc-400 mt-0.5">Atmospheric multi-band twilight gradient</p>
                                         </div>
                                         <button
                                             type="button"
@@ -646,13 +648,13 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                             <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
                                                 <span>Doppler Rain Radar</span>
                                                 {settings.rainRadar && (
-                                                    <span className="flex items-center gap-1 px-2 py-0.5 text-[9px] font-black rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                                    <span className="flex items-center gap-1 px-2 py-0.5 text-2xs font-bold uppercase tracking-wider rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                                                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                                                         Live Stream
                                                     </span>
                                                 )}
                                             </h4>
-                                            <p className="text-[10px] text-zinc-400 mt-0.5">Global precipitation radar telemetry</p>
+                                            <p className="text-xs text-zinc-400 mt-0.5">Global precipitation radar telemetry</p>
                                         </div>
                                         <button
                                             type="button"
@@ -673,7 +675,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                         <div className="pt-2.5 border-t border-white/5 space-y-3 animate-fade-in">
                                             {/* Opacity Slider */}
                                             <div>
-                                                <div className="flex items-center justify-between text-[10px] font-bold text-zinc-300 mb-1">
+                                                <div className="flex items-center justify-between text-xs font-medium text-zinc-300 mb-1">
                                                     <span>Radar Intensity</span>
                                                     <span className="text-blue-400">{Math.round((settings.rainRadarOpacity || 0.85) * 100)}%</span>
                                                 </div>

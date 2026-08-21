@@ -229,11 +229,11 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
                                     </div>
                                     <div className="pt-2 flex gap-2">
                                         <div className="flex-1 bg-white dark:bg-gray-900 p-2 rounded-xl text-center shadow-sm">
-                                            <span className="block text-[9px] font-black text-gray-400 uppercase">Terminal</span>
+                                            <span className="block text-2xs font-bold text-gray-400 uppercase">Terminal</span>
                                             <span className="font-bold text-gray-800 dark:text-white">{flightData.departure.terminal || '-'}</span>
                                         </div>
                                         <div className="flex-1 bg-white dark:bg-gray-900 p-2 rounded-xl text-center shadow-sm">
-                                            <span className="block text-[9px] font-black text-gray-400 uppercase">Gate</span>
+                                            <span className="block text-2xs font-bold text-gray-400 uppercase">Gate</span>
                                             <span className="font-bold text-gray-800 dark:text-white">{flightData.departure.gate || '-'}</span>
                                         </div>
                                     </div>
@@ -254,11 +254,11 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
                                     </div>
                                     <div className="pt-2 flex gap-2">
                                         <div className="flex-1 bg-white dark:bg-gray-900 p-2 rounded-xl text-center shadow-sm">
-                                            <span className="block text-[9px] font-black text-gray-400 uppercase">Terminal</span>
+                                            <span className="block text-2xs font-bold text-gray-400 uppercase">Terminal</span>
                                             <span className="font-bold text-gray-800 dark:text-white">{flightData.arrival.terminal || '-'}</span>
                                         </div>
                                         <div className="flex-1 bg-white dark:bg-gray-900 p-2 rounded-xl text-center shadow-sm">
-                                            <span className="block text-[9px] font-black text-gray-400 uppercase">Gate</span>
+                                            <span className="block text-2xs font-bold text-gray-400 uppercase">Gate</span>
                                             <span className="font-bold text-gray-800 dark:text-white">{flightData.arrival.gate || '-'}</span>
                                         </div>
                                     </div>

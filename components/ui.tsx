@@ -384,11 +384,11 @@ export const Modal: React.FC<ModalProps> = ({
       {/* 2. Elevated Glassmorphic Modal Container */}
       <div 
         className={cn(
-          "relative bg-white/90 dark:bg-dark-card/90 backdrop-blur-2xl border border-black/10 dark:border-white/15 shadow-glass-modal rounded-3xl w-full overflow-hidden transform transition-all duration-300 max-h-[90vh] flex flex-col z-10",
+          "relative bg-white/90 dark:bg-dark-card/90 backdrop-blur-sm border border-black/10 dark:border-white/15 shadow-glass-modal rounded-3xl w-full overflow-hidden transform transition-all duration-300 max-h-[90vh] flex flex-col z-10",
           maxWidth,
           isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'
         )}
-        style={{ WebkitBackdropFilter: 'blur(40px)' }}
+        style={{ WebkitBackdropFilter: 'blur(4px)' }}
       >
         {/* Header */}
         <div className="p-6 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">

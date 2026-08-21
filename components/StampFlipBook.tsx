@@ -75,7 +75,7 @@ export const StampFlipBook: React.FC<StampFlipBookProps> = ({ visitedCountries, 
       <div className="flex items-center gap-1 p-1 bg-zinc-100/65 dark:bg-zinc-900/65 rounded-2xl border border-zinc-200/40 dark:border-white/5 mb-6 z-10 self-center">
         <button
           onClick={() => { setStampTypeFilter('both'); setCurrentPage(0); }}
-          className={`px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+          className={`px-3.5 py-1.5 rounded-xl text-2xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
             stampTypeFilter === 'both'
               ? 'bg-white dark:bg-zinc-800 text-gray-950 dark:text-white shadow-xs'
               : 'text-zinc-500 hover:text-gray-900 dark:text-zinc-400 dark:hover:text-white'
@@ -85,7 +85,7 @@ export const StampFlipBook: React.FC<StampFlipBookProps> = ({ visitedCountries, 
         </button>
         <button
           onClick={() => { setStampTypeFilter('countries'); setCurrentPage(0); }}
-          className={`px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+          className={`px-3.5 py-1.5 rounded-xl text-2xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
             stampTypeFilter === 'countries'
               ? 'bg-white dark:bg-zinc-800 text-gray-950 dark:text-white shadow-xs'
               : 'text-zinc-500 hover:text-gray-900 dark:text-zinc-400 dark:hover:text-white'
@@ -95,7 +95,7 @@ export const StampFlipBook: React.FC<StampFlipBookProps> = ({ visitedCountries, 
         </button>
         <button
           onClick={() => { setStampTypeFilter('stickers'); setCurrentPage(0); }}
-          className={`px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+          className={`px-3.5 py-1.5 rounded-xl text-2xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
             stampTypeFilter === 'stickers'
               ? 'bg-white dark:bg-zinc-800 text-gray-950 dark:text-white shadow-xs'
               : 'text-zinc-500 hover:text-gray-900 dark:text-zinc-400 dark:hover:text-white'
@@ -121,7 +121,7 @@ export const StampFlipBook: React.FC<StampFlipBookProps> = ({ visitedCountries, 
             transformStyle: 'preserve-3d',
             transition: isHovered ? 'transform 0.1s ease-out, box-shadow 0.3s ease-out' : 'transform 0.6s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.6s cubic-bezier(0.25, 1, 0.5, 1)',
           }}
-          className={`w-full max-w-3xl h-full rounded-[2.5rem] relative transition-all ${
+          className={`w-full max-w-3xl h-full rounded-3xl relative transition-all ${
             isHovered 
               ? 'shadow-[0_30px_60px_-15px_rgba(0,0,0,0.45)] dark:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.7)]' 
               : 'shadow-[0_20px_40px_-20px_rgba(0,0,0,0.3)] dark:shadow-[0_20px_40px_-20px_rgba(0,0,0,0.5)]'
@@ -129,7 +129,7 @@ export const StampFlipBook: React.FC<StampFlipBookProps> = ({ visitedCountries, 
         >
           {/* Cover Page */}
           {currentPage === 0 ? (
-            <div className="absolute inset-0 bg-gradient-to-br from-[#1e2530] via-[#11161d] to-[#0a0d12] rounded-[2.5rem] border border-zinc-800 flex flex-col items-center justify-between p-12 text-center text-amber-500 overflow-hidden shadow-inner">
+            <div className="absolute inset-0 bg-gradient-to-br from-[#1e2530] via-[#11161d] to-[#0a0d12] rounded-3xl border border-zinc-800 flex flex-col items-center justify-between p-12 text-center text-amber-500 overflow-hidden shadow-inner">
               {/* Cover aesthetic stamps */}
               <div className="absolute -left-12 -top-12 w-48 h-48 bg-amber-500/5 rounded-full blur-[40px] pointer-events-none" />
               <div className="absolute -right-12 -bottom-12 w-48 h-48 bg-amber-500/5 rounded-full blur-[40px] pointer-events-none" />
@@ -139,7 +139,7 @@ export const StampFlipBook: React.FC<StampFlipBookProps> = ({ visitedCountries, 
                   <Compass className="w-12 h-12 text-amber-400 stroke-[1.5]" />
                 </div>
                 <div>
-                  <h3 className="text-[10px] font-mono tracking-[0.3em] uppercase opacity-75 text-amber-300 font-black">
+                  <h3 className="text-2xs font-mono tracking-[0.3em] uppercase opacity-75 text-amber-300 font-bold">
                     Official Travel Document
                   </h3>
                   <h1 className="text-3xl md:text-4xl font-black mt-2 tracking-tight uppercase text-white font-sans">
@@ -152,7 +152,7 @@ export const StampFlipBook: React.FC<StampFlipBookProps> = ({ visitedCountries, 
                 <p className="text-xs font-semibold leading-relaxed">
                   "Not all those who wander are lost." This physical ledger archives your verified boundary passages and sacred historic sticker discoveries from across the globe.
                 </p>
-                <div className="mt-4 flex gap-6 justify-center items-center text-[10px] font-mono uppercase text-amber-400 font-bold tracking-widest">
+                <div className="mt-4 flex gap-6 justify-center items-center text-2xs font-mono uppercase text-amber-400 font-bold tracking-widest">
                   <span>🗺️ {visitedCountries.length} Countries</span>
                   <span>⭐ {Array.from(stickerClaims.values()).length} Stickers</span>
                 </div>
@@ -167,16 +167,16 @@ export const StampFlipBook: React.FC<StampFlipBookProps> = ({ visitedCountries, 
             </div>
           ) : (
             /* Open Booklet Spread Layout */
-            <div className="absolute inset-0 flex bg-stone-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] overflow-hidden">
+            <div className="absolute inset-0 flex bg-stone-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl overflow-hidden">
               
               {/* Left Page (Spread Side 1) */}
               <div className="flex-1 h-full p-6 md:p-8 flex flex-col justify-between border-r border-[#d4cfc3]/50 dark:border-zinc-800 relative bg-gradient-to-r from-stone-100 to-stone-50 dark:from-zinc-950 dark:to-zinc-900">
                 {/* Vintage paper texture lining */}
                 <div className="absolute inset-0 opacity-15 dark:opacity-5 mix-blend-multiply dark:mix-blend-screen pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/cardboard-flat.png')]" />
                 
-                <div className="flex justify-between items-center text-[9px] font-mono font-bold text-zinc-400 tracking-wider">
+                <div className="flex justify-between items-center text-2xs font-mono font-bold text-zinc-400 tracking-wider">
                   <span>PAGE {currentPage * 2 - 1}</span>
-                  <span className="uppercase text-[8px] font-black">EXPEDITION PASSPORT</span>
+                  <span className="uppercase text-2xs font-bold">EXPEDITION PASSPORT</span>
                 </div>
 
                 <div className="flex items-center justify-center flex-1 my-4">
@@ -194,8 +194,8 @@ export const StampFlipBook: React.FC<StampFlipBookProps> = ({ visitedCountries, 
                           <div className="text-center p-4 bg-gradient-to-br from-indigo-50/50 to-indigo-100/30 dark:from-indigo-950/20 dark:to-indigo-900/10 border border-indigo-100 dark:border-indigo-950/40 rounded-3xl w-full max-w-xs relative overflow-hidden group">
                             <span className="text-4xl block mb-2">{item.data.emojis}</span>
                             <h4 className="text-xs font-black uppercase text-gray-900 dark:text-white truncate">{item.data.name}</h4>
-                            <p className="text-[10px] text-zinc-400 uppercase font-black tracking-wide mt-0.5">{item.data.location}</p>
-                            <div className="mt-3 text-[10px] text-indigo-500 font-bold bg-indigo-500/10 px-2.5 py-1 rounded-xl inline-block">
+                            <p className="text-xs text-zinc-400 uppercase font-bold tracking-wide mt-0.5">{item.data.location}</p>
+                            <div className="mt-3 text-xs text-indigo-500 font-bold bg-indigo-500/10 px-2.5 py-1 rounded-xl inline-block">
                               🎖️ Stamp Acquired
                             </div>
                           </div>
@@ -206,7 +206,7 @@ export const StampFlipBook: React.FC<StampFlipBookProps> = ({ visitedCountries, 
                     <div className="text-center p-6 text-zinc-300 dark:text-zinc-700 max-w-xs">
                       <HelpCircle className="w-10 h-10 mx-auto stroke-1" />
                       <p className="text-xs mt-2 font-bold uppercase tracking-wider">Unused Stamp Slot</p>
-                      <p className="text-[10px] text-zinc-400 mt-1">Visit new destinations or verify landmark locations to stamp this page!</p>
+                      <p className="text-xs text-zinc-400 mt-1">Visit new destinations or verify landmark locations to stamp this page!</p>
                     </div>
                   )}
                 </div>
@@ -228,8 +228,8 @@ export const StampFlipBook: React.FC<StampFlipBookProps> = ({ visitedCountries, 
               <div className="flex-1 h-full p-6 md:p-8 flex flex-col justify-between relative bg-gradient-to-l from-stone-100 to-stone-50 dark:from-zinc-950 dark:to-zinc-900">
                 <div className="absolute inset-0 opacity-15 dark:opacity-5 mix-blend-multiply dark:mix-blend-screen pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/cardboard-flat.png')]" />
 
-                <div className="flex justify-between items-center text-[9px] font-mono font-bold text-zinc-400 tracking-wider">
-                  <span className="uppercase text-[8px] font-black">LANDMARK ALMANAC</span>
+                <div className="flex justify-between items-center text-2xs font-mono font-bold text-zinc-400 tracking-wider">
+                  <span className="uppercase text-2xs font-bold">LANDMARK ALMANAC</span>
                   <span>PAGE {currentPage * 2}</span>
                 </div>
 
@@ -248,8 +248,8 @@ export const StampFlipBook: React.FC<StampFlipBookProps> = ({ visitedCountries, 
                           <div className="text-center p-4 bg-gradient-to-br from-indigo-50/50 to-indigo-100/30 dark:from-indigo-950/20 dark:to-indigo-900/10 border border-indigo-100 dark:border-indigo-950/40 rounded-3xl w-full max-w-xs relative overflow-hidden group">
                             <span className="text-4xl block mb-2">{item.data.emojis}</span>
                             <h4 className="text-xs font-black uppercase text-gray-900 dark:text-white truncate">{item.data.name}</h4>
-                            <p className="text-[10px] text-zinc-400 uppercase font-black tracking-wide mt-0.5">{item.data.location}</p>
-                            <div className="mt-3 text-[10px] text-indigo-500 font-bold bg-indigo-500/10 px-2.5 py-1 rounded-xl inline-block">
+                            <p className="text-xs text-zinc-400 uppercase font-bold tracking-wide mt-0.5">{item.data.location}</p>
+                            <div className="mt-3 text-xs text-indigo-500 font-bold bg-indigo-500/10 px-2.5 py-1 rounded-xl inline-block">
                               🎖️ Stamp Acquired
                             </div>
                           </div>
@@ -260,7 +260,7 @@ export const StampFlipBook: React.FC<StampFlipBookProps> = ({ visitedCountries, 
                     <div className="text-center p-6 text-zinc-300 dark:text-zinc-700 max-w-xs">
                       <HelpCircle className="w-10 h-10 mx-auto stroke-1" />
                       <p className="text-xs mt-2 font-bold uppercase tracking-wider">Unused Stamp Slot</p>
-                      <p className="text-[10px] text-zinc-400 mt-1">Unlock new stickers by listing landmarks in your travel plans or past memories.</p>
+                      <p className="text-xs text-zinc-400 mt-1">Unlock new stickers by listing landmarks in your travel plans or past memories.</p>
                     </div>
                   )}
                 </div>

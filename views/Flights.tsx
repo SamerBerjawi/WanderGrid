@@ -48,17 +48,17 @@ const SeatLayoutOverlay = ({ cabinClass, seatNumber }: { cabinClass: string, sea
 
   return (
     <div className="bg-white/40 dark:bg-zinc-900/50 w-full p-4 rounded-xl border border-zinc-200 dark:border-white/10 flex flex-col items-center col-span-full">
-       <span className="text-[10px] font-black uppercase text-zinc-500 mb-2">Cabin Seat Map Preview</span>
+       <span className="text-2xs font-bold uppercase text-zinc-500 mb-2">Cabin Seat Map Preview</span>
        <div className="flex gap-4">
          <div className="flex flex-col gap-1 mt-4">
            {rows.map(r => (
-             <div key={r} className="h-6 flex items-center justify-end text-[9px] font-bold text-zinc-400 w-4">{r}</div>
+             <div key={r} className="h-6 flex items-center justify-end text-2xs font-bold text-zinc-400 w-4">{r}</div>
            ))}
          </div>
          <div className="flex flex-col gap-1">
            <div className="flex gap-1 mb-1 px-1">
               {cols.map((c, i) => (
-                <div key={i} className={`w-6 text-center text-[9px] font-bold text-zinc-400 ${!c && 'w-3'}`}>{c}</div>
+                <div key={i} className={`w-6 text-center text-2xs font-bold text-zinc-400 ${!c && 'w-3'}`}>{c}</div>
               ))}
            </div>
            {rows.map((rowNum) => (
@@ -69,7 +69,7 @@ const SeatLayoutOverlay = ({ cabinClass, seatNumber }: { cabinClass: string, sea
                    return (
                      <div 
                        key={cIdx} 
-                       className={`w-6 h-6 rounded border flex items-center justify-center text-[8px] font-bold ${
+                       className={`w-6 h-6 rounded border flex items-center justify-center text-2xs font-bold ${
                          isTarget 
                            ? 'bg-blue-500 text-white border-blue-600 shadow-md ring-2 ring-blue-500/30' 
                            : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-600 border-zinc-300 dark:border-zinc-700/50'
@@ -228,17 +228,17 @@ const BundleJourneyTimeline: React.FC<{ flights: Transport[] }> = ({ flights }) 
       {/* Metrics Banner */}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-3 mb-4 border-b border-zinc-200/30 dark:border-white/5">
         <div className="flex items-center gap-2">
-          <span className={`px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider border rounded-md ${journeyColorTag}`}>
+          <span className={`px-2.5 py-0.5 text-2xs font-bold uppercase tracking-wider border rounded-md ${journeyColorTag}`}>
             {journeyBadge}
           </span>
           {co2Estimate > 0 && (
-            <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 border border-emerald-500/10 bg-emerald-500/5 rounded-md flex items-center gap-1">
+            <span className="px-2 py-0.5 text-2xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 border border-emerald-500/10 bg-emerald-500/5 rounded-md flex items-center gap-1">
               <Sparkles className="w-2.5 h-2.5 text-emerald-500" />
               {co2Estimate} kg CO₂ / Person
             </span>
           )}
         </div>
-        <div className="flex items-center gap-3 text-[11px] font-mono font-bold text-zinc-500 dark:text-zinc-400">
+        <div className="flex items-center gap-3 text-xs font-mono font-bold text-zinc-500 dark:text-zinc-400">
           <div className="flex items-center gap-1">
             <Clock className="w-3.5 h-3.5 text-zinc-400" />
             <span>Air Time: <strong className="text-zinc-800 dark:text-zinc-200 font-extrabold">{Math.floor(totalDuration / 60)}h {totalDuration % 60}m</strong></span>
@@ -268,10 +268,10 @@ const BundleJourneyTimeline: React.FC<{ flights: Transport[] }> = ({ flights }) 
                   <div className="w-10 h-10 rounded-2xl bg-white dark:bg-zinc-900 border-2 border-zinc-200 dark:border-zinc-800 flex items-center justify-center font-black text-xs text-zinc-800 dark:text-zinc-100 shadow-sm relative z-10 hover:border-blue-500 hover:scale-105 transition-all duration-350">
                     {flight.origin}
                   </div>
-                  <span className="text-[10px] font-black uppercase text-zinc-400 dark:text-zinc-500 mt-2 tracking-wider leading-none">
+                  <span className="text-2xs font-bold uppercase text-zinc-400 dark:text-zinc-500 mt-2 tracking-wider leading-none">
                     {getCityName(flight.origin) || flight.origin}
                   </span>
-                  <span className="font-mono text-[9px] text-zinc-500 dark:text-zinc-550 mt-1 font-bold leading-none">
+                  <span className="font-mono text-2xs text-zinc-500 dark:text-zinc-550 mt-1 font-bold leading-none">
                     {depTime}
                   </span>
                 </div>
@@ -286,12 +286,12 @@ const BundleJourneyTimeline: React.FC<{ flights: Transport[] }> = ({ flights }) 
                     <div className="w-4 h-4 rounded-md bg-zinc-50 dark:bg-zinc-850 flex items-center justify-center overflow-hidden shrink-0 shadow-xs">
                       <AirlineLogo provider={flight.provider} fallback={<Plane className="w-3 h-3 text-zinc-400" />} />
                     </div>
-                    <span className="font-mono text-[9px] font-black text-zinc-750 dark:text-zinc-200 uppercase tracking-widest leading-none">
+                    <span className="font-mono text-2xs font-bold text-zinc-750 dark:text-zinc-200 uppercase tracking-widest leading-none">
                       {flight.identifier}
                     </span>
                   </div>
 
-                  <span className="relative z-10 text-[9px] font-mono font-bold text-zinc-400 dark:text-zinc-500 mt-3.5 bg-zinc-100/50 dark:bg-zinc-900/50 px-2 py-0.5 rounded-md leading-none select-none border border-zinc-200/35 dark:border-white/5">
+                  <span className="relative z-10 text-2xs font-mono font-bold text-zinc-400 dark:text-zinc-500 mt-3.5 bg-zinc-100/50 dark:bg-zinc-900/50 px-2 py-0.5 rounded-md leading-none select-none border border-zinc-200/35 dark:border-white/5">
                     {flightDuration}
                   </span>
                 </div>
@@ -302,10 +302,10 @@ const BundleJourneyTimeline: React.FC<{ flights: Transport[] }> = ({ flights }) 
                     <div className="w-10 h-10 rounded-2xl bg-white dark:bg-zinc-900 border-2 border-zinc-200 dark:border-zinc-800 flex items-center justify-center font-black text-xs text-zinc-800 dark:text-zinc-100 shadow-sm relative z-10 hover:border-blue-500 hover:scale-105 transition-all duration-350">
                       {flight.destination}
                     </div>
-                    <span className="text-[10px] font-black uppercase text-zinc-400 dark:text-zinc-500 mt-2 tracking-wider leading-none">
+                    <span className="text-2xs font-bold uppercase text-zinc-400 dark:text-zinc-500 mt-2 tracking-wider leading-none">
                       {getCityName(flight.destination) || flight.destination}
                     </span>
-                    <span className="font-mono text-[9px] text-zinc-500 dark:text-zinc-550 mt-1 font-bold leading-none">
+                    <span className="font-mono text-2xs text-zinc-500 dark:text-zinc-550 mt-1 font-bold leading-none">
                       {arrTime}
                     </span>
                   </div>
@@ -342,7 +342,7 @@ const SeatMap: React.FC<{ assignedSeat: string }> = ({ assignedSeat }) => {
               return (
                 <div 
                   key={letter} 
-                  className={`w-3 h-4 rounded-sm flex items-center justify-center text-[7px] font-bold ${
+                  className={`w-3 h-4 rounded-sm flex items-center justify-center text-2xs font-bold ${
                     isAssigned 
                       ? 'bg-emerald-500 text-white shadow-md' 
                       : 'bg-white dark:bg-zinc-700 text-gray-400 border border-gray-200 dark:border-zinc-600'
@@ -353,14 +353,14 @@ const SeatMap: React.FC<{ assignedSeat: string }> = ({ assignedSeat }) => {
               )
             })}
           </div>
-          <div className="w-2.5 text-[8px] text-center font-mono text-gray-400">{row}</div>
+          <div className="w-2.5 text-2xs text-center font-mono text-gray-400">{row}</div>
           <div className="flex gap-1">
             {['D', 'E', 'F'].map(letter => {
               const isAssigned = row === assignedRow && letter === assignedLetter;
               return (
                 <div 
                   key={letter} 
-                  className={`w-3 h-4 rounded-sm flex items-center justify-center text-[7px] font-bold ${
+                  className={`w-3 h-4 rounded-sm flex items-center justify-center text-2xs font-bold ${
                     isAssigned 
                       ? 'bg-emerald-500 text-white shadow-md' 
                       : 'bg-white dark:bg-zinc-700 text-gray-400 border border-gray-200 dark:border-zinc-600'
@@ -1649,7 +1649,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
         className={`relative group transition-all duration-300 hover:scale-[1.015] ${isMultiEditing ? 'cursor-pointer' : ''}`}
       >
         {/* Boarding Pass Container */}
-        <div className={`relative overflow-hidden bg-white/75 dark:bg-zinc-900/40 border ${isSelected ? 'border-blue-500 ring-4 ring-blue-500/10' : 'border-zinc-200/50 dark:border-white/5'} rounded-[2.2rem] flex flex-col justify-between shadow-lg hover:shadow-xl h-full backdrop-blur-md`}>
+        <div className={`relative overflow-hidden bg-white/75 dark:bg-zinc-900/40 border ${isSelected ? 'border-blue-500 ring-4 ring-blue-500/10' : 'border-zinc-200/50 dark:border-white/5'} rounded-3xl flex flex-col justify-between shadow-lg hover:shadow-xl h-full backdrop-blur-md`}>
           <div className="flex h-full">
             {/* Left Column for Days or Checkbox (multi-editing ticket stub) */}
             <div className={`w-24 ${isSelected ? 'bg-blue-600' : 'bg-zinc-100 dark:bg-zinc-950/60'} flex flex-col items-center justify-center p-4 shrink-0 transition-colors duration-200 select-none relative`}>
@@ -1663,10 +1663,10 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                 isFuture && daysRemaining !== null ? (
                   <>
                     <span className="text-3xl font-black leading-none tracking-tighter text-zinc-800 dark:text-white">{daysRemaining}</span>
-                    <span className="text-[9px] font-black uppercase tracking-widest mt-1 text-zinc-400 dark:text-zinc-500">DAYS</span>
+                    <span className="text-2xs font-black uppercase tracking-widest mt-1 text-zinc-400 dark:text-zinc-500">DAYS</span>
                   </>
                 ) : (
-                  <span className="text-[10px] font-black uppercase tracking-widest text-zinc-450 dark:text-zinc-500 bg-zinc-200/50 dark:bg-zinc-900 px-2 py-1 rounded-md">PAST</span>
+                  <span className="text-xs font-black uppercase tracking-widest text-zinc-450 dark:text-zinc-500 bg-zinc-200/50 dark:bg-zinc-900 px-2 py-1 rounded-md">PAST</span>
                 )
               )}
             </div>
@@ -1690,13 +1690,13 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                       <span className="block font-black text-xs text-zinc-800 dark:text-zinc-105 tracking-wide truncate max-w-[150px]">
                         {getCarrierName(flight.provider) || flight.provider}
                       </span>
-                      <span className="block font-mono text-[9px] text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-wider">
+                      <span className="block font-mono text-2xs text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-wider">
                         Loc {flight.confirmationCode || 'PNR'}
                       </span>
                     </div>
                   </div>
                   <div className="text-right flex flex-col items-end gap-1 shrink-0">
-                    <span className={`px-2 py-0.5 rounded-full text-[8.5px] font-black tracking-widest uppercase ${statusInfo.bgClass} inline-flex items-center gap-1`}>
+                    <span className={`px-2 py-0.5 rounded-full text-2xs font-black tracking-widest uppercase ${statusInfo.bgClass} inline-flex items-center gap-1`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${statusInfo.dotClass}`} />
                       {statusInfo.label}
                     </span>
@@ -1712,16 +1712,16 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     
                     <div className="mt-2.5 space-y-1">
                       <div>
-                        <div className="text-[8px] font-black uppercase text-zinc-400 tracking-wider">Departure</div>
-                        <div className="font-mono text-[10px] text-zinc-650 dark:text-zinc-400 leading-tight">
+                        <div className="text-2xs font-black uppercase text-zinc-400 tracking-wider">Departure</div>
+                        <div className="font-mono text-xs text-zinc-650 dark:text-zinc-400 leading-tight">
                           {statusInfo.depScheduledDate}<br />
                           <span className="font-black text-xs text-zinc-800 dark:text-zinc-200">{statusInfo.depScheduledTime}</span>
                         </div>
                       </div>
                       {statusInfo.depActualTime && statusInfo.depActualTime !== statusInfo.depScheduledTime && (
                         <div>
-                          <div className="text-[8px] font-black uppercase text-zinc-400 tracking-wider mt-1">Actual Dep</div>
-                          <div className={`font-mono text-[10px] font-black ${statusInfo.textClass} leading-tight`}>
+                          <div className="text-2xs font-black uppercase text-zinc-400 tracking-wider mt-1">Actual Dep</div>
+                          <div className={`font-mono text-xs font-black ${statusInfo.textClass} leading-tight`}>
                             {statusInfo.depActualDate}<br />
                             <span className="font-black text-xs">{statusInfo.depActualTime}</span>
                           </div>
@@ -1734,7 +1734,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     <div className="w-full h-[1px] bg-dashed border-t border-zinc-300 dark:border-white/10 relative flex justify-center">
                        <Plane className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 absolute top-1/2 -translate-y-1/2 rotate-90" />
                     </div>
-                    <span className="text-[8px] font-black uppercase text-zinc-400 dark:text-zinc-500 mt-2 text-center">
+                    <span className="text-2xs font-black uppercase text-zinc-400 dark:text-zinc-500 mt-2 text-center">
                       {flight.duration ? `${Math.floor(flight.duration / 60)}h ${flight.duration % 60}m` : 'Direct'}
                     </span>
                   </div>
@@ -1746,16 +1746,16 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     
                     <div className="mt-2.5 space-y-1 text-right">
                       <div>
-                        <div className="text-[8px] font-black uppercase text-zinc-400 tracking-wider">Arrival</div>
-                        <div className="font-mono text-[10px] text-zinc-650 dark:text-zinc-400 leading-tight">
+                        <div className="text-2xs font-black uppercase text-zinc-400 tracking-wider">Arrival</div>
+                        <div className="font-mono text-xs text-zinc-650 dark:text-zinc-400 leading-tight">
                           {statusInfo.arrScheduledDate}<br />
                           <span className="font-black text-xs text-zinc-800 dark:text-zinc-200">{statusInfo.arrScheduledTime}</span>
                         </div>
                       </div>
                       {statusInfo.arrActualTime && statusInfo.arrActualTime !== statusInfo.arrScheduledTime && (
                         <div>
-                          <div className="text-[8px] font-black uppercase text-zinc-400 tracking-wider mt-1">Actual Arr</div>
-                          <div className={`font-mono text-[10px] font-black ${statusInfo.textClass} leading-tight`}>
+                          <div className="text-2xs font-black uppercase text-zinc-400 tracking-wider mt-1">Actual Arr</div>
+                          <div className={`font-mono text-xs font-black ${statusInfo.textClass} leading-tight`}>
                             {statusInfo.arrActualDate}<br />
                             <span className="font-black text-xs">{statusInfo.arrActualTime}</span>
                           </div>
@@ -1769,8 +1769,8 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
               {/* Bottom strip */}
               <div className="px-5 py-3.5 bg-zinc-50/50 dark:bg-black/30 border-t border-zinc-150 dark:border-white/5 flex items-center justify-between mt-auto">
                 <div className="flex flex-col">
-                  <span className="text-[8px] font-black uppercase text-zinc-450 dark:text-zinc-500 tracking-wider">Cabin & Seat Number</span>
-                  <span className="font-mono text-[10px] font-extrabold text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 px-2 py-0.5 rounded border border-zinc-200/80 dark:border-white/5 mt-1 inline-block w-fit">
+                  <span className="text-2xs font-black uppercase text-zinc-450 dark:text-zinc-500 tracking-wider">Cabin & Seat Number</span>
+                  <span className="font-mono text-xs font-extrabold text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 px-2 py-0.5 rounded border border-zinc-200/80 dark:border-white/5 mt-1 inline-block w-fit">
                     {flight.travelClass || 'Economy'} &bull; Row {flight.seatNumber || 'TBD'} 
                   </span>
                 </div>
@@ -1798,7 +1798,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
         </div>
         {/* Layover Badge */}
         {layoverStr && (
-            <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-200/50 dark:border-amber-500/20 px-3 py-1 rounded-full text-[9px] font-black uppercase shadow-xs z-10 hidden md:flex items-center gap-1 whitespace-nowrap">
+            <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-200/50 dark:border-amber-500/20 px-3 py-1 rounded-full text-2xs font-black uppercase shadow-xs z-10 hidden md:flex items-center gap-1 whitespace-nowrap">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
               {layoverStr}
             </div>
@@ -1920,17 +1920,17 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
               <AirlineLogo provider={flight.provider} fallback={<Plane className="w-4 h-4 text-zinc-400" />} />
             </div>
             <div className="flex flex-col">
-              <span className="font-extrabold text-[13px] text-zinc-950 dark:text-zinc-100 uppercase tracking-tight leading-tight">
+              <span className="font-extrabold text-sm text-zinc-950 dark:text-zinc-100 uppercase tracking-tight leading-tight">
                 {flight.provider ? (getCarrierName(flight.provider) || flight.providerCode || flight.provider) : 'Carrier'}
               </span>
-              <span className="font-mono text-[11px] text-zinc-450 dark:text-zinc-500 leading-none mt-0.5">
+              <span className="font-mono text-xs text-zinc-450 dark:text-zinc-500 leading-none mt-0.5">
                 Flight {flight.identifier}
               </span>
             </div>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <span className={`px-2 py-0.5 rounded-md text-[10px] font-black tracking-widest ${statusInfo.bgClass} shadow-xs`}>
+            <span className={`px-2 py-0.5 rounded-md text-xs font-black tracking-widest ${statusInfo.bgClass} shadow-xs`}>
               {statusInfo.label}
             </span>
             
@@ -1961,15 +1961,15 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
             <span className="font-black text-2xl tracking-tight text-zinc-900 dark:text-zinc-50 leading-none">
               {flight.origin}
             </span>
-            <span className="text-[11px] font-bold text-zinc-450 dark:text-zinc-500 uppercase tracking-wide mt-1.5 leading-none truncate max-w-[95px]" title={getCityName(flight.origin)}>
+            <span className="text-xs font-bold text-zinc-450 dark:text-zinc-500 uppercase tracking-wide mt-1.5 leading-none truncate max-w-[95px]" title={getCityName(flight.origin)}>
               {getCityName(flight.origin)}
             </span>
-            <div className="mt-3 flex flex-wrap items-center gap-1.5 leading-none font-mono text-[12px]">
+            <div className="mt-3 flex flex-wrap items-center gap-1.5 leading-none font-mono text-xs font-semibold">
               <span className={isDepartureDelay ? `text-rose-500 dark:text-rose-400 font-extrabold` : "font-extrabold text-zinc-800 dark:text-zinc-200"}>
                 {actualDepStr}
               </span>
               {isDepartureDelay && (
-                <span className="line-through opacity-50 text-zinc-400 dark:text-zinc-500 text-[10px]">
+                <span className="line-through opacity-50 text-zinc-400 dark:text-zinc-500 text-xs">
                   {scheduledDepStr}
                 </span>
               )}
@@ -1979,7 +1979,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           {/* Plane & Delay indicators */}
           <div className="flex flex-col items-center justify-center text-center">
             <Plane className="w-5 h-5 text-zinc-400 dark:text-zinc-500 transform rotate-45 animate-pulse" />
-            <span className={`text-[10px] uppercase font-black tracking-widest mt-3 leading-none ${delayColorClass}`}>
+            <span className={`text-xs uppercase font-black tracking-widest mt-3 leading-none ${delayColorClass}`}>
               {delayLabel}
             </span>
           </div>
@@ -1989,15 +1989,15 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
             <span className="font-black text-2xl tracking-tight text-zinc-900 dark:text-zinc-50 leading-none">
               {flight.destination}
             </span>
-            <span className="text-[11px] font-bold text-zinc-450 dark:text-zinc-500 uppercase tracking-wide mt-1.5 leading-none truncate max-w-[95px]" title={getCityName(flight.destination)}>
+            <span className="text-xs font-bold text-zinc-450 dark:text-zinc-500 uppercase tracking-wide mt-1.5 leading-none truncate max-w-[95px]" title={getCityName(flight.destination)}>
               {getCityName(flight.destination)}
             </span>
-            <div className="mt-3 flex flex-wrap items-center justify-end gap-1.5 leading-none font-mono text-[12px] text-right">
+            <div className="mt-3 flex flex-wrap items-center justify-end gap-1.5 leading-none font-mono text-xs font-semibold text-right">
               <span className={isArrivalDelay ? `text-rose-500 dark:text-rose-400 font-extrabold` : "font-extrabold text-zinc-800 dark:text-zinc-200"}>
                 {actualArrStr}
               </span>
               {isArrivalDelay && (
-                <span className="line-through opacity-50 text-zinc-400 dark:text-zinc-500 text-[10px]">
+                <span className="line-through opacity-50 text-zinc-400 dark:text-zinc-500 text-xs">
                   {scheduledArrStr}
                 </span>
               )}
@@ -2007,8 +2007,8 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
 
         {/* Info detail bar: travel class, seat, exit-row */}
         {(flight.travelClass || flight.seatNumber) && (
-          <div className="flex items-center gap-2 mt-0.5 px-2.5 py-1.5 bg-zinc-50 dark:bg-zinc-905 rounded-xl border border-zinc-200/55 dark:border-white/5 text-[11px] text-zinc-550 dark:text-zinc-400 self-start">
-            <span className="font-black uppercase tracking-widest text-[9px] text-zinc-400 dark:text-zinc-500">
+          <div className="flex items-center gap-2 mt-0.5 px-2.5 py-1.5 bg-zinc-50 dark:bg-zinc-905 rounded-xl border border-zinc-200/55 dark:border-white/5 text-xs text-zinc-550 dark:text-zinc-400 self-start">
+            <span className="font-black uppercase tracking-widest text-2xs text-zinc-400 dark:text-zinc-500">
               {flight.travelClass || 'Economy'}
             </span>
             {flight.seatNumber && (
@@ -2042,7 +2042,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
     return (
       <div className="flex flex-col gap-2.5 w-full mt-3">
         {/* Date / Flight count heading */}
-        <div className="flex items-center justify-between px-1.5 text-[11px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
+        <div className="flex items-center justify-between px-1.5 text-xs font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
           <span>{dateLabel}</span>
           <span>{flightCount} {flightCount === 1 ? 'flight' : 'flights'}</span>
         </div>
@@ -2051,12 +2051,12 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
         <div className="w-full flex flex-col gap-4 mt-1">
           {/* Card Route Title */}
           <div className="flex items-center justify-between pb-3 border-b border-dashed border-zinc-200/60 dark:border-white/5">
-            <h4 className="font-extrabold text-[14px] text-zinc-650 dark:text-zinc-300 flex items-center gap-1.5 leading-none">
+            <h4 className="font-extrabold text-sm text-zinc-650 dark:text-zinc-300 flex items-center gap-1.5 leading-none">
               <span>{startCity}</span>
               <span className="text-zinc-400 dark:text-zinc-600 flex font-extrabold pb-0.5">→</span>
               <span>{endCity}</span>
             </h4>
-            <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase bg-zinc-100/80 dark:bg-white/5 text-zinc-500 dark:text-zinc-400 border border-zinc-200/40 dark:border-white/5">
+            <span className="px-2 py-0.5 rounded-md text-2xs font-black uppercase bg-zinc-100/80 dark:bg-white/5 text-zinc-500 dark:text-zinc-400 border border-zinc-200/40 dark:border-white/5">
               {label}
             </span>
           </div>
@@ -2080,7 +2080,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                   elements.push(
                     <div 
                       key={`layover-${flight.id}`}
-                      className="flex items-center justify-between bg-zinc-50/60 dark:bg-zinc-905 border border-zinc-200/60 dark:border-white/5 hover:bg-zinc-100/50 dark:hover:bg-zinc-850 px-4 py-2.5 rounded-2xl text-[11px] font-extrabold text-zinc-700 dark:text-zinc-200 shadow-xs transition-all cursor-pointer my-1 w-full"
+                      className="flex items-center justify-between bg-zinc-50/60 dark:bg-zinc-905 border border-zinc-200/60 dark:border-white/5 hover:bg-zinc-100/50 dark:hover:bg-zinc-850 px-4 py-2.5 rounded-2xl text-xs font-extrabold text-zinc-700 dark:text-zinc-200 shadow-xs transition-all cursor-pointer my-1 w-full"
                     >
                       <div className="flex items-center gap-2">
                         <Clock className="w-3.5 h-3.5 text-amber-550 dark:text-amber-400 font-bold" />
@@ -2161,10 +2161,10 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                 <AirlineLogo provider={flight.provider} fallback={<Plane className="w-4 h-4 text-zinc-400" />} />
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="font-extrabold text-[13px] text-zinc-900 dark:text-zinc-100 uppercase tracking-tight truncate max-w-[140px]">
+                <span className="font-extrabold text-sm text-zinc-900 dark:text-zinc-100 uppercase tracking-tight truncate max-w-[140px]">
                   {getCarrierName(flight.provider) || flight.provider}
                 </span>
-                <span className="font-mono text-[11px] text-zinc-400 dark:text-zinc-550 leading-tight">
+                <span className="font-mono text-xs text-zinc-400 dark:text-zinc-550 leading-tight">
                   Flight {flight.identifier}
                 </span>
               </div>
@@ -2175,16 +2175,16 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           <td className="py-4 align-middle bg-white/45 dark:bg-zinc-950/20 group-hover:bg-blue-500/5 dark:group-hover:bg-blue-500/5 border-y border-zinc-200/40 dark:border-zinc-800/40 first:border-l last:border-r first:rounded-l-2xl last:rounded-r-2xl">
             <div className="flex items-center gap-3">
               <div className="flex flex-col min-w-0">
-                <span className="font-bold text-[14px] text-zinc-900 dark:text-zinc-100 leading-none truncate max-w-[110px]" title={getCityName(flight.origin)}>
+                <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100 leading-none truncate max-w-[110px]" title={getCityName(flight.origin)}>
                   {getCityName(flight.origin)}
                 </span>
-                <span className="font-mono text-[11px] text-zinc-450 dark:text-zinc-550 uppercase tracking-wide leading-none mt-1">
+                <span className="font-mono text-xs text-zinc-450 dark:text-zinc-550 uppercase tracking-wide leading-none mt-1">
                   {flight.origin}
                 </span>
               </div>
               
               <div className="flex flex-col items-center justify-center shrink-0 px-1 text-center w-12">
-                <span className="text-[10px] font-black text-zinc-400 dark:text-zinc-550 uppercase tracking-widest leading-none mb-0.5">
+                <span className="text-2xs font-black text-zinc-400 dark:text-zinc-550 uppercase tracking-widest leading-none mb-0.5">
                   {flight.duration ? `${Math.floor(flight.duration / 60)}h ${flight.duration % 60}m` : 'Direct'}
                 </span>
                 <div className="flex items-center justify-center w-full mt-1">
@@ -2195,10 +2195,10 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
               </div>
 
               <div className="flex flex-col min-w-0">
-                <span className="font-bold text-[14px] text-zinc-900 dark:text-zinc-100 leading-none truncate max-w-[110px]" title={getCityName(flight.destination)}>
+                <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100 leading-none truncate max-w-[110px]" title={getCityName(flight.destination)}>
                   {getCityName(flight.destination)}
                 </span>
-                <span className="font-mono text-[11px] text-zinc-450 dark:text-zinc-550 uppercase tracking-wide leading-none mt-1">
+                <span className="font-mono text-xs text-zinc-450 dark:text-zinc-550 uppercase tracking-wide leading-none mt-1">
                   {flight.destination}
                 </span>
               </div>
@@ -2208,19 +2208,19 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           {/* 3. STATUS BADGE */}
           <td className="py-4 align-middle bg-white/45 dark:bg-zinc-950/20 group-hover:bg-blue-500/5 dark:group-hover:bg-blue-500/5 border-y border-zinc-200/40 dark:border-zinc-800/40 first:border-l last:border-r first:rounded-l-2xl last:rounded-r-2xl">
             <div className="flex items-center gap-2 origin-left">
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black tracking-widest ${statusInfo.bgClass} inline-flex items-center gap-1 shadow-xs`}>
+              <span className={`px-2 py-0.5 rounded-full text-xs font-black tracking-widest ${statusInfo.bgClass} inline-flex items-center gap-1 shadow-xs`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${statusInfo.dotClass}`} />
                 {statusInfo.label}
               </span>
               {flight.departureDate && (
                 <div className="shrink-0">
                   {getFlightDepartureUtcDate(flight) >= new Date() ? (
-                    <span className="text-[11px] font-bold text-emerald-655 dark:text-emerald-450 flex items-center gap-0.5">
+                    <span className="text-xs font-bold text-emerald-655 dark:text-emerald-450 flex items-center gap-0.5">
                       <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
                       In {Math.ceil(Math.abs(getFlightDepartureUtcDate(flight).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))}d
                     </span>
                   ) : (
-                    <span className="text-[11px] font-medium text-zinc-400 dark:text-zinc-500">
+                    <span className="text-xs font-medium text-zinc-400 dark:text-zinc-500">
                       Done
                     </span>
                   )}
@@ -2232,11 +2232,11 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           {/* 4. DETAILS ON SCHEDULES */}
           <td className="py-4 align-middle bg-white/45 dark:bg-zinc-950/20 group-hover:bg-blue-500/5 dark:group-hover:bg-blue-500/5 border-y border-zinc-200/40 dark:border-zinc-800/40 first:border-l last:border-r first:rounded-l-2xl last:rounded-r-2xl">
             <div className="flex flex-col min-w-[150px]">
-              <span className="font-mono text-[11px] text-zinc-450 dark:text-zinc-550 leading-tight">
+              <span className="font-mono text-xs text-zinc-450 dark:text-zinc-550 leading-tight">
                 {statusInfo.depScheduledDate}
               </span>
-              <div className="font-mono text-[13px] mt-0.5 flex items-center gap-1.5 leading-none">
-                <span className={statusInfo.isDifferent && statusInfo.label !== 'CANCELED' ? 'line-through opacity-50 text-[11px] text-zinc-400 dark:text-zinc-500' : 'font-black text-zinc-800 dark:text-zinc-200'}>
+              <div className="font-mono text-sm mt-0.5 flex items-center gap-1.5 leading-none">
+                <span className={statusInfo.isDifferent && statusInfo.label !== 'CANCELED' ? 'line-through opacity-50 text-xs text-zinc-400 dark:text-zinc-500' : 'font-black text-zinc-800 dark:text-zinc-200'}>
                   {statusInfo.depScheduledTime} → {statusInfo.arrScheduledTime}
                 </span>
                 {statusInfo.isDifferent && statusInfo.label !== 'CANCELED' && (
@@ -2251,15 +2251,15 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           {/* 5. SEAT & EXPERIENCE */}
           <td className="py-4 align-middle bg-white/45 dark:bg-zinc-950/20 group-hover:bg-blue-500/5 dark:group-hover:bg-blue-500/5 border-y border-zinc-200/40 dark:border-zinc-800/40 first:border-l last:border-r first:rounded-l-2xl last:rounded-r-2xl">
             <div className="flex flex-col items-start gap-1 leading-none">
-              <span className="text-[13px] font-bold text-zinc-800 dark:text-zinc-200">
+              <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200">
                 {flight.travelClass || 'Economy'}
               </span>
               {flight.seatNumber ? (
-                <span className="font-mono text-[10px] font-bold text-amber-500 bg-amber-500/5 dark:bg-amber-500/10 px-1 py-0.5 rounded border border-amber-500/20 leading-none">
+                <span className="font-mono text-xs font-semibold text-amber-500 bg-amber-500/5 dark:bg-amber-500/10 px-1 py-0.5 rounded border border-amber-500/20 leading-none">
                   Seat {flight.seatNumber}
                 </span>
               ) : (
-                <span className="text-[11px] text-zinc-400 dark:text-zinc-550">Unassigned</span>
+                <span className="text-xs text-zinc-400 dark:text-zinc-550">Unassigned</span>
               )}
             </div>
           </td>
@@ -2279,7 +2279,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
         {layoverStr && (
           <tr>
             <td colSpan={isMultiEditing ? 7 : 6} className="py-0.5 px-1 align-middle">
-              <div className="flex items-center justify-between bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100/50 dark:hover:bg-zinc-850 px-4 py-1 rounded-xl text-[11px] font-extrabold text-zinc-700 dark:text-zinc-200 shadow-xs transition-all w-full my-0.5">
+              <div className="flex items-center justify-between bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100/50 dark:hover:bg-zinc-850 px-4 py-1 rounded-xl text-xs font-bold text-zinc-700 dark:text-zinc-200 shadow-xs transition-all w-full my-0.5">
                 <div className="flex items-center gap-2">
                   <Clock className="w-3.5 h-3.5 text-amber-550 dark:text-amber-400 font-bold" />
                   <span>{layoverStr}</span>
@@ -2320,7 +2320,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
         </div>
       </div>
           {/* Search & Filters Board */}
-      <div className="bg-white/60 dark:bg-zinc-900/30 border border-zinc-200/50 dark:border-white/5 shadow-xl rounded-[2.5rem] p-6 backdrop-blur-xl relative overflow-hidden group">
+      <div className="bg-white/60 dark:bg-zinc-900/30 border border-zinc-200/50 dark:border-white/5 shadow-xl rounded-3xl p-6 backdrop-blur-xl relative overflow-hidden group">
         <div className="absolute top-0 left-0 w-48 h-48 bg-blue-500/5 rounded-full blur-3xl pointer-events-none group-hover:scale-125 transition-transform duration-700" />
         <div className="absolute bottom-0 right-0 w-48 h-48 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none group-hover:scale-125 transition-transform duration-700" />
         
@@ -2400,7 +2400,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
 
           {/* Year Filter Horizontal Scroll Bar */}
           <div className="flex items-center gap-3">
-            <span className="text-[10px] font-black uppercase text-zinc-400 dark:text-zinc-500 tracking-widest shrink-0 select-none">Era Filter:</span>
+            <span className="text-xs font-black uppercase text-zinc-400 dark:text-zinc-500 tracking-widest shrink-0 select-none">Era Filter:</span>
             <div className="flex overflow-x-auto gap-2 pb-1 custom-scrollbar items-center flex-1">
               <button
                 onClick={() => setYearFilter('all')}
@@ -2464,18 +2464,18 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
             }
 
             return (
-              <div className="relative bg-white/70 dark:bg-zinc-900/40 border border-zinc-200/60 dark:border-white/5 shadow-xl rounded-[2.5rem] overflow-hidden backdrop-blur-xl flex flex-col justify-between h-full group transition-all duration-300 hover:shadow-2xl">
+              <div className="relative bg-white/70 dark:bg-zinc-900/40 border border-zinc-200/60 dark:border-white/5 shadow-xl rounded-3xl overflow-hidden backdrop-blur-xl flex flex-col justify-between h-full group transition-all duration-300 hover:shadow-2xl">
                 {/* Perforated ticket punches */}
-                <div className="absolute top-[84px] -left-3.5 w-7 h-7 bg-zinc-50 dark:bg-zinc-950 rounded-full border border-zinc-200 dark:border-white/5 z-20 shadow-inner" />
-                <div className="absolute top-[84px] -right-3.5 w-7 h-7 bg-zinc-50 dark:bg-zinc-950 rounded-full border border-zinc-200 dark:border-white/5 z-20 shadow-inner" />
+                <div className="absolute top-20 -left-3.5 w-7 h-7 bg-zinc-50 dark:bg-zinc-950 rounded-full border border-zinc-200 dark:border-white/5 z-20 shadow-inner" />
+                <div className="absolute top-20 -right-3.5 w-7 h-7 bg-zinc-50 dark:bg-zinc-950 rounded-full border border-zinc-200 dark:border-white/5 z-20 shadow-inner" />
 
                 {/* Ticket Header */}
                 <div className="p-6 pb-5 border-b border-dashed border-zinc-200 dark:border-white/10 relative">
                   <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400 tracking-widest">
+                    <span className="text-xs font-black uppercase text-blue-600 dark:text-blue-400 tracking-widest">
                       {isFuture ? 'UPCOMING TICKET' : 'LATEST SERVICE'}
                     </span>
-                    <span className={`text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full ${isFuture ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-405' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'}`}>
+                    <span className={`text-2xs font-black uppercase px-2.5 py-0.5 rounded-full ${isFuture ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-405' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'}`}>
                       {daysDiffText}
                     </span>
                   </div>
@@ -2488,7 +2488,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                       <span className="text-xs font-black text-zinc-800 dark:text-zinc-200 uppercase leading-none truncate block">
                         {getCarrierName(flight.provider) || flight.provider}
                       </span>
-                      <span className="font-mono text-[9px] font-bold text-zinc-400 mt-1 leading-none block">
+                      <span className="font-mono text-2xs font-bold text-zinc-400 mt-1 leading-none block">
                         Carrier {flight.identifier} &bull; {flight.travelClass || 'Economy'}
                       </span>
                     </div>
@@ -2499,28 +2499,28 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                 <div className="p-6 flex-1 flex flex-col justify-center">
                   <div className="flex justify-between items-center mb-5">
                     <div className="flex flex-col">
-                      <span className="font-mono text-[8.5px] font-black text-zinc-400 tracking-wider uppercase">Origin</span>
+                      <span className="font-mono text-2xs font-black text-zinc-400 tracking-wider uppercase">Origin</span>
                       <span className="text-3xl font-black text-zinc-900 dark:text-white leading-none mt-1">{flight.origin}</span>
-                      <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 truncate mt-1.5 max-w-[80px]" title={getCityName(flight.origin)}>
+                      <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 truncate mt-1.5 max-w-[80px]" title={getCityName(flight.origin)}>
                         {getCityName(flight.origin)}
                       </span>
                     </div>
                     
                     <div className="flex-1 flex flex-col items-center justify-center px-2">
-                      <div className="text-[8px] font-black text-zinc-450 dark:text-zinc-400 uppercase tracking-widest mb-1.5">
+                      <div className="text-2xs font-black text-zinc-450 dark:text-zinc-400 uppercase tracking-widest mb-1.5">
                         {flight.duration ? `${Math.floor(flight.duration / 60)}h ${flight.duration % 60}m` : 'Direct'}
                       </div>
                       <div className="relative w-full flex items-center justify-center my-1">
                         <div className="w-full h-[1px] bg-dashed border-t border-zinc-300 dark:border-white/10" />
                         <Plane className="w-3.5 h-3.5 text-blue-500 rotate-90 absolute" />
                       </div>
-                      <span className="text-[8px] font-black uppercase text-zinc-400 tracking-wider">Non-stop</span>
+                      <span className="text-2xs font-black uppercase text-zinc-400 tracking-wider">Non-stop</span>
                     </div>
 
                     <div className="flex flex-col items-end">
-                      <span className="font-mono text-[8.5px] font-black text-zinc-400 tracking-wider uppercase">Dest</span>
+                      <span className="font-mono text-2xs font-black text-zinc-400 tracking-wider uppercase">Dest</span>
                       <span className="text-3xl font-black text-zinc-900 dark:text-white leading-none mt-1">{flight.destination}</span>
-                      <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 truncate mt-1.5 max-w-[80px]" title={getCityName(flight.destination)}>
+                      <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 truncate mt-1.5 max-w-[80px]" title={getCityName(flight.destination)}>
                         {getCityName(flight.destination)}
                       </span>
                     </div>
@@ -2528,13 +2528,13 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
 
                   <div className="grid grid-cols-2 gap-y-4 gap-x-2 border-t border-zinc-150 dark:border-white/5 pt-4">
                     <div>
-                      <span className="block text-[8px] font-black text-zinc-450 dark:text-zinc-500 uppercase tracking-wider">Departure</span>
+                      <span className="block text-2xs font-black text-zinc-450 dark:text-zinc-500 uppercase tracking-wider">Departure</span>
                       <span className="font-mono text-xs font-black text-zinc-700 dark:text-zinc-300 mt-1 block">
                         {flight.departureDate} &bull; <strong className="text-blue-600 dark:text-blue-400 font-black">{flight.departureTime || 'TBD'}</strong>
                       </span>
                     </div>
                     <div>
-                      <span className="block text-[8px] font-black text-zinc-450 dark:text-zinc-500 uppercase tracking-wider">Arrival</span>
+                      <span className="block text-2xs font-black text-zinc-450 dark:text-zinc-500 uppercase tracking-wider">Arrival</span>
                       <span className="font-mono text-xs font-black text-zinc-700 dark:text-zinc-300 mt-1 block">
                         {flight.arrivalDate || flight.departureDate} &bull; <strong className="text-zinc-800 dark:text-zinc-200">{flight.arrivalTime || 'TBD'}</strong>
                       </span>
@@ -2545,8 +2545,8 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                 {/* Simulated Custom High-Fidelity Barcode Section */}
                 <div className="flex justify-between items-center px-6 py-3.5 bg-zinc-50/50 dark:bg-black/30 border-t border-b border-dashed border-zinc-200 dark:border-white/5 select-none">
                   <div className="flex flex-col">
-                    <span className="text-[7px] font-black uppercase text-zinc-400 tracking-wider">Boarding Code</span>
-                    <div className="flex items-end gap-[1.5px] h-6 mt-1.5 opacity-80 dark:opacity-60">
+                    <span className="text-2xs font-black uppercase text-zinc-400 tracking-wider">Boarding Code</span>
+                    <div className="flex items-end gap-0.5 h-6 mt-1.5 opacity-80 dark:opacity-60">
                       <div className="w-[1.5px] h-full bg-zinc-900 dark:bg-zinc-250" />
                       <div className="w-[3px] h-full bg-zinc-900 dark:bg-zinc-250" />
                       <div className="w-[1px] h-full bg-zinc-900 dark:bg-zinc-250" />
@@ -2566,7 +2566,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                       <div className="w-[1.5px] h-full bg-zinc-900 dark:bg-zinc-250" />
                     </div>
                   </div>
-                  <div className="text-right flex flex-col font-mono text-[9px] font-bold text-zinc-400 mt-1">
+                  <div className="text-right flex flex-col font-mono text-2xs font-bold text-zinc-400 mt-1">
                     <span>SECTOR</span>
                     <span className="text-zinc-800 dark:text-zinc-150 font-black tracking-tighter">GATE {flight.identifier ? flight.identifier.slice(-2).toUpperCase() : 'B5'}</span>
                   </div>
@@ -2575,13 +2575,13 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                 {/* Ticket Footer */}
                 <div className="px-6 py-4.5 bg-zinc-50/50 dark:bg-black/20 border-t border-zinc-200/50 dark:border-white/5 flex items-center justify-between">
                   <div className="flex flex-col min-w-0 mr-2">
-                    <span className="text-[8px] font-black uppercase text-zinc-400 tracking-wider">Seat Code</span>
+                    <span className="text-2xs font-black uppercase text-zinc-400 tracking-wider">Seat Code</span>
                     <span className="font-mono text-xs font-black text-zinc-800 dark:text-zinc-250 mt-0.5 truncate block">
                       {flight.seatNumber ? `Row ${flight.seatNumber}` : 'Unassigned'}
                     </span>
                   </div>
                   <div className="text-right flex flex-col min-w-0">
-                    <span className="text-[8px] font-black uppercase text-zinc-400 tracking-wider">Locator</span>
+                    <span className="text-2xs font-black uppercase text-zinc-400 tracking-wider">Locator</span>
                     <span className="font-mono text-xs font-black text-zinc-800 dark:text-zinc-205 uppercase mt-0.5 tracking-wider truncate block">
                       {flight.confirmationCode || 'PNR'}
                     </span>
@@ -2590,7 +2590,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
               </div>
             );
           })() : (
-            <div className="relative bg-white/70 dark:bg-zinc-900/40 border border-zinc-200/60 dark:border-white/5 shadow-xl rounded-[2.5rem] p-6 backdrop-blur-xl flex flex-col justify-center items-center h-full text-center min-h-[300px]">
+            <div className="relative bg-white/70 dark:bg-zinc-900/40 border border-zinc-200/60 dark:border-white/5 shadow-xl rounded-3xl p-6 backdrop-blur-xl flex flex-col justify-center items-center h-full text-center min-h-[300px]">
               <div className="w-14 h-14 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-500 dark:text-blue-400 mb-4 border border-blue-500/20 shadow-xs">
                 <Compass className="w-6 h-6 animate-spin-slow" />
               </div>
@@ -2607,7 +2607,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
         </div>
 
         <div className="col-span-12 md:col-span-4 flex flex-col">
-          <div className="bg-white/70 dark:bg-zinc-900/40 border border-zinc-200/60 dark:border-white/5 shadow-xl rounded-[2.5rem] p-6 backdrop-blur-xl flex flex-col justify-between h-full space-y-5 transition-all duration-300 hover:shadow-2xl">
+          <div className="bg-white/70 dark:bg-zinc-900/40 border border-zinc-200/60 dark:border-white/5 shadow-xl rounded-3xl p-6 backdrop-blur-xl flex flex-col justify-between h-full space-y-5 transition-all duration-300 hover:shadow-2xl">
             <div>
               <h3 className="text-xs font-black text-zinc-450 dark:text-zinc-405 uppercase tracking-widest flex items-center gap-2 mb-4 select-none">
                 <BarChart2 className="w-4 h-4 text-blue-500 animate-pulse" />
@@ -2617,7 +2617,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
               <div className="grid grid-cols-1 gap-3">
                 {/* 1. Estimated Spend */}
                 <div className="p-3 bg-zinc-50/50 dark:bg-black/15 rounded-2xl border border-zinc-200/40 dark:border-white/5 flex flex-col justify-center transition-all duration-300 hover:bg-white dark:hover:bg-zinc-800/30">
-                  <span className="block text-[8px] font-black uppercase text-zinc-400 tracking-wider">Estimated Spend</span>
+                  <span className="block text-2xs font-black uppercase text-zinc-400 tracking-wider">Estimated Spend</span>
                   <div className="text-2xl font-black text-amber-500 dark:text-amber-400 mt-1">
                     ${metrics.spend.toLocaleString()}
                   </div>
@@ -2625,7 +2625,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
 
                 {/* 2. Top Carrier */}
                 <div className="p-3 bg-zinc-50/50 dark:bg-black/15 rounded-2xl border border-zinc-200/40 dark:border-white/5 flex flex-col justify-center transition-all duration-300 hover:bg-white dark:hover:bg-zinc-800/30">
-                  <span className="block text-[8px] font-black uppercase text-zinc-400 tracking-wider">Top Airline</span>
+                  <span className="block text-2xs font-black uppercase text-zinc-400 tracking-wider">Top Airline</span>
                   <div className="text-base font-black text-zinc-800 dark:text-zinc-200 mt-1 truncate" title={metrics.topAirline}>
                     {metrics.topAirline}
                   </div>
@@ -2633,9 +2633,9 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
 
                 {/* 3. Upcoming Trips Left */}
                 <div className="p-3 bg-zinc-50/50 dark:bg-black/15 rounded-2xl border border-zinc-200/40 dark:border-white/5 flex flex-col justify-center transition-all duration-300 hover:bg-white dark:hover:bg-zinc-800/30 w-full">
-                  <span className="block text-[8px] font-black uppercase text-zinc-400 tracking-wider">Scheduled Ahead</span>
+                  <span className="block text-2xs font-black uppercase text-zinc-400 tracking-wider">Scheduled Ahead</span>
                   <div className="text-lg font-black text-emerald-600 dark:text-emerald-400 mt-1 break-words">
-                    {metrics.upcoming} <span className="text-[9px] uppercase font-bold text-zinc-400">flights pending</span>
+                    {metrics.upcoming} <span className="text-2xs uppercase font-bold text-zinc-400">flights pending</span>
                   </div>
                 </div>
               </div>
@@ -2643,7 +2643,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
 
             {/* Embedded Recharts Monthly Flight Frequency Chart */}
             <div className="pt-4 border-t border-zinc-200/60 dark:border-white/5">
-              <h4 className="text-[9px] font-black uppercase text-zinc-400 tracking-wider mb-2.5">Monthly Frequency</h4>
+              <h4 className="text-2xs font-black uppercase text-zinc-400 tracking-wider mb-2.5">Monthly Frequency</h4>
               <div className="h-28 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={monthlyData} margin={{ top: 5, right: 5, left: -32, bottom: 0 }}>
@@ -2679,7 +2679,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
 
       </div>
 
-      <div className="flex justify-between items-center bg-white/80 dark:bg-zinc-900/80 border border-zinc-200/50 dark:border-white/5 shadow-md rounded-[2rem] p-4 backdrop-blur-2xl sticky top-0 z-45">
+      <div className="flex justify-between items-center bg-white/80 dark:bg-zinc-900/80 border border-zinc-200/50 dark:border-white/5 shadow-md rounded-3xl p-4 backdrop-blur-2xl sticky top-0 z-45">
         <h3 className="text-xl font-bold flex items-center gap-2 text-zinc-900 dark:text-zinc-100 pl-4">
           <Plane className="w-5 h-5 text-blue-500" />
           Flight Board ({filteredFlights.length})
@@ -2725,7 +2725,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
 
       {/* Flight Board Display Modes */}
       {filteredFlights.length === 0 ? (
-        <div className="bg-white/40 dark:bg-zinc-900/20 border border-zinc-200/30 dark:border-white/5 rounded-[2.5rem] p-12 text-center select-none">
+        <div className="bg-white/40 dark:bg-zinc-900/20 border border-zinc-200/30 dark:border-white/5 rounded-3xl p-12 text-center select-none">
           <div className="w-20 h-20 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto text-blue-500 dark:text-blue-400 mb-6 border border-blue-500/20 animate-bounce">
             <Plane className="w-8 h-8 rotate-45" />
           </div>
@@ -2755,7 +2755,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95 }}
                         key={trip.id}
-                        className={`p-6 backdrop-blur-xl animate-fade-in rounded-[2.5rem] shadow-lg transition-all duration-300
+                        className={`p-6 backdrop-blur-xl animate-fade-in rounded-3xl shadow-lg transition-all duration-300
                           ${isIndependent 
                             ? "bg-white/40 dark:bg-zinc-900/40 border border-zinc-200/50 dark:border-white/5 shadow-md" 
                             : "bg-gradient-to-br from-blue-50/40 via-white/50 to-blue-50/10 dark:from-blue-950/10 dark:via-zinc-900/40 dark:to-blue-950/5 border-2 border-blue-500/15 dark:border-blue-400/10 shadow-blue-500/5"
@@ -2772,7 +2772,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                                   <div className="flex items-center gap-2 flex-wrap">
                                     <h4 className="text-base font-black text-zinc-800 dark:text-zinc-200 uppercase tracking-widest leading-none">{trip.name}</h4>
                                     {trip.originalName && trip.originalName !== trip.name && (
-                                      <Badge className="text-[10px] bg-blue-500/10 hover:bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/15 select-none font-bold rounded-lg py-0.5 px-2 leading-none uppercase tracking-wide">
+                                      <Badge className="text-xs bg-blue-500/10 hover:bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/15 select-none font-bold rounded-lg py-0.5 px-2 leading-none uppercase tracking-wide">
                                         {trip.originalName}
                                       </Badge>
                                     )}
@@ -2786,7 +2786,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                                         setFormBundleEndDate(trip.endDate || '');
                                         setIsEditingBundle(true);
                                       }}
-                                      className="p-1 px-2 rounded-lg bg-white dark:bg-zinc-800 text-zinc-500 hover:text-blue-500 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-all cursor-pointer flex items-center gap-1 border border-zinc-200 dark:border-white/10 shadow-xs text-[9px] font-black uppercase tracking-wider ml-1"
+                                      className="p-1 px-2 rounded-lg bg-white dark:bg-zinc-800 text-zinc-500 hover:text-blue-500 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-all cursor-pointer flex items-center gap-1 border border-zinc-200 dark:border-white/10 shadow-xs text-2xs font-black uppercase tracking-wider ml-1"
                                       title="Edit Bundle Settings"
                                     >
                                       <Edit2 className="w-2.5 h-2.5 text-blue-500" />
@@ -2802,7 +2802,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                                 </div>
                               </div>
                               {(trip.startDate || trip.endDate) && (
-                                <div className="flex items-center gap-2 px-3 py-1.5 bg-white/60 dark:bg-white/5 rounded-2xl text-[10px] font-mono font-bold text-zinc-500 dark:text-zinc-400 w-fit shadow-sm border border-zinc-200/40 dark:border-transparent">
+                                <div className="flex items-center gap-2 px-3 py-1.5 bg-white/60 dark:bg-white/5 rounded-2xl text-xs font-mono font-bold text-zinc-500 dark:text-zinc-400 w-fit shadow-sm border border-zinc-200/40 dark:border-transparent">
                                   <Calendar className="w-3.5 h-3.5 text-zinc-400" />
                                   {trip.startDate} {trip.endDate && trip.endDate !== trip.startDate ? `→ ${trip.endDate}` : ''}
                                 </div>
@@ -2836,7 +2836,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
       ) : (
         <div className="relative space-y-12 md:px-6">
           {/* Master Sticky Table Header Card */}
-          <table className="hidden md:table w-full h-12 text-left border-collapse min-w-[950px] sticky top-[76px] bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 shadow-md border-2 border-blue-500/10 dark:border-blue-400/10 rounded-[2rem] overflow-visible table-fixed shadow-blue-500/5">
+          <table className="hidden md:table w-full h-12 text-left border-collapse min-w-[950px] sticky top-20 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 shadow-md border-2 border-blue-500/10 dark:border-blue-400/10 rounded-3xl overflow-visible table-fixed shadow-blue-500/5">
             <colgroup>
               {isMultiEditing ? (
                 <>
@@ -2862,11 +2862,11 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
             <thead>
               <tr className="border-b border-zinc-200/50 dark:border-zinc-850/50 font-mono text-zinc-400 dark:text-zinc-500">
                 {isMultiEditing && (
-                  <th className="sticky top-[76px] bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4.5 text-[11px] font-black uppercase tracking-widest pl-4 w-[4%] text-center border-b border-zinc-200/50 dark:border-white/10">
+                  <th className="sticky top-20 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4 text-xs font-black uppercase tracking-widest pl-4 w-[4%] text-center border-b border-zinc-200/50 dark:border-white/10">
                     <CheckSquare className="w-4 h-4 text-zinc-400 inline" />
                   </th>
                 )}
-                <th className="sticky top-[76px] bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4.5 text-[11px] font-black uppercase tracking-widest pl-4 w-[18%] text-left border-b border-zinc-200/50 dark:border-white/10">
+                <th className="sticky top-20 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4 text-xs font-black uppercase tracking-widest pl-4 w-[18%] text-left border-b border-zinc-200/50 dark:border-white/10">
                   <div className="flex items-center gap-1.5 relative">
                     {renderSortableHeader('Flight', 'flight')}
                     <button
@@ -2892,7 +2892,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                             {colFilterFlight && (
                               <button 
                                 onClick={(e) => { e.stopPropagation(); setColFilterFlight(''); }} 
-                                className="text-[10px] text-zinc-400 hover:text-rose-500 font-bold cursor-pointer uppercase tracking-wider font-sans"
+                                className="text-xs text-zinc-400 hover:text-rose-500 font-bold cursor-pointer uppercase tracking-wider font-sans"
                               >
                                 Clear
                               </button>
@@ -2910,7 +2910,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                           />
 
                           <div className="border-t border-zinc-100 dark:border-white/5 pt-2.5">
-                            <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1.5 font-mono">Sort Flight Column By</span>
+                            <span className="text-2xs font-black uppercase tracking-widest text-zinc-400 block mb-1.5 font-mono">Sort Flight Column By</span>
                             <div className="space-y-1">
                               {[
                                 { key: 'airline', label: 'Airline Name' },
@@ -2927,7 +2927,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                                   }`}
                                 >
                                   <span>{opt.label}</span>
-                                  {sortField === 'flight' && sortSubOption === opt.key && <span className="text-[9px]">● Selected</span>}
+                                  {sortField === 'flight' && sortSubOption === opt.key && <span className="text-2xs">● Selected</span>}
                                 </button>
                               ))}
                             </div>
@@ -2937,7 +2937,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     )}
                   </div>
                 </th>
-                <th className="sticky top-[76px] bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4.5 text-[11px] font-black uppercase tracking-widest w-[24%] text-left border-b border-zinc-200/50 dark:border-white/10">
+                <th className="sticky top-20 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4 text-xs font-black uppercase tracking-widest w-[24%] text-left border-b border-zinc-200/50 dark:border-white/10">
                   <div className="flex items-center gap-1.5 relative">
                     {renderSortableHeader('Sector / Route', 'sector')}
                     <button
@@ -2963,7 +2963,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                             {colFilterSector && (
                               <button 
                                 onClick={(e) => { e.stopPropagation(); setColFilterSector(''); }} 
-                                className="text-[10px] text-zinc-400 hover:text-rose-500 font-bold cursor-pointer uppercase tracking-wider font-sans"
+                                className="text-xs text-zinc-400 hover:text-rose-500 font-bold cursor-pointer uppercase tracking-wider font-sans"
                               >
                                 Clear
                               </button>
@@ -2980,7 +2980,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                           />
 
                           <div className="border-t border-zinc-100 dark:border-white/5 pt-2.5">
-                            <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1.5 font-mono">Sort Route Column By</span>
+                            <span className="text-2xs font-black uppercase tracking-widest text-zinc-400 block mb-1.5 font-mono">Sort Route Column By</span>
                             <div className="space-y-1">
                               {[
                                 { key: 'route', label: 'Full Route Code' },
@@ -2998,7 +2998,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                                   }`}
                                 >
                                   <span>{opt.label}</span>
-                                  {sortField === 'sector' && sortSubOption === opt.key && <span className="text-[9px]">● Selected</span>}
+                                  {sortField === 'sector' && sortSubOption === opt.key && <span className="text-2xs">● Selected</span>}
                                 </button>
                               ))}
                             </div>
@@ -3008,7 +3008,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     )}
                   </div>
                 </th>
-                <th className="sticky top-[76px] bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4.5 text-[11px] font-black uppercase tracking-widest w-[20%] text-left border-b border-zinc-200/50 dark:border-white/10">
+                <th className="sticky top-20 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4 text-xs font-black uppercase tracking-widest w-[20%] text-left border-b border-zinc-200/50 dark:border-white/10">
                   <div className="flex items-center gap-1.5 relative">
                     {renderSortableHeader('Status', 'status')}
                     <button
@@ -3034,7 +3034,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                             {colFilterStatus !== 'all' && (
                               <button 
                                 onClick={(e) => { e.stopPropagation(); setColFilterStatus('all'); }} 
-                                className="text-[10px] text-zinc-400 hover:text-rose-500 font-bold cursor-pointer uppercase tracking-wider font-sans"
+                                className="text-xs text-zinc-400 hover:text-rose-500 font-bold cursor-pointer uppercase tracking-wider font-sans"
                               >
                                 Reset
                               </button>
@@ -3055,7 +3055,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                           </select>
 
                           <div className="border-t border-zinc-100 dark:border-white/5 pt-2.5">
-                            <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1.5 font-mono">Sort Status Column By</span>
+                            <span className="text-2xs font-black uppercase tracking-widest text-zinc-400 block mb-1.5 font-mono">Sort Status Column By</span>
                             <div className="space-y-1">
                               {[
                                 { key: 'statusLabel', label: 'Status Label Text' },
@@ -3072,7 +3072,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                                   }`}
                                 >
                                   <span>{opt.label}</span>
-                                  {sortField === 'status' && sortSubOption === opt.key && <span className="text-[9px]">● Selected</span>}
+                                  {sortField === 'status' && sortSubOption === opt.key && <span className="text-2xs">● Selected</span>}
                                 </button>
                               ))}
                             </div>
@@ -3082,7 +3082,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     )}
                   </div>
                 </th>
-                <th className="sticky top-[76px] bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4.5 text-[11px] font-black uppercase tracking-widest w-[24%] text-left border-b border-zinc-200/50 dark:border-white/10">
+                <th className="sticky top-20 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4 text-xs font-black uppercase tracking-widest w-[24%] text-left border-b border-zinc-200/50 dark:border-white/10">
                   <div className="flex items-center gap-1.5 relative">
                     {renderSortableHeader('Schedules & Timing', 'timing')}
                     <button
@@ -3108,7 +3108,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                             {colFilterTimingDay !== 'all' && (
                               <button 
                                 onClick={(e) => { e.stopPropagation(); setColFilterTimingDay('all'); }} 
-                                className="text-[10px] text-zinc-400 hover:text-rose-500 font-bold cursor-pointer uppercase tracking-wider font-sans"
+                                className="text-xs text-zinc-400 hover:text-rose-500 font-bold cursor-pointer uppercase tracking-wider font-sans"
                               >
                                 Reset
                               </button>
@@ -3132,7 +3132,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                           </select>
 
                           <div className="border-t border-zinc-100 dark:border-white/5 pt-2.5">
-                            <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1.5 font-mono">Sort Schedules Column By</span>
+                            <span className="text-2xs font-black uppercase tracking-widest text-zinc-400 block mb-1.5 font-mono">Sort Schedules Column By</span>
                             <div className="space-y-1">
                               {[
                                 { key: 'departure', label: 'Departure Date & Time' },
@@ -3150,7 +3150,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                                   }`}
                                 >
                                   <span>{opt.label}</span>
-                                  {sortField === 'timing' && sortSubOption === opt.key && <span className="text-[9px]">● Selected</span>}
+                                  {sortField === 'timing' && sortSubOption === opt.key && <span className="text-2xs">● Selected</span>}
                                 </button>
                               ))}
                             </div>
@@ -3160,7 +3160,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     )}
                   </div>
                 </th>
-                <th className="sticky top-[76px] bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4.5 text-[11px] font-black uppercase tracking-widest w-[14%] text-left border-b border-zinc-200/50 dark:border-white/10">
+                <th className="sticky top-20 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4 text-xs font-black uppercase tracking-widest w-[14%] text-left border-b border-zinc-200/50 dark:border-white/10">
                   <div className="flex items-center gap-1.5 relative">
                     {renderSortableHeader('Seat & Class', 'seat')}
                     <button
@@ -3186,7 +3186,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                             {colFilterSeat !== 'all' && (
                               <button 
                                 onClick={(e) => { e.stopPropagation(); setColFilterSeat('all'); }} 
-                                className="text-[10px] text-zinc-400 hover:text-rose-500 font-bold cursor-pointer uppercase tracking-wider font-sans"
+                                className="text-xs text-zinc-400 hover:text-rose-500 font-bold cursor-pointer uppercase tracking-wider font-sans"
                               >
                                 Reset
                               </button>
@@ -3208,7 +3208,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                           </select>
 
                           <div className="border-t border-zinc-100 dark:border-white/5 pt-2.5">
-                            <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block mb-1.5 font-mono">Sort Seat Column By</span>
+                            <span className="text-2xs font-black uppercase tracking-widest text-zinc-400 block mb-1.5 font-mono">Sort Seat Column By</span>
                             <div className="space-y-1">
                               {[
                                 { key: 'seatNumber', label: 'Seat Code Alphanumeric' },
@@ -3225,7 +3225,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                                   }`}
                                 >
                                   <span>{opt.label}</span>
-                                  {sortField === 'seat' && sortSubOption === opt.key && <span className="text-[9px]">● Selected</span>}
+                                  {sortField === 'seat' && sortSubOption === opt.key && <span className="text-2xs">● Selected</span>}
                                 </button>
                               ))}
                             </div>
@@ -3235,7 +3235,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     )}
                   </div>
                 </th>
-                <th className="sticky top-[76px] bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4.5 text-right pr-4 w-[2%] border-b border-zinc-200/50 dark:border-white/10"></th>
+                <th className="sticky top-20 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4 text-right pr-4 w-[2%] border-b border-zinc-200/50 dark:border-white/10"></th>
               </tr>
             </thead>
           </table>
@@ -3256,7 +3256,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                   return (
                     <div
                       key={trip.id}
-                      className="p-3.5 md:p-6 transition-all duration-300 rounded-[2rem] md:rounded-[2.5rem] bg-gradient-to-br from-blue-50/45 via-white/50 to-blue-50/10 dark:from-blue-950/10 dark:via-zinc-900/40 dark:to-blue-950/5 border border-zinc-200/50 dark:border-white/5 shadow-md min-w-0 md:min-w-[950px] w-full"
+                      className="p-3.5 md:p-6 transition-all duration-300 rounded-3xl bg-gradient-to-br from-blue-50/45 via-white/50 to-blue-50/10 dark:from-blue-950/10 dark:via-zinc-900/40 dark:to-blue-950/5 border border-zinc-200/50 dark:border-white/5 shadow-md min-w-0 md:min-w-[950px] w-full"
                     >
                       {/* Sub-header block for trip groups inside container (Only for actual bundles) */}
                       {!isIndependent ? (
@@ -3272,7 +3272,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                                     {trip.name}
                                   </span>
                                   {trip.originalName && trip.originalName !== trip.name && (
-                                    <Badge className="text-[10px] bg-blue-500/10 hover:bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/15 select-none font-bold rounded-lg py-0.5 px-2 leading-none uppercase tracking-wide">
+                                    <Badge className="text-xs font-bold bg-blue-500/10 hover:bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/15 select-none rounded-lg py-0.5 px-2 leading-none uppercase tracking-wide">
                                       {trip.originalName}
                                     </Badge>
                                   )}
@@ -3286,7 +3286,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                                       setFormBundleEndDate(trip.endDate || '');
                                       setIsEditingBundle(true);
                                     }}
-                                    className="p-1 px-2 rounded-lg bg-white dark:bg-zinc-850 text-zinc-500 hover:text-blue-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all cursor-pointer flex items-center gap-1 border border-zinc-200 dark:border-white/10 shadow-xs text-[9px] font-black uppercase tracking-wider ml-1"
+                                    className="p-1 px-2 rounded-lg bg-white dark:bg-zinc-850 text-zinc-500 hover:text-blue-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all cursor-pointer flex items-center gap-1 border border-zinc-200 dark:border-white/10 shadow-xs text-2xs font-black uppercase tracking-wider ml-1"
                                     title="Edit Bundle Settings"
                                   >
                                     <Edit2 className="w-2.5 h-2.5 text-blue-500" />
@@ -3302,7 +3302,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                               </div>
                             </div>
                             {(trip.startDate || trip.endDate) && (
-                              <div className="flex items-center gap-2 px-3 py-1.5 bg-white/60 dark:bg-white/5 rounded-2xl text-[10px] font-mono font-bold text-zinc-500 dark:text-zinc-400 border border-zinc-200/40 dark:border-transparent">
+                              <div className="flex items-center gap-2 px-3 py-1.5 bg-white/60 dark:bg-white/5 rounded-2xl text-xs font-mono font-bold text-zinc-500 dark:text-zinc-400 border border-zinc-200/40 dark:border-transparent">
                                 <Calendar className="w-3.5 h-3.5 text-zinc-400" />
                                 {trip.startDate} {trip.endDate && trip.endDate !== trip.startDate ? `→ ${trip.endDate}` : ''}
                               </div>
@@ -3779,11 +3779,11 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     />
                     {formOrigin && (
                       extractIata(formOrigin).toUpperCase() === getCityName(extractIata(formOrigin)).toUpperCase() ? (
-                        <span className="text-[10px] text-amber-500 font-bold mt-1 ml-1 flex items-center gap-1">
+                        <span className="text-xs text-amber-500 font-bold mt-1 ml-1 flex items-center gap-1">
                            <HelpCircle className="w-3 h-3" /> Unrecognized code
                         </span>
                       ) : (
-                        <span className="text-[10px] text-emerald-500 font-bold mt-1 ml-1 flex items-center gap-1 animate-fadeIn">
+                        <span className="text-xs text-emerald-500 font-bold mt-1 ml-1 flex items-center gap-1 animate-fadeIn">
                            <Sparkles className="w-3 h-3 text-emerald-500 animate-pulse" /> {getCityName(extractIata(formOrigin))}
                         </span>
                       )
@@ -3800,11 +3800,11 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     />
                     {formDestination && (
                       extractIata(formDestination).toUpperCase() === getCityName(extractIata(formDestination)).toUpperCase() ? (
-                        <span className="text-[10px] text-amber-500 font-bold mt-1 ml-1 flex items-center gap-1">
+                        <span className="text-xs text-amber-500 font-bold mt-1 ml-1 flex items-center gap-1">
                            <HelpCircle className="w-3 h-3" /> Unrecognized code
                         </span>
                       ) : (
-                        <span className="text-[10px] text-emerald-500 font-bold mt-1 ml-1 flex items-center gap-1 animate-fadeIn">
+                        <span className="text-xs text-emerald-500 font-bold mt-1 ml-1 flex items-center gap-1 animate-fadeIn">
                            <Sparkles className="w-3 h-3 text-emerald-500 animate-pulse" /> {getCityName(extractIata(formDestination))}
                         </span>
                       )
@@ -3829,7 +3829,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                         <Plane className="w-4 h-4 text-blue-500 animate-pulse shrink-0" />
                         Find Flight Schedules
                       </h4>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                         Search available airline schedules on this route for {formDepartureDate || 'selected date'}
                       </p>
                     </div>
@@ -3854,7 +3854,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                   </div>
 
                   {routeSearchError && (
-                    <div className="mt-3 p-3 bg-red-50 dark:bg-rose-950/20 text-red-600 dark:text-rose-400 text-[11px] font-semibold rounded-xl border border-red-100 dark:border-rose-950/30 flex items-center gap-2">
+                    <div className="mt-3 p-3 bg-red-50 dark:bg-rose-950/20 text-red-600 dark:text-rose-400 text-xs font-semibold rounded-xl border border-red-100 dark:border-rose-950/30 flex items-center gap-2">
                       <AlertCircle className="w-4 h-4 text-red-500 dark:text-rose-400 shrink-0" />
                       {routeSearchError}
                     </div>
@@ -3862,12 +3862,12 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
 
                   {searchedFlights && (
                     <div className="mt-4 space-y-2 max-h-[300px] overflow-y-auto pr-1">
-                      <div className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wider mb-2.5 flex justify-between items-center">
+                      <div className="text-xs uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wider mb-2.5 flex justify-between items-center">
                         <span>Select Flight Schedule Option</span>
                         <button 
                           type="button"
                           onClick={() => setSearchedFlights(null)}
-                          className="text-[9px] hover:text-red-500 text-slate-400 hover:underline cursor-pointer uppercase transition-all"
+                          className="text-2xs hover:text-red-500 text-slate-400 hover:underline cursor-pointer uppercase transition-all"
                         >
                           Clear List
                         </button>
@@ -3908,13 +3908,13 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                                       <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
                                         {carrierName}
                                       </span>
-                                      <Badge color="blue" className="!px-2 !py-0.5 !text-[9px] font-mono font-bold">
+                                      <Badge color="blue" className="!px-2 !py-0.5 !text-2xs font-mono font-bold">
                                         {flightNum}
                                       </Badge>
                                     </div>
-                                    <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-500 dark:text-slate-400 font-mono">
+                                    <div className="flex items-center gap-1.5 mt-0.5 text-xs text-slate-500 dark:text-slate-400 font-mono">
                                       <span>{flight.departure?.airport || flight.departure?.iata}</span>
-                                      <span className="text-[10px] text-slate-400">→</span>
+                                      <span className="text-xs text-slate-400">→</span>
                                       <span>{flight.arrival?.airport || flight.arrival?.iata}</span>
                                     </div>
                                   </div>
@@ -3924,10 +3924,10 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                                 <div className="text-right">
                                   <div className="text-xs font-black text-slate-900 dark:text-slate-100 flex items-center gap-1 justify-end font-mono">
                                     <span>{depSched}</span>
-                                    <span className="text-[10px] text-slate-400 font-normal">→</span>
+                                    <span className="text-xs text-slate-400 font-normal">→</span>
                                     <span>{arrSched}</span>
                                   </div>
-                                  <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1 mt-0.5 justify-end">
+                                  <div className="text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1 mt-0.5 justify-end">
                                     <Clock className="w-3 h-3 text-slate-400" />
                                     <span>
                                       {flight.departure?.terminal ? `T${flight.departure.terminal}` : ''}
@@ -3935,7 +3935,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                                     </span>
                                   </div>
                                 </div>
-                                <div className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 group-hover/flight-item:bg-blue-600 group-hover/flight-item:text-white rounded-lg transition-all text-[11px] font-bold uppercase tracking-wider">
+                                <div className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 group-hover/flight-item:bg-blue-600 group-hover/flight-item:text-white rounded-lg transition-all text-xs font-bold uppercase tracking-wider">
                                   Select
                                 </div>
                               </div>
@@ -3954,7 +3954,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                   <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
                     {showManualFields ? "Reviewing flight roster coordinates" : "Looking to input additional manual details?"}
                   </span>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     {showManualFields ? "Fine-tune operator codes, seats, custom booking reference or ticket pricing." : "Configure airline operator, flight number codes, seats, or ticket prices manually."}
                   </p>
                 </div>
@@ -4002,7 +4002,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                           fetchSuggestions={fetchAirlineSuggestions}
                         />
                         {formAirline && formAirline.trim().toUpperCase() !== getCarrierName(formAirline).toUpperCase() && (
-                          <span className="text-[10px] text-emerald-500 font-bold mt-1 ml-1 flex items-center gap-1">
+                          <span className="text-xs text-emerald-500 font-bold mt-1 ml-1 flex items-center gap-1">
                              <Sparkles className="w-3 h-3 text-emerald-500 animate-pulse" /> {getCarrierName(formAirline)}
                           </span>
                         )}

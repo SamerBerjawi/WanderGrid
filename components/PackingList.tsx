@@ -163,7 +163,7 @@ export const PackingList: React.FC<PackingListProps> = ({ trip, onUpdate }) => {
     return (
         <div className="space-y-8 animate-fade-in">
             {/* Header & Progress */}
-            <div className="flex flex-col md:flex-row justify-between items-center bg-gradient-to-r from-blue-600 to-indigo-700 rounded-[2.5rem] p-8 text-white shadow-xl relative overflow-hidden">
+            <div className="flex flex-col md:flex-row justify-between items-center bg-gradient-to-r from-blue-600 to-indigo-700 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
                 
                 <div className="flex items-center gap-6 relative z-10 w-full md:w-auto">
@@ -283,7 +283,7 @@ export const PackingList: React.FC<PackingListProps> = ({ trip, onUpdate }) => {
                     );
                 })}
                 {items.length === 0 && (
-                    <div className="col-span-full py-12 text-center border-2 border-dashed border-gray-200 dark:border-white/10 rounded-[2.5rem]">
+                    <div className="col-span-full py-12 text-center border-2 border-dashed border-gray-200 dark:border-white/10 rounded-3xl">
                         <span className="material-icons-outlined text-6xl text-gray-200 dark:text-gray-700">backpack</span>
                         <p className="text-gray-400 font-bold uppercase tracking-widest mt-4 text-xs">Your bag is empty</p>
                         <div className="flex gap-2 justify-center mt-2">

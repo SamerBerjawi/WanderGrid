@@ -37,7 +37,7 @@ export const StatCard: React.FC<{
     const gradientClass = shadowMap[color] || 'shadow-[0_8px_32px_0_rgba(0,0,0,0.1)]';
 
     return (
-        <div className={`p-6 rounded-[2rem] bg-white/[0.04] dark:bg-slate-900/40 backdrop-blur-2xl border border-white/20 dark:border-white/5 ${gradientClass} flex items-center gap-5 relative overflow-hidden group hover:border-white/35 dark:hover:border-white/10 transition-all duration-300 hover:-translate-y-0.5`}>
+        <div className={`p-6 rounded-3xl bg-white/[0.04] dark:bg-slate-900/40 backdrop-blur-2xl border border-white/20 dark:border-white/5 ${gradientClass} flex items-center gap-5 relative overflow-hidden group hover:border-white/35 dark:hover:border-white/10 transition-all duration-300 hover:-translate-y-0.5`}>
             {/* Ambient Back Blur Spot */}
             <div className={`absolute -right-12 -top-12 w-32 h-32 bg-${color}-500/10 dark:bg-${color}-500/15 rounded-full blur-[40px] transition-all duration-500 group-hover:scale-125`} />
             
@@ -49,7 +49,7 @@ export const StatCard: React.FC<{
             </div>
             
             <div className="relative z-10">
-                <div className="text-[9px] font-black text-gray-400 dark:text-gray-450 uppercase tracking-widest mb-1">{title}</div>
+                <div className="text-2xs font-bold text-gray-400 dark:text-gray-450 uppercase tracking-widest mb-1">{title}</div>
                 <div className="text-3xl font-black text-gray-900 dark:text-white leading-none tracking-tight">{value}</div>
                 {subtitle && <div className="text-xs font-bold text-gray-500 dark:text-gray-400 mt-1.5">{subtitle}</div>}
             </div>
@@ -73,7 +73,7 @@ export const ExtremeFlightCard: React.FC<{
     const gradientClass = highlightColors[color] || 'border-t-white/20 border-l-white/20';
 
     return (
-        <div className={`p-6 rounded-[2rem] bg-white/[0.04] dark:bg-slate-900/40 backdrop-blur-2xl border border-white/25 dark:border-white/5 ${gradientClass} transition-all duration-300 hover:border-white/35 dark:hover:border-white/10 relative overflow-hidden group`}>
+        <div className={`p-6 rounded-3xl bg-white/[0.04] dark:bg-slate-900/40 backdrop-blur-2xl border border-white/25 dark:border-white/5 ${gradientClass} transition-all duration-300 hover:border-white/35 dark:hover:border-white/10 relative overflow-hidden group`}>
             <div className={`absolute top-0 right-0 w-44 h-44 bg-${color}-500/5 rounded-full blur-[60px] -translate-y-1/2 translate-x-1/3 transition-all duration-500 group-hover:scale-125`} />
             
             <div className="flex justify-between items-start relative z-10">
@@ -81,7 +81,7 @@ export const ExtremeFlightCard: React.FC<{
                     <span className="material-icons-outlined text-xl">{type === 'Longest' ? 'public' : 'short_text'}</span>
                 </div>
                 <div className="text-right">
-                    <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{type} Flight</div>
+                    <div className="text-2xs font-bold text-gray-400 uppercase tracking-widest">{type} Flight</div>
                     <div className={`text-2xl font-black text-${color}-600 dark:text-${color}-400 tracking-tight mt-0.5`}>{flight.distance.toLocaleString()} km</div>
                 </div>
             </div>
@@ -121,7 +121,7 @@ export const DonutChart: React.FC<{
     }));
 
     return (
-        <div className="p-6 rounded-[2rem] bg-white/[0.04] dark:bg-slate-900/40 backdrop-blur-2xl border border-white/20 dark:border-white/5 shadow-[0_8px_32px_0_rgba(0,0,0,0.15)] flex flex-col h-[22rem] w-full transition-all hover:border-white/30 dark:hover:border-white/10">
+        <div className="p-6 rounded-3xl bg-white/[0.04] dark:bg-slate-900/40 backdrop-blur-2xl border border-white/20 dark:border-white/5 shadow-[0_8px_32px_0_rgba(0,0,0,0.15)] flex flex-col h-[22rem] w-full transition-all hover:border-white/30 dark:hover:border-white/10">
             <h4 className="text-xs font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-4 w-full text-left">{title}</h4>
             <div className="relative flex-1 min-h-0 w-full">
                 <ResponsiveContainer width="100%" height="100%">
@@ -169,7 +169,7 @@ export const DonutChart: React.FC<{
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                     <span className="text-2xl font-black text-gray-900 dark:text-white leading-none">{total}</span>
-                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-1">Flights</span>
+                    <span className="text-2xs font-bold text-gray-400 uppercase tracking-wider mt-1">Flights</span>
                 </div>
             </div>
             <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-4">
@@ -192,14 +192,14 @@ export const FlightTrendChart: React.FC<{ data: FlightTrendPoint[] }> = ({ data 
     if (!data || data.length === 0) return null;
 
     return (
-        <div className="p-6 rounded-[2rem] bg-white/[0.04] dark:bg-slate-900/40 backdrop-blur-2xl border border-white/20 dark:border-white/5 shadow-[0_8px_32px_0_rgba(0,0,0,0.15)] flex flex-col h-[22rem] w-full transition-all hover:border-white/30 dark:hover:border-white/10">
+        <div className="p-6 rounded-3xl bg-white/[0.04] dark:bg-slate-900/40 backdrop-blur-2xl border border-white/20 dark:border-white/5 shadow-[0_8px_32px_0_rgba(0,0,0,0.15)] flex flex-col h-[22rem] w-full transition-all hover:border-white/30 dark:hover:border-white/10">
             <div className="flex justify-between items-start mb-6 w-full">
                 <div>
                     <h4 className="text-xs font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest leading-none">Global Coverage Trend</h4>
-                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-1.5">Cumulative Distance (KM)</p>
+                    <p className="text-2xs font-bold text-gray-400 uppercase tracking-widest mt-1.5">Cumulative Distance (KM)</p>
                 </div>
                 <div className="text-right">
-                    <span className="text-[9px] font-mono font-black bg-blue-500/10 dark:bg-white/10 border border-blue-500/20 px-2 py-1 rounded-lg text-blue-600 dark:text-blue-400 uppercase tracking-widest">
+                    <span className="text-2xs font-mono font-bold bg-blue-500/10 dark:bg-white/10 border border-blue-500/20 px-2 py-1 rounded-lg text-blue-600 dark:text-blue-400 uppercase tracking-widest">
                         Analytics
                     </span>
                 </div>
@@ -276,7 +276,7 @@ export const TopList: React.FC<{
     const max = items[0].count;
 
     return (
-        <div className="p-6 rounded-[2rem] bg-white/[0.04] dark:bg-slate-900/40 backdrop-blur-2xl border border-white/20 dark:border-white/5 shadow-[0_8px_32px_0_rgba(0,0,0,0.15)] flex flex-col h-full transition-all hover:border-white/30 dark:hover:border-white/10">
+        <div className="p-6 rounded-3xl bg-white/[0.04] dark:bg-slate-900/40 backdrop-blur-2xl border border-white/20 dark:border-white/5 shadow-[0_8px_32px_0_rgba(0,0,0,0.15)] flex flex-col h-full transition-all hover:border-white/30 dark:hover:border-white/10">
             <div className="flex items-center gap-3 mb-6">
                 <div className={`w-10 h-10 rounded-xl bg-${color}-500/15 border border-${color}-500/20 text-${color}-600 dark:text-${color}-400 flex items-center justify-center`}>
                     <span className="material-icons-outlined text-lg">{icon}</span>
@@ -288,13 +288,13 @@ export const TopList: React.FC<{
                     <div key={idx} className="relative group">
                         <div className="flex justify-between items-center mb-2 relative z-10">
                             <div className="flex items-center gap-3">
-                                <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 w-4">{idx + 1}</span>
+                                <span className="text-xs font-bold text-gray-400 dark:text-gray-500 w-4">{idx + 1}</span>
                                 <div>
                                     <div className="text-sm font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                                        {item.code && <span className="font-mono text-[9px] bg-gray-150 dark:bg-white/10 px-1.5 py-0.5 rounded text-gray-500 dark:text-gray-400 border border-gray-200/20">{item.code}</span>}
+                                        {item.code && <span className="font-mono text-2xs bg-gray-150 dark:bg-white/10 px-1.5 py-0.5 rounded text-gray-500 dark:text-gray-400 border border-gray-200/20">{item.code}</span>}
                                         <span className="truncate max-w-[140px]" title={item.label}>{item.label}</span>
                                     </div>
-                                    {item.sub && <div className="text-[10px] text-gray-400 dark:text-gray-500 font-bold truncate max-w-[140px] mt-0.5">{item.sub}</div>}
+                                    {item.sub && <div className="text-xs text-gray-400 dark:text-gray-500 font-bold truncate max-w-[140px] mt-0.5">{item.sub}</div>}
                                 </div>
                             </div>
                             <span className="text-xs font-black text-gray-900 dark:text-white">{item.count}</span>

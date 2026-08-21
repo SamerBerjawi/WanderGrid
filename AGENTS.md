@@ -69,13 +69,13 @@ All modal overlays, slide-out drawer components, form surfaces, and dialogs acro
 
 ### 7.1 Core Visual Tokens & Surfaces
 
-* **Container Backgrounds & Glassmorphism:** Theme tokens with opacity channels `bg-white/90 dark:bg-dark-card/90 backdrop-blur-2xl` with `-webkit-backdrop-filter: blur(40px)` for slide-out drawers and elevated dialogs.
+* **Container Backgrounds & Glassmorphism:** Theme tokens with opacity channels `bg-white/90 dark:bg-dark-card/90 backdrop-blur-sm` with `-webkit-backdrop-filter: blur(4px)` for slide-out drawers and elevated dialogs.
 * **Secondary / Fill Cards:** `bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 rounded-3xl p-5`.
 * **Elevated / Floating Cards:** `bg-white/80 dark:bg-dark-card/80 backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-glass-card rounded-2xl`.
 * **Hairline Dividers & Borders:** Ultra-low opacity borders across both themes: `border-black/5 dark:border-white/5` (inner items) and `border-black/10 dark:border-white/15` (structural shells).
 * **Glassmorphic Elements:** Frosted glass (`backdrop-blur` with `-webkit-backdrop-filter`):
   1. Backdrop overlay (`bg-gray-900/50 dark:bg-black/80 backdrop-blur-md` with `-webkit-backdrop-filter: blur(12px)`).
-  2. Slide-out drawer & dialog shells (`bg-white/90 dark:bg-dark-card/90 backdrop-blur-2xl` with `-webkit-backdrop-filter: blur(40px)`).
+  2. Slide-out drawer & dialog shells (`bg-white/90 dark:bg-dark-card/90 backdrop-blur-sm` with `-webkit-backdrop-filter: blur(4px)`).
   3. Sticky bottom action footers (`bg-white/80 dark:bg-dark-card/80 backdrop-blur-md` with `-webkit-backdrop-filter: blur(12px)`).
 
 ### 7.2 Typography & Label System
@@ -176,10 +176,10 @@ export const StandardDrawer: React.FC<DrawerProps> = ({
       {/* 2. Slide-out Shell */}
       <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
         <div 
-          className={`w-screen max-w-lg bg-white/90 dark:bg-dark-card/90 backdrop-blur-2xl shadow-glass-modal border-l border-black/10 dark:border-white/15 flex flex-col transform transition-transform duration-300 ease-out ${
+          className={`w-screen max-w-lg bg-white/90 dark:bg-dark-card/90 backdrop-blur-sm shadow-glass-modal border-l border-black/10 dark:border-white/15 flex flex-col transform transition-transform duration-300 ease-out ${
             isVisible ? 'translate-x-0' : 'translate-x-full'
           }`}
-          style={{ WebkitBackdropFilter: 'blur(40px)' }}
+          style={{ WebkitBackdropFilter: 'blur(4px)' }}
         >
           {/* Header */}
           <div className="p-6 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">

@@ -286,7 +286,7 @@ export const PassportIdCard: React.FC<PassportIdCardProps> = ({ flights, yearFil
   const mrz = generateMRZ(travelerName, flights.length, yearFilter, currentUser?.passportIssueDate || "24 MAY 26");
 
   return (
-    <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 to-zinc-950 border border-zinc-200/50 dark:border-white/5 shadow-2xl rounded-[2.5rem] p-6 text-white flex flex-col justify-between h-full group transition-all duration-300 hover:shadow-indigo-500/10 hover:border-zinc-805/50">
+    <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 to-zinc-950 border border-zinc-200/50 dark:border-white/5 shadow-2xl rounded-3xl p-6 text-white flex flex-col justify-between h-full group transition-all duration-300 hover:shadow-indigo-500/10 hover:border-zinc-805/50">
       {/* Background patterns */}
       <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none group-hover:scale-125 transition-transform duration-700" />
       <div 
@@ -300,11 +300,11 @@ export const PassportIdCard: React.FC<PassportIdCardProps> = ({ flights, yearFil
       <div className="space-y-4">
         {/* Visual header */}
         <div className="flex justify-between items-center border-b border-white/5 pb-3">
-          <div className="flex items-center gap-1.5 text-[8px] font-black uppercase tracking-widest text-zinc-400">
+          <div className="flex items-center gap-1.5 text-2xs font-bold uppercase tracking-widest text-zinc-400">
             <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
             GLOBAL PASSPORT • PORTAL
           </div>
-          <div className="text-[8px] font-mono text-indigo-400 font-extrabold uppercase tracking-widest bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-500/10">
+          <div className="text-2xs font-mono text-indigo-400 font-extrabold uppercase tracking-widest bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-500/10">
             {passportNumber}
           </div>
         </div>
@@ -330,7 +330,7 @@ export const PassportIdCard: React.FC<PassportIdCardProps> = ({ flights, yearFil
               )}
               
               {/* Waterproof security print */}
-              <div className="absolute bottom-2 right-2 w-12 h-12 rounded-full border border-teal-500/20 flex items-center justify-center text-[5px] font-black text-teal-400 rotate-12 select-none pointer-events-none uppercase bg-teal-500/[0.02]">
+              <div className="absolute bottom-2 right-2 w-12 h-12 rounded-full border border-teal-500/20 flex items-center justify-center text-2xs font-bold text-teal-400 rotate-12 select-none pointer-events-none uppercase bg-teal-500/[0.02]">
                 <div className="text-center leading-[1.1]">
                   WG VALID
                   <br />
@@ -338,34 +338,34 @@ export const PassportIdCard: React.FC<PassportIdCardProps> = ({ flights, yearFil
                 </div>
               </div>
             </div>
-            <span className="text-[7px] font-black tracking-widest uppercase text-zinc-400 font-mono text-center">BIOMETRIC PASS</span>
+            <span className="text-2xs font-bold tracking-widest uppercase text-zinc-400 font-mono text-center">BIOMETRIC PASS</span>
           </div>
 
           {/* Core metadata columns */}
           <div className="flex-1 grid grid-cols-2 gap-y-3 gap-x-2.5">
             <div>
-              <span className="block text-[7px] text-zinc-400 font-black uppercase tracking-wider">Surname</span>
-              <span className="text-[11px] font-extrabold uppercase tracking-tight text-white">{surname}</span>
+              <span className="block text-2xs text-zinc-400 font-bold uppercase tracking-wider">Surname</span>
+              <span className="text-xs font-bold uppercase tracking-tight text-white">{surname}</span>
             </div>
             <div>
-              <span className="block text-[7px] text-zinc-400 font-black uppercase tracking-wider">Given Names</span>
-              <span className="text-[11px] font-extrabold uppercase tracking-tight text-white">{givenNames}</span>
+              <span className="block text-2xs text-zinc-400 font-bold uppercase tracking-wider">Given Names</span>
+              <span className="text-xs font-bold uppercase tracking-tight text-white">{givenNames}</span>
             </div>
             <div>
-              <span className="block text-[7px] text-zinc-400 font-black uppercase tracking-wider">Nationality</span>
-              <span className="text-[11px] font-extrabold uppercase tracking-tight text-white">{nationality}</span>
+              <span className="block text-2xs text-zinc-400 font-bold uppercase tracking-wider">Nationality</span>
+              <span className="text-xs font-bold uppercase tracking-tight text-white">{nationality}</span>
             </div>
             <div>
-              <span className="block text-[7px] text-zinc-400 font-black uppercase tracking-wider">Sex / DOB</span>
-              <span className="text-[11px] font-extrabold uppercase tracking-tight text-white">M / {dobStr}</span>
+              <span className="block text-2xs text-zinc-400 font-bold uppercase tracking-wider">Sex / DOB</span>
+              <span className="text-xs font-bold uppercase tracking-tight text-white">M / {dobStr}</span>
             </div>
             <div>
-              <span className="block text-[7px] text-zinc-400 font-black uppercase tracking-wider">Authority</span>
-              <span className="text-[11px] font-extrabold uppercase tracking-tight text-zinc-300 truncate leading-none block">{authority}</span>
+              <span className="block text-2xs text-zinc-400 font-bold uppercase tracking-wider">Authority</span>
+              <span className="text-xs font-bold uppercase tracking-tight text-zinc-300 truncate leading-none block">{authority}</span>
             </div>
             <div>
-              <span className="block text-[7px] text-zinc-400 font-black uppercase tracking-wider">Document Type</span>
-              <span className="text-[11px] font-extrabold uppercase tracking-tight text-zinc-300">P / CITIZEN</span>
+              <span className="block text-2xs text-zinc-400 font-bold uppercase tracking-wider">Document Type</span>
+              <span className="text-xs font-bold uppercase tracking-tight text-zinc-300">P / CITIZEN</span>
             </div>
           </div>
         </div>
@@ -373,15 +373,15 @@ export const PassportIdCard: React.FC<PassportIdCardProps> = ({ flights, yearFil
         {/* Dynamic numerical tracking summary */}
         <div className="grid grid-cols-3 gap-2 border-t border-b border-dashed border-white/5 py-3 my-2 text-center">
           <div>
-            <span className="block text-[7px] font-black uppercase text-zinc-400">Total Flights</span>
+            <span className="block text-2xs font-bold uppercase text-zinc-400">Total Flights</span>
             <span className="text-xs font-black text-blue-400 font-mono mt-0.5 block">{flights.length}</span>
           </div>
           <div>
-            <span className="block text-[7px] font-black uppercase text-zinc-400">Distance</span>
-            <span className="text-xs font-black text-zinc-200 font-mono mt-0.5 block truncate">{stats.distance.toLocaleString()} <span className="text-[8px] font-sans text-zinc-400">km</span></span>
+            <span className="block text-2xs font-bold uppercase text-zinc-400">Distance</span>
+            <span className="text-xs font-black text-zinc-200 font-mono mt-0.5 block truncate">{stats.distance.toLocaleString()} <span className="text-2xs font-sans text-zinc-400">km</span></span>
           </div>
           <div>
-            <span className="block text-[7px] font-black uppercase text-zinc-400">Hours Airward</span>
+            <span className="block text-2xs font-bold uppercase text-zinc-400">Hours Airward</span>
             <span className="text-xs font-black text-zinc-200 font-mono mt-0.5 block">{daysHour}d {remHours}h</span>
           </div>
         </div>
@@ -389,7 +389,7 @@ export const PassportIdCard: React.FC<PassportIdCardProps> = ({ flights, yearFil
 
       {/* Machine Readable Zone MRZ Code block */}
       <div className="mt-4 pt-2 text-center select-none bg-black/40 p-2.5 rounded-xl border border-white/5">
-        <div className="font-mono text-[8.5px] sm:text-[9.5px] leading-tight tracking-[0.14em] whitespace-normal sm:whitespace-pre-wrap font-bold text-zinc-500">
+        <div className="font-mono text-2xs leading-tight tracking-[0.14em] whitespace-normal sm:whitespace-pre-wrap font-bold text-zinc-500">
           {mrz}
         </div>
       </div>
@@ -409,10 +409,10 @@ export const PassportStampsPage: React.FC<PassportStampsPageProps> = ({ flights,
   const stats = useBentoStats(flights);
 
   return (
-    <div className="relative bg-white/70 dark:bg-zinc-900/40 border border-zinc-200/65 dark:border-white/5 shadow-xl rounded-[2.5rem] p-5 backdrop-blur-xl flex flex-col justify-between h-full group transition-all duration-300 hover:shadow-2xl overflow-visible">
+    <div className="relative bg-white/70 dark:bg-zinc-900/40 border border-zinc-200/65 dark:border-white/5 shadow-xl rounded-3xl p-5 backdrop-blur-xl flex flex-col justify-between h-full group transition-all duration-300 hover:shadow-2xl overflow-visible">
       {/* Grid Pattern overlays to simulate vintage passport pages */}
       <div 
-        className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] pointer-events-none mix-blend-multiply dark:mix-blend-screen rounded-[2.5rem]"
+        className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] pointer-events-none mix-blend-multiply dark:mix-blend-screen rounded-3xl"
         style={{
           backgroundImage: `repeating-linear-gradient(45deg, #000 0, #000 1px, transparent 0, transparent 8px)`,
           backgroundSize: '12px 12px',
@@ -425,14 +425,14 @@ export const PassportStampsPage: React.FC<PassportStampsPageProps> = ({ flights,
             <Award className="w-4 h-4 text-emerald-500" />
             Visa stamps
           </h3>
-          <span className="text-[7.5px] font-black uppercase tracking-widest text-zinc-400 bg-zinc-150 dark:bg-zinc-800 px-2.5 py-0.5 rounded-full">
+          <span className="text-2xs font-black uppercase tracking-widest text-zinc-400 bg-zinc-150 dark:bg-zinc-800 px-2.5 py-0.5 rounded-full">
             {stats.flags.length} ADMITTED
           </span>
         </div>
 
         {/* Vintage-style stamp gallery */}
         {stats.flags.length > 0 ? (
-          <div className="flex flex-wrap gap-[15px] py-3 px-2 justify-center flex-1 overflow-y-auto overflow-x-visible custom-scrollbar">
+          <div className="flex flex-wrap gap-4 py-3 px-2 justify-center flex-1 overflow-y-auto overflow-x-visible custom-scrollbar">
             {stats.flags.map((stamp, idx) => {
               const name = COUNTRY_NAMES[stamp.code] || stamp.code;
               const colors = [
@@ -469,13 +469,13 @@ export const PassportStampsPage: React.FC<PassportStampsPageProps> = ({ flights,
             })}
           </div>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center w-full text-center py-7 text-[8px] uppercase font-bold text-zinc-400 border border-dashed border-zinc-200/50 dark:border-white/5 rounded-2xl bg-zinc-500/5 select-none">
+          <div className="flex-1 flex flex-col items-center justify-center w-full text-center py-7 text-2xs uppercase font-bold text-zinc-400 border border-dashed border-zinc-200/50 dark:border-white/5 rounded-2xl bg-zinc-500/5 select-none">
             No stamps recorded for this era
           </div>
         )}
       </div>
 
-      <div className="mt-3 text-[7.5px] font-black uppercase text-zinc-400/60 font-mono tracking-widest text-center border-t border-dashed border-zinc-200/50 dark:border-white/5 pt-3 select-none">
+      <div className="mt-3 text-2xs font-bold uppercase text-zinc-400/60 font-mono tracking-widest text-center border-t border-dashed border-zinc-200/50 dark:border-white/5 pt-3 select-none">
         WanderGrid ADMISSION SEALS
       </div>
     </div>
@@ -494,10 +494,10 @@ export const PassportTravelMap: React.FC<PassportTravelMapProps> = ({ flights, y
   const stats = useBentoStats(flights);
 
   return (
-    <div className="relative overflow-hidden bg-white/70 dark:bg-zinc-900/40 border border-zinc-200/60 dark:border-white/5 shadow-xl rounded-[2.5rem] backdrop-blur-xl h-full flex flex-col justify-end group transition-all duration-300 hover:shadow-2xl">
+    <div className="relative overflow-hidden bg-white/70 dark:bg-zinc-900/40 border border-zinc-200/60 dark:border-white/5 shadow-xl rounded-3xl backdrop-blur-xl h-full flex flex-col justify-end group transition-all duration-300 hover:shadow-2xl">
       {/* Floating Status Indicator Tag */}
       <div className="absolute top-5 left-5 z-20 bg-white/90 dark:bg-black/55 px-3 py-2 rounded-2xl border border-zinc-200 dark:border-white/10 backdrop-blur-md shadow-sm pointer-events-none">
-        <div className="flex items-center gap-2 text-[8px] md:text-[9.5px] font-black uppercase tracking-widest text-zinc-800 dark:text-zinc-250">
+        <div className="flex items-center gap-2 text-2xs font-bold uppercase tracking-widest text-zinc-800 dark:text-zinc-250">
           <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping shrink-0" />
           Live Route Network
         </div>
@@ -505,7 +505,7 @@ export const PassportTravelMap: React.FC<PassportTravelMapProps> = ({ flights, y
 
       {/* Floating Network Statistics Tag */}
       <div className="absolute top-5 right-5 z-20 bg-white/90 dark:bg-black/55 px-3 py-2 rounded-2xl border border-zinc-200 dark:border-white/10 backdrop-blur-md shadow-sm pointer-events-none">
-        <div className="flex items-center gap-1 text-[8.5px] font-bold text-zinc-500 dark:text-zinc-400">
+        <div className="flex items-center gap-1 text-2xs font-bold text-zinc-500 dark:text-zinc-400">
           <Globe className="w-3.5 h-3.5 text-indigo-500" />
           {stats.routes.length} Active Segments
         </div>

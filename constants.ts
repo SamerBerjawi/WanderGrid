@@ -21,7 +21,16 @@ export const CARD_FILL_STYLE =
   'bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 rounded-3xl p-5';
 
 export const CARD_ELEVATED_STYLE = 
-  'bg-white/80 dark:bg-dark-card/80 backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-glass-card rounded-2xl';
+  'bg-white/80 dark:bg-dark-card/80 backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-glass-card rounded-3xl';
+
+export const HEADER_BANNER_STYLE =
+  'relative overflow-hidden bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl border border-black/5 dark:border-white/10 rounded-3xl p-6 sm:p-8 shadow-sm';
+
+export const MODAL_SHELL_STYLE =
+  'bg-white/90 dark:bg-dark-card/90 backdrop-blur-sm border border-black/10 dark:border-white/15 rounded-3xl shadow-glass-modal';
+
+export const MODAL_BACKDROP_STYLE =
+  'fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md transition-opacity duration-300';
 
 export const DIVIDER_INNER_STYLE = 
   'border-black/5 dark:border-white/5';
@@ -32,7 +41,38 @@ export const DIVIDER_SHELL_STYLE =
 export const FROSTED_FOOTER_STYLE = 
   'p-6 border-t border-black/5 dark:border-white/10 bg-white/80 dark:bg-dark-card/80 backdrop-blur-md flex items-center justify-between gap-3 shrink-0';
 
-// --- Typography & Labels ---
+// --- Typography Tokens (Apple HIG Scale) ---
+export const TYPOGRAPHY_H1 = 
+  'text-2xl md:text-4xl font-bold tracking-tight leading-tight text-light-text dark:text-dark-text';
+
+export const TYPOGRAPHY_H2 = 
+  'text-xl md:text-2xl font-semibold tracking-tight leading-snug text-light-text dark:text-dark-text';
+
+export const TYPOGRAPHY_H3 = 
+  'text-lg font-semibold leading-snug text-light-text dark:text-dark-text';
+
+export const TYPOGRAPHY_H4 = 
+  'text-base font-semibold leading-snug text-light-text dark:text-dark-text';
+
+export const TYPOGRAPHY_SUBHEAD = 
+  'text-sm md:text-base font-normal text-light-text-secondary dark:text-dark-text-secondary leading-normal';
+
+export const TYPOGRAPHY_BODY = 
+  'text-base font-normal leading-relaxed text-light-text dark:text-dark-text';
+
+export const TYPOGRAPHY_BODY_COMPACT = 
+  'text-sm font-normal leading-normal text-light-text dark:text-dark-text';
+
+export const TYPOGRAPHY_CAPTION = 
+  'text-xs font-medium text-light-text-secondary dark:text-dark-text-secondary leading-tight';
+
+export const TYPOGRAPHY_LABEL = 
+  'text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary';
+
+export const TYPOGRAPHY_KICKER = 
+  'text-2xs font-bold uppercase tracking-wider';
+
+// --- Header & Label Legacy Compatibility Tokens ---
 export const HEADER_TITLE_STYLE = 
   'text-lg font-bold text-light-text dark:text-dark-text tracking-tight truncate';
 

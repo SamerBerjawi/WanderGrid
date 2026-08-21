@@ -280,11 +280,11 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
 
     return (
         <div className="h-full animate-fade-in pb-4">
-            <Card noPadding className="rounded-[2.5rem] border-white/50 dark:border-white/10 shadow-2xl h-full flex flex-col overflow-hidden">
-                <div className="p-8 border-b border-gray-100 dark:border-white/5 bg-gradient-to-br from-blue-500/5 to-indigo-500/5 rounded-t-[2.5rem] shrink-0">
+            <Card noPadding className="rounded-3xl border-white/50 dark:border-white/10 shadow-2xl h-full flex flex-col overflow-hidden">
+                <div className="p-8 border-b border-gray-100 dark:border-white/5 bg-gradient-to-br from-blue-500/5 to-indigo-500/5 rounded-t-3xl shrink-0">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                         <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 rounded-[1.5rem] bg-gradient-to-br from-blue-500 to-indigo-650 flex items-center justify-center text-white shadow-xl shadow-blue-500/10">
+                            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-650 flex items-center justify-center text-white shadow-xl shadow-blue-500/10">
                                 <span className="material-icons-outlined text-3xl">flight_takeoff</span>
                             </div>
                             <div>
@@ -347,7 +347,7 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
                         
                         <div className="space-y-6">
                             <div className="space-y-2">
-                                <label className="text-[11px] font-black uppercase text-zinc-400 dark:text-zinc-500 tracking-wider font-mono">Carrier Name</label>
+                                <label className="text-xs font-bold uppercase text-zinc-500 dark:text-zinc-400 tracking-wider font-mono">Carrier Name</label>
                                 <Input 
                                     placeholder="e.g. Lufthansa" 
                                     value={name} 
@@ -357,27 +357,27 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-[11px] font-black uppercase text-zinc-400 dark:text-zinc-500 tracking-wider font-mono">Airline Code or Provider ID</label>
+                                <label className="text-xs font-bold uppercase text-zinc-500 dark:text-zinc-400 tracking-wider font-mono">Airline Code or Provider ID</label>
                                 <Input 
                                     placeholder="e.g. LH or lufthansa" 
                                     value={code} 
                                     onChange={e => setCode(e.target.value)}
                                     className="!bg-white dark:!bg-zinc-900/60 !border-transparent shadow-sm rounded-xl"
                                 />
-                                <span className="text-[10px] text-zinc-400 dark:text-zinc-500 block leading-normal mt-1">
+                                <span className="text-xs text-zinc-400 dark:text-zinc-500 block leading-normal mt-1">
                                     Matches flight provider entries case-insensitively (e.g. LH, Delta, DL).
                                 </span>
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-[11px] font-black uppercase text-zinc-400 dark:text-zinc-500 tracking-wider font-mono">Brandfetch Domain Override</label>
+                                <label className="text-xs font-bold uppercase text-zinc-500 dark:text-zinc-400 tracking-wider font-mono">Brandfetch Domain Override</label>
                                 <Input 
                                     placeholder="e.g. lufthansa.com" 
                                     value={domain} 
                                     onChange={e => setDomain(e.target.value)}
                                     className="!bg-white dark:!bg-zinc-900/60 !border-transparent shadow-sm rounded-xl"
                                 />
-                                <span className="text-[10px] text-zinc-400 dark:text-zinc-500 block leading-normal mt-1">
+                                <span className="text-xs text-zinc-400 dark:text-zinc-500 block leading-normal mt-1">
                                     Provides high-fidelity, vector-refined brand assets and icons on dashboards.
                                 </span>
                             </div>
@@ -387,7 +387,7 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
                                 <div className="p-4 rounded-xl bg-white border border-zinc-200/50 dark:bg-black/30 dark:border-white/5 flex items-center gap-4 shadow-sm animate-fade-in">
                                     <CarrierImage domain={domain} alt="Preview" className="w-12 h-12 shrink-0" apiKey={config.brandfetchApiKey} />
                                     <div className="min-w-0">
-                                        <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest block font-mono">Interactive Preview</span>
+                                        <span className="text-2xs font-bold text-blue-500 uppercase tracking-widest block font-mono">Interactive Preview</span>
                                         <span className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate block max-w-[140px] mt-0.5">{domain.trim()}</span>
                                     </div>
                                 </div>
@@ -415,13 +415,13 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
                     <div className="flex-1 p-8 flex flex-col min-w-0 overflow-hidden">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 shrink-0">
                             <div>
-                                <h4 className="text-lg font-black text-gray-900 dark:text-white font-sans">Registered Carrier Mappings</h4>
+                                <h4 className="text-lg font-bold text-gray-900 dark:text-white font-sans">Registered Carrier Mappings</h4>
                                 <p className="text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest mt-1">Configure {carriers.length} mappings</p>
                             </div>
                             
                             {/* Search Filter input */}
                             <div className="relative w-full sm:w-72">
-                                <span className="material-icons-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-450 dark:text-zinc-500 text-[18px]">search</span>
+                                <span className="material-icons-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-450 dark:text-zinc-500 text-lg">search</span>
                                 <input
                                     type="text"
                                     placeholder="Filter by airline name, code, domain..."
@@ -458,7 +458,7 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
                             <div className="flex-1 bg-white/50 dark:bg-zinc-900/40 border border-zinc-150 dark:border-white/5 shadow-sm rounded-3xl overflow-y-auto overflow-x-auto custom-scrollbar">
                                 <table className="w-full text-left border-collapse min-w-[500px]">
                                     <thead className="sticky top-0 z-10 bg-zinc-50/90 dark:bg-zinc-900/90 backdrop-blur-md">
-                                        <tr className="border-b border-zinc-250 dark:border-zinc-850/50 font-mono text-zinc-400 dark:text-zinc-500 text-[11px] font-black uppercase tracking-widest leading-none">
+                                        <tr className="border-b border-zinc-250 dark:border-zinc-850/50 font-mono text-zinc-400 dark:text-zinc-500 text-xs font-bold uppercase tracking-widest leading-none">
                                             <th className="py-4 pl-6 w-[80px]">Logo</th>
                                             <th className="py-4 px-4">Carrier Name</th>
                                             <th className="py-4 px-4 w-[140px]">Airline Code</th>

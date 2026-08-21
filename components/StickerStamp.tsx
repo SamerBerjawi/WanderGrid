@@ -192,7 +192,7 @@ export const StickerStamp: React.FC<StickerStampProps> = ({
       <div 
         onClick={() => setIsModalOpen(true)}
         style={{ transform: isUnlocked ? `rotate(${tilt}deg)` : undefined }}
-        className={`group relative flex flex-col items-center justify-between p-5 rounded-[2.5rem] h-[19rem] w-full border transition-all duration-300 cursor-pointer select-none overflow-hidden hover:-translate-y-1.5 active:scale-[0.98] ${
+        className={`group relative flex flex-col items-center justify-between p-5 rounded-3xl h-[19rem] w-full border transition-all duration-300 cursor-pointer select-none overflow-hidden hover:-translate-y-1.5 active:scale-[0.98] ${
           isUnlocked 
             ? `bg-gradient-to-br ${theme.gradient} border-white/40 dark:border-white/20 shadow-xl ${theme.shadow} hover:shadow-2xl`
             : 'bg-zinc-50/50 dark:bg-zinc-900/60 border-zinc-200 dark:border-zinc-800/80 hover:bg-zinc-100/60 dark:hover:bg-zinc-900/90 shadow-sm opacity-55 hover:opacity-100'
@@ -212,7 +212,7 @@ export const StickerStamp: React.FC<StickerStampProps> = ({
 
         {/* Die-Cut sticker outer white/grey border ring */}
         <div className={`w-full flex justify-between items-center ${isUnlocked ? theme.text : 'text-zinc-400 dark:text-zinc-650'}`}>
-          <span className="text-[10px] font-mono tracking-widest font-black uppercase opacity-65">
+          <span className="text-2xs font-mono tracking-widest font-bold uppercase opacity-65">
             {sticker.category.slice(0, 13)}
           </span>
           <span className="text-sm font-bold">
@@ -239,20 +239,20 @@ export const StickerStamp: React.FC<StickerStampProps> = ({
             <h4 className={`text-sm font-black tracking-tight leading-tight uppercase ${isUnlocked ? theme.text : 'text-zinc-600 dark:text-zinc-300'}`}>
               {sticker.name}
             </h4>
-            <p className={`text-[10px] font-semibold tracking-wide ${isUnlocked ? 'text-black/60 dark:text-white/60' : 'text-zinc-450 dark:text-zinc-500'}`}>
+            <p className={`text-xs font-semibold tracking-wide ${isUnlocked ? 'text-black/60 dark:text-white/60' : 'text-zinc-450 dark:text-zinc-500'}`}>
               {sticker.location}
             </p>
           </div>
         </div>
 
         {/* Sticker Footer status banner */}
-        <div className="w-full pt-2 border-t border-black/10 dark:border-white/5 flex justify-between items-center text-[9px] font-mono">
+        <div className="w-full pt-2 border-t border-black/10 dark:border-white/5 flex justify-between items-center text-2xs font-mono">
           {isUnlocked ? (
             <>
-              <span className={`font-black uppercase tracking-wide px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10 ${theme.text}`}>
+              <span className={`font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10 ${theme.text}`}>
                 {claim.isAutoMatched ? '⭐ MATCH' : '🖋️ CLAIMED'}
               </span>
-              <span className={`font-black opacity-80 ${theme.text}`}>
+              <span className={`font-bold opacity-80 ${theme.text}`}>
                 {new Date(claim.claimDate).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
               </span>
             </>
@@ -282,7 +282,7 @@ export const StickerStamp: React.FC<StickerStampProps> = ({
             </div>
             <div>
               <div className="flex flex-wrap gap-2 items-center">
-                <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${isUnlocked ? 'bg-black/10 text-black/80' : 'bg-zinc-100 dark:bg-white/10 text-zinc-500'}`}>
+                <span className={`text-2xs font-bold uppercase tracking-widest px-2 py-0.5 rounded ${isUnlocked ? 'bg-black/10 text-black/80' : 'bg-zinc-100 dark:bg-white/10 text-zinc-500'}`}>
                   {sticker.category}
                 </span>
                 <span className="font-mono text-xs text-zinc-500 dark:text-zinc-400">
@@ -311,7 +311,7 @@ export const StickerStamp: React.FC<StickerStampProps> = ({
               </div>
 
               <div className="p-4 bg-amber-500/10 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 rounded-2xl border border-amber-300/30">
-                <h5 className="text-[10px] font-black uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                <h5 className="text-2xs font-bold uppercase tracking-wider mb-1 flex items-center gap-1.5">
                   <Stars className="w-3.5 h-3.5" /> Did You Know?
                 </h5>
                 <p className="text-xs leading-normal font-semibold">
@@ -345,7 +345,7 @@ export const StickerStamp: React.FC<StickerStampProps> = ({
                   Journal Entry & Logs
                 </h4>
                 {isUnlocked && (
-                  <span className="text-[10px] bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-2 py-0.5 rounded font-black uppercase">
+                  <span className="text-2xs bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-2 py-0.5 rounded font-bold uppercase">
                     Unlocked
                   </span>
                 )}
@@ -359,14 +359,14 @@ export const StickerStamp: React.FC<StickerStampProps> = ({
                       <p className="text-xs font-black uppercase mb-0.5 flex items-center gap-1.5">
                         <Check className="w-3.5 h-3.5" /> Automatic Verification
                       </p>
-                      <p className="text-[11px] font-semibold leading-relaxed">
+                      <p className="text-xs font-semibold leading-relaxed">
                         Match detected on past trip <strong className="font-bold underline">"{claim.matchedTripName}"</strong> scheduled for {new Date(claim.claimDate).toLocaleDateString()}.
                       </p>
                     </div>
                   ) : null}
 
                   <div className="space-y-1">
-                    <span className="text-[10px] text-zinc-450 uppercase font-bold tracking-wide block">Visit Date</span>
+                    <span className="text-2xs text-zinc-450 uppercase font-bold tracking-wide block">Visit Date</span>
                     <p className="text-zinc-900 dark:text-white font-bold flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-indigo-500" />
                       {new Date(claim.claimDate).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
@@ -374,7 +374,7 @@ export const StickerStamp: React.FC<StickerStampProps> = ({
                   </div>
 
                   <div className="space-y-1">
-                    <span className="text-[10px] text-zinc-450 uppercase font-bold tracking-wide block">My Memories</span>
+                    <span className="text-2xs text-zinc-450 uppercase font-bold tracking-wide block">My Memories</span>
                     <blockquote className="p-3 bg-zinc-100/50 dark:bg-zinc-900/60 rounded-xl italic text-zinc-700 dark:text-zinc-300 border-l-4 border-indigo-500">
                       "{claim.memo}"
                     </blockquote>

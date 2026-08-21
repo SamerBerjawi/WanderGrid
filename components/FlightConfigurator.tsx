@@ -149,10 +149,10 @@ const DurationInput: React.FC<{ minutes: number; onChange: (m: number) => void; 
                 {onAutoCalc && canAutoCalc && (
                     <button 
                         onClick={onAutoCalc} 
-                        className="text-[10px] font-bold text-blue-500 hover:text-blue-600 flex items-center gap-1 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded transition-colors"
+                        className="text-xs font-bold text-blue-500 hover:text-blue-600 flex items-center gap-1 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded transition-colors"
                         title="Estimate duration based on distance and mode speed"
                     >
-                        <span className="material-icons-outlined text-[10px]">speed</span> Auto
+                        <span className="material-icons-outlined text-xs">speed</span> Auto
                     </button>
                 )}
             </div>
@@ -1124,7 +1124,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                         }`}
                     >
                         <span className="material-icons-outlined text-xl mb-1">{m.icon}</span>
-                        <span className="text-[10px] font-bold uppercase tracking-wide">{m.label}</span>
+                        <span className="text-xs font-bold uppercase tracking-wide">{m.label}</span>
                     </button>
                 ))}
             </div>
@@ -1250,7 +1250,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                             <div key={segment.id} className="relative p-5 bg-white dark:bg-white/5 rounded-3xl border border-gray-100 dark:border-white/5 shadow-sm group">
                                 <div className="flex justify-between items-center mb-4">
                                     <div className="flex items-center gap-3">
-                                        <Badge color={segment.section === 'outbound' ? 'blue' : 'purple'} className="!text-[9px]">
+                                        <Badge color={segment.section === 'outbound' ? 'blue' : 'purple'} className="!text-2xs">
                                             {tripType === 'Round Trip' ? (segment.section === 'outbound' ? 'Outbound' : 'Return') : `Leg ${index + 1}`}
                                         </Badge>
                                         {segment.logoUrl && (
@@ -1262,7 +1262,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                     <div className="flex items-center gap-2">
                                         <button 
                                             onClick={() => addLayover(index)}
-                                            className="text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 dark:text-blue-400 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 px-2 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+                                            className="text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 dark:text-blue-400 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 px-2 py-1.5 rounded-lg transition-colors flex items-center gap-1"
                                             title="Add Connecting Flight"
                                         >
                                             <span className="material-icons-outlined text-xs">add_circle_outline</span> Layover
@@ -1377,7 +1377,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                                         <Plane className="w-4 h-4 text-blue-500 animate-pulse shrink-0" />
                                                         Find Flight Schedules
                                                     </h4>
-                                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                                                         Live search available airline schedules on this route for {segment.date || 'selected date'}
                                                      </p>
                                                 </div>
@@ -1411,7 +1411,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
 
                                             {searchedFlights[index] && (
                                                 <div className="mt-4 space-y-2 max-h-[300px] overflow-y-auto pr-1">
-                                                    <div className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wider mb-2.5 flex justify-between items-center">
+                                                    <div className="text-xs uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wider mb-2.5 flex justify-between items-center">
                                                         <span>Pick a flight option below</span>
                                                         <button 
                                                             type="button"
@@ -1420,7 +1420,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                                                 delete copy[index];
                                                                 return copy;
                                                             })}
-                                                            className="text-[9px] hover:text-red-500 text-slate-400 hover:underline cursor-pointer uppercase transition-all"
+                                                            className="text-2xs hover:text-red-500 text-slate-400 hover:underline cursor-pointer uppercase transition-all"
                                                         >
                                                             Clear List
                                                         </button>
@@ -1461,13 +1461,13 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                                                                 <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
                                                                                     {carrierName}
                                                                                 </span>
-                                                                                <Badge color="blue" className="!px-2 !py-0.5 !text-[9px] font-mono font-bold">
+                                                                                <Badge color="blue" className="!px-2 !py-0.5 !text-2xs font-mono font-bold">
                                                                                     {flightNum}
                                                                                 </Badge>
                                                                             </div>
-                                                                            <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-500 dark:text-slate-400 font-mono">
+                                                                            <div className="flex items-center gap-1.5 mt-0.5 text-xs text-slate-500 dark:text-slate-400 font-mono">
                                                                                 <span>{flight.departure?.airport || flight.departure?.iata}</span>
-                                                                                <span className="material-icons-outlined text-[10px] text-slate-400">east</span>
+                                                                                <span className="material-icons-outlined text-xs text-slate-400">east</span>
                                                                                 <span>{flight.arrival?.airport || flight.arrival?.iata}</span>
                                                                             </div>
                                                                         </div>
@@ -1477,18 +1477,18 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                                                         <div className="text-right">
                                                                             <div className="text-xs font-black text-slate-900 dark:text-slate-100 flex items-center gap-1 justify-end">
                                                                                 <span className="font-sans">{depSched}</span>
-                                                                                <span className="text-[10px] text-slate-400 font-normal">→</span>
+                                                                                <span className="text-xs text-slate-400 font-normal">→</span>
                                                                                 <span className="font-sans">{arrSched}</span>
                                                                             </div>
-                                                                            <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1 mt-0.5 justify-end">
-                                                                                <span className="material-icons text-slate-400 text-[10px] mr-0.5">schedule</span>
+                                                                            <div className="text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1 mt-0.5 justify-end">
+                                                                                <span className="material-icons text-slate-400 text-xs mr-0.5">schedule</span>
                                                                                 <span>
                                                                                     {flight.departure?.terminal ? `Terminal ${flight.departure.terminal}` : ''}
                                                                                     {flight.departure?.gate ? ` • Gate ${flight.departure.gate}` : ''}
                                                                                 </span>
                                                                             </div>
                                                                         </div>
-                                                                        <div className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 group-hover/flight-item:bg-blue-600 group-hover/flight-item:text-white rounded-lg transition-all text-[11px] font-bold uppercase tracking-wider">
+                                                                        <div className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 group-hover/flight-item:bg-blue-600 group-hover/flight-item:text-white rounded-lg transition-all text-xs font-bold uppercase tracking-wider">
                                                                             Select
                                                                         </div>
                                                                     </div>
@@ -1597,7 +1597,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                             <div className="flex items-center h-full pt-6">
                                                 <label className="flex items-center gap-2 cursor-pointer">
                                                     <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${segment.isExitRow ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-gray-300 dark:border-gray-600 dark:bg-gray-800'}`}>
-                                                        {segment.isExitRow && <span className="material-icons-outlined text-white text-[10px]">check</span>}
+                                                        {segment.isExitRow && <span className="material-icons-outlined text-white text-xs">check</span>}
                                                     </div>
                                                     <input type="checkbox" className="hidden" checked={segment.isExitRow} onChange={e => updateSegment(index, 'isExitRow', e.target.checked)} />
                                                     <span className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase">Exit Row</span>
@@ -1609,7 +1609,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                     {mode === 'Flight' && (
                                         <div className="md:col-span-12 space-y-4 p-4 mt-2 bg-blue-50/20 dark:bg-blue-900/10 rounded-2xl border border-blue-100/30 dark:border-blue-900/20">
                                             <div className="flex justify-between items-center pb-2 border-b border-blue-100/30 dark:border-blue-900/20">
-                                                <h5 className="text-[11px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest flex items-center gap-1.5">
+                                                <h5 className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest flex items-center gap-1.5">
                                                     <span className="material-icons-outlined text-sm">flight_land</span> AirTrail Flight Details (Terminal, Gate, Tail, Custom)
                                                 </h5>
                                                 
@@ -1621,7 +1621,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                                         onChange={e => updateSegment(index, 'isApproximate', e.target.checked)} 
                                                         className="rounded text-blue-600"
                                                     />
-                                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Approx Year Only</span>
+                                                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Approx Year Only</span>
                                                 </label>
                                             </div>
 
@@ -1676,13 +1676,13 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                             {/* Arbitrary Custom Fields */}
                                             <div className="space-y-2 pt-2">
                                                 <div className="flex justify-between items-center">
-                                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Custom Metadata Metadata</span>
+                                                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Custom Metadata Metadata</span>
                                                     <button 
                                                         onClick={() => {
                                                             const currentFields = segment.customFields || [];
                                                             updateSegment(index, 'customFields', [...currentFields, { key: '', value: '' }]);
                                                         }}
-                                                        className="text-[10px] font-bold text-blue-500 hover:text-blue-600 flex items-center gap-1 bg-white dark:bg-gray-800 px-2.5 py-1 rounded-lg border border-gray-200 dark:border-white/10 shadow-sm"
+                                                        className="text-xs font-bold text-blue-500 hover:text-blue-600 flex items-center gap-1 bg-white dark:bg-gray-800 px-2.5 py-1 rounded-lg border border-gray-200 dark:border-white/10 shadow-sm"
                                                     >
                                                         <span className="material-icons-outlined text-xs">add</span> Add Custom Metadata Field
                                                     </button>

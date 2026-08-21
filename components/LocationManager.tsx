@@ -685,7 +685,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
     return (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 text-gray-900 dark:text-gray-100">
             {/* Top Stats Dashboard Section */}
-            <div className="lg:col-span-12 flex flex-col md:flex-row md:items-center justify-between gap-6 p-8 bg-gradient-to-r from-slate-900 to-indigo-950 text-white rounded-[2rem] shadow-2xl relative overflow-hidden border border-white/5">
+            <div className="lg:col-span-12 flex flex-col md:flex-row md:items-center justify-between gap-6 p-8 bg-gradient-to-r from-slate-900 to-indigo-950 text-white rounded-3xl shadow-2xl relative overflow-hidden border border-white/5">
                 <div className="absolute top-[-20%] right-[-10%] w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
                 <div className="relative">
                     <div className="flex items-center gap-3">
@@ -699,11 +699,11 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                 
                 <div className="flex flex-wrap gap-4 items-center relative z-10">
                     <div className="bg-white/[0.04] backdrop-blur px-6 py-4 rounded-2xl border border-white/5 flex flex-col min-w-[120px]">
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Total Distance</span>
+                        <span className="text-2xs font-bold uppercase tracking-widest text-slate-400">Total Distance</span>
                         <span className="text-2xl font-black tracking-tight mt-1 text-white">{statsDistance.toLocaleString()} km</span>
                     </div>
                     <div className="bg-white/[0.04] backdrop-blur px-6 py-4 rounded-2xl border border-white/5 flex flex-col min-w-[120px]">
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 font-sans">Carbon Footprint</span>
+                        <span className="text-2xs font-bold uppercase tracking-widest text-slate-400 font-sans">Carbon Footprint</span>
                         <span className="text-2xl font-black tracking-tight mt-1 text-emerald-400 font-mono">{statsCarbonEmissions} kg</span>
                     </div>
                 </div>
@@ -723,7 +723,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.95 }}
                                 transition={{ duration: 0.25 }}
-                                className={`bg-white dark:bg-gray-900 border rounded-[2.5rem] shadow-lg p-6 relative transition-all duration-250 ${
+                                className={`bg-white dark:bg-gray-900 border rounded-3xl shadow-lg p-6 relative transition-all duration-250 ${
                                     isDragHighlighted 
                                     ? 'border-indigo-500 ring-4 ring-indigo-500/10 scale-[1.01]' 
                                     : 'border-gray-200/60 dark:border-white/5'
@@ -815,7 +815,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                                                     {/* Start City Selection with Inline Lock Toggle */}
                                                     <div className="md:col-span-3 space-y-1.5 relative">
                                                         <div className="flex items-center justify-between">
-                                                            <label className="text-[10px] font-black uppercase tracking-wider text-gray-400">Start City</label>
+                                                            <label className="text-xs font-bold uppercase tracking-wider text-gray-400">Start City</label>
                                                             {prevSegment && (
                                                                 <button
                                                                     type="button"
@@ -835,7 +835,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                                                         {seg.linkStartToPrevDest && prevSegment ? (
                                                             <div className="w-full px-4 py-3 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/10 border border-indigo-100/50 dark:border-indigo-900/30 text-gray-700 dark:text-indigo-300 text-sm font-bold flex items-center justify-between h-[46px]">
                                                                 <span className="truncate pr-1">{prevSegment.destination || "Pending destination..."}</span>
-                                                                <Badge color="indigo" className="text-[8px] font-extrabold shrink-0">LINKED</Badge>
+                                                                <Badge color="indigo" className="text-2xs font-bold shrink-0">LINKED</Badge>
                                                             </div>
                                                         ) : (
                                                             <Autocomplete
@@ -849,7 +849,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
 
                                                     {/* Destination Selector */}
                                                     <div className="md:col-span-3 space-y-1.5">
-                                                        <label className="text-[10px] font-black uppercase tracking-wider text-gray-400">Destination</label>
+                                                        <label className="text-xs font-bold uppercase tracking-wider text-gray-400">Destination</label>
                                                         <Autocomplete
                                                             placeholder="Where to?"
                                                             value={seg.destination}
@@ -861,7 +861,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                                                     {/* Journey Date Picker with Link Toggle (WIDENED & STYLIZED) */}
                                                     <div className="md:col-span-3 space-y-1.5">
                                                         <div className="flex items-center justify-between">
-                                                            <label className="text-[10px] font-black uppercase tracking-wider text-gray-400">Departure</label>
+                                                            <label className="text-xs font-bold uppercase tracking-wider text-gray-400">Departure</label>
                                                             {prevSegment && (
                                                                 <button
                                                                     type="button"
@@ -881,7 +881,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                                                         {seg.linkDateToPrevDate && prevSegment ? (
                                                             <div className="w-full px-4 py-3 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/10 border border-indigo-100/50 dark:border-indigo-900/30 text-gray-700 dark:text-indigo-300 text-sm font-bold flex items-center justify-between h-[46px]">
                                                                 <span className="truncate pr-1">{prevSegment.date}</span>
-                                                                <Badge color="indigo" className="text-[8px] font-extrabold shrink-0">LINKED</Badge>
+                                                                <Badge color="indigo" className="text-2xs font-bold shrink-0">LINKED</Badge>
                                                             </div>
                                                         ) : (
                                                             <Input
@@ -949,14 +949,14 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                                                 {/* Micro-linking Interactive offerings below */}
                                                 {prevSegment && (
                                                     <div className="flex flex-wrap gap-2.5 mt-3.5 border-t border-gray-150/50 dark:border-white/[0.02] pt-3.5 text-xs text-slate-405">
-                                                        <span className="font-extrabold uppercase text-[8px] tracking-wider text-slate-400 flex items-center gap-1 mt-1 shrink-0">
+                                                        <span className="font-bold uppercase text-2xs tracking-wider text-slate-400 flex items-center gap-1 mt-1 shrink-0">
                                                             🤝 Connections:
                                                         </span>
                                                         
                                                         <button
                                                             type="button"
                                                             onClick={() => toggleLinkStart(leg.id, seg.id, prevSegment.destination)}
-                                                            className={`px-3 py-1 rounded-full text-[9px] font-bold tracking-tight transition-all flex items-center gap-1 cursor-pointer ${
+                                                            className={`px-3 py-1 rounded-full text-2xs font-bold tracking-tight transition-all flex items-center gap-1 cursor-pointer ${
                                                                 seg.linkStartToPrevDest 
                                                                 ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 shadow-sm' 
                                                                 : 'bg-zinc-100 dark:bg-zinc-800/40 hover:bg-zinc-200/60 text-gray-500 dark:text-gray-400'
@@ -972,7 +972,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                                                         <button
                                                             type="button"
                                                             onClick={() => toggleLinkDate(leg.id, seg.id, prevSegment.date)}
-                                                            className={`px-3 py-1 rounded-full text-[9px] font-bold tracking-tight transition-all flex items-center gap-1 cursor-pointer ${
+                                                            className={`px-3 py-1 rounded-full text-2xs font-bold tracking-tight transition-all flex items-center gap-1 cursor-pointer ${
                                                                 seg.linkDateToPrevDate 
                                                                 ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 shadow-sm' 
                                                                 : 'bg-zinc-100 dark:bg-zinc-800/40 hover:bg-zinc-200/60 text-gray-500 dark:text-gray-400'
@@ -1001,7 +1001,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                                         <Button 
                                             variant="secondary" 
                                             size="sm" 
-                                            className="bg-white/90 dark:bg-zinc-800 text-[10px] font-extrabold py-1.5 px-3 rounded-xl border border-red-500/10 hover:bg-white dark:hover:bg-zinc-700 cursor-pointer shadow-sm text-red-500 hover:text-red-600"
+                                            className="bg-white/90 dark:bg-zinc-800 text-xs font-bold py-1.5 px-3 rounded-xl border border-red-500/10 hover:bg-white dark:hover:bg-zinc-700 cursor-pointer shadow-sm text-red-500 hover:text-red-600"
                                             onClick={() => autoResolveTimelineOverlap(legIdx)}
                                         >
                                             Auto-Align Timeline
@@ -1010,7 +1010,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                                 )}
 
                                 {/* Internal leg stats footer with duration */}
-                                <div className="mt-5 flex justify-between items-center text-[10px] font-extrabold uppercase text-gray-400 tracking-wider">
+                                <div className="mt-5 flex justify-between items-center text-xs font-bold uppercase text-gray-400 tracking-wider">
                                     <div className="flex items-center gap-1.5">
                                         <Calendar className="w-3.5 h-3.5 text-slate-400" />
                                         <span>Duration: <span className="text-gray-700 dark:text-zinc-350">{validation.durationText}</span> ({validation.startDate} to {validation.endDate})</span>
@@ -1026,7 +1026,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                 <div className="flex pt-2">
                     <button 
                         onClick={addLeg}
-                        className="flex items-center gap-2.5 px-6 py-5 border-2 border-dashed border-slate-200 dark:border-white/10 hover:border-blue-500 dark:hover:border-blue-400 text-slate-550 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-300 rounded-[2.5rem] w-full justify-center transition-all bg-white/40 dark:bg-slate-900/10 font-bold uppercase tracking-wider text-xs shadow-inner cursor-pointer"
+                        className="flex items-center gap-2.5 px-6 py-5 border-2 border-dashed border-slate-200 dark:border-white/10 hover:border-blue-500 dark:hover:border-blue-400 text-slate-550 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-300 rounded-3xl w-full justify-center transition-all bg-white/40 dark:bg-slate-900/10 font-bold uppercase tracking-wider text-xs shadow-inner cursor-pointer"
                     >
                         <Plus className="w-4 h-4 animate-bounce" /> Add Separate Excursion / Route
                     </button>
@@ -1042,7 +1042,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                         </p>
 
                         {hasTimelineOverlaps && (
-                            <div className="bg-red-500/10 p-3.5 border border-red-500/15 rounded-2xl text-[10px] text-red-600 dark:text-red-400 font-bold leading-normal">
+                            <div className="bg-red-500/10 p-3.5 border border-red-500/15 rounded-2xl text-xs text-red-600 dark:text-red-400 font-bold leading-normal">
                                 🚫 Save Disabled: You must resolve timeline overlaps between consecutive excursions before saving. Use the auto-align alignment buttons to fix issues instantly.
                             </div>
                         )}
@@ -1075,9 +1075,9 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                         <div className="flex gap-3 bg-emerald-500/10 p-4 rounded-3xl border border-emerald-500/15">
                             <Earth className="w-6 h-6 text-emerald-500 shrink-0 animate-spin-slow" />
                             <div>
-                                <div className="text-xs font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-widest leading-none">Carbon Offset Registered</div>
-                                <div className="text-[10px] text-gray-505 mt-1.5 leading-normal">
-                                    This route produces a total estimated overhead of <span className="font-extrabold text-emerald-600 dark:text-emerald-450">{statsCarbonEmissions} kg CO2</span>.
+                                <div className="text-xs font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-widest leading-none">Carbon Offset Registered</div>
+                                <div className="text-xs text-gray-500 mt-1.5 leading-normal">
+                                    This route produces a total estimated overhead of <span className="font-bold text-emerald-600 dark:text-emerald-450">{statsCarbonEmissions} kg CO2</span>.
                                 </div>
                             </div>
                         </div>
@@ -1085,7 +1085,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                         <div className="space-y-3">
                             <div className="flex justify-between items-center text-xs border-b border-gray-150/40 dark:border-white/5 pb-2.5 font-sans font-medium">
                                 <span className="text-gray-400">Carbon offset rating</span>
-                                <span className="font-extrabold text-emerald-600 dark:text-emerald-500">Gold Certified</span>
+                                <span className="font-bold text-emerald-600 dark:text-emerald-500">Gold Certified</span>
                             </div>
                             <div className="flex justify-between items-center text-xs border-b border-gray-150/40 dark:border-white/5 pb-2.5 font-sans font-medium">
                                 <span className="text-gray-400 font-sans">Eco Contribution</span>
@@ -1093,11 +1093,11 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                             </div>
                             <div className="flex justify-between items-center text-xs font-sans font-medium">
                                 <span className="text-gray-400">Mitigation projects</span>
-                                <span className="font-bold text-gray-605 dark:text-zinc-310">Amazon Reforestation</span>
+                                <span className="font-bold text-gray-600 dark:text-zinc-300">Amazon Reforestation</span>
                             </div>
                         </div>
                         
-                        <p className="text-[10px] text-zinc-400 leading-normal bg-zinc-50 dark:bg-zinc-950/40 p-3.5 rounded-2xl border border-gray-150/50 dark:border-white/5">
+                        <p className="text-xs text-zinc-400 leading-normal bg-zinc-50 dark:bg-zinc-950/40 p-3.5 rounded-2xl border border-gray-150/50 dark:border-white/5">
                             🌳 WanderGrid matches every flight, rail, and road trip emissions with GoldStandard carbon-offset investments. Enjoy carbon-neutral travel tracking automatically.
                         </p>
                     </div>

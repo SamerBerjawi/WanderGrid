@@ -878,12 +878,12 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
             className="fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md flex items-center justify-center z-[9000] p-4 text-light-text dark:text-dark-text animate-fade-in"
             style={{ WebkitBackdropFilter: 'blur(12px)' }}
         >
-            <div className="bg-white/95 dark:bg-dark-card/95 backdrop-blur-2xl border border-black/10 dark:border-white/15 rounded-3xl shadow-glass-modal flex flex-col w-full max-w-6xl h-[85vh] overflow-hidden animate-scale-up" style={{ WebkitBackdropFilter: 'blur(40px)' }}>
+            <div className="bg-white/95 dark:bg-dark-card/95 backdrop-blur-sm border border-black/10 dark:border-white/15 rounded-3xl shadow-glass-modal flex flex-col w-full max-w-6xl h-[85vh] overflow-hidden animate-scale-up" style={{ WebkitBackdropFilter: 'blur(4px)' }}>
                 
                 {/* Header section with stepper */}
                 <div className="p-6 border-b border-slate-150/50 dark:border-white/5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gray-50 dark:bg-zinc-800/40">
                     <div>
-                        <span className="text-[10px] font-black uppercase text-blue-500 tracking-widest flex items-center gap-1.5 mb-1">
+                        <span className="text-2xs font-bold uppercase text-blue-500 tracking-widest flex items-center gap-1.5 mb-1">
                             <Sparkles className="w-3.5 h-3.5" /> Core Data Ingestion
                         </span>
                         <h3 className="text-2xl font-black text-gray-900 dark:text-white leading-none">Smart Flight Spreadsheet Loader</h3>
@@ -892,17 +892,17 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                     {/* Stepper display */}
                     <div className="flex items-center gap-2">
                         <div className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 ${step === 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-zinc-800 text-zinc-400'}`}>
-                            <span className="w-4 h-4 rounded-full bg-white/20 text-center text-[10px] leading-4 font-black">1</span>
+                            <span className="w-4 h-4 rounded-full bg-white/20 text-center text-2xs leading-4 font-bold">1</span>
                             Upload File
                         </div>
                         <ChevronRight className="w-4 h-4 text-zinc-400" />
                         <div className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 ${step === 2 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-zinc-800 text-zinc-400'}`}>
-                            <span className="w-4 h-4 rounded-full bg-white/20 text-center text-[10px] leading-4 font-black">2</span>
+                            <span className="w-4 h-4 rounded-full bg-white/20 text-center text-2xs leading-4 font-bold">2</span>
                             Field Mapping
                         </div>
                         <ChevronRight className="w-4 h-4 text-zinc-400" />
                         <div className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 ${step === 3 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-zinc-800 text-zinc-400'}`}>
-                            <span className="w-4 h-4 rounded-full bg-white/20 text-center text-[10px] leading-4 font-black">3</span>
+                            <span className="w-4 h-4 rounded-full bg-white/20 text-center text-2xs leading-4 font-bold">3</span>
                             Confirm Flights
                         </div>
                     </div>
@@ -1036,7 +1036,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                             <div className="p-4 rounded-3xl bg-slate-50 dark:bg-zinc-800/40 border border-zinc-200/50 dark:border-zinc-805 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-left">
                                 <div>
                                     <p className="text-xs font-black uppercase text-zinc-800 dark:text-zinc-200">Carrier Code Column Format</p>
-                                    <p className="text-[11px] text-zinc-500">Is your spreadsheet using 2-letter IATA (DL) or 3-letter ICAO (DAL) codes for airlines?</p>
+                                    <p className="text-xs text-zinc-500">Is your spreadsheet using 2-letter IATA (DL) or 3-letter ICAO (DAL) codes for airlines?</p>
                                 </div>
                                 <div className="flex bg-gray-200 dark:bg-zinc-800 p-1 rounded-2xl shrink-0 self-stretch sm:self-auto">
                                     <button
@@ -1078,7 +1078,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                                     <span className="text-xs font-black text-gray-800 dark:text-zinc-200">
                                                         {tf.label} {tf.required && <span className="text-red-500">*</span>}
                                                     </span>
-                                                    <p className="text-[10px] text-zinc-500 truncate">{tf.desc}</p>
+                                                    <p className="text-xs text-zinc-500 truncate">{tf.desc}</p>
                                                 </div>
                                                 <div className="w-1/2">
                                                     <select
@@ -1112,13 +1112,13 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                                             {f.provider || 'Unmapped Airline'}
                                                         </span>
                                                         {f.providerCode && (
-                                                            <span className="text-[9px] font-mono font-bold bg-blue-100 dark:bg-blue-900/45 px-1.5 py-0.5 rounded text-blue-600 dark:text-blue-400">{f.providerCode}</span>
+                                                            <span className="text-2xs font-mono font-bold bg-blue-100 dark:bg-blue-900/45 px-1.5 py-0.5 rounded text-blue-600 dark:text-blue-400">{f.providerCode}</span>
                                                         )}
-                                                        <span className="text-[10px] font-mono font-bold bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-500 uppercase tracking-wide">{f.identifier || 'No Flight #'}</span>
+                                                        <span className="text-2xs font-mono font-bold bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-500 uppercase tracking-wide">{f.identifier || 'No Flight #'}</span>
                                                     </div>
 
                                                     {f.isApproximate && (
-                                                        <span className="text-[9px] font-black uppercase tracking-wide bg-red-100 dark:bg-red-950/40 text-red-600 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                                        <span className="text-2xs font-bold uppercase tracking-wide bg-red-100 dark:bg-red-950/40 text-red-600 px-2 py-0.5 rounded-full flex items-center gap-1">
                                                             <XCircle className="w-2.5 h-2.5" /> Checked Canceled
                                                         </span>
                                                     )}
@@ -1126,28 +1126,28 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
 
                                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 border-t border-b border-zinc-150/50 dark:border-zinc-800 py-2.5 my-0.5">
                                                     <div>
-                                                        <span className="text-[9px] uppercase font-bold text-zinc-400 block">Departure</span>
+                                                        <span className="text-2xs uppercase font-bold text-zinc-400 block">Departure</span>
                                                         <span className="text-xs font-black text-blue-600 dark:text-blue-450">{f.origin || '???'}</span>
-                                                        {f.departureTerminal && <span className="text-[10px] font-bold text-zinc-500"> (T{f.departureTerminal})</span>}
+                                                        {f.departureTerminal && <span className="text-xs font-bold text-zinc-500"> (T{f.departureTerminal})</span>}
                                                     </div>
                                                     <div>
-                                                        <span className="text-[9px] uppercase font-bold text-zinc-400 block">Arrival</span>
+                                                        <span className="text-2xs uppercase font-bold text-zinc-400 block">Arrival</span>
                                                         <span className="text-xs font-black text-indigo-600 dark:text-indigo-405">{f.destination || '???'}</span>
-                                                        {f.arrivalTerminal && <span className="text-[10px] font-bold text-zinc-500"> (T{f.arrivalTerminal})</span>}
+                                                        {f.arrivalTerminal && <span className="text-xs font-bold text-zinc-500"> (T{f.arrivalTerminal})</span>}
                                                     </div>
                                                     <div>
-                                                        <span className="text-[9px] uppercase font-bold text-zinc-400 block">Schedule</span>
+                                                        <span className="text-2xs uppercase font-bold text-zinc-400 block">Schedule</span>
                                                         <span className="text-xs font-bold text-gray-800 dark:text-zinc-200">{f.departureDate || 'Unmapped'}</span>
-                                                        <span className="text-[10px] font-mono text-zinc-500 block">{f.departureTime}</span>
+                                                        <span className="text-xs font-mono text-zinc-500 block">{f.departureTime}</span>
                                                     </div>
                                                     <div>
-                                                        <span className="text-[9px] uppercase font-bold text-zinc-400 block">Aircraft / Tail</span>
+                                                        <span className="text-2xs uppercase font-bold text-zinc-400 block">Aircraft / Tail</span>
                                                         <span className="text-xs font-bold text-gray-800 dark:text-zinc-200 truncate block">{f.vehicleModel || 'N/A'}</span>
-                                                        {f.tailNumber && <span className="text-[9px] font-mono text-zinc-500 block">{f.tailNumber}</span>}
+                                                        {f.tailNumber && <span className="text-2xs font-mono text-zinc-500 block">{f.tailNumber}</span>}
                                                     </div>
                                                 </div>
 
-                                                <div className="flex flex-wrap items-center gap-4 text-[10px] text-zinc-500">
+                                                <div className="flex flex-wrap items-center gap-4 text-xs text-zinc-500">
                                                     {f.confirmationCode && <span>PNR: <strong className="font-bold text-gray-700 dark:text-zinc-300">{f.confirmationCode}</strong></span>}
                                                     {f.seatNumber && <span>Seat: <strong className="font-bold text-gray-700 dark:text-zinc-300">{f.seatNumber} ({f.seatType})</strong></span>}
                                                     {f.travelClass && <span>Cabin: <strong className="font-bold text-gray-700 dark:text-zinc-300">{f.travelClass}</strong></span>}
@@ -1230,16 +1230,16 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                 {/* Advanced Filters inside Ingestion Dialog */}
                                 <div className="p-4 bg-slate-50 dark:bg-zinc-800/20 border border-zinc-200/50 dark:border-zinc-800 rounded-3xl space-y-3.5 text-left">
                                     <div className="flex items-center justify-between border-b border-zinc-150 dark:border-white/5 pb-2">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 flex items-center gap-1.5">
+                                        <span className="text-2xs font-bold uppercase tracking-widest text-zinc-400 flex items-center gap-1.5">
                                             <Filter className="w-3.5 h-3.5 text-blue-500" /> Advanced Pipeline Filtering
                                         </span>
-                                        <span className="text-[10px] font-mono font-bold text-zinc-550 mr-1.5">
+                                        <span className="text-xs font-mono font-bold text-zinc-550 mr-1.5">
                                             Selected: <span className="text-blue-500 font-extrabold">{selectedImportIndexes.size}</span> / {mappedFlights.length} total
                                         </span>
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
                                         <div>
-                                            <label className="text-[9px] font-bold text-zinc-450 uppercase block mb-1">Search flight text</label>
+                                            <label className="text-2xs font-bold text-zinc-450 uppercase block mb-1">Search flight text</label>
                                             <input
                                                 type="text"
                                                 value={importSearch}
@@ -1249,7 +1249,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                             />
                                         </div>
                                         <div>
-                                            <label className="text-[9px] font-bold text-zinc-450 uppercase block mb-1">Filter by Carrier</label>
+                                            <label className="text-2xs font-bold text-zinc-450 uppercase block mb-1">Filter by Carrier</label>
                                             <select
                                                 value={importAirlineFilter}
                                                 onChange={e => setImportAirlineFilter(e.target.value)}
@@ -1262,7 +1262,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="text-[9px] font-bold text-zinc-450 uppercase block mb-1">Filter by Cabin</label>
+                                            <label className="text-2xs font-bold text-zinc-450 uppercase block mb-1">Filter by Cabin</label>
                                             <select
                                                 value={importClassFilter}
                                                 onChange={e => setImportClassFilter(e.target.value)}
@@ -1275,7 +1275,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="text-[9px] font-bold text-zinc-450 uppercase block mb-1">Start Date</label>
+                                            <label className="text-2xs font-bold text-zinc-450 uppercase block mb-1">Start Date</label>
                                             <input
                                                 type="date"
                                                 value={importStartDateFilter}
@@ -1284,7 +1284,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                             />
                                         </div>
                                         <div>
-                                            <label className="text-[9px] font-bold text-zinc-450 uppercase block mb-1">End Date</label>
+                                            <label className="text-2xs font-bold text-zinc-450 uppercase block mb-1">End Date</label>
                                             <input
                                                 type="date"
                                                 value={importEndDateFilter}
@@ -1299,8 +1299,8 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                 {!existingTripId && users.length > 0 && (
                                     <div className="space-y-2 p-4 bg-slate-50 dark:bg-zinc-800/10 rounded-2xl border border-zinc-150/50 dark:border-white/5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                                         <div className="text-left font-sans">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Assign Passenger Ledger</label>
-                                            <p className="text-[11px] text-zinc-500 leading-none">Who will be the designated passenger traveler for this trip sequence?</p>
+                                            <label className="text-2xs font-bold text-slate-400 uppercase tracking-widest block mb-0.5">Assign Passenger Ledger</label>
+                                            <p className="text-xs text-zinc-500 leading-none">Who will be the designated passenger traveler for this trip sequence?</p>
                                         </div>
                                         <div className="w-full md:w-1/3">
                                             <select
@@ -1323,7 +1323,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                     <button
                                         type="button"
                                         onClick={handleToggleSelectAll}
-                                        className="text-[11px] text-blue-500 hover:text-blue-600 font-black uppercase tracking-wider cursor-pointer"
+                                        className="text-xs text-blue-500 hover:text-blue-600 font-bold uppercase tracking-wider cursor-pointer"
                                     >
                                         {displayedImportFlights.every(({ index }) => selectedImportIndexes.has(index)) ? '🔒 Deselect All' : '🔓 Select All Visible'}
                                     </button>
@@ -1358,18 +1358,18 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                                             <div className="flex items-center gap-2 flex-wrap text-sm font-black text-gray-850 dark:text-zinc-100">
                                                                 <span>{f.provider}</span>
                                                                 {f.providerCode && (
-                                                                    <span className="text-[9px] font-mono font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-550 px-1 py-0.5 rounded">{f.providerCode}</span>
+                                                                    <span className="text-2xs font-mono font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-550 px-1 py-0.5 rounded">{f.providerCode}</span>
                                                                 )}
-                                                                <span className="text-[9px] font-mono font-bold bg-blue-50 dark:bg-blue-950/30 text-blue-600 px-1 py-0.5 rounded uppercase">{f.identifier}</span>
+                                                                <span className="text-2xs font-mono font-bold bg-blue-50 dark:bg-blue-950/30 text-blue-600 px-1 py-0.5 rounded uppercase">{f.identifier}</span>
                                                                 {f.vehicleModel && (
-                                                                    <span className="text-[9px] font-bold text-zinc-400 italic">({f.vehicleModel})</span>
+                                                                    <span className="text-2xs font-bold text-zinc-400 italic">({f.vehicleModel})</span>
                                                                 )}
                                                             </div>
                                                             <div className="flex items-center gap-2 text-xs font-mono font-bold text-zinc-400 uppercase">
                                                                 <span className="text-blue-500">{f.origin}</span>
                                                                 <span>&rarr;</span>
                                                                 <span className="text-indigo-500">{f.destination}</span>
-                                                                {f.tailNumber && <span className="text-emerald-500 text-[10px]">({f.tailNumber})</span>}
+                                                                {f.tailNumber && <span className="text-emerald-500 text-xs">({f.tailNumber})</span>}
                                                             </div>
                                                             {allExistingFlights.some(ex => 
                                                                 ex.departureDate === f.departureDate && 
@@ -1382,7 +1382,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                                                 >
                                                                     <div className="flex items-center gap-1">
                                                                         <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                                                                        <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400">Potential Duplicate Flight Found. Resolution choice:</span>
+                                                                        <span className="text-xs font-bold text-amber-700 dark:text-amber-400">Potential Duplicate Flight Found. Resolution choice:</span>
                                                                     </div>
                                                                     <div className="flex gap-1.5">
                                                                         {(['skip', 'merge', 'overwrite'] as const).map(res => (
@@ -1392,7 +1392,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                                                                 onClick={() => {
                                                                                     setDuplicateResolutions(prev => ({ ...prev, [index]: res }));
                                                                                 }}
-                                                                                className={`flex-1 text-[9px] font-black uppercase tracking-wider py-1 px-2 rounded-lg border transition-all ${
+                                                                                className={`flex-1 text-2xs font-bold uppercase tracking-wider py-1 px-2 rounded-lg border transition-all ${
                                                                                     duplicateResolutions[index] === res 
                                                                                         ? 'bg-amber-500 text-white border-amber-500 ring-2 ring-amber-500/20' 
                                                                                         : 'bg-white dark:bg-zinc-800 text-amber-700 dark:text-amber-450 border-amber-200 dark:border-amber-950/40 hover:bg-amber-100/40'
@@ -1409,7 +1409,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                                     
                                                     <div className="text-right shrink-0">
                                                         <p className="text-xs font-black text-gray-800 dark:text-zinc-300">{f.departureDate || 'Jan 1, 2026'}</p>
-                                                        <p className="text-[10px] text-zinc-500 font-bold uppercase">{f.travelClass || 'Economy'}</p>
+                                                        <p className="text-xs text-zinc-500 font-bold uppercase">{f.travelClass || 'Economy'}</p>
                                                     </div>
                                                 </div>
                                             );

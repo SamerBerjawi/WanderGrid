@@ -169,7 +169,7 @@ const WeatherWidget: React.FC<{ location: string, coordinates?: { lat: number, l
         <div className="p-4 rounded-2xl bg-gradient-to-br from-sky-400 to-blue-600 text-white shadow-lg shadow-blue-500/20 border border-white/10 flex items-center gap-4">
             <div className="flex flex-col items-center">
                 <span className="material-icons-outlined text-3xl drop-shadow-md">{getWeatherIcon(weather.current_weather.weathercode)}</span>
-                <span className="text-[10px] font-bold uppercase tracking-widest opacity-80 mt-1">Now</span>
+                <span className="text-2xs font-bold uppercase tracking-widest opacity-80 mt-1">Now</span>
             </div>
             <div>
                 <div className="text-3xl font-black leading-none">{Math.round(weather.current_weather.temperature)}°</div>
@@ -332,7 +332,7 @@ const NomadGuide: React.FC<{ trip: Trip }> = ({ trip }) => {
     };
 
     return (
-        <div className="flex flex-col h-[600px] bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-white/5 shadow-xl overflow-hidden">
+        <div className="flex flex-col h-[600px] bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-white/5 shadow-xl overflow-hidden">
             <div className="p-6 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/5 flex items-center gap-4">
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white shadow-lg">
                     <span className="material-icons-outlined text-2xl">auto_awesome</span>
@@ -1159,7 +1159,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                             const styleClasses = getTypeStyles(item.type);
                             return (
                                 <div key={idx} 
-                                    className={`text-[9px] font-bold px-1.5 py-1 rounded border flex items-center gap-1 cursor-pointer truncate ${styleClasses}`}
+                                    className={`text-2xs font-bold px-1.5 py-1 rounded border flex items-center gap-1 cursor-pointer truncate ${styleClasses}`}
                                     onClick={() => {
                                         if (item.type === 'Transport') openTransportModal([item.ref]);
                                         if (item.type === 'Accommodation') openAccommodationModal();
@@ -1167,7 +1167,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                     }}
                                     title={`${item.time ? formatTime(item.time) + ' - ' : ''}${item.name}`}
                                 >
-                                    <span className="material-icons-outlined text-[10px]">{item.icon}</span>
+                                    <span className="material-icons-outlined text-xs">{item.icon}</span>
                                     <span className="truncate">{item.time ? formatTime(item.time) : ''} {item.name}</span>
                                 </div>
                             );
@@ -1196,7 +1196,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 <div className="p-4">
                     <div className="grid grid-cols-7 gap-3 mb-2">
                         {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
-                            <div key={d} className="text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">{d}</div>
+                            <div key={d} className="text-center text-2xs font-bold text-gray-400 uppercase tracking-widest">{d}</div>
                         ))}
                     </div>
                     <div className="grid grid-cols-7 gap-2">
@@ -1214,7 +1214,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 {(() => {
                     const vibe = getWeatherVibeStyle(weather?.current_weather?.weathercode);
                     return (
-                        <div className={`lg:col-span-8 relative rounded-[2.5rem] bg-white dark:bg-gray-900 shadow-2xl border ${vibe.border} overflow-hidden flex flex-col justify-between transition-all duration-500`}>
+                        <div className={`lg:col-span-8 relative rounded-3xl bg-white dark:bg-gray-900 shadow-2xl border ${vibe.border} overflow-hidden flex flex-col justify-between transition-all duration-500`}>
                             <div className={`absolute inset-0 bg-gradient-to-br ${vibe.bg} pointer-events-none transition-all duration-500`} />
                             <div className="relative p-6 lg:p-8 flex flex-col gap-6 h-full justify-between">
                                 <div className="flex flex-col md:flex-row justify-between items-start gap-4">
@@ -1247,7 +1247,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                         <span>
                                                             {Math.round(weather.current_weather.temperature)}°C · {getWeatherDescription(weather.current_weather.weathercode)}
                                                             {weather.daily && (
-                                                                <span className="opacity-80 ml-1.5 text-[11px] font-normal">
+                                                                <span className="opacity-80 ml-1.5 text-xs font-normal">
                                                                     (H: {Math.round(weather.daily.temperature_2m_max[0])}° L: {Math.round(weather.daily.temperature_2m_min[0])}°)
                                                                 </span>
                                                             )}
@@ -1279,24 +1279,24 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
                                     <div className="p-3 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 rounded-2xl text-center flex flex-col justify-center">
                                         <span className="text-lg md:text-xl font-black text-emerald-600 dark:text-emerald-450">{formatCurrency(totalCost)}</span>
-                                        <span className="text-[9px] font-black text-emerald-500/70 uppercase tracking-wider mt-0.5">Total Cost</span>
+                                        <span className="text-2xs font-bold text-emerald-500/70 uppercase tracking-wider mt-0.5">Total Cost</span>
                                     </div>
                                     <div className="p-3 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 rounded-2xl text-center flex flex-col justify-center">
                                         <span className="text-lg md:text-xl font-black text-blue-600 dark:text-blue-450">{duration}</span>
-                                        <span className="text-[9px] font-black text-blue-500/70 uppercase tracking-wider mt-0.5">Days Duration</span>
+                                        <span className="text-2xs font-bold text-blue-500/70 uppercase tracking-wider mt-0.5">Days Duration</span>
                                     </div>
                                     <div className="p-3 bg-purple-50/50 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/30 rounded-2xl text-center flex flex-col justify-center items-center">
                                         <div className="flex -space-x-1.5 mb-0.5 justify-center">
                                             {(trip.participants || []).map((pid, idx) => {
                                                 const u = users.find(u => u.id === pid);
-                                                return u ? <div key={idx} className="w-5 h-5 rounded-full bg-purple-100 border-2 border-white flex items-center justify-center text-[8px] font-bold text-purple-800" title={u.name}>{u.name.charAt(0)}</div> : null;
+                                                return u ? <div key={idx} className="w-5 h-5 rounded-full bg-purple-100 border-2 border-white flex items-center justify-center text-2xs font-bold text-purple-800" title={u.name}>{u.name.charAt(0)}</div> : null;
                                             })}
                                         </div>
-                                        <span className="text-[9px] font-black text-purple-500/70 uppercase tracking-wider">Travelers</span>
+                                        <span className="text-2xs font-bold text-purple-500/70 uppercase tracking-wider">Travelers</span>
                                     </div>
                                     <div className="p-3 bg-gray-50/50 dark:bg-gray-800/40 border border-gray-100 dark:border-white/5 rounded-2xl text-center flex flex-col justify-center">
                                         <span className="text-lg md:text-xl font-black text-gray-700 dark:text-gray-300">{(trip.transports?.length || 0) + (trip.accommodations?.length || 0) + (trip.activities?.length || 0)}</span>
-                                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider mt-0.5 font-sans">Active Items</span>
+                                        <span className="text-2xs font-bold text-gray-400 uppercase tracking-wider mt-0.5 font-sans">Active Items</span>
                                     </div>
                                 </div>
                             </div>
@@ -1305,16 +1305,16 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 })()}
 
                 {/* Right Card: Beautiful interactive 2D Map Overview card of the configured routes */}
-                <div className="lg:col-span-4 relative rounded-[2.5rem] bg-white/35 dark:bg-zinc-950/15 backdrop-blur-xl border border-white/50 dark:border-white/10 shadow-[0_24px_64px_rgba(0,0,0,0.08)] dark:shadow-[0_24px_64px_rgba(0,0,0,0.45)] overflow-hidden min-h-[300px]">
+                <div className="lg:col-span-4 relative rounded-3xl bg-white/35 dark:bg-zinc-950/15 backdrop-blur-xl border border-white/50 dark:border-white/10 shadow-[0_24px_64px_rgba(0,0,0,0.08)] dark:shadow-[0_24px_64px_rgba(0,0,0,0.45)] overflow-hidden min-h-[300px]">
                     <div className="absolute top-4 left-4 z-10 flex items-center gap-1.5 bg-white/95 dark:bg-black/40 backdrop-blur px-3 py-1.5 rounded-full border border-white/50 dark:border-white/10 shadow-sm pointer-events-none">
                         <span className="material-icons-outlined text-blue-500 text-sm">explore</span>
-                        <span className="text-[10px] font-black uppercase tracking-wider text-gray-700 dark:text-gray-300">Route Map Overview 2D</span>
+                        <span className="text-2xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">Route Map Overview 2D</span>
                     </div>
                     <div className="absolute inset-0 bg-transparent">
                         <Suspense fallback={
                             <div className="w-full h-full flex flex-col items-center justify-center bg-transparent text-zinc-400 space-y-3">
                                 <span className="w-8 h-8 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin"></span>
-                                <span className="text-[9px] font-bold uppercase tracking-wider">Rasterizing Route Vector...</span>
+                                <span className="text-2xs font-bold uppercase tracking-wider">Rasterizing Route Vector...</span>
                             </div>
                         }>
                             <DeckFlightMap 
@@ -1395,9 +1395,9 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                 return (
                                     <div key={dateStr} className="relative md:pl-20 group">
                                         <div className="hidden md:flex absolute left-0 top-0 w-16 h-16 bg-white dark:bg-gray-900 border-4 border-gray-100 dark:border-border-800 rounded-2xl items-center justify-center flex-col z-10 shadow-sm">
-                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{dateObj.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' })}</span>
+                                            <span className="text-2xs font-bold text-gray-400 uppercase tracking-widest">{dateObj.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' })}</span>
                                             <span className="text-xl font-black text-gray-800 dark:text-white leading-none">{dateObj.getUTCDate()}</span>
-                                            <span className="text-[8px] font-bold text-gray-400 uppercase tracking-tighter mt-0.5">Day {index + 1}</span>
+                                            <span className="text-2xs font-bold text-gray-400 uppercase tracking-tighter mt-0.5">Day {index + 1}</span>
                                         </div>
                                         <div className="md:hidden mb-2 flex items-center gap-3">
                                             <div className="bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-bold">Day {index + 1}</div>
@@ -1427,11 +1427,11 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                                         </h4>
                                                                     </div>
                                                                     <div className="flex gap-4 mt-1">
-                                                                        <p className="text-[10px] text-blue-600 dark:text-blue-300 font-bold uppercase tracking-wider">
+                                                                        <p className="text-2xs text-blue-600 dark:text-blue-300 font-bold uppercase tracking-wider">
                                                                             {t.provider} {t.identifier}
                                                                         </p>
                                                                         {item.meta && (
-                                                                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                                                                            <p className="text-2xs text-gray-500 font-bold uppercase tracking-wider">
                                                                                 {item.meta}
                                                                             </p>
                                                                         )}
@@ -1461,11 +1461,11 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                                         </h4>
                                                                     </div>
                                                                     <div className="flex gap-4 mt-1">
-                                                                        <p className="text-[10px] text-amber-600 dark:text-amber-300 font-bold uppercase tracking-wider">
+                                                                        <p className="text-2xs text-amber-600 dark:text-amber-300 font-bold uppercase tracking-wider">
                                                                             {statusLabel}
                                                                         </p>
                                                                         {item.meta && (
-                                                                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                                                                            <p className="text-2xs text-gray-500 font-bold uppercase tracking-wider">
                                                                                 {item.meta}
                                                                             </p>
                                                                         )}
@@ -1498,7 +1498,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                                         <h4 className="font-bold text-gray-900 dark:text-white text-sm truncate">{item.title}</h4>
                                                                     </div>
                                                                     {item.meta && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">{item.meta}</p>}
-                                                                    {item.location && <p className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-1 truncate"><span className="material-icons-outlined text-[10px]">place</span> {item.location}</p>}
+                                                                    {item.location && <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1 truncate"><span className="material-icons-outlined text-xs">place</span> {item.location}</p>}
                                                                 </div>
                                                                 {item.cost && <div className={`text-xs font-bold whitespace-nowrap ${isRes ? 'text-orange-600 dark:text-orange-400' : 'text-gray-600 dark:text-gray-300'}`}>{formatCurrency(item.cost)}</div>}
                                                                 
@@ -1526,7 +1526,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                         // Table View - Keep exact same structure
                         <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-white/5 shadow-xl overflow-hidden">
                             <table className="w-full text-left border-collapse">
-                                <thead className="bg-gray-50/80 dark:bg-white/5 backdrop-blur border-b border-gray-100 dark:border-white/5 text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400 sticky top-0 z-20">
+                                <thead className="bg-gray-50/80 dark:bg-white/5 backdrop-blur border-b border-gray-100 dark:border-white/5 text-2xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 sticky top-0 z-20">
                                     <tr>
                                         <th className="p-6 w-32">Time</th>
                                         <th className="p-6 w-48">Category</th>
@@ -1549,7 +1549,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                             <span className={`text-xs font-black uppercase tracking-wider ${isToday ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>
                                                                 {dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
                                                             </span>
-                                                            {isToday && <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-300 uppercase tracking-widest">Today</span>}
+                                                            {isToday && <span className="px-2 py-0.5 rounded text-2xs font-bold bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-300 uppercase tracking-widest">Today</span>}
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -1561,9 +1561,9 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                     const styleClasses = getTypeStyles(item.type);
                                                     return (
                                                         <tr key={`${dateStr}-${idx}`} className="group hover:bg-blue-50/30 dark:hover:bg-white/5 transition-all duration-200 border-b border-gray-50 dark:border-white/5 last:border-0">
-                                                            <td className="px-6 py-4"><div className="flex flex-col"><span className="text-sm font-bold text-gray-800 dark:text-gray-200 font-mono tracking-tight">{formatTime(item.time)}</span>{item.isDropoff && <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Arrive</span>}</div></td>
-                                                            <td className="px-6 py-4"><div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-[10px] font-bold uppercase tracking-wide ${styleClasses}`}><span className="material-icons-outlined text-sm">{item.icon}</span><span>{item.subType || item.type}</span></div></td>
-                                                            <td className="px-6 py-4"><div><p className="font-bold text-gray-900 dark:text-white text-sm leading-snug">{item.name}</p>{item.meta && (<p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1.5 font-medium opacity-80">{item.type === 'Transport' && !item.isDropoff && <span className="material-icons-outlined text-[10px]">schedule</span>}{item.meta}</p>)}</div></td>
+                                                            <td className="px-6 py-4"><div className="flex flex-col"><span className="text-sm font-bold text-gray-800 dark:text-gray-200 font-mono tracking-tight">{formatTime(item.time)}</span>{item.isDropoff && <span className="text-2xs font-bold text-gray-400 uppercase tracking-wider mt-0.5">Arrive</span>}</div></td>
+                                                            <td className="px-6 py-4"><div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-2xs font-bold uppercase tracking-wide ${styleClasses}`}><span className="material-icons-outlined text-sm">{item.icon}</span><span>{item.subType || item.type}</span></div></td>
+                                                            <td className="px-6 py-4"><div><p className="font-bold text-gray-900 dark:text-white text-sm leading-snug">{item.name}</p>{item.meta && (<p className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1.5 font-medium opacity-80">{item.type === 'Transport' && !item.isDropoff && <span className="material-icons-outlined text-xs">schedule</span>}{item.meta}</p>)}</div></td>
                                                             <td className="px-6 py-4"><div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400 font-medium max-w-[180px]">{item.location ? (<><span className="material-icons-outlined text-sm opacity-60 shrink-0">place</span><span className="truncate" title={item.location}>{item.location}</span></>) : (<span className="opacity-30">-</span>)}</div></td>
                                                             <td className="px-6 py-4 text-right">{item.cost ? (<span className="font-bold text-gray-900 dark:text-white text-sm tabular-nums tracking-tight">{formatCurrency(item.cost)}</span>) : (<span className="text-gray-300 dark:text-gray-600 text-xs font-mono">-</span>)}</td>
                                                             <td className="px-6 py-4 text-right"><button onClick={() => { if (item.type === 'Transport') openTransportModal([item.ref]); if (item.type === 'Accommodation') openAccommodationModal(); if (item.type === 'Activity' || item.type === 'Reservation' || item.type === 'Tour') handleOpenActivityModal(dateStr, item.ref); }} className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all opacity-0 group-hover:opacity-100"><span className="material-icons-outlined text-lg">edit_note</span></button></td>
@@ -1592,7 +1592,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                 </div>
                                 <div>
                                     <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 tracking-tight leading-tight">Transportation</h3>
-                                    <p className="text-[11px] text-zinc-400 dark:text-zinc-500 font-medium">Flights, trains, and rental vehicles</p>
+                                    <p className="text-xs text-zinc-400 dark:text-zinc-500 font-medium">Flights, trains, and rental vehicles</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
@@ -1628,7 +1628,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                 }).map(([id, group]: [string, Transport[]]) => {
                                     const first = group[0];
                                     return (
-                                        <div key={id} className="bg-white dark:bg-zinc-900/30 rounded-[2rem] overflow-hidden border border-zinc-200/50 dark:border-white/5 shadow-sm hover:shadow-md transition-all duration-300">
+                                        <div key={id} className="bg-white dark:bg-zinc-900/30 rounded-3xl overflow-hidden border border-zinc-200/50 dark:border-white/5 shadow-sm hover:shadow-md transition-all duration-300">
                                             {/* Header */}
                                             <div className="p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-zinc-50/50 dark:bg-white/[0.01] border-b border-zinc-150/50 dark:border-white/5">
                                                 <div className="flex items-center gap-4">
@@ -1649,15 +1649,15 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                     <div>
                                                         <h4 className="font-bold text-zinc-800 dark:text-zinc-150 text-base leading-tight">{first.provider}</h4>
                                                         <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                                                            <span className="px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-white/5 text-[10px] font-mono font-bold text-zinc-500 dark:text-zinc-400">
+                                                            <span className="px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-white/5 text-2xs font-mono font-bold text-zinc-500 dark:text-zinc-400">
                                                                 {first.identifier || 'No ID'}
                                                             </span>
                                                             <span className="w-1 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700"></span>
-                                                            <span className="text-[11px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">{first.type}</span>
+                                                            <span className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">{first.type}</span>
                                                             {first.confirmationCode && (
                                                                 <>
                                                                     <span className="w-1 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700"></span>
-                                                                    <span className="text-[10px] font-mono tracking-widest text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-950/30 px-1.5 py-0.5 rounded border border-indigo-100 dark:border-indigo-900/20 select-all" title="Confirmation Code">
+                                                                    <span className="text-2xs font-mono tracking-widest text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-950/30 px-1.5 py-0.5 rounded border border-indigo-100 dark:border-indigo-900/20 select-all" title="Confirmation Code">
                                                                         CONF: {first.confirmationCode}
                                                                     </span>
                                                                 </>
@@ -1671,7 +1671,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                     </div>
                                                     <button 
                                                         onClick={() => openTransportModal(group)} 
-                                                        className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 uppercase tracking-widest mt-1 cursor-pointer flex items-center gap-1 bg-indigo-50 dark:bg-indigo-950/20 px-2.5 py-1 rounded-lg border border-indigo-100 dark:border-indigo-900/10 hover:shadow-sm transition-all"
+                                                        className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 uppercase tracking-widest mt-1 cursor-pointer flex items-center gap-1 bg-indigo-50 dark:bg-indigo-950/20 px-2.5 py-1 rounded-lg border border-indigo-100 dark:border-indigo-900/10 hover:shadow-sm transition-all"
                                                     >
                                                         <span className="material-icons-outlined text-xs">edit_note</span> Edit Details
                                                     </button>
@@ -1688,7 +1688,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                             {isReturn && (
                                                                 <div className="flex items-center gap-4 py-4">
                                                                     <div className="h-px bg-zinc-100 dark:bg-white/5 flex-1"></div>
-                                                                    <div className="px-3 py-1 rounded-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200/40 dark:border-zinc-800 text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest flex items-center gap-1.5">
+                                                                    <div className="px-3 py-1 rounded-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200/40 dark:border-zinc-800 text-2xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest flex items-center gap-1.5">
                                                                         <span className="material-icons-outlined text-xs">repeat</span> 
                                                                         Return Journey • {Math.ceil((new Date(t.departureDate).getTime() - new Date(group[idx-1].arrivalDate).getTime()) / 86400000)} Days Later
                                                                     </div>
@@ -1704,12 +1704,12 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                                         <span className="material-icons-outlined text-lg">flight_takeoff</span>
                                                                     </div>
                                                                     <div>
-                                                                        <p className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider">Departure</p>
+                                                                        <p className="text-2xs uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider">Departure</p>
                                                                         <div className="flex items-baseline gap-2 mt-0.5">
                                                                             <span className="text-xl font-black text-zinc-800 dark:text-white tracking-tight uppercase">{t.origin}</span>
                                                                             <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 font-mono">{formatTime(t.departureTime)}</span>
                                                                         </div>
-                                                                        <p className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500 mt-1">
+                                                                        <p className="text-xs font-semibold text-zinc-400 dark:text-zinc-500 mt-1">
                                                                             {new Date(t.departureDate).toLocaleDateString(undefined, {weekday:'short', month:'short', day:'numeric'})}
                                                                             {t.departureTerminal && ` · Term ${t.departureTerminal}`}
                                                                             {t.departureGate && ` · Gate ${t.departureGate}`}
@@ -1719,7 +1719,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
 
                                                                 {/* Center: Progress & Duration Vector */}
                                                                 <div className="flex flex-col items-center justify-center min-w-[120px] shrink-0 pointer-events-none select-none relative py-1 md:py-0">
-                                                                    <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 tracking-tight mb-1.5">{calculateDuration(t)}</span>
+                                                                    <span className="text-2xs font-bold text-zinc-400 dark:text-zinc-500 tracking-tight mb-1.5">{calculateDuration(t)}</span>
                                                                     <div className="w-full flex items-center gap-1.5 relative px-2">
                                                                         <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 border border-indigo-400 shrink-0"></div>
                                                                         <div className="flex-1 h-[2px] border-t-2 border-dashed border-zinc-200 dark:border-zinc-800 relative flex items-center justify-center">
@@ -1727,18 +1727,18 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                                         </div>
                                                                         <div className="w-1.5 h-1.5 rounded-full bg-purple-500 border border-purple-400 shrink-0"></div>
                                                                     </div>
-                                                                    <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-350 dark:text-zinc-600 mt-1.5">Nonstop</span>
+                                                                    <span className="text-2xs font-bold uppercase tracking-wider text-zinc-350 dark:text-zinc-600 mt-1.5">Nonstop</span>
                                                                 </div>
 
                                                                 {/* Right: Arrival Info */}
                                                                 <div className="flex-1 flex items-center justify-start md:justify-end gap-4 min-w-[200px]">
                                                                     <div className="md:text-right">
-                                                                        <p className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider">Arrival</p>
+                                                                        <p className="text-2xs uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider">Arrival</p>
                                                                         <div className="flex items-baseline md:justify-end gap-2 mt-0.5">
                                                                             <span className="text-xl font-black text-zinc-800 dark:text-white tracking-tight uppercase">{t.destination}</span>
                                                                             <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 font-mono">{formatTime(t.arrivalTime)}</span>
                                                                         </div>
-                                                                        <p className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500 mt-1">
+                                                                        <p className="text-xs font-semibold text-zinc-400 dark:text-zinc-500 mt-1">
                                                                             {new Date(t.arrivalDate).toLocaleDateString(undefined, {weekday:'short', month:'short', day:'numeric'})}
                                                                             {t.arrivalTerminal && ` · Term ${t.arrivalTerminal}`}
                                                                             {t.arrivalGate && ` · Gate ${t.arrivalGate}`}
@@ -1754,26 +1754,26 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                             {(t.travelClass || t.seatNumber || t.vehicleModel || t.pickupLocation) && (
                                                                 <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-zinc-150/40 dark:border-white/5">
                                                                     {t.travelClass && (
-                                                                        <div className="px-2.5 py-1 rounded-lg bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-white/5 text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                                                                        <div className="px-2.5 py-1 rounded-lg bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-white/5 text-2xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
                                                                             <span className="material-icons-outlined text-xs text-zinc-400">workspace_premium</span> 
                                                                             {t.travelClass}
                                                                         </div>
                                                                     )}
                                                                     {t.seatNumber && (
-                                                                        <div className="px-2.5 py-1 rounded-lg bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/30 dark:border-indigo-900/15 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-1.5">
+                                                                        <div className="px-2.5 py-1 rounded-lg bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/30 dark:border-indigo-900/15 text-2xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-1.5">
                                                                             <span className="material-icons-outlined text-xs">airline_seat_recline_extra</span>
                                                                             Seat {t.seatNumber} {t.seatType && `(${t.seatType})`}
-                                                                            {t.isExitRow && <span className="text-[9px] font-semibold text-rose-500 dark:text-rose-400 font-sans tracking-normal">Exit Row</span>}
+                                                                            {t.isExitRow && <span className="text-2xs font-bold text-rose-500 dark:text-rose-400 font-sans tracking-normal">Exit Row</span>}
                                                                         </div>
                                                                     )}
                                                                     {t.vehicleModel && (
-                                                                        <div className="px-2.5 py-1 rounded-lg bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100/30 dark:border-emerald-900/15 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                                                                        <div className="px-2.5 py-1 rounded-lg bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100/30 dark:border-emerald-900/15 text-2xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
                                                                             <span className="material-icons-outlined text-xs">directions_car</span> 
                                                                             {t.vehicleModel}
                                                                         </div>
                                                                     )}
                                                                     {t.pickupLocation && (
-                                                                        <div className="px-2.5 py-1 rounded-lg bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-white/5 text-[10px] font-bold text-zinc-550 dark:text-zinc-400 flex items-center gap-1">
+                                                                        <div className="px-2.5 py-1 rounded-lg bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-white/5 text-2xs font-bold text-zinc-550 dark:text-zinc-400 flex items-center gap-1">
                                                                             <span className="material-icons-outlined text-xs text-zinc-400">pin_drop</span>
                                                                             Pickup: {t.pickupLocation}
                                                                         </div>
@@ -1800,7 +1800,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                 </div>
                                 <div>
                                     <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 tracking-tight leading-tight">Accommodation</h3>
-                                    <p className="text-[11px] text-zinc-400 dark:text-zinc-500 font-medium">Hotel stays, resorts, and vacation rentals</p>
+                                    <p className="text-xs text-zinc-400 dark:text-zinc-500 font-medium">Hotel stays, resorts, and vacation rentals</p>
                                 </div>
                             </div>
                             <Button size="sm" variant="secondary" onClick={() => openAccommodationModal()} className="font-bold">
@@ -1824,11 +1824,11 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                     if (dateA !== dateB) return dateA.localeCompare(dateB);
                                     return timeA.localeCompare(timeB);
                                 }).map(stay => (
-                                    <div key={stay.id} className="bg-white dark:bg-zinc-900/30 rounded-[2rem] p-6 sm:p-8 border border-zinc-200/50 dark:border-white/5 shadow-sm hover:shadow-md hover:border-zinc-350 dark:hover:border-white/10 transition-all duration-350 flex flex-col md:flex-row justify-between items-stretch gap-6 group relative">
+                                    <div key={stay.id} className="bg-white dark:bg-zinc-900/30 rounded-3xl p-6 sm:p-8 border border-zinc-200/50 dark:border-white/5 shadow-sm hover:shadow-md hover:border-zinc-350 dark:hover:border-white/10 transition-all duration-350 flex flex-col md:flex-row justify-between items-stretch gap-6 group relative">
                                         
                                         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-5 flex-1">
                                             {/* Brand Logo or Visual Accent */}
-                                            <div className="w-16 h-16 rounded-[1.25rem] bg-gradient-to-tr from-indigo-50 to-indigo-100 dark:from-indigo-950/20 dark:to-indigo-900/30 border border-indigo-100 dark:border-indigo-900/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-black text-2xl overflow-hidden shrink-0 shadow-sm">
+                                            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-50 to-indigo-100 dark:from-indigo-950/20 dark:to-indigo-900/30 border border-indigo-100 dark:border-indigo-900/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-black text-2xl overflow-hidden shrink-0 shadow-sm">
                                                 {stay.logoUrl ? (
                                                     <img referrerPolicy="no-referrer" src={stay.logoUrl} className="w-full h-full object-cover" />
                                                 ) : (
@@ -1839,7 +1839,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                             <div className="space-y-1.5 flex-1 min-w-0">
                                                 <div className="flex flex-wrap items-center gap-2">
                                                     <h4 className="font-bold text-zinc-800 dark:text-zinc-150 text-lg truncate leading-tight">{stay.name}</h4>
-                                                    <span className="px-2 py-0.5 rounded-md bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-white/5 text-[10px] font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-widest">
+                                                    <span className="px-2 py-0.5 rounded-md bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-white/5 text-2xs font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-widest">
                                                         {stay.type}
                                                     </span>
                                                 </div>
@@ -1849,15 +1849,15 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                 </p>
                                                 
                                                 <div className="flex flex-wrap gap-2 pt-1.5">
-                                                    <span className="bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-100/30 dark:border-indigo-900/10 text-indigo-600 dark:text-indigo-400 px-2.5 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                                                    <span className="bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-100/30 dark:border-indigo-900/10 text-indigo-600 dark:text-indigo-400 px-2.5 py-0.5 rounded-lg text-2xs font-bold uppercase tracking-wider flex items-center gap-1">
                                                         <span className="material-icons-outlined text-xs">nights_stay</span>
                                                         {calculateNights(stay.checkInDate, stay.checkOutDate)} Nights
                                                     </span>
-                                                    <span className="bg-zinc-50 dark:bg-zinc-850/55 border border-zinc-150/40 dark:border-white/5 text-zinc-500 dark:text-zinc-400 px-2.5 py-0.5 rounded-lg text-[10px] font-bold tracking-tight">
+                                                    <span className="bg-zinc-50 dark:bg-zinc-850/55 border border-zinc-150/40 dark:border-white/5 text-zinc-500 dark:text-zinc-400 px-2.5 py-0.5 rounded-lg text-2xs font-bold tracking-tight">
                                                         {new Date(stay.checkInDate).toLocaleDateString(undefined, {day:'numeric', month:'short'}).toUpperCase()} - {new Date(stay.checkOutDate).toLocaleDateString(undefined, {day:'numeric', month:'short'}).toUpperCase()}
                                                     </span>
                                                     {stay.confirmationCode && (
-                                                        <span className="bg-zinc-100 dark:bg-zinc-850 border border-zinc-200 dark:border-white/5 text-zinc-400 dark:text-zinc-500 font-mono text-[10px] uppercase font-bold px-2 py-0.5 rounded-lg select-all">
+                                                        <span className="bg-zinc-100 dark:bg-zinc-850 border border-zinc-200 dark:border-white/5 text-zinc-400 dark:text-zinc-500 font-mono text-2xs uppercase font-bold px-2 py-0.5 rounded-lg select-all">
                                                             CONF: {stay.confirmationCode}
                                                         </span>
                                                     )}
@@ -1869,9 +1869,9 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                         <div className="flex sm:flex-row md:flex-col items-center justify-between md:justify-center md:items-end gap-3 shrink-0 border-t md:border-t-0 md:border-l border-zinc-150 dark:border-white/5 pt-4 md:pt-0 md:pl-6">
                                             {stay.cost ? (
                                                 <div className="md:text-right">
-                                                    <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">Total Cost</p>
+                                                    <p className="text-2xs font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">Total Cost</p>
                                                     <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">{formatCurrency(stay.cost)}</div>
-                                                    <p className="text-[9px] font-semibold text-zinc-400 dark:text-zinc-500">
+                                                    <p className="text-2xs font-semibold text-zinc-400 dark:text-zinc-500">
                                                         {formatCurrency(Math.round(stay.cost / calculateNights(stay.checkInDate, stay.checkOutDate)))} / night
                                                     </p>
                                                 </div>
@@ -1916,21 +1916,21 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                     {/* Summary Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {/* Total Cost Card (Emerald Gradient) */}
-                        <div className="p-8 rounded-[2rem] bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-2xl relative overflow-hidden group">
+                        <div className="p-8 rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-2xl relative overflow-hidden group">
                             <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/20 rounded-full blur-3xl group-hover:scale-110 transition-transform"></div>
                             <p className="text-xs font-bold text-emerald-100 uppercase tracking-widest mb-2">Total Trip Cost</p>
                             <h2 className="text-5xl font-black tracking-tight">{formatCurrency(totalCost)}</h2>
                         </div>
 
                         {/* Cost Per Person */}
-                        <div className="p-8 rounded-[2rem] bg-[#1c1c1e] border border-white/5 shadow-xl relative">
+                        <div className="p-8 rounded-3xl bg-[#1c1c1e] border border-white/5 shadow-xl relative">
                             <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Cost Per Person</p>
                             <h2 className="text-4xl font-black text-white">{formatCurrency(costPerPerson)}</h2>
                             <p className="text-xs text-gray-500 mt-2">{(trip.participants || []).length} Travelers</p>
                         </div>
 
                         {/* Daily Average */}
-                        <div className="p-8 rounded-[2rem] bg-[#1c1c1e] border border-white/5 shadow-xl relative">
+                        <div className="p-8 rounded-3xl bg-[#1c1c1e] border border-white/5 shadow-xl relative">
                             <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Daily Average</p>
                             <h2 className="text-4xl font-black text-white">{formatCurrency(costPerDay)}</h2>
                             <p className="text-xs text-gray-500 mt-2">{duration} Days</p>
@@ -1940,7 +1940,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                     {/* Lower Section Grid */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         {/* Donut Chart Section */}
-                        <div className="lg:col-span-1 bg-[#1c1c1e] rounded-[2.5rem] p-8 border border-white/5 shadow-xl flex flex-col items-center justify-center relative">
+                        <div className="lg:col-span-1 bg-[#1c1c1e] rounded-3xl p-8 border border-white/5 shadow-xl flex flex-col items-center justify-center relative">
                             <h4 className="absolute top-8 left-8 text-xs font-black text-gray-500 uppercase tracking-widest">Expense Distribution</h4>
                             
                             <div className="relative w-64 h-64 mt-4">
@@ -2144,7 +2144,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                     <Suspense fallback={
                         <div className="w-full h-full flex flex-col items-center justify-center bg-black text-white space-y-4">
                             <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-                            <span className="text-[10px] font-black uppercase tracking-[0.2em]">Engaging Cinematic Orbit Simulation...</span>
+                            <span className="text-2xs font-bold uppercase tracking-[0.2em]">Engaging Cinematic Orbit Simulation...</span>
                         </div>
                     }>
                         <DeckFlightMap 

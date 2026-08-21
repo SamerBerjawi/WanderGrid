@@ -291,13 +291,13 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
     return (
         <div className="space-y-8 animate-fade-in max-w-[85rem] mx-auto pb-16 px-4 md:px-0 w-full">
             {/* HERO PROFILE HEADER */}
-            <div className="relative w-full rounded-[2.2rem] bg-white dark:bg-gray-900 border border-gray-150/45 dark:border-white/5 overflow-hidden shadow-2xl">
+            <div className="relative w-full rounded-3xl bg-white dark:bg-gray-900 border border-gray-150/45 dark:border-white/5 overflow-hidden shadow-2xl">
                 <div className="absolute top-0 right-0 w-[450px] h-[450px] bg-gradient-to-br from-blue-500/10 to-indigo-500/10 rounded-full blur-[90px] -translate-y-1/2 translate-x-1/3 pointer-events-none" />
                 
                 <div className="relative p-8 lg:p-12 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
                     <div className="flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
                         <div className="relative">
-                            <div className={`w-28 h-28 rounded-[2rem] flex items-center justify-center overflow-hidden text-5xl font-black text-white shadow-xl transition-all hover:scale-105 duration-300 border border-white/20
+                            <div className={`w-28 h-28 rounded-2xl flex items-center justify-center overflow-hidden text-5xl font-black text-white shadow-xl transition-all hover:scale-105 duration-300 border border-white/20
                                 ${user.role === 'Partner' ? 'bg-gradient-to-br from-blue-600 to-indigo-700 shadow-indigo-500/20' : 
                                   user.role === 'Admin' ? 'bg-gradient-to-br from-purple-500 to-indigo-650 shadow-purple-500/20' : 
                                   'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-teal-500/20'}`}>
@@ -308,7 +308,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                                 )}
                             </div>
                             <div className="absolute -bottom-2 -right-2 bg-white dark:bg-gray-800 px-3 py-1 rounded-xl shadow-md border border-gray-100 dark:border-white/10">
-                                <span className={`text-[10px] font-black uppercase tracking-wider ${
+                                <span className={`text-2xs font-bold uppercase tracking-wider ${
                                     user.role === 'Partner' ? 'text-blue-500' : 
                                     user.role === 'Admin' ? 'text-purple-500' : 
                                     'text-emerald-500'}`}>{user.role}</span>
@@ -344,7 +344,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                                 <p className="text-sm text-gray-500 dark:text-gray-400 font-semibold font-mono tracking-tight">{user.email}</p>
                             )}
                             <div className="flex items-center justify-center sm:justify-start gap-2 mt-2 select-none">
-                                <span className="text-[10px] font-mono tracking-widest font-bold text-gray-400 dark:text-zinc-500 uppercase block">CREDENTIAL-KEY: <span className="text-teal-500 font-black">{user.id}</span></span>
+                                <span className="text-2xs font-mono tracking-widest font-bold text-gray-400 dark:text-zinc-500 uppercase block">CREDENTIAL-KEY: <span className="text-teal-500 font-black">{user.id}</span></span>
                             </div>
                         </div>
                     </div>
@@ -371,31 +371,31 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                     <div className="p-6 flex flex-col items-center justify-center text-center gap-1">
                         <span className="material-icons-outlined text-blue-500 text-2xl">flight_takeoff</span>
                         <span className="text-3xl font-black text-gray-900 dark:text-white mt-1">{stats.total}</span>
-                        <span className="text-[9px] font-bold text-gray-450 dark:text-zinc-450 uppercase tracking-widest font-mono">Active Trips</span>
+                        <span className="text-2xs font-bold text-gray-450 dark:text-zinc-450 uppercase tracking-widest font-mono">Active Trips</span>
                     </div>
 
                     <div className="p-6 flex flex-col items-center justify-center text-center gap-1 border-t md:border-t-0">
                         <span className="material-icons-outlined text-amber-500 text-2xl">upcoming</span>
                         <span className="text-3xl font-black text-gray-900 dark:text-white mt-1">{stats.upcoming}</span>
-                        <span className="text-[9px] font-bold text-gray-450 dark:text-zinc-450 uppercase tracking-widest font-mono">Upcoming Journeys</span>
+                        <span className="text-2xs font-bold text-gray-450 dark:text-zinc-450 uppercase tracking-widest font-mono">Upcoming Journeys</span>
                     </div>
 
                     <div className="p-6 flex flex-col items-center justify-center text-center gap-1 border-t md:border-t-0">
                         <span className="material-icons-outlined text-emerald-500 text-2xl">done_all</span>
                         <span className="text-3xl font-black text-gray-900 dark:text-white mt-1">{stats.completed}</span>
-                        <span className="text-[9px] font-bold text-gray-450 dark:text-zinc-450 uppercase tracking-widest font-mono">Completed Voyages</span>
+                        <span className="text-2xs font-bold text-gray-450 dark:text-zinc-450 uppercase tracking-widest font-mono">Completed Voyages</span>
                     </div>
 
                     <div className="p-6 flex flex-col items-center justify-center text-center gap-1 border-t md:border-t-0">
                         <span className="material-icons-outlined text-purple-500 text-2xl">room</span>
                         <span className="text-3xl font-black text-gray-900 dark:text-white mt-1">{stats.uniqueDestinations}</span>
-                        <span className="text-[9px] font-bold text-gray-450 dark:text-zinc-450 uppercase tracking-widest font-mono">Destinations Visited</span>
+                        <span className="text-2xs font-bold text-gray-450 dark:text-zinc-450 uppercase tracking-widest font-mono">Destinations Visited</span>
                     </div>
 
                     <div className="p-6 flex flex-col items-center justify-center text-center gap-1 col-span-2 md:col-span-1 border-t md:border-t-0">
                         <span className="material-icons-outlined text-indigo-500 text-2xl">date_range</span>
                         <span className="text-3xl font-black text-gray-900 dark:text-white mt-1">{stats.totalDays}</span>
-                        <span className="text-[9px] font-bold text-gray-450 dark:text-zinc-450 uppercase tracking-widest font-mono">Total Days on Voyage</span>
+                        <span className="text-2xs font-bold text-gray-450 dark:text-zinc-450 uppercase tracking-widest font-mono">Total Days on Voyage</span>
                     </div>
                 </div>
             </div>
@@ -405,11 +405,11 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                 {/* Left side: Vacation leave progress & Passport stamps */}
                 <div className="lg:col-span-4 space-y-8 h-full w-full">
                     {/* ACCRUED LEAVE STATS CARD */}
-                    <Card noPadding className="rounded-[2.2rem] overflow-hidden">
+                    <Card noPadding className="rounded-3xl overflow-hidden">
                         <div className="p-6 border-b border-gray-150/40 dark:border-white/5 bg-gradient-to-r from-teal-500/5 to-emerald-500/5 flex justify-between items-center bg-gray-50/50 dark:bg-white/5">
                             <div>
                                 <h3 className="font-extrabold text-gray-900 dark:text-white text-base">Leave & Entitlements</h3>
-                                <p className="text-[9.5px] font-mono text-gray-400 uppercase tracking-widest font-black">Vacation Days Allocations</p>
+                                <p className="text-2xs font-mono text-gray-400 uppercase tracking-widest font-bold">Vacation Days Allocations</p>
                             </div>
                             <Badge color={leavePercentage > 80 ? 'red' : leavePercentage > 40 ? 'amber' : 'green'}>
                                 {leavePercentage}% Consumed
@@ -441,11 +441,11 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
 
                             <div className="pt-4 border-t border-gray-100 dark:border-white/5 grid grid-cols-2 gap-4 text-left p-3.5 bg-slate-50/50 dark:bg-black/10 rounded-xl leading-none">
                                 <div>
-                                    <span className="text-[9.5px] font-bold text-zinc-400 block uppercase tracking-wide">Remaining Balance</span>
+                                    <span className="text-2xs font-bold text-zinc-400 block uppercase tracking-wide">Remaining Balance</span>
                                     <span className="text-lg font-black text-slate-800 dark:text-zinc-200 block mt-1">{(user.leaveBalance ?? 25) - (user.takenLeave ?? 0)} Days</span>
                                 </div>
                                 <div>
-                                    <span className="text-[9.5px] font-bold text-zinc-400 block uppercase tracking-wide">Weekend Rule</span>
+                                    <span className="text-2xs font-bold text-zinc-400 block uppercase tracking-wide">Weekend Rule</span>
                                     <span className="text-xs font-bold text-slate-800 dark:text-zinc-200 block mt-2.5 uppercase font-mono truncate">{user.holidayWeekendRule || 'None'}</span>
                                 </div>
                             </div>
@@ -453,17 +453,17 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                     </Card>
 
                     {/* MOOD BOOSTER PASSPORT STAMPS */}
-                    <Card noPadding className="rounded-[2.2rem]">
+                    <Card noPadding className="rounded-3xl">
                         <div className="p-6 border-b border-gray-150/45 dark:border-white/5 bg-gradient-to-r from-indigo-550/5 to-purple-550/5 bg-gray-50/50 dark:bg-white/5">
                             <h3 className="font-extrabold text-gray-900 dark:text-white text-base">Travel Stamps</h3>
-                            <p className="text-[9.5px] font-mono text-gray-400 uppercase tracking-widest font-black">Aero Passport Stamp Seal Roster</p>
+                            <p className="text-2xs font-mono text-gray-400 uppercase tracking-widest font-bold">Aero Passport Stamp Seal Roster</p>
                         </div>
                         <div className="p-6">
                             {stats.uniqueDestinations === 0 ? (
                                 <div className="py-12 text-center text-zinc-400 border border-dashed border-gray-200 dark:border-zinc-800 rounded-2xl select-none">
                                     <span className="material-icons-outlined text-4xl block text-zinc-400">confirmation_number</span>
-                                    <p className="text-[10px] font-mono tracking-widest font-bold uppercase mt-3">No active country seals stamped</p>
-                                    <p className="text-[10px] opacity-75 mt-1">Stamps are visual seals dynamically minted from flight logs.</p>
+                                    <p className="text-xs font-mono tracking-widest font-bold uppercase mt-3">No active country seals stamped</p>
+                                    <p className="text-xs opacity-75 mt-1">Stamps are visual seals dynamically minted from flight logs.</p>
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-2 gap-4">
@@ -472,16 +472,16 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                                         return (
                                             <div 
                                                 key={dest} 
-                                                className={`p-4 border-2 rounded-[2rem] border-dashed flex flex-col items-center justify-center text-center relative overflow-hidden select-none h-28 transform hover:scale-103 transition-transform ${stampColors[colorIdx]}`}
+                                                className={`p-4 border-2 rounded-2xl border-dashed flex flex-col items-center justify-center text-center relative overflow-hidden select-none h-28 transform hover:scale-103 transition-transform ${stampColors[colorIdx]}`}
                                             >
                                                 {/* Retro flight details circles */}
                                                 <div className="absolute -top-3 -left-3 w-8 h-8 rounded-full border border-current opacity-20" />
                                                 <div className="absolute -bottom-3 -right-3 w-10 h-10 rounded-full border border-current opacity-20" />
                                                 
-                                                <span className="text-[8px] font-mono font-black uppercase tracking-widest opacity-80 leading-none">BORDER ENTRANCE</span>
+                                                <span className="text-2xs font-mono font-bold uppercase tracking-widest opacity-80 leading-none">BORDER ENTRANCE</span>
                                                 <span className="text-sm font-black uppercase tracking-tight truncate max-w-full my-1">{dest}</span>
-                                                <span className="text-[8px] font-mono font-bold tracking-wider leading-none opacity-90">{2026 - i}.0{(i % 8) + 1}.{(i % 24) + 1}</span>
-                                                <div className="mt-1.5 px-2 py-0.5 rounded border border-current text-[7px] font-mono font-black scale-90 uppercase tracking-wider">APPROVED</div>
+                                                <span className="text-2xs font-mono font-bold tracking-wider leading-none opacity-90">{2026 - i}.0{(i % 8) + 1}.{(i % 24) + 1}</span>
+                                                <div className="mt-1.5 px-2 py-0.5 rounded border border-current text-2xs font-mono font-bold scale-90 uppercase tracking-wider">APPROVED</div>
                                             </div>
                                         );
                                     })}
@@ -501,17 +501,17 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                     </div>
 
                     {trips.length === 0 ? (
-                        <Card className="rounded-[2.2rem] p-16 text-center border-dashed border-zinc-250 select-none bg-white dark:bg-gray-900">
+                        <Card className="rounded-3xl p-16 text-center border-dashed border-zinc-250 select-none bg-white dark:bg-gray-900">
                             <span className="material-icons-outlined text-gray-300 dark:text-gray-700 text-6xl">explore_off</span>
                             <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mt-4">No active expeditions found for this traveler</p>
                             <p className="text-xs text-gray-500 max-w-xs mx-auto mt-2">When this user joins or gets assigned to a trip, their complete flight route details will appear beautifully styled here.</p>
                         </Card>
                     ) : (
-                        <Card noPadding className="rounded-[2rem] border-zinc-200 dark:border-white/5 bg-white dark:bg-gray-900 overflow-hidden shadow-xs">
+                        <Card noPadding className="rounded-3xl border-zinc-200 dark:border-white/5 bg-white dark:bg-gray-900 overflow-hidden shadow-xs">
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
                                     <thead>
-                                        <tr className="border-b border-gray-100 dark:border-white/4 bg-gray-50/40 dark:bg-white/5 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500">
+                                        <tr className="border-b border-gray-100 dark:border-white/4 bg-gray-50/40 dark:bg-white/5 text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                                             <th className="py-4 px-6">Expedition</th>
                                             <th className="py-4 px-6">Schedule</th>
                                             <th className="py-4 px-6 text-center">Status</th>
@@ -538,7 +538,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                                                                 <h4 className="font-bold text-gray-900 dark:text-white text-sm leading-snug truncate max-w-[12rem]" title={trip.name}>
                                                                     {trip.name}
                                                                 </h4>
-                                                                <div className="flex items-center gap-1 text-[11px] text-gray-450 dark:text-gray-500 mt-0.5 font-medium">
+                                                                <div className="flex items-center gap-1 text-xs text-gray-450 dark:text-gray-500 mt-0.5 font-medium">
                                                                     <span className="material-icons-outlined text-xs shrink-0">place</span>
                                                                     <span className="truncate max-w-[10rem]">{trip.location}</span>
                                                                 </div>
@@ -548,11 +548,11 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                                                     <td className="py-4 px-6">
                                                         <div className="flex flex-col text-xs font-mono text-gray-500 dark:text-gray-400 font-semibold gap-0.5">
                                                             <div className="flex items-center gap-1.5">
-                                                                <span className="text-[9px] font-black uppercase text-gray-350 dark:text-gray-650 tracking-wider">DEP</span>
+                                                                <span className="text-2xs font-bold uppercase text-gray-350 dark:text-gray-650 tracking-wider">DEP</span>
                                                                 <span>{departuresStr}</span>
                                                             </div>
                                                             <div className="flex items-center gap-1.5">
-                                                                <span className="text-[9px] font-black uppercase text-gray-350 dark:text-gray-650 tracking-wider">RET</span>
+                                                                <span className="text-2xs font-bold uppercase text-gray-350 dark:text-gray-650 tracking-wider">RET</span>
                                                                 <span>{returnStr}</span>
                                                             </div>
                                                         </div>
@@ -564,7 +564,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                                                                     e.stopPropagation();
                                                                     handleCreateTripFromBundle(trip);
                                                                 }}
-                                                                className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-black tracking-wide uppercase bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-950/30 dark:hover:bg-blue-900/40 dark:text-blue-400 rounded-lg border border-blue-100 dark:border-blue-900/20 transition-all cursor-pointer shadow-xs active:scale-95"
+                                                                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold tracking-wide uppercase bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-950/30 dark:hover:bg-blue-900/40 dark:text-blue-400 rounded-lg border border-blue-100 dark:border-blue-900/20 transition-all cursor-pointer shadow-xs active:scale-95"
                                                                 title="Add this travel schedule directly to your Planner boards"
                                                             >
                                                                 <span className="material-icons-outlined text-xs">add</span>
@@ -602,7 +602,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                                                                     e.stopPropagation();
                                                                     handleStartEditTrip(trip);
                                                                 }}
-                                                                className="p-1 px-2.5 rounded-lg bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-zinc-750 text-blue-500 font-bold flex items-center gap-1 transition-colors cursor-pointer border border-zinc-200 dark:border-white/5 text-[11px]"
+                                                                className="p-1 px-2.5 rounded-lg bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-zinc-750 text-blue-500 font-bold flex items-center gap-1 transition-colors cursor-pointer border border-zinc-200 dark:border-white/5 text-xs"
                                                                 title="Edit Trip Settings"
                                                             >
                                                                 <span className="material-icons-outlined text-sm">edit</span>
@@ -613,7 +613,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                                                                     e.stopPropagation();
                                                                     handleDeleteTripClick(trip.id);
                                                                 }}
-                                                                className="p-1 px-2.5 rounded-lg bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-rose-950/20 text-rose-500 font-bold flex items-center gap-1 transition-colors cursor-pointer border border-zinc-200 dark:border-white/5 text-[11px]"
+                                                                className="p-1 px-2.5 rounded-lg bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-rose-950/20 text-rose-500 font-bold flex items-center gap-1 transition-colors cursor-pointer border border-zinc-200 dark:border-white/5 text-xs"
                                                                 title="Delete Trip"
                                                             >
                                                                 <span className="material-icons-outlined text-sm">delete</span>

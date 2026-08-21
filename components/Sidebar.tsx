@@ -108,7 +108,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
               <button
                 key={item.value}
                 onClick={() => onNavigate(item.value)}
-                className={`flex items-center gap-4 px-4 py-3 rounded-2xl text-[14px] font-bold select-none cursor-pointer relative transition-all duration-200
+                className={`flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-bold select-none cursor-pointer relative transition-all duration-200
                   ${currentView === item.value 
                     ? 'text-indigo-600 dark:text-indigo-400 font-extrabold z-10' 
                     : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100/50 dark:hover:bg-white/[0.02] z-0'
@@ -137,22 +137,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
           {!isCollapsed ? (
                nextTrip ? (
                 <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/30 border border-zinc-200/40 dark:border-white/5 text-gray-800 dark:text-white transition-all duration-300">
-                  <p className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-1.5">Coming Up Next</p>
+                  <p className="text-2xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-1.5">Coming Up Next</p>
                   <div className="flex items-center gap-3 mb-1">
                       <span className="text-xl filter drop-shadow">{nextTrip.icon || '✈️'}</span>
                       <p className="font-semibold text-xs truncate text-zinc-700 dark:text-zinc-300" title={nextTrip.name}>{nextTrip.name}</p>
                   </div>
-                  <p className="text-[10px] font-bold tracking-wide text-indigo-500 dark:text-indigo-400">
+                  <p className="text-xs font-bold tracking-wide text-indigo-500 dark:text-indigo-400">
                       {daysUntil > 0 ? `In ${daysUntil} days` : daysUntil === 0 ? 'Starts today!' : 'Ongoing'}
                   </p>
                 </div>
               ) : (
                 <div className="p-4 rounded-2xl bg-white/5 dark:bg-white/5 border border-dashed border-zinc-250 dark:border-white/10 text-center">
                   <span className="material-icons-outlined text-zinc-400 text-xl mb-1">explore</span>
-                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest leading-none">No trips planned</p>
+                  <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest leading-none">No trips planned</p>
                   <button 
                       onClick={() => onNavigate(ViewState.DASHBOARD)} 
-                      className="text-[10px] text-indigo-500 dark:text-indigo-400 font-bold mt-2 hover:underline cursor-pointer"
+                      className="text-xs text-indigo-500 dark:text-indigo-400 font-bold mt-2 hover:underline cursor-pointer"
                   >
                       Book next adventure
                   </button>
@@ -163,40 +163,29 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
                   <div className="w-12 h-12 rounded-2xl bg-zinc-500/5 dark:bg-white/5 flex items-center justify-center text-white shadow-md cursor-help border border-zinc-200/10 dark:border-white/5" title={`Next: ${nextTrip.name} (${daysUntil} days)`}>
                       <span className="text-lg leading-none">{nextTrip.icon || '✈️'}</span>
                   </div>
-               ) : (
-                  <div className="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-white/5 flex items-center justify-center text-gray-450 border border-dashed border-gray-200 dark:border-white/5" title="No trips planned">
-                      <span className="material-icons-outlined text-lg leading-none">explore_off</span>
-                  </div>
-               )
+              ) : null
           )}
 
-          {/* Connection, Theme & User Profile Unified Row */}
-          <div className={`flex items-center gap-1.5 p-1.5 bg-zinc-50/50 dark:bg-zinc-950/30 border border-zinc-200/40 dark:border-white/5 rounded-3xl shadow-sm ${
-              isCollapsed ? 'flex-col w-12' : 'flex-row justify-around w-full'
-          }`}>
-              {/* Connection Mode Status Icon */}
-              <div 
-                  title={isDbMode ? 'PostgreSQL Database: Sync Active' : 'LocalStorage Cache: Offline Mode'}
-                  className={`relative w-9 h-9 rounded-xl flex items-center justify-center transition-all border ${
-                      isDbMode 
-                      ? 'bg-emerald-500/[0.04] border-emerald-500/10 text-emerald-600 dark:text-emerald-400' 
-                      : 'bg-amber-500/[0.04] border-amber-500/10 text-amber-600 dark:text-amber-400'
-                  }`}
-              >
-                  <span className="material-icons-outlined text-lg">{isDbMode ? 'cloud_done' : 'cloud_off'}</span>
-                  <span className="absolute top-1.5 right-1.5 flex h-1.5 w-1.5">
-                      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isDbMode ? 'bg-emerald-400' : 'bg-amber-400'}`}></span>
-                      <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${isDbMode ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
-                  </span>
-              </div>
-
-              {/* Theme Toggle Icon Button */}
+          {/* Bottom Settings / Action Cluster */}
+          <div className="flex items-center justify-between pt-4 border-t border-zinc-200/50 dark:border-white/5">
               <button 
                   onClick={handleThemeCycle}
-                  title={getThemeLabel()}
-                  className="w-9 h-9 rounded-xl flex items-center justify-center transition-all text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-200/40 dark:hover:bg-white/5 border border-transparent hover:border-zinc-200/20 dark:hover:border-white/5 select-none cursor-pointer"
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-zinc-400 hover:text-zinc-800 dark:hover:text-white hover:bg-zinc-200/30 dark:hover:bg-white/[0.04] transition-all cursor-pointer"
+                  title="Toggle Visual Appearance Mode"
               >
-                  <span className="material-icons-outlined text-lg opacity-80">{getThemeIcon()}</span>
+                  <span className="material-icons-outlined text-lg">{theme === 'dark' ? 'light_mode' : 'dark_mode'}</span>
+              </button>
+
+              <button 
+                  onClick={() => onNavigate(ViewState.SETTINGS)}
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+                      currentView === ViewState.SETTINGS 
+                      ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/20' 
+                      : 'text-zinc-400 hover:text-zinc-800 dark:hover:text-white hover:bg-zinc-200/30 dark:hover:bg-white/[0.04]'
+                  }`}
+                  title="Settings & Workspace Preferences"
+              >
+                  <span className="material-icons-outlined text-lg">settings</span>
               </button>
 
               {/* User Profile Avatar Icon Button */}
@@ -210,7 +199,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
                       }`}
                       title={`Profile: ${currentUser.name} (${currentUser.role})`}
                   >
-                      <div className="w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black text-white bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-sm shrink-0">
+                      <div className="w-6 h-6 rounded-lg flex items-center justify-center text-2xs font-bold text-white bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-sm shrink-0">
                           {currentUser.name.charAt(0)}
                       </div>
                   </button>
@@ -242,7 +231,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
                 }`}
             >
               <span className="material-icons-outlined text-2xl leading-none">{item.icon}</span>
-              <span className="text-[8px] font-black uppercase tracking-wider mt-1 text-center leading-tight max-w-full line-clamp-2 hyphens-auto font-sans">
+              <span className="text-2xs font-bold uppercase tracking-wider mt-1 text-center leading-tight max-w-full line-clamp-2 hyphens-auto font-sans">
                 {item.label}
               </span>
               {isActive && (
@@ -266,7 +255,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
             }`}
         >
           <span className="material-icons-outlined text-2xl leading-none">more_horiz</span>
-          <span className="text-[8px] font-black uppercase tracking-wider mt-1 text-center leading-tight font-sans">More</span>
+          <span className="text-2xs font-bold uppercase tracking-wider mt-1 text-center leading-tight font-sans">More</span>
           {(currentView === ViewState.PLANNER || currentView === ViewState.SETTINGS || currentView === ViewState.USER_DETAIL || currentView === ViewState.ROADTRIPS) && (
             <motion.div 
               layoutId="mobileActiveIndicatorDot"
@@ -295,7 +284,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
               animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 12, x: 0 }}
               transition={{ type: "spring", stiffness: 450, damping: 32 }}
-              className="md:hidden fixed bottom-[5.5rem] right-4 w-52 z-[60] p-4 rounded-[1.8rem] border border-white/20 dark:border-white/10 bg-white/45 dark:bg-zinc-950/35 backdrop-blur-2xl shadow-[0_12px_32px_rgba(0,0,0,0.2)] flex flex-col gap-1"
+              className="md:hidden fixed bottom-[5.5rem] right-4 w-52 z-[60] p-4 rounded-3xl border border-white/20 dark:border-white/10 bg-white/45 dark:bg-zinc-950/35 backdrop-blur-2xl shadow-[0_12px_32px_rgba(0,0,0,0.2)] flex flex-col gap-1"
             >
               <div className="flex flex-col gap-1">
                 {/* Planner button option */}
@@ -369,7 +358,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
-                      <div className={`w-4.5 h-4.5 rounded-md flex items-center justify-center text-[8.5px] font-black text-white shrink-0 ${
+                      <div className={`w-4.5 h-4.5 rounded-md flex items-center justify-center text-2xs font-black text-white shrink-0 ${
                         currentUser.role === 'Partner' ? 'bg-gradient-to-br from-blue-500 to-indigo-600' : 'bg-gradient-to-br from-emerald-500 to-teal-600'
                       }`}>
                         {currentUser.name.charAt(0)}

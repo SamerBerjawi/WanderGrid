@@ -56,7 +56,7 @@ const CircularProgress: React.FC<CircularProgressProps> = ({
           fill="transparent"
         />
       </svg>
-      <span className="absolute text-[10px] font-black font-mono text-zinc-650 dark:text-zinc-350">
+      <span className="absolute text-2xs font-bold font-mono text-zinc-650 dark:text-zinc-350">
         {percentage}%
       </span>
     </div>
@@ -161,18 +161,18 @@ export const AchievementMilestones: React.FC<AchievementMilestonesProps> = ({
   }, [visitedCountries, flightsCount, totalMiles, stickersCount]);
 
   return (
-    <div className="bg-white/70 dark:bg-zinc-900/40 backdrop-blur-md rounded-[2.5rem] border border-zinc-200/50 dark:border-white/5 p-8 shadow-sm">
+    <div className="bg-white/70 dark:bg-zinc-900/40 backdrop-blur-md rounded-3xl border border-zinc-200/50 dark:border-white/5 p-8 shadow-sm">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">
+          <span className="text-2xs font-bold text-gray-400 uppercase tracking-widest block">
             Adventure Logs
           </span>
-          <h3 className="text-2xl font-black text-gray-900 dark:text-white capitalize flex items-center gap-2">
+          <h3 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white capitalize flex items-center gap-2">
             Achievement Milestones 🏆
           </h3>
         </div>
         <div className="text-right">
-          <span className="text-xs font-black text-indigo-500 dark:text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1.5 rounded-xl uppercase tracking-wider">
+          <span className="text-xs font-bold text-indigo-500 dark:text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1.5 rounded-xl uppercase tracking-wider">
             {achievementsList.filter((a) => a.currentValue >= a.targetValue).length} / {achievementsList.length} Unlocked
           </span>
         </div>
@@ -209,11 +209,11 @@ export const AchievementMilestones: React.FC<AchievementMilestonesProps> = ({
                     {isUnlocked ? ach.icon : <Lock className="w-4.5 h-4.5 text-zinc-400" />}
                   </div>
                   <div className="min-w-0">
-                    <h4 className="text-xs sm:text-sm font-black text-gray-950 dark:text-white tracking-tight flex items-center gap-1.5 leading-tight">
+                    <h4 className="text-xs sm:text-sm font-bold text-gray-950 dark:text-white tracking-tight flex items-center gap-1.5 leading-tight">
                       <span className="truncate" title={ach.title}>{ach.title}</span>
                       {isUnlocked && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />}
                     </h4>
-                    <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1.5 font-semibold leading-relaxed line-clamp-2">
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1.5 font-normal leading-relaxed line-clamp-2">
                       {ach.description}
                     </p>
                   </div>
@@ -226,7 +226,7 @@ export const AchievementMilestones: React.FC<AchievementMilestonesProps> = ({
               </div>
 
               <div className="space-y-2 relative z-10">
-                <div className="flex justify-between items-end text-[10px] font-mono font-black text-gray-500 dark:text-zinc-500">
+                <div className="flex justify-between items-end text-2xs font-mono font-bold text-gray-500 dark:text-zinc-500">
                   <span className="uppercase">
                     {isUnlocked ? 'Unlocked' : 'In Progress'}
                   </span>

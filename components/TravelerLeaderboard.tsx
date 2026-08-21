@@ -168,9 +168,9 @@ export const TravelerLeaderboard: React.FC<TravelerLeaderboardProps> = ({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
       {/* Rankings List Column */}
-      <div className="lg:col-span-2 bg-white/70 dark:bg-zinc-900/40 backdrop-blur-md rounded-[2.5rem] border border-zinc-200/50 dark:border-white/5 p-8 shadow-sm">
+      <div className="lg:col-span-2 bg-white/70 dark:bg-zinc-900/40 backdrop-blur-md rounded-3xl border border-zinc-200/50 dark:border-white/5 p-8 shadow-sm">
         <div>
-          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">
+          <span className="text-2xs font-bold text-gray-400 uppercase tracking-widest block">
             Rankings Registry
           </span>
           <h3 className="text-2xl font-black text-gray-900 dark:text-white capitalize mb-6">
@@ -212,31 +212,31 @@ export const TravelerLeaderboard: React.FC<TravelerLeaderboardProps> = ({
                     <h4 className="text-sm font-black text-gray-950 dark:text-white flex items-center gap-1.5 leading-none">
                       {comp.name}
                       {comp.isUser && (
-                        <span className="text-[9px] bg-indigo-500 text-white font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-wider scale-90">
+                        <span className="text-2xs bg-indigo-500 text-white font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider scale-90">
                           You
                         </span>
                       )}
                     </h4>
-                    <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1 font-semibold truncate max-w-[200px] md:max-w-xs leading-none">
+                    <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1 font-semibold truncate max-w-[200px] md:max-w-xs leading-none">
                       {comp.bio}
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-6 shrink-0">
-                  <div className="hidden sm:flex gap-6 text-[11px] font-semibold text-zinc-500">
+                  <div className="hidden sm:flex gap-6 text-xs font-semibold text-zinc-500">
                     <div className="text-center">
-                      <span className="block text-[8px] uppercase tracking-wide opacity-65">Stamps</span>
+                      <span className="block text-2xs uppercase tracking-wide opacity-65">Stamps</span>
                       <span className="font-bold text-gray-850 dark:text-white">{comp.countriesCount}</span>
                     </div>
                     <div className="text-center">
-                      <span className="block text-[8px] uppercase tracking-wide opacity-65">Stickers</span>
+                      <span className="block text-2xs uppercase tracking-wide opacity-65">Stickers</span>
                       <span className="font-bold text-gray-850 dark:text-white">{comp.stickersCount}</span>
                     </div>
                   </div>
 
                   <div className="text-right">
-                    <span className="block text-[8px] uppercase tracking-wide font-black text-zinc-400">Score</span>
+                    <span className="block text-2xs uppercase tracking-wide font-bold text-zinc-400">Score</span>
                     <span className="text-sm font-black text-indigo-500 dark:text-indigo-400">
                       {(comp as any).calculatedScore.toLocaleString()}
                     </span>
@@ -253,7 +253,7 @@ export const TravelerLeaderboard: React.FC<TravelerLeaderboardProps> = ({
       </div>
 
       {/* Explorer Detail Spotlight Column */}
-      <div className="bg-white/70 dark:bg-zinc-900/40 backdrop-blur-md rounded-[2.5rem] border border-zinc-200/50 dark:border-white/5 p-8 shadow-sm flex flex-col justify-between relative overflow-hidden h-[30.25rem]">
+      <div className="bg-white/70 dark:bg-zinc-900/40 backdrop-blur-md rounded-3xl border border-zinc-200/50 dark:border-white/5 p-8 shadow-sm flex flex-col justify-between relative overflow-hidden h-full min-h-[30rem]">
         {/* Spot Light Ambient Accent */}
         <div className="absolute right-0 top-0 w-36 h-36 bg-indigo-500/5 rounded-full blur-[40px] pointer-events-none -translate-y-1/2 translate-x-1/3" />
 
@@ -261,7 +261,7 @@ export const TravelerLeaderboard: React.FC<TravelerLeaderboardProps> = ({
           <div className="flex flex-col justify-between h-full">
             <div>
               <div className="flex items-center justify-between mb-6">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                <span className="text-2xs font-bold text-gray-400 uppercase tracking-widest">
                   Explorer Spotlight
                 </span>
                 <span className="text-xs font-black text-indigo-500 bg-indigo-500/10 px-2.5 py-1 rounded-xl">
@@ -290,19 +290,19 @@ export const TravelerLeaderboard: React.FC<TravelerLeaderboardProps> = ({
               {/* Stats Mini Grid */}
               <div className="grid grid-cols-3 gap-2 mt-5 text-center">
                 <div className="bg-zinc-100/40 dark:bg-white/5 p-2 rounded-2xl border border-zinc-200/20">
-                  <span className="block text-[8px] uppercase tracking-wide text-zinc-400">PASSPORTS</span>
+                  <span className="block text-2xs uppercase tracking-wide text-zinc-400">PASSPORTS</span>
                   <span className="text-sm font-black text-gray-950 dark:text-white mt-1 block">
                     {selectedCompetitor.countriesCount}
                   </span>
                 </div>
                 <div className="bg-zinc-100/40 dark:bg-white/5 p-2 rounded-2xl border border-zinc-200/20">
-                  <span className="block text-[8px] uppercase tracking-wide text-zinc-400">STICKERS</span>
+                  <span className="block text-2xs uppercase tracking-wide text-zinc-400">STICKERS</span>
                   <span className="text-sm font-black text-gray-950 dark:text-white mt-1 block">
                     {selectedCompetitor.stickersCount}
                   </span>
                 </div>
                 <div className="bg-zinc-100/40 dark:bg-white/5 p-2 rounded-2xl border border-zinc-200/20">
-                  <span className="block text-[8px] uppercase tracking-wide text-zinc-400">DISTANCE</span>
+                  <span className="block text-2xs uppercase tracking-wide text-zinc-400">DISTANCE</span>
                   <span className="text-sm font-black text-gray-950 dark:text-white mt-1 block truncate">
                     {(selectedCompetitor.distanceKm).toLocaleString()} km
                   </span>
@@ -311,7 +311,7 @@ export const TravelerLeaderboard: React.FC<TravelerLeaderboardProps> = ({
 
               {/* High-Tier Rare Discoveries */}
               <div className="mt-5">
-                <span className="text-[9px] font-black uppercase tracking-wider text-zinc-400 block mb-2">
+                <span className="text-2xs font-bold uppercase tracking-wider text-zinc-400 block mb-2">
                   Historic Wonder Adhesions
                 </span>
                 <div className="flex flex-wrap gap-1.5">
@@ -319,13 +319,13 @@ export const TravelerLeaderboard: React.FC<TravelerLeaderboardProps> = ({
                     selectedCompetitor.rareStickersList.map((st, i) => (
                       <span
                         key={i}
-                        className="text-[10px] bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 font-extrabold px-2.5 py-1 rounded-xl"
+                        className="text-xs bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 font-bold px-2.5 py-1 rounded-xl"
                       >
                         {st}
                       </span>
                     ))
                   ) : (
-                    <span className="text-[10px] italic text-zinc-400 font-bold">
+                    <span className="text-xs italic text-zinc-400 font-bold">
                       No rare stickers unlocked yet 🧭
                     </span>
                   )}
@@ -346,7 +346,7 @@ export const TravelerLeaderboard: React.FC<TravelerLeaderboardProps> = ({
             <div className="flex flex-col items-center justify-center text-center h-full text-zinc-300 dark:text-zinc-700 p-6">
               <Compass className="w-16 h-16 stroke-1 mb-3 text-zinc-200 dark:text-zinc-820 animate-spin-slow" />
               <h4 className="text-xs font-black uppercase tracking-wider">Spotlight Selection Empty</h4>
-              <p className="text-[10px] text-zinc-400 mt-1 pb-16">
+              <p className="text-xs text-zinc-400 mt-1 pb-16">
                 Click any participant profile from the leaderboard registry to load full historic details!
               </p>
             </div>

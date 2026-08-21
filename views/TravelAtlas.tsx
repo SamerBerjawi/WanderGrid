@@ -733,11 +733,11 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
         
         <Card 
           onClick={() => setActiveTab('visited')}
-          className="!bg-white/80 dark:!bg-zinc-900/60 border border-gray-50 dark:border-white/5 !rounded-[2rem] shadow-sm relative overflow-hidden cursor-pointer hover:border-indigo-500/30 transition-all" 
+          className="!bg-white/80 dark:!bg-zinc-900/60 border border-gray-50 dark:border-white/5 !rounded-3xl shadow-sm relative overflow-hidden cursor-pointer hover:border-indigo-500/30 transition-all" 
           noPadding
         >
           <div className="p-6">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-1">Visited Nations</span>
+            <span className="text-2xs font-bold uppercase tracking-wider text-gray-400 block mb-1">Visited Nations</span>
             <span className="text-3xl font-black text-gray-900 dark:text-white">{stats.totalCountries}</span>
             <span className="text-xs text-gray-400 dark:text-gray-500 block mt-1">Explored & Lived</span>
             <div className="absolute right-4 bottom-4 text-indigo-600/10">
@@ -748,11 +748,11 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
 
         <Card 
           onClick={() => setActiveTab('layovers')}
-          className="!bg-white/80 dark:!bg-zinc-900/60 border border-amber-500/10 dark:border-amber-500/10 !rounded-[2rem] shadow-sm relative overflow-hidden cursor-pointer hover:border-amber-500/30 transition-all" 
+          className="!bg-white/80 dark:!bg-zinc-900/60 border border-amber-500/10 dark:border-amber-500/10 !rounded-3xl shadow-sm relative overflow-hidden cursor-pointer hover:border-amber-500/30 transition-all" 
           noPadding
         >
           <div className="p-6">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-500 block mb-1">Layover Stops</span>
+            <span className="text-2xs font-bold uppercase tracking-wider text-amber-500 block mb-1">Layover Stops</span>
             <span className="text-3xl font-black text-amber-500">{stats.transitCount}</span>
             <span className="text-xs text-gray-400 dark:text-gray-500 block mt-1">Airport connections</span>
             <div className="absolute right-4 bottom-4 text-amber-600/10">
@@ -763,11 +763,11 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
 
         <Card 
           onClick={() => setActiveTab('wishlist')}
-          className="!bg-white/80 dark:!bg-zinc-900/60 border border-rose-500/10 dark:border-rose-500/10 !rounded-[2rem] shadow-sm relative overflow-hidden cursor-pointer hover:border-rose-500/30 transition-all" 
+          className="!bg-white/80 dark:!bg-zinc-900/60 border border-rose-500/10 dark:border-rose-500/10 !rounded-3xl shadow-sm relative overflow-hidden cursor-pointer hover:border-rose-500/30 transition-all" 
           noPadding
         >
           <div className="p-6">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-rose-500 block mb-1">Wishlist Targets</span>
+            <span className="text-2xs font-bold uppercase tracking-wider text-rose-500 block mb-1">Wishlist Targets</span>
             <span className="text-3xl font-black text-rose-600 dark:text-rose-400">{stats.wishlistCount}</span>
             <span className="text-xs text-gray-400 dark:text-gray-500 block mt-1">Dream destinations</span>
             <div className="absolute right-4 bottom-4 text-rose-500/10">
@@ -778,11 +778,11 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
 
         <Card 
           onClick={() => setActiveTab('cities')}
-          className="!bg-white/80 dark:!bg-zinc-900/60 border border-gray-50 dark:border-white/5 !rounded-[2rem] shadow-sm relative overflow-hidden cursor-pointer hover:border-blue-500/30 transition-all" 
+          className="!bg-white/80 dark:!bg-zinc-900/60 border border-gray-50 dark:border-white/5 !rounded-3xl shadow-sm relative overflow-hidden cursor-pointer hover:border-blue-500/30 transition-all" 
           noPadding
         >
           <div className="p-6">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-1">Tracked Cities</span>
+            <span className="text-2xs font-bold uppercase tracking-wider text-gray-400 block mb-1">Tracked Cities</span>
             <span className="text-3xl font-black text-gray-900 dark:text-white">{stats.totalCities}</span>
             <span className="text-xs text-gray-400 dark:text-gray-500 block mt-1">Urban footprints</span>
             <div className="absolute right-4 bottom-4 text-blue-600/10">
@@ -791,9 +791,9 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
           </div>
         </Card>
 
-        <Card className="!bg-gradient-to-br from-indigo-600 to-blue-700 border-0 !rounded-[2rem] shadow-md relative overflow-hidden text-white col-span-2 lg:col-span-1" noPadding>
+        <Card className="!bg-gradient-to-br from-indigo-600 to-blue-700 border-0 !rounded-3xl shadow-md relative overflow-hidden text-white col-span-2 lg:col-span-1" noPadding>
           <div className="p-6">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-200 block mb-1">Coverage</span>
+            <span className="text-2xs font-bold uppercase tracking-wider text-indigo-200 block mb-1">Coverage</span>
             <span className="text-3xl font-black tracking-tight">{stats.worldPercentage}%</span>
             <div className="w-full bg-white/20 h-1.5 rounded-full mt-2 relative overflow-hidden">
               <div className="bg-amber-300 h-full rounded-full" style={{ width: `${stats.worldPercentage}%` }} />
@@ -956,7 +956,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                     <motion.div 
                       key={item.id} 
                       layout
-                      className="p-6 rounded-[2rem] border relative transition-all bg-white dark:bg-zinc-900/50 shadow-sm hover:shadow-md border-gray-100 dark:border-white/5"
+                      className="p-6 rounded-3xl border relative transition-all bg-white dark:bg-zinc-900/50 shadow-sm hover:shadow-md border-gray-100 dark:border-white/5"
                     >
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center gap-3">
@@ -967,18 +967,18 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                             <div className="flex items-center gap-2">
                               <h3 className="font-black text-lg text-gray-900 dark:text-white tracking-tight leading-tight">{item.name}</h3>
                               {item.residenceStatus === 'lived_current' ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-emerald-500/10 dark:bg-emerald-400/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25 leading-none">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-emerald-500/10 dark:bg-emerald-400/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25 leading-none">
                                   <Home className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
                                   <span>Current Home</span>
                                 </span>
                               ) : item.residenceStatus === 'lived_past' ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-indigo-500/10 dark:bg-indigo-400/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/25 leading-none">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-indigo-500/10 dark:bg-indigo-400/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/25 leading-none">
                                   <Landmark className="w-2.5 h-2.5 text-indigo-600 dark:text-indigo-400" />
                                   <span>Past Home</span>
                                 </span>
                               ) : null}
                             </div>
-                            <span className="text-[10px] font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-widest">{item.code} • {getRegion(item.code)}</span>
+                            <span className="text-2xs font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-widest">{item.code} • {getRegion(item.code)}</span>
                           </div>
                         </div>
 
@@ -1009,11 +1009,11 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
 
                       <div className="grid grid-cols-2 gap-2 text-xs border-t border-gray-100 dark:border-white/5 pt-4">
                         <div>
-                          <span className="text-gray-400 block text-[9px] font-bold uppercase tracking-wider">Visited Date</span>
+                          <span className="text-gray-400 block text-2xs font-bold uppercase tracking-wider">Visited Date</span>
                           <span className="font-semibold">{item.visitDate || 'Not specified'}</span>
                         </div>
                         <div>
-                          <span className="text-gray-400 block text-[9px] font-bold uppercase tracking-wider">Record Origin</span>
+                          <span className="text-gray-400 block text-2xs font-bold uppercase tracking-wider">Record Origin</span>
                           <span className="font-semibold text-zinc-500">{item.isManual ? 'Manual Edit' : 'Scanned'}</span>
                         </div>
                       </div>
@@ -1021,13 +1021,13 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                       {/* Convert to Layover button */}
                       <button 
                         onClick={() => handleToggleTransit(item)}
-                        className="w-full mt-4 flex items-center justify-between text-[11px] font-extrabold tracking-wider uppercase px-4.5 py-3 rounded-2xl border transition-all duration-200 bg-indigo-100/50 hover:bg-indigo-100/70 border-indigo-200/50 text-indigo-900 dark:bg-indigo-950/30 dark:hover:bg-indigo-950/50 dark:border-indigo-900/30 dark:text-indigo-300"
+                        className="w-full mt-4 flex items-center justify-between text-xs font-bold tracking-wider uppercase px-4.5 py-3 rounded-2xl border transition-all duration-200 bg-indigo-100/50 hover:bg-indigo-100/70 border-indigo-200/50 text-indigo-900 dark:bg-indigo-950/30 dark:hover:bg-indigo-950/50 dark:border-indigo-900/30 dark:text-indigo-300"
                       >
                         <span className="flex items-center gap-1.5">
                           <Plane className="w-3.5 h-3.5" />
                           Move to Layovers
                         </span>
-                        <span className="font-bold underline text-[9px]">Transit</span>
+                        <span className="font-bold underline text-2xs">Transit</span>
                       </button>
                     </motion.div>
                   ))
@@ -1046,7 +1046,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
               >
                 {filteredLayoverCountries.length === 0 ? (
                   <div className="col-span-full py-16 text-center text-gray-400 bg-white/40 dark:bg-zinc-900/20 border border-dashed border-amber-500/20 dark:border-amber-500/10 rounded-3xl">
-                    <Plane className="w-10 h-10 mx-auto text-amber-500/60 mb-2" />
+                    <Plane className="w-10 h-10 mx-auto text-amber-400 dark:text-amber-500/40 mb-2 rotate-45" />
                     <p className="text-sm font-bold text-gray-700 dark:text-gray-300">No Layover Countries Catalogued</p>
                     <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
                       Airport transfers and transit stops are tracked here. They are highlighted with special amber tones on your map and kept distinct from fully explored countries.
@@ -1063,7 +1063,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                     <motion.div 
                       key={item.id} 
                       layout
-                      className="p-6 rounded-[2rem] border relative transition-all bg-white dark:bg-zinc-900/50 shadow-sm hover:shadow-md border-amber-500/20 dark:border-amber-500/15 bg-gradient-to-b from-amber-500/[0.03] to-transparent"
+                      className="p-6 rounded-3xl border relative transition-all bg-white dark:bg-zinc-900/50 shadow-sm hover:shadow-md border-amber-500/20 dark:border-amber-500/15 bg-gradient-to-b from-amber-500/[0.03] to-transparent"
                     >
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center gap-3">
@@ -1073,12 +1073,12 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                           <div>
                             <div className="flex items-center gap-2">
                               <h3 className="font-black text-lg text-gray-900 dark:text-white tracking-tight leading-tight">{item.name}</h3>
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-amber-500/10 dark:bg-amber-400/10 text-amber-700 dark:text-amber-300 border border-amber-500/25 leading-none">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-amber-500/10 dark:bg-amber-400/10 text-amber-700 dark:text-amber-300 border border-amber-500/25 leading-none">
                                 <Plane className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400" />
                                 <span>Layover</span>
                               </span>
                             </div>
-                            <span className="text-[10px] font-bold text-amber-500 dark:text-amber-400 uppercase tracking-widest">{item.code} • {getRegion(item.code)}</span>
+                            <span className="text-2xs font-bold text-amber-500 dark:text-amber-400 uppercase tracking-widest">{item.code} • {getRegion(item.code)}</span>
                           </div>
                         </div>
 
@@ -1109,11 +1109,11 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
 
                       <div className="grid grid-cols-2 gap-2 text-xs border-t border-gray-100 dark:border-white/5 pt-4">
                         <div>
-                          <span className="text-gray-400 block text-[9px] font-bold uppercase tracking-wider">Transit Date</span>
+                          <span className="text-gray-400 block text-2xs font-bold uppercase tracking-wider">Transit Date</span>
                           <span className="font-semibold">{item.visitDate || 'Transit connection'}</span>
                         </div>
                         <div>
-                          <span className="text-gray-400 block text-[9px] font-bold uppercase tracking-wider">Classification</span>
+                          <span className="text-gray-400 block text-2xs font-bold uppercase tracking-wider">Classification</span>
                           <span className="font-semibold text-amber-500">Transit Only</span>
                         </div>
                       </div>
@@ -1121,7 +1121,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                       {/* 1-Click Promote to Visited */}
                       <button 
                         onClick={() => handlePromoteLayoverToVisited(item)}
-                        className="w-full mt-4 flex items-center justify-center gap-2 text-[11px] font-extrabold tracking-wider uppercase px-4.5 py-3 rounded-2xl border border-amber-500/20 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 transition-all duration-200 cursor-pointer shadow-sm active:scale-[0.98]"
+                        className="w-full mt-4 flex items-center justify-center gap-2 text-xs font-bold tracking-wider uppercase px-4.5 py-3 rounded-2xl border border-amber-500/20 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 transition-all duration-200 cursor-pointer shadow-sm active:scale-[0.98]"
                       >
                         <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                         <span>Promote to Explored / Visited</span>
@@ -1160,7 +1160,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                     <motion.div 
                       key={item.id} 
                       layout
-                      className="p-6 rounded-[2rem] border relative transition-all bg-white dark:bg-zinc-900/50 shadow-sm hover:shadow-md border-rose-500/20 dark:border-rose-500/15 bg-gradient-to-b from-rose-500/[0.03] to-transparent"
+                      className="p-6 rounded-3xl border relative transition-all bg-white dark:bg-zinc-900/50 shadow-sm hover:shadow-md border-rose-500/20 dark:border-rose-500/15 bg-gradient-to-b from-rose-500/[0.03] to-transparent"
                     >
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center gap-3">
@@ -1170,12 +1170,12 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                           <div>
                             <div className="flex items-center gap-2">
                               <h3 className="font-black text-lg text-gray-900 dark:text-white tracking-tight leading-tight">{item.name}</h3>
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-rose-500/10 dark:bg-rose-400/10 text-rose-700 dark:text-rose-300 border border-rose-500/25 leading-none">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-rose-500/10 dark:bg-rose-400/10 text-rose-700 dark:text-rose-300 border border-rose-500/25 leading-none">
                                 <Star className="w-2.5 h-2.5 fill-rose-500/40 text-rose-600 dark:text-rose-400" />
                                 <span>Wishlist</span>
                               </span>
                             </div>
-                            <span className="text-[10px] font-bold text-rose-500 dark:text-rose-400 uppercase tracking-widest">{item.code} • {getRegion(item.code)}</span>
+                            <span className="text-2xs font-bold text-rose-500 dark:text-rose-400 uppercase tracking-widest">{item.code} • {getRegion(item.code)}</span>
                           </div>
                         </div>
 
@@ -1206,11 +1206,11 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
 
                       <div className="grid grid-cols-2 gap-2 text-xs border-t border-gray-100 dark:border-white/5 pt-4">
                         <div>
-                          <span className="text-gray-400 block text-[9px] font-bold uppercase tracking-wider">Target Voyage</span>
+                          <span className="text-gray-400 block text-2xs font-bold uppercase tracking-wider">Target Voyage</span>
                           <span className="font-semibold">{item.visitDate || 'Future dream'}</span>
                         </div>
                         <div>
-                          <span className="text-gray-400 block text-[9px] font-bold uppercase tracking-wider">Classification</span>
+                          <span className="text-gray-400 block text-2xs font-bold uppercase tracking-wider">Classification</span>
                           <span className="font-semibold text-rose-500">Dream Destination</span>
                         </div>
                       </div>
@@ -1218,7 +1218,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                       {/* 1-Click Promote to Visited */}
                       <button 
                         onClick={() => handlePromoteWishlistToVisited(item)}
-                        className="w-full mt-4 flex items-center justify-center gap-2 text-[11px] font-extrabold tracking-wider uppercase px-4.5 py-3 rounded-2xl border border-rose-500/20 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 transition-all duration-200 cursor-pointer shadow-sm active:scale-[0.98]"
+                        className="w-full mt-4 flex items-center justify-center gap-2 text-xs font-bold tracking-wider uppercase px-4.5 py-3 rounded-2xl border border-rose-500/20 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 transition-all duration-200 cursor-pointer shadow-sm active:scale-[0.98]"
                       >
                         <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                         <span>Mark as Explored / Visited</span>
@@ -1236,7 +1236,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="bg-white/80 dark:bg-zinc-900/30 border border-gray-100 dark:border-white/5 rounded-[2.5rem] overflow-hidden"
+                className="bg-white/80 dark:bg-zinc-900/30 border border-gray-100 dark:border-white/5 rounded-3xl overflow-hidden"
               >
                 {filteredCities.length === 0 ? (
                   <div className="py-20 text-center text-gray-400">
@@ -1248,7 +1248,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                   <div className="overflow-x-auto min-w-full">
                     <table className="min-w-full border-collapse text-left text-xs">
                       <thead>
-                        <tr className="border-b border-gray-100 dark:border-white/5 text-gray-400 uppercase tracking-widest font-black text-[9px] bg-gray-50/50 dark:bg-white/5">
+                        <tr className="border-b border-gray-100 dark:border-white/5 text-gray-400 uppercase tracking-widest font-black text-2xs bg-gray-50/50 dark:bg-white/5">
                           <th className="p-5 pl-8">City Name</th>
                           <th className="p-5">Country</th>
                           <th className="p-5">Map coordinates</th>
@@ -1261,7 +1261,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                         {filteredCities.map((item, idx) => (
                           <tr key={item.id} className="border-b border-gray-100 dark:border-white/5 hover:bg-gray-50/50 dark:hover:bg-whiteScale-5 transition-all">
                             <td className="p-5 pl-8 font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
-                              <span className="font-mono text-[10px] text-zinc-400">#{idx + 1}</span>
+                              <span className="font-mono text-2xs text-zinc-400">#{idx + 1}</span>
                               {item.name}
                             </td>
                             <td className="p-5">
@@ -1317,7 +1317,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                   {/* Controls / Info */}
                   <div className="lg:col-span-4 space-y-6">
-                    <Card className="!bg-gradient-to-b from-indigo-500//5 to-blue-500/5 border border-indigo-500/10 !rounded-[2rem]">
+                    <Card className="!bg-gradient-to-b from-indigo-500//5 to-blue-500/5 border border-indigo-500/10 !rounded-3xl">
                       <h3 className="font-black text-lg tracking-tight mb-2">Automated Scanner</h3>
                       <p className="text-xs text-gray-500 leading-relaxed mb-4">
                         WanderGrid scans all historical details across flight paths and georoute itineraries to extract visited territory candidates.
@@ -1353,7 +1353,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                       </Button>
                     </Card>
 
-                    <Card className="!rounded-[2rem] border border-gray-100 dark:border-white/5">
+                    <Card className="!rounded-3xl border border-gray-100 dark:border-white/5">
                       <div className="flex items-start gap-2.5">
                         <Info className="w-5 h-5 text-indigo-500 shrink-0" />
                         <div className="text-xs leading-relaxed text-gray-500">
@@ -1398,14 +1398,14 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                               <div className="flex items-center gap-1.5 select-none">
                                 <button 
                                   onClick={() => setSelectedScanCountries(new Set(scanResults.countries.map(c => c.code)))}
-                                  className="text-[10px] text-indigo-500 lowercase hover:underline"
+                                  className="text-xs text-indigo-500 lowercase hover:underline"
                                 >
                                   select all
                                 </button>
-                                <span className="text-[9px] text-gray-300">•</span>
+                                <span className="text-xs text-gray-300">•</span>
                                 <button 
                                   onClick={() => setSelectedScanCountries(new Set())}
-                                  className="text-[10px] text-gray-400 lowercase hover:underline"
+                                  className="text-xs text-gray-400 lowercase hover:underline"
                                 >
                                   clear
                                 </button>
@@ -1434,7 +1434,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                                       <span className="text-3xl">{getFlagEmoji(candidate.code)}</span>
                                       <div>
                                         <span className="font-extrabold text-sm block leading-tight">{candidate.name}</span>
-                                        <span className="text-[9px] font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-widest">{candidate.code} • source: {candidate.source}</span>
+                                        <span className="text-xs font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-widest">{candidate.code} • source: {candidate.source}</span>
                                       </div>
                                     </div>
                                     <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${
@@ -1457,22 +1457,22 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                               <div className="flex items-center gap-1.5 select-none">
                                 <button 
                                   onClick={() => setSelectedScanCities(new Set(scanResults.cities.map(c => c.name)))}
-                                  className="text-[10px] text-indigo-500 lowercase hover:underline"
+                                  className="text-xs text-indigo-500 lowercase hover:underline"
                                 >
                                   select all
                                 </button>
-                                <span className="text-[9px] text-gray-300">•</span>
+                                <span className="text-xs text-gray-300">•</span>
                                 <button 
                                   onClick={() => setSelectedScanCities(new Set())}
-                                  className="text-[10px] text-gray-400 lowercase hover:underline"
+                                  className="text-xs text-gray-400 lowercase hover:underline"
                                 >
                                   clear
                                 </button>
                               </div>
                             </h4>
 
-                            <div className="bg-white/50 dark:bg-zinc-900/30 border border-gray-100 dark:border-white/5 rounded-[2rem] overflow-hidden select-none">
-                              <div className="p-3 bg-gray-50 dark:bg-white/5 border-b border-gray-100 dark:border-white/5 text-[10px] font-extrabold text-gray-400 uppercase tracking-wider">
+                            <div className="bg-white/50 dark:bg-zinc-900/30 border border-gray-100 dark:border-white/5 rounded-3xl overflow-hidden select-none">
+                              <div className="p-3 bg-gray-50 dark:bg-white/5 border-b border-gray-100 dark:border-white/5 text-xs font-bold text-gray-400 uppercase tracking-wider">
                                 Click to toggle city exclusion before registration
                               </div>
                               <div className="max-h-[300px] overflow-y-auto divide-y divide-gray-100 dark:divide-white/5">
@@ -1495,7 +1495,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                                         <span className="text-lg">{candidate.countryCode ? getFlagEmoji(candidate.countryCode) : '🏳️'}</span>
                                         <div>
                                           <span className="font-extrabold text-xs block leading-tight text-gray-900 dark:text-white">{candidate.name}</span>
-                                          <span className="text-[9px] text-gray-400">country: {candidate.countryName} • source: {candidate.source} {candidate.lat ? `(Lat: ${candidate.lat.toFixed(2)})` : ''}</span>
+                                          <span className="text-xs text-gray-400">country: {candidate.countryName} • source: {candidate.source} {candidate.lat ? `(Lat: ${candidate.lat.toFixed(2)})` : ''}</span>
                                         </div>
                                       </div>
                                       
@@ -1537,7 +1537,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
             >
               <div className="p-6 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-primary-500/5 to-transparent">
                 <div>
-                  <span className="text-2xs font-bold uppercase tracking-wider bg-primary-500/10 text-primary-600 dark:text-primary-400 px-2 py-0.5 rounded-full border border-primary-500/20">
+                  <span className="text-xs font-bold uppercase tracking-wider bg-primary-500/10 text-primary-600 dark:text-primary-400 px-2 py-0.5 rounded-full border border-primary-500/20">
                     {editingItem ? 'Edit footprint record' : 'Add custom footprint'}
                   </span>
                   <h3 className="text-lg font-bold text-light-text dark:text-dark-text tracking-tight mt-1">
@@ -1591,7 +1591,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
 
                     {/* Quick Constituent Countries Selector */}
                     <div className="space-y-1.5">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
+                      <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
                         Quick Select Constituent Countries
                       </span>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
@@ -1677,7 +1677,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                                 )}
                               </div>
                               <span className="text-xs font-bold block leading-tight">{st.label}</span>
-                              <span className="text-[9px] text-light-text-secondary dark:text-dark-text-secondary block mt-0.5">{st.desc}</span>
+                              <span className="text-xs text-light-text-secondary dark:text-dark-text-secondary block mt-0.5">{st.desc}</span>
                             </button>
                           );
                         })}

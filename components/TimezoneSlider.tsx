@@ -101,8 +101,8 @@ export const TimezoneSlider: React.FC = () => {
         if (isNight) bgClass = 'bg-slate-300 dark:bg-slate-700 opacity-50';
 
         return (
-            <div key={localHour} className={`flex-1 h-8 first:rounded-l-lg last:rounded-r-lg mx-[1px] relative group ${bgClass}`}>
-                <div className="hidden group-hover:flex absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-black text-white text-[10px] rounded whitespace-nowrap z-10">
+            <div key={localHour} className={`flex-1 h-8 first:rounded-l-lg last:rounded-r-lg mx-0.5 relative group ${bgClass}`}>
+                <div className="hidden group-hover:flex absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-black text-white text-2xs font-bold rounded whitespace-nowrap z-10">
                     {Math.floor(locHour)}:00
                 </div>
             </div>
@@ -123,32 +123,28 @@ export const TimezoneSlider: React.FC = () => {
     // "Golden Hour" = All locations are between 9 and 18? Or at least 8 and 20?
     // Let's visualize overlaps on the master slider track
     const overlapMap = useMemo(() => {
-        const map = new Array(24).fill(0);
-        for(let h=0; h<24; h++) {
-            let isGood = true;
-            for(const loc of locations) {
-                const utc = h - localOffset;
-                const localH = (utc + loc.offset + 2400) % 24;
-                if (localH < 9 || localH >= 18) { // Strict business hours
-                    isGood = false;
-                    break;
-                }
-            }
-            if (isGood) map[h] = 1;
+        const slots: boolean[] = [];
+        for (let s = 0; s < 24; s++) {
+            const utc = s - localOffset;
+            const allInWorkingHours = locations.every(loc => {
+                const locHour = (utc + loc.offset + 2400) % 24;
+                return locHour >= 9 && locHour < 18;
+            });
+            slots.push(allInWorkingHours);
         }
-        return map;
+        return slots;
     }, [locations, localOffset]);
 
     return (
-        <Card noPadding className="rounded-[2.5rem] border-white/50 dark:border-white/10 shadow-2xl overflow-hidden flex flex-col h-full">
+        <Card noPadding className="rounded-3xl border-white/50 dark:border-white/10 shadow-2xl overflow-hidden flex flex-col h-full">
             <div className="p-6 border-b border-gray-100 dark:border-white/5 bg-gradient-to-r from-amber-500/10 to-orange-500/10">
                 <div className="flex items-center gap-3 mb-2">
                     <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-lg shadow-amber-500/20">
                         <span className="material-icons-outlined">schedule</span>
                     </div>
                     <div>
-                        <h3 className="text-xl font-black text-gray-900 dark:text-white leading-none">Timezone Sync</h3>
-                        <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest mt-1">Golden Hour Calculator</p>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white leading-none">Timezone Sync</h3>
+                        <p className="text-2xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest mt-1">Golden Hour Calculator</p>
                     </div>
                 </div>
                 
@@ -172,9 +168,9 @@ export const TimezoneSlider: React.FC = () => {
                     {/* Master Slider Indicator Line */}
                     <div 
                         className="absolute top-0 bottom-0 w-0.5 bg-rose-500 z-20 pointer-events-none transition-all duration-75"
-                        style={{ left: `calc(${(sliderValue / 24) * 100}% + 120px)` }} // Offset for label width approx
+                        style={{ left: `calc(${(sliderValue / 24) * 100}% + 128px)` }} // Offset for label width (w-28 + gap-4)
                     >
-                        <div className="absolute -top-1 -translate-x-1/2 bg-rose-500 text-white text-[9px] font-bold px-1.5 rounded">
+                        <div className="absolute -top-1 -translate-x-1/2 bg-rose-500 text-white text-2xs font-bold px-1.5 rounded">
                             Local {Math.floor(sliderValue)}:00
                         </div>
                     </div>
@@ -204,7 +200,7 @@ export const TimezoneSlider: React.FC = () => {
             <div className="p-4 bg-gray-50 dark:bg-white/5 border-t border-gray-100 dark:border-white/5">
                 <div className="relative h-10 w-full flex items-center">
                     {/* Golden Hour Markers on Track */}
-                    <div className="absolute inset-0 flex mx-[1px] pointer-events-none pl-[120px]">
+                    <div className="absolute inset-0 flex mx-0.5 pointer-events-none pl-32">
                         {overlapMap.map((isGold, i) => (
                             <div key={i} className={`flex-1 h-2 mt-4 rounded-full mx-0.5 transition-all ${isGold ? 'bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.8)]' : 'bg-transparent'}`} />
                         ))}
@@ -219,13 +215,13 @@ export const TimezoneSlider: React.FC = () => {
                         onChange={(e) => setSliderValue(parseFloat(e.target.value))}
                         className="w-full absolute z-30 opacity-0 cursor-ew-resize h-full"
                     />
-                    <div className="w-full h-10 flex items-center pl-[120px]">
+                    <div className="w-full h-10 flex items-center pl-32">
                          <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full relative overflow-hidden">
                              <div className="absolute top-0 bottom-0 bg-blue-500 rounded-full" style={{ width: `${(sliderValue / 24) * 100}%` }} />
                          </div>
                     </div>
                 </div>
-                <div className="flex justify-between pl-[120px] text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">
+                <div className="flex justify-between pl-32 text-2xs font-bold text-gray-400 uppercase tracking-widest mt-1">
                     <span>00:00</span>
                     <span>12:00</span>
                     <span>24:00</span>

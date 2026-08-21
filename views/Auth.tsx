@@ -216,7 +216,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                     {/* Show Demo Button */}
                     <div className="relative flex items-center gap-4 my-2">
                         <div className="h-px bg-gray-200 dark:bg-white/10 flex-1"></div>
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Or</span>
+                        <span className="text-2xs font-bold text-gray-400 uppercase tracking-widest">Or</span>
                         <div className="h-px bg-gray-200 dark:bg-white/10 flex-1"></div>
                     </div>
 
@@ -248,7 +248,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             </Card>
             
             <div className="absolute bottom-6 text-center w-full">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] opacity-50">WanderGrid Systems v2.2</p>
+                <p className="text-2xs font-bold text-gray-400 uppercase tracking-[0.2em] opacity-50">WanderGrid Systems v2.2</p>
             </div>
         </div>
     );

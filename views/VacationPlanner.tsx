@@ -394,7 +394,7 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                         handleEditTrip(trip);
                     }
                 }}
-                className={`group relative bg-white/70 dark:bg-zinc-900/80 rounded-[2.25rem] border backdrop-blur-xl shadow-md hover:shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden flex flex-col ${
+                className={`group relative bg-white/70 dark:bg-zinc-900/80 rounded-3xl border backdrop-blur-xl shadow-md hover:shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden flex flex-col ${
                     isSelectionMode && isSelected 
                     ? 'border-[#fa9a1d] ring-4 ring-[#fa9a1d]/30 dark:ring-offset-black scale-[1.02]' 
                     : 'border-gray-100 dark:border-white/5'
@@ -442,12 +442,12 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                                     <span>{trip.location || 'Remote'}</span>
                                 </span>
                                 <span className="w-1 h-1 rounded-full bg-zinc-200 dark:bg-zinc-800" />
-                                <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider ${
+                                <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-2xs font-bold uppercase tracking-wider ${
                                     trip.privacy === 'Public' 
                                     ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/20 dark:text-blue-400 border border-blue-100/30' 
                                     : 'bg-zinc-50 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-400'
                                 }`}>
-                                    <span className="material-icons-outlined text-[10px]">{trip.privacy === 'Public' ? 'public' : 'lock'}</span>
+                                    <span className="material-icons-outlined text-xs">{trip.privacy === 'Public' ? 'public' : 'lock'}</span>
                                     {trip.privacy || 'Private'}
                                 </span>
                             </div>
@@ -472,7 +472,7 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                 <div className="px-6 py-1 flex-1">
                     {locationsArray.length > 0 ? (
                         <div className="my-2 p-3 bg-zinc-50/50 dark:bg-[#fa9a1d]/5 rounded-2xl border border-zinc-100/10">
-                            <div className="text-[10px] font-black uppercase text-zinc-450 dark:text-zinc-400 tracking-wider flex items-center justify-between">
+                            <div className="text-2xs font-bold uppercase text-zinc-450 dark:text-zinc-400 tracking-wider flex items-center justify-between">
                                 <span className="flex items-center gap-1">
                                     <span className="material-icons-outlined text-xs text-[#fa9a1d]">alt_route</span>
                                     <span>Transit Routing ({locationsArray.length} stops)</span>
@@ -481,21 +481,21 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                             <div className="mt-2.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
                                 {locationsArray.slice(0, 3).map((loc, idx) => (
                                     <React.Fragment key={idx}>
-                                        {idx > 0 && <span className="text-[#fa9a1d]/40 dark:text-zinc-650 text-[10px] font-black shrink-0">&bull;</span>}
-                                        <span className="text-[9px] font-black text-gray-650 dark:text-gray-300 bg-white/80 dark:bg-zinc-800/80 border border-zinc-200/30 px-2.5 py-1 rounded-lg truncate max-w-[85px]" title={loc.name}>
+                                        {idx > 0 && <span className="text-[#fa9a1d]/40 dark:text-zinc-650 text-2xs font-bold shrink-0">&bull;</span>}
+                                        <span className="text-2xs font-bold text-gray-650 dark:text-gray-300 bg-white/80 dark:bg-zinc-800/80 border border-zinc-200/30 px-2.5 py-1 rounded-lg truncate max-w-[85px]" title={loc.name}>
                                             {loc.name}
                                         </span>
                                     </React.Fragment>
                                 ))}
                                 {locationsArray.length > 3 && (
-                                    <span className="text-[9px] font-black text-white bg-gradient-to-r from-[#fa9a1d] to-[#fcb045] px-2 py-1 rounded-lg shrink-0">
+                                    <span className="text-2xs font-bold text-white bg-gradient-to-r from-[#fa9a1d] to-[#fcb045] px-2 py-1 rounded-lg shrink-0">
                                         +{locationsArray.length - 3}
                                     </span>
                                 )}
                             </div>
                         </div>
                     ) : (
-                        <div className="my-2 p-3 border border-dashed border-zinc-200/50 dark:border-zinc-800 rounded-2xl text-[10px] font-bold text-gray-400 italic flex items-center gap-1.5">
+                        <div className="my-2 p-3 border border-dashed border-zinc-200/50 dark:border-zinc-800 rounded-2xl text-2xs font-bold text-gray-400 italic flex items-center gap-1.5">
                             <span className="material-icons-outlined text-sm text-[#fa9a1d]/60">architecture</span>
                             <span>No stops mapped in route planner</span>
                         </div>
@@ -506,7 +506,7 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                 <div className="px-6 py-2.5 space-y-3">
                     {/* Completeness Tracker */}
                     <div className="space-y-1.5">
-                        <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-gray-400">
+                        <div className="flex justify-between items-center text-2xs font-bold uppercase tracking-wider text-gray-400">
                             <span>Planning Completeness</span>
                             <span className={`font-black ${completeness === 100 ? 'text-emerald-500' : 'text-[#fa9a1d]'}`}>{completeness}%</span>
                         </div>
@@ -528,7 +528,7 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
 
                     {/* Co-Travelers Avatars */}
                     <div className="flex items-center justify-between border-t border-zinc-100/80 dark:border-white/5 pt-3">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-[#fa9a1d]">Co-Travelers</span>
+                        <span className="text-2xs font-bold uppercase tracking-widest text-[#fa9a1d]">Co-Travelers</span>
                         <div className="flex -space-x-2.5">
                             {(trip.participants || []).slice(0, 5).map((pid, idx) => {
                                 const u = users.find(user => user.id === pid);
@@ -536,7 +536,7 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                                 return (
                                     <div 
                                         key={pid} 
-                                        className={`w-7 h-7 rounded-full border-2 border-white dark:border-zinc-900 flex items-center justify-center text-[9px] font-black text-white shrink-0 shadow-sm ${
+                                        className={`w-7 h-7 rounded-full border-2 border-white dark:border-zinc-900 flex items-center justify-center text-2xs font-bold text-white shrink-0 shadow-sm ${
                                             u.role === 'Partner' ? 'bg-[#fa9a1d]' : u.role === 'Admin' ? 'bg-sky-500' : 'bg-emerald-500'
                                         }`}
                                         title={u.name}
@@ -546,7 +546,7 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                                 );
                             })}
                             {(trip.participants || []).length > 5 && (
-                                <div className="w-7 h-7 rounded-full border-2 border-white dark:border-zinc-900 bg-zinc-800 text-white flex items-center justify-center text-[8px] font-black leading-none shrink-0 shadow-sm">
+                                <div className="w-7 h-7 rounded-full border-2 border-white dark:border-zinc-900 bg-zinc-800 text-white flex items-center justify-center text-2xs font-bold leading-none shrink-0 shadow-sm">
                                     +{(trip.participants || []).length - 5}
                                 </div>
                             )}
@@ -559,22 +559,22 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                     {/* Live Logistics Metrics grid */}
                     <div className="grid grid-cols-3 gap-1.5 text-center">
                         <div className="bg-white/80 dark:bg-zinc-900 p-2 rounded-xl border border-zinc-150/30 dark:border-zinc-800/40 shadow-xs">
-                            <span className="text-[8px] font-black uppercase text-gray-400 block tracking-wider">Transport</span>
+                            <span className="text-2xs font-bold uppercase text-gray-400 block tracking-wider">Transport</span>
                             <span className="text-xs font-black text-zinc-800 dark:text-white mt-0.5 block">{transportCount}</span>
                         </div>
                         <div className="bg-white/80 dark:bg-zinc-900 p-2 rounded-xl border border-zinc-150/30 dark:border-zinc-800/40 shadow-xs">
-                            <span className="text-[8px] font-black uppercase text-gray-400 block tracking-wider">Stays</span>
+                            <span className="text-2xs font-bold uppercase text-gray-400 block tracking-wider">Stays</span>
                             <span className="text-xs font-black text-zinc-800 dark:text-white mt-0.5 block">{accommodationCount}</span>
                         </div>
                         <div className="bg-white/80 dark:bg-zinc-900 p-2 rounded-xl border border-zinc-150/30 dark:border-zinc-800/40 shadow-xs">
-                            <span className="text-[8px] font-black uppercase text-gray-400 block tracking-wider">Activities</span>
+                            <span className="text-2xs font-bold uppercase text-gray-400 block tracking-wider">Activities</span>
                             <span className="text-xs font-black text-zinc-800 dark:text-white mt-0.5 block">{activityCount}</span>
                         </div>
                     </div>
 
                     {/* Financial Summary */}
                     <div className="flex justify-between items-center text-xs px-1">
-                        <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Estimated Budget</span>
+                        <span className="text-2xs font-bold uppercase text-gray-400 tracking-wider">Estimated Budget</span>
                         <span className="font-extrabold text-emerald-600 dark:text-emerald-400 text-sm">{formatCurrency(totalCost)}</span>
                     </div>
 
@@ -622,16 +622,15 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
     };
 
     return (
-        <div className="space-y-8 max-w-[1400px] mx-auto pb-24 relative select-none">
+<div className="space-y-8 max-w-[1400px] mx-auto pb-24 relative select-none">
             
             {/* Header: Redesigned premium Dashboard banner */}
-            <header className="relative overflow-hidden bg-white/40 dark:bg-zinc-900/40 p-6 md:p-8 rounded-[2.5rem] backdrop-blur-2xl border border-white/50 dark:border-white/5 shadow-xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+            <header className="relative overflow-hidden bg-white/40 dark:bg-zinc-900/40 p-6 md:p-8 rounded-3xl backdrop-blur-2xl border border-white/50 dark:border-white/5 shadow-xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
                 <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#fa9a1d]/5 dark:bg-[#fa9a1d]/10 rounded-full blur-[140px] pointer-events-none translate-x-[20%] -translate-y-[20%]" />
-                
-                <div className="space-y-2 relative z-10 w-full lg:w-auto">
+                         <div className="space-y-2 relative z-10 w-full lg:w-auto">
                     <div className="flex items-center gap-2">
                         <span className="w-2.5 h-2.5 rounded-full bg-[#fa9a1d] animate-pulse" />
-                        <span className="text-[10px] font-black uppercase text-[#fa9a1d] tracking-[0.2em]">Expeditions Base</span>
+                        <span className="text-2xs font-bold uppercase text-[#fa9a1d] tracking-[0.2em]">Expeditions Base</span>
                     </div>
                     <h2 className="text-4xl lg:text-5xl font-black text-gray-900 dark:text-white tracking-tight">Active Planner</h2>
                     <p className="text-sm font-medium text-gray-500 dark:text-zinc-400 max-w-xl">Configure travel scopes, integrate flight itineraries, co-align workspace calendars, and batch-merge overlapping stays.</p>
@@ -677,8 +676,8 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                     {!isSelectionMode && (
                         <div className="flex gap-2 shrink-0 w-full sm:w-auto justify-end sm:justify-start">
                             <button 
-                                onClick={toggleSelectionMode}
-                                className="px-5 py-3 rounded-2xl border-2 border-zinc-200 dark:border-zinc-850 font-black text-xs text-zinc-600 dark:text-zinc-350 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-all flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer"
+                                onClick={toggleSelectionMode} 
+                                className="px-5 py-3 rounded-2xl border-2 border-zinc-200 dark:border-zinc-850 font-black text-xs text-zinc-600 dark:text-zinc-355 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-all flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer"
                             >
                                 <span className="material-icons-outlined text-sm">checklist</span>
                                 <span>Batch Merge</span>
@@ -699,7 +698,7 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 
                 {/* Micro Countdown Event Card */}
-                <div className="bg-white/60 dark:bg-zinc-900/60 rounded-[2.25rem] p-6 border border-zinc-100 dark:border-white/5 shadow-md relative overflow-hidden group hover:shadow-xl transition-all duration-300 flex flex-col justify-between min-h-[140px]">
+                <div className="bg-white/60 dark:bg-zinc-900/60 rounded-3xl p-6 border border-zinc-100 dark:border-white/5 shadow-md relative overflow-hidden group hover:shadow-xl transition-all duration-300 flex flex-col justify-between min-h-[140px]">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-sky-500/5 rounded-full blur-2xl translate-x-1/2 -translate-y-1/2 pointer-events-none group-hover:scale-125 transition-transform duration-500" />
                     <div className="flex justify-between items-start">
                         <div className="w-11 h-11 rounded-xl bg-sky-50 dark:bg-sky-950/20 text-sky-500 flex items-center justify-center text-xl shadow-inner shrink-0 leading-none">
@@ -708,24 +707,24 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                         {nextTripCountdown ? (
                             <div className="text-right">
                                 <span className="text-2xl font-extrabold text-blue-600 dark:text-blue-400">{nextTripCountdown.days}</span>
-                                <span className="text-[10px] font-black uppercase text-zinc-400 block tracking-wider">Days to Launch</span>
+                                <span className="text-2xs font-bold uppercase text-zinc-400 block tracking-wider">Days to Launch</span>
                             </div>
                         ) : (
-                            <span className="text-[10px] font-black uppercase text-amber-500">Standby</span>
+                            <span className="text-2xs font-bold uppercase text-amber-500">Standby</span>
                         )}
                     </div>
                     <div>
                         <div className="text-xs font-black text-gray-900 dark:text-white truncate max-w-[200px]" title={nextTripCountdown?.name || "No upcoming plans"}>
                             {nextTripCountdown ? nextTripCountdown.name : "Ready to plan next route?"}
                         </div>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">
+                        <p className="text-2xs font-bold text-gray-400 uppercase tracking-widest mt-1">
                             {nextTripCountdown ? `Next up / ${nextTripCountdown.location}` : "No upcoming assignments"}
                         </p>
                     </div>
                 </div>
 
                 {/* Confirmed / Active Metrics */}
-                <div className="bg-white/60 dark:bg-zinc-900/60 rounded-[2.25rem] p-6 border border-zinc-100 dark:border-white/5 shadow-md relative overflow-hidden group hover:shadow-xl transition-all duration-300 flex flex-col justify-between min-h-[140px]">
+                <div className="bg-white/60 dark:bg-zinc-900/60 rounded-3xl p-6 border border-zinc-100 dark:border-white/5 shadow-md relative overflow-hidden group hover:shadow-xl transition-all duration-300 flex flex-col justify-between min-h-[140px]">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl translate-x-1/2 -translate-y-1/2 pointer-events-none group-hover:scale-125 transition-transform duration-500" />
                     <div className="flex justify-between items-start">
                         <div className="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 text-emerald-500 flex items-center justify-center text-xl shadow-inner shrink-0 leading-none">
@@ -733,17 +732,17 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                         </div>
                         <div className="text-right">
                             <span className="text-2xl font-extrabold text-[#fa9a1d]">{confirmedTrips.length}</span>
-                            <span className="text-[10px] font-black uppercase text-zinc-400 block tracking-wider">Confirmed</span>
+                            <span className="text-2xs font-bold uppercase text-zinc-400 block tracking-wider">Confirmed</span>
                         </div>
                     </div>
                     <div>
                         <div className="text-xs font-black text-gray-950 dark:text-white">Upcoming itineraries locked in</div>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Confirmed & Sync-ready</p>
+                        <p className="text-2xs font-bold text-gray-400 uppercase tracking-widest mt-1">Confirmed & Sync-ready</p>
                     </div>
                 </div>
 
                 {/* Draft / Planning Queue */}
-                <div className="bg-white/60 dark:bg-zinc-900/60 rounded-[2.25rem] p-6 border border-zinc-100 dark:border-white/5 shadow-md relative overflow-hidden group hover:shadow-xl transition-all duration-300 flex flex-col justify-between min-h-[140px]">
+                <div className="bg-white/60 dark:bg-zinc-900/60 rounded-3xl p-6 border border-zinc-100 dark:border-white/5 shadow-md relative overflow-hidden group hover:shadow-xl transition-all duration-300 flex flex-col justify-between min-h-[140px]">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl translate-x-1/2 -translate-y-1/2 pointer-events-none group-hover:scale-125 transition-transform duration-500" />
                     <div className="flex justify-between items-start">
                         <div className="w-11 h-11 rounded-xl bg-amber-50 dark:bg-amber-950/20 text-amber-500 flex items-center justify-center text-xl shadow-inner shrink-0 leading-none">
@@ -751,17 +750,17 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                         </div>
                         <div className="text-right">
                             <span className="text-2xl font-extrabold text-[#fa9a1d]">{plannedTrips.length}</span>
-                            <span className="text-[10px] font-black uppercase text-zinc-400 block tracking-wider">In Draft</span>
+                            <span className="text-2xs font-bold uppercase text-zinc-400 block tracking-wider">In Draft</span>
                         </div>
                     </div>
                     <div>
                         <div className="text-xs font-black text-zinc-800 dark:text-white">Active blueprints being refined</div>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Planning queue status</p>
+                        <p className="text-2xs font-bold text-gray-400 uppercase tracking-widest mt-1">Planning queue status</p>
                     </div>
                 </div>
 
                 {/* Financial Pipeline */}
-                <div className="bg-white/60 dark:bg-zinc-900/60 rounded-[2.25rem] p-6 border border-zinc-100 dark:border-white/5 shadow-md relative overflow-hidden group hover:shadow-xl transition-all duration-300 flex flex-col justify-between min-h-[140px]">
+                <div className="bg-white/60 dark:bg-zinc-900/60 rounded-3xl p-6 border border-zinc-100 dark:border-white/5 shadow-md relative overflow-hidden group hover:shadow-xl transition-all duration-300 flex flex-col justify-between min-h-[140px]">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full blur-2xl translate-x-1/2 -translate-y-1/2 pointer-events-none group-hover:scale-125 transition-transform duration-500" />
                     <div className="flex justify-between items-start">
                         <div className="w-11 h-11 rounded-xl bg-purple-50 dark:bg-purple-950/20 text-purple-500 flex items-center justify-center text-xl shadow-inner shrink-0 leading-none">
@@ -771,87 +770,81 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                             <span className="text-xl font-black text-emerald-500">
                                 {formatCurrency(estimatedBudgetPlanned + estimatedBudgetConfirmed)}
                             </span>
-                            <span className="text-[10px] font-black uppercase text-zinc-400 block tracking-wider">Committed</span>
+                            <span className="text-2xs font-bold uppercase text-zinc-400 block tracking-wider">Committed</span>
                         </div>
                     </div>
                     <div>
                         <div className="text-xs font-black text-zinc-800 dark:text-white">Includes lodging & transit bookings</div>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Aggregate budget estimate</p>
+                        <p className="text-2xs font-bold text-gray-400 uppercase tracking-widest mt-1">Aggregate budget estimate</p>
                     </div>
                 </div>
 
             </div>
 
             {/* Redesigned Premium Tabs Select Bar */}
-            <div className="flex justify-start relative max-w-lg mx-auto bg-zinc-100/55 dark:bg-zinc-900/50 p-1.5 rounded-[1.75rem] border border-zinc-200/50 dark:border-white/5">
-                <div className="grid grid-cols-3 w-full relative">
+            <div className="flex justify-between items-center border-b border-zinc-200/60 dark:border-white/5 pb-4 overflow-x-auto no-scrollbar">
+                <div className="flex p-1.5 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-md rounded-2xl gap-1 border border-zinc-200/50 dark:border-white/5 shrink-0">
                     <button 
                         onClick={() => setActiveTab('Planned')}
-                        className={`relative z-10 py-3 rounded-2xl text-xs font-extrabold uppercase tracking-widest text-center transition-all ${
+                        className={`px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-200 cursor-pointer flex items-center gap-2 ${
                             activeTab === 'Planned' 
-                            ? 'text-[#fa9a1d]' 
-                            : 'text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-300'
+                            ? 'bg-[#fa9a1d] text-white shadow-md shadow-[#fa9a1d]/20 font-black' 
+                            : 'text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white'
                         }`}
                     >
-                        Planned ({plannedTrips.length})
+                        <span>Draft Blueprints</span>
+                        <span className="text-2xs px-2 py-0.5 rounded-full bg-white/20 font-black">{plannedTrips.length}</span>
                     </button>
                     <button 
                         onClick={() => setActiveTab('Confirmed')}
-                        className={`relative z-10 py-3 rounded-2xl text-xs font-extrabold uppercase tracking-widest text-center transition-all ${
+                        className={`px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-200 cursor-pointer flex items-center gap-2 ${
                             activeTab === 'Confirmed' 
-                            ? 'text-emerald-500' 
-                            : 'text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-200'
+                            ? 'bg-[#fa9a1d] text-white shadow-md shadow-[#fa9a1d]/20 font-black' 
+                            : 'text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white'
                         }`}
                     >
-                        Confirmed ({confirmedTrips.length})
+                        <span>Locked Timeline</span>
+                        <span className="text-2xs px-2 py-0.5 rounded-full bg-white/20 font-black">{confirmedTrips.length}</span>
                     </button>
                     <button 
                         onClick={() => setActiveTab('History')}
-                        className={`relative z-10 py-3 rounded-2xl text-xs font-extrabold uppercase tracking-widest text-center transition-all ${
+                        className={`px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-200 cursor-pointer flex items-center gap-2 ${
                             activeTab === 'History' 
-                            ? 'text-purple-500' 
-                            : 'text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-250'
+                            ? 'bg-[#fa9a1d] text-white shadow-md shadow-[#fa9a1d]/20 font-black' 
+                            : 'text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white'
                         }`}
                     >
-                        History ({historyTrips.length})
+                        <span>Archive Chronology</span>
+                        <span className="text-2xs px-2 py-0.5 rounded-full bg-white/20 font-black">{historyTrips.length}</span>
                     </button>
-
-                    {/* Sliding Highlight Indicator */}
-                    <motion.div 
-                        layoutId="activeTabHighlight"
-                        className={`absolute top-0 bottom-0 rounded-2xl bg-white dark:bg-zinc-850 shadow-sm transition-shadow ${
-                            activeTab === 'Planned' ? 'left-[0%] w-[33.3%]' :
-                            activeTab === 'Confirmed' ? 'left-[33.3%] w-[33.3%]' :
-                            'left-[66.6%] w-[33.3%]'
-                        }`}
-                        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                    />
                 </div>
             </div>
 
-            {/* Main Content Displays */}
+            {/* Main Itineraries Presentation Stage */}
             <AnimatePresence mode="wait">
                 {activeTab === 'Planned' ? (
                     <motion.div 
-                        key="planned-tab-grid"
+                        key="cards-grid"
                         initial={{ opacity: 0, y: 15 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -15 }}
                         className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8"
                     >
                         {plannedTrips.map(trip => renderTripCard(trip))}
-                        
-                        {/* Designer Wireframe Stub Add New Card */}
+
+                        {/* Blank Canvas Invitation Card */}
                         <motion.button 
+                            whileHover={{ scale: 1.01 }}
+                            whileTap={{ scale: 0.99 }}
                             onClick={() => { setEditingTrip(null); setIsCreateTripOpen(true); }}
-                            className="group min-h-[360px] rounded-[2.25rem] border-2 border-dashed border-zinc-250 hover:border-[#fa9a1d] dark:border-zinc-800 dark:hover:border-[#fa9a1d] hover:bg-zinc-50/20 dark:hover:bg-zinc-900/10 flex flex-col items-center justify-center gap-5 transition-all duration-350"
+                            className="h-full min-h-[380px] rounded-3xl border-2 border-dashed border-zinc-200 dark:border-white/10 hover:border-[#fa9a1d] dark:hover:border-[#fa9a1d] p-8 flex flex-col items-center justify-center gap-4 group transition-all duration-300 bg-white/20 dark:bg-zinc-950/20 cursor-pointer"
                         >
-                            <div className="w-14 h-14 rounded-full bg-zinc-55 dark:bg-zinc-800 text-zinc-350 group-hover:bg-[#fa9a1d] group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-inner group-hover:scale-110">
+                            <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-900 group-hover:bg-[#fa9a1d] text-zinc-400 group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-md">
                                 <span className="material-icons-outlined text-3xl font-bold">add</span>
                             </div>
                             <div className="text-center space-y-1.5">
-                                <span className="font-extrabold text-zinc-400 group-hover:text-[#fa9a1d] uppercase tracking-[0.2em] text-[10px] block">Draft New Journey</span>
-                                <span className="text-[10px] font-medium text-zinc-350 dark:text-zinc-550 block max-w-[180px]">Establish route logs, link incoming flight codes, and define participants and dates.</span>
+                                <span className="font-extrabold text-zinc-400 group-hover:text-[#fa9a1d] uppercase tracking-[0.2em] text-2xs block">Draft New Journey</span>
+                                <span className="text-2xs font-medium text-zinc-350 dark:text-zinc-550 block max-w-[180px]">Establish route logs, link incoming flight codes, and define participants and dates.</span>
                             </div>
                         </motion.button>
                     </motion.div>
@@ -881,7 +874,7 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                                         {/* Station Marker Dot representing Calendar Year */}
                                         <button 
                                             onClick={() => toggleYearCollapse(year)}
-                                            className={`absolute left-[81px] top-1.5 w-[38px] h-[38px] rounded-full border-4 flex items-center justify-center z-15 hidden md:flex active:scale-90 transition-all ${
+                                            className={`absolute left-[81px] top-1.5 w-10 h-10 rounded-full border-4 items-center justify-center z-15 hidden md:flex active:scale-90 transition-all ${
                                                 isCollapsed 
                                                 ? 'bg-zinc-100 border-zinc-200 text-zinc-400 dark:bg-zinc-800 dark:border-zinc-700' 
                                                 : 'bg-white border-[#fa9a1d] text-[#fa9a1d] dark:bg-zinc-900 shadow-md shadow-[#fa9a1d]/20'
@@ -925,14 +918,14 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                         exit={{ y: 80, opacity: 0 }}
                         className="fixed bottom-6 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:max-w-xl z-50 pointer-events-auto"
                     >
-                        <div className="bg-zinc-950/95 dark:bg-zinc-900/95 backdrop-blur-2xl px-6 py-4.5 rounded-[1.85rem] border border-white/10 shadow-3xl text-white flex flex-col md:flex-row gap-4 items-center justify-between">
+                        <div className="bg-zinc-950/95 dark:bg-zinc-900/95 backdrop-blur-2xl px-6 py-4 rounded-3xl border border-white/10 shadow-3xl text-white flex flex-col md:flex-row gap-4 items-center justify-between">
                             <div className="flex items-center gap-3.5 min-w-0 self-start md:self-auto">
                                 <div className="w-10 h-10 rounded-xl bg-[#fa9a1d]/10 border border-[#fa9a1d]/30 text-[#fa9a1d] flex items-center justify-center text-lg shrink-0 scale-95">
                                     <span className="material-icons-outlined animate-pulse">merge_type</span>
                                 </div>
                                 <div className="min-w-0">
                                     <div className="text-xs font-black uppercase tracking-widest text-[#fa9a1d]">Batch Integrator</div>
-                                    <p className="text-[11px] font-bold text-zinc-300 mt-0.5 truncate">
+                                    <p className="text-xs font-bold text-zinc-300 mt-0.5 truncate">
                                         {selectedTripIds.size === 0 
                                             ? 'Select trips to consolidate' 
                                             : `Integrate ${selectedTripIds.size} plans into unified track`}
@@ -952,13 +945,13 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                                     <div className="flex gap-2">
                                         <button 
                                             onClick={toggleSelectionMode} 
-                                            className="flex-1 py-1.5 px-3 rounded-lg text-[10px] font-black uppercase text-zinc-400 hover:text-white transition-colors"
+                                            className="flex-1 py-1.5 px-3 rounded-lg text-xs font-bold uppercase text-zinc-400 hover:text-white transition-colors"
                                         >
                                             Dismiss
                                         </button>
                                         <button 
                                             onClick={handleMergeTrips}
-                                            className="flex-1 py-1.5 px-3.5 bg-[#fa9a1d] hover:bg-[#e78310] rounded-xl text-[10px] font-black uppercase text-zinc-950 transition-all shadow-md active:scale-95 flex items-center justify-center gap-1 shrink-0"
+                                            className="flex-1 py-1.5 px-3.5 bg-[#fa9a1d] hover:bg-[#e78310] rounded-xl text-xs font-bold uppercase text-zinc-950 transition-all shadow-md active:scale-95 flex items-center justify-center gap-1 shrink-0"
                                         >
                                             <span className="material-icons-outlined text-xs">merge</span>
                                             Consolidate
