@@ -1383,7 +1383,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                           
                           <Button 
                             onClick={handleBulkImport}
-                            className="rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-5 py-2 px-6"
+                            className="rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-6 py-2"
                           >
                             <Sparkles className="mr-1.5 h-3.5 w-3.5 text-amber-300" />
                             Register to Atlas ({selectedScanCountries.size + selectedScanCities.size} items)

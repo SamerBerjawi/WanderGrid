@@ -1101,7 +1101,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                         <h4 className="text-xs font-bold uppercase tracking-wider text-light-text dark:text-dark-text">Scratch City Pins</h4>
                                         <p className="text-[10px] text-light-text-secondary dark:text-dark-text-secondary">Marker sizing & visibility on foil</p>
                                     </div>
-                                    <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20 capitalize">
+                                    <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
                                         {appearance.scratchCitySize === 'off' ? 'Hidden' : appearance.scratchCitySize || 'Normal'}
                                     </span>
                                 </div>

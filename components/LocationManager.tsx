@@ -912,7 +912,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                                                     </div>
 
                                                     {/* Reorders & Deletion controls */}
-                                                    <div className="flex items-center gap-1.5 md:col-span-1 justify-end pb-1 inline-flex shrink-0">
+                                                    <div className="flex items-center gap-1.5 md:col-span-1 justify-end pb-1 shrink-0">
                                                         <Button 
                                                             variant="ghost" 
                                                             size="sm" 

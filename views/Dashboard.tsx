@@ -164,10 +164,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
   const [currentTime, setCurrentTime] = useState(new Date());
 
   const [mapViewMode, setMapViewMode] = useState<'3d' | '2d'>(() => {
-    return (localStorage.getItem('wandergrid_map_view_mode') as '3d' | '2d') || '3d';
-  });
-  const [globalGradientRoutes, setGlobalGradientRoutes] = useState(() => {
-    return localStorage.getItem('wandergrid_gradient_routes') !== 'false';
+    return (localStorage.getItem('wandergrid_map_view_mode') as '3d' | '2d') || '2d';
   });
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -976,13 +973,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                 }>
                     <DeckFlightMap 
                         trips={trips.filter(t => t.status !== 'Cancelled')} 
-                        animateRoutes={mapViewMode === '3d'} 
+                        animateRoutes={false} 
                         showFrequencyWeight={true}
                         onTripClick={onTripClick}
                         showCountries={false}
                         clusterMode={false}
                         visitedCountries={visitedData.map(vd => vd.code)}
-                        showGradientRoutes={globalGradientRoutes}
+                        showGradientRoutes={true}
                         showFlightRoutes={true}
                         showLandSeaRoutes={true}
                         projection={mapViewMode === '3d' ? 'globe' : 'flat'}
@@ -990,43 +987,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                     />
                 </Suspense>
                 
-                {/* Floating Glass Tactile Map Overlays (Top Right of Map) */}
-                <div className="absolute top-5 right-5 z-20 flex items-center gap-2.5">
-                    <div className="bg-slate-900/90 dark:bg-[#09090b]/90 backdrop-blur-xl p-1 rounded-2xl border border-white/10 flex items-center shadow-lg">
-                        <button
-                            onClick={() => {
-                                setMapViewMode('3d');
-                                localStorage.setItem('wandergrid_map_view_mode', '3d');
-                            }}
-                            className={`px-3 py-1.5 rounded-xl text-[10px] font-bold tracking-tight flex items-center gap-1.5 transition-all text-white cursor-pointer ${mapViewMode === '3d' ? 'bg-blue-600 shadow-sm' : 'opacity-60 hover:opacity-100'}`}
-                        >
-                            <Globe className="w-3.5 h-3.5" /> 3D Globe
-                        </button>
-                        <button
-                            onClick={() => {
-                                setMapViewMode('2d');
-                                localStorage.setItem('wandergrid_map_view_mode', '2d');
-                            }}
-                            className={`px-3 py-1.5 rounded-xl text-[10px] font-bold tracking-tight flex items-center gap-1.5 transition-all text-white cursor-pointer ${mapViewMode === '2d' ? 'bg-blue-600 shadow-sm' : 'opacity-60 hover:opacity-100'}`}
-                        >
-                            <span className="material-icons-outlined text-sm leading-none">map</span> 2D Map
-                        </button>
-                    </div>
-
-                    <div className="bg-slate-900/90 dark:bg-[#09090b]/90 backdrop-blur-xl px-3 py-1.5 rounded-2xl border border-white/10 flex items-center gap-2.5 shadow-lg h-[34px]">
-                        <span className="text-[9px] font-bold font-mono text-zinc-300 uppercase tracking-wider select-none">Gradients</span>
-                        <button
-                            onClick={() => {
-                                const nextVal = !globalGradientRoutes;
-                                setGlobalGradientRoutes(nextVal);
-                                localStorage.setItem('wandergrid_gradient_routes', String(nextVal));
-                            }}
-                            className={`w-7 h-4 p-0.5 rounded-full transition-all duration-300 flex items-center cursor-pointer ${globalGradientRoutes ? 'bg-blue-500 justify-end' : 'bg-zinc-700 justify-start'}`}
-                            title="Toggle multi-color gradient routes"
-                        >
+                {/* Floating Glass Tactile Map Controls (Top Right of Map) */}
+                <div className="absolute top-5 right-5 z-20 flex items-center">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            const nextMode = mapViewMode === '3d' ? '2d' : '3d';
+                            setMapViewMode(nextMode);
+                            localStorage.setItem('wandergrid_map_view_mode', nextMode);
+                        }}
+                        className="bg-slate-900/90 dark:bg-[#09090b]/90 backdrop-blur-xl px-3.5 py-1.5 rounded-2xl border border-white/10 flex items-center gap-3 shadow-lg h-[36px] cursor-pointer hover:border-white/20 transition-all text-white group"
+                        title={mapViewMode === '3d' ? 'Switch to 2D Map' : 'Switch to 3D Globe'}
+                    >
+                        <div className="flex items-center gap-1.5">
+                            <Globe className={`w-3.5 h-3.5 transition-colors ${mapViewMode === '3d' ? 'text-blue-400' : 'text-zinc-400'}`} />
+                            <span className="text-xs font-bold tracking-tight select-none">
+                                {mapViewMode === '3d' ? '3D Globe' : '2D Map'}
+                            </span>
+                        </div>
+                        <div className={`w-8 h-4 p-0.5 rounded-full transition-all duration-300 flex items-center ${mapViewMode === '3d' ? 'bg-blue-600 justify-end' : 'bg-zinc-700 justify-start'}`}>
                             <div className="w-3 h-3 bg-white rounded-full shadow-sm" />
-                        </button>
-                    </div>
+                        </div>
+                    </button>
                 </div>
             </div>
 

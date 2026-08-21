@@ -778,7 +778,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                 <div className="p-8 border-b border-gray-150/40 dark:border-white/5 bg-gradient-to-r from-purple-500/5 via-indigo-500/5 to-blue-500/5 flex flex-col md:flex-row md:items-center justify-between gap-6">
                   <div className="space-y-1">
                     <h3 className="text-xl font-black text-gray-900 dark:text-white">System Integrations</h3>
-                    <p className="text-[10px] font-mono tracking-widest font-bold text-gray-400 uppercase font-mono">Secret Keys & Microservices</p>
+                    <p className="text-[10px] font-mono tracking-widest font-bold text-gray-400 uppercase">Secret Keys & Microservices</p>
                   </div>
                   <Button 
                     variant="primary" 

@@ -1084,7 +1084,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                                     <select
                                                         value={columnMapping[tf.key] || ''}
                                                         onChange={(e) => setColumnMapping(prev => ({ ...prev, [tf.key]: e.target.value }))}
-                                                        className="w-full text-xs p-2 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 outline-none focus:border-blue-500 font-medium font-bold"
+                                                        className="w-full text-xs p-2 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 outline-none focus:border-blue-500 font-medium"
                                                     >
                                                         <option value="">-- Ignored / Not Set --</option>
                                                         {availableHeaders.map((header) => (
@@ -1099,7 +1099,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
 
                                 {/* Live preview visualizer */}
                                 <div className="lg:col-span-7 space-y-4 flex flex-col">
-                                    <span className="text-xs font-black text-slate-400 uppercase tracking-widest block ml-1 flex items-center gap-1.5">
+                                    <span className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5 ml-1">
                                         <Eye className="w-4 h-4 text-zinc-400" /> Intelligent Preview (First 4 Rows)
                                     </span>
                                     <div className="border border-zinc-200/50 dark:border-zinc-800 dark:bg-zinc-900/40 rounded-3xl p-4 flex-1 overflow-y-auto max-h-[48vh] space-y-3 custom-scrollbar">

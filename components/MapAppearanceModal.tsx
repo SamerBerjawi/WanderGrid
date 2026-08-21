@@ -323,7 +323,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                         <h3 className="text-xs font-black uppercase tracking-wider text-white">Scratch City Pins</h3>
                                         <p className="text-[10px] text-zinc-400">Marker sizing & visibility on foil</p>
                                     </div>
-                                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-blue-500/20 text-blue-400 border border-blue-500/30 capitalize">
+                                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-blue-500/20 text-blue-400 border border-blue-500/30">
                                         {settings.scratchCitySize === 'off' ? 'Hidden' : settings.scratchCitySize || 'Normal'}
                                     </span>
                                 </div>

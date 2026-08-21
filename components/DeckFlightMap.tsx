@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { DeckGL } from '@deck.gl/react';
-import { MapView, _GlobeView } from '@deck.gl/core';
+import { MapView, _GlobeView, LinearInterpolator } from '@deck.gl/core';
 import { ScatterplotLayer, GeoJsonLayer, PathLayer, BitmapLayer, TextLayer } from '@deck.gl/layers';
 import { TileLayer, TripsLayer } from '@deck.gl/geo-layers';
 import { Maximize2, Scan, Globe, ArrowLeft, ArrowRight, X, Plane, Clock, Calendar, ChevronRight, Train, Ship, Car } from 'lucide-react';
@@ -362,24 +362,26 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
     const currentLayer = (activeLayerProp as DeckLayerType) || activeAppearance.basemap || 'standard';
 
-    // Default Zoom: 0.35 on 3D Globe to view the entire spherical globe comfortably
+    // Default Zoom: 1.0 on 3D Globe to show the globe prominently, 1.25 on 2D to center global routes
     const [viewState, setViewState] = useState({
-        longitude: 15,
-        latitude: 25,
-        zoom: effectiveProjection === 'globe' ? 0.35 : 2.0,
+        longitude: 0,
+        latitude: 20,
+        zoom: effectiveProjection === 'globe' ? 1.0 : 1.25,
         pitch: 0,
         bearing: 0,
         maxZoom: 18,
         minZoom: 0.1
     });
 
-    // Update zoom when projection changes
+    // Update zoom and perspective smoothly when projection changes
     useEffect(() => {
         setViewState(prev => ({
             ...prev,
-            zoom: effectiveProjection === 'globe' ? Math.min(prev.zoom, 0.4) : Math.max(prev.zoom, 1.8),
+            zoom: effectiveProjection === 'globe' ? 1.0 : (prev.zoom <= 0.5 ? 1.25 : prev.zoom),
             pitch: 0,
-            bearing: 0
+            bearing: 0,
+            transitionDuration: 600,
+            transitionInterpolator: new LinearInterpolator(['zoom', 'pitch', 'bearing'])
         }));
     }, [effectiveProjection]);
 
@@ -395,14 +397,14 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         }
     }, [activeAppearance.airportDetail, viewState.zoom]);
 
-    // Configure Deck.gl Views with ultra-smooth mouse scroll zoom
+    // Configure Deck.gl Views with ultra-smooth mouse and trackpad scroll zoom
     const views = useMemo(() => {
         const controllerConfig = {
             dragPan: true,
-            scrollZoom: { speed: 0.04, smooth: true },
+            scrollZoom: { speed: 0.02, smooth: true },
             doubleClickZoom: true,
             touchZoom: true,
-            inertia: 250
+            inertia: 350
         };
 
         if (effectiveProjection === 'globe') {
@@ -689,15 +691,15 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         }
     }, [focusTransportCoordinates]);
 
-    // Auto-fit initial bounds (Globe defaults to whole earth zoom 0.35)
+    // Auto-fit initial bounds to center all routes symmetrically in the container
     const fittedRef = useRef(false);
     useEffect(() => {
         if (fittedRef.current || enrichedTrips.length === 0) return;
         const pts: [number, number][] = [];
         enrichedTrips.forEach(trip => {
             trip.transports?.forEach(t => {
-                if (t.originLat && t.originLng) pts.push([t.originLng, t.originLat]);
-                if (t.destLat && t.destLng) pts.push([t.destLng, t.destLat]);
+                if (t.originLat && t.originLng && !isNaN(t.originLat) && !isNaN(t.originLng)) pts.push([t.originLng, t.originLat]);
+                if (t.destLat && t.destLng && !isNaN(t.destLat) && !isNaN(t.destLng)) pts.push([t.destLng, t.destLat]);
             });
         });
         if (pts.length > 0) {
@@ -709,11 +711,16 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 if (lat < minLat) minLat = lat;
                 if (lat > maxLat) maxLat = lat;
             });
+            const spanLng = Math.max(maxLng - minLng, 30);
+            const fitZoom = effectiveProjection === 'globe' 
+                ? 1.0 
+                : Math.min(3.5, Math.max(1.15, Math.log2(360 / spanLng) + 0.6));
+
             setViewState(prev => ({
                 ...prev,
                 longitude: (minLng + maxLng) / 2,
                 latitude: (minLat + maxLat) / 2,
-                zoom: effectiveProjection === 'globe' ? 0.35 : Math.min(4, Math.max(1.8, Math.log2(360 / Math.max(maxLng - minLng, 30))))
+                zoom: fitZoom
             }));
         }
     }, [enrichedTrips, effectiveProjection]);
@@ -1770,27 +1777,29 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             ...prev,
             longitude: 0,
             latitude: 20,
-            zoom: effectiveProjection === 'globe' ? 0.35 : 1.5,
+            zoom: effectiveProjection === 'globe' ? 1.0 : 1.25,
             pitch: 0,
-            bearing: 0
+            bearing: 0,
+            transitionDuration: 600,
+            transitionInterpolator: new LinearInterpolator(['longitude', 'latitude', 'zoom', 'pitch', 'bearing'])
         }));
     };
 
-    // Fit view to all existing routes & destinations
+    // Fit view to all existing routes & destinations centered
     const handleFitBounds = () => {
         let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
         let hasCoords = false;
 
         enrichedTrips.forEach(trip => {
             trip.transports?.forEach(t => {
-                if (t.originLat && t.originLng) {
+                if (t.originLat && t.originLng && !isNaN(t.originLat) && !isNaN(t.originLng)) {
                     minLat = Math.min(minLat, t.originLat);
                     maxLat = Math.max(maxLat, t.originLat);
                     minLng = Math.min(minLng, t.originLng);
                     maxLng = Math.max(maxLng, t.originLng);
                     hasCoords = true;
                 }
-                if (t.destLat && t.destLng) {
+                if (t.destLat && t.destLng && !isNaN(t.destLat) && !isNaN(t.destLng)) {
                     minLat = Math.min(minLat, t.destLat);
                     maxLat = Math.max(maxLat, t.destLat);
                     minLng = Math.min(minLng, t.destLng);
@@ -1801,15 +1810,20 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         });
 
         if (hasCoords) {
+            const spanLng = Math.max(maxLng - minLng, 30);
             const fitZoom = effectiveProjection === 'globe' 
-                ? 0.35 
-                : Math.min(4, Math.max(1.5, Math.log2(360 / Math.max(maxLng - minLng, 30))));
+                ? 1.0 
+                : Math.min(3.5, Math.max(1.15, Math.log2(360 / spanLng) + 0.6));
 
             setViewState(prev => ({
                 ...prev,
                 longitude: (minLng + maxLng) / 2,
                 latitude: (minLat + maxLat) / 2,
-                zoom: fitZoom
+                zoom: fitZoom,
+                pitch: 0,
+                bearing: 0,
+                transitionDuration: 800,
+                transitionInterpolator: new LinearInterpolator(['longitude', 'latitude', 'zoom'])
             }));
         } else {
             handleReset100();
@@ -1827,7 +1841,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     setViewState(prev => ({
                         ...prev,
                         ...newViewState,
-                        zoom: Math.min(18, Math.max(0, newViewState.zoom ?? prev.zoom))
+                        zoom: Math.min(18, Math.max(0.1, newViewState.zoom ?? prev.zoom))
                     }));
                 }}
                 onClick={(info: any) => {
@@ -1847,14 +1861,24 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             <div className="absolute bottom-6 left-6 z-20 flex flex-col gap-2">
                 <div className="flex flex-col rounded-2xl border border-black/10 dark:border-white/10 bg-white/80 dark:bg-dark-card/85 backdrop-blur-xl shadow-glass-card overflow-hidden divide-y divide-black/10 dark:divide-white/10">
                     <button
-                        onClick={() => setViewState(v => ({ ...v, zoom: Math.min(v.zoom + 0.8, 18) }))}
+                        onClick={() => setViewState(v => ({ 
+                            ...v, 
+                            zoom: Math.min(v.zoom + 0.6, 18),
+                            transitionDuration: 300,
+                            transitionInterpolator: new LinearInterpolator(['zoom'])
+                        }))}
                         className="w-10 h-10 flex items-center justify-center text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer font-bold text-lg transition-colors active:scale-95"
                         title="Zoom In (+)"
                     >
                         +
                     </button>
                     <button
-                        onClick={() => setViewState(v => ({ ...v, zoom: Math.max(v.zoom - 0.8, 0.1) }))}
+                        onClick={() => setViewState(v => ({ 
+                            ...v, 
+                            zoom: Math.max(v.zoom - 0.6, 0.1),
+                            transitionDuration: 300,
+                            transitionInterpolator: new LinearInterpolator(['zoom'])
+                        }))}
                         className="w-10 h-10 flex items-center justify-center text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer font-bold text-lg transition-colors active:scale-95"
                         title="Zoom Out (−)"
                     >
