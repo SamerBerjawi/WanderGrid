@@ -1,7 +1,6 @@
-"use client";
+import React, { ReactNode } from 'react';
 
-import type { ReactNode } from "react";
-import { intFmt } from "../chart-formatters";
+export const intFmt = new Intl.NumberFormat('en-US').format;
 
 export interface TooltipRow {
   color: string;
@@ -21,7 +20,7 @@ export function TooltipContent({ title, rows, children }: TooltipContentProps) {
     <div className="overflow-hidden">
       <div className="px-3 py-2.5">
         {title && (
-          <div className="mb-2 text-left font-medium text-chart-tooltip-foreground text-xs">
+          <div className="mb-2 text-left font-medium text-light-text dark:text-dark-text text-xs">
             {title}
           </div>
         )}
@@ -36,12 +35,12 @@ export function TooltipContent({ title, rows, children }: TooltipContentProps) {
                   className="h-2.5 w-2.5 shrink-0 rounded-full"
                   style={{ backgroundColor: row.color }}
                 />
-                <span className="text-chart-tooltip-muted text-sm">
+                <span className="text-light-text-secondary dark:text-dark-text-secondary text-sm">
                   {row.label}
                 </span>
               </div>
-              <span className="font-medium text-chart-tooltip-foreground text-sm tabular-nums">
-                {typeof row.value === "number" ? intFmt(row.value) : row.value}
+              <span className="font-medium text-light-text dark:text-dark-text text-sm tabular-nums">
+                {typeof row.value === 'number' ? intFmt(row.value) : row.value}
               </span>
             </div>
           ))}
@@ -57,6 +56,6 @@ export function TooltipContent({ title, rows, children }: TooltipContentProps) {
   );
 }
 
-TooltipContent.displayName = "TooltipContent";
+TooltipContent.displayName = 'TooltipContent';
 
 export default TooltipContent;

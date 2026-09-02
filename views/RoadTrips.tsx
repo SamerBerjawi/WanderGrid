@@ -14,7 +14,7 @@ import { getCoordinates, getCoordinatesSync, searchLocations } from '../services
 import { formatDate } from '../utils/formatters';
 import { EmptyState } from '../components/EmptyState';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { TooltipContent } from '@/components/charts/tooltip';
+import { TooltipContent } from '../components/TooltipContent';
 
 const DeckFlightMap = lazy(() => import('../components/DeckFlightMap').then(m => ({ default: m.DeckFlightMap || m.default })));
 

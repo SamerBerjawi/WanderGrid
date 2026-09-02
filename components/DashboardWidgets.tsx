@@ -1,6 +1,6 @@
 import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, AreaChart, Area, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { TooltipContent } from '@/components/charts/tooltip';
+import { TooltipContent } from './TooltipContent';
 
 export interface ExtremeFlight {
     distance: number;

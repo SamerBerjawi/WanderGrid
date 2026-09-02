@@ -570,8 +570,3 @@ export const PassportTravelMap: React.FC<PassportTravelMapProps> = ({ flights, y
     </div>
   );
 };
-
-// Keeping retro-compatibility wrapper for any direct import of older full passport
-export const FlightyPassport: React.FC<PassportIdCardProps> = ({ flights, yearFilter }) => {
-  return <PassportIdCard flights={flights} yearFilter={yearFilter} />;
-};
