@@ -925,6 +925,36 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                       />
                     </div>
 
+                    {/* CARTO Maps API Card */}
+                    <div className="p-6 bg-white dark:bg-gray-900/50 border border-gray-200 dark:border-white/5 rounded-2xl shadow-md space-y-4">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-cyan-100 dark:bg-cyan-950/20 text-cyan-600 dark:text-cyan-400 flex items-center justify-center">
+                            <span className="material-icons-outlined text-lg">map</span>
+                          </div>
+                          <div>
+                            <h5 className="font-extrabold text-gray-900 dark:text-white text-sm">CARTO Maps API</h5>
+                            <p className="text-xs text-gray-400 font-sans">High-contrast basemaps & custom cartography</p>
+                          </div>
+                        </div>
+                        <a 
+                          href="https://carto.com/basemaps/apikey/" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-xs font-bold text-cyan-500 hover:underline hover:text-cyan-600 uppercase tracking-widest flex items-center gap-1 font-mono"
+                        >
+                          REGISTER <span className="material-icons-outlined text-xs block font-bold">open_in_new</span>
+                        </a>
+                      </div>
+                      <Input 
+                        placeholder="Paste CARTO API Key (Optional)..." 
+                        type="password"
+                        value={config.cartoApiKey || ''} 
+                        onChange={e => setConfig({...config, cartoApiKey: e.target.value})} 
+                        className="!bg-gray-50 dark:!bg-black/20 font-mono text-xs leading-none py-3.5"
+                      />
+                    </div>
+
                   </div>
                 </div>
               </Card>

@@ -281,6 +281,7 @@ export interface WorkspaceSettings {
     aviationStackApiKey?: string;
     brandfetchApiKey?: string;
     googleGeminiApiKey?: string; // AI Key
+    cartoApiKey?: string; // CARTO Maps Key
     masterPackingList?: PackingItem[]; // Global packing list template
     carriers?: Carrier[]; // Manageable custom carriers list
     defaultTravelClass?: 'Economy' | 'Premium Economy' | 'Business' | 'First';

@@ -2151,7 +2151,7 @@ app.post('/api/restore', async (req, res) => {
             } catch (err) {}
 
             const mergedSettings = { ...data.workspaceSettings };
-            const keysToCheck = ['aviationStackApiKey', 'brandfetchApiKey', 'googleGeminiApiKey'];
+            const keysToCheck = ['aviationStackApiKey', 'brandfetchApiKey', 'googleGeminiApiKey', 'cartoApiKey'];
             keysToCheck.forEach(k => {
                 if (!mergedSettings[k] && currentSettings[k]) {
                     mergedSettings[k] = currentSettings[k];

@@ -34,6 +34,7 @@ const DEFAULT_WORKSPACE_SETTINGS: WorkspaceSettings = {
   aviationStackApiKey: '',
   brandfetchApiKey: '',
   googleGeminiApiKey: '',
+  cartoApiKey: '',
   masterPackingList: DEFAULT_MASTER_LIST,
   carriers: [],
   defaultTravelClass: 'Economy',
@@ -584,7 +585,7 @@ class DataService {
           if (data.workspaceSettings) {
               const currentSettings = JSON.parse(localStorage.getItem(key('settings')) || '{}');
               const restoredSettings = { ...DEFAULT_WORKSPACE_SETTINGS, ...data.workspaceSettings };
-              const keysToCheck = ['aviationStackApiKey', 'brandfetchApiKey', 'googleGeminiApiKey'];
+              const keysToCheck = ['aviationStackApiKey', 'brandfetchApiKey', 'googleGeminiApiKey', 'cartoApiKey'];
               keysToCheck.forEach(k => {
                   if (!restoredSettings[k] && currentSettings[k]) {
                       restoredSettings[k] = currentSettings[k];

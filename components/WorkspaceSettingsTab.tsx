@@ -256,6 +256,36 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                                     className="!bg-gray-50 dark:!bg-black/20"
                                 />
                             </div>
+
+                            {/* CARTO Maps API */}
+                            <div className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-white/10 rounded-2xl space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-xl bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400 flex items-center justify-center">
+                                            <span className="material-icons-outlined">map</span>
+                                        </div>
+                                        <div>
+                                            <h5 className="font-bold text-gray-900 dark:text-white text-sm">CARTO Maps API</h5>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400">High-contrast basemaps & custom cartography</p>
+                                        </div>
+                                    </div>
+                                    <a 
+                                        href="https://carto.com/basemaps/apikey/" 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="text-xs font-bold text-blue-500 hover:underline uppercase tracking-wider flex items-center gap-1"
+                                    >
+                                        Get Key <span className="material-icons-outlined text-xs">open_in_new</span>
+                                    </a>
+                                </div>
+                                <Input 
+                                    placeholder="Optional CARTO API Key..." 
+                                    type="password"
+                                    value={config.cartoApiKey || ''} 
+                                    onChange={e => setConfig({...config, cartoApiKey: e.target.value})} 
+                                    className="!bg-gray-50 dark:!bg-black/20"
+                                />
+                            </div>
                         </div>
                     </div>
                 </Card>

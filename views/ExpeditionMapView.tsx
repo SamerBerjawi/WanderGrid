@@ -997,35 +997,52 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                             <div>
                                 <div className="flex items-center justify-between mb-3">
                                     <h3 className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase">Cartographic Basemap</h3>
-                                    <span className="text-xs font-medium text-light-text-secondary/70 dark:text-dark-text-secondary/70">4 Curated Tilesets</span>
+                                    <span className="text-xs font-medium text-light-text-secondary/70 dark:text-dark-text-secondary/70">5 Curated Tilesets</span>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-2.5">
                                     {[
                                         { 
                                             id: 'default', 
-                                            label: 'Adaptive Atlas', 
-                                            desc: 'Auto theme matching (Day/Night)',
+                                            label: 'Onyx & Snow Canvas', 
+                                            desc: 'High-contrast deep black / pure white',
                                             renderSwatch: () => (
                                                 <div className="w-full h-8 rounded-xl border border-black/10 dark:border-white/15 flex items-center px-2.5 justify-between bg-gradient-to-r from-zinc-200 to-zinc-300 dark:from-zinc-950 dark:to-zinc-800 relative overflow-hidden">
                                                     <div className="flex items-center gap-1.5 z-10">
-                                                        <span className="text-2xs">🌙</span>
-                                                        <span className="text-2xs font-bold text-zinc-700 dark:text-zinc-300">Dark</span>
+                                                        <span className="text-2xs">🌑</span>
+                                                        <span className="text-2xs font-bold text-zinc-700 dark:text-zinc-300">Onyx</span>
                                                         <span className="text-2xs text-zinc-400">/</span>
-                                                        <span className="text-2xs">☀️</span>
-                                                        <span className="text-2xs font-bold text-zinc-700 dark:text-zinc-300">Light</span>
+                                                        <span className="text-2xs">❄️</span>
+                                                        <span className="text-2xs font-bold text-zinc-700 dark:text-zinc-300">Snow</span>
                                                     </div>
                                                     <div className="w-2 h-2 rounded-full border border-black/30 dark:border-white/40 z-10" />
                                                 </div>
                                             )
                                         },
                                         { 
+                                            id: 'vibrant', 
+                                            label: 'Vibrant Elements', 
+                                            desc: 'Colorized parks, water, highways & terrain',
+                                            renderSwatch: () => (
+                                                <div className="w-full h-8 rounded-xl border border-emerald-500/30 flex items-center px-2.5 justify-between bg-gradient-to-r from-[#031526] via-[#06241a] to-[#241a06] relative overflow-hidden">
+                                                    <div className="flex items-center gap-1.5 z-10">
+                                                        <span className="text-2xs">🎨</span>
+                                                        <span className="text-2xs font-bold text-emerald-300">Vibrant</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1 z-10">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_4px_#38bdf8]" title="Water" />
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_4px_#34d399]" title="Parks" />
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_4px_#fbbf24]" title="Roads" />
+                                                    </div>
+                                                </div>
+                                            )
+                                        },
+                                        { 
                                             id: 'citylights', 
                                             label: 'NASA Earth at Night', 
-                                            desc: 'VIIRS HD city light radiance',
+                                            desc: 'VIIRS night city lights',
                                             renderSwatch: () => (
                                                 <div className="w-full h-8 rounded-xl border border-amber-500/30 flex items-center px-2.5 justify-between bg-[#040711] relative overflow-hidden">
-                                                    {/* Ambient city radiance cluster on the right, away from text */}
                                                     <div className="absolute top-1.5 right-12 w-1.5 h-1.5 rounded-full bg-amber-400/90 shadow-[0_0_6px_#f59e0b] animate-pulse" />
                                                     <div className="absolute bottom-1.5 right-7 w-1 h-1 rounded-full bg-amber-300/80 shadow-[0_0_4px_#f59e0b]" />
                                                     <div className="absolute top-3.5 right-16 w-0.5 h-0.5 rounded-full bg-amber-200/60 shadow-[0_0_3px_#f59e0b]" />
@@ -1040,7 +1057,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                         { 
                                             id: 'satellite', 
                                             label: 'Earth Observation', 
-                                            desc: 'High-res orbital imagery',
+                                            desc: 'High-res satellite',
                                             renderSwatch: () => (
                                                 <div className="w-full h-8 rounded-xl border border-emerald-500/20 flex items-center px-2.5 justify-between bg-gradient-to-r from-[#0a1a14] to-[#0d2a1f] relative overflow-hidden">
                                                     <div className="flex items-center gap-1.5 z-10">
@@ -1054,7 +1071,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                         { 
                                             id: 'ocean', 
                                             label: 'Ocean Bathymetry', 
-                                            desc: 'Marine sea floor topography',
+                                            desc: 'Sea floor topography',
                                             renderSwatch: () => (
                                                 <div className="w-full h-8 rounded-xl border border-cyan-500/20 flex items-center px-2.5 justify-between bg-gradient-to-r from-[#041424] to-[#08223a] relative overflow-hidden">
                                                     <div className="flex items-center gap-1.5 z-10">

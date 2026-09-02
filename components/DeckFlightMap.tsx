@@ -4,7 +4,8 @@ import { MapView, _GlobeView, LinearInterpolator } from '@deck.gl/core';
 import { ScatterplotLayer, GeoJsonLayer, PathLayer, BitmapLayer, TextLayer } from '@deck.gl/layers';
 import { TileLayer, TripsLayer } from '@deck.gl/geo-layers';
 import { Maximize2, Scan, Globe, ArrowLeft, ArrowRight, X, Plane, Clock, Calendar, ChevronRight, Train, Ship, Car } from 'lucide-react';
-import { Trip, CountryResidenceStatus, PredefinedMapMode, toggleCountryResidenceStatus } from '../types';
+import { Trip, CountryResidenceStatus, PredefinedMapMode, toggleCountryResidenceStatus, WorkspaceSettings } from '../types';
+import { useWanderSync } from '../hooks/useWanderSync';
 import { getCoordinatesSync, formatPlaceName } from '../services/geocoding';
 import { 
     MapAppearanceSettings, 
@@ -18,12 +19,13 @@ import { generateAirportRunway, isKnownAirport, RunwayGeometry, getPhysicalRunwa
 import { buildRouteCorridors, RouteCorridor, getApproxLocalTime } from '../services/routeCorridor';
 import { getFlagEmoji, getRegion } from '../services/geoData';
 import { fetchMultiModalRoute, getCachedMultiModalRoute } from '../services/multiModalRouting';
+import { dataService } from '../services/mockDb';
 import { formatDate } from '../utils/formatters';
 
 // --- Enhanced Country Matching Helper for Scratch Map & Overlays ---
 let geoJsonMemoryCache: any = null;
 
-export const isCountryVisited = (f: any, visitedList: string[]): boolean => {
+const isCountryVisited = (f: any, visitedList: string[]): boolean => {
     if (!visitedList || visitedList.length === 0) return false;
     const p = f.properties || {};
     const lookupSet = new Set(visitedList.map(c => (c || '').trim().toUpperCase()));
@@ -313,6 +315,11 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     onChangeAppearanceSettings
 }) => {
     const isDark = useDarkMode();
+    const { data: workspaceSettings } = useWanderSync<WorkspaceSettings>(
+        'settings',
+        () => dataService.getWorkspaceSettings(),
+        []
+    );
 
     // Map Appearance State Management
     const [localAppearance, setLocalAppearance] = useState<MapAppearanceSettings>(() => {
@@ -728,6 +735,29 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
     // Basemap Tile URLs & Native Max Zoom Level
     const { tileUrl, maxZoomForLayer } = useMemo(() => {
+        const rawCartoKey = (
+            workspaceSettings?.cartoApiKey ||
+            (() => {
+                try {
+                    const s = localStorage.getItem('wandergrid_settings') || localStorage.getItem('wandergrid_workspace_settings');
+                    return s ? JSON.parse(s)?.cartoApiKey : '';
+                } catch {
+                    return '';
+                }
+            })() ||
+            ''
+        ).trim();
+        const cartoKeyParam = rawCartoKey ? `?key=${encodeURIComponent(rawCartoKey)}` : '';
+
+        const getCartoTiles = (style: 'dark_all' | 'light_all' | 'voyager') => {
+            return [
+                `https://a.basemaps.cartocdn.com/rastertiles/${style}/{z}/{x}/{y}.png${cartoKeyParam}`,
+                `https://b.basemaps.cartocdn.com/rastertiles/${style}/{z}/{x}/{y}.png${cartoKeyParam}`,
+                `https://c.basemaps.cartocdn.com/rastertiles/${style}/{z}/{x}/{y}.png${cartoKeyParam}`,
+                `https://d.basemaps.cartocdn.com/rastertiles/${style}/{z}/{x}/{y}.png${cartoKeyParam}`
+            ];
+        };
+
         switch (currentLayer) {
             case 'satellite':
                 return {
@@ -746,21 +776,17 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 };
             case 'vibrant':
                 return {
-                    tileUrl: isDark
-                        ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}'
-                        : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    maxZoomForLayer: 19
+                    tileUrl: isDark ? getCartoTiles('dark_all') : getCartoTiles('voyager'),
+                    maxZoomForLayer: 20
                 };
             case 'default':
             default:
                 return {
-                    tileUrl: isDark
-                        ? 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'
-                        : 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
-                    maxZoomForLayer: 16
+                    tileUrl: isDark ? getCartoTiles('dark_all') : getCartoTiles('light_all'),
+                    maxZoomForLayer: 20
                 };
         }
-    }, [currentLayer, isDark]);
+    }, [currentLayer, isDark, workspaceSettings?.cartoApiKey]);
 
     // Build Routes, Comet Trips & Airport Hubs
     const isElevatedActive = effectiveProjection === 'globe' && elevatedRoutes;
@@ -1182,7 +1208,6 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     const east = bbox.east ?? tile.boundingBox?.[1]?.[0] ?? 180;
                     const north = bbox.north ?? tile.boundingBox?.[1]?.[1] ?? 85.051129;
 
-                    const isHighContrastDefault = currentLayer === 'default';
                     return new BitmapLayer(props, {
                         data: (null as any),
                         image: props.data,
@@ -1191,8 +1216,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                             minFilter: 'linear',
                             magFilter: 'linear'
                         },
-                        desaturate: isHighContrastDefault ? (isDark ? 0.35 : 0.15) : 0,
-                        opacity: isHighContrastDefault ? (isDark ? 0.82 : 0.95) : 1.0
+                        desaturate: 0,
+                        opacity: 1.0
                     } as any);
                 }
             })
