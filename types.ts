@@ -318,7 +318,53 @@ export interface VisitedItem {
   notes?: string;
   isTransit?: boolean;
   residenceStatus?: CountryResidenceStatus;
+  residenceStatuses?: CountryResidenceStatus[];
 }
+
+export const getResidenceStatuses = (item?: {
+  residenceStatus?: CountryResidenceStatus;
+  residenceStatuses?: CountryResidenceStatus[];
+  isTransit?: boolean;
+} | null): CountryResidenceStatus[] => {
+  if (!item) return [];
+  if (item.residenceStatuses && Array.isArray(item.residenceStatuses) && item.residenceStatuses.length > 0) {
+    return item.residenceStatuses;
+  }
+  const result: CountryResidenceStatus[] = [];
+  if (item.residenceStatus) {
+    result.push(item.residenceStatus);
+  }
+  if (item.isTransit && !result.includes('layover')) {
+    result.push('layover');
+  }
+  if (result.length === 0) {
+    result.push('visited');
+  }
+  return result;
+};
+
+export const toggleCountryResidenceStatus = (
+  currentStatuses: CountryResidenceStatus[],
+  targetStatus: CountryResidenceStatus
+): CountryResidenceStatus[] => {
+  const isCurrentlySelected = currentStatuses.includes(targetStatus);
+  if (isCurrentlySelected) {
+    return currentStatuses.filter(s => s !== targetStatus);
+  } else {
+    // Group A (pre-exploration): 'wishlist', 'layover'
+    // Group B (stay / explored): 'visited', 'lived_past', 'lived_current'
+    // Wishlist & layover can be selected together.
+    // Visited & lived can be selected together.
+    // But Group A and Group B cannot be mixed (cannot select wishlist & lived, or layover & visited).
+    if (targetStatus === 'wishlist' || targetStatus === 'layover') {
+      const filtered = currentStatuses.filter(s => s !== 'visited' && s !== 'lived_past' && s !== 'lived_current');
+      return [...filtered, targetStatus];
+    } else {
+      const filtered = currentStatuses.filter(s => s !== 'wishlist' && s !== 'layover');
+      return [...filtered, targetStatus];
+    }
+  }
+};
 
 export type PredefinedMapMode = 'flights' | 'land_sea' | 'scratch' | 'all';
 

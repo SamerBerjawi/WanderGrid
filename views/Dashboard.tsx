@@ -3,7 +3,7 @@ import { Card, Button } from '../components/ui';
 const DeckFlightMap = lazy(() => import('../components/DeckFlightMap').then(m => ({ default: m.DeckFlightMap || m.default })));
 import { FlightTrackerModal } from '../components/FlightTrackerModal';
 import { dataService } from '../services/mockDb';
-import { User, Trip, EntitlementType, PublicHoliday } from '../types';
+import { User, Trip, EntitlementType, PublicHoliday, getResidenceStatuses } from '../types';
 import { resolvePlaceName, calculateDistance, getCoordinates, getCoordinatesSync, refineUKCountry, formatPlaceName } from '../services/geocoding';
 import { getRegion, getFlagEmoji } from '../services/geoData';
 import { REGION_STYLES } from './regionStyles';
@@ -31,7 +31,7 @@ const LEVEL_THRESHOLDS = [
     { level: 50, name: 'Citizen of the World', countries: 30 },
 ];
 
-const DASHBOARD_CACHE_KEY = 'wandergrid_dashboard_cache_v1';
+const DASHBOARD_CACHE_KEY = 'wandergrid_dashboard_cache_v2';
 const GEO_CONCURRENCY_LIMIT = 6;
 const COORD_CACHE_KEY = 'wandergrid_coord_cache';
 let coordCacheInstance: Map<string, { lat: number, lng: number }> | null = null;
@@ -318,7 +318,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
       const activeTrips = combinedState.filter(trip => trip.status !== 'Planning' && trip.status !== 'Cancelled');
       const tripsVersion = getTripsVersion(activeTrips);
       const visitedSignature = (visited || [])
-          .map((v: any) => `${v.id}-${v.isTransit === true}-${v.visitDate || ''}`)
+          .map((v: any) => `${v.id}-${v.isTransit === true}-${(v.residenceStatuses || [v.residenceStatus || '']).join('_')}-${v.visitDate || ''}`)
           .sort()
           .join(',');
       const version = `${tripsVersion}_${visitedSignature}`;
@@ -468,7 +468,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
           const activeTripsFinal = finalCombined.filter(trip => trip.status !== 'Planning' && trip.status !== 'Cancelled');
           const finalTripsVersion = getTripsVersion(activeTripsFinal);
           const finalVisitedSignature = (visited || [])
-              .map((v: any) => `${v.id}-${v.isTransit === true}-${v.visitDate || ''}`)
+              .map((v: any) => `${v.id}-${v.isTransit === true}-${(v.residenceStatuses || [v.residenceStatus || '']).join('_')}-${v.visitDate || ''}`)
               .sort()
               .join(',');
           const finalVersion = `${finalTripsVersion}_${finalVisitedSignature}`;
@@ -501,9 +501,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
             const dbVisited = await dataService.getVisited();
             const hasSeededBefore = localStorage.getItem('wandergrid_visited_seeded') === 'true';
             if (dbVisited && (dbVisited.length > 0 || hasSeededBefore)) {
-                // Read from database. Filter out transits!
-                const countries = dbVisited.filter(item => item.type === 'country' && !item.isTransit);
-                const cities = dbVisited.filter(item => item.type === 'city');
+                // Read from database. Only show visited countries (exclude layover/transit and wishlist)!
+                const countries = dbVisited.filter(item => {
+                    if (item.type !== 'country') return false;
+                    const statuses = getResidenceStatuses(item);
+                    return statuses.some(s => s === 'visited' || s === 'lived_past' || s === 'lived_current') && !statuses.includes('layover') && !statuses.includes('wishlist') && !item.isTransit;
+                });
+                const cities = dbVisited.filter(item => {
+                    if (item.type !== 'city') return false;
+                    const statuses = getResidenceStatuses(item);
+                    return !statuses.includes('layover') && !statuses.includes('wishlist') && !item.isTransit;
+                });
 
                 const visitedDataList: VisitedCountry[] = [];
                 countries.forEach(item => {
@@ -1513,8 +1521,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                         <TrendingUp className="w-4 h-4 text-emerald-500" />
                                     </div>
                                     <div className="flex-1 flex flex-col justify-center space-y-3.5">
-                                        {stats.classCounts.map((cabin, idx) => (
-                                            <div key={idx} className="space-y-1.5">
+                                        {stats.classCounts.map((cabin) => (
+                                            <div key={cabin.label} className="space-y-1.5">
                                                 <div className="flex justify-between text-xs font-mono">
                                                     <span className="font-bold text-zinc-650 dark:text-zinc-350">{cabin.label}</span>
                                                     <span className="font-bold text-zinc-800 dark:text-zinc-100">{cabin.value} trips</span>

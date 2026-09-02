@@ -173,8 +173,8 @@ export const DonutChart: React.FC<{
                 </div>
             </div>
             <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-4">
-                {chartData.map((item, idx) => (
-                    <div key={idx} className="flex justify-between items-center text-xs">
+                {chartData.map((item) => (
+                    <div key={item.name} className="flex justify-between items-center text-xs">
                         <div className="flex items-center gap-2 truncate">
                             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color, boxShadow: `0 0 6px ${item.color}` }} />
                             <span className="font-extrabold text-gray-650 dark:text-gray-300 truncate max-w-[100px]">{item.name}</span>
@@ -285,7 +285,7 @@ export const TopList: React.FC<{
             </div>
             <div className="space-y-4 flex-1 overflow-y-auto custom-scrollbar pr-2">
                 {items.slice(0, 8).map((item, idx) => (
-                    <div key={idx} className="relative group">
+                    <div key={`${item.code || item.label}-${item.sub || idx}`} className="relative group">
                         <div className="flex justify-between items-center mb-2 relative z-10">
                             <div className="flex items-center gap-3">
                                 <span className="text-xs font-bold text-gray-400 dark:text-gray-500 w-4">{idx + 1}</span>

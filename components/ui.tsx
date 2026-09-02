@@ -661,3 +661,4 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
 
 export { Icon } from './ui/Icon';
 export { StandardDrawer } from './StandardDrawer';
+export { BentoCard, BentoGrid } from './ui/bento-grid';

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { ViewState, VisitedItem, Trip, CountryResidenceStatus } from '../types';
+import { ViewState, VisitedItem, Trip, CountryResidenceStatus, getResidenceStatuses, toggleCountryResidenceStatus } from '../types';
 import { dataService } from '../services/mockDb';
 import { getFlagEmoji, getRegion } from '../services/geoData';
 import { resolvePlaceName, getCoordinates, cleanCityName, formatPlaceName } from '../services/geocoding';
@@ -11,7 +11,7 @@ import {
   Bookmark, Shield, ChevronRight, X, Sparkles, Filter, Check,
   Star, Heart, Plane, Home, Landmark
 } from 'lucide-react';
-import { Card, Button, Input, Select } from '../components/ui';
+import { Card, Button, Input, Select, BentoGrid, BentoCard } from '../components/ui';
 
 interface TravelAtlasProps {
   onTripClick?: (tripId: string) => void;
@@ -43,7 +43,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
   const [formVisitDate, setFormVisitDate] = useState('');
   const [formNotes, setFormNotes] = useState('');
   const [formIsTransit, setFormIsTransit] = useState(false);
-  const [formResidenceStatus, setFormResidenceStatus] = useState<CountryResidenceStatus>('visited');
+  const [formResidenceStatuses, setFormResidenceStatuses] = useState<CountryResidenceStatus[]>(['visited']);
 
   // Interactive Scan results
   const [scanActive, setScanActive] = useState(false);
@@ -105,15 +105,27 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
 
   // Visited vs Layover vs Wishlist split
   const visitedCountriesList = useMemo(() => {
-    return visitedItems.filter(item => item.type === 'country' && item.residenceStatus !== 'wishlist' && !item.isTransit && item.residenceStatus !== 'layover');
+    return visitedItems.filter(item => {
+      if (item.type !== 'country') return false;
+      const statuses = getResidenceStatuses(item);
+      return statuses.some(s => s === 'visited' || s === 'lived_past' || s === 'lived_current');
+    });
   }, [visitedItems]);
 
   const layoverCountriesList = useMemo(() => {
-    return visitedItems.filter(item => item.type === 'country' && item.residenceStatus !== 'wishlist' && (item.isTransit || item.residenceStatus === 'layover'));
+    return visitedItems.filter(item => {
+      if (item.type !== 'country') return false;
+      const statuses = getResidenceStatuses(item);
+      return statuses.includes('layover') || item.isTransit === true;
+    });
   }, [visitedItems]);
 
   const wishlistCountriesList = useMemo(() => {
-    return visitedItems.filter(item => item.type === 'country' && item.residenceStatus === 'wishlist');
+    return visitedItems.filter(item => {
+      if (item.type !== 'country') return false;
+      const statuses = getResidenceStatuses(item);
+      return statuses.includes('wishlist');
+    });
   }, [visitedItems]);
 
   // Filtering processed
@@ -288,18 +300,14 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
 
   // Statistics
   const stats = useMemo(() => {
-    const visited = visitedItems.filter(item => item.type === 'country' && item.residenceStatus !== 'wishlist' && !item.isTransit && item.residenceStatus !== 'layover');
-    const wishlist = visitedItems.filter(item => item.type === 'country' && item.residenceStatus === 'wishlist');
-    const transit = visitedItems.filter(item => item.type === 'country' && (item.isTransit || item.residenceStatus === 'layover'));
-    
     return {
-      totalCountries: visited.length,
-      wishlistCount: wishlist.length,
-      transitCount: transit.length,
+      totalCountries: visitedCountriesList.length,
+      wishlistCount: wishlistCountriesList.length,
+      transitCount: layoverCountriesList.length,
       totalCities: allTrackedCities.length,
-      worldPercentage: Math.max(0.1, Math.min(100, Math.round((visited.length / 198) * 1000) / 10))
+      worldPercentage: Math.max(0.1, Math.min(100, Math.round((visitedCountriesList.length / 198) * 1000) / 10))
     };
-  }, [visitedItems, allTrackedCities]);
+  }, [visitedCountriesList, wishlistCountriesList, layoverCountriesList, allTrackedCities]);
 
   // Launch Add/Edit Dialog
   const handleOpenAdd = (type: 'country' | 'layover' | 'wishlist' | 'city') => {
@@ -313,7 +321,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
     setFormVisitDate(new Date().toISOString().split('T')[0]);
     setFormNotes('');
     setFormIsTransit(type === 'layover');
-    setFormResidenceStatus(type === 'wishlist' ? 'wishlist' : type === 'layover' ? 'layover' : 'visited');
+    setFormResidenceStatuses(type === 'wishlist' ? ['wishlist'] : type === 'layover' ? ['layover'] : ['visited']);
     setIsModalOpen(true);
   };
 
@@ -328,16 +336,20 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
     setFormVisitDate(item.visitDate || '');
     setFormNotes(item.notes || '');
     setFormIsTransit(!!item.isTransit);
-    setFormResidenceStatus(item.residenceStatus || (item.isTransit ? 'layover' : 'visited'));
+    setFormResidenceStatuses(getResidenceStatuses(item));
     setIsModalOpen(true);
   };
 
   // Promote a wishlist country to a visited country with 1 click
   const handlePromoteWishlistToVisited = async (item: VisitedItem) => {
     try {
+      const current = getResidenceStatuses(item);
+      const filtered = current.filter(s => s !== 'wishlist' && s !== 'layover');
+      const nextStatuses = filtered.length > 0 ? filtered : ['visited' as CountryResidenceStatus];
       await dataService.updateVisited({
         ...item,
-        residenceStatus: 'visited',
+        residenceStatus: nextStatuses[0],
+        residenceStatuses: nextStatuses,
         isTransit: false,
         visitDate: new Date().toISOString().split('T')[0]
       });
@@ -351,9 +363,13 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
   // Promote a layover country to a visited country with 1 click
   const handlePromoteLayoverToVisited = async (item: VisitedItem) => {
     try {
+      const current = getResidenceStatuses(item);
+      const filtered = current.filter(s => s !== 'wishlist' && s !== 'layover');
+      const nextStatuses = filtered.length > 0 ? filtered : ['visited' as CountryResidenceStatus];
       await dataService.updateVisited({
         ...item,
-        residenceStatus: 'visited',
+        residenceStatus: nextStatuses[0],
+        residenceStatuses: nextStatuses,
         isTransit: false,
         visitDate: item.visitDate || new Date().toISOString().split('T')[0]
       });
@@ -383,7 +399,9 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
     e.preventDefault();
     try {
       if (modalType === 'country') {
-        const isLayover = formResidenceStatus === 'layover' || formIsTransit;
+        const statuses = formResidenceStatuses.length > 0 ? formResidenceStatuses : ['visited' as CountryResidenceStatus];
+        const isLayover = statuses.includes('layover');
+        const primaryStatus = statuses[0] || 'visited';
         const payload: VisitedItem = {
           id: editingItem?.id || `country_${formCountryCode.toUpperCase()}`,
           type: 'country',
@@ -392,7 +410,8 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
           visitDate: formVisitDate,
           notes: formNotes,
           isTransit: isLayover,
-          residenceStatus: isLayover ? 'layover' : formResidenceStatus,
+          residenceStatus: primaryStatus,
+          residenceStatuses: statuses,
           isManual: editingItem ? editingItem.isManual : true
         };
 
@@ -728,80 +747,70 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
         </div>
       </div>
 
-      {/* Stats Bento Grid Header */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+      {/* Stats Bento Grid Header (MagicUI Bento Grid) */}
+      <BentoGrid className="grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         
-        <Card 
+        <BentoCard 
           onClick={() => setActiveTab('visited')}
-          className="!bg-white/80 dark:!bg-zinc-900/60 border border-gray-50 dark:border-white/5 !rounded-3xl shadow-sm relative overflow-hidden cursor-pointer hover:border-indigo-500/30 transition-all" 
-          noPadding
+          className="min-h-[130px] border border-black/5 dark:border-white/5 hover:border-indigo-500/30" 
+          background={<div className="absolute right-3 bottom-3 text-indigo-600/10 dark:text-indigo-400/10 pointer-events-none"><Globe className="w-14 h-14" /></div>}
         >
-          <div className="p-6">
-            <span className="text-2xs font-bold uppercase tracking-wider text-gray-400 block mb-1">Visited Nations</span>
-            <span className="text-3xl font-black text-gray-900 dark:text-white">{stats.totalCountries}</span>
-            <span className="text-xs text-gray-400 dark:text-gray-500 block mt-1">Explored & Lived</span>
-            <div className="absolute right-4 bottom-4 text-indigo-600/10">
-              <Globe className="w-12 h-12" />
-            </div>
+          <div>
+            <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block mb-1">Visited Nations</span>
+            <span className="text-3xl font-black text-light-text dark:text-dark-text font-mono">{stats.totalCountries}</span>
+            <span className="text-xs text-light-text-secondary dark:text-dark-text-secondary block mt-1">Explored & Lived</span>
           </div>
-        </Card>
+        </BentoCard>
 
-        <Card 
+        <BentoCard 
           onClick={() => setActiveTab('layovers')}
-          className="!bg-white/80 dark:!bg-zinc-900/60 border border-amber-500/10 dark:border-amber-500/10 !rounded-3xl shadow-sm relative overflow-hidden cursor-pointer hover:border-amber-500/30 transition-all" 
-          noPadding
+          className="min-h-[130px] border border-amber-500/20 dark:border-amber-500/15 hover:border-amber-500/40" 
+          background={<div className="absolute right-3 bottom-3 text-amber-600/10 dark:text-amber-400/10 pointer-events-none"><Plane className="w-14 h-14" /></div>}
         >
-          <div className="p-6">
+          <div>
             <span className="text-2xs font-bold uppercase tracking-wider text-amber-500 block mb-1">Layover Stops</span>
-            <span className="text-3xl font-black text-amber-500">{stats.transitCount}</span>
-            <span className="text-xs text-gray-400 dark:text-gray-500 block mt-1">Airport connections</span>
-            <div className="absolute right-4 bottom-4 text-amber-600/10">
-              <Plane className="w-12 h-12 text-amber-500" />
-            </div>
+            <span className="text-3xl font-black text-amber-500 font-mono">{stats.transitCount}</span>
+            <span className="text-xs text-light-text-secondary dark:text-dark-text-secondary block mt-1">Airport connections</span>
           </div>
-        </Card>
+        </BentoCard>
 
-        <Card 
+        <BentoCard 
           onClick={() => setActiveTab('wishlist')}
-          className="!bg-white/80 dark:!bg-zinc-900/60 border border-rose-500/10 dark:border-rose-500/10 !rounded-3xl shadow-sm relative overflow-hidden cursor-pointer hover:border-rose-500/30 transition-all" 
-          noPadding
+          className="min-h-[130px] border border-rose-500/20 dark:border-rose-500/15 hover:border-rose-500/40" 
+          background={<div className="absolute right-3 bottom-3 text-rose-500/10 pointer-events-none"><Star className="w-14 h-14 fill-rose-500/20 text-rose-500" /></div>}
         >
-          <div className="p-6">
+          <div>
             <span className="text-2xs font-bold uppercase tracking-wider text-rose-500 block mb-1">Wishlist Targets</span>
-            <span className="text-3xl font-black text-rose-600 dark:text-rose-400">{stats.wishlistCount}</span>
-            <span className="text-xs text-gray-400 dark:text-gray-500 block mt-1">Dream destinations</span>
-            <div className="absolute right-4 bottom-4 text-rose-500/10">
-              <Star className="w-12 h-12 fill-rose-500/20 text-rose-500" />
-            </div>
+            <span className="text-3xl font-black text-rose-600 dark:text-rose-400 font-mono">{stats.wishlistCount}</span>
+            <span className="text-xs text-light-text-secondary dark:text-dark-text-secondary block mt-1">Dream destinations</span>
           </div>
-        </Card>
+        </BentoCard>
 
-        <Card 
+        <BentoCard 
           onClick={() => setActiveTab('cities')}
-          className="!bg-white/80 dark:!bg-zinc-900/60 border border-gray-50 dark:border-white/5 !rounded-3xl shadow-sm relative overflow-hidden cursor-pointer hover:border-blue-500/30 transition-all" 
-          noPadding
+          className="min-h-[130px] border border-black/5 dark:border-white/5 hover:border-blue-500/30" 
+          background={<div className="absolute right-3 bottom-3 text-blue-600/10 dark:text-blue-400/10 pointer-events-none"><MapPin className="w-14 h-14" /></div>}
         >
-          <div className="p-6">
-            <span className="text-2xs font-bold uppercase tracking-wider text-gray-400 block mb-1">Tracked Cities</span>
-            <span className="text-3xl font-black text-gray-900 dark:text-white">{stats.totalCities}</span>
-            <span className="text-xs text-gray-400 dark:text-gray-500 block mt-1">Urban footprints</span>
-            <div className="absolute right-4 bottom-4 text-blue-600/10">
-              <MapPin className="w-12 h-12" />
-            </div>
+          <div>
+            <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block mb-1">Tracked Cities</span>
+            <span className="text-3xl font-black text-light-text dark:text-dark-text font-mono">{stats.totalCities}</span>
+            <span className="text-xs text-light-text-secondary dark:text-dark-text-secondary block mt-1">Urban footprints</span>
           </div>
-        </Card>
+        </BentoCard>
 
-        <Card className="!bg-gradient-to-br from-indigo-600 to-blue-700 border-0 !rounded-3xl shadow-md relative overflow-hidden text-white col-span-2 lg:col-span-1" noPadding>
-          <div className="p-6">
+        <BentoCard 
+          className="min-h-[130px] !bg-gradient-to-br from-indigo-600 to-blue-700 text-white col-span-2 lg:col-span-1 border-0 shadow-md"
+        >
+          <div>
             <span className="text-2xs font-bold uppercase tracking-wider text-indigo-200 block mb-1">Coverage</span>
-            <span className="text-3xl font-black tracking-tight">{stats.worldPercentage}%</span>
+            <span className="text-3xl font-black tracking-tight font-mono">{stats.worldPercentage}%</span>
             <div className="w-full bg-white/20 h-1.5 rounded-full mt-2 relative overflow-hidden">
               <div className="bg-amber-300 h-full rounded-full" style={{ width: `${stats.worldPercentage}%` }} />
             </div>
-            <span className="text-xs text-white/70 block mt-2">{stats.totalCountries} / 198</span>
+            <span className="text-xs text-white/70 block mt-2">{stats.totalCountries} / 198 Nations</span>
           </div>
-        </Card>
-      </div>
+        </BentoCard>
+      </BentoGrid>
 
       {/* Scanning Feed Warning Trigger */}
       {scanResults.countries.length > 0 || scanResults.cities.length > 0 ? (
@@ -966,17 +975,35 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                           <div>
                             <div className="flex items-center gap-2">
                               <h3 className="font-black text-lg text-gray-900 dark:text-white tracking-tight leading-tight">{item.name}</h3>
-                              {item.residenceStatus === 'lived_current' ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-emerald-500/10 dark:bg-emerald-400/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25 leading-none">
-                                  <Home className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
-                                  <span>Current Home</span>
-                                </span>
-                              ) : item.residenceStatus === 'lived_past' ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-indigo-500/10 dark:bg-indigo-400/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/25 leading-none">
-                                  <Landmark className="w-2.5 h-2.5 text-indigo-600 dark:text-indigo-400" />
-                                  <span>Past Home</span>
-                                </span>
-                              ) : null}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                              {getResidenceStatuses(item).map(status => {
+                                if (status === 'lived_current') {
+                                  return (
+                                    <span key="lived_current" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-emerald-500/10 dark:bg-emerald-400/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25 leading-none">
+                                      <Home className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
+                                      <span>Current Home</span>
+                                    </span>
+                                  );
+                                }
+                                if (status === 'lived_past') {
+                                  return (
+                                    <span key="lived_past" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-indigo-500/10 dark:bg-indigo-400/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/25 leading-none">
+                                      <Landmark className="w-2.5 h-2.5 text-indigo-600 dark:text-indigo-400" />
+                                      <span>Past Home</span>
+                                    </span>
+                                  );
+                                }
+                                if (status === 'visited') {
+                                  return (
+                                    <span key="visited" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-primary-500/10 dark:bg-primary-400/10 text-primary-700 dark:text-primary-300 border border-primary-500/25 leading-none">
+                                      <Sparkles className="w-2.5 h-2.5 text-primary-600 dark:text-primary-400" />
+                                      <span>Visited</span>
+                                    </span>
+                                  );
+                                }
+                                return null;
+                              })}
                             </div>
                             <span className="text-2xs font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-widest">{item.code} • {getRegion(item.code)}</span>
                           </div>
@@ -1073,10 +1100,18 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                           <div>
                             <div className="flex items-center gap-2">
                               <h3 className="font-black text-lg text-gray-900 dark:text-white tracking-tight leading-tight">{item.name}</h3>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-amber-500/10 dark:bg-amber-400/10 text-amber-700 dark:text-amber-300 border border-amber-500/25 leading-none">
                                 <Plane className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400" />
                                 <span>Layover</span>
                               </span>
+                              {getResidenceStatuses(item).includes('wishlist') && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-rose-500/10 dark:bg-rose-400/10 text-rose-700 dark:text-rose-300 border border-rose-500/25 leading-none">
+                                  <Star className="w-2.5 h-2.5 fill-rose-500/40 text-rose-600 dark:text-rose-400" />
+                                  <span>Wishlist</span>
+                                </span>
+                              )}
                             </div>
                             <span className="text-2xs font-bold text-amber-500 dark:text-amber-400 uppercase tracking-widest">{item.code} • {getRegion(item.code)}</span>
                           </div>
@@ -1170,10 +1205,18 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                           <div>
                             <div className="flex items-center gap-2">
                               <h3 className="font-black text-lg text-gray-900 dark:text-white tracking-tight leading-tight">{item.name}</h3>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-rose-500/10 dark:bg-rose-400/10 text-rose-700 dark:text-rose-300 border border-rose-500/25 leading-none">
                                 <Star className="w-2.5 h-2.5 fill-rose-500/40 text-rose-600 dark:text-rose-400" />
                                 <span>Wishlist</span>
                               </span>
+                              {getResidenceStatuses(item).includes('layover') && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-amber-500/10 dark:bg-amber-400/10 text-amber-700 dark:text-amber-300 border border-amber-500/25 leading-none">
+                                  <Plane className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400" />
+                                  <span>Layover</span>
+                                </span>
+                              )}
                             </div>
                             <span className="text-2xs font-bold text-rose-500 dark:text-rose-400 uppercase tracking-widest">{item.code} • {getRegion(item.code)}</span>
                           </div>
@@ -1622,20 +1665,27 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                     </div>
 
                     {/* Classification Selector */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
-                        Classification
-                      </label>
-                      <div className="grid grid-cols-3 gap-2">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
+                          Classification & Tags
+                        </label>
+                        <span className="text-2xs font-medium text-light-text-secondary dark:text-dark-text-secondary">
+                          {formResidenceStatuses.includes('wishlist') || formResidenceStatuses.includes('layover')
+                            ? 'Wishlist & Layover can combine'
+                            : 'Visited & Past Home can combine'}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {[
                           { id: 'visited', label: 'Visited', icon: Sparkles, color: 'primary', desc: 'Explored stay' },
-                          { id: 'wishlist', label: 'Wishlist', icon: Star, color: 'rose', desc: 'Dream target' },
-                          { id: 'layover', label: 'Layover', icon: Plane, color: 'amber', desc: 'Transit only' },
-                          { id: 'lived_current', label: 'Current Home', icon: Home, color: 'emerald', desc: 'Live here' },
                           { id: 'lived_past', label: 'Past Home', icon: Landmark, color: 'indigo', desc: 'Lived here' },
+                          { id: 'lived_current', label: 'Current Home', icon: Home, color: 'emerald', desc: 'Live here' },
+                          { id: 'layover', label: 'Layover', icon: Plane, color: 'amber', desc: 'Transit stop' },
+                          { id: 'wishlist', label: 'Wishlist', icon: Star, color: 'rose', desc: 'Dream target' },
                         ].map(st => {
                           const IconComp = st.icon;
-                          const isSelected = formResidenceStatus === st.id;
+                          const isSelected = formResidenceStatuses.includes(st.id as CountryResidenceStatus);
                           
                           let activeClasses = 'bg-primary-500/15 border-primary-500 text-primary-600 dark:text-primary-400 font-bold shadow-sm';
                           let iconColorClasses = 'text-primary-500';
@@ -1659,8 +1709,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                               key={st.id}
                               type="button"
                               onClick={() => {
-                                setFormResidenceStatus(st.id as CountryResidenceStatus);
-                                setFormIsTransit(st.id === 'layover');
+                                setFormResidenceStatuses(prev => toggleCountryResidenceStatus(prev, st.id as CountryResidenceStatus));
                               }}
                               className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
                                 isSelected
@@ -1673,11 +1722,13 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                                   <IconComp className={`w-4 h-4 ${isSelected ? iconColorClasses : 'text-light-text-secondary dark:text-dark-text-secondary'}`} />
                                 </div>
                                 {isSelected && (
-                                  <div className="w-2 h-2 rounded-full bg-current"></div>
+                                  <span className="w-5 h-5 rounded-full bg-current/15 flex items-center justify-center text-xs font-black">
+                                    ✓
+                                  </span>
                                 )}
                               </div>
-                              <span className="text-xs font-bold block leading-tight">{st.label}</span>
-                              <span className="text-xs text-light-text-secondary dark:text-dark-text-secondary block mt-0.5">{st.desc}</span>
+                              <p className="text-xs font-bold truncate leading-tight">{st.label}</p>
+                              <p className="text-2xs opacity-70 truncate mt-0.5">{st.desc}</p>
                             </button>
                           );
                         })}

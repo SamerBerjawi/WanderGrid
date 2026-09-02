@@ -47,117 +47,41 @@ export interface ImportState {
     isActive: boolean;
 }
 
-// --- Browser Security Hashing helpers (SHA-256 with Salt fallback) ---
-function sha256Fallback(ascii: string): string {
-  function rightRotate(value: number, amount: number) {
-    return (value >>> amount) | (value << (32 - amount));
-  }
-  
-  const mathPow = Math.pow;
-  const maxWord = mathPow(2, 32);
-  let result = '';
-  const words: number[] = [];
-  const asciiLength = ascii.length * 8;
-  
-  const rK: number[] = [];
-  const rH: number[] = [];
-  
-  const isPrime = (n: number) => {
-    for (let i = 2; i <= Math.sqrt(n); i++) {
-      if (n % i === 0) return false;
+// --- Resilient Client Storage Helper ---
+export const safeStorage = {
+  getItem: (key: string): string | null => {
+    try {
+      return typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
+    } catch (e) {
+      console.warn(`[STORAGE] Failed to read ${key}:`, e);
+      return null;
     }
-    return true;
-  };
-  
-  let candidate = 2;
-  while (rH.length < 8) {
-    if (isPrime(candidate)) {
-      rH.push((mathPow(candidate, 1/2) * maxWord) | 0);
-      rK.push((mathPow(candidate, 1/3) * maxWord) | 0);
-    }
-    candidate++;
-  }
-  while (rK.length < 64) {
-    if (isPrime(candidate)) {
-      rK.push((mathPow(candidate, 1/3) * maxWord) | 0);
-    }
-    candidate++;
-  }
-
-  const asciiBytes: number[] = [];
-  for (let i = 0; i < ascii.length; i++) {
-    asciiBytes.push(ascii.charCodeAt(i));
-  }
-  
-  asciiBytes.push(0x80); 
-  while ((asciiBytes.length * 8 + 64) % 512 !== 0) {
-    asciiBytes.push(0);
-  }
-  
-  const lenBits = asciiLength;
-  const lenBytes = [
-    (lenBits >>> 56) & 0xFF,
-    (lenBits >>> 48) & 0xFF,
-    (lenBits >>> 40) & 0xFF,
-    (lenBits >>> 32) & 0xFF,
-    (lenBits >>> 24) & 0xFF,
-    (lenBits >>> 16) & 0xFF,
-    (lenBits >>> 8) & 0xFF,
-    lenBits & 0xFF
-  ];
-  asciiBytes.push(...lenBytes);
-  
-  for (let i = 0; i < asciiBytes.length; i += 4) {
-    words.push((asciiBytes[i] << 24) | (asciiBytes[i+1] << 16) | (asciiBytes[i+2] << 8) | asciiBytes[i+3]);
-  }
-  
-  for (let i = 0; i < words.length; i += 16) {
-    const w = words.slice(i, i + 16);
-    let [a, b, c, d, e, f, g, h] = rH;
-    
-    for (let j = 0; j < 64; j++) {
-      if (j >= 16) {
-        const s0 = rightRotate(w[j-15], 7) ^ rightRotate(w[j-15], 18) ^ (w[j-15] >>> 3);
-        const s1 = rightRotate(w[j-2], 17) ^ rightRotate(w[j-2], 19) ^ (w[j-2] >>> 10);
-        w[j] = (w[j-16] + s0 + w[j-7] + s1) | 0;
+  },
+  setItem: (key: string, value: string): boolean => {
+    try {
+      if (typeof localStorage === 'undefined') return false;
+      localStorage.setItem(key, value);
+      return true;
+    } catch (e) {
+      console.warn(`[STORAGE] Failed to write ${key} (possible quota exceeded):`, e);
+      try {
+        localStorage.removeItem('wandergrid_dashboard_cache_v1');
+        localStorage.setItem(key, value);
+        return true;
+      } catch (retryErr) {
+        console.error(`[STORAGE] Critical storage quota failure for ${key}:`, retryErr);
+        return false;
       }
-      
-      const S1 = rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22);
-      const ch = (a & b) ^ (~a & c);
-      const temp1 = (h + S1 + ch + rK[j] + w[j]) | 0;
-      const S0 = rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25);
-      const maj = (e & f) ^ (e & g) ^ (f & g);
-      const temp2 = (S0 + maj) | 0;
-      
-      h = g;
-      g = f;
-      f = e;
-      e = (d + temp1) | 0;
-      d = c;
-      c = b;
-      b = a;
-      a = (temp1 + temp2) | 0;
     }
-    
-    rH[0] = (rH[0] + a) | 0;
-    rH[1] = (rH[1] + b) | 0;
-    rH[2] = (rH[2] + c) | 0;
-    rH[3] = (rH[3] + d) | 0;
-    rH[4] = (rH[4] + e) | 0;
-    rH[5] = (rH[5] + f) | 0;
-    rH[6] = (rH[6] + g) | 0;
-    rH[7] = (rH[7] + h) | 0;
+  },
+  removeItem: (key: string): void => {
+    try {
+      if (typeof localStorage !== 'undefined') localStorage.removeItem(key);
+    } catch (e) {}
   }
-  
-  for (let i = 0; i < 8; i++) {
-    let hexValue = (rH[i] >>> 0).toString(16);
-    while (hexValue.length < 8) hexValue = '0' + hexValue;
-    result += hexValue;
-  }
-  
-  return result;
-}
+};
 
+// --- Browser Security Hashing helpers (Standard Web Crypto API) ---
 export async function hashPasswordInBrowser(password: string, saltHex?: string): Promise<string> {
   const isSecureContextAvailable = typeof window !== 'undefined' && 
                                    window.crypto && 
@@ -165,10 +89,7 @@ export async function hashPasswordInBrowser(password: string, saltHex?: string):
                                    typeof window.crypto.subtle.digest === 'function';
 
   if (!isSecureContextAvailable) {
-    console.warn("[SECURITY] Crypto subtle digest API is unavailable. Falling back to safe pure-JS SHA-256 implementation.");
-    const fallbackSalt = saltHex || Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
-    const hashHex = sha256Fallback(fallbackSalt + password);
-    return `${fallbackSalt}:${hashHex}`;
+    throw new Error("[SECURITY] Web Crypto subtle digest API is unavailable in this environment.");
   }
 
   const encoder = new TextEncoder();

@@ -986,7 +986,7 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
                           
                           return (
                             <div 
-                              key={idx} 
+                              key={`day-col-${fileIndex}`} 
                               className={`flex-1 min-w-[20px] text-center p-1 rounded-lg ${
                                 isToday ? 'bg-indigo-500/10 border border-indigo-505/30' : ''
                               }`}
@@ -1122,8 +1122,8 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
                   
                   {/* Days of week titles header */}
                   <div className="grid grid-cols-7 gap-3 mb-4 text-center">
-                    {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((day, idx) => (
-                      <div key={idx} className="text-xs font-black uppercase text-gray-400 tracking-widest py-1">
+                    {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((day) => (
+                      <div key={day} className="text-xs font-black uppercase text-gray-400 tracking-widest py-1">
                         {day}
                       </div>
                     ))}

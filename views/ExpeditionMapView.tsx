@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 const DeckFlightMap = lazy(() => import('../components/DeckFlightMap').then(m => ({ default: m.DeckFlightMap || m.default })));
 import { dataService } from '../services/mockDb';
-import { Trip, CountryResidenceStatus, PredefinedMapMode } from '../types';
+import { Trip, CountryResidenceStatus, PredefinedMapMode, getResidenceStatuses } from '../types';
 import { Input, MultiSelect } from '../components/ui';
 import { getCoordinates, getCoordinatesSync, STATIC_GEO_DATA } from '../services/geocoding';
 import { runAfterFirstPaint, mapWithConcurrency } from '../services/utils';
@@ -116,7 +116,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
 
     // Visited Data & Country Residence Status
     const [visitedCountryCodes, setVisitedCountryCodes] = useState<string[]>([]);
-    const [countryStatusMap, setCountryStatusMap] = useState<Record<string, CountryResidenceStatus>>({});
+    const [countryStatusMap, setCountryStatusMap] = useState<Record<string, CountryResidenceStatus[] | CountryResidenceStatus>>({});
     const [visitedPlaces, setVisitedPlaces] = useState<{ lat: number; lng: number; name: string }[]>([]);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
 
@@ -425,20 +425,17 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                     visited.forEach(item => {
                         const code = item.code ? item.code.toUpperCase() : (item.countryCode ? item.countryCode.toUpperCase() : '');
                         const name = item.name ? item.name.toUpperCase() : (item.countryName ? item.countryName.toUpperCase() : '');
+                        const statuses = getResidenceStatuses(item);
 
-                        if (item.isTransit || item.residenceStatus === 'layover') {
-                            if (code) statusMap[code] = 'layover';
-                            if (name) statusMap[name] = 'layover';
-                        } else {
-                            if (item.type === 'country' && code && item.residenceStatus !== 'wishlist') {
+                        if (code) statusMap[code] = statuses;
+                        if (name) statusMap[name] = statuses;
+
+                        const hasVisited = statuses.some(s => s === 'visited' || s === 'lived_current' || s === 'lived_past');
+                        if (hasVisited) {
+                            if (item.type === 'country' && code) {
                                 countrySet.add(code);
-                            } else if (item.countryCode && item.residenceStatus !== 'wishlist') {
+                            } else if (item.countryCode) {
                                 countrySet.add(item.countryCode.toUpperCase());
-                            }
-
-                            if (item.residenceStatus) {
-                                if (code) statusMap[code] = item.residenceStatus;
-                                if (name) statusMap[name] = item.residenceStatus;
                             }
                         }
 
@@ -545,7 +542,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
         return () => window.removeEventListener('wandergrid_db_updated', handleDbUpdate);
     }, [trips]);
 
-    const handleUpdateCountryStatus = async (countryCode: string, countryName: string, status: CountryResidenceStatus | 'none') => {
+    const handleUpdateCountryStatus = async (countryCode: string, countryName: string, status: CountryResidenceStatus | CountryResidenceStatus[] | 'none') => {
         try {
             const visitedList = await dataService.getVisited();
             const upperCode = (countryCode || '').toUpperCase();
@@ -556,16 +553,23 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                 (v.name && v.name.toUpperCase() === upperName)
             );
 
-            if (status === 'none') {
+            const isNone = status === 'none' || (Array.isArray(status) && status.length === 0);
+
+            if (isNone) {
                 if (existing) {
                     await dataService.deleteVisited(existing.id);
                 }
             } else {
+                const statuses: CountryResidenceStatus[] = Array.isArray(status) ? status : [status];
+                const isTransit = statuses.includes('layover');
+                const primaryStatus = statuses[0] || 'visited';
+
                 if (existing) {
                     await dataService.updateVisited({
                         ...existing,
-                        residenceStatus: status,
-                        isTransit: status === 'layover',
+                        residenceStatus: primaryStatus,
+                        residenceStatuses: statuses,
+                        isTransit,
                         name: countryName || existing.name
                     });
                 } else {
@@ -574,8 +578,9 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                         type: 'country',
                         code: upperCode,
                         name: countryName,
-                        residenceStatus: status,
-                        isTransit: status === 'layover',
+                        residenceStatus: primaryStatus,
+                        residenceStatuses: statuses,
+                        isTransit,
                         isManual: true,
                         visitDate: new Date().toISOString().split('T')[0]
                     });
@@ -584,21 +589,25 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
 
             setCountryStatusMap(prev => {
                 const next = { ...prev };
-                if (status === 'none') {
+                if (isNone) {
                     if (upperCode) delete next[upperCode];
                     if (upperName) delete next[upperName];
                 } else {
-                    if (upperCode) next[upperCode] = status;
-                    if (upperName) next[upperName] = status;
+                    const statuses: CountryResidenceStatus[] = Array.isArray(status) ? status : [status];
+                    if (upperCode) next[upperCode] = statuses;
+                    if (upperName) next[upperName] = statuses;
                 }
                 return next;
             });
 
-            if (status === 'visited' || status === 'lived_current' || status === 'lived_past') {
+            const statuses: CountryResidenceStatus[] = !isNone ? (Array.isArray(status) ? status : [status]) : [];
+            const hasVisited = statuses.some(s => s === 'visited' || s === 'lived_current' || s === 'lived_past');
+
+            if (hasVisited) {
                 if (upperCode && !visitedCountryCodes.includes(upperCode)) {
                     setVisitedCountryCodes(prev => [...prev, upperCode]);
                 }
-            } else if (status === 'layover' || status === 'wishlist' || status === 'none') {
+            } else {
                 setVisitedCountryCodes(prev => prev.filter(c => c !== upperCode));
             }
 

@@ -125,7 +125,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/3 rounded-full blur-3xl pointer-events-none animate-pulse"></div>
             <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/3 rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDelay: '1s' }}></div>
 
-            <Card className="w-full max-w-md z-10 !bg-white/80 dark:!bg-gray-900/80 backdrop-blur-3xl shadow-2xl border border-white/50 dark:border-white/10" noPadding>
+            <Card className="w-full max-w-md z-10 !bg-white/80 dark:!bg-gray-900/80 backdrop-blur-xl shadow-2xl border border-white/50 dark:border-white/10" noPadding>
                 <div className="p-8 text-center">
                     <div className="w-16 h-16 mx-auto bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center shadow-lg mb-6 text-3xl">
                         <span>🏔️</span>

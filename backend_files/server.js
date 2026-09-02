@@ -5,9 +5,13 @@ const { AviationStackError, normalizeFutureFlight, requestAviationStack } = requ
 const cors = require('cors');
 const path = require('path');
 const crypto = require('crypto');
+const util = require('util');
 const jwt = require('jsonwebtoken');
 const helmet = require('helmet');
 const compression = require('compression');
+const rateLimit = require('express-rate-limit');
+
+const pbkdf2Async = util.promisify(crypto.pbkdf2);
 
 // --- Centralized Structured JSON Logger ---
 const logger = {
@@ -88,22 +92,30 @@ console.error = (message, ...args) => {
 // --- Centralized Security and Authorization Configuration ---
 const JWT_SECRET = process.env.JWT_SECRET || 'wandergrid_super_secret_development_key_change_me_in_production';
 
-function hashPassword(password) {
-    if (!password) return '';
-    const salt = crypto.randomBytes(16).toString('hex');
-    const hash = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
-    return `${salt}:${hash}`;
+// Fail-fast validation for production deployments
+if (process.env.NODE_ENV === 'production') {
+    if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'wandergrid_super_secret_development_key_change_me_in_production') {
+        console.error('FATAL: In production mode (NODE_ENV=production), JWT_SECRET environment variable must be explicitly defined and not use development defaults.');
+        process.exit(1);
+    }
 }
 
-function verifyPassword(password, storedHash) {
+async function hashPassword(password) {
+    if (!password) return '';
+    const salt = crypto.randomBytes(16).toString('hex');
+    const derivedKey = await pbkdf2Async(password, salt, 100000, 64, 'sha512');
+    return `${salt}:${derivedKey.toString('hex')}`;
+}
+
+async function verifyPassword(password, storedHash) {
     if (!storedHash) return false;
     if (!storedHash.includes(':')) {
         // Compatibility mode for existing plain-text passwords
         return password === storedHash;
     }
     const [salt, hash] = storedHash.split(':');
-    const verifyHash = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
-    return hash === verifyHash;
+    const verifyHash = await pbkdf2Async(password, salt, 100000, 64, 'sha512');
+    return hash === verifyHash.toString('hex');
 }
 
 function removeSensitiveData(obj) {
@@ -235,6 +247,26 @@ app.use(express.static(path.join(__dirname, 'client_build'), {
         }
     }
 }));
+
+// Rate Limiting Configuration
+const apiRateLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 300, // max 300 requests per minute per IP
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests, please try again later.' }
+});
+
+const authRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 20, // max 20 login/register attempts per 15 minutes per IP
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many authentication attempts, please try again later.' }
+});
+
+app.use('/api', apiRateLimiter);
+app.use('/api/auth', authRateLimiter);
 
 // Global API Route Protection
 app.use('/api', authenticateToken);
@@ -712,12 +744,101 @@ async function withTransaction(callback) {
 
 const getResources = (table) => async (req, res) => {
   try {
-    const { rows } = await pool.query(`SELECT data FROM ${table}`);
+    const { limit, offset, status, tripId, after, before, privacy, sort } = req.query;
+    const conditions = [];
+    const params = [];
+
+    if (status) {
+      params.push(status);
+      conditions.push(`(data->>'status') = $${params.length}`);
+    }
+    if (privacy) {
+      params.push(privacy);
+      conditions.push(`(data->>'privacy') = $${params.length}`);
+    }
+    if (tripId) {
+      params.push(tripId);
+      conditions.push(`(data->>'tripId') = $${params.length}`);
+    }
+    if (after) {
+      params.push(after);
+      if (table === 'flights') {
+        conditions.push(`(data->>'departureDate') >= $${params.length}`);
+      } else {
+        conditions.push(`(data->>'startDate') >= $${params.length}`);
+      }
+    }
+    if (before) {
+      params.push(before);
+      if (table === 'flights') {
+        conditions.push(`(data->>'departureDate') <= $${params.length}`);
+      } else {
+        conditions.push(`(data->>'endDate') <= $${params.length}`);
+      }
+    }
+
+    let query = `SELECT data FROM ${table}`;
+    if (conditions.length > 0) {
+      query += ` WHERE ${conditions.join(' AND ')}`;
+    }
+
+    if (sort === 'desc') {
+      if (table === 'flights') {
+        query += ` ORDER BY (data->>'departureDate') DESC`;
+      } else if (table === 'trips' || table === 'events') {
+        query += ` ORDER BY (data->>'startDate') DESC`;
+      }
+    } else if (sort === 'asc') {
+      if (table === 'flights') {
+        query += ` ORDER BY (data->>'departureDate') ASC`;
+      } else if (table === 'trips' || table === 'events') {
+        query += ` ORDER BY (data->>'startDate') ASC`;
+      }
+    }
+
+    const parsedLimit = parseInt(limit, 10);
+    if (!isNaN(parsedLimit) && parsedLimit > 0) {
+      params.push(parsedLimit);
+      query += ` LIMIT $${params.length}`;
+    }
+
+    const parsedOffset = parseInt(offset, 10);
+    if (!isNaN(parsedOffset) && parsedOffset >= 0) {
+      params.push(parsedOffset);
+      query += ` OFFSET $${params.length}`;
+    }
+
+    const { rows } = await pool.query(query, params);
     res.json(rows.map(r => r.data));
   } catch (err) {
     sendError(res, err, 500, `Failed to retrieve ${table}`);
   }
 };
+
+/**
+ * High-performance multi-row bulk upsert helper
+ */
+async function bulkUpsert(client, table, items, chunkSize = 500) {
+  if (!items || !Array.isArray(items) || items.length === 0) return 0;
+  let count = 0;
+  for (let i = 0; i < items.length; i += chunkSize) {
+    const chunk = items.slice(i, i + chunkSize).filter(item => item && item.id);
+    if (chunk.length === 0) continue;
+    const values = [];
+    const params = [];
+    chunk.forEach((item, idx) => {
+      values.push(`($${idx * 2 + 1}, $${idx * 2 + 2})`);
+      params.push(item.id, JSON.stringify(item));
+    });
+    await client.query(`
+      INSERT INTO ${table} (id, data)
+      VALUES ${values.join(', ')}
+      ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data
+    `, params);
+    count += chunk.length;
+  }
+  return count;
+}
 
 const createResource = (table) => async (req, res) => {
   const resource = req.body;
@@ -1518,7 +1639,8 @@ app.post('/api/auth/login', async (req, res) => {
         }
         
         const user = rows[0].data;
-        if (!verifyPassword(password, user.password)) {
+        const isPasswordValid = await verifyPassword(password, user.password);
+        if (!isPasswordValid) {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
         
@@ -1548,7 +1670,7 @@ app.post('/api/auth/register', async (req, res) => {
             return res.status(400).json({ error: 'User already exists' });
         }
         
-        user.password = hashPassword(user.password);
+        user.password = await hashPassword(user.password);
         
         await withTransaction(async (client) => {
             await client.query(
@@ -1589,7 +1711,7 @@ app.post('/api/users', async (req, res) => {
     
     try {
         if (user.password && !user.password.includes(':')) {
-            user.password = hashPassword(user.password);
+            user.password = await hashPassword(user.password);
         }
         await withTransaction(async (client) => {
             await client.query(
@@ -1614,11 +1736,11 @@ app.put('/api/users/:id', async (req, res) => {
                 updatedUser.password = prevUser.password;
             } else if (updatedUser.password !== prevUser.password) {
                 if (!updatedUser.password.includes(':')) {
-                    updatedUser.password = hashPassword(updatedUser.password);
+                    updatedUser.password = await hashPassword(updatedUser.password);
                 }
             }
         } else if (updatedUser.password && !updatedUser.password.includes(':')) {
-            updatedUser.password = hashPassword(updatedUser.password);
+            updatedUser.password = await hashPassword(updatedUser.password);
         }
         await withTransaction(async (client) => {
             await client.query(
@@ -1643,16 +1765,11 @@ app.post('/api/trips/bulk', async (req, res) => {
         return res.status(400).json({ error: 'Body must be an array of trips' });
     }
     try {
+        let count = 0;
         await withTransaction(async (client) => {
-            for (const trip of list) {
-                if (!trip.id) continue;
-                await client.query(
-                    `INSERT INTO trips (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2`,
-                    [trip.id, JSON.stringify(trip)]
-                );
-            }
+            count = await bulkUpsert(client, 'trips', list);
         });
-        res.status(201).json({ success: true, count: list.length });
+        res.status(201).json({ success: true, count });
     } catch (err) {
         sendError(res, err, 500, 'Failed to perform bulk trip upsert');
     }
@@ -1687,16 +1804,11 @@ app.post('/api/flights/bulk', async (req, res) => {
         return res.status(400).json({ error: 'Body must be an array of flights' });
     }
     try {
+        let count = 0;
         await withTransaction(async (client) => {
-            for (const flight of list) {
-                if (!flight.id) continue;
-                await client.query(
-                    `INSERT INTO flights (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2`,
-                    [flight.id, JSON.stringify(flight)]
-                );
-            }
+            count = await bulkUpsert(client, 'flights', list);
         });
-        res.status(201).json({ success: true, count: list.length });
+        res.status(201).json({ success: true, count });
     } catch (err) {
         sendError(res, err, 500, 'Failed to perform bulk flight upsert');
     }
@@ -1713,16 +1825,11 @@ app.post('/api/visited/bulk', async (req, res) => {
         return res.status(400).json({ error: 'Body must be an array of visited items' });
     }
     try {
+        let count = 0;
         await withTransaction(async (client) => {
-            for (const item of list) {
-                if (!item.id) continue;
-                await client.query(
-                    `INSERT INTO visited (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2`,
-                    [item.id, JSON.stringify(item)]
-                );
-            }
+            count = await bulkUpsert(client, 'visited', list);
         });
-        res.status(201).json({ success: true, count: list.length });
+        res.status(201).json({ success: true, count });
     } catch (err) {
         sendError(res, err, 500, 'Failed to perform bulk visited upsert');
     }
@@ -2025,7 +2132,7 @@ app.post('/api/restore', async (req, res) => {
                             if (existingUser && existingUser.password) {
                                 item.password = existingUser.password;
                             } else {
-                                item.password = hashPassword('password');
+                                item.password = await hashPassword('password');
                             }
                         }
                     }

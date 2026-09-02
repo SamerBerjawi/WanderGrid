@@ -230,25 +230,43 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                             <div>
                                 <div className="flex items-center justify-between mb-3">
                                     <h3 className="text-xs font-bold text-zinc-400 tracking-wider uppercase">Cartographic Basemap</h3>
-                                    <span className="text-xs font-medium text-zinc-500">4 Curated Tilesets</span>
+                                    <span className="text-xs font-medium text-zinc-500">5 Curated Tilesets</span>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-2.5">
                                     {[
                                         { 
                                             id: 'default', 
-                                            label: 'Adaptive Atlas', 
-                                            desc: 'Auto theme matching (Day/Night)',
+                                            label: 'Onyx & Snow Canvas', 
+                                            desc: 'High-contrast pure black / crisp white',
                                             renderSwatch: () => (
-                                                <div className="w-full h-8 rounded-xl border border-white/15 flex items-center px-2.5 justify-between bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-800 relative overflow-hidden">
+                                                <div className="w-full h-8 rounded-xl border border-white/15 flex items-center px-2.5 justify-between bg-gradient-to-r from-black via-zinc-950 to-white/90 relative overflow-hidden">
                                                     <div className="flex items-center gap-1.5 z-10">
-                                                        <span className="text-xs">🌙</span>
-                                                        <span className="text-xs font-bold text-zinc-300">Dark</span>
+                                                        <span className="text-xs">🌑</span>
+                                                        <span className="text-xs font-bold text-white drop-shadow">Onyx</span>
                                                         <span className="text-2xs text-zinc-500">/</span>
-                                                        <span className="text-xs">☀️</span>
-                                                        <span className="text-xs font-bold text-zinc-300">Light</span>
+                                                        <span className="text-xs">❄️</span>
+                                                        <span className="text-xs font-bold text-zinc-900 drop-shadow">Snow</span>
                                                     </div>
                                                     <div className="w-2 h-2 rounded-full border border-white/40 z-10" />
+                                                </div>
+                                            )
+                                        },
+                                        { 
+                                            id: 'vibrant', 
+                                            label: 'Vibrant Elements', 
+                                            desc: 'Colorized parks, water & roads',
+                                            renderSwatch: () => (
+                                                <div className="w-full h-8 rounded-xl border border-emerald-500/30 flex items-center px-2.5 justify-between bg-gradient-to-r from-[#031526] via-[#06241a] to-[#241a06] relative overflow-hidden">
+                                                    <div className="flex items-center gap-1.5 z-10">
+                                                        <span className="text-xs">🎨</span>
+                                                        <span className="text-xs font-bold text-emerald-300">Vibrant Topo</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1 z-10">
+                                                        <div className="w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_4px_#38bdf8]" title="Water" />
+                                                        <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_4px_#34d399]" title="Parks" />
+                                                        <div className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_4px_#fbbf24]" title="Roads" />
+                                                    </div>
                                                 </div>
                                             )
                                         },

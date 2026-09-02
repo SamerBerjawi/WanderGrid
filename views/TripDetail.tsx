@@ -1157,8 +1157,9 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                     <div className="flex-1 flex flex-col gap-1 overflow-y-auto custom-scrollbar max-h-[120px]">
                         {items.map((item, idx) => {
                             const styleClasses = getTypeStyles(item.type);
+                            const itemKey = item.ref?.id || item.id || `${item.type}-${item.name}-${dateStr}-${idx}`;
                             return (
-                                <div key={idx} 
+                                <div key={itemKey} 
                                     className={`text-2xs font-bold px-1.5 py-1 rounded border flex items-center gap-1 cursor-pointer truncate ${styleClasses}`}
                                     onClick={() => {
                                         if (item.type === 'Transport') openTransportModal([item.ref]);
@@ -1287,9 +1288,9 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                     </div>
                                     <div className="p-3 bg-purple-50/50 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/30 rounded-2xl text-center flex flex-col justify-center items-center">
                                         <div className="flex -space-x-1.5 mb-0.5 justify-center">
-                                            {(trip.participants || []).map((pid, idx) => {
+                                            {(trip.participants || []).map((pid) => {
                                                 const u = users.find(u => u.id === pid);
-                                                return u ? <div key={idx} className="w-5 h-5 rounded-full bg-purple-100 border-2 border-white flex items-center justify-center text-2xs font-bold text-purple-800" title={u.name}>{u.name.charAt(0)}</div> : null;
+                                                return u ? <div key={pid} className="w-5 h-5 rounded-full bg-purple-100 border-2 border-white flex items-center justify-center text-2xs font-bold text-purple-800" title={u.name}>{u.name.charAt(0)}</div> : null;
                                             })}
                                         </div>
                                         <span className="text-2xs font-bold text-purple-500/70 uppercase tracking-wider">Travelers</span>
@@ -2192,7 +2193,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                    {isExpanded && t.transports && (
                                        <div className="border-t border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-black/20 p-4 space-y-2">
                                            {t.transports.map((tr, idx) => (
-                                               <div key={idx} className="flex items-center gap-3 text-xs p-2 bg-white dark:bg-white/5 rounded-lg border border-gray-100 dark:border-white/5">
+                                               <div key={tr.id || `${tr.identifier}-${tr.departureDate}-${idx}`} className="flex items-center gap-3 text-xs p-2 bg-white dark:bg-white/5 rounded-lg border border-gray-100 dark:border-white/5">
                                                    <span className="font-mono font-bold text-blue-600 dark:text-blue-400">{tr.departureTime}</span>
                                                    <span className="font-bold">{tr.origin} &rarr; {tr.destination}</span>
                                                    <span className="text-gray-500">{tr.provider} {tr.identifier}</span>

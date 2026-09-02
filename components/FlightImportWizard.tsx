@@ -4,6 +4,7 @@ import { Trip, Transport, User } from '../types';
 import { Button, Input, Select } from './ui';
 import { flightImporter } from '../services/flightImportExport';
 import { dataService } from '../services/mockDb';
+import { invalidateGlobalWanderCache } from '../hooks/useWanderSync';
 import { getCarrierName, onlineCarrierIcaoToIata } from '../utils/flightData';
 import { 
     Upload, 
@@ -1434,6 +1435,9 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
 
                                                 // Build copies of trips/flights state to update incrementally
                                                 let localTrips = [...dbTrips];
+                                                const modifiedTripIds = new Set<string>();
+                                                const newIndependentFlights: Transport[] = [];
+                                                const updatedIndependentFlights: Transport[] = [];
 
                                                 for (const idx of flightsToSaveIndexes) {
                                                     const incoming = mappedFlights[idx];
@@ -1466,11 +1470,11 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                                                         startDate: updatedTransports[0]?.departureDate || localTrips[tIdx].startDate,
                                                                         endDate: updatedTransports[updatedTransports.length - 1]?.departureDate || localTrips[tIdx].endDate
                                                                     };
-                                                                    await dataService.updateTrip(localTrips[tIdx]);
+                                                                    modifiedTripIds.add(localTrips[tIdx].id);
                                                                 }
                                                             } else {
-                                                                // Independent flight
-                                                                await dataService.updateFlight(finalItem);
+                                                                // Independent flight update
+                                                                updatedIndependentFlights.push(finalItem);
                                                             }
                                                         }
                                                     } else {
@@ -1491,17 +1495,38 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                                                     startDate: mergedTransports[0]?.departureDate || trip.startDate,
                                                                     endDate: mergedTransports[mergedTransports.length - 1]?.arrivalDate || mergedTransports[mergedTransports.length - 1]?.departureDate || trip.endDate
                                                                 };
-                                                                await dataService.updateTrip(localTrips[tIdx]);
+                                                                modifiedTripIds.add(trip.id);
                                                             }
                                                         } else {
-                                                            await dataService.addFlight(incoming);
+                                                            newIndependentFlights.push(incoming);
                                                         }
                                                     }
                                                 }
 
+                                                // 1. Bulk insert new independent flights in a single network call
+                                                if (newIndependentFlights.length > 0) {
+                                                    await dataService.addFlights(newIndependentFlights);
+                                                }
+
+                                                // 2. Concurrently update independent flights
+                                                if (updatedIndependentFlights.length > 0) {
+                                                    await Promise.all(updatedIndependentFlights.map(f => dataService.updateFlight(f)));
+                                                }
+
+                                                // 3. Concurrently save each modified trip once (not per-flight)
+                                                if (modifiedTripIds.size > 0) {
+                                                    await Promise.all(
+                                                        Array.from(modifiedTripIds).map(tripId => {
+                                                            const updatedTrip = localTrips.find(t => t.id === tripId);
+                                                            return updatedTrip ? dataService.updateTrip(updatedTrip) : Promise.resolve();
+                                                        })
+                                                    );
+                                                }
+
+                                                // 4. Invalidate global cache reactively and notify listeners
+                                                invalidateGlobalWanderCache();
                                                 onImportComplete(localTrips);
                                                 onClose();
-                                                window.location.reload();
                                             } catch (e) {
                                                 console.error('Import error', e);
                                                 alert('An error occurred while saving imported data.');

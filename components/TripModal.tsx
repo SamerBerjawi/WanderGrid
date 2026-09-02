@@ -438,8 +438,8 @@ export const TripModal: React.FC<TripModalProps> = ({ isOpen, onClose, onSubmit,
                                                         </div>
                                                     ) : emojiSearch ? (
                                                         <div className="grid grid-cols-6 gap-1 content-start">
-                                                            {filteredEmojis.map((e, i) => (
-                                                                <button key={i} type="button" onClick={() => { setIcon(e.char); setShowEmojiPicker(false); }} className="aspect-square flex items-center justify-center text-xl hover:bg-[#fdeed9] dark:hover:bg-zinc-800 rounded-lg transition-colors" title={e.name}>{e.char}</button>
+                                                            {filteredEmojis.map((e) => (
+                                                                <button key={`${e.char}-${e.name}`} type="button" onClick={() => { setIcon(e.char); setShowEmojiPicker(false); }} className="aspect-square flex items-center justify-center text-xl hover:bg-[#fdeed9] dark:hover:bg-zinc-800 rounded-lg transition-colors" title={e.name}>{e.char}</button>
                                                             ))}
                                                         </div>
                                                     ) : (

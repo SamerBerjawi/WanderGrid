@@ -11,6 +11,8 @@
   "dependencies": {
     "@google/genai": "^1.34.0",
     "@number-flow/react": "^0.6.2",
+    "@radix-ui/react-icons": "^1.3.2",
+    "@radix-ui/react-slot": "^1.3.3",
     "@visx/curve": "^4.0.1-alpha.0",
     "@visx/event": "^4.0.1-alpha.0",
     "@visx/gradient": "^4.0.1-alpha.0",

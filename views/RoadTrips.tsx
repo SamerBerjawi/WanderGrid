@@ -5,7 +5,7 @@ import {
   Map, ArrowRight, Server, Sparkles, Navigation, Train, 
   Bus, HelpCircle, RefreshCw, Leaf, Anchor, Grid, Info
 } from 'lucide-react';
-import { Card, Button, Input, Select, Badge, TimeInput, Autocomplete, Modal } from '../components/ui';
+import { Card, Button, Input, Select, Badge, TimeInput, Autocomplete, Modal, BentoGrid, BentoCard } from '../components/ui';
 import { Trip, Transport, TransportMode, RoadTripWaypoint, ViewState } from '../types';
 import { dataService } from '../services/mockDb';
 import { motion, AnimatePresence } from 'motion/react';
@@ -759,72 +759,84 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
         </div>
       )}
 
-      {/* Bento Metric Boxes */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Bento Metric Boxes (MagicUI Bento Grid) */}
+      <BentoGrid className="grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Metric 1 */}
-        <Card noPadding className="shadow-md">
-          <div className="p-6 flex items-center justify-between">
+        <BentoCard
+          className="min-h-[120px]"
+          background={<div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 dark:bg-indigo-500/15 rounded-full blur-2xl translate-x-6 -translate-y-6 pointer-events-none group-hover:scale-125 transition-transform duration-500" />}
+        >
+          <div className="flex items-center justify-between w-full">
             <div className="space-y-1">
-              <span className="text-2xs font-bold uppercase text-zinc-400 tracking-wider">Total Journeys</span>
-              <div className="text-2xl md:text-3xl font-black font-sans leading-none">{roadTrips.length}</div>
-              <p className="text-xs text-zinc-400 mt-1">Independent & Trip plans</p>
+              <span className="text-2xs font-bold uppercase text-light-text-secondary dark:text-dark-text-secondary tracking-wider">Total Journeys</span>
+              <div className="text-2xl md:text-3xl font-black font-mono leading-none text-light-text dark:text-dark-text">{roadTrips.length}</div>
+              <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-1">Independent & Trip plans</p>
             </div>
-            <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 dark:bg-indigo-400/5 border border-indigo-500/20 flex items-center justify-center text-indigo-500 dark:text-indigo-400">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 dark:bg-indigo-400/10 border border-indigo-500/20 flex items-center justify-center text-indigo-500 dark:text-indigo-400 shrink-0">
               <Server className="w-5 h-5" />
             </div>
           </div>
-        </Card>
+        </BentoCard>
 
         {/* Metric 2 */}
-        <Card noPadding className="shadow-md">
-          <div className="p-6 flex items-center justify-between">
+        <BentoCard
+          className="min-h-[120px]"
+          background={<div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 dark:bg-amber-500/15 rounded-full blur-2xl translate-x-6 -translate-y-6 pointer-events-none group-hover:scale-125 transition-transform duration-500" />}
+        >
+          <div className="flex items-center justify-between w-full">
             <div className="space-y-1">
-              <span className="text-2xs font-bold uppercase text-zinc-400 tracking-wider">Transit Distance</span>
-              <div className="text-2xl md:text-3xl font-black font-sans leading-none">
-                {stats.totalDistance.toLocaleString()} <span className="text-sm font-bold text-zinc-400">km</span>
+              <span className="text-2xs font-bold uppercase text-light-text-secondary dark:text-dark-text-secondary tracking-wider">Transit Distance</span>
+              <div className="text-2xl md:text-3xl font-black font-mono leading-none text-light-text dark:text-dark-text">
+                {stats.totalDistance.toLocaleString()} <span className="text-sm font-bold text-light-text-secondary dark:text-dark-text-secondary">km</span>
               </div>
-              <p className="text-xs text-zinc-400 mt-1">~{stats.totalDurationHours} hrs of travel</p>
+              <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-1">~{stats.totalDurationHours} hrs of travel</p>
             </div>
-            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 dark:bg-amber-400/5 border border-amber-500/20 flex items-center justify-center text-amber-500 dark:text-amber-400">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 dark:bg-amber-400/10 border border-amber-500/20 flex items-center justify-center text-amber-500 dark:text-amber-400 shrink-0">
               <Compass className="w-5 h-5" />
             </div>
           </div>
-        </Card>
+        </BentoCard>
 
         {/* Metric 3: Carbon Saved */}
-        <Card noPadding className="shadow-md border-emerald-500/20 dark:border-emerald-500/10">
-          <div className="p-6 flex items-center justify-between">
+        <BentoCard
+          className="min-h-[120px] border-emerald-500/20 dark:border-emerald-500/10"
+          background={<div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 dark:bg-emerald-500/15 rounded-full blur-2xl translate-x-6 -translate-y-6 pointer-events-none group-hover:scale-125 transition-transform duration-500" />}
+        >
+          <div className="flex items-center justify-between w-full">
             <div className="space-y-1">
               <span className="text-2xs font-bold uppercase text-emerald-500 tracking-wider flex items-center gap-1">
                 <Leaf className="w-3 h-3 text-emerald-500 animate-pulse" /> Eco Optimization
               </span>
-              <div className="text-2xl md:text-3xl font-black font-sans leading-none text-emerald-600 dark:text-emerald-400">
+              <div className="text-2xl md:text-3xl font-black font-mono leading-none text-emerald-600 dark:text-emerald-400">
                 {stats.co2SavedKg.toLocaleString()} <span className="text-sm font-bold opacity-80">kg</span>
               </div>
-              <p className="text-xs text-zinc-400 mt-1">相当于种植了 <strong>{stats.treeEquivalent}</strong> 棵树</p>
+              <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-1">~{stats.treeEquivalent} trees offset</p>
             </div>
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 dark:bg-emerald-400/5 border border-emerald-500/20 flex items-center justify-center text-emerald-500 dark:text-emerald-400">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 dark:bg-emerald-400/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 dark:text-emerald-400 shrink-0">
               <Leaf className="w-5 h-5" />
             </div>
           </div>
-        </Card>
+        </BentoCard>
 
         {/* Metric 4 */}
-        <Card noPadding className="shadow-md">
-          <div className="p-6 flex items-center justify-between">
+        <BentoCard
+          className="min-h-[120px]"
+          background={<div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/10 dark:bg-teal-500/15 rounded-full blur-2xl translate-x-6 -translate-y-6 pointer-events-none group-hover:scale-125 transition-transform duration-500" />}
+        >
+          <div className="flex items-center justify-between w-full">
             <div className="space-y-1">
-              <span className="text-2xs font-bold uppercase text-zinc-400 tracking-wider">Financial Expense</span>
-              <div className="text-2xl md:text-3xl font-black font-sans leading-none">
+              <span className="text-2xs font-bold uppercase text-light-text-secondary dark:text-dark-text-secondary tracking-wider">Financial Expense</span>
+              <div className="text-2xl md:text-3xl font-black font-mono leading-none text-light-text dark:text-dark-text">
                 ${stats.totalExpense.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
               </div>
-              <p className="text-xs text-zinc-400 mt-1">{stats.greenRatio}% of green transits</p>
+              <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-1">{stats.greenRatio}% green transit</p>
             </div>
-            <div className="w-12 h-12 rounded-2xl bg-teal-500/10 dark:bg-teal-400/5 border border-teal-500/20 flex items-center justify-center text-teal-500 dark:text-teal-400">
+            <div className="w-12 h-12 rounded-2xl bg-teal-500/10 dark:bg-teal-400/10 border border-teal-500/20 flex items-center justify-center text-teal-500 dark:text-teal-400 shrink-0">
               <DollarSign className="w-5 h-5" />
             </div>
           </div>
-        </Card>
-      </div>
+        </BentoCard>
+      </BentoGrid>
 
       {/* Interactive Map & Insights Hud Card */}
       <Card noPadding className="shadow-lg border border-zinc-200/50 dark:border-white/5 overflow-hidden rounded-3xl">
@@ -1586,7 +1598,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                 const modeMeta = MODE_META[seg.mode as keyof typeof MODE_META];
                 const ModeIcon = modeMeta?.icon || Train;
                 return (
-                  <div key={idx} className="p-4 rounded-2xl border border-black/5 dark:border-white/5 bg-white dark:bg-dark-card shadow-sm flex items-center gap-3">
+                  <div key={seg.id || `${seg.origin}-${seg.destination}-${seg.departureDate}-${idx}`} className="p-4 rounded-2xl border border-black/5 dark:border-white/5 bg-white dark:bg-dark-card shadow-sm flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-2xl ${modeMeta?.bgClass || 'bg-primary-500/10'} ${modeMeta?.borderClass || 'border-primary-500/20'} border flex items-center justify-center ${modeMeta?.colorClass || 'text-primary-500'}`}>
                       <ModeIcon className="w-5 h-5" />
                     </div>

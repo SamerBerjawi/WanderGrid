@@ -218,8 +218,8 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
             totalDays += diffDays;
         });
 
-        // Unique countries/locations in set
-        const locations = Array.from(new Set(nonCancelled.map(t => t.location.trim()).filter(Boolean)));
+        // Unique countries/locations in set from completed trips
+        const locations = Array.from(new Set(completed.map(t => t.location.trim()).filter(Boolean)));
 
         return {
             total: nonCancelled.length,
