@@ -1,6 +1,6 @@
 import React, { useState, useEffect, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { INPUT_BASE_STYLE, BTN_PRIMARY_STYLE, BTN_SECONDARY_STYLE } from '../constants';
+import { INPUT_BASE_STYLE, BTN_PRIMARY_STYLE, BTN_SECONDARY_STYLE, CLOSE_BTN_STYLE } from '../constants';
 import Icon from './ui/Icon';
 
 export interface DrawerProps {
@@ -57,14 +57,14 @@ export const StandardDrawer: React.FC<DrawerProps> = ({
   if (!isOpen && !isVisible) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 overflow-hidden font-sans">
+    <div className="fixed inset-0 z-modal overflow-hidden font-sans">
       {/* 1. Frosted Backdrop (Crystal TransactionModal level) */}
       <div 
         className={`fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md transition-opacity duration-300 ${
           isVisible ? 'opacity-100' : 'opacity-0'
         }`}
         style={{ WebkitBackdropFilter: 'blur(12px)' }}
-        onClick={handleClose}
+        onClick={handleClose} 
       />
 
       {/* 2. Slide-out Shell */}
@@ -102,7 +102,7 @@ export const StandardDrawer: React.FC<DrawerProps> = ({
             <button 
               type="button"
               onClick={handleClose}
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5 transition-colors shrink-0"
+              className={CLOSE_BTN_STYLE}
               aria-label="Close drawer"
             >
               <Icon className="text-lg" name="close"/>

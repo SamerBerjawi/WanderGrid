@@ -169,7 +169,74 @@ Follow an 8pt / 4pt spatial rhythm with organic, modern rounded corners:
 1. **Buttons & Action Items:**
    - **Primary Action:** `bg-[#FA9A1D] hover:bg-[#E78310] text-white font-medium shadow-sm transition-all duration-150 active:scale-[0.98]`
    - **Secondary Glass Action:** `bg-white/10 hover:bg-white/20 dark:bg-white/5 dark:hover:bg-white/10 border border-black/5 dark:border-white/10 text-primary transition-all`
+   - **Danger Action:** `bg-semantic-red hover:bg-semantic-red/90 text-white font-medium shadow-sm transition-all duration-150 active:scale-[0.98]`
    - **Ghost Action:** `hover:bg-black/5 dark:hover:bg-white/5 text-secondary hover:text-primary transition-colors`
+   - **Close Button Standard:** `w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer`
 2. **Hover Elevate:** Cards and interactive list rows gently brighten or shift: `transition-all duration-200 hover:border-black/15 dark:hover:border-white/20`.
 3. **Smooth Transitions:** Use `transition-all duration-150 ease-out` for snappy, native-like iOS responsiveness.
 4. **Scrollbars:** Ultra-thin, translucent scrollbars that blend into the canvas background (`scrollbar-thin scrollbar-thumb-white/20`).
+
+---
+
+## 8. Layer Stacking & Z-Index Scale
+
+All surfaces and overlays strictly follow the standardized z-index scale defined in `tailwind.config.js`:
+
+| Layer Name | Tailwind Token | Numeric Value | Use Case |
+| :--- | :--- | :--- | :--- |
+| **Dropdown** | `z-dropdown` | `30` | Autocomplete menus, select dropdowns, context flyouts |
+| **Sticky Header** | `z-sticky` | `40` | Sticky navigation headers, topbars, floating sub-navs |
+| **Modal Backdrop** | `z-modal-backdrop` | `50` | Frosted backdrop overlay (`bg-gray-900/50 dark:bg-black/80 backdrop-blur-md`) |
+| **Modal / Dialog** | `z-modal` | `60` | Slide-out drawers, modal shells, fullscreen dialogs |
+| **Popover** | `z-popover` | `70` | Floating tooltips, overlay controls, modal-level close buttons |
+| **Toast / Alert** | `z-toast` | `80` | Notification toasts, floating banner alerts |
+| **Tooltip** | `z-tooltip` | `90` | Hover tooltips, chronometer tooltips, debug overlays |
+
+*Direct, arbitrary z-index classes like `z-[9000]`, `z-[9999]`, or `z-[60]` are strictly forbidden.*
+
+---
+
+## 9. Temporal & Currency Formatting Engine
+
+All date, time range, and monetary calculations must be routed through the central `utils/formatters.ts` engine. Direct `Date.toLocaleDateString()` and string concatenations are prohibited.
+
+- **Workspace Preference Synchronization:** `formatDate` and `formatDateRange` dynamically resolve the user's `WorkspaceSettings.dateFormat` (`MM/DD/YYYY`, `DD/MM/YYYY`, `YYYY-MM-DD`).
+- **Available Date Styles:**
+  - `numeric`: `10/24/2026` or `24/10/2026`
+  - `short`: `Oct 24` or `24 Oct`
+  - `short-with-year`: `Oct 24, 2026` or `24 Oct 2026`
+  - `medium`: `Oct 24, 2026`
+  - `long`: `October 24, 2026`
+  - `weekday-short`: `Sat, Oct 24`
+  - `weekday-long`: `Saturday, October 24, 2026`
+  - `month-year`: `Oct 2026`
+- **Range Formatting:** `formatDateRange(start, end)` smartly compresses same-month and same-year intervals (e.g., `Oct 12 – 18, 2026` or `12 – 18 Oct 2026`).
+- **Monetary Formatting:** `formatCurrency(amount, currency)` uses `Intl.NumberFormat` respecting the active workspace currency code (`USD`, `EUR`, `GBP`, `AUD`).
+
+---
+
+## 10. Empty State Guidelines
+
+Whenever a dataset, collection, or search query produces zero results, render the shared `<EmptyState />` primitive (`components/EmptyState.tsx`) rather than ad-hoc cards:
+
+- **Icon Container:** Centered `w-16 h-16` rounded-2xl container with primary accent or thematic icon.
+- **Heading:** High-contrast `text-lg font-bold text-light-text dark:text-dark-text tracking-tight`.
+- **Description:** Concise, actionable explanation in `text-xs text-light-text-secondary dark:text-dark-text-secondary max-w-sm`.
+- **Action Buttons:** Minimum 44px height primary action button (`BTN_PRIMARY_STYLE h-11`) and optional secondary ghost/outlined button.
+
+---
+
+## 11. Loading States & Feedback Conventions
+
+1. **Initial / Container Load:** Use animated skeleton cards (`bg-black/5 dark:bg-white/5 animate-pulse rounded-2xl`) matching the layout geometry to avoid cumulative layout shifts (CLS).
+2. **Inline / Action State:** Use button `isLoading` property with a subtle spinner (`w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin`) and disabled pointer events.
+3. **Background Sync:** Subtle header status pill with spinning sync icon.
+
+---
+
+## 12. Accessibility & Touch Target Standards
+
+- **Touch Targets:** All interactive controls (buttons, tabs, inputs, selects, close triggers) must have a minimum clickable hit box of **44×44px** on touch surfaces.
+- **Icon Buttons:** Any button displaying solely an icon must provide an unambiguous `aria-label` attribute (e.g. `aria-label="Close modal"`).
+- **Interactive Elements:** Always use semantic `<button>` elements with keyboard focus states (`focus-visible:ring-2 focus-visible:ring-primary-500`) rather than clickable `<div>` wrappers.
+

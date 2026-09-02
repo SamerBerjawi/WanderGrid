@@ -18,6 +18,7 @@ import { generateAirportRunway, isKnownAirport, RunwayGeometry, getPhysicalRunwa
 import { buildRouteCorridors, RouteCorridor, getApproxLocalTime } from '../services/routeCorridor';
 import { getFlagEmoji, getRegion } from '../services/geoData';
 import { fetchMultiModalRoute, getCachedMultiModalRoute } from '../services/multiModalRouting';
+import { formatDate } from '../utils/formatters';
 
 // --- Enhanced Country Matching Helper for Scratch Map & Overlays ---
 let geoJsonMemoryCache: any = null;
@@ -2259,7 +2260,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                                     </div>
                                                     {f.departureDate && (
                                                         <span className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-mono shrink-0">
-                                                            {new Date(f.departureDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                            {formatDate(f.departureDate, 'short-with-year')}
                                                         </span>
                                                     )}
                                                 </div>

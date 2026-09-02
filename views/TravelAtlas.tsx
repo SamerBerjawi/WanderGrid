@@ -12,6 +12,7 @@ import {
   Star, Heart, Plane, Home, Landmark
 } from 'lucide-react';
 import { Card, Button, Input, Select, BentoGrid, BentoCard } from '../components/ui';
+import { CLOSE_BTN_STYLE } from '../constants';
 
 interface TravelAtlasProps {
   onTripClick?: (tripId: string) => void;
@@ -1570,13 +1571,21 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
       {/* Unified Register Visited Country / City Add & Edit Slide Tray Dialog */}
       <AnimatePresence>
         {isModalOpen && createPortal(
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 font-sans" style={{ WebkitBackdropFilter: 'blur(4px)' }}>
+          <div className="fixed inset-0 z-modal flex items-center justify-center p-4 font-sans">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md"
+              style={{ WebkitBackdropFilter: 'blur(12px)' }}
+              onClick={() => setIsModalOpen(false)}
+            />
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-light-card/90 dark:bg-dark-card/90 backdrop-blur-xl border border-black/10 dark:border-white/10 w-full max-w-lg rounded-3xl shadow-2xl relative overflow-hidden text-light-text dark:text-dark-text"
-              style={{ WebkitBackdropFilter: 'blur(24px)' }}
+              className="bg-white/90 dark:bg-dark-card/90 backdrop-blur-sm border border-black/10 dark:border-white/15 w-full max-w-lg rounded-3xl shadow-glass-modal relative overflow-hidden text-light-text dark:text-dark-text z-10"
+              style={{ WebkitBackdropFilter: 'blur(4px)' }}
             >
               <div className="p-6 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-primary-500/5 to-transparent">
                 <div>
@@ -1589,7 +1598,8 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                 </div>
                 <button 
                   onClick={() => setIsModalOpen(false)}
-                  className="w-9 h-9 rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                  className={CLOSE_BTN_STYLE}
+                  aria-label="Close modal"
                 >
                   <X className="w-4 h-4" />
                 </button>

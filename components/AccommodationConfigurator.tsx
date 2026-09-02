@@ -4,6 +4,7 @@ import { Button, Input, Select, Autocomplete, Badge, TimeInput } from './ui';
 import { Accommodation } from '../types';
 import { dataService } from '../services/mockDb';
 import { searchLocations } from '../services/geocoding';
+import { formatDateRange, formatCurrency, getCurrencySymbol } from '../utils/formatters';
 
 interface AccommodationConfiguratorProps {
     initialData?: Accommodation[];
@@ -237,11 +238,11 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                                 <h4 className="font-bold text-sm text-light-text dark:text-dark-text">{item.name}</h4>
                                 <div className="text-xs text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-2 mt-0.5 font-medium">
                                     <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary border border-black/5 dark:border-white/5">
-                                        {new Date(item.checkInDate).toLocaleDateString(undefined, {month:'short', day:'numeric'})} &rarr; {new Date(item.checkOutDate).toLocaleDateString(undefined, {month:'short', day:'numeric'})}
+                                        {formatDateRange(item.checkInDate, item.checkOutDate)}
                                     </span>
                                     
                                     {item.cost && (
-                                        <span className="text-emerald-600 font-bold ml-1">{currencySymbol}{item.cost}</span>
+                                        <span className="text-semantic-green font-bold ml-1">{formatCurrency(item.cost)}</span>
                                     )}
                                 </div>
                                 <p className="text-2xs text-light-text-secondary/60 dark:text-dark-text-secondary/60 mt-0.5 truncate max-w-[220px] font-medium">{item.address}</p>

@@ -50,6 +50,7 @@ import { useWanderSync } from '../hooks/useWanderSync';
 import { Trip, User, WorkspaceSettings, EntitlementType, PublicHoliday, Transport, Location } from '../types';
 import { getCoordinatesSync, calculateDistance, formatPlaceName } from '../services/geocoding';
 import { getFlagEmoji, getRegion } from '../services/geoData';
+import { formatDate, formatDateRange, formatCurrency } from '../utils/formatters';
 import { 
     INPUT_BASE_STYLE, 
     BTN_PRIMARY_STYLE, 
@@ -701,9 +702,7 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                         <div className="flex items-center gap-2 min-w-0">
                             <CalendarIcon className="w-4 h-4 text-primary-500 shrink-0" />
                             <span className="font-mono font-bold text-xs text-light-text dark:text-dark-text truncate">
-                                {trip.startDate ? new Date(trip.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'TBD'}
-                                {' - '}
-                                {trip.endDate ? new Date(trip.endDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'TBD'}
+                                {formatDateRange(trip.startDate, trip.endDate, settingsData)}
                             </span>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
@@ -991,9 +990,7 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                                         </td>
                                         <td className="p-4">
                                             <p className="text-light-text dark:text-dark-text font-mono font-bold text-xs">
-                                                {trip.startDate ? new Date(trip.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'TBD'}
-                                                {' - '}
-                                                {trip.endDate ? new Date(trip.endDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'TBD'}
+                                                {formatDateRange(trip.startDate, trip.endDate, settingsData)}
                                             </p>
                                             {matchingHolidays.length > 0 && (
                                                 <p className="text-2xs text-amber-600 dark:text-amber-400 font-bold font-mono mt-0.5">

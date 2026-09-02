@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { Card, Button, Badge, Input, Select, Modal } from '../components/ui';
 import { dataService } from '../services/mockDb';
 import { User, Trip } from '../types';
+import { formatDate } from '../utils/formatters';
 
 interface UserDetailProps {
     userId: string;
@@ -522,8 +523,8 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                                     <tbody className="divide-y divide-gray-100 dark:divide-white/5">
                                         {trips.map(trip => {
                                             const ongoing = new Date(trip.startDate) <= new Date() && new Date() <= new Date(trip.endDate);
-                                            const departuresStr = new Date(trip.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                                            const returnStr = new Date(trip.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                                            const departuresStr = formatDate(trip.startDate, 'short-with-year');
+                                            const returnStr = formatDate(trip.endDate, 'short-with-year');
                                             const flightCount = (trip.transports?.filter(t => t.mode === 'Flight').length) || 0;
                                             const overnightsCount = trip.accommodations?.length || 0;
 

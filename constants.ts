@@ -14,7 +14,20 @@ export const BTN_SECONDARY_STYLE =
   'bg-white/10 hover:bg-white/20 dark:bg-white/5 dark:hover:bg-white/10 text-light-text dark:text-dark-text font-medium rounded-xl border border-black/5 dark:border-white/10 transition-all duration-150 active:scale-[0.98]';
 
 export const BTN_DANGER_STYLE = 
-  'bg-rose-500 hover:bg-rose-600 text-white font-medium rounded-xl transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm active:scale-[0.98]';
+  'bg-semantic-red hover:bg-semantic-red/90 text-white font-medium rounded-xl transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm active:scale-[0.98]';
+
+// --- Semantic Status Surface Tokens ---
+export const STATUS_DANGER_STYLE = 
+  'bg-semantic-red/10 text-semantic-red border border-semantic-red/20';
+
+export const STATUS_SUCCESS_STYLE = 
+  'bg-semantic-green/10 text-semantic-green border border-semantic-green/20';
+
+export const STATUS_WARNING_STYLE = 
+  'bg-semantic-yellow/15 text-amber-600 dark:text-semantic-yellow border border-semantic-yellow/30';
+
+export const STATUS_INFO_STYLE = 
+  'bg-semantic-blue/10 text-semantic-blue border border-semantic-blue/20';
 
 // --- Surfaces & Containers ---
 export const CARD_FILL_STYLE = 
@@ -30,7 +43,7 @@ export const MODAL_SHELL_STYLE =
   'bg-white/90 dark:bg-dark-card/90 backdrop-blur-sm border border-black/10 dark:border-white/15 rounded-3xl shadow-glass-modal';
 
 export const MODAL_BACKDROP_STYLE =
-  'fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md transition-opacity duration-300';
+  'fixed inset-0 z-modal-backdrop bg-gray-900/50 dark:bg-black/80 backdrop-blur-md transition-opacity duration-300';
 
 export const DIVIDER_INNER_STYLE = 
   'border-black/5 dark:border-white/5';
@@ -84,7 +97,7 @@ export const SECTION_LABEL_STYLE =
 
 // --- Micro-Components ---
 export const CLOSE_BTN_STYLE = 
-  'w-9 h-9 rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5 transition-colors shrink-0';
+  'w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5 transition-colors shrink-0';
 
 export const STATUS_PILL_STYLE = 
   'px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20';

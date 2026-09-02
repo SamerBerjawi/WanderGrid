@@ -14,8 +14,9 @@ import { Trip, User, Transport, Accommodation, WorkspaceSettings, Activity, Tran
 import { searchLocations, resolvePlaceName, getCoordinates } from '../services/geocoding';
 import { GoogleGenAI } from "@google/genai";
 const DeckFlightMap = React.lazy(() => import('../components/DeckFlightMap').then(m => ({ default: m.DeckFlightMap || m.default })));
-const FlightImportWizard = React.lazy(() => import('../components/FlightImportWizard').then(m => ({ default: m.FlightImportWizard })));
 import { getMerchantLogoUrl } from '../utils/brandfetch';
+import { formatDate, formatDateRange, formatCurrency } from '../utils/formatters';
+import { EmptyState } from '../components/EmptyState';
 
 interface AirlineLogoProps {
     provider?: string;
@@ -1238,7 +1239,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                 {/* Date Info block with customized calendar icon */}
                                                 <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50/60 dark:bg-gray-800/20 border border-gray-150 dark:border-white/5 rounded-full text-xs md:text-sm font-bold text-gray-600 dark:text-gray-350 shadow-sm">
                                                     <span className="material-icons-outlined text-base text-purple-500">calendar_today</span>
-                                                    <span>{new Date(trip.startDate).toLocaleDateString(undefined, {month:'short', day:'numeric'})} - {new Date(trip.endDate).toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'})}</span>
+                                                    <span>{formatDateRange(trip.startDate, trip.endDate, settings)}</span>
                                                 </div>
 
                                                 {/* Weather Condition Info block with customized dynamic weather icon */}
@@ -1396,13 +1397,13 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                 return (
                                     <div key={dateStr} className="relative md:pl-20 group">
                                         <div className="hidden md:flex absolute left-0 top-0 w-16 h-16 bg-white dark:bg-gray-900 border-4 border-gray-100 dark:border-border-800 rounded-2xl items-center justify-center flex-col z-10 shadow-sm">
-                                            <span className="text-2xs font-bold text-gray-400 uppercase tracking-widest">{dateObj.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' })}</span>
+                                            <span className="text-2xs font-bold text-gray-400 uppercase tracking-widest">{formatDate(dateObj, 'short', settings).split(' ')[0]}</span>
                                             <span className="text-xl font-black text-gray-800 dark:text-white leading-none">{dateObj.getUTCDate()}</span>
                                             <span className="text-2xs font-bold text-gray-400 uppercase tracking-tighter mt-0.5">Day {index + 1}</span>
                                         </div>
                                         <div className="md:hidden mb-2 flex items-center gap-3">
                                             <div className="bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-bold">Day {index + 1}</div>
-                                            <span className="text-lg font-black text-gray-800 dark:text-white">{dateObj.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' })}</span>
+                                            <span className="text-lg font-black text-gray-800 dark:text-white">{formatDate(dateObj, 'weekday-long', settings)}</span>
                                         </div>
                                         <div className="space-y-3 pb-8">
                                             {location && (
@@ -1548,7 +1549,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                     <td colSpan={6} className="px-6 py-3">
                                                         <div className="flex items-center gap-3">
                                                             <span className={`text-xs font-black uppercase tracking-wider ${isToday ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>
-                                                                {dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                                                                {formatDate(dateObj, 'weekday-long', settings)}
                                                             </span>
                                                             {isToday && <span className="px-2 py-0.5 rounded text-2xs font-bold bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-300 uppercase tracking-widest">Today</span>}
                                                         </div>
@@ -1613,11 +1614,16 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                         </div>
 
                         {Object.keys(transportGroups).length === 0 ? (
-                            <div className="p-16 text-center border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-3xl">
-                                <span className="material-icons-outlined text-4xl text-zinc-300 dark:text-zinc-700 mb-3 block">flight</span>
-                                <p className="text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-widest text-xs">No transport bookings yet</p>
-                                <button className="text-xs text-indigo-500 font-bold mt-2 hover:underline cursor-pointer" onClick={() => openTransportModal()}>Add your first transport</button>
-                            </div>
+                            <EmptyState
+                                icon={<span className="material-icons-outlined text-4xl text-primary-500">flight</span>}
+                                title="No Transport Bookings Yet"
+                                description="Log your flight, train, or drive segments to coordinate departure times and seat assignments."
+                                action={{
+                                    label: "Add Booking",
+                                    onClick: () => openTransportModal(),
+                                    icon: "add"
+                                }}
+                            />
                         ) : (
                             <div className="grid grid-cols-1 gap-6">
                                 {Object.entries(transportGroups).sort((a, b) => {
@@ -1711,7 +1717,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                                             <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 font-mono">{formatTime(t.departureTime)}</span>
                                                                         </div>
                                                                         <p className="text-xs font-semibold text-zinc-400 dark:text-zinc-500 mt-1">
-                                                                            {new Date(t.departureDate).toLocaleDateString(undefined, {weekday:'short', month:'short', day:'numeric'})}
+                                                                            {formatDate(t.departureDate, 'weekday-short', settings)}
                                                                             {t.departureTerminal && ` · Term ${t.departureTerminal}`}
                                                                             {t.departureGate && ` · Gate ${t.departureGate}`}
                                                                         </p>
@@ -1740,7 +1746,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                                             <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 font-mono">{formatTime(t.arrivalTime)}</span>
                                                                         </div>
                                                                         <p className="text-xs font-semibold text-zinc-400 dark:text-zinc-500 mt-1">
-                                                                            {new Date(t.arrivalDate).toLocaleDateString(undefined, {weekday:'short', month:'short', day:'numeric'})}
+                                                                            {formatDate(t.arrivalDate, 'weekday-short', settings)}
                                                                             {t.arrivalTerminal && ` · Term ${t.arrivalTerminal}`}
                                                                             {t.arrivalGate && ` · Gate ${t.arrivalGate}`}
                                                                         </p>
@@ -1810,11 +1816,16 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                         </div>
 
                         {(!trip.accommodations || trip.accommodations.length === 0) ? (
-                            <div className="p-16 text-center border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-3xl">
-                                <span className="material-icons-outlined text-4xl text-zinc-300 dark:text-zinc-700 mb-3 block">apartment</span>
-                                <p className="text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-widest text-xs">No accommodations booked yet</p>
-                                <button className="text-xs text-indigo-500 font-bold mt-2 hover:underline cursor-pointer" onClick={() => openAccommodationModal()}>Book your stay</button>
-                            </div>
+                            <EmptyState
+                                icon={<span className="material-icons-outlined text-4xl text-primary-500">apartment</span>}
+                                title="No Accommodations Booked Yet"
+                                description="Track your hotels, rentals, or host stays to verify check-in windows and address details."
+                                action={{
+                                    label: "Book Stay",
+                                    onClick: () => openAccommodationModal(),
+                                    icon: "add"
+                                }}
+                            />
                         ) : (
                             <div className="grid grid-cols-1 gap-6">
                                 {[...(trip.accommodations || [])].sort((a, b) => {
@@ -1855,7 +1866,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                         {calculateNights(stay.checkInDate, stay.checkOutDate)} Nights
                                                     </span>
                                                     <span className="bg-zinc-50 dark:bg-zinc-850/55 border border-zinc-150/40 dark:border-white/5 text-zinc-500 dark:text-zinc-400 px-2.5 py-0.5 rounded-lg text-2xs font-bold tracking-tight">
-                                                        {new Date(stay.checkInDate).toLocaleDateString(undefined, {day:'numeric', month:'short'}).toUpperCase()} - {new Date(stay.checkOutDate).toLocaleDateString(undefined, {day:'numeric', month:'short'}).toUpperCase()}
+                                                        {formatDateRange(stay.checkInDate, stay.checkOutDate, settings).toUpperCase()}
                                                     </span>
                                                     {stay.confirmationCode && (
                                                         <span className="bg-zinc-100 dark:bg-zinc-850 border border-zinc-200 dark:border-white/5 text-zinc-400 dark:text-zinc-500 font-mono text-2xs uppercase font-bold px-2 py-0.5 rounded-lg select-all">
@@ -1868,17 +1879,19 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
 
                                         {/* Right: Stay Details / Pricing */}
                                         <div className="flex sm:flex-row md:flex-col items-center justify-between md:justify-center md:items-end gap-3 shrink-0 border-t md:border-t-0 md:border-l border-zinc-150 dark:border-white/5 pt-4 md:pt-0 md:pl-6">
-                                            {stay.cost ? (
-                                                <div className="md:text-right">
-                                                    <p className="text-2xs font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">Total Cost</p>
-                                                    <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">{formatCurrency(stay.cost)}</div>
-                                                    <p className="text-2xs font-semibold text-zinc-400 dark:text-zinc-500">
-                                                        {formatCurrency(Math.round(stay.cost / calculateNights(stay.checkInDate, stay.checkOutDate)))} / night
-                                                    </p>
-                                                </div>
-                                            ) : (
-                                                <div className="text-zinc-300 dark:text-zinc-600 font-mono text-xs italic">Unpriced</div>
-                                            )}
+                                            <div className="md:text-right">
+                                                <p className="text-2xs font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">Total Cost</p>
+                                                {stay.cost ? (
+                                                    <>
+                                                        <div className="text-xl font-bold text-semantic-green mt-0.5">{formatCurrency(stay.cost, settings?.currency)}</div>
+                                                        <p className="text-2xs font-semibold text-zinc-400 dark:text-zinc-500">
+                                                            {formatCurrency(Math.round(stay.cost / calculateNights(stay.checkInDate, stay.checkOutDate)), settings?.currency)} / night
+                                                        </p>
+                                                    </>
+                                                ) : (
+                                                    <div className="text-zinc-300 dark:text-zinc-600 font-mono text-xs italic">Unpriced</div>
+                                                )}
+                                            </div>
                                             
                                             <div className="flex gap-2">
                                                 {stay.website && (
@@ -2136,9 +2149,13 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
 
             {/* Cinematic Modal */}
             {isCinematicOpen && (
-                <div className="fixed inset-0 z-[100] bg-black">
-                    <div className="absolute top-6 right-6 z-[110]">
-                        <button onClick={() => setIsCinematicOpen(false)} className="bg-black/50 hover:bg-black/80 text-white rounded-full p-3 backdrop-blur-md transition-colors border border-white/20">
+                <div className="fixed inset-0 z-modal bg-black">
+                    <div className="absolute top-6 right-6 z-popover">
+                        <button 
+                            onClick={() => setIsCinematicOpen(false)} 
+                            className="min-w-[44px] min-h-[44px] bg-black/60 hover:bg-black/80 text-white rounded-full p-2.5 backdrop-blur-md transition-colors border border-white/20 flex items-center justify-center cursor-pointer"
+                            aria-label="Close cinematic view"
+                        >
                             <span className="material-icons-outlined text-2xl">close</span>
                         </button>
                     </div>
@@ -2185,9 +2202,9 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                            {isSelected && <span className="material-icons-outlined text-white text-xs">check</span>}
                                        </div>
                                        <div className="flex-1">
-                                           <div className="flex justify-between items-center"><h4 className="font-bold text-gray-900 dark:text-white">{t.name}</h4><Badge color={candidate.confidence > 80 ? 'green' : candidate.confidence > 50 ? 'amber' : 'gray'}>{candidate.confidence}% Match</Badge></div>
-                                           <div className="text-xs text-gray-500 mt-1 flex gap-3"><span>{new Date(t.startDate).toLocaleDateString()}</span><span>•</span><span>{t.transports?.length} Flights</span></div>
-                                       </div>
+                                            <div className="flex justify-between items-center"><h4 className="font-bold text-gray-900 dark:text-white">{t.name}</h4><Badge color={candidate.confidence > 80 ? 'green' : candidate.confidence > 50 ? 'amber' : 'gray'}>{candidate.confidence}% Match</Badge></div>
+                                            <div className="text-xs text-gray-500 mt-1 flex gap-3"><span>{formatDate(t.startDate, 'short-with-year', settings)}</span><span>•</span><span>{t.transports?.length} Flights</span></div>
+                                        </div>
                                        <button onClick={(e) => { e.stopPropagation(); setExpandedCandidateId(isExpanded ? null : t.id); }} className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full text-gray-400">{isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}</button>
                                    </div>
                                    {isExpanded && t.transports && (

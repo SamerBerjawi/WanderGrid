@@ -110,14 +110,14 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({ label, error, c
         className={cn(
           INPUT_BASE_STYLE,
           "h-10 text-xs font-bold",
-          error && "!border-rose-500 !ring-rose-500/20",
+          error && "!border-semantic-red !ring-semantic-red/20",
           className
         )}
         {...props}
       />
       {rightElement && <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">{rightElement}</div>}
     </div>
-    {error && <p className="text-2xs text-rose-500 font-bold ml-1">{error}</p>}
+    {error && <p className="text-2xs text-semantic-red font-bold ml-1">{error}</p>}
   </div>
 ));
 Input.displayName = "Input";
@@ -225,7 +225,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(({ label, optio
         className={cn(
           INPUT_BASE_STYLE,
           "h-10 text-xs font-bold appearance-none cursor-pointer pr-10",
-          error && "!border-rose-500 !ring-rose-500/20",
+          error && "!border-semantic-red !ring-semantic-red/20",
           className
         )}
         {...props}
@@ -238,7 +238,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(({ label, optio
         <ChevronDown className="w-4 h-4" />
       </div>
     </div>
-    {error && <p className="text-2xs text-rose-500 font-bold ml-1">{error}</p>}
+    {error && <p className="text-2xs text-semantic-red font-bold ml-1">{error}</p>}
   </div>
 ));
 Select.displayName = "Select";
@@ -294,7 +294,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({ label, options, value,
       </button>
 
       {isOpen && (
-        <div className="absolute top-full mt-2 w-full min-w-[220px] z-50 bg-white dark:bg-dark-card border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl p-2 animate-fade-in left-0">
+        <div className="absolute top-full mt-2 w-full min-w-[220px] z-dropdown bg-white dark:bg-dark-card border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl p-2 animate-fade-in left-0">
           <input 
             type="text" 
             placeholder="Search options..." 
@@ -373,7 +373,7 @@ export const Modal: React.FC<ModalProps> = ({
   if (!visible && !isOpen) return null;
 
   return createPortal(
-    <div className={cn("fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-300 font-sans", isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none')}>
+    <div className={cn("fixed inset-0 z-modal flex items-center justify-center p-4 transition-all duration-300 font-sans", isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none')}>
       {/* 1. Frosted Backdrop (Crystal TransactionModal level) */}
       <div 
         className="fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md transition-opacity" 
@@ -488,10 +488,10 @@ interface BadgeProps {
 export const Badge: React.FC<BadgeProps> = ({ children, color = 'primary', className }) => {
   const colors = {
     primary: 'bg-primary-500/10 text-primary-600 dark:text-primary-400 border-primary-500/20',
-    blue: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
-    green: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
-    amber: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
-    red: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
+    blue: 'bg-semantic-blue/10 text-semantic-blue border-semantic-blue/20',
+    green: 'bg-semantic-green/10 text-semantic-green border-semantic-green/20',
+    amber: 'bg-semantic-yellow/15 text-amber-600 dark:text-semantic-yellow border-semantic-yellow/30',
+    red: 'bg-semantic-red/10 text-semantic-red border-semantic-red/20',
     purple: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20',
     gray: 'bg-black/5 text-light-text-secondary dark:bg-white/5 dark:text-dark-text-secondary border-black/5 dark:border-white/5',
     indigo: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20',

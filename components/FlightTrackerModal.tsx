@@ -5,6 +5,7 @@ import { Modal, Button, Input } from './ui';
 import { flightTracker } from '../services/flightTracker';
 import { FlightStatusResponse, Transport } from '../types';
 import { dataService } from '../services/mockDb';
+import { formatDate } from '../utils/formatters';
 
 interface FlightTrackerModalProps {
     isOpen: boolean;
@@ -183,7 +184,7 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
                                     {flightData.airline.name} {flightData.flight.iata}
                                 </h3>
                                 <p className="text-gray-500 dark:text-gray-400 text-sm font-bold mt-1">
-                                    {new Date(flightData.flight_date).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+                                    {formatDate(flightData.flight_date, 'weekday-long')}
                                 </p>
                             </div>
                             <div className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg ${getStatusColor(flightData.flight_status)}`}>

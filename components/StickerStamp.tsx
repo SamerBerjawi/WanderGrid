@@ -8,6 +8,7 @@ import {
 import { Sticker, StickerClaim, saveManualStickerClaim, deleteManualStickerClaim } from '../utils/stickersData';
 import { Trip } from '../types';
 import { Modal, Button, Input } from './ui';
+import { formatDate } from '../utils/formatters';
 
 interface StickerStampProps {
   sticker: Sticker;
@@ -253,7 +254,7 @@ export const StickerStamp: React.FC<StickerStampProps> = ({
                 {claim.isAutoMatched ? '⭐ MATCH' : '🖋️ CLAIMED'}
               </span>
               <span className={`font-bold opacity-80 ${theme.text}`}>
-                {new Date(claim.claimDate).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
+                {formatDate(claim.claimDate, 'month-year')}
               </span>
             </>
           ) : (
@@ -360,7 +361,7 @@ export const StickerStamp: React.FC<StickerStampProps> = ({
                         <Check className="w-3.5 h-3.5" /> Automatic Verification
                       </p>
                       <p className="text-xs font-semibold leading-relaxed">
-                        Match detected on past trip <strong className="font-bold underline">"{claim.matchedTripName}"</strong> scheduled for {new Date(claim.claimDate).toLocaleDateString()}.
+                        Match detected on past trip <strong className="font-bold underline">"{claim.matchedTripName}"</strong> scheduled for {formatDate(claim.claimDate, 'short-with-year')}.
                       </p>
                     </div>
                   ) : null}
@@ -369,7 +370,7 @@ export const StickerStamp: React.FC<StickerStampProps> = ({
                     <span className="text-2xs text-zinc-450 uppercase font-bold tracking-wide block">Visit Date</span>
                     <p className="text-zinc-900 dark:text-white font-bold flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-indigo-500" />
-                      {new Date(claim.claimDate).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                      {formatDate(claim.claimDate, 'weekday-long')}
                     </p>
                   </div>
 

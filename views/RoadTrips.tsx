@@ -11,6 +11,8 @@ import { dataService } from '../services/mockDb';
 import { motion, AnimatePresence } from 'motion/react';
 import L from 'leaflet';
 import { getCoordinates, getCoordinatesSync, searchLocations } from '../services/geocoding';
+import { formatDate } from '../utils/formatters';
+import { EmptyState } from '../components/EmptyState';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { TooltipContent } from '@/components/charts/tooltip';
 
@@ -1098,18 +1100,16 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
       {!loading && (
         <>
           {filteredRoadTrips.length === 0 ? (
-            <Card className="flex flex-col items-center justify-center py-16 border-dashed border-gray-200 dark:border-white/5 bg-transparent shadow-none rounded-3xl">
-              <div className="w-16 h-16 rounded-3xl bg-zinc-500/10 dark:bg-white/[0.02] border border-zinc-500/20 text-zinc-400 flex items-center justify-center mb-4">
-                <Compass className="w-8 h-8 text-zinc-400" />
-              </div>
-              <h3 className="text-lg font-bold">No land journeys found</h3>
-              <p className="text-xs text-zinc-500 max-w-sm text-center mt-1">
-                There are no journeys registered yet. Try adding a custom itinerary segment or assigning modes like Train/Bus/Car inside the Route Planner.
-              </p>
-              <Button variant="secondary" onClick={handleOpenCreateModal} className="mt-4 text-xs font-bold rounded-xl">
-                Add Your First land journey
-              </Button>
-            </Card>
+            <EmptyState
+              icon={<Compass className="w-8 h-8 text-primary-500" />}
+              title="No Land Journeys Found"
+              description="There are no journeys registered yet. Try adding a custom itinerary segment or assigning modes like Train, Bus, or Car."
+              action={{
+                label: "Add Land Journey",
+                onClick: handleOpenCreateModal,
+                icon: "add"
+              }}
+            />
           ) : (
             <div className="space-y-4">
               {filteredRoadTrips.map((tr) => {
@@ -1172,7 +1172,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                         <div className="text-left md:text-center space-y-1">
                           <div className="flex items-center gap-1.5 md:justify-center text-xs font-bold text-zinc-700 dark:text-zinc-300 leading-none">
                             <Calendar className="w-3.5 h-3.5 text-blue-500" />
-                            <span>{new Date(tr.departureDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                            <span>{formatDate(tr.departureDate, 'short-with-year')}</span>
                           </div>
                           
                           {tr.departureTime && (

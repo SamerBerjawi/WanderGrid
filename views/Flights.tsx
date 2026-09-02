@@ -8,6 +8,9 @@ import {
 import { Card, Button, Input, Select, Badge, TimeInput, Autocomplete } from '../components/ui';
 import { Trip, Transport, User, Carrier, WorkspaceSettings, FlightStatusResponse } from '../types';
 import { getMerchantLogoUrl } from '../utils/brandfetch';
+import { formatDate, formatCurrency } from '../utils/formatters';
+import { CLOSE_BTN_STYLE, MODAL_BACKDROP_STYLE, MODAL_SHELL_STYLE } from '../constants';
+import { EmptyState } from '../components/EmptyState';
 import { dataService } from '../services/mockDb';
 import { FlightyPassport, PassportIdCard, PassportStampsPage, PassportTravelMap } from '../components/FlightyPassport';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -2033,8 +2036,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
     let dateLabel = "";
     if (legs[0].departureDate) {
       const d = getFlightDepartureUtcDate(legs[0]);
-      const options: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' };
-      dateLabel = d.toLocaleDateString('en-US', options);
+      dateLabel = formatDate(d, 'short-with-year', workspaceSettings);
     } else {
       dateLabel = "Planned Route";
     }
@@ -2725,15 +2727,19 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
 
       {/* Flight Board Display Modes */}
       {filteredFlights.length === 0 ? (
-        <div className="bg-white/40 dark:bg-zinc-900/20 border border-zinc-200/30 dark:border-white/5 rounded-3xl p-12 text-center select-none">
-          <div className="w-20 h-20 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto text-blue-500 dark:text-blue-400 mb-6 border border-blue-500/20 animate-bounce">
-            <Plane className="w-8 h-8 rotate-45" />
-          </div>
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white">No Flights Found</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 max-w-md mx-auto">
-            Try tweaking your filters, or click &quot;Add Boarding Pass&quot; to book a flight leg manually.
-          </p>
-        </div>
+        <EmptyState
+          icon={<Plane className="w-8 h-8 rotate-45 text-primary-500" />}
+          title="No Flights Found"
+          description="Try adjusting your filters, or register your next flight leg to get started."
+          action={{
+            label: "Add Boarding Pass",
+            onClick: () => {
+              resetForm();
+              setIsEditing(true);
+            },
+            icon: "flight_takeoff"
+          }}
+        />
       ) : viewMode === 'grid' ? (
         <div className="flex flex-col gap-10">
           <AnimatePresence mode="popLayout">
@@ -3441,8 +3447,13 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
 
       {/* Unbundle Confirmation Modal */}
       {unbundleConfirmTarget !== null && createPortal(
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60] animate-fade-in font-sans" style={{ WebkitBackdropFilter: 'blur(4px)' }}>
-          <div className="bg-light-card/90 dark:bg-dark-card/90 backdrop-blur-xl rounded-3xl p-6 max-w-md w-full shadow-2xl border border-black/10 dark:border-white/10 animate-scale-up" style={{ WebkitBackdropFilter: 'blur(24px)' }}>
+        <div className="fixed inset-0 z-modal flex items-center justify-center p-4 transition-all duration-300 font-sans animate-fade-in">
+          <div 
+            className="fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md transition-opacity"
+            style={{ WebkitBackdropFilter: 'blur(12px)' }}
+            onClick={() => setUnbundleConfirmTarget(null)}
+          />
+          <div className="relative bg-white/90 dark:bg-dark-card/90 backdrop-blur-sm rounded-3xl p-6 max-w-md w-full shadow-glass-modal border border-black/10 dark:border-white/15 animate-scale-up z-10" style={{ WebkitBackdropFilter: 'blur(4px)' }}>
             <div className="flex flex-col items-center text-center">
               <div className="w-12 h-12 bg-amber-500/10 dark:bg-amber-500/20 rounded-2xl flex items-center justify-center text-amber-500 mb-4 border border-amber-500/20">
                 <FolderMinus className="w-6 h-6" />
@@ -3461,14 +3472,14 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                 <button
                   type="button"
                   onClick={() => setUnbundleConfirmTarget(null)}
-                  className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/10 dark:hover:bg-white/10 transition-all cursor-pointer text-center"
+                  className="flex-1 min-h-[44px] py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/10 dark:hover:bg-white/10 transition-all cursor-pointer text-center"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={executeUnbundle}
-                  className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20 transition-all cursor-pointer text-center"
+                  className="flex-1 min-h-[44px] py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20 transition-all cursor-pointer text-center"
                 >
                   Unbundle
                 </button>
@@ -3481,10 +3492,15 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
 
       {/* Delete Confirmation Modal */}
       {deleteConfirmTarget && createPortal(
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60] animate-fade-in font-sans" style={{ WebkitBackdropFilter: 'blur(4px)' }}>
-          <div className="bg-light-card/90 dark:bg-dark-card/90 backdrop-blur-xl rounded-3xl p-6 max-w-md w-full shadow-2xl border border-black/10 dark:border-white/10 animate-scale-up" style={{ WebkitBackdropFilter: 'blur(24px)' }}>
+        <div className="fixed inset-0 z-modal flex items-center justify-center p-4 transition-all duration-300 font-sans animate-fade-in">
+          <div 
+            className="fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md transition-opacity"
+            style={{ WebkitBackdropFilter: 'blur(12px)' }}
+            onClick={() => setDeleteConfirmTarget(null)}
+          />
+          <div className="relative bg-white/90 dark:bg-dark-card/90 backdrop-blur-sm rounded-3xl p-6 max-w-md w-full shadow-glass-modal border border-black/10 dark:border-white/15 animate-scale-up z-10" style={{ WebkitBackdropFilter: 'blur(4px)' }}>
             <div className="flex flex-col items-center text-center">
-              <div className="w-12 h-12 bg-rose-500/10 dark:bg-rose-500/20 rounded-2xl flex items-center justify-center text-rose-500 mb-4 border border-rose-500/20">
+              <div className="w-12 h-12 bg-semantic-red/10 dark:bg-semantic-red/20 rounded-2xl flex items-center justify-center text-semantic-red mb-4 border border-semantic-red/20">
                 <Trash2 className="w-6 h-6" />
               </div>
               
@@ -3517,7 +3533,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                 <button
                   type="button"
                   onClick={() => setDeleteConfirmTarget(null)}
-                  className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/10 dark:hover:bg-white/10 transition-all cursor-pointer text-center"
+                  className="flex-1 min-h-[44px] py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/10 dark:hover:bg-white/10 transition-all cursor-pointer text-center"
                 >
                   Cancel
                 </button>
@@ -3530,7 +3546,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                       await executeMultiDelete();
                     }
                   }}
-                  className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-500/20 transition-all cursor-pointer text-center"
+                  className="flex-1 min-h-[44px] py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-semantic-red hover:bg-semantic-red/90 text-white shadow-lg shadow-semantic-red/20 transition-all cursor-pointer text-center"
                 >
                   Delete
                 </button>
@@ -3543,8 +3559,13 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
 
       {/* Bundling Modal */}
       {isBundling && createPortal(
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60] animate-fade-in font-sans" style={{ WebkitBackdropFilter: 'blur(4px)' }}>
-          <div className="bg-light-card/90 dark:bg-dark-card/90 backdrop-blur-xl rounded-3xl p-6 max-w-md w-full shadow-2xl border border-black/10 dark:border-white/10 animate-scale-up" style={{ WebkitBackdropFilter: 'blur(24px)' }}>
+        <div className="fixed inset-0 z-modal flex items-center justify-center p-4 transition-all duration-300 font-sans animate-fade-in">
+          <div 
+            className="fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md transition-opacity"
+            style={{ WebkitBackdropFilter: 'blur(12px)' }}
+            onClick={() => setIsBundling(false)}
+          />
+          <div className="relative bg-white/90 dark:bg-dark-card/90 backdrop-blur-sm rounded-3xl p-6 max-w-md w-full shadow-glass-modal border border-black/10 dark:border-white/15 animate-scale-up z-10" style={{ WebkitBackdropFilter: 'blur(4px)' }}>
             <div className="flex flex-col">
               <div className="flex items-center gap-3 mb-5">
                 <div className="w-11 h-11 bg-primary-500/10 text-primary-600 dark:text-primary-400 rounded-2xl flex items-center justify-center border border-primary-500/20">
@@ -3570,7 +3591,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     value={bundleName}
                     onChange={(e) => setBundleName(e.target.value)}
                     placeholder="e.g. Paris Getaway"
-                    className="w-full px-4 py-2.5 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-2xl text-xs font-bold focus:outline-none focus:border-primary-500 text-light-text dark:text-dark-text"
+                    className="w-full px-4 py-2.5 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-2xl text-xs font-bold focus:outline-none focus:border-primary-500 text-light-text dark:text-dark-text min-h-[44px]"
                     autoFocus
                   />
                 </div>
@@ -3584,7 +3605,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     value={bundleLocation}
                     onChange={(e) => setBundleLocation(e.target.value)}
                     placeholder="e.g. Paris, France"
-                    className="w-full px-4 py-2.5 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-2xl text-xs font-bold focus:outline-none focus:border-primary-500 text-light-text dark:text-dark-text"
+                    className="w-full px-4 py-2.5 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-2xl text-xs font-bold focus:outline-none focus:border-primary-500 text-light-text dark:text-dark-text min-h-[44px]"
                   />
                 </div>
 
@@ -3607,7 +3628,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                 <button
                   type="button"
                   onClick={() => setIsBundling(false)}
-                  className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/10 dark:hover:bg-white/10 transition-all cursor-pointer text-center"
+                  className="flex-1 min-h-[44px] py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/10 dark:hover:bg-white/10 transition-all cursor-pointer text-center"
                 >
                   Cancel
                 </button>
@@ -3615,7 +3636,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                   type="button"
                   disabled={!bundleName.trim()}
                   onClick={executeBundle}
-                  className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-primary-500 hover:bg-primary-600 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-lg shadow-primary-500/20 transition-all cursor-pointer text-center"
+                  className="flex-1 min-h-[44px] py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-primary-500 hover:bg-primary-600 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-lg shadow-primary-500/20 transition-all cursor-pointer text-center"
                 >
                   Create Bundle
                 </button>
@@ -3628,8 +3649,16 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
 
       {/* Edit Bundle Settings Modal */}
       {isEditingBundle && createPortal(
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60] animate-fade-in font-sans" style={{ WebkitBackdropFilter: 'blur(4px)' }}>
-          <div className="bg-light-card/90 dark:bg-dark-card/90 backdrop-blur-xl rounded-3xl p-6 max-w-md w-full shadow-2xl border border-black/10 dark:border-white/10 animate-scale-up" style={{ WebkitBackdropFilter: 'blur(24px)' }}>
+        <div className="fixed inset-0 z-modal flex items-center justify-center p-4 transition-all duration-300 font-sans animate-fade-in">
+          <div 
+            className="fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md transition-opacity"
+            style={{ WebkitBackdropFilter: 'blur(12px)' }}
+            onClick={() => {
+              setIsEditingBundle(false);
+              setEditingBundleId('');
+            }}
+          />
+          <div className="relative bg-white/90 dark:bg-dark-card/90 backdrop-blur-sm rounded-3xl p-6 max-w-md w-full shadow-glass-modal border border-black/10 dark:border-white/15 animate-scale-up z-10" style={{ WebkitBackdropFilter: 'blur(4px)' }}>
             <div className="flex flex-col">
               <div className="flex items-center gap-3 mb-5">
                 <div className="w-11 h-11 bg-primary-500/10 text-primary-600 dark:text-primary-400 rounded-2xl flex items-center justify-center border border-primary-500/20">
@@ -3655,7 +3684,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     value={formBundleName}
                     onChange={(e) => setFormBundleName(e.target.value)}
                     placeholder="e.g. Paris Getaway"
-                    className="w-full px-4 py-2.5 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-2xl text-xs font-bold focus:outline-none focus:border-primary-500 text-light-text dark:text-dark-text"
+                    className="w-full px-4 py-2.5 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-2xl text-xs font-bold focus:outline-none focus:border-primary-500 text-light-text dark:text-dark-text min-h-[44px]"
                     autoFocus
                   />
                 </div>
@@ -3669,12 +3698,12 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     value={formBundleLocation}
                     onChange={(e) => setFormBundleLocation(e.target.value)}
                     placeholder="e.g. Paris, France"
-                    className="w-full px-4 py-2.5 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-2xl text-xs font-bold focus:outline-none focus:border-primary-500 text-light-text dark:text-dark-text"
+                    className="w-full px-4 py-2.5 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-2xl text-xs font-bold focus:outline-none focus:border-primary-500 text-light-text dark:text-dark-text min-h-[44px]"
                   />
                 </div>
 
-                <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 mb-1">
+                <div className="p-4 rounded-2xl bg-semantic-red/10 border border-semantic-red/20">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-semantic-red mb-1">
                     Disassemble Bundle actions
                   </h4>
                   <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary leading-relaxed mb-3 font-medium">
@@ -3687,7 +3716,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                         handleDisassembleBundle();
                       }
                     }}
-                    className="w-full py-2 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-rose-500 hover:bg-rose-600 text-white transition-all cursor-pointer text-center"
+                    className="w-full min-h-[44px] py-2 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-semantic-red hover:bg-semantic-red/90 text-white transition-all cursor-pointer text-center"
                   >
                     Disassemble Bundle
                   </button>
@@ -3701,7 +3730,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     setIsEditingBundle(false);
                     setEditingBundleId('');
                   }}
-                  className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/10 dark:hover:bg-white/10 transition-all cursor-pointer text-center"
+                  className="flex-1 min-h-[44px] py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/10 dark:hover:bg-white/10 transition-all cursor-pointer text-center"
                 >
                   Cancel
                 </button>
@@ -3709,7 +3738,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                   type="button"
                   disabled={!formBundleName.trim()}
                   onClick={handleSaveBundleSettings}
-                  className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-primary-500 hover:bg-primary-600 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-lg shadow-primary-500/20 transition-all cursor-pointer text-center"
+                  className="flex-1 min-h-[44px] py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-primary-500 hover:bg-primary-600 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-lg shadow-primary-500/20 transition-all cursor-pointer text-center"
                 >
                   Save Changes
                 </button>
@@ -3723,8 +3752,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
       {/* Add / Edit Form Modal */}
       {isEditing && createPortal(
         <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in font-sans"
-          style={{ WebkitBackdropFilter: 'blur(4px)' }}
+          className="fixed inset-0 z-modal flex items-center justify-center p-4 transition-all duration-300 font-sans animate-fade-in"
           onBlurCapture={() => {
             if (!editingFlight) {
               const draft = {
@@ -3739,7 +3767,12 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
             }
           }}
         >
-          <div className="bg-light-card/90 dark:bg-dark-card/90 backdrop-blur-xl rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-black/10 dark:border-white/10 animate-scale-up max-h-[90vh] overflow-y-auto custom-scrollbar" style={{ WebkitBackdropFilter: 'blur(24px)' }}>
+          <div 
+            className="fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md transition-opacity"
+            style={{ WebkitBackdropFilter: 'blur(12px)' }}
+            onClick={() => setIsEditing(false)}
+          />
+          <div className="relative bg-white/90 dark:bg-dark-card/90 backdrop-blur-sm rounded-3xl p-6 max-w-lg w-full shadow-glass-modal border border-black/10 dark:border-white/15 animate-scale-up max-h-[90vh] overflow-y-auto custom-scrollbar z-10" style={{ WebkitBackdropFilter: 'blur(4px)' }}>
             
             <div className="flex items-center justify-between border-b border-black/5 dark:border-white/5 pb-4 mb-6">
               <div className="flex items-center gap-3">
@@ -3757,7 +3790,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
               </div>
               <button 
                 onClick={() => setIsEditing(false)}
-                className="w-9 h-9 rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                className={CLOSE_BTN_STYLE}
                 aria-label="Close modal"
               >
                 <X className="w-4 h-4" />

@@ -163,7 +163,7 @@ export const StandardDrawer: React.FC<DrawerProps> = ({
   if (!isOpen && !isVisible) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 overflow-hidden font-sans">
+    <div className="fixed inset-0 z-modal overflow-hidden font-sans">
       {/* 1. Frosted Backdrop (Crystal TransactionModal level) */}
       <div 
         className={`fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md transition-opacity duration-300 ${
@@ -208,7 +208,7 @@ export const StandardDrawer: React.FC<DrawerProps> = ({
             <button 
               type="button"
               onClick={handleClose}
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5 transition-colors shrink-0"
+              className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5 transition-colors shrink-0 cursor-pointer"
               aria-label="Close drawer"
             >
               <Icon className="text-lg" name="close"/>
@@ -268,4 +268,14 @@ export const StandardDrawer: React.FC<DrawerProps> = ({
   );
 };
 ```
+
+---
+
+## 8. Formatting, Stacking Hierarchy & Accessibility Rules
+
+- **Temporal & Monetary Engine:** Never write ad-hoc date/currency formatting logic or call `Date.toLocaleDateString()` directly in UI components. Always consume `formatDate`, `formatDateRange`, or `formatCurrency` from `/utils/formatters.ts` so that the user's workspace settings (`dateFormat`, `currency`) are respected uniformly.
+- **Strict Z-Index Hierarchy:** Adhere strictly to the design token scale (`z-dropdown`, `z-sticky`, `z-modal-backdrop`, `z-modal`, `z-popover`, `z-toast`, `z-tooltip`). Arbitrary z-indices like `z-[9000]` or `z-[9999]` are prohibited.
+- **Shared Empty States:** Whenever queries or collections yield empty states, use the shared `<EmptyState />` component from `/components/EmptyState.tsx`.
+- **Apple HIG 44px Minimum Touch Targets:** All clickable triggers, close buttons, and tab controls must enforce at least `min-w-[44px] min-h-[44px]` touch targets, with clear `aria-label` attributes for icon-only buttons.
+
 

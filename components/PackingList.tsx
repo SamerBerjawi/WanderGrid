@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Trip, PackingItem, WorkspaceSettings } from '../types';
 import { Button, Input, Select, Badge } from './ui';
+import { EmptyState } from './EmptyState';
 import { GoogleGenAI, Type } from "@google/genai";
 import { dataService } from '../services/mockDb';
 
@@ -272,7 +273,8 @@ export const PackingList: React.FC<PackingListProps> = ({ trip, onUpdate }) => {
                                         </span>
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
-                                            className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-rose-500 transition-opacity"
+                                            className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-semantic-red p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-all cursor-pointer"
+                                            aria-label={`Delete ${item.text}`}
                                         >
                                             <span className="material-icons-outlined text-sm">close</span>
                                         </button>
@@ -283,13 +285,22 @@ export const PackingList: React.FC<PackingListProps> = ({ trip, onUpdate }) => {
                     );
                 })}
                 {items.length === 0 && (
-                    <div className="col-span-full py-12 text-center border-2 border-dashed border-gray-200 dark:border-white/10 rounded-3xl">
-                        <span className="material-icons-outlined text-6xl text-gray-200 dark:text-gray-700">backpack</span>
-                        <p className="text-gray-400 font-bold uppercase tracking-widest mt-4 text-xs">Your bag is empty</p>
-                        <div className="flex gap-2 justify-center mt-2">
-                            {masterList.length > 0 && <Button variant="ghost" onClick={handleImportMaster} className="text-cyan-500 hover:bg-cyan-50">Load Master List</Button>}
-                            <Button variant="ghost" onClick={handleAiGenerate} className="text-blue-500 hover:bg-blue-50">Generate Suggestions</Button>
-                        </div>
+                    <div className="col-span-full">
+                        <EmptyState
+                            icon={<span className="material-icons-outlined text-5xl text-primary-500">backpack</span>}
+                            title="Your Bag is Empty"
+                            description="Start adding items to your packing list manually or generate smart suggestions."
+                            action={{
+                                label: "Generate Suggestions",
+                                onClick: handleAiGenerate,
+                                icon: "auto_awesome"
+                            }}
+                            secondaryAction={masterList.length > 0 ? {
+                                label: "Load Master List",
+                                onClick: handleImportMaster,
+                                icon: "list_alt"
+                            } : undefined}
+                        />
                     </div>
                 )}
             </div>

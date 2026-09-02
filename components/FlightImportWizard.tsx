@@ -876,7 +876,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
 
     return (
         <div 
-            className="fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md flex items-center justify-center z-[9000] p-4 text-light-text dark:text-dark-text animate-fade-in"
+            className="fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md flex items-center justify-center z-modal p-4 text-light-text dark:text-dark-text animate-fade-in"
             style={{ WebkitBackdropFilter: 'blur(12px)' }}
         >
             <div className="bg-white/95 dark:bg-dark-card/95 backdrop-blur-sm border border-black/10 dark:border-white/15 rounded-3xl shadow-glass-modal flex flex-col w-full max-w-6xl h-[85vh] overflow-hidden animate-scale-up" style={{ WebkitBackdropFilter: 'blur(4px)' }}>

@@ -21,6 +21,15 @@ export default {
       fontSize: {
         '2xs': ['0.625rem', { lineHeight: '0.875rem' }],
       },
+      zIndex: {
+        'dropdown': '30',
+        'sticky': '40',
+        'modal-backdrop': '50',
+        'modal': '60',
+        'popover': '70',
+        'toast': '80',
+        'tooltip': '90',
+      },
       colors: {
         primary: {
           50: '#fef8f0',

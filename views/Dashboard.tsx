@@ -14,6 +14,7 @@ import { StampFlipBook } from '../components/StampFlipBook';
 import { StickerStamp } from '../components/StickerStamp';
 import { AchievementMilestones } from '../components/AchievementMilestones';
 import { ICONIC_STICKERS, loadStickersProgress, StickerClaim, STICKER_CATEGORIES } from '../utils/stickersData';
+import { formatDate } from '../utils/formatters';
 import { motion, AnimatePresence } from 'motion/react';
 import { Globe, Plane, Award, Compass, Search, MapPin, Calendar, CheckCircle, Shield, Briefcase, ChevronRight, TrendingUp, Cpu, Layers, Wifi, Sparkles, Ticket, Activity, Info } from 'lucide-react';
 
@@ -938,7 +939,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                         <div className="text-left font-mono">
                             <span className="block text-2xs text-zinc-400 uppercase font-bold tracking-widest leading-none mb-0.5">Chronometer</span>
                             <span className="text-xs font-bold text-zinc-800 dark:text-zinc-100">
-                                {currentTime.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
+                                {formatDate(currentTime, 'weekday-short')}
                             </span>
                         </div>
                     </div>
@@ -1136,7 +1137,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                         
                                         <div className="text-right shrink-0 pr-1 font-mono z-10">
                                             <span className="block text-xs font-bold text-blue-600 dark:text-blue-400 uppercase">
-                                                {new Date(t.startDate).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                                                {formatDate(t.startDate, 'short')}
                                             </span>
                                             <div className="flex gap-0.5 justify-end opacity-20 h-3.5 mt-1">
                                                 <span className="w-[1px] bg-zinc-800 dark:bg-white h-full" />

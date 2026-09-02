@@ -1077,7 +1077,11 @@ class DataService {
     const settings = await this.fetch<WorkspaceSettings>('/settings');
     return { ...DEFAULT_WORKSPACE_SETTINGS, ...settings };
   }
-  async updateWorkspaceSettings(settings: WorkspaceSettings): Promise<void> { await this.fetch('/settings', { method: 'PUT', body: JSON.stringify(settings) }); }
+  async updateWorkspaceSettings(settings: WorkspaceSettings): Promise<void> { 
+    safeStorage.setItem('wandergrid_workspace_settings', JSON.stringify(settings));
+    safeStorage.setItem('wandergrid_settings', JSON.stringify(settings));
+    await this.fetch('/settings', { method: 'PUT', body: JSON.stringify(settings) }); 
+  }
   async wipeDatabase(): Promise<void> {
       const isProd = import.meta.env.PROD;
       if (this._useApi || isProd) {

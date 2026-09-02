@@ -24,6 +24,7 @@ import { Button, Badge, Card, Modal, Select } from '../components/ui';
 import { dataService } from '../services/mockDb';
 import { useWanderSync } from '../hooks/useWanderSync';
 import { Trip, User, EntitlementType, SavedConfig, CustomEvent as TripCustomEvent, PublicHoliday } from '../types';
+import { formatDate, formatDateRange } from '../utils/formatters';
 
 interface VacationCalendarProps {
   onTripClick?: (tripId: string) => void;
@@ -438,7 +439,7 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
           type: 'trip',
           id: trip.id,
           title: trip.name,
-          dateText: `${sDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} – ${eDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`,
+          dateText: formatDateRange(sDate, eDate, settings),
           daysCount,
           startDateObj: sDate,
           endDateObj: eDate,
@@ -463,7 +464,7 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
             type: 'holiday',
             id: holiday.id,
             title: holiday.name,
-            dateText: hDate.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }),
+            dateText: formatDate(hDate, 'long', settings),
             daysCount: 1,
             startDateObj: hDate,
             endDateObj: hDate,
@@ -495,7 +496,7 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
             type: 'event',
             id: event.id,
             title: event.name,
-            dateText: evDate.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }),
+            dateText: formatDate(evDate, 'long', settings),
             daysCount: 1,
             startDateObj: evDate,
             endDateObj: evDate,
@@ -588,7 +589,7 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
             type: 'bridge'
           });
         } else if (dayIdx === 3) { // Wednesday holiday: Midweek sandwich
-          const monTueStr = `${prevDay.toLocaleDateString(undefined, {month: 'numeric', day: 'numeric'})} & ${new Date(prevDay.getFullYear(), prevDay.getMonth(), prevDay.getDate() - 1).toLocaleDateString(undefined, {day: 'numeric'})}`;
+          const monTueStr = `${formatDate(prevDay, 'numeric', settings)} & ${formatDate(new Date(prevDay.getFullYear(), prevDay.getMonth(), prevDay.getDate() - 1), 'numeric', settings)}`;
           recommendations.push({
             id: `opt-${holiday.id}`,
             holidayName: holiday.name,
@@ -1387,7 +1388,7 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
                             </h4>
                             
                             <p className="text-2xs font-bold text-gray-400 flex items-center gap-1">
-                              <span>Lands on {guide.dayOfWeek}, {parseDateResilient(guide.holidayDate).toLocaleDateString(undefined, {month: 'short', day: 'numeric'})}</span>
+                              <span>Lands on {guide.dayOfWeek}, {formatDate(parseDateResilient(guide.holidayDate), 'short', settings)}</span>
                             </p>
 
                             <p className="text-xs font-medium text-gray-500 dark:text-zinc-400 mt-2">
