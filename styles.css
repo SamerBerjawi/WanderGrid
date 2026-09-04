@@ -74,3 +74,74 @@
     @apply text-xs font-medium leading-tight;
   }
 }
+
+/* ─── PWA & Mobile Foundation ─── */
+
+/* Safe-area inset utilities */
+.safe-top    { padding-top:    env(safe-area-inset-top, 0px); }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.safe-left   { padding-left:   env(safe-area-inset-left, 0px); }
+.safe-right  { padding-right:  env(safe-area-inset-right, 0px); }
+.safe-x      { padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
+.safe-y      { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+/* Margin variants */
+.m-safe-bottom { margin-bottom: env(safe-area-inset-bottom, 0px); }
+.m-safe-top    { margin-top:    env(safe-area-inset-top, 0px); }
+
+/* Fixed bottom bar with safe-area */
+.fixed-bottom-safe {
+  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* Touch feedback — Apple HIG active state */
+.touch-feedback {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.touch-feedback:active {
+  transform: scale(0.97);
+  opacity: 0.85;
+  transition: transform 80ms ease-out, opacity 80ms ease-out;
+}
+
+/* Prevent overscroll bounce on the body (PWA standalone) */
+@media (display-mode: standalone) {
+  html, body {
+    overscroll-behavior: none;
+  }
+}
+
+/* iOS standalone status bar space */
+@supports (padding-top: env(safe-area-inset-top)) {
+  @media (display-mode: standalone) {
+    .pwa-status-bar-space {
+      padding-top: env(safe-area-inset-top, 0px);
+    }
+  }
+}
+
+/* Smooth momentum scrolling on mobile */
+.scroll-touch {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+/* Snap scrolling for horizontal carousels */
+.snap-scroll-x {
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+.snap-scroll-x > * {
+  scroll-snap-align: start;
+}
+
+/* Mobile-specific text selection prevention for nav elements */
+@media (max-width: 767px) {
+  nav, [role="tabbar"], [role="navigation"] {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}

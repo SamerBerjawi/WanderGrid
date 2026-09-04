@@ -2,18 +2,26 @@
   "short_name": "WanderGrid",
   "name": "WanderGrid Travel Planner",
   "description": "Premium multi-partner travel, flight path, and allowance coordinate engine.",
-  "start_url": "./",
-  "display": "standalone",
-  "background_color": "#050505",
-  "theme_color": "#fa9a1d",
-  "orientation": "any",
-  "categories": ["travel", "productivity"],
   "icons": [
     {
-      "src": "icon.svg",
+      "src": "/icon.svg",
       "type": "image/svg+xml",
-      "sizes": "192x192 256x256 384x384 512x512",
-      "purpose": "any maskable"
+      "sizes": "any",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "maskable"
     }
-  ]
+  ],
+  "start_url": "/",
+  "scope": "/",
+  "background_color": "#050505",
+  "theme_color": "#fa9a1d",
+  "display": "standalone",
+  "orientation": "portrait",
+  "categories": ["travel", "productivity"],
+  "id": "wandergrid-travel-pwa"
 }

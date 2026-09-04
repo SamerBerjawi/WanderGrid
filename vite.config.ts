@@ -1,6 +1,7 @@
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
@@ -9,7 +10,37 @@ export default defineConfig(({ mode }) => {
         port: 3000,
         host: '0.0.0.0',
       },
-      plugins: [react()],
+      plugins: [
+        react(),
+        VitePWA({
+          registerType: 'autoUpdate',
+          includeAssets: ['icon.svg'],
+          manifest: false, // We maintain our own manifest.json in /public
+          workbox: {
+            globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+            skipWaiting: true,
+            clientsClaim: true,
+            cleanupOutdatedCaches: true,
+            runtimeCaching: [
+              {
+                urlPattern: /^https:\/\/fonts\.googleapis\.com\//,
+                handler: 'StaleWhileRevalidate',
+                options: {
+                  cacheName: 'google-fonts-stylesheets',
+                },
+              },
+              {
+                urlPattern: /^https:\/\/fonts\.gstatic\.com\//,
+                handler: 'CacheFirst',
+                options: {
+                  cacheName: 'google-fonts-webfonts',
+                  expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 },
+                },
+              },
+            ],
+          },
+        }),
+      ],
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)

@@ -202,16 +202,20 @@ export default function App() {
   useEffect(() => {
     const root = document.documentElement;
     const applyTheme = (currentTheme: 'light' | 'dark' | 'auto') => {
+        let isDark = false;
         if (currentTheme === 'dark') {
-            root.classList.add('dark');
+            isDark = true;
         } else if (currentTheme === 'light') {
-            root.classList.remove('dark');
+            isDark = false;
         } else {
-            if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                root.classList.add('dark');
-            } else {
-                root.classList.remove('dark');
-            }
+            isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        }
+        root.classList.toggle('dark', isDark);
+
+        // Update meta theme-color for iOS / Android PWA status bar
+        const metaThemeColor = document.getElementById('theme-color-meta');
+        if (metaThemeColor) {
+            metaThemeColor.setAttribute('content', isDark ? '#050505' : '#FAFAFA');
         }
     };
     
