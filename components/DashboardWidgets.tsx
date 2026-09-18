@@ -152,14 +152,12 @@ export const DonutChart: React.FC<{
                                     const curr = payload[0].payload;
                                     const pct = Math.round((curr.value / total) * 100);
                                     return (
-                                        <div className="rounded-2xl border border-black/10 dark:border-white/15 bg-white/90 dark:bg-dark-card/90 backdrop-blur-2xl shadow-glass-modal overflow-hidden">
-                                            <TooltipContent
-                                                title={curr.name}
-                                                rows={[
-                                                    { color: curr.color, label: 'Flights', value: `${curr.value} (${pct}%)` }
-                                                ]}
-                                            />
-                                        </div>
+                                        <TooltipContent
+                                            title={curr.name}
+                                            rows={[
+                                                { color: curr.color, label: 'Flights', value: `${curr.value} (${pct}%)` }
+                                            ]}
+                                        />
                                     );
                                 }
                                 return null;
@@ -235,15 +233,13 @@ export const FlightTrendChart: React.FC<{ data: FlightTrendPoint[] }> = ({ data 
                                 if (active && payload && payload.length) {
                                     const curr = payload[0].payload;
                                     return (
-                                        <div className="rounded-2xl border border-black/10 dark:border-white/15 bg-white/90 dark:bg-dark-card/90 backdrop-blur-2xl shadow-glass-modal overflow-hidden">
-                                            <TooltipContent
-                                                title={curr.date}
-                                                rows={[
-                                                    { color: '#3b82f6', label: 'Total Distance', value: `${curr.cumulative.toLocaleString()} km` },
-                                                    { color: '#06b6d4', label: 'Increment', value: `+${curr.distance.toLocaleString()} km` }
-                                                ]}
-                                            />
-                                        </div>
+                                        <TooltipContent
+                                            title={curr.date}
+                                            rows={[
+                                                { color: '#3b82f6', label: 'Total Distance', value: `${curr.cumulative.toLocaleString()} km` },
+                                                { color: '#06b6d4', label: 'Increment', value: `+${curr.distance.toLocaleString()} km` }
+                                            ]}
+                                        />
                                     );
                                 }
                                 return null;

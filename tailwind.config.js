@@ -45,15 +45,15 @@ export default {
         },
         'light-bg': '#FAFAFA',
         'light-card': 'rgba(255, 255, 255, 0.75)',
-        'light-text': '#181D27',
-        'light-text-secondary': '#414651',
+        'light-text': '#0F172A',
+        'light-text-secondary': '#334155',
         'light-separator': 'rgba(0, 0, 0, 0.08)',
         'light-fill': '#F8FAFC',
 
         'dark-bg': '#050505',
         'dark-card': 'rgba(23, 23, 23, 0.75)',
         'dark-text': '#FFFFFF',
-        'dark-text-secondary': '#CECFD2',
+        'dark-text-secondary': '#E2E8F0',
         'dark-separator': 'rgba(255, 255, 255, 0.1)',
         'dark-fill': 'rgba(30, 34, 48, 0.5)',
 

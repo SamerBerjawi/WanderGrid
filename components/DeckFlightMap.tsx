@@ -26,7 +26,8 @@ import {
     Ship, 
     Car,
     ZoomIn,
-    ZoomOut
+    ZoomOut,
+    List
 } from 'lucide-react';
 import { Trip, CountryResidenceStatus, PredefinedMapMode, toggleCountryResidenceStatus, WorkspaceSettings } from '../types';
 import { useWanderSync } from '../hooks/useWanderSync';
@@ -45,6 +46,7 @@ import { getFlagEmoji, getRegion } from '../services/geoData';
 import { fetchMultiModalRoute, getCachedMultiModalRoute } from '../services/multiModalRouting';
 import { dataService } from '../services/mockDb';
 import { formatDate } from '../utils/formatters';
+import GlassPanel from './glass/GlassPanel';
 
 // --- Country Matching Helper for Scratch Map & Overlays ---
 let geoJsonMemoryCache: any = null;
@@ -124,6 +126,68 @@ const getFrequencyRGB = (freq: number): [number, number, number] => {
     if (freq <= 7) return [249, 115, 22];   // Vivid Blaze Orange (5-7 flights)
     if (freq <= 11) return [239, 68, 68];   // Hot Crimson Red (8-11 flights)
     return [236, 72, 153];                  // Intense Hyper Magenta / Plasma Pink (12+ flights)
+};
+
+/**
+ * AirTrail Date Formatter (MM/DD/YYYY)
+ * E.g. "06/18/2022", "04/05/2013"
+ */
+const formatAirTrailDate = (dateStr?: string): string => {
+    if (!dateStr) return '';
+    try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return dateStr;
+        const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const dd = String(d.getUTCDate()).padStart(2, '0');
+        const yyyy = d.getUTCFullYear();
+        return `${mm}/${dd}/${yyyy}`;
+    } catch {
+        return dateStr;
+    }
+};
+
+/**
+ * AirTrail Medium Date Formatter (MMM D, YYYY)
+ * E.g. "Jun 18, 2022"
+ */
+const formatAirTrailDateMedium = (dateStr?: string): string => {
+    if (!dateStr) return '';
+    try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return dateStr;
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return `${months[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
+    } catch {
+        return dateStr;
+    }
+};
+
+/**
+ * AirTrail relative time difference string:
+ * E.g. "LAX 9h behind", "AMM 8h ahead", "Same local time"
+ */
+const getRelativeTimeDiffString = (originLng: number, destLng: number, destCode: string): string => {
+    const originOffset = Math.round(originLng / 15);
+    const destOffset = Math.round(destLng / 15);
+    const diff = destOffset - originOffset;
+    if (diff === 0) return 'Same local time';
+    const cleanDestCode = (destCode || '').toUpperCase();
+    if (diff > 0) return `${cleanDestCode} ${diff}h ahead`;
+    return `${cleanDestCode} ${Math.abs(diff)}h behind`;
+};
+
+/**
+ * Format City and Airport with dot separator matching AirTrail:
+ * E.g. "Amsterdam · Amsterdam Airport Schiphol", "Los Angeles · Los Angeles Intl."
+ */
+const formatAirportCityDotName = (name: string, city?: string): string => {
+    const cleanCity = city ? city.split(',')[0].trim() : '';
+    const cleanName = name ? name.trim() : '';
+    if (cleanCity && cleanName) {
+        if (cleanCity.toUpperCase() === cleanName.toUpperCase()) return cleanName;
+        return `${cleanCity} · ${cleanName}`;
+    }
+    return cleanCity || cleanName || '';
 };
 
 // Calculate approximate polygon centroid for Scratch Map regional coloring
@@ -390,6 +454,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     const [geoJsonData, setGeoJsonData] = useState<any>(null);
     const [selectedCorridor, setSelectedCorridor] = useState<RouteCorridor | null>(null);
     const [selectedCountry, setSelectedCountry] = useState<any | null>(null);
+    const [isFlightListExpanded, setIsFlightListExpanded] = useState<boolean>(false);
 
     // Runway dataset demand loading
     const [runwayDatasetLoaded, setRunwayDatasetLoaded] = useState(false);
@@ -882,6 +947,15 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         }
     }, [handleSelectCorridor, onTripClick]);
 
+    const handleSelectCorridorRef = useRef(handleSelectCorridor);
+    handleSelectCorridorRef.current = handleSelectCorridor;
+
+    const onTripClickRef = useRef(onTripClick);
+    onTripClickRef.current = onTripClick;
+
+    const handleRouteHoverRef = useRef(handleRouteHover);
+    handleRouteHoverRef.current = handleRouteHover;
+
     // Build Deck.gl Layers
     const deckLayers = useMemo(() => {
         const layers: any[] = [];
@@ -1331,6 +1405,38 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             }
         });
 
+        // Forward MapLibre Canvas Clicks to Deck.gl overlay for instant corridor selection
+        map.on('click', (e) => {
+            if (!overlayRef.current) return;
+            const picked = overlayRef.current.pickObject({
+                x: e.point.x,
+                y: e.point.y,
+                radius: 16
+            });
+            if (picked?.object?.corridorId) {
+                handleSelectCorridorRef.current(picked.object.corridorId);
+            } else if (picked?.object?.tripId && onTripClickRef.current) {
+                onTripClickRef.current(picked.object.tripId);
+            }
+        });
+
+        // Forward MapLibre Canvas Mousemove to Deck.gl overlay for hover tooltips
+        map.on('mousemove', (e) => {
+            if (!overlayRef.current) return;
+            const picked = overlayRef.current.pickObject({
+                x: e.point.x,
+                y: e.point.y,
+                radius: 12
+            });
+            if (picked?.object) {
+                map.getCanvas().style.cursor = 'pointer';
+                handleRouteHoverRef.current(picked);
+            } else {
+                map.getCanvas().style.cursor = '';
+                handleRouteHoverRef.current({ object: null });
+            }
+        });
+
         mapRef.current = map;
         overlayRef.current = overlay;
 
@@ -1518,49 +1624,63 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             {/* MapLibre GL 60 FPS Canvas with Interleaved Deck.gl Engine */}
             <div ref={mapContainerRef} className="w-full h-full" />
 
-            {/* Zoom & View Navigation Controls (Bottom Left) */}
-            <div className="absolute bottom-6 left-6 z-20 flex flex-col gap-2">
-                <div className="flex flex-col rounded-2xl border border-black/10 dark:border-white/10 bg-white/80 dark:bg-dark-card/85 backdrop-blur-xl shadow-glass-card overflow-hidden divide-y divide-black/10 dark:divide-white/10">
-                    <button
-                        onClick={handleZoomIn}
-                        className="w-10 h-10 flex items-center justify-center text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer font-bold text-lg transition-colors active:scale-95"
-                        title="Zoom In (+)"
-                    >
-                        +
-                    </button>
-                    <button
-                        onClick={handleZoomOut}
-                        className="w-10 h-10 flex items-center justify-center text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer font-bold text-lg transition-colors active:scale-95"
-                        title="Zoom Out (−)"
-                    >
-                        −
-                    </button>
-                    <button
-                        onClick={handleReset100}
-                        className="w-10 h-10 flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer font-bold text-xs tracking-tight transition-colors active:scale-95"
-                        title="100% Standard View"
-                    >
-                        100%
-                    </button>
-                    <button
-                        onClick={handleFitBounds}
-                        className="w-10 h-10 flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer transition-colors active:scale-95"
-                        title="Fit View to All Routes"
-                    >
-                        <Scan className="w-4 h-4" />
-                    </button>
-                </div>
+            {/* Zoom & View Navigation Controls with Liquid Glass (Bottom Left) */}
+            <div className="absolute bottom-6 left-6 z-20 flex flex-col gap-2 pointer-events-auto">
+                <GlassPanel
+                    padding="0px"
+                    overrides={{ borderRadius: 20 }}
+                    className="wg-glass-pill overflow-hidden shadow-glass-card"
+                >
+                    <div className="flex flex-col divide-y divide-black/10 dark:divide-white/10">
+                        <button
+                            onClick={handleZoomIn}
+                            className="w-10 h-10 flex items-center justify-center text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer font-bold text-lg transition-colors active:scale-95"
+                            title="Zoom In (+)"
+                        >
+                            +
+                        </button>
+                        <button
+                            onClick={handleZoomOut}
+                            className="w-10 h-10 flex items-center justify-center text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer font-bold text-lg transition-colors active:scale-95"
+                            title="Zoom Out (−)"
+                        >
+                            −
+                        </button>
+                        <button
+                            onClick={handleReset100}
+                            className="w-10 h-10 flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer font-bold text-xs tracking-tight transition-colors active:scale-95"
+                            title="100% Standard View"
+                        >
+                            100%
+                        </button>
+                        <button
+                            onClick={handleFitBounds}
+                            className="w-10 h-10 flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer transition-colors active:scale-95"
+                            title="Fit View to All Routes"
+                        >
+                            <Scan className="w-4 h-4" />
+                        </button>
+                    </div>
+                </GlassPanel>
             </div>
 
-            {/* Top-Center Floating "Back to previous view" Button */}
+            {/* Top-Center Floating "Back to previous view" Button with Liquid Glass */}
             {selectedCorridor && (
-                <button
-                    onClick={handleResetCorridor}
-                    className="absolute top-5 left-1/2 -translate-x-1/2 z-30 px-4 py-2 rounded-full bg-white/90 dark:bg-dark-card/90 hover:bg-white dark:hover:bg-dark-card backdrop-blur-xl border border-black/10 dark:border-white/15 hover:border-primary-500/50 text-light-text dark:text-dark-text shadow-glass-modal transition-all flex items-center gap-2 cursor-pointer text-xs font-bold group animate-fade-in active:scale-95"
-                >
-                    <ArrowLeft className="w-3.5 h-3.5 text-primary-500 group-hover:-translate-x-0.5 transition-transform" />
-                    <span>Back to previous view</span>
-                </button>
+                <div className="absolute top-5 left-1/2 -translate-x-1/2 z-30 pointer-events-auto animate-fade-in">
+                    <GlassPanel
+                        padding="6px 14px"
+                        overrides={{ borderRadius: 999 }}
+                        className="wg-glass-pill shadow-glass-modal"
+                    >
+                        <button
+                            onClick={handleResetCorridor}
+                            className="flex items-center gap-2 cursor-pointer text-xs font-bold text-light-text dark:text-dark-text group active:scale-95"
+                        >
+                            <ArrowLeft className="w-3.5 h-3.5 text-primary-500 group-hover:-translate-x-0.5 transition-transform" />
+                            <span>Back to previous view</span>
+                        </button>
+                    </GlassPanel>
+                </div>
             )}
 
             {/* Left Scratch Map Country Inspector & Labeling Card */}
@@ -1772,246 +1892,280 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 </div>
             )}
 
-            {/* Left Route Mission Control Corridor Inspector Card */}
+            {/* AirTrail Style Route Corridor Inspector Card with Liquid Glass */}
             {selectedCorridor && (
-                <div className="absolute top-5 left-5 z-30 w-96 sm:w-[420px] max-h-[calc(100%-2.5rem)] flex flex-col rounded-3xl bg-white/95 dark:bg-dark-card/95 backdrop-blur-md border border-black/10 dark:border-white/15 shadow-glass-modal overflow-hidden text-light-text dark:text-dark-text animate-fade-in" style={{ WebkitBackdropFilter: 'blur(12px)' }}>
-                    {/* Header: Direct route pair & codes in CAPS, no redundant label */}
-                    <div className="p-4 pb-3 flex items-center justify-between border-b border-black/5 dark:border-white/10 bg-gradient-to-r from-primary-500/10 via-primary-500/5 to-transparent shrink-0">
-                        <div className="flex items-center gap-2 min-w-0">
-                            <span className="text-xl leading-none shrink-0">{selectedCorridor.originFlag}</span>
-                            <span className="font-mono font-bold text-base tracking-tight text-light-text dark:text-dark-text">{selectedCorridor.originCode.toUpperCase()}</span>
-                            <ArrowRight className="w-4 h-4 text-primary-500 shrink-0" />
-                            <span className="text-xl leading-none shrink-0">{selectedCorridor.destFlag}</span>
-                            <span className="font-mono font-bold text-base tracking-tight text-light-text dark:text-dark-text">{selectedCorridor.destCode.toUpperCase()}</span>
-                            <span className="ml-1.5 px-2 py-0.5 rounded-full text-2xs font-bold bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20 shrink-0">
-                                ACTIVE
-                            </span>
-                        </div>
+                <div 
+                    className="absolute top-20 left-5 z-30 w-[360px] sm:w-[380px] max-h-[calc(100vh-6rem)] flex flex-col animate-airtrail-slide-in pointer-events-auto"
+                >
+                    <GlassPanel
+                        className="wg-glass-card w-full max-h-[calc(100vh-6.5rem)] flex flex-col shadow-2xl relative"
+                        padding="20px"
+                        overrides={{ borderRadius: 28 }}
+                    >
+                        {/* Top Right Close Button */}
                         <button
                             onClick={handleResetCorridor}
-                            className="w-8 h-8 rounded-xl flex items-center justify-center bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text transition-all cursor-pointer shrink-0"
-                            aria-label="Close corridor card"
+                            className="absolute top-4 right-4 w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer shrink-0 z-20"
+                            aria-label="Close route details"
                         >
                             <X className="w-4 h-4" />
                         </button>
-                    </div>
 
-                    <div className="p-4 space-y-3">
-                        {(() => {
-                            const originTime = getApproxLocalTime(selectedCorridor.originCoords[0]);
-                            const originDisplayName = formatAirportDisplayName(selectedCorridor.originName, selectedCorridor.originCity);
-                            return (
-                                <div className="p-3 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-1">
-                                    <span className="text-xs text-light-text-secondary dark:text-dark-text-secondary truncate block font-medium">
-                                        {originDisplayName}
-                                    </span>
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-xl leading-none">{selectedCorridor.originFlag}</span>
-                                            <span className="text-lg font-mono font-bold tracking-tight text-light-text dark:text-dark-text">{selectedCorridor.originCode.toUpperCase()}</span>
-                                            <ChevronRight className="w-3.5 h-3.5 text-light-text-secondary/60 dark:text-dark-text-secondary/60" />
-                                        </div>
-                                        <div className="text-right">
-                                            <span className="text-xs font-bold text-light-text dark:text-dark-text block">{originTime.timeStr}</span>
-                                            <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary">{originTime.dateStr} · {originTime.utcOffsetStr}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })()}
-
-                        <div className="flex items-center justify-between px-2 text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium">
-                            <div className="flex items-center gap-1.5 font-mono">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                <span>{selectedCorridor.distanceKm.toLocaleString()} km</span>
-                            </div>
-                            <span>
-                                {Math.abs(Math.round((selectedCorridor.originCoords[0] - selectedCorridor.destCoords[0]) / 15)) === 0 
-                                    ? 'same local time' 
-                                    : `${Math.abs(Math.round((selectedCorridor.originCoords[0] - selectedCorridor.destCoords[0]) / 15))}h time diff`}
-                            </span>
-                        </div>
-
-                        {(() => {
-                            const destTime = getApproxLocalTime(selectedCorridor.destCoords[0]);
-                            const destDisplayName = formatAirportDisplayName(selectedCorridor.destName, selectedCorridor.destCity);
-                            return (
-                                <div className="p-3 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-1">
-                                    <span className="text-xs text-light-text-secondary dark:text-dark-text-secondary truncate block font-medium">
-                                        {destDisplayName}
-                                    </span>
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-xl leading-none">{selectedCorridor.destFlag}</span>
-                                            <span className="text-lg font-mono font-bold tracking-tight text-light-text dark:text-dark-text">{selectedCorridor.destCode.toUpperCase()}</span>
-                                            <ChevronRight className="w-3.5 h-3.5 text-light-text-secondary/60 dark:text-dark-text-secondary/60" />
-                                        </div>
-                                        <div className="text-right">
-                                            <span className="text-xs font-bold text-light-text dark:text-dark-text block">{destTime.timeStr}</span>
-                                            <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary">{destTime.dateStr} · {destTime.utcOffsetStr}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })()}
-                    </div>
-
-                    {(() => {
-                        const rawMode = selectedCorridor.flights[0]?.mode || 'Flight';
-                        const modeStr = String(rawMode).toLowerCase();
-                        const isTrain = modeStr.includes('train') || modeStr.includes('rail');
-                        const isSea = ['cruise', 'ferry', 'boat', 'ship'].some(m => modeStr.includes(m));
-                        const isRoad = ['car', 'drive', 'bus', 'road', 'taxi'].some(m => modeStr.includes(m));
-
-                        const totalTitle = isTrain ? 'Journeys:' : isSea ? 'Voyages:' : isRoad ? 'Drives:' : 'Flights:';
-                        const logTitle = isTrain ? 'Rail Log:' : isSea ? 'Maritime Log:' : isRoad ? 'Road Trip Log:' : 'Flight Log:';
-
-                        return (
-                            <div className="px-4 pb-4 space-y-2">
-                                <div className="grid grid-cols-2 gap-2 text-center">
-                                    <div className="p-2.5 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5">
-                                        <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold tracking-wider block">{totalTitle}</span>
-                                        <span className="text-base font-bold text-primary-500">{selectedCorridor.flights.length}</span>
-                                    </div>
-                                    <div className="p-2.5 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5">
-                                        <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold tracking-wider block">Distance:</span>
-                                        <span className="text-base font-bold font-mono text-light-text dark:text-dark-text">{selectedCorridor.distanceKm.toLocaleString()} km</span>
-                                    </div>
-                                </div>
-
-                                <div className="p-3 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold tracking-wider block">
-                                            {logTitle} ({selectedCorridor.flights.length})
+                        {/* Scrollable Container */}
+                        <div className="flex-1 overflow-y-auto custom-scrollbar -mr-1 pr-1">
+                            {/* Origin Block */}
+                            {(() => {
+                                const originTime = getApproxLocalTime(selectedCorridor.originCoords[0]);
+                                const originDisplay = formatAirportCityDotName(selectedCorridor.originName, selectedCorridor.originCity);
+                                return (
+                                    <div className="space-y-1">
+                                        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate block pr-8">
+                                            {originDisplay}
                                         </span>
-                                        {selectedCorridor.airlines && selectedCorridor.airlines.length > 0 && (
-                                            <span className="text-2xs text-primary-500 font-semibold truncate max-w-[200px]">
-                                                {selectedCorridor.airlines.join(', ')}
-                                            </span>
-                                        )}
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-2xl leading-none shrink-0">{selectedCorridor.originFlag}</span>
+                                                <span className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white font-sans">
+                                                    {selectedCorridor.originCode.toUpperCase()}
+                                                </span>
+                                                <ChevronRight className="w-4 h-4 text-gray-400 dark:text-gray-500 ml-0.5" />
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white block font-sans">
+                                                    {originTime.timeStr}
+                                                </span>
+                                                <span className="text-xs text-gray-500 dark:text-gray-400 font-medium block">
+                                                    {originTime.dateStr} · {originTime.utcOffsetStr}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="max-h-48 overflow-y-auto space-y-1.5 custom-scrollbar pr-1">
-                                        {selectedCorridor.flights.map((f, idx) => {
-                                            const fMode = String(f.mode || '').toLowerCase();
-                                            const isF_Rail = fMode.includes('train') || fMode.includes('rail');
-                                            const isF_Sea = ['cruise', 'ferry', 'boat', 'ship'].some(m => fMode.includes(m));
-                                            const isF_Road = ['car', 'drive', 'bus', 'road', 'taxi'].some(m => fMode.includes(m));
+                                );
+                            })()}
 
-                                            return (
-                                                <div key={idx} className="flex items-center justify-between gap-2.5 text-xs py-1.5 px-2.5 rounded-xl bg-white/60 dark:bg-white/[0.04] border border-black/5 dark:border-white/5 hover:bg-white/90 dark:hover:bg-white/[0.08] transition-colors">
-                                                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                                                        {isF_Rail ? (
-                                                            <Train className="w-3.5 h-3.5 text-purple-500 shrink-0" />
-                                                        ) : isF_Sea ? (
-                                                            <Ship className="w-3.5 h-3.5 text-cyan-500 shrink-0" />
-                                                        ) : isF_Road ? (
-                                                            <Car className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                                                        ) : (
-                                                            <Plane className="w-3.5 h-3.5 text-primary-500 shrink-0" />
-                                                        )}
-                                                        <span className="font-semibold text-light-text dark:text-dark-text truncate">
-                                                            {f.provider || (isF_Rail ? 'Train' : isF_Sea ? 'Ferry/Cruise' : isF_Road ? 'Drive' : 'Flight')}
-                                                        </span>
-                                                        {f.identifier && (
-                                                            <span className="px-1.5 py-0.5 rounded text-2xs font-mono font-bold bg-black/5 dark:bg-white/10 text-light-text-secondary dark:text-dark-text-secondary shrink-0">
-                                                                #{f.identifier.toUpperCase()}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    {f.departureDate && (
-                                                        <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary font-mono shrink-0">
-                                                            {formatDate(f.departureDate, 'short-with-year')}
+                            {/* Middle Hairline Distance & Relative Time Indicator */}
+                            <div className="flex items-center gap-2.5 my-3">
+                                <div className="flex-1 h-px bg-gray-200 dark:bg-zinc-800" />
+                                <span className="text-2xs text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap">
+                                    {selectedCorridor.distanceKm.toLocaleString()} km · {getRelativeTimeDiffString(selectedCorridor.originCoords[0], selectedCorridor.destCoords[0], selectedCorridor.destCode)}
+                                </span>
+                                <div className="flex-1 h-px bg-gray-200 dark:bg-zinc-800" />
+                            </div>
+
+                            {/* Destination Block */}
+                            {(() => {
+                                const destTime = getApproxLocalTime(selectedCorridor.destCoords[0]);
+                                const destDisplay = formatAirportCityDotName(selectedCorridor.destName, selectedCorridor.destCity);
+                                return (
+                                    <div className="space-y-1">
+                                        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate block">
+                                            {destDisplay}
+                                        </span>
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-2xl leading-none shrink-0">{selectedCorridor.destFlag}</span>
+                                                <span className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white font-sans">
+                                                    {selectedCorridor.destCode.toUpperCase()}
+                                                </span>
+                                                <ChevronRight className="w-4 h-4 text-gray-400 dark:text-gray-500 ml-0.5" />
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white block font-sans">
+                                                    {destTime.timeStr}
+                                                </span>
+                                                <span className="text-xs text-gray-500 dark:text-gray-400 font-medium block">
+                                                    {destTime.dateStr} · {destTime.utcOffsetStr}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+
+                            {/* Section Divider */}
+                            <div className="border-t border-gray-100 dark:border-zinc-800 my-4" />
+
+                            {/* Route Activity Section */}
+                            <div>
+                                <div className="text-2xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-3">
+                                    ROUTE ACTIVITY
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="bg-black/5 dark:bg-white/[0.06] rounded-2xl p-4 border border-black/5 dark:border-white/[0.06]">
+                                        <div className="text-xs font-medium text-gray-500 dark:text-gray-400">Flights</div>
+                                        <div className="text-3xl font-bold text-gray-900 dark:text-white mt-1 tracking-tight">
+                                            {selectedCorridor.totalFlights}
+                                        </div>
+                                    </div>
+                                    <div className="bg-black/5 dark:bg-white/[0.06] rounded-2xl p-4 border border-black/5 dark:border-white/[0.06]">
+                                        <div className="text-xs font-medium text-gray-500 dark:text-gray-400">Airlines</div>
+                                        <div className="text-3xl font-bold text-gray-900 dark:text-white mt-1 tracking-tight">
+                                            {selectedCorridor.airlines?.length || 1}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-3">
+                                    {selectedCorridor.distanceKm.toLocaleString()} km
+                                    {selectedCorridor.lastFlownDate && (
+                                        <> · last flown <span className="text-gray-700 dark:text-gray-200 font-semibold">{formatAirTrailDateMedium(selectedCorridor.lastFlownDate)}</span></>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Section Divider */}
+                            <div className="border-t border-gray-100 dark:border-zinc-800 my-4" />
+
+                            {/* Flights List Section */}
+                            <div>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300">
+                                        <List className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                                        <span>FLIGHTS <span className="font-normal text-gray-400 dark:text-gray-500 ml-1">{selectedCorridor.totalFlights}</span></span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsFlightListExpanded(!isFlightListExpanded)}
+                                        className="text-xs font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors cursor-pointer"
+                                    >
+                                        {isFlightListExpanded ? 'Collapse' : 'Open list'}
+                                    </button>
+                                </div>
+
+                                <div className={`mt-3 space-y-3 overflow-y-auto custom-scrollbar pr-1 transition-all duration-200 ${isFlightListExpanded ? 'max-h-72' : 'max-h-48'}`}>
+                                    {selectedCorridor.flights.map((f, idx) => (
+                                        <div key={idx} className="flex items-start justify-between text-xs group">
+                                            <div>
+                                                <div className="flex items-center gap-3">
+                                                    <span className="font-bold text-sm text-gray-900 dark:text-white font-sans">{f.origin.toUpperCase()}</span>
+                                                    <span className="font-bold text-sm text-gray-900 dark:text-white font-sans">{f.destination.toUpperCase()}</span>
+                                                    {(f.identifier || f.provider) && (
+                                                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                                                            {f.identifier ? `${f.provider} ${f.identifier}` : f.provider}
                                                         </span>
                                                     )}
                                                 </div>
-                                            );
-                                        })}
-                                    </div>
+                                                <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 font-normal">
+                                                    {f.provider || 'Flight'}
+                                                </div>
+                                            </div>
+                                            {f.departureDate && (
+                                                <div className="text-xs font-medium text-gray-500 dark:text-gray-400 font-sans pt-0.5 shrink-0">
+                                                    {formatAirTrailDate(f.departureDate)}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
-                        );
-                    })()}
+                        </div>
+                    </GlassPanel>
                 </div>
             )}
 
-            {/* Interactive Object Hover HUD Tooltip */}
+            {/* Interactive Object Hover HUD Tooltip with Liquid Glass */}
             {hoverInfo?.object && !selectedCorridor && !selectedCountry && (
                 <div 
-                    className="absolute pointer-events-none z-50 transition-all duration-75"
+                    className="absolute z-50 transition-all duration-75 pointer-events-auto cursor-pointer"
                     style={{ left: hoverInfo.x + 12, top: hoverInfo.y + 12 }}
+                    onClick={() => {
+                        if (hoverInfo.object?.corridorId) {
+                            handleSelectCorridor(hoverInfo.object.corridorId);
+                        }
+                    }}
                 >
                     {hoverInfo.object.corridorId ? (() => {
                         const c = corridorMap.get(hoverInfo.object.corridorId);
                         if (!c) return null;
 
-                        const rawMode = hoverInfo.object.mode || c.flights[0]?.mode || 'Flight';
-                        const modeStr = String(rawMode).toLowerCase();
-                        const isTrain = modeStr.includes('train') || modeStr.includes('rail');
-                        const isSea = ['cruise', 'ferry', 'boat', 'ship'].some(m => modeStr.includes(m));
-                        const isRoad = ['car', 'drive', 'bus', 'road', 'taxi'].some(m => modeStr.includes(m));
-
-                        const typeLabel = isTrain 
-                            ? '🚆 RAIL ROUTE' 
-                            : isSea 
-                                ? '🚢 MARITIME ROUTE' 
-                                : isRoad 
-                                    ? '🚗 ROAD ROUTE' 
-                                    : null; // Removed "Flight Corridor" label
-
-                        const countLabel = isTrain
-                            ? (c.totalFlights === 1 ? 'Train Journey' : 'Train Journeys')
-                            : isSea
-                                ? (c.totalFlights === 1 ? 'Voyage' : 'Voyages')
-                                : isRoad
-                                    ? (c.totalFlights === 1 ? 'Drive' : 'Drives')
-                                    : (c.totalFlights === 1 ? 'Flight' : 'Flights');
+                        const airlineCount = c.airlines?.length || 1;
+                        const latestFlight = c.flights[c.flights.length - 1] || c.flights[0];
 
                         return (
-                            <div className="bg-white/90 dark:bg-dark-card/90 text-light-text dark:text-dark-text border border-black/10 dark:border-white/15 rounded-3xl shadow-glass-modal backdrop-blur-sm p-4 min-w-[280px] max-w-sm text-xs animate-fade-in space-y-3" style={{ WebkitBackdropFilter: 'blur(4px)' }}>
+                            <GlassPanel
+                                className="wg-glass-card w-[320px] max-w-sm text-light-text dark:text-dark-text shadow-xl animate-airtrail-pop"
+                                padding="16px"
+                                overrides={{ borderRadius: 24 }}
+                            >
                                 {/* Header */}
-                                <div className="flex items-center justify-between border-b border-black/5 dark:border-white/10 pb-2.5">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-base leading-none">{c.originFlag}</span>
-                                        <span className="font-bold text-sm text-light-text dark:text-dark-text tracking-tight">{c.originCode.toUpperCase()}</span>
-                                        <ArrowRight className="w-3.5 h-3.5 text-light-text-secondary dark:text-dark-text-secondary" />
-                                        <span className="font-bold text-sm text-light-text dark:text-dark-text tracking-tight">{c.destCode.toUpperCase()}</span>
-                                    </div>
-                                    {typeLabel && (
-                                        <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
-                                            {typeLabel}
-                                        </span>
-                                    )}
+                                <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 mb-2">
+                                    Route
                                 </div>
 
-                                {/* Names */}
-                                <div className="text-xs text-light-text-secondary dark:text-dark-text-secondary leading-snug">
-                                    <span className="font-semibold text-light-text dark:text-dark-text">{formatAirportDisplayName(c.originName, c.originCity)}</span>
-                                    <span className="opacity-50 mx-1">→</span>
-                                    <span className="font-semibold text-light-text dark:text-dark-text">{formatAirportDisplayName(c.destName, c.destCity)}</span>
-                                </div>
-
-                                {/* Distance & Time Difference */}
-                                <div className="flex items-center justify-between text-xs px-2.5 py-1.5 rounded-xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 font-mono text-light-text-secondary dark:text-dark-text-secondary">
-                                    <span>{c.distanceKm.toLocaleString()} km</span>
-                                    <span>
-                                        {Math.abs(Math.round((c.originCoords[0] - c.destCoords[0]) / 15)) === 0 ? 'Same timezone' : `${Math.abs(Math.round((c.originCoords[0] - c.destCoords[0]) / 15))}h time diff`}
+                                {/* Origin Row */}
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                    <span className="text-xl leading-none shrink-0">{c.originFlag}</span>
+                                    <span className="font-bold text-2xl tracking-tight text-gray-900 dark:text-white font-sans shrink-0">
+                                        {c.originCode.toUpperCase()}
+                                    </span>
+                                    <span className="text-xs text-gray-500 dark:text-gray-400 font-normal truncate">
+                                        {formatAirportDisplayName(c.originName, c.originCity)}
                                     </span>
                                 </div>
 
-                                {/* Summary with Flights: and Carrier */}
-                                <div>
-                                    <div className="flex items-center justify-between mb-1.5">
-                                        <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
-                                            {countLabel}: <span className="text-light-text dark:text-dark-text ml-1 font-bold">{c.totalFlights}</span>
-                                        </span>
-                                        {c.airlines && c.airlines.length > 0 && (
-                                            <span className="text-2xs font-semibold text-primary-500 truncate max-w-[150px]" title={c.airlines.join(', ')}>
-                                                {c.airlines.join(', ')}
-                                            </span>
-                                        )}
-                                    </div>
+                                {/* Middle Hairline Stats Divider */}
+                                <div className="flex items-center gap-2.5 my-2.5">
+                                    <div className="flex-1 h-px bg-gray-200 dark:bg-zinc-800" />
+                                    <span className="text-2xs text-gray-400 dark:text-gray-500 font-medium whitespace-nowrap">
+                                        {c.distanceKm.toLocaleString()} km · {c.flights.length} {c.flights.length === 1 ? 'trip' : 'trips'} · {airlineCount} {airlineCount === 1 ? 'airline' : 'airlines'}
+                                    </span>
+                                    <div className="flex-1 h-px bg-gray-200 dark:bg-zinc-800" />
                                 </div>
-                            </div>
+
+                                {/* Destination Row */}
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                    <span className="text-xl leading-none shrink-0">{c.destFlag}</span>
+                                    <span className="font-bold text-2xl tracking-tight text-gray-900 dark:text-white font-sans shrink-0">
+                                        {c.destCode.toUpperCase()}
+                                    </span>
+                                    <span className="text-xs text-gray-500 dark:text-gray-400 font-normal truncate">
+                                        {formatAirportDisplayName(c.destName, c.destCity)}
+                                    </span>
+                                </div>
+
+                                {/* Section Divider */}
+                                <div className="border-t border-gray-100 dark:border-zinc-800 my-3" />
+
+                                {/* Flights Section */}
+                                <div>
+                                    <div className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-2.5 flex items-center gap-1.5">
+                                        Flights <span className="font-normal text-gray-400 dark:text-gray-500">{c.totalFlights}</span>
+                                    </div>
+                                    {latestFlight && (
+                                        <div className="flex items-start gap-2.5">
+                                            <div className="pt-0.5 shrink-0 text-gray-400 dark:text-gray-500">
+                                                <Plane className="w-4 h-4 transform -rotate-45" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-4">
+                                                        <span className="font-bold text-sm text-gray-900 dark:text-white tracking-tight">
+                                                            {latestFlight.origin.toUpperCase()}
+                                                        </span>
+                                                        <span className="font-bold text-sm text-gray-900 dark:text-white tracking-tight">
+                                                            {latestFlight.destination.toUpperCase()}
+                                                        </span>
+                                                    </div>
+                                                    {latestFlight.departureDate && (
+                                                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 font-sans shrink-0">
+                                                            {formatAirTrailDate(latestFlight.departureDate)}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                                                    {latestFlight.provider || 'Flight'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Footer Prompt */}
+                                <div className="border-t border-gray-100 dark:border-zinc-800 mt-3 pt-2.5 text-center">
+                                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                                        Click for route details
+                                    </span>
+                                </div>
+                            </GlassPanel>
                         );
                     })() : hoverInfo.object.properties ? (() => {
                         const p = hoverInfo.object.properties;
@@ -2030,58 +2184,68 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         const region = p.REGION_UN || p.SUBREGION || p.CONTINENT || (iso2 ? getRegion(iso2) : '');
 
                         return (
-                            <div className="bg-white/90 dark:bg-dark-card/90 text-light-text dark:text-dark-text border border-black/10 dark:border-white/15 rounded-3xl shadow-glass-modal backdrop-blur-sm p-4 min-w-[240px] text-xs animate-fade-in space-y-2.5" style={{ WebkitBackdropFilter: 'blur(4px)' }}>
-                                <div className="flex items-center justify-between border-b border-black/5 dark:border-white/10 pb-2">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xl leading-none">{flag}</span>
-                                        <span className="font-bold text-sm text-light-text dark:text-dark-text tracking-tight">{formatPlaceName(name)}</span>
+                            <GlassPanel
+                                className="wg-glass-card min-w-[240px] text-xs animate-airtrail-pop shadow-xl"
+                                padding="16px"
+                                overrides={{ borderRadius: 22 }}
+                            >
+                                <div className="space-y-2.5">
+                                    <div className="flex items-center justify-between border-b border-black/5 dark:border-white/10 pb-2">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xl leading-none">{flag}</span>
+                                            <span className="font-bold text-sm text-light-text dark:text-dark-text tracking-tight">{formatPlaceName(name)}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            {currentStatuses.includes('lived_current') && (
+                                                <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                                                    🏠 HOME
+                                                </span>
+                                            )}
+                                            {currentStatuses.includes('lived_past') && (
+                                                <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 flex items-center gap-1">
+                                                    🏛️ PAST HOME
+                                                </span>
+                                            )}
+                                            {currentStatuses.includes('visited') && (
+                                                <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-primary-500/15 text-primary-600 dark:text-primary-400 border border-primary-500/30 flex items-center gap-1">
+                                                    ✨ EXPLORED
+                                                </span>
+                                            )}
+                                            {currentStatuses.includes('layover') && (
+                                                <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                                                    🛫 LAYOVER
+                                                </span>
+                                            )}
+                                            {currentStatuses.includes('wishlist') && (
+                                                <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 flex items-center gap-1">
+                                                    🌟 WISHLIST
+                                                </span>
+                                            )}
+                                            {currentStatuses.length === 0 && !isVisited && (
+                                                <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary border border-black/10 dark:border-white/10">
+                                                    UNEXPLORED
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-1">
-                                        {currentStatuses.includes('lived_current') && (
-                                            <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-                                                🏠 HOME
-                                            </span>
-                                        )}
-                                        {currentStatuses.includes('lived_past') && (
-                                            <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 flex items-center gap-1">
-                                                🏛️ PAST HOME
-                                            </span>
-                                        )}
-                                        {currentStatuses.includes('visited') && (
-                                            <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-primary-500/15 text-primary-600 dark:text-primary-400 border border-primary-500/30 flex items-center gap-1">
-                                                ✨ EXPLORED
-                                            </span>
-                                        )}
-                                        {currentStatuses.includes('layover') && (
-                                            <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1">
-                                                🛫 LAYOVER
-                                            </span>
-                                        )}
-                                        {currentStatuses.includes('wishlist') && (
-                                            <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 flex items-center gap-1">
-                                                🌟 WISHLIST
-                                            </span>
-                                        )}
-                                        {currentStatuses.length === 0 && !isVisited && (
-                                            <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary border border-black/10 dark:border-white/10">
-                                                UNEXPLORED
-                                            </span>
-                                        )}
+                                    {region && (
+                                        <div className="flex items-center justify-between text-xs text-light-text-secondary dark:text-dark-text-secondary">
+                                            <span>Region</span>
+                                            <span className="font-semibold text-light-text dark:text-dark-text">{region}</span>
+                                        </div>
+                                    )}
+                                    <div className="pt-1 text-xs text-primary-500 font-bold flex items-center gap-1">
+                                        <span>👆 Click territory to inspect & label</span>
                                     </div>
                                 </div>
-                                {region && (
-                                    <div className="flex items-center justify-between text-xs text-light-text-secondary dark:text-dark-text-secondary">
-                                        <span>Region</span>
-                                        <span className="font-semibold text-light-text dark:text-dark-text">{region}</span>
-                                    </div>
-                                )}
-                                <div className="pt-1 text-xs text-primary-500 font-bold flex items-center gap-1">
-                                    <span>👆 Click territory to inspect & label</span>
-                                </div>
-                            </div>
+                            </GlassPanel>
                         );
                     })() : (
-                        <div className="bg-white/90 dark:bg-dark-card/90 text-light-text dark:text-dark-text border border-black/10 dark:border-white/15 rounded-2xl shadow-glass-card backdrop-blur-xl p-3.5 min-w-[220px] text-xs animate-fade-in" style={{ WebkitBackdropFilter: 'blur(24px)' }}>
+                        <GlassPanel
+                            className="wg-glass-card min-w-[220px] text-xs animate-airtrail-pop shadow-xl"
+                            padding="14px"
+                            overrides={{ borderRadius: 20 }}
+                        >
                             <div className="space-y-1">
                                 <div className="flex items-center justify-between gap-3 pb-1 border-b border-black/5 dark:border-white/10">
                                     <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
@@ -2114,7 +2278,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </GlassPanel>
                     )}
                 </div>
             )}

@@ -430,6 +430,35 @@
       background-color: rgba(50, 50, 50, 0.9) !important;
     }
 
+    /* --- AIRTRAIL STYLE ANIMATIONS --- */
+    @keyframes airtrail-pop {
+      0% {
+        opacity: 0;
+        transform: scale(0.96) translateY(4px);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+    .animate-airtrail-pop {
+      animation: airtrail-pop 160ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes airtrail-slide-in {
+      0% {
+        opacity: 0;
+        transform: translateX(-14px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+    .animate-airtrail-slide-in {
+      animation: airtrail-slide-in 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
     /* --- AIRTRAIL STYLE FLIGHT PATHS --- */
 
     /* 1. Background Track (Static) */

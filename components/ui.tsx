@@ -18,6 +18,10 @@ import {
   SEGMENTED_TAB_INACTIVE,
 } from '../constants';
 import Icon from './ui/Icon';
+import GlassPanel from './glass/GlassPanel';
+import GlassButton from './glass/GlassButton';
+
+export { GlassPanel, GlassButton };
 
 // --- Utils ---
 const cn = (...classes: (string | undefined | null | false)[]) => classes.filter(Boolean).join(' ');
@@ -52,12 +56,28 @@ Card.displayName = "Card";
 
 // --- Button ---
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline' | 'glass';
   size?: 'sm' | 'md' | 'lg';
   icon?: ReactNode;
   isLoading?: boolean;
 }
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(({ children, variant = 'primary', size = 'md', className, icon, isLoading, disabled, ...props }, ref) => {
+  if (variant === 'glass') {
+    return (
+      <GlassButton
+        ref={ref}
+        size={size}
+        className={className}
+        icon={icon}
+        isLoading={isLoading}
+        disabled={disabled}
+        {...props}
+      >
+        {children}
+      </GlassButton>
+    );
+  }
+
   const variants = {
     primary: BTN_PRIMARY_STYLE,
     secondary: BTN_SECONDARY_STYLE,
@@ -381,17 +401,18 @@ export const Modal: React.FC<ModalProps> = ({
         onClick={onClose} 
       />
       
-      {/* 2. Elevated Glassmorphic Modal Container */}
-      <div 
+      {/* 2. Elevated Liquid Glass Modal Container */}
+      <GlassPanel 
         className={cn(
-          "relative bg-white/90 dark:bg-dark-card/90 backdrop-blur-sm border border-black/10 dark:border-white/15 shadow-glass-modal rounded-3xl w-full overflow-hidden transform transition-all duration-300 max-h-[90vh] flex flex-col z-10",
+          "wg-glass-card w-full shadow-2xl overflow-hidden transform transition-all duration-300 max-h-[90vh] flex flex-col z-10",
           maxWidth,
           isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'
         )}
-        style={{ WebkitBackdropFilter: 'blur(4px)' }}
+        padding="0px"
+        overrides={{ borderRadius: 28 }}
       >
         {/* Header */}
-        <div className="p-6 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">
+        <div className="p-6 border-b border-black/5 dark:border-white/10 flex items-center justify-between bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             {icon && (
               <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white bg-primary-500 shrink-0 shadow-md transition-transform hover:scale-105">
@@ -432,13 +453,12 @@ export const Modal: React.FC<ModalProps> = ({
         {/* Sticky Frosted Footer (optional) */}
         {footerActions && (
           <div 
-            className="p-6 border-t border-black/5 dark:border-white/5 bg-white/80 dark:bg-dark-card/80 backdrop-blur-md flex items-center justify-between gap-3 shrink-0"
-            style={{ WebkitBackdropFilter: 'blur(12px)' }}
+            className="p-6 border-t border-black/5 dark:border-white/10 bg-white/80 dark:bg-dark-card/80 backdrop-blur-md flex items-center justify-between gap-3 shrink-0"
           >
             {footerActions}
           </div>
         )}
-      </div>
+      </GlassPanel>
     </div>,
     document.body
   );

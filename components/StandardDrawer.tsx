@@ -2,6 +2,7 @@ import React, { useState, useEffect, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { INPUT_BASE_STYLE, BTN_PRIMARY_STYLE, BTN_SECONDARY_STYLE, CLOSE_BTN_STYLE } from '../constants';
 import Icon from './ui/Icon';
+import GlassPanel from './glass/GlassPanel';
 
 export interface DrawerProps {
   isOpen: boolean;
@@ -67,16 +68,20 @@ export const StandardDrawer: React.FC<DrawerProps> = ({
         onClick={handleClose} 
       />
 
-      {/* 2. Slide-out Shell */}
+      {/* 2. Slide-out Shell with Liquid Glass */}
       <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
         <div 
-          className={`w-screen max-w-lg bg-white/90 dark:bg-dark-card/90 backdrop-blur-sm shadow-glass-modal border-l border-black/10 dark:border-white/15 flex flex-col transform transition-transform duration-300 ease-out ${
+          className={`w-screen max-w-lg h-full flex flex-col transform transition-transform duration-300 ease-out ${
             isVisible ? 'translate-x-0' : 'translate-x-full'
           }`}
-          style={{ WebkitBackdropFilter: 'blur(4px)' }}
         >
-          {/* Header */}
-          <div className="p-6 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">
+          <GlassPanel
+            className="wg-glass-card w-full h-full flex flex-col shadow-2xl overflow-hidden"
+            padding="0px"
+            overrides={{ borderRadius: 0 }}
+          >
+            {/* Header */}
+            <div className="p-6 border-b border-black/5 dark:border-white/10 flex items-center justify-between bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white bg-primary-500 shrink-0 shadow-md transition-transform hover:scale-105">
                 <Icon className="text-2xl" name={icon}/>
@@ -168,6 +173,7 @@ export const StandardDrawer: React.FC<DrawerProps> = ({
               )}
             </div>
           </form>
+          </GlassPanel>
         </div>
       </div>
     </div>,

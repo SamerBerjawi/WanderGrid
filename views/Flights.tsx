@@ -2658,14 +2658,12 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                         if (active && payload && payload.length) {
                           const curr = payload[0].payload;
                           return (
-                            <div className="rounded-2xl border border-black/10 dark:border-white/15 bg-white/90 dark:bg-dark-card/90 backdrop-blur-2xl shadow-glass-modal overflow-hidden">
-                              <TooltipContent
-                                title={curr.month}
-                                rows={[
-                                  { color: '#3b82f6', label: 'Flights', value: curr.flights }
-                                ]}
-                              />
-                            </div>
+                            <TooltipContent
+                              title={curr.month}
+                              rows={[
+                                { color: '#3b82f6', label: 'Flights', value: curr.flights }
+                              ]}
+                            />
                           );
                         }
                         return null;

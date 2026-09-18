@@ -26,6 +26,7 @@ import {
     Moon
 } from 'lucide-react';
 const DeckFlightMap = lazy(() => import('../components/DeckFlightMap').then(m => ({ default: m.DeckFlightMap || m.default })));
+import GlassPanel from '../components/glass/GlassPanel';
 import { dataService } from '../services/mockDb';
 import { Trip, CountryResidenceStatus, PredefinedMapMode, getResidenceStatuses } from '../types';
 import { Input, MultiSelect } from '../components/ui';
@@ -771,78 +772,105 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                 </Suspense>
             </div>
 
-            {/* 2. FLOATING TOP HUD BAR (Brand & Telemetry) */}
+            {/* 2. FLOATING TOP HUD BAR (Brand & Telemetry) with Liquid Glass */}
             <div className="absolute top-5 left-5 z-20 flex items-center gap-3 pointer-events-none">
                 {/* Brand & Status Pill */}
-                <div className="pointer-events-auto bg-white/80 dark:bg-dark-card/85 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl px-4 py-2.5 shadow-glass-card flex items-center gap-3.5 transition-all">
-                    <div className="w-8 h-8 rounded-xl bg-primary-500/15 border border-primary-500/25 flex items-center justify-center text-primary-500 shrink-0">
-                        <Compass className="w-4 h-4 animate-[spin_20s_linear_infinite]" />
-                    </div>
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-light-text dark:text-dark-text tracking-tight leading-none">WanderGrid Atlas</span>
-                            <span className="flex h-2 w-2 relative">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                            </span>
+                <div className="pointer-events-auto">
+                    <GlassPanel
+                        className="wg-glass-pill shadow-glass-card"
+                        padding="8px 14px"
+                        overrides={{ borderRadius: 20 }}
+                    >
+                        <div className="flex items-center gap-3.5">
+                            <div className="w-8 h-8 rounded-xl bg-primary-500/15 border border-primary-500/25 flex items-center justify-center text-primary-500 shrink-0">
+                                <Compass className="w-4 h-4 animate-[spin_20s_linear_infinite]" />
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs font-bold text-light-text dark:text-dark-text tracking-tight leading-none">WanderGrid Atlas</span>
+                                    <span className="flex h-2 w-2 relative">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                                    </span>
+                                </div>
+                                <p className="text-2xs font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider mt-0.5 leading-none">
+                                    {activeSectorsCount} Active Sectors • {totalDistanceKm.toLocaleString()} KM
+                                </p>
+                            </div>
                         </div>
-                        <p className="text-2xs font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider mt-0.5 leading-none">
-                            {activeSectorsCount} Active Sectors • {totalDistanceKm.toLocaleString()} KM
-                        </p>
-                    </div>
+                    </GlassPanel>
                 </div>
             </div>
 
-            {/* 2.5 FLOATING TOP-CENTER PREDEFINED VIEW MODES SELECTOR */}
+            {/* 2.5 FLOATING TOP-CENTER PREDEFINED VIEW MODES SELECTOR with Liquid Glass */}
             <div className="absolute top-5 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
-                <div className="flex p-1 bg-white/85 dark:bg-dark-card/90 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl shadow-glass-card gap-1">
-                    {[
-                        { id: 'flights', label: 'Flights', icon: Plane },
-                        { id: 'land_sea', label: 'Land & Sea', icon: Compass },
-                        { id: 'scratch', label: 'Scratch', icon: MapIcon },
-                        { id: 'all', label: 'All Expeditions', icon: Globe }
-                    ].map((m) => (
-                        <button
-                            key={m.id}
-                            onClick={() => handleSelectViewMode(m.id as PredefinedMapMode)}
-                            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-150 flex items-center gap-1.5 cursor-pointer active:scale-95 ${
-                                viewMode === m.id
-                                    ? 'bg-primary-500 text-white shadow-sm'
-                                    : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-black/5 dark:hover:bg-white/5'
-                            }`}
-                        >
-                            <m.icon className="w-3.5 h-3.5" />
-                            <span>{m.label}</span>
-                        </button>
-                    ))}
-                </div>
+                <GlassPanel
+                    className="wg-glass-pill shadow-glass-card"
+                    padding="4px"
+                    overrides={{ borderRadius: 20 }}
+                >
+                    <div className="flex gap-1">
+                        {[
+                            { id: 'flights', label: 'Flights', icon: Plane },
+                            { id: 'land_sea', label: 'Land & Sea', icon: Compass },
+                            { id: 'scratch', label: 'Scratch', icon: MapIcon },
+                            { id: 'all', label: 'All Expeditions', icon: Globe }
+                        ].map((m) => (
+                            <button
+                                key={m.id}
+                                onClick={() => handleSelectViewMode(m.id as PredefinedMapMode)}
+                                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-150 flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+                                    viewMode === m.id
+                                        ? 'bg-primary-500 text-white shadow-sm'
+                                        : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-black/5 dark:hover:bg-white/5'
+                                }`}
+                            >
+                                <m.icon className="w-3.5 h-3.5" />
+                                <span>{m.label}</span>
+                            </button>
+                        ))}
+                    </div>
+                </GlassPanel>
             </div>
 
-            {/* 3. FLOATING TOP RIGHT CONTROLS TOGGLE & FULLSCREEN */}
-            <div className="absolute top-5 right-5 z-20 flex items-center gap-2">
-                <button
-                    onClick={handleToggleFullscreen}
-                    className="p-2.5 rounded-2xl shadow-glass-card backdrop-blur-xl text-xs font-semibold flex items-center justify-center cursor-pointer transition-all duration-150 active:scale-95 border bg-white/80 dark:bg-dark-card/85 hover:bg-white/95 dark:hover:bg-dark-card/95 text-light-text dark:text-dark-text border-black/10 dark:border-white/10"
-                    title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
-                    aria-label="Toggle Fullscreen"
+            {/* 3. FLOATING TOP RIGHT CONTROLS TOGGLE & FULLSCREEN with Liquid Glass */}
+            <div className="absolute top-5 right-5 z-20 flex items-center gap-2 pointer-events-auto">
+                <GlassPanel
+                    className="wg-glass-pill shadow-glass-card"
+                    padding="0px"
+                    overrides={{ borderRadius: 20 }}
                 >
-                    {isFullscreen ? (
-                        <Minimize className="w-4 h-4 text-primary-500" />
-                    ) : (
-                        <Maximize className="w-4 h-4 text-primary-500" />
-                    )}
-                </button>
-                <button
-                    onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                    className={`px-4 py-2.5 rounded-2xl shadow-glass-card backdrop-blur-xl text-xs font-semibold flex items-center gap-2.5 cursor-pointer transition-all duration-150 active:scale-[0.98] border ${
-                        isSidebarOpen 
-                            ? 'bg-primary-500 text-white border-primary-400/40 shadow-primary-500/25 ring-2 ring-primary-500/30'
-                            : 'bg-white/80 dark:bg-dark-card/85 hover:bg-white/95 dark:hover:bg-dark-card/95 text-light-text dark:text-dark-text border-black/10 dark:border-white/10'
-                    }`}
+                    <button
+                        onClick={handleToggleFullscreen}
+                        className="p-2.5 text-xs font-semibold flex items-center justify-center cursor-pointer transition-all duration-150 active:scale-95 text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/5 rounded-2xl"
+                        title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+                        aria-label="Toggle Fullscreen"
+                    >
+                        {isFullscreen ? (
+                            <Minimize className="w-4 h-4 text-primary-500" />
+                        ) : (
+                            <Maximize className="w-4 h-4 text-primary-500" />
+                        )}
+                    </button>
+                </GlassPanel>
+
+                <GlassPanel
+                    className="wg-glass-pill shadow-glass-card"
+                    padding="0px"
+                    overrides={{ borderRadius: 20 }}
                 >
-                    <SlidersHorizontal className={`w-4 h-4 ${isSidebarOpen ? 'text-white' : 'text-primary-500'} transition-transform duration-300 ${isSidebarOpen ? 'rotate-90' : ''}`} />
-                    <span>Controls & Appearance</span>
-                </button>
+                    <button
+                        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                        className={`px-4 py-2.5 rounded-2xl text-xs font-semibold flex items-center gap-2.5 cursor-pointer transition-all duration-150 active:scale-[0.98] ${
+                            isSidebarOpen 
+                                ? 'bg-primary-500 text-white shadow-primary-500/25 ring-2 ring-primary-500/30'
+                                : 'text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/5'
+                        }`}
+                    >
+                        <SlidersHorizontal className={`w-4 h-4 ${isSidebarOpen ? 'text-white' : 'text-primary-500'} transition-transform duration-300 ${isSidebarOpen ? 'rotate-90' : ''}`} />
+                        <span>Controls & Appearance</span>
+                    </button>
+                </GlassPanel>
             </div>
 
             {/* 4. SLIDE-IN RIGHT SIDEBAR CONTROL PANEL */}

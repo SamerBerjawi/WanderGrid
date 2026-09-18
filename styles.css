@@ -145,3 +145,139 @@
     user-select: none;
   }
 }
+
+/* ==========================================================================
+   WanderGrid Liquid Glass System Overrides (@nkzw/liquid-glass)
+   Fixes the upstream library's translate(-50%, -50%) positioning bug
+   and ensures specular highlights, refraction, and content align pixel-perfectly.
+   ========================================================================== */
+
+/* Outer GlassPanel wrapper */
+.wg-glass-wrapper {
+  position: relative;
+  display: inline-block;
+  border: none !important;
+  outline: none !important;
+}
+
+.wg-glass-wrapper.wg-glass-card {
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+}
+
+.wg-glass-wrapper.wg-glass-pill {
+  display: inline-flex !important;
+}
+
+/* LiquidGlass Root Div & GlassContainer Shells */
+.wg-glass-wrapper > div,
+.wg-glass-wrapper .wg-glass-panel {
+  position: relative !important;
+  width: 100% !important;
+  height: 100% !important;
+  border: none !important;
+  outline: none !important;
+  border-radius: inherit !important;
+}
+
+/* Reset all internal layers from translate(-50%, -50%) to (0, 0) top-left anchor */
+.wg-glass-wrapper > div > div,
+.wg-glass-wrapper > div > span {
+  top: 0 !important;
+  left: 0 !important;
+  transform: none !important;
+}
+
+/* Specular highlight border rings must match 100% of the panel dimensions */
+.wg-glass-wrapper > div > span {
+  position: absolute !important;
+  width: 100% !important;
+  height: 100% !important;
+  pointer-events: none !important;
+}
+
+/* Background shadow backer layers */
+.wg-glass-wrapper > div > div:not(.wg-glass-panel) {
+  position: absolute !important;
+  width: 100% !important;
+  height: 100% !important;
+  pointer-events: none !important;
+}
+
+/* Content container (GlassContainer) must be in-flow to size the panel naturally */
+.wg-glass-wrapper .wg-glass-panel {
+  position: relative !important;
+  top: 0 !important;
+  left: 0 !important;
+  transform: none !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Reset forced 20px system-ui font and text-shadow on LiquidGlass inner div */
+.wg-glass-panel > div > div:last-child {
+  color: inherit !important;
+  font: inherit !important;
+  text-shadow: none !important;
+}
+
+/* Glass Surface Text Readability Enhancements */
+.wg-glass-wrapper {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+.dark .wg-glass-wrapper {
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+:root:not(.dark) .wg-glass-wrapper {
+  color: #0f172a;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.4);
+}
+
+.dark .wg-glass-wrapper .text-gray-400,
+.dark .wg-glass-wrapper .text-gray-500 {
+  color: #94a3b8 !important;
+}
+
+:root:not(.dark) .wg-glass-wrapper .text-gray-400,
+:root:not(.dark) .wg-glass-wrapper .text-gray-500 {
+  color: #475569 !important;
+}
+
+/* Card variant: stretches full-width in column flow for tiles, dialogs, tooltips */
+.wg-glass-card {
+  width: 100% !important;
+}
+
+.wg-glass-card .wg-glass-panel > div:last-child {
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 0 !important;
+}
+
+.wg-glass-card .wg-glass-panel > div:last-child > div:last-child {
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+}
+
+/* Pill variant: keeps horizontal inline-flex alignment for navbars and HUD chips */
+.wg-glass-pill .wg-glass-panel > div:last-child {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0 !important;
+}
+
+.wg-glass-pill .wg-glass-panel > div:last-child > div:last-child {
+  display: flex !important;
+  align-items: center !important;
+}
+

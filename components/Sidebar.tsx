@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { ViewState, Trip, User } from '../types';
 import { dataService } from '../services/mockDb';
 import { motion, AnimatePresence } from 'motion/react';
+import GlassPanel from './glass/GlassPanel';
 
 interface SidebarProps {
   currentView: ViewState;
@@ -133,19 +134,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
         </div>
 
         <div className={`mt-auto pb-8 pt-0 animate-fade-in flex flex-col gap-3 ${isCollapsed ? 'px-3 items-center' : 'px-8'}`}>
-          
-          {!isCollapsed ? (
+                {!isCollapsed ? (
                nextTrip ? (
-                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/30 border border-zinc-200/40 dark:border-white/5 text-gray-800 dark:text-white transition-all duration-300">
+                <GlassPanel
+                  className="wg-glass-card shadow-lg"
+                  overrides={{ borderRadius: 20 }}
+                  padding="14px"
+                >
                   <p className="text-2xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-1.5">Coming Up Next</p>
                   <div className="flex items-center gap-3 mb-1">
                       <span className="text-xl filter drop-shadow">{nextTrip.icon || '✈️'}</span>
-                      <p className="font-semibold text-xs truncate text-zinc-700 dark:text-zinc-300" title={nextTrip.name}>{nextTrip.name}</p>
+                      <p className="font-semibold text-xs truncate text-zinc-700 dark:text-zinc-200" title={nextTrip.name}>{nextTrip.name}</p>
                   </div>
                   <p className="text-xs font-bold tracking-wide text-indigo-500 dark:text-indigo-400">
                       {daysUntil > 0 ? `In ${daysUntil} days` : daysUntil === 0 ? 'Starts today!' : 'Ongoing'}
                   </p>
-                </div>
+                </GlassPanel>
               ) : (
                 <div className="p-4 rounded-2xl bg-white/5 dark:bg-white/5 border border-dashed border-zinc-250 dark:border-white/10 text-center">
                   <span className="material-icons-outlined text-zinc-400 text-xl mb-1">explore</span>
@@ -160,9 +164,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
               )
           ) : (
                nextTrip ? (
-                  <div className="w-12 h-12 rounded-2xl bg-zinc-500/5 dark:bg-white/5 flex items-center justify-center text-white shadow-md cursor-help border border-zinc-200/10 dark:border-white/5" title={`Next: ${nextTrip.name} (${daysUntil} days)`}>
-                      <span className="text-lg leading-none">{nextTrip.icon || '✈️'}</span>
-                  </div>
+                  <GlassPanel
+                    className="wg-glass-pill shadow-md cursor-help flex items-center justify-center w-12 h-12"
+                    overrides={{ borderRadius: 16 }}
+                    padding="0px"
+                  >
+                    <span className="text-lg leading-none" title={`Next: ${nextTrip.name} (${daysUntil} days)`}>{nextTrip.icon || '✈️'}</span>
+                  </GlassPanel>
               ) : null
           )}
 
@@ -208,62 +216,70 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
         </div>
       </aside>
 
-      {/* Mobile Bottom Navigation (Glassmorphic 2.0 / Crystal Edge) */}
-      <div className="flex md:hidden fixed bottom-0 left-0 right-0 z-50 h-20 items-center justify-around px-2 rounded-t-[2.5rem] border-t border-l border-r border-white/20 dark:border-white/10 bg-white/40 dark:bg-zinc-950/35 backdrop-blur-2xl bleed-glass shadow-[0_-8px_32px_0_rgba(0,0,0,0.25)]">
-        {[
-          { label: 'Dashboard', value: ViewState.DASHBOARD, icon: 'grid_view' },
-          { label: 'Map', value: ViewState.MAP, icon: 'public' },
-          { label: 'Flights', value: ViewState.FLIGHTS, icon: 'flight_takeoff' },
-          { label: 'Travel Atlas', value: ViewState.TRAVEL_ATLAS, icon: 'explore' },
-        ].map((item) => {
-          const isActive = currentView === item.value;
-          return (
+      {/* Mobile Bottom Navigation with Liquid Glass */}
+      <div className="flex md:hidden fixed bottom-2 left-0 right-0 z-50 items-center justify-center px-3 pointer-events-none">
+        <GlassPanel
+          className="wg-glass-pill shadow-2xl pointer-events-auto w-full max-w-md"
+          overrides={{ borderRadius: 28 }}
+          padding="4px 10px"
+        >
+          <div className="flex items-center justify-around w-full">
+            {[
+              { label: 'Dashboard', value: ViewState.DASHBOARD, icon: 'grid_view' },
+              { label: 'Map', value: ViewState.MAP, icon: 'public' },
+              { label: 'Flights', value: ViewState.FLIGHTS, icon: 'flight_takeoff' },
+              { label: 'Travel Atlas', value: ViewState.TRAVEL_ATLAS, icon: 'explore' },
+            ].map((item) => {
+              const isActive = currentView === item.value;
+              return (
+                <button
+                  key={item.value}
+                  onClick={() => {
+                    onNavigate(item.value);
+                    setIsMoreOpen(false);
+                  }}
+                  className={`flex flex-col items-center justify-center flex-1 h-14 min-w-0 rounded-2xl transition-all duration-300 relative select-none cursor-pointer px-0.5
+                    ${isActive 
+                      ? 'text-primary-500 font-extrabold scale-105' 
+                      : 'text-gray-400 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                >
+                  <span className="material-icons-outlined text-xl leading-none">{item.icon}</span>
+                  <span className="text-2xs font-bold uppercase tracking-wider mt-1 text-center leading-tight max-w-full line-clamp-2 hyphens-auto font-sans">
+                    {item.label}
+                  </span>
+                  {isActive && (
+                    <motion.div 
+                      layoutId="mobileActiveIndicatorDot"
+                      className="absolute -bottom-1 w-1.5 h-1.5 rounded-full bg-primary-500 shadow-[0_0_8px_0_rgba(250,154,29,0.8)]"
+                      transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                    />
+                  )}
+                </button>
+              );
+            })}
+
+            {/* Dynamic More popup trigger */}
             <button
-              key={item.value}
-              onClick={() => {
-                onNavigate(item.value);
-                setIsMoreOpen(false);
-              }}
-              className={`flex flex-col items-center justify-center flex-1 h-16 min-w-0 rounded-2xl transition-all duration-300 relative select-none cursor-pointer px-0.5
-                ${isActive 
-                  ? 'text-blue-600 dark:text-blue-400 scale-105' 
-                  : 'text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white'
+              onClick={() => setIsMoreOpen(!isMoreOpen)}
+              className={`flex flex-col items-center justify-center flex-1 h-14 min-w-0 rounded-2xl transition-all duration-300 relative select-none cursor-pointer px-0.5
+                ${(currentView === ViewState.PLANNER || currentView === ViewState.SETTINGS || currentView === ViewState.USER_DETAIL || currentView === ViewState.ROADTRIPS)
+                  ? 'text-primary-500 font-extrabold scale-105'
+                  : 'text-gray-400 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
                 }`}
             >
-              <span className="material-icons-outlined text-2xl leading-none">{item.icon}</span>
-              <span className="text-2xs font-bold uppercase tracking-wider mt-1 text-center leading-tight max-w-full line-clamp-2 hyphens-auto font-sans">
-                {item.label}
-              </span>
-              {isActive && (
+              <span className="material-icons-outlined text-xl leading-none">more_horiz</span>
+              <span className="text-2xs font-bold uppercase tracking-wider mt-1 text-center leading-tight font-sans">More</span>
+              {(currentView === ViewState.PLANNER || currentView === ViewState.SETTINGS || currentView === ViewState.USER_DETAIL || currentView === ViewState.ROADTRIPS) && (
                 <motion.div 
                   layoutId="mobileActiveIndicatorDot"
-                  className="absolute -bottom-1 w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_0_rgba(59,130,246,0.8)]"
+                  className="absolute -bottom-1 w-1.5 h-1.5 rounded-full bg-primary-500 shadow-[0_0_8px_0_rgba(250,154,29,0.8)]"
                   transition={{ type: "spring", stiffness: 350, damping: 25 }}
                 />
               )}
             </button>
-          );
-        })}
-
-        {/* Dynamic More popup trigger */}
-        <button
-          onClick={() => setIsMoreOpen(!isMoreOpen)}
-          className={`flex flex-col items-center justify-center flex-1 h-16 min-w-0 rounded-2xl transition-all duration-300 relative select-none cursor-pointer px-0.5
-            ${(currentView === ViewState.PLANNER || currentView === ViewState.SETTINGS || currentView === ViewState.USER_DETAIL || currentView === ViewState.ROADTRIPS)
-              ? 'text-blue-600 dark:text-blue-400 scale-105'
-              : 'text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white'
-            }`}
-        >
-          <span className="material-icons-outlined text-2xl leading-none">more_horiz</span>
-          <span className="text-2xs font-bold uppercase tracking-wider mt-1 text-center leading-tight font-sans">More</span>
-          {(currentView === ViewState.PLANNER || currentView === ViewState.SETTINGS || currentView === ViewState.USER_DETAIL || currentView === ViewState.ROADTRIPS) && (
-            <motion.div 
-              layoutId="mobileActiveIndicatorDot"
-              className="absolute -bottom-1 w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_0_rgba(59,130,246,0.8)]"
-              transition={{ type: "spring", stiffness: 350, damping: 25 }}
-            />
-          )}
-        </button>
+          </div>
+        </GlassPanel>
       </div>
 
       {/* More popup drawer menu overlay */}
@@ -278,99 +294,105 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
               className="md:hidden fixed inset-0 bg-black/35 backdrop-blur-xs z-[55]"
               onClick={() => setIsMoreOpen(false)}
             />
-            {/* Elegant Minimalist Floating Menu Box */}
+            {/* Elegant Minimalist Floating Menu Box with Liquid Glass */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 12, x: 0 }}
               animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 12, x: 0 }}
               transition={{ type: "spring", stiffness: 450, damping: 32 }}
-              className="md:hidden fixed bottom-[5.5rem] right-4 w-52 z-[60] p-4 rounded-3xl border border-white/20 dark:border-white/10 bg-white/45 dark:bg-zinc-950/35 backdrop-blur-2xl shadow-[0_12px_32px_rgba(0,0,0,0.2)] flex flex-col gap-1"
+              className="md:hidden fixed bottom-[5.5rem] right-4 w-56 z-[60]"
             >
-              <div className="flex flex-col gap-1">
-                {/* Planner button option */}
-                <button
-                  onClick={() => {
-                    onNavigate(ViewState.PLANNER);
-                    setIsMoreOpen(false);
-                  }}
-                  className={`flex items-center justify-between w-full p-2.5 px-3 rounded-xl text-left text-xs font-bold font-sans transition-all duration-150 border cursor-pointer ${
-                    currentView === ViewState.PLANNER
-                      ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/10'
-                      : 'text-zinc-700 dark:text-zinc-300 bg-transparent border-transparent hover:bg-zinc-50 dark:hover:bg-white/[0.04]'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className="material-icons-outlined text-lg">map</span>
-                    <span>Planner</span>
-                  </div>
-                  {currentView === ViewState.PLANNER && <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
-                </button>
-
-                {/* Road Trips option */}
-                <button
-                  onClick={() => {
-                    onNavigate(ViewState.ROADTRIPS);
-                    setIsMoreOpen(false);
-                  }}
-                  className={`flex items-center justify-between w-full p-2.5 px-3 rounded-xl text-left text-xs font-bold font-sans transition-all duration-150 border cursor-pointer ${
-                    currentView === ViewState.ROADTRIPS
-                      ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/10'
-                      : 'text-zinc-700 dark:text-zinc-300 bg-transparent border-transparent hover:bg-zinc-50 dark:hover:bg-white/[0.04]'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className="material-icons-outlined text-lg">directions_car</span>
-                    <span>Road Trips</span>
-                  </div>
-                  {currentView === ViewState.ROADTRIPS && <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
-                </button>
-
-                {/* Settings button option */}
-                <button
-                  onClick={() => {
-                    onNavigate(ViewState.SETTINGS);
-                    setIsMoreOpen(false);
-                  }}
-                  className={`flex items-center justify-between w-full p-2.5 px-3 rounded-xl text-left text-xs font-bold font-sans transition-all duration-150 border cursor-pointer ${
-                    currentView === ViewState.SETTINGS
-                      ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/10'
-                      : 'text-zinc-700 dark:text-zinc-300 bg-transparent border-transparent hover:bg-zinc-50 dark:hover:bg-white/[0.04]'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className="material-icons-outlined text-lg">settings</span>
-                    <span>Settings</span>
-                  </div>
-                  {currentView === ViewState.SETTINGS && <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
-                </button>
-
-                {/* Me (User profile) button option */}
-                {currentUser && (
+              <GlassPanel
+                className="wg-glass-card shadow-2xl"
+                overrides={{ borderRadius: 24 }}
+                padding="12px"
+              >
+                <div className="flex flex-col gap-1 w-full">
+                  {/* Planner button option */}
                   <button
                     onClick={() => {
-                      onNavigate(ViewState.USER_DETAIL, currentUser.id);
+                      onNavigate(ViewState.PLANNER);
                       setIsMoreOpen(false);
                     }}
                     className={`flex items-center justify-between w-full p-2.5 px-3 rounded-xl text-left text-xs font-bold font-sans transition-all duration-150 border cursor-pointer ${
-                      currentView === ViewState.USER_DETAIL
-                        ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/10'
-                        : 'text-zinc-700 dark:text-zinc-300 bg-transparent border-transparent hover:bg-zinc-50 dark:hover:bg-white/[0.04]'
+                      currentView === ViewState.PLANNER
+                        ? 'bg-primary-500/10 text-primary-600 dark:text-primary-400 border-primary-500/20'
+                        : 'text-light-text dark:text-dark-text bg-transparent border-transparent hover:bg-black/5 dark:hover:bg-white/5'
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
-                      <div className={`w-4.5 h-4.5 rounded-md flex items-center justify-center text-2xs font-black text-white shrink-0 ${
-                        currentUser.role === 'Partner' ? 'bg-gradient-to-br from-blue-500 to-indigo-600' : 'bg-gradient-to-br from-emerald-500 to-teal-600'
-                      }`}>
-                        {currentUser.name.charAt(0)}
-                      </div>
-                      <div className="flex flex-col text-left min-w-0">
-                        <span className="truncate max-w-[8rem] text-xs">{currentUser.name}</span>
-                      </div>
+                      <span className="material-icons-outlined text-lg">map</span>
+                      <span>Planner</span>
                     </div>
-                    {currentView === ViewState.USER_DETAIL && <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
+                    {currentView === ViewState.PLANNER && <span className="w-1.5 h-1.5 rounded-full bg-primary-500" />}
                   </button>
-                )}
-              </div>
+
+                  {/* Road Trips option */}
+                  <button
+                    onClick={() => {
+                      onNavigate(ViewState.ROADTRIPS);
+                      setIsMoreOpen(false);
+                    }}
+                    className={`flex items-center justify-between w-full p-2.5 px-3 rounded-xl text-left text-xs font-bold font-sans transition-all duration-150 border cursor-pointer ${
+                      currentView === ViewState.ROADTRIPS
+                        ? 'bg-primary-500/10 text-primary-600 dark:text-primary-400 border-primary-500/20'
+                        : 'text-light-text dark:text-dark-text bg-transparent border-transparent hover:bg-black/5 dark:hover:bg-white/5'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className="material-icons-outlined text-lg">directions_car</span>
+                      <span>Road Trips</span>
+                    </div>
+                    {currentView === ViewState.ROADTRIPS && <span className="w-1.5 h-1.5 rounded-full bg-primary-500" />}
+                  </button>
+
+                  {/* Settings button option */}
+                  <button
+                    onClick={() => {
+                      onNavigate(ViewState.SETTINGS);
+                      setIsMoreOpen(false);
+                    }}
+                    className={`flex items-center justify-between w-full p-2.5 px-3 rounded-xl text-left text-xs font-bold font-sans transition-all duration-150 border cursor-pointer ${
+                      currentView === ViewState.SETTINGS
+                        ? 'bg-primary-500/10 text-primary-600 dark:text-primary-400 border-primary-500/20'
+                        : 'text-light-text dark:text-dark-text bg-transparent border-transparent hover:bg-black/5 dark:hover:bg-white/5'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className="material-icons-outlined text-lg">settings</span>
+                      <span>Settings</span>
+                    </div>
+                    {currentView === ViewState.SETTINGS && <span className="w-1.5 h-1.5 rounded-full bg-primary-500" />}
+                  </button>
+
+                  {/* Me (User profile) button option */}
+                  {currentUser && (
+                    <button
+                      onClick={() => {
+                        onNavigate(ViewState.USER_DETAIL, currentUser.id);
+                        setIsMoreOpen(false);
+                      }}
+                      className={`flex items-center justify-between w-full p-2.5 px-3 rounded-xl text-left text-xs font-bold font-sans transition-all duration-150 border cursor-pointer ${
+                        currentView === ViewState.USER_DETAIL
+                          ? 'bg-primary-500/10 text-primary-600 dark:text-primary-400 border-primary-500/20'
+                          : 'text-light-text dark:text-dark-text bg-transparent border-transparent hover:bg-black/5 dark:hover:bg-white/5'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className={`w-5 h-5 rounded-md flex items-center justify-center text-2xs font-black text-white shrink-0 ${
+                          currentUser.role === 'Partner' ? 'bg-gradient-to-br from-blue-500 to-indigo-600' : 'bg-gradient-to-br from-emerald-500 to-teal-600'
+                        }`}>
+                          {currentUser.name.charAt(0)}
+                        </div>
+                        <div className="flex flex-col text-left min-w-0">
+                          <span className="truncate max-w-[8rem] text-xs font-bold">{currentUser.name}</span>
+                        </div>
+                      </div>
+                      {currentView === ViewState.USER_DETAIL && <span className="w-1.5 h-1.5 rounded-full bg-primary-500" />}
+                    </button>
+                  )}
+                </div>
+              </GlassPanel>
             </motion.div>
           </>
         )}
