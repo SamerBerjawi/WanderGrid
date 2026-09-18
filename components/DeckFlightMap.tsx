@@ -1963,21 +1963,21 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         padding="18px"
                         overrides={{ borderRadius: 28 }}
                     >
-                        {/* Top Header Bar with Colored Title & Close Button */}
-                        <div className="flex items-center justify-between pb-3 mb-2 border-b border-black/5 dark:border-white/10 shrink-0">
+                        {/* Top Header Bar with Colored Title & Prominent Close Button */}
+                        <div className="flex items-center justify-between pb-3 mb-2.5 border-b border-black/5 dark:border-white/10 shrink-0">
                             <div className="flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-primary-500 shadow-sm shadow-primary-500/50" />
+                                <span className="w-2 h-2 rounded-full bg-gradient-to-r from-primary-500 to-sky-500 shadow-sm shadow-primary-500/50" />
                                 <span className="text-xs font-extrabold uppercase tracking-wider bg-gradient-to-r from-primary-600 via-sky-500 to-indigo-500 dark:from-primary-400 dark:via-sky-400 dark:to-teal-300 bg-clip-text text-transparent">
-                                    Route Corridor
+                                    Route
                                 </span>
                             </div>
                             <button
                                 onClick={handleResetCorridor}
-                                className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-all cursor-pointer shrink-0"
+                                className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-700 hover:text-gray-950 dark:text-gray-200 dark:hover:text-white bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/20 border border-black/10 dark:border-white/15 transition-all cursor-pointer shrink-0 shadow-xs active:scale-95"
                                 aria-label="Close route details"
                                 title="Close route details"
                             >
-                                <X className="w-4 h-4" />
+                                <X className="w-4 h-4 stroke-[2.5]" />
                             </button>
                         </div>
 
@@ -2159,14 +2159,11 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                 {/* Header */}
                                 <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center gap-1.5">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-primary-500 shadow-sm shadow-primary-500/50" />
+                                        <span className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-primary-500 to-sky-500 shadow-sm shadow-primary-500/50" />
                                         <span className="text-xs font-extrabold uppercase tracking-wider bg-gradient-to-r from-primary-600 via-sky-500 to-indigo-500 dark:from-primary-400 dark:via-sky-400 dark:to-teal-300 bg-clip-text text-transparent">
                                             Route
                                         </span>
                                     </div>
-                                    <span className="text-2xs font-bold uppercase tracking-wider text-primary-600 dark:text-primary-400 bg-primary-500/10 px-2 py-0.5 rounded-full border border-primary-500/20">
-                                        Corridor
-                                    </span>
                                 </div>
 
                                 {/* Origin Row */}
