@@ -21,6 +21,8 @@ export interface RouteCorridor {
     destCode: string;
     originName: string;
     destName: string;
+    originCity: string;
+    destCity: string;
     originCountry: string;
     destCountry: string;
     originIso: string;
@@ -58,6 +60,29 @@ export function getFlagEmoji(countryCode: string): string {
     } catch {
         return '🌐';
     }
+}
+
+/**
+ * Formats an airport display name by including the city name (e.g. "Paris Charles De Gaulle").
+ * Avoids redundancy if the airport name already includes or starts with the city name.
+ */
+export function formatAirportDisplayName(name: string, city?: string): string {
+    if (!name) return '';
+    const cleanName = name.trim();
+    if (!city) return cleanName;
+
+    const cleanCity = city.split(',')[0].trim();
+    if (!cleanCity || cleanCity.toUpperCase() === cleanName.toUpperCase()) {
+        return cleanName;
+    }
+
+    const lowerName = cleanName.toLowerCase();
+    const lowerCity = cleanCity.toLowerCase();
+    if (lowerName.startsWith(lowerCity) || lowerName.includes(lowerCity)) {
+        return cleanName;
+    }
+
+    return `${cleanCity} ${cleanName}`;
 }
 
 /**
@@ -200,6 +225,8 @@ export function buildRouteCorridors(trips: Trip[]): Map<string, RouteCorridor> {
                     destCode: dCode,
                     originName: meta1.name,
                     destName: meta2.name,
+                    originCity: meta1.city,
+                    destCity: meta2.city,
                     originCountry: meta1.country,
                     destCountry: meta2.country,
                     originIso: meta1.iso,

@@ -281,10 +281,10 @@ export const TIME_OF_DAY_SEVERITIES: Array<{
     lightOpacity: number;
     darkOpacity: number;
 }> = [
-    { severity: 'civil', altitudeMax: 0, lightOpacity: 0.1, darkOpacity: 0.035 },
-    { severity: 'nautical', altitudeMax: -6, lightOpacity: 0.085, darkOpacity: 0.025 },
-    { severity: 'astronomical', altitudeMax: -12, lightOpacity: 0.075, darkOpacity: 0.02 },
-    { severity: 'night', altitudeMax: -18, lightOpacity: 0.07, darkOpacity: 0.02 }
+    { severity: 'civil', altitudeMax: 0, lightOpacity: 0.18, darkOpacity: 0.15 },
+    { severity: 'nautical', altitudeMax: -6, lightOpacity: 0.32, darkOpacity: 0.28 },
+    { severity: 'astronomical', altitudeMax: -12, lightOpacity: 0.55, darkOpacity: 0.50 },
+    { severity: 'night', altitudeMax: -18, lightOpacity: 0.85, darkOpacity: 0.88 }
 ];
 
 // Multi-band twilight penumbra steps from sunset horizon down to deep midnight

@@ -40,7 +40,7 @@ import {
 import { getTwilightGradientGeoJSON } from '../services/solarTerminator';
 import { getLatestRainRadarMetadata, RainRadarMetadata } from '../services/rainViewer';
 import { generateAirportRunway, RunwayGeometry, getPhysicalRunways } from '../services/airportRunways';
-import { buildRouteCorridors, RouteCorridor, getApproxLocalTime } from '../services/routeCorridor';
+import { buildRouteCorridors, RouteCorridor, getApproxLocalTime, formatAirportDisplayName, resolveLocationMetadata } from '../services/routeCorridor';
 import { getFlagEmoji, getRegion } from '../services/geoData';
 import { fetchMultiModalRoute, getCachedMultiModalRoute } from '../services/multiModalRouting';
 import { dataService } from '../services/mockDb';
@@ -340,7 +340,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     const [radarMeta, setRadarMeta] = useState<RainRadarMetadata | null>(null);
 
     useEffect(() => {
-        if (activeAppearance.rainRadar) {
+        if (!activeAppearance.rainRadar) return;
+        const fetchRadar = () => {
             getLatestRainRadarMetadata(
                 activeAppearance.rainRadarColorScheme || 2,
                 1,
@@ -348,8 +349,26 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             ).then(meta => {
                 if (meta) setRadarMeta(meta);
             });
-        }
+        };
+        fetchRadar();
+        const interval = setInterval(fetchRadar, 5 * 60_000);
+        return () => clearInterval(interval);
     }, [activeAppearance.rainRadar, activeAppearance.rainRadarColorScheme]);
+
+    // Periodic solar terminator refresh (every 60s as the earth rotates)
+    const [solarTerminatorTick, setSolarTerminatorTick] = useState(0);
+    useEffect(() => {
+        if (!activeAppearance.timeOfDay) return;
+        const interval = setInterval(() => {
+            setSolarTerminatorTick(t => t + 1);
+        }, 60_000);
+        return () => clearInterval(interval);
+    }, [activeAppearance.timeOfDay]);
+
+    const twilightData = useMemo(() => {
+        if (!activeAppearance.timeOfDay) return null;
+        return getTwilightGradientGeoJSON();
+    }, [activeAppearance.timeOfDay, solarTerminatorTick]);
 
     useEffect(() => {
         if (elevatedRoutesProp !== undefined) {
@@ -749,6 +768,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 // Airport and Location Markers
                 const isOriginAirport = oCode.length === 3 || oCode.length === 4;
                 const isDestAirport = dCode.length === 3 || dCode.length === 4;
+                const metaOrigin = isOriginAirport ? resolveLocationMetadata(oCode, t.originLat, t.originLng) : null;
+                const metaDest = isDestAirport ? resolveLocationMetadata(dCode, t.destLat, t.destLng) : null;
                 const baseOriginRadius = activeAppearance.airportSize === 'small' ? 3.5 : activeAppearance.airportSize === 'large' ? 7.5 : 5.0;
                 const origFreq = airportFreqMap.get(p1) || 1;
                 const destFreq = airportFreqMap.get(p2) || 1;
@@ -756,8 +777,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 if (!pointsMap.has(p1)) {
                     pointsMap.set(p1, {
                         position: [t.originLng, t.originLat, 0],
-                        name: t.origin,
-                        iata: isOriginAirport ? oCode : undefined,
+                        name: metaOrigin ? metaOrigin.name : t.origin,
+                        city: metaOrigin ? metaOrigin.city : undefined,
+                        iata: isOriginAirport ? oCode.toUpperCase() : undefined,
                         isAirport: isOriginAirport,
                         tripId: trip.id,
                         color: isOriginAirport ? [250, 154, 29, 240] : [251, 191, 36, 240],
@@ -770,8 +792,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 if (!pointsMap.has(p2)) {
                     pointsMap.set(p2, {
                         position: [t.destLng, t.destLat, 0],
-                        name: t.destination,
-                        iata: isDestAirport ? dCode : undefined,
+                        name: metaDest ? metaDest.name : t.destination,
+                        city: metaDest ? metaDest.city : undefined,
+                        iata: isDestAirport ? dCode.toUpperCase() : undefined,
                         isAirport: isDestAirport,
                         tripId: trip.id,
                         color: isDestAirport ? [250, 154, 29, 240] : [251, 191, 36, 240],
@@ -864,9 +887,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         const layers: any[] = [];
         const isElevatedActive = effectiveProjection === 'globe' && elevatedRoutes;
 
-        // 1. Solar Twilight Shading
-        if (activeAppearance.timeOfDay) {
-            const twilightData = getTwilightGradientGeoJSON();
+        // 1. Solar Twilight Shading (High-Contrast Progressive Multi-Band Gradient)
+        if (activeAppearance.timeOfDay && twilightData) {
+            const isSatellite = currentLayer === 'satellite' || currentLayer === 'ocean';
             layers.push(
                 new GeoJsonLayer({
                     id: 'solar-twilight-gradient',
@@ -874,39 +897,31 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     filled: true,
                     stroked: false,
                     wrapLongitude: true,
-                    getFillColor: () => [5, 8, 18, isDark ? 20 : 28],
+                    getFillColor: (f: any) => {
+                        const step = typeof f?.properties?.stepIndex === 'number' ? f.properties.stepIndex : 0;
+                        // Progressive multi-band twilight shading from dusk/dawn horizon (step 0) to deep midnight (step 7)
+                        // Stacking 8 concentric spherical caps creates an ultra-smooth natural penumbra with rich night contrast.
+                        if (isSatellite) {
+                            const alpha = Math.min(255, Math.round(32 + step * 6.5));
+                            return [2, 5, 18, alpha];
+                        }
+                        if (isDark) {
+                            const alpha = Math.min(255, Math.round(34 + step * 7.0));
+                            return [2, 4, 14, alpha];
+                        }
+                        const alpha = Math.min(255, Math.round(28 + step * 6.0));
+                        return [8, 14, 32, alpha];
+                    },
                     pickable: false,
-                    parameters: { blend: true, blendFunc: [770, 771] }
-                })
-            );
-        }
-
-        // 2. RainViewer Live Radar Layer
-        if (activeAppearance.rainRadar && radarMeta?.tileUrl) {
-            const opacity = activeAppearance.rainRadarOpacity ?? 0.85;
-            layers.push(
-                new TileLayer({
-                    id: `rain-radar-${radarMeta.tileUrl}-${opacity}`,
-                    data: radarMeta.tileUrl,
-                    minZoom: 0,
-                    maxZoom: 18,
-                    tileSize: 256,
-                    maxRequests: 20,
-                    opacity,
-                    renderSubLayers: (props: any) => {
-                        const bbox = props.tile.bbox || {};
-                        const west = bbox.west ?? -180;
-                        const south = bbox.south ?? -85.05;
-                        const east = bbox.east ?? 180;
-                        const north = bbox.north ?? 85.05;
-                        return new BitmapLayer(props, {
-                            image: props.data,
-                            bounds: [west, south, east, north]
-                        } as any);
+                    parameters: { blend: true, blendFunc: [770, 771] },
+                    updateTriggers: {
+                        getFillColor: [isDark, currentLayer]
                     }
                 })
             );
         }
+
+
 
         // 3. Country Residence Polygons (Scratch Map)
         if (geoJsonData && (showCountries || viewMode === 'scratch')) {
@@ -1254,6 +1269,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     }, [
         activeAppearance,
         isDark,
+        currentLayer,
+        twilightData,
         effectiveProjection,
         elevatedRoutes,
         radarMeta,
@@ -1345,6 +1362,67 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         const nextStyle = createMapLibreStyle(currentLayer, isDark, workspaceSettings?.cartoApiKey);
         mapRef.current.setStyle(nextStyle);
     }, [currentLayer, isDark, workspaceSettings?.cartoApiKey]);
+
+    // Synchronize RainViewer precipitation radar directly into MapLibre GL
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map) return;
+
+        const updateRadarLayer = () => {
+            if (!map.isStyleLoaded()) return;
+
+            const sourceId = 'rain-radar-source';
+            const layerId = 'rain-radar-layer';
+            const isEnabled = Boolean(activeAppearance.rainRadar && radarMeta?.tileUrl);
+            const opacity = activeAppearance.rainRadarOpacity ?? 0.85;
+
+            const existingLayer = map.getLayer(layerId);
+            const existingSource = map.getSource(sourceId) as maplibregl.RasterTileSource | undefined;
+
+            if (!isEnabled) {
+                if (existingLayer) map.removeLayer(layerId);
+                if (existingSource) map.removeSource(sourceId);
+                return;
+            }
+
+            const currentTileUrl = existingSource?.tiles?.[0];
+            if (existingSource && currentTileUrl !== radarMeta!.tileUrl) {
+                if (existingLayer) map.removeLayer(layerId);
+                map.removeSource(sourceId);
+            }
+
+            if (!map.getSource(sourceId)) {
+                map.addSource(sourceId, {
+                    type: 'raster',
+                    tiles: [radarMeta!.tileUrl],
+                    tileSize: 256,
+                    attribution: 'RainViewer'
+                });
+            }
+
+            if (!map.getLayer(layerId)) {
+                map.addLayer({
+                    id: layerId,
+                    type: 'raster',
+                    source: sourceId,
+                    paint: {
+                        'raster-opacity': opacity
+                    }
+                });
+            } else {
+                map.setPaintProperty(layerId, 'raster-opacity', opacity);
+            }
+        };
+
+        if (map.isStyleLoaded()) {
+            updateRadarLayer();
+        }
+
+        map.on('styledata', updateRadarLayer);
+        return () => {
+            map.off('styledata', updateRadarLayer);
+        };
+    }, [activeAppearance.rainRadar, activeAppearance.rainRadarOpacity, radarMeta?.tileUrl, currentLayer, isDark]);
 
     // Synchronize Projection dynamically (Flat Mercator vs 3D Globe)
     useEffect(() => {
@@ -1696,17 +1774,23 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
             {/* Left Route Mission Control Corridor Inspector Card */}
             {selectedCorridor && (
-                <div className="absolute top-5 left-5 z-30 w-80 max-h-[calc(100%-2.5rem)] flex flex-col rounded-3xl bg-white/90 dark:bg-dark-card/90 backdrop-blur-sm border border-black/10 dark:border-white/15 shadow-glass-modal overflow-hidden text-light-text dark:text-dark-text animate-fade-in" style={{ WebkitBackdropFilter: 'blur(4px)' }}>
-                    <div className="p-4 pb-3 flex items-center justify-between border-b border-black/5 dark:border-white/10 bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">
-                        <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold uppercase tracking-wider text-primary-500">Route Corridor</span>
-                            <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
-                                ACTIVE FOCUS
+                <div className="absolute top-5 left-5 z-30 w-96 sm:w-[420px] max-h-[calc(100%-2.5rem)] flex flex-col rounded-3xl bg-white/95 dark:bg-dark-card/95 backdrop-blur-md border border-black/10 dark:border-white/15 shadow-glass-modal overflow-hidden text-light-text dark:text-dark-text animate-fade-in" style={{ WebkitBackdropFilter: 'blur(12px)' }}>
+                    {/* Header: Direct route pair & codes in CAPS, no redundant label */}
+                    <div className="p-4 pb-3 flex items-center justify-between border-b border-black/5 dark:border-white/10 bg-gradient-to-r from-primary-500/10 via-primary-500/5 to-transparent shrink-0">
+                        <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-xl leading-none shrink-0">{selectedCorridor.originFlag}</span>
+                            <span className="font-mono font-bold text-base tracking-tight text-light-text dark:text-dark-text">{selectedCorridor.originCode.toUpperCase()}</span>
+                            <ArrowRight className="w-4 h-4 text-primary-500 shrink-0" />
+                            <span className="text-xl leading-none shrink-0">{selectedCorridor.destFlag}</span>
+                            <span className="font-mono font-bold text-base tracking-tight text-light-text dark:text-dark-text">{selectedCorridor.destCode.toUpperCase()}</span>
+                            <span className="ml-1.5 px-2 py-0.5 rounded-full text-2xs font-bold bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20 shrink-0">
+                                ACTIVE
                             </span>
                         </div>
                         <button
                             onClick={handleResetCorridor}
-                            className="p-1.5 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text transition-all cursor-pointer"
+                            className="w-8 h-8 rounded-xl flex items-center justify-center bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text transition-all cursor-pointer shrink-0"
+                            aria-label="Close corridor card"
                         >
                             <X className="w-4 h-4" />
                         </button>
@@ -1715,15 +1799,16 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     <div className="p-4 space-y-3">
                         {(() => {
                             const originTime = getApproxLocalTime(selectedCorridor.originCoords[0]);
+                            const originDisplayName = formatAirportDisplayName(selectedCorridor.originName, selectedCorridor.originCity);
                             return (
                                 <div className="p-3 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-1">
                                     <span className="text-xs text-light-text-secondary dark:text-dark-text-secondary truncate block font-medium">
-                                        {formatPlaceName(selectedCorridor.originName)}
+                                        {originDisplayName}
                                     </span>
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <span className="text-xl leading-none">{selectedCorridor.originFlag}</span>
-                                            <span className="text-lg font-bold tracking-tight text-light-text dark:text-dark-text">{formatPlaceName(selectedCorridor.originCode)}</span>
+                                            <span className="text-lg font-mono font-bold tracking-tight text-light-text dark:text-dark-text">{selectedCorridor.originCode.toUpperCase()}</span>
                                             <ChevronRight className="w-3.5 h-3.5 text-light-text-secondary/60 dark:text-dark-text-secondary/60" />
                                         </div>
                                         <div className="text-right">
@@ -1736,7 +1821,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         })()}
 
                         <div className="flex items-center justify-between px-2 text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium">
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 font-mono">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                                 <span>{selectedCorridor.distanceKm.toLocaleString()} km</span>
                             </div>
@@ -1749,15 +1834,16 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
                         {(() => {
                             const destTime = getApproxLocalTime(selectedCorridor.destCoords[0]);
+                            const destDisplayName = formatAirportDisplayName(selectedCorridor.destName, selectedCorridor.destCity);
                             return (
                                 <div className="p-3 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-1">
                                     <span className="text-xs text-light-text-secondary dark:text-dark-text-secondary truncate block font-medium">
-                                        {formatPlaceName(selectedCorridor.destName)}
+                                        {destDisplayName}
                                     </span>
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <span className="text-xl leading-none">{selectedCorridor.destFlag}</span>
-                                            <span className="text-lg font-bold tracking-tight text-light-text dark:text-dark-text">{formatPlaceName(selectedCorridor.destCode)}</span>
+                                            <span className="text-lg font-mono font-bold tracking-tight text-light-text dark:text-dark-text">{selectedCorridor.destCode.toUpperCase()}</span>
                                             <ChevronRight className="w-3.5 h-3.5 text-light-text-secondary/60 dark:text-dark-text-secondary/60" />
                                         </div>
                                         <div className="text-right">
@@ -1777,8 +1863,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         const isSea = ['cruise', 'ferry', 'boat', 'ship'].some(m => modeStr.includes(m));
                         const isRoad = ['car', 'drive', 'bus', 'road', 'taxi'].some(m => modeStr.includes(m));
 
-                        const totalTitle = isTrain ? 'Total Journeys' : isSea ? 'Total Voyages' : isRoad ? 'Total Drives' : 'Total Flights';
-                        const logTitle = isTrain ? 'Rail Log' : isSea ? 'Maritime Log' : isRoad ? 'Road Trip Log' : 'Flight Log';
+                        const totalTitle = isTrain ? 'Journeys:' : isSea ? 'Voyages:' : isRoad ? 'Drives:' : 'Flights:';
+                        const logTitle = isTrain ? 'Rail Log:' : isSea ? 'Maritime Log:' : isRoad ? 'Road Trip Log:' : 'Flight Log:';
 
                         return (
                             <div className="px-4 pb-4 space-y-2">
@@ -1788,14 +1874,23 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                         <span className="text-base font-bold text-primary-500">{selectedCorridor.flights.length}</span>
                                     </div>
                                     <div className="p-2.5 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5">
-                                        <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold tracking-wider block">Direct Distance</span>
-                                        <span className="text-base font-bold text-light-text dark:text-dark-text">{selectedCorridor.distanceKm} km</span>
+                                        <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold tracking-wider block">Distance:</span>
+                                        <span className="text-base font-bold font-mono text-light-text dark:text-dark-text">{selectedCorridor.distanceKm.toLocaleString()} km</span>
                                     </div>
                                 </div>
 
                                 <div className="p-3 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-2">
-                                    <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold tracking-wider block">{logTitle} ({selectedCorridor.flights.length})</span>
-                                    <div className="max-h-40 overflow-y-auto space-y-1.5 custom-scrollbar pr-1">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold tracking-wider block">
+                                            {logTitle} ({selectedCorridor.flights.length})
+                                        </span>
+                                        {selectedCorridor.airlines && selectedCorridor.airlines.length > 0 && (
+                                            <span className="text-2xs text-primary-500 font-semibold truncate max-w-[200px]">
+                                                {selectedCorridor.airlines.join(', ')}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="max-h-48 overflow-y-auto space-y-1.5 custom-scrollbar pr-1">
                                         {selectedCorridor.flights.map((f, idx) => {
                                             const fMode = String(f.mode || '').toLowerCase();
                                             const isF_Rail = fMode.includes('train') || fMode.includes('rail');
@@ -1803,24 +1898,28 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                             const isF_Road = ['car', 'drive', 'bus', 'road', 'taxi'].some(m => fMode.includes(m));
 
                                             return (
-                                                <div key={idx} className="flex items-center justify-between text-xs py-1 px-2 rounded-xl bg-white/50 dark:bg-white/[0.04] border border-black/5 dark:border-white/5 hover:bg-white/80 dark:hover:bg-white/[0.08] transition-colors">
-                                                    <div className="flex items-center gap-1.5 min-w-0">
+                                                <div key={idx} className="flex items-center justify-between gap-2.5 text-xs py-1.5 px-2.5 rounded-xl bg-white/60 dark:bg-white/[0.04] border border-black/5 dark:border-white/5 hover:bg-white/90 dark:hover:bg-white/[0.08] transition-colors">
+                                                    <div className="flex items-center gap-2 min-w-0 flex-1">
                                                         {isF_Rail ? (
-                                                            <Train className="w-3 h-3 text-purple-500 shrink-0" />
+                                                            <Train className="w-3.5 h-3.5 text-purple-500 shrink-0" />
                                                         ) : isF_Sea ? (
-                                                            <Ship className="w-3 h-3 text-cyan-500 shrink-0" />
+                                                            <Ship className="w-3.5 h-3.5 text-cyan-500 shrink-0" />
                                                         ) : isF_Road ? (
-                                                            <Car className="w-3 h-3 text-amber-500 shrink-0" />
+                                                            <Car className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                                                         ) : (
-                                                            <Plane className="w-3 h-3 text-primary-500 shrink-0" />
+                                                            <Plane className="w-3.5 h-3.5 text-primary-500 shrink-0" />
                                                         )}
-                                                        <span className="font-semibold text-light-text dark:text-dark-text truncate">{f.provider || (isF_Rail ? 'Train' : isF_Sea ? 'Ferry/Cruise' : isF_Road ? 'Drive' : 'Flight')}</span>
+                                                        <span className="font-semibold text-light-text dark:text-dark-text truncate">
+                                                            {f.provider || (isF_Rail ? 'Train' : isF_Sea ? 'Ferry/Cruise' : isF_Road ? 'Drive' : 'Flight')}
+                                                        </span>
                                                         {f.identifier && (
-                                                            <span className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-mono">#{f.identifier}</span>
+                                                            <span className="px-1.5 py-0.5 rounded text-2xs font-mono font-bold bg-black/5 dark:bg-white/10 text-light-text-secondary dark:text-dark-text-secondary shrink-0">
+                                                                #{f.identifier.toUpperCase()}
+                                                            </span>
                                                         )}
                                                     </div>
                                                     {f.departureDate && (
-                                                        <span className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-mono shrink-0">
+                                                        <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary font-mono shrink-0">
                                                             {formatDate(f.departureDate, 'short-with-year')}
                                                         </span>
                                                     )}
@@ -1857,7 +1956,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                 ? '🚢 MARITIME ROUTE' 
                                 : isRoad 
                                     ? '🚗 ROAD ROUTE' 
-                                    : '✈️ FLIGHT CORRIDOR';
+                                    : null; // Removed "Flight Corridor" label
 
                         const countLabel = isTrain
                             ? (c.totalFlights === 1 ? 'Train Journey' : 'Train Journeys')
@@ -1868,25 +1967,30 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                     : (c.totalFlights === 1 ? 'Flight' : 'Flights');
 
                         return (
-                            <div className="bg-white/90 dark:bg-dark-card/90 text-light-text dark:text-dark-text border border-black/10 dark:border-white/15 rounded-3xl shadow-glass-modal backdrop-blur-sm p-4 min-w-[280px] text-xs animate-fade-in space-y-3" style={{ WebkitBackdropFilter: 'blur(4px)' }}>
+                            <div className="bg-white/90 dark:bg-dark-card/90 text-light-text dark:text-dark-text border border-black/10 dark:border-white/15 rounded-3xl shadow-glass-modal backdrop-blur-sm p-4 min-w-[280px] max-w-sm text-xs animate-fade-in space-y-3" style={{ WebkitBackdropFilter: 'blur(4px)' }}>
+                                {/* Header */}
                                 <div className="flex items-center justify-between border-b border-black/5 dark:border-white/10 pb-2.5">
                                     <div className="flex items-center gap-2">
                                         <span className="text-base leading-none">{c.originFlag}</span>
-                                        <span className="font-bold text-sm text-light-text dark:text-dark-text tracking-tight">{formatPlaceName(c.originCode)}</span>
+                                        <span className="font-bold text-sm text-light-text dark:text-dark-text tracking-tight">{c.originCode.toUpperCase()}</span>
                                         <ArrowRight className="w-3.5 h-3.5 text-light-text-secondary dark:text-dark-text-secondary" />
-                                        <span className="font-bold text-sm text-light-text dark:text-dark-text tracking-tight">{formatPlaceName(c.destCode)}</span>
+                                        <span className="font-bold text-sm text-light-text dark:text-dark-text tracking-tight">{c.destCode.toUpperCase()}</span>
                                     </div>
-                                    <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
-                                        {typeLabel}
-                                    </span>
+                                    {typeLabel && (
+                                        <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
+                                            {typeLabel}
+                                        </span>
+                                    )}
                                 </div>
 
+                                {/* Names */}
                                 <div className="text-xs text-light-text-secondary dark:text-dark-text-secondary leading-snug">
-                                    <span className="font-semibold text-light-text dark:text-dark-text">{formatPlaceName(c.originName)}</span>
+                                    <span className="font-semibold text-light-text dark:text-dark-text">{formatAirportDisplayName(c.originName, c.originCity)}</span>
                                     <span className="opacity-50 mx-1">→</span>
-                                    <span className="font-semibold text-light-text dark:text-dark-text">{formatPlaceName(c.destName)}</span>
+                                    <span className="font-semibold text-light-text dark:text-dark-text">{formatAirportDisplayName(c.destName, c.destCity)}</span>
                                 </div>
 
+                                {/* Distance & Time Difference */}
                                 <div className="flex items-center justify-between text-xs px-2.5 py-1.5 rounded-xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 font-mono text-light-text-secondary dark:text-dark-text-secondary">
                                     <span>{c.distanceKm.toLocaleString()} km</span>
                                     <span>
@@ -1894,11 +1998,17 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                     </span>
                                 </div>
 
+                                {/* Summary with Flights: and Carrier */}
                                 <div>
                                     <div className="flex items-center justify-between mb-1.5">
                                         <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
-                                            {countLabel} <span className="text-light-text dark:text-dark-text ml-1 font-bold">{c.totalFlights}</span>
+                                            {countLabel}: <span className="text-light-text dark:text-dark-text ml-1 font-bold">{c.totalFlights}</span>
                                         </span>
+                                        {c.airlines && c.airlines.length > 0 && (
+                                            <span className="text-2xs font-semibold text-primary-500 truncate max-w-[150px]" title={c.airlines.join(', ')}>
+                                                {c.airlines.join(', ')}
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -1983,7 +2093,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                     </span>
                                     {hoverInfo.object.isAirport && (
                                         <span className="px-1.5 py-0.5 rounded text-2xs font-mono font-bold bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
-                                            {hoverInfo.object.iata || 'AERODROME'}
+                                            {hoverInfo.object.iata ? hoverInfo.object.iata.toUpperCase() : 'AERODROME'}
                                         </span>
                                     )}
                                 </div>
@@ -1997,7 +2107,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                             }`} 
                                         />
                                         <span className="text-sm tracking-tight text-light-text dark:text-dark-text truncate">
-                                            {formatPlaceName(hoverInfo.object.name)}
+                                            {hoverInfo.object.isAirport 
+                                                ? formatAirportDisplayName(hoverInfo.object.name, hoverInfo.object.city)
+                                                : formatPlaceName(hoverInfo.object.name)}
                                         </span>
                                     </div>
                                 </div>
