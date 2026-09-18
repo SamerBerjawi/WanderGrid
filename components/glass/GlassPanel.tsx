@@ -61,7 +61,7 @@ export default function GlassPanel({
         aberrationIntensity={config.aberrationIntensity}
         elasticity={config.elasticity}
         borderRadius={config.borderRadius}
-        className={`wg-glass-panel ${variantClass}`}
+        className={`wg-glass-panel ${variantClass} ${cleanClassName.includes('h-full') ? 'h-full' : ''}`.trim()}
         padding={padding}
         overLight={overLight}
         mouseContainer={mouseContainer}

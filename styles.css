@@ -269,6 +269,35 @@
   align-items: stretch !important;
 }
 
+/* Full-height glass containers (e.g. sidebar, drawers, modal shells) */
+.wg-glass-card.h-full,
+.wg-glass-wrapper.h-full {
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.wg-glass-card.h-full > div,
+.wg-glass-wrapper.h-full > div,
+.wg-glass-card.h-full .wg-glass-panel,
+.wg-glass-wrapper.h-full .wg-glass-panel {
+  height: 100% !important;
+}
+
+.wg-glass-card.h-full .wg-glass-panel > div:last-child,
+.wg-glass-wrapper.h-full .wg-glass-panel > div:last-child {
+  height: 100% !important;
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+}
+
+.wg-glass-card.h-full .wg-glass-panel > div:last-child > div:last-child,
+.wg-glass-wrapper.h-full .wg-glass-panel > div:last-child > div:last-child {
+  height: 100% !important;
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+}
+
 /* Pill variant: keeps horizontal inline-flex alignment for navbars and HUD chips */
 .wg-glass-pill .wg-glass-panel > div:last-child {
   display: flex !important;
