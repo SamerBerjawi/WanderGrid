@@ -258,10 +258,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         >
           <div className="flex items-center justify-around w-full">
             {[
-              { label: 'Dashboard', value: ViewState.DASHBOARD, icon: 'grid_view' },
-              { label: 'Map', value: ViewState.MAP, icon: 'public' },
-              { label: 'Flights', value: ViewState.FLIGHTS, icon: 'flight_takeoff' },
-              { label: 'Travel Atlas', value: ViewState.TRAVEL_ATLAS, icon: 'explore' },
+              { label: 'Dashboard', shortLabel: 'Dashboard', value: ViewState.DASHBOARD, icon: 'grid_view' },
+              { label: 'Flights', shortLabel: 'Flights', value: ViewState.FLIGHTS, icon: 'flight_takeoff' },
+              { label: 'Map', shortLabel: 'Map', value: ViewState.MAP, icon: 'public' },
+              { label: 'Travel Atlas', shortLabel: 'Atlas', value: ViewState.TRAVEL_ATLAS, icon: 'explore' },
             ].map((item) => {
               const isActive = currentView === item.value;
               return (
@@ -278,8 +278,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     }`}
                 >
                   <Icon name={item.icon} className="text-xl leading-none" />
-                  <span className="text-2xs font-bold uppercase tracking-wider mt-1 text-center leading-tight max-w-full line-clamp-2 hyphens-auto font-sans">
-                    {item.label}
+                  <span className="text-[10px] font-bold uppercase tracking-tight mt-1 text-center leading-tight max-w-full truncate font-sans">
+                    {item.shortLabel || item.label}
                   </span>
                   {isActive && (
                     <motion.div 
@@ -302,7 +302,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 }`}
             >
               <Icon name="more_horiz" className="text-xl leading-none" />
-              <span className="text-2xs font-bold uppercase tracking-wider mt-1 text-center leading-tight font-sans">More</span>
+              <span className="text-[10px] font-bold uppercase tracking-tight mt-1 text-center leading-tight font-sans">More</span>
               {(currentView === ViewState.PLANNER || currentView === ViewState.SETTINGS || currentView === ViewState.USER_DETAIL || currentView === ViewState.ROADTRIPS) && (
                 <motion.div 
                   layoutId="mobileActiveIndicatorDot"

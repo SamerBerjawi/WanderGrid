@@ -776,8 +776,8 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                 </Suspense>
             </div>
 
-            {/* 2. FLOATING TOP HUD BAR (Brand & Telemetry) with Liquid Glass */}
-            <div className={`absolute top-5 z-20 flex items-center gap-3 pointer-events-none transition-all duration-300 ${isSidebarCollapsed ? 'left-5 md:left-28' : 'left-5 md:left-80'}`}>
+            {/* 2. FLOATING TOP HUD BAR (Brand & Telemetry) with Liquid Glass (Desktop Large Only) */}
+            <div className={`hidden lg:flex absolute top-5 z-20 items-center gap-3 pointer-events-none transition-all duration-300 ${isSidebarCollapsed ? 'left-5 md:left-28' : 'left-5 md:left-80'}`}>
                 {/* Brand & Status Pill */}
                 <div className="pointer-events-auto">
                     <GlassPanel
@@ -806,12 +806,12 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                 </div>
             </div>
 
-            {/* 2.5 FLOATING TOP-CENTER PREDEFINED VIEW MODES SELECTOR with Kokonut UI Smooth Tab & Liquid Glass */}
-            <div className="absolute top-5 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
+            {/* 2.5 FLOATING TOP-CENTER PREDEFINED VIEW MODES SELECTOR (Desktop md+) */}
+            <div className="hidden md:block absolute top-5 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
                 <GlassPanel
                     className="wg-glass-pill shadow-glass-card"
-                    padding="4px"
-                    overrides={{ borderRadius: 20 }}
+                    padding="4px 6px"
+                    overrides={{ borderRadius: 28 }}
                 >
                     <div className="flex gap-1 relative">
                         {[
@@ -825,7 +825,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                 <button
                                     key={m.id}
                                     onClick={() => handleSelectViewMode(m.id as PredefinedMapMode)}
-                                    className={`relative px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors duration-200 flex items-center gap-1.5 cursor-pointer select-none active:scale-95 ${
+                                    className={`relative px-4 py-2 rounded-2xl text-xs font-bold transition-colors duration-200 flex items-center gap-1.5 cursor-pointer select-none active:scale-95 ${
                                         isSelected
                                             ? 'text-primary-700 dark:text-primary-300'
                                             : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
@@ -834,7 +834,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                     {isSelected && (
                                         <motion.div
                                             layoutId="kokonutSmoothTabActive"
-                                            className="absolute inset-0 rounded-xl bg-primary-500/20 dark:bg-primary-500/30 backdrop-blur-md border border-primary-500/40 dark:border-primary-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_8px_rgba(234,88,12,0.2)] z-0"
+                                            className="absolute inset-0 rounded-2xl bg-primary-500/20 dark:bg-primary-500/30 backdrop-blur-md border border-primary-500/40 dark:border-primary-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_8px_rgba(234,88,12,0.2)] z-0"
                                             style={{ WebkitBackdropFilter: 'blur(12px)' }}
                                             transition={{ type: "spring", stiffness: 450, damping: 32 }}
                                         />
@@ -850,8 +850,8 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                 </GlassPanel>
             </div>
 
-            {/* 3. FLOATING TOP RIGHT CONTROLS TOGGLE & FULLSCREEN with Liquid Glass */}
-            <div className="absolute top-5 right-5 z-20 flex items-center gap-2 pointer-events-auto">
+            {/* 3. FLOATING TOP RIGHT CONTROLS TOGGLE & FULLSCREEN (Desktop md+) */}
+            <div className="hidden md:flex absolute top-5 right-5 z-20 items-center gap-2 pointer-events-auto">
                 <GlassPanel
                     className="wg-glass-pill shadow-glass-card"
                     padding="0px"
@@ -896,9 +896,121 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                 </GlassPanel>
             </div>
 
+            {/* 3.5 MOBILE TOP BAR (< md): Telemetry on left, Fullscreen & Controls on right */}
+            <div className="flex md:hidden absolute top-3 inset-x-3 z-20 items-center justify-between pointer-events-none">
+                {/* Left: Compact Telemetry / Map Brand */}
+                <div className="pointer-events-auto">
+                    <GlassPanel
+                        className="wg-glass-pill shadow-glass-card"
+                        padding="0px"
+                        overrides={{ borderRadius: 28 }}
+                    >
+                        <div className="flex items-center gap-2 px-3 py-1.5">
+                            <div className="w-6 h-6 rounded-lg bg-primary-500/20 text-primary-500 flex items-center justify-center border border-primary-500/30 shrink-0">
+                                <Globe className="w-3.5 h-3.5" />
+                            </div>
+                            <span className="text-xs font-bold tracking-tight text-light-text dark:text-dark-text">
+                                {activeSectorsCount} Sectors
+                            </span>
+                        </div>
+                    </GlassPanel>
+                </div>
+
+                {/* Right: Fullscreen & Controls buttons in a sleek unified glass pill */}
+                <div className="flex items-center gap-1.5 pointer-events-auto">
+                    <GlassPanel
+                        className="wg-glass-pill shadow-glass-card"
+                        padding="2px 4px"
+                        overrides={{ borderRadius: 28 }}
+                    >
+                        <div className="flex items-center gap-1">
+                            <button
+                                onClick={handleToggleFullscreen}
+                                className={`w-8 h-8 rounded-xl flex items-center justify-center cursor-pointer transition-all duration-150 active:scale-95 ${
+                                    isFullscreen
+                                        ? 'bg-primary-500/20 dark:bg-primary-500/30 text-primary-600 dark:text-primary-400'
+                                        : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
+                                }`}
+                                title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+                                aria-label="Toggle Fullscreen"
+                            >
+                                {isFullscreen ? (
+                                    <Minimize className="w-4 h-4 text-primary-600 dark:text-primary-400" />
+                                ) : (
+                                    <Maximize className="w-4 h-4" />
+                                )}
+                            </button>
+                            <div className="w-[1px] h-4 bg-black/10 dark:bg-white/10" />
+                            <button
+                                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                                className={`h-8 px-2.5 rounded-xl flex items-center gap-1.5 text-xs font-bold cursor-pointer transition-all duration-150 active:scale-95 ${
+                                    isSidebarOpen 
+                                        ? 'bg-primary-500/20 dark:bg-primary-500/30 text-primary-700 dark:text-primary-300'
+                                        : 'text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/5'
+                                }`}
+                                title="Controls & Appearance"
+                                aria-label="Controls & Appearance"
+                            >
+                                <SlidersHorizontal className={`w-3.5 h-3.5 ${isSidebarOpen ? 'text-primary-600 dark:text-primary-400' : 'text-primary-500'} transition-transform duration-300 ${isSidebarOpen ? 'rotate-90' : ''}`} />
+                                <span className="text-2xs font-bold uppercase tracking-wider">Controls</span>
+                            </button>
+                        </div>
+                    </GlassPanel>
+                </div>
+            </div>
+
+            {/* 3.6 MOBILE BOTTOM FLOATING TAB SELECTOR (< md) - Floating just above bottom navbar */}
+            <div className={`flex md:hidden fixed bottom-[4.85rem] inset-x-0 z-40 items-center justify-center px-4 pointer-events-none transition-opacity duration-200 ${
+                isSidebarOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
+            }`}>
+                <div className="pointer-events-auto w-full max-w-sm">
+                    <GlassPanel
+                        className="wg-glass-pill shadow-2xl w-full"
+                        padding="4px"
+                        overrides={{ borderRadius: 28 }}
+                    >
+                        <div className="grid grid-cols-4 gap-1 w-full relative">
+                            {[
+                                { id: 'flights', label: 'Flights', icon: Plane },
+                                { id: 'land_sea', label: 'Land', icon: Compass },
+                                { id: 'scratch', label: 'Scratch', icon: MapIcon },
+                                { id: 'all', label: 'All', icon: Globe }
+                            ].map((m) => {
+                                const isSelected = viewMode === m.id;
+                                return (
+                                    <button
+                                        key={m.id}
+                                        onClick={() => handleSelectViewMode(m.id as PredefinedMapMode)}
+                                        className={`relative h-10 rounded-2xl text-xs font-bold transition-colors duration-200 flex items-center justify-center gap-1.5 cursor-pointer select-none active:scale-95 min-w-0 ${
+                                            isSelected
+                                                ? 'text-primary-700 dark:text-primary-300'
+                                                : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
+                                        }`}
+                                        title={m.label}
+                                    >
+                                        {isSelected && (
+                                            <motion.div
+                                                layoutId="kokonutSmoothTabActiveMobile"
+                                                className="absolute inset-0 rounded-2xl bg-primary-500/20 dark:bg-primary-500/30 backdrop-blur-md border border-primary-500/40 dark:border-primary-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_8px_rgba(234,88,12,0.2)] z-0"
+                                                style={{ WebkitBackdropFilter: 'blur(12px)' }}
+                                                transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                                            />
+                                        )}
+                                        <span className="relative z-10 flex items-center justify-center gap-1.5 truncate">
+                                            <m.icon className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-primary-600 dark:text-primary-400' : ''}`} />
+                                            <span className="text-xs font-bold tracking-tight">{m.label}</span>
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </GlassPanel>
+                </div>
+            </div>
+
             {/* 4. SLIDE-IN RIGHT SIDEBAR CONTROL PANEL */}
             <div 
-                className={`fixed md:absolute top-0 right-0 h-full w-full sm:w-[500px] md:w-[540px] max-w-full border-l border-black/10 dark:border-white/10 shadow-glass-modal z-40 flex flex-col transition-transform duration-300 ease-out select-none ${
+                className={`fixed md:absolute top-0 right-0 h-full w-full sm:w-[500px] md:w-[540px] max-w-full border-l border-black/10 dark:border-white/10 shadow-glass-modal z-modal flex flex-col transition-transform duration-300 ease-out select-none ${
                     isSidebarOpen ? 'translate-x-0' : 'translate-x-full pointer-events-none'
                 }`}
             >
@@ -989,7 +1101,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                 </div>
 
                 {/* Sidebar Content (Scrollable) */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto p-6 pb-28 md:pb-6 space-y-6 custom-scrollbar">
                     {/* TAB 1: CARTOGRAPHY (PROJECTION & BASEMAPS) - SKY ACCENT */}
                     {activeSidebarTab === 'cartography' && (
                         <div className="space-y-6">

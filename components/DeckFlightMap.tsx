@@ -1707,7 +1707,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             <div ref={mapContainerRef} className="w-full h-full" />
 
             {/* Zoom & View Navigation Controls with Liquid Glass (Bottom Left) */}
-            <div className={`absolute bottom-6 z-20 flex flex-col gap-2 pointer-events-auto transition-all duration-300 ${isSidebarCollapsed ? 'left-6 md:left-28' : 'left-6 md:left-80'}`}>
+            <div className={`absolute bottom-36 md:bottom-6 z-20 flex flex-col gap-2 pointer-events-auto transition-all duration-300 ${isSidebarCollapsed ? 'left-3 md:left-28' : 'left-3 md:left-80'}`}>
                 <GlassPanel
                     padding="0px"
                     overrides={{ borderRadius: 20 }}

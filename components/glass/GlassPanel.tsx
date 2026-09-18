@@ -45,6 +45,9 @@ export default function GlassPanel({
     .replace(/\s+/g, ' ')
     .trim();
 
+  const isFullWidth = cleanClassName.includes('w-full');
+  const isFullHeight = cleanClassName.includes('h-full');
+
   return (
     <div
       className={`wg-glass-wrapper ${variantClass} ${cleanClassName}`.trim()}
@@ -61,7 +64,7 @@ export default function GlassPanel({
         aberrationIntensity={config.aberrationIntensity}
         elasticity={config.elasticity}
         borderRadius={config.borderRadius}
-        className={`wg-glass-panel ${variantClass} ${cleanClassName.includes('h-full') ? 'h-full' : ''}`.trim()}
+        className={`wg-glass-panel ${variantClass} ${isFullHeight ? 'h-full' : ''} ${isFullWidth ? 'w-full' : ''}`.trim()}
         padding={padding}
         overLight={overLight}
         mouseContainer={mouseContainer}
