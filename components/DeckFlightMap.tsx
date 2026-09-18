@@ -1159,13 +1159,13 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         return hoveredRouteKey === d.corridorId ? [255, 255, 255, 255] : d.color;
                     },
                     getWidth: (d: any) => {
-                        const base = effectiveProjection === 'globe' ? 2.5 : 1.5;
-                        if (selectedCorridor && d.corridorId === selectedCorridor.id) return base * 2.2;
-                        return hoveredRouteKey === d.corridorId ? base + 1.5 : base;
+                        const base = effectiveProjection === 'globe' ? 1.3 : 1.5;
+                        if (selectedCorridor && d.corridorId === selectedCorridor.id) return base * 2.0;
+                        return hoveredRouteKey === d.corridorId ? base + 1.0 : base;
                     },
                     widthUnits: 'pixels',
-                    widthMinPixels: effectiveProjection === 'globe' ? 2.2 : 1.2,
-                    widthMaxPixels: 8,
+                    widthMinPixels: effectiveProjection === 'globe' ? 1.0 : 1.2,
+                    widthMaxPixels: 6,
                     capRounded: true,
                     jointRounded: true,
                     wrapLongitude: true,
@@ -1236,16 +1236,16 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     },
                     getWidth: (d: any) => {
                         const baseStroke = effectiveProjection === 'globe'
-                            ? (isWidthByFreq ? Math.min(6.0, 2.4 + Math.log2(d.count) * 0.8) : 2.5)
+                            ? (isWidthByFreq ? Math.min(3.2, 1.2 + Math.log2(d.count) * 0.45) : 1.3)
                             : (isWidthByFreq ? Math.min(4.5, 1.2 + Math.log2(d.count) * 0.75) : 1.5);
                         const strokeWidth = baseStroke * scaleMultiplier;
-                        if (selectedCorridor && d.corridorId === selectedCorridor.id) return strokeWidth * 2.2;
-                        if (hoveredRouteKey === d.corridorId) return strokeWidth + 1.5;
+                        if (selectedCorridor && d.corridorId === selectedCorridor.id) return strokeWidth * 2.0;
+                        if (hoveredRouteKey === d.corridorId) return strokeWidth + 1.0;
                         return strokeWidth;
                     },
                     widthUnits: 'pixels',
-                    widthMinPixels: effectiveProjection === 'globe' ? 2.5 : 1.5,
-                    widthMaxPixels: 12,
+                    widthMinPixels: effectiveProjection === 'globe' ? 1.1 : 1.5,
+                    widthMaxPixels: 8,
                     pickable: false, // Handled by wide ghost arc for effortless interaction
                     updateTriggers: {
                         getSourceColor: [selectedCorridor?.id, hoveredRouteKey, activeAppearance.routeColorMode],
@@ -1608,10 +1608,14 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         };
     }, [activeAppearance.rainRadar, activeAppearance.rainRadarOpacity, radarMeta?.tileUrl, currentLayer, isDark]);
 
+    const prevProjectionRef = useRef<string>(effectiveProjection);
+
     // Synchronize Projection dynamically (Flat Mercator vs 3D Globe)
     useEffect(() => {
         const map = mapRef.current;
         if (!map || !(map as any).setProjection) return;
+        if (prevProjectionRef.current === effectiveProjection) return;
+        prevProjectionRef.current = effectiveProjection;
 
         const isGlobe = effectiveProjection === 'globe';
         const applyProj = () => {
@@ -1621,11 +1625,6 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     zoom: isGlobe ? 1.0 : 1.3,
                     duration: 600
                 });
-                if (overlayRef.current) {
-                    overlayRef.current.setProps({
-                        layers: deckLayers
-                    });
-                }
             } catch (e) {
                 console.warn('[MapLibre] setProjection warning:', e);
             }
@@ -1636,7 +1635,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         } else {
             map.once('load', applyProj);
         }
-    }, [effectiveProjection, deckLayers]);
+    }, [effectiveProjection]);
 
     // Navigation Controls Handlers
     const handleZoomIn = () => {

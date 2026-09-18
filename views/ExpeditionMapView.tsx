@@ -898,15 +898,19 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
 
             {/* 4. SLIDE-IN RIGHT SIDEBAR CONTROL PANEL */}
             <div 
-                className={`fixed md:absolute top-0 right-0 h-full w-full sm:w-[500px] md:w-[540px] max-w-full bg-white/60 dark:bg-[#0b0f17]/65 backdrop-blur-md border-l border-black/10 dark:border-white/10 shadow-glass-modal z-40 flex flex-col transition-transform duration-300 ease-out select-none ${
+                className={`fixed md:absolute top-0 right-0 h-full w-full sm:w-[500px] md:w-[540px] max-w-full border-l border-black/10 dark:border-white/10 shadow-glass-modal z-40 flex flex-col transition-transform duration-300 ease-out select-none ${
                     isSidebarOpen ? 'translate-x-0' : 'translate-x-full pointer-events-none'
                 }`}
-                style={{ WebkitBackdropFilter: 'blur(12px)' }}
             >
+                <GlassPanel
+                    className="wg-glass-card h-full w-full text-light-text dark:text-dark-text flex flex-col"
+                    padding="0px"
+                    overrides={{ borderRadius: 0 }}
+                >
                 {/* Sidebar Header */}
-                <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-black/5 dark:border-white/5 bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">
+                <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-black/5 dark:border-white/5 bg-gradient-to-r from-primary-500/10 via-transparent to-transparent shrink-0">
                     <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-primary-500/15 border border-primary-500/25 flex items-center justify-center text-primary-500 shrink-0">
+                        <div className="w-8 h-8 rounded-xl bg-primary-500/15 dark:bg-primary-500/25 border border-primary-500/30 dark:border-primary-400/40 flex items-center justify-center text-primary-600 dark:text-primary-400 shrink-0 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_6px_rgba(234,88,12,0.15)] backdrop-blur-md">
                             <SlidersHorizontal className="w-4 h-4" />
                         </div>
                         <div>
@@ -918,14 +922,14 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                     <div className="flex items-center gap-1.5">
                         <button
                             onClick={handleRefresh}
-                            className="w-8 h-8 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text transition-colors flex items-center justify-center cursor-pointer"
+                            className="w-8 h-8 rounded-xl bg-white/50 dark:bg-white/10 hover:bg-white/80 dark:hover:bg-white/15 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text transition-all duration-150 flex items-center justify-center cursor-pointer border border-black/5 dark:border-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)] active:scale-95 backdrop-blur-md"
                             title="Reset Camera & Telemetry"
                         >
                             <RefreshCw className="w-4 h-4" />
                         </button>
                         <button
                             onClick={() => setIsSidebarOpen(false)}
-                            className="w-8 h-8 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text transition-colors flex items-center justify-center cursor-pointer"
+                            className="w-8 h-8 rounded-xl bg-white/50 dark:bg-white/10 hover:bg-white/80 dark:hover:bg-white/15 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text transition-all duration-150 flex items-center justify-center cursor-pointer border border-black/5 dark:border-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)] active:scale-95 backdrop-blur-md"
                         >
                             <X className="w-4 h-4" />
                         </button>
@@ -1264,12 +1268,14 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                             ...appearance, 
                                             showLivedCountries: appearance.showLivedCountries === false ? true : false 
                                         })}
-                                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                                            appearance.showLivedCountries !== false ? 'bg-emerald-500' : 'bg-black/20 dark:bg-white/20'
+                                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-black/10 dark:border-white/15 transition-all duration-200 ease-in-out backdrop-blur-md ${
+                                            appearance.showLivedCountries !== false 
+                                                ? 'bg-emerald-500/85 dark:bg-emerald-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_10px_rgba(16,185,129,0.3)]' 
+                                                : 'bg-black/15 dark:bg-white/15 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]'
                                         }`}
                                     >
                                         <span
-                                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-white/95 shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.8)] ring-0 transition duration-200 ease-in-out ${
                                                 appearance.showLivedCountries !== false ? 'translate-x-5' : 'translate-x-0'
                                             }`}
                                         />
@@ -1295,12 +1301,14 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                             ...appearance, 
                                             showLayoverCountries: appearance.showLayoverCountries === false ? true : false 
                                         })}
-                                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                                            appearance.showLayoverCountries !== false ? 'bg-amber-500' : 'bg-black/20 dark:bg-white/20'
+                                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-black/10 dark:border-white/15 transition-all duration-200 ease-in-out backdrop-blur-md ${
+                                            appearance.showLayoverCountries !== false 
+                                                ? 'bg-amber-500/85 dark:bg-amber-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_10px_rgba(245,158,11,0.3)]' 
+                                                : 'bg-black/15 dark:bg-white/15 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]'
                                         }`}
                                     >
                                         <span
-                                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-white/95 shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.8)] ring-0 transition duration-200 ease-in-out ${
                                                 appearance.showLayoverCountries !== false ? 'translate-x-5' : 'translate-x-0'
                                             }`}
                                         />
@@ -1326,12 +1334,14 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                             ...appearance, 
                                             showWishlistCountries: appearance.showWishlistCountries === false ? true : false 
                                         })}
-                                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                                            appearance.showWishlistCountries !== false ? 'bg-rose-500' : 'bg-black/20 dark:bg-white/20'
+                                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-black/10 dark:border-white/15 transition-all duration-200 ease-in-out backdrop-blur-md ${
+                                            appearance.showWishlistCountries !== false 
+                                                ? 'bg-rose-500/85 dark:bg-rose-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_10px_rgba(244,63,94,0.3)]' 
+                                                : 'bg-black/15 dark:bg-white/15 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]'
                                         }`}
                                     >
                                         <span
-                                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-white/95 shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.8)] ring-0 transition duration-200 ease-in-out ${
                                                 appearance.showWishlistCountries !== false ? 'translate-x-5' : 'translate-x-0'
                                             }`}
                                         />
@@ -1361,9 +1371,10 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                         onClick={() => handleUpdateAppearance({ ...appearance, airportDetail: 'standard' })}
                                         className={`p-3 rounded-xl border text-left transition-all duration-150 cursor-pointer active:scale-[0.98] ${
                                             appearance.airportDetail === 'standard'
-                                                ? 'border-indigo-500 bg-indigo-500/10 ring-2 ring-indigo-500/30 text-indigo-600 dark:text-indigo-400 font-bold'
-                                                : 'border-black/5 dark:border-white/10 bg-white/50 dark:bg-white/[0.04] text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
+                                                ? 'bg-indigo-500/15 dark:bg-indigo-500/25 backdrop-blur-md border border-indigo-500/40 dark:border-indigo-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(99,102,241,0.15)] text-indigo-700 dark:text-indigo-300 font-bold'
+                                                : 'border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
                                         }`}
+                                        style={appearance.airportDetail === 'standard' ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
                                     >
                                         <p className="text-xs font-bold text-light-text dark:text-dark-text">Minimal Beacon</p>
                                         <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5">Clean circular hub nodes</p>
@@ -1373,9 +1384,10 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                         onClick={() => handleUpdateAppearance({ ...appearance, airportDetail: 'detailed' })}
                                         className={`p-3 rounded-xl border text-left transition-all duration-150 cursor-pointer active:scale-[0.98] ${
                                             appearance.airportDetail === 'detailed'
-                                                ? 'border-indigo-500 bg-indigo-500/10 ring-2 ring-indigo-500/30 text-indigo-600 dark:text-indigo-400 font-bold'
-                                                : 'border-black/5 dark:border-white/10 bg-white/50 dark:bg-white/[0.04] text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
+                                                ? 'bg-indigo-500/15 dark:bg-indigo-500/25 backdrop-blur-md border border-indigo-500/40 dark:border-indigo-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(99,102,241,0.15)] text-indigo-700 dark:text-indigo-300 font-bold'
+                                                : 'border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
                                         }`}
+                                        style={appearance.airportDetail === 'detailed' ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
                                     >
                                         <p className="text-xs font-bold text-light-text dark:text-dark-text">True Runways</p>
                                         <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5">Exact asphalt & taxiways</p>
@@ -1403,7 +1415,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                             className={`py-2 rounded-xl text-xs font-semibold text-center border transition-all duration-150 cursor-pointer active:scale-[0.98] ${
                                                 appearance.airportSize === sz.id
                                                     ? 'bg-indigo-500/20 dark:bg-indigo-500/30 backdrop-blur-md text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-500/40 dark:border-indigo-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(99,102,241,0.15)]'
-                                                    : 'bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
+                                                : 'bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
                                             }`}
                                             style={appearance.airportSize === sz.id ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
                                         >
@@ -1417,9 +1429,10 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                         onClick={() => handleUpdateAppearance({ ...appearance, airportMode: 'frequency' })}
                                         className={`py-2 px-3 rounded-xl border text-xs font-semibold transition-all duration-150 cursor-pointer active:scale-[0.98] ${
                                             appearance.airportMode === 'frequency'
-                                                ? 'border-indigo-500 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold'
-                                                : 'border-black/5 dark:border-white/10 bg-white/50 dark:bg-white/[0.04] text-light-text-secondary dark:text-dark-text-secondary'
+                                                ? 'bg-indigo-500/15 dark:bg-indigo-500/25 backdrop-blur-md border border-indigo-500/40 dark:border-indigo-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(99,102,241,0.15)] text-indigo-700 dark:text-indigo-300 font-bold'
+                                                : 'border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
                                         }`}
+                                        style={appearance.airportMode === 'frequency' ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
                                     >
                                         Weighted by Traffic
                                     </button>
@@ -1427,9 +1440,10 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                         onClick={() => handleUpdateAppearance({ ...appearance, airportMode: 'uniform' })}
                                         className={`py-2 px-3 rounded-xl border text-xs font-semibold transition-all duration-150 cursor-pointer active:scale-[0.98] ${
                                             appearance.airportMode === 'uniform'
-                                                ? 'border-indigo-500 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold'
-                                                : 'border-black/5 dark:border-white/10 bg-white/50 dark:bg-white/[0.04] text-light-text-secondary dark:text-dark-text-secondary'
+                                                ? 'bg-indigo-500/15 dark:bg-indigo-500/25 backdrop-blur-md border border-indigo-500/40 dark:border-indigo-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(99,102,241,0.15)] text-indigo-700 dark:text-indigo-300 font-bold'
+                                                : 'border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
                                         }`}
+                                        style={appearance.airportMode === 'uniform' ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
                                     >
                                         Uniform Scale
                                     </button>
@@ -1454,9 +1468,10 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                                 onClick={() => handleUpdateAppearance({ ...appearance, routeColorMode: cl.id as any })}
                                                 className={`p-2.5 rounded-xl border text-left transition-all duration-150 cursor-pointer active:scale-[0.98] ${
                                                     appearance.routeColorMode === cl.id
-                                                        ? 'border-indigo-500 bg-indigo-500/10 ring-2 ring-indigo-500/30 font-bold text-indigo-600 dark:text-indigo-400'
-                                                        : 'border-black/5 dark:border-white/10 bg-white/50 dark:bg-white/[0.04] hover:border-black/15 dark:hover:border-white/20'
+                                                        ? 'bg-indigo-500/15 dark:bg-indigo-500/25 backdrop-blur-md border border-indigo-500/40 dark:border-indigo-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(99,102,241,0.15)] font-bold text-indigo-700 dark:text-indigo-300'
+                                                        : 'border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
                                                 }`}
+                                                style={appearance.routeColorMode === cl.id ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
                                             >
                                                 <p className="text-xs font-bold text-light-text dark:text-dark-text">{cl.label}</p>
                                                 <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary">{cl.desc}</p>
@@ -1479,9 +1494,10 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                                 onClick={() => handleUpdateAppearance({ ...appearance, routeScale: sc.id as any })}
                                                 className={`py-2 rounded-xl border text-center transition-all duration-150 cursor-pointer active:scale-[0.98] ${
                                                     appearance.routeScale === sc.id
-                                                        ? 'border-indigo-500 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold'
-                                                        : 'border-black/5 dark:border-white/10 bg-white/50 dark:bg-white/[0.04] text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
+                                                        ? 'bg-indigo-500/15 dark:bg-indigo-500/25 backdrop-blur-md border border-indigo-500/40 dark:border-indigo-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(99,102,241,0.15)] text-indigo-700 dark:text-indigo-300 font-bold'
+                                                        : 'border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
                                                 }`}
+                                                style={appearance.routeScale === sc.id ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
                                             >
                                                 <span className="text-xs">{sc.label}</span>
                                             </button>
@@ -1499,9 +1515,10 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                         onClick={() => setShowIndependentFlights(!showIndependentFlights)}
                                         className={`p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer transition-all duration-150 active:scale-[0.98] ${
                                             showIndependentFlights
-                                                ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-600 dark:text-indigo-400 font-bold'
-                                                : 'bg-white/50 dark:bg-white/[0.04] border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary'
+                                                ? 'bg-indigo-500/15 dark:bg-indigo-500/25 backdrop-blur-md border border-indigo-500/40 dark:border-indigo-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(99,102,241,0.15)] text-indigo-700 dark:text-indigo-300 font-bold'
+                                                : 'bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
                                         }`}
+                                        style={showIndependentFlights ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
                                     >
                                         <Plane className="w-4 h-4 text-indigo-500 shrink-0" />
                                         <span className="text-xs font-bold">Flights Only</span>
@@ -1511,9 +1528,10 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                         onClick={() => setShowLandSeaRoutes(!showLandSeaRoutes)}
                                         className={`p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer transition-all duration-150 active:scale-[0.98] ${
                                             showLandSeaRoutes
-                                                ? 'bg-amber-500/15 border-amber-500/40 text-amber-600 dark:text-amber-400 font-bold'
-                                                : 'bg-white/50 dark:bg-white/[0.04] border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary'
+                                                ? 'bg-amber-500/15 dark:bg-amber-500/25 backdrop-blur-md border border-amber-500/40 dark:border-amber-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(245,158,11,0.15)] text-amber-700 dark:text-amber-300 font-bold'
+                                                : 'bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
                                         }`}
+                                        style={showLandSeaRoutes ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
                                     >
                                         <Zap className="w-4 h-4 text-amber-500 shrink-0" />
                                         <span className="text-xs font-bold">Overland Transit</span>
@@ -1523,9 +1541,10 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                         onClick={() => setAnimateRoutes(!animateRoutes)}
                                         className={`p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer transition-all duration-150 active:scale-[0.98] ${
                                             animateRoutes
-                                                ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-600 dark:text-cyan-400 font-bold'
-                                                : 'bg-white/50 dark:bg-white/[0.04] border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary'
+                                                ? 'bg-cyan-500/15 dark:bg-cyan-500/25 backdrop-blur-md border border-cyan-500/40 dark:border-cyan-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(6,182,212,0.15)] text-cyan-700 dark:text-cyan-300 font-bold'
+                                                : 'bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
                                         }`}
+                                        style={animateRoutes ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
                                     >
                                         <Play className="w-4 h-4 text-cyan-500 shrink-0" />
                                         <span className="text-xs font-bold">Comet Flow</span>
@@ -1535,9 +1554,10 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                         onClick={() => setClusterMode(!clusterMode)}
                                         className={`p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer transition-all duration-150 active:scale-[0.98] ${
                                             clusterMode
-                                                ? 'bg-purple-500/15 border-purple-500/40 text-purple-600 dark:text-purple-400 font-bold'
-                                                : 'bg-white/50 dark:bg-white/[0.04] border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary'
+                                                ? 'bg-purple-500/15 dark:bg-purple-500/25 backdrop-blur-md border border-purple-500/40 dark:border-purple-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(168,85,247,0.15)] text-purple-700 dark:text-purple-300 font-bold'
+                                                : 'bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
                                         }`}
+                                        style={clusterMode ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
                                     >
                                         <Layers className="w-4 h-4 text-purple-500 shrink-0" />
                                         <span className="text-xs font-bold">Cluster Hubs</span>
@@ -1555,9 +1575,10 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                          }}
                                          className={`w-full p-2.5 rounded-xl border text-left flex items-center gap-2.5 cursor-pointer transition-all duration-150 active:scale-[0.98] ${
                                              showRoadTracing || appearance.routeTracing !== false
-                                                 ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-600 dark:text-indigo-400 font-bold'
-                                                 : 'bg-white/50 dark:bg-white/[0.04] border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary'
+                                                 ? 'bg-indigo-500/15 dark:bg-indigo-500/25 backdrop-blur-md border border-indigo-500/40 dark:border-indigo-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(99,102,241,0.15)] text-indigo-700 dark:text-indigo-300 font-bold'
+                                                 : 'bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
                                          }`}
+                                         style={(showRoadTracing || appearance.routeTracing !== false) ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
                                      >
                                          <Radio className="w-4 h-4 text-indigo-500 shrink-0" />
                                          <div className="min-w-0 flex-1 leading-none">
@@ -1596,12 +1617,14 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                             <button
                                                 type="button"
                                                 onClick={() => handleUpdateAppearance({ ...appearance, timeOfDay: !appearance.timeOfDay })}
-                                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                                                    appearance.timeOfDay ? 'bg-amber-500' : 'bg-black/20 dark:bg-white/20'
+                                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-black/10 dark:border-white/15 transition-all duration-200 ease-in-out backdrop-blur-md ${
+                                                    appearance.timeOfDay 
+                                                        ? 'bg-amber-500/85 dark:bg-amber-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_10px_rgba(245,158,11,0.3)]' 
+                                                        : 'bg-black/15 dark:bg-white/15 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]'
                                                 }`}
                                             >
                                                 <span
-                                                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                                                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-white/95 shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.8)] ring-0 transition duration-200 ease-in-out ${
                                                         appearance.timeOfDay ? 'translate-x-5' : 'translate-x-0'
                                                     }`}
                                                 />
@@ -1627,12 +1650,14 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                             <button
                                                 type="button"
                                                 onClick={() => handleUpdateAppearance({ ...appearance, rainRadar: !appearance.rainRadar })}
-                                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                                                    appearance.rainRadar ? 'bg-amber-500' : 'bg-black/20 dark:bg-white/20'
+                                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-black/10 dark:border-white/15 transition-all duration-200 ease-in-out backdrop-blur-md ${
+                                                    appearance.rainRadar 
+                                                        ? 'bg-amber-500/85 dark:bg-amber-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_10px_rgba(245,158,11,0.3)]' 
+                                                        : 'bg-black/15 dark:bg-white/15 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]'
                                                 }`}
                                             >
                                                 <span
-                                                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                                                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-white/95 shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.8)] ring-0 transition duration-200 ease-in-out ${
                                                         appearance.rainRadar ? 'translate-x-5' : 'translate-x-0'
                                                     }`}
                                                 />
@@ -1700,7 +1725,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                 <select
                                     value={yearFilter}
                                     onChange={(e) => setYearFilter(e.target.value)}
-                                    className="w-full bg-white dark:bg-dark-card border border-black/10 dark:border-white/10 rounded-xl px-3 py-2.5 text-xs font-bold text-light-text dark:text-dark-text outline-none cursor-pointer focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500"
+                                    className="w-full bg-white/60 dark:bg-white/[0.06] backdrop-blur-md border border-black/10 dark:border-white/10 rounded-xl px-3 py-2.5 text-xs font-bold text-light-text dark:text-dark-text outline-none cursor-pointer shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)] focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all"
                                 >
                                     <option value="all">All Years</option>
                                     {years.map(y => <option key={y} value={y}>{y}</option>)}
@@ -1710,7 +1735,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                             {/* Departure Station */}
                             <div>
                                 <label className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase block mb-2">
-                                    Departure Station
+                                    Departure Hub
                                 </label>
                                 <MultiSelect
                                     placeholder="Any Departure Hub"
@@ -1723,7 +1748,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                             {/* Arrival Station */}
                             <div>
                                 <label className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase block mb-2">
-                                    Arrival Station
+                                    Arrival Hub
                                 </label>
                                 <MultiSelect
                                     placeholder="Any Arrival Hub"
@@ -1745,7 +1770,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                             type="date"
                                             value={dateFrom}
                                             onChange={(e) => setDateFrom(e.target.value)}
-                                            className="!py-1.5 !px-2.5 !text-xs !font-bold bg-white dark:bg-dark-card text-light-text dark:text-dark-text border border-black/10 dark:border-white/10 rounded-xl"
+                                            className="!py-1.5 !px-2.5 !text-xs !font-bold bg-white/60 dark:bg-white/[0.06] backdrop-blur-md text-light-text dark:text-dark-text border border-black/10 dark:border-white/10 rounded-xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)] focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all"
                                         />
                                     </div>
                                     <div>
@@ -1754,7 +1779,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                             type="date"
                                             value={dateTo}
                                             onChange={(e) => setDateTo(e.target.value)}
-                                            className="!py-1.5 !px-2.5 !text-xs !font-bold bg-white dark:bg-dark-card text-light-text dark:text-dark-text border border-black/10 dark:border-white/10 rounded-xl"
+                                            className="!py-1.5 !px-2.5 !text-xs !font-bold bg-white/60 dark:bg-white/[0.06] backdrop-blur-md text-light-text dark:text-dark-text border border-black/10 dark:border-white/10 rounded-xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)] focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all"
                                         />
                                     </div>
                                 </div>
@@ -1762,6 +1787,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                         </div>
                     )}
                 </div>
+                </GlassPanel>
             </div>
         </div>
     );
