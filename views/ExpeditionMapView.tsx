@@ -417,7 +417,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
             try {
                 const visited = await dataService.getVisited();
                 const countrySet = new Set<string>();
-                const statusMap: Record<string, CountryResidenceStatus> = {};
+                const statusMap: Record<string, CountryResidenceStatus[] | CountryResidenceStatus> = {};
                 const placeMap = new Map<string, { lat: number; lng: number; name: string }>();
 
                 // 1. From database visited collection

@@ -26,17 +26,6 @@ const ACCOMMODATION_TYPES = [
     { label: 'Friends / Family', value: 'Friends/Family' },
 ];
 
-const getCurrencySymbol = (code: string) => {
-    const symbols: Record<string, string> = {
-        'USD': '$',
-        'EUR': '€',
-        'GBP': '£',
-        'AUD': 'A$',
-        'JPY': '¥'
-    };
-    return symbols[code] || code || '$';
-};
-
 export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps> = ({
     initialData,
     onSave,

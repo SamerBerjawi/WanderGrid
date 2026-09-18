@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
     return {
       server: {
         port: 3000,
-        host: '0.0.0.0',
+        host: true,
       },
       plugins: [
         react(),
@@ -59,7 +59,8 @@ export default defineConfig(({ mode }) => {
         preserveSymlinks: false
       },
       optimizeDeps: {
-        include: ['react', 'react-dom', 'motion', 'motion/react', 'maplibre-gl', '@deck.gl/react', '@deck.gl/layers', '@deck.gl/core', '@deck.gl/geo-layers']
+        include: ['react', 'react-dom', 'motion', 'motion/react', '@deck.gl/react', '@deck.gl/layers', '@deck.gl/core', '@deck.gl/geo-layers', '@deck.gl/mapbox'],
+        exclude: ['maplibre-gl']
       },
       build: {
         target: 'es2022',
