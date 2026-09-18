@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { 
-  Shield, Flame, Crown, Sun, Trees, Heart, Sparkles, Compass, TreePine, 
-  Droplet, Waves, Binoculars, Radio, Grid, Hexagon, Atom, Mountain, 
-  Snowflake, CloudRain, TowerControl, Torus, Hotel, Check, Calendar, 
-  Award, Trash2, Edit2, MapPin, Eye, BookOpen, Stars
-} from 'lucide-react';
+  ShieldCheck as Shield, Flame, Crown, Sun, Tree as Trees, Heart, Sparkle as Sparkles, Compass, TreeEvergreen as TreePine, 
+  Drop as Droplet, Waves, Binoculars, Radio, SquaresFour as Grid, Hexagon, Atom, Mountains as Mountain, 
+  Snowflake, CloudRain, Broadcast as TowerControl, CircleDashed as Torus, Buildings as Hotel, Check, CalendarBlank as Calendar, 
+  Trophy as Award, Trash as Trash2, PencilSimple as Edit2, MapPin, Eye, BookOpen, Sparkle as Stars
+} from '@phosphor-icons/react';
 import { Sticker, StickerClaim, saveManualStickerClaim, deleteManualStickerClaim } from '../utils/stickersData';
 import { Trip } from '../types';
 import { Modal, Button, Input } from './ui';

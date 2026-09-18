@@ -12,23 +12,23 @@ import { MapboxOverlay } from '@deck.gl/mapbox';
 import { ArcLayer, ScatterplotLayer, GeoJsonLayer, PathLayer, BitmapLayer, TextLayer } from '@deck.gl/layers';
 import { TileLayer, TripsLayer } from '@deck.gl/geo-layers';
 import { 
-    Maximize2, 
-    Scan, 
+    ArrowsOut as Maximize2, 
+    CornersOut as Scan, 
     Globe, 
     ArrowLeft, 
     ArrowRight, 
     X, 
-    Plane, 
+    Airplane as Plane, 
     Clock, 
-    Calendar, 
-    ChevronRight, 
+    CalendarBlank as Calendar, 
+    CaretRight as ChevronRight, 
     Train, 
-    Ship, 
+    Boat as Ship, 
     Car,
-    ZoomIn,
-    ZoomOut,
+    MagnifyingGlassPlus as ZoomIn,
+    MagnifyingGlassMinus as ZoomOut,
     List
-} from 'lucide-react';
+} from '@phosphor-icons/react';
 import { Trip, CountryResidenceStatus, PredefinedMapMode, toggleCountryResidenceStatus, WorkspaceSettings } from '../types';
 import { useWanderSync } from '../hooks/useWanderSync';
 import { getCoordinatesSync, formatPlaceName } from '../services/geocoding';
@@ -78,14 +78,14 @@ const isCountryVisited = (f: any, visitedList: string[]): boolean => {
     return false;
 };
 
-// --- Gradient Color Logic & Regional Poles ---
+// --- Gradient Color Logic & Regional Poles (Luminous High-Contrast Palette) ---
 const COLOR_POLES = [
-    { lat: 55, lng: -100, color: [0, 122, 255] },    // NA: Vivid Blue
-    { lat: -15, lng: -60, color: [0, 200, 83] },     // SA: Vivid Emerald
-    { lat: 10, lng: 20, color: [255, 179, 0] },      // Africa: Vivid Amber/Gold
-    { lat: 50, lng: 15, color: [124, 58, 237] },     // Europe: Vivid Violet
-    { lat: 35, lng: 105, color: [255, 23, 68] },     // Asia: Vivid Red
-    { lat: -25, lng: 135, color: [0, 229, 255] },    // Oceania: Vivid Cyan
+    { lat: 55, lng: -100, color: [56, 189, 248] },    // NA: Vibrant Sky Blue / Electric Cyan
+    { lat: -15, lng: -60, color: [52, 211, 153] },     // SA: Vivid Emerald Mint
+    { lat: 10, lng: 20, color: [251, 191, 36] },      // Africa: Radiant Amber Gold
+    { lat: 50, lng: 15, color: [167, 139, 250] },     // Europe: Luminous Lilac / Violet
+    { lat: 35, lng: 105, color: [251, 113, 133] },     // Asia: Vivid Coral Rose
+    { lat: -25, lng: 135, color: [34, 211, 238] },    // Oceania: Vivid Electric Cyan
 ];
 
 const geoGradientCache = new Map<string, [number, number, number]>();
@@ -120,9 +120,9 @@ const getGeoGradientRGB = (lat: number, lng: number): [number, number, number] =
 
 // High-contrast, vibrant thermal energy heatmap density color progression
 const getFrequencyRGB = (freq: number): [number, number, number] => {
-    if (freq <= 1) return [6, 182, 212];    // Electric Cyan / Teal (1 flight)
-    if (freq === 2) return [16, 185, 129];  // Emerald Mint Green (2 flights)
-    if (freq <= 4) return [234, 179, 8];    // Radiant Sun Gold (3-4 flights)
+    if (freq <= 1) return [56, 189, 248];   // Vibrant Sky Blue (1 flight)
+    if (freq === 2) return [52, 211, 153];  // Emerald Mint Green (2 flights)
+    if (freq <= 4) return [251, 191, 36];   // Radiant Sun Gold (3-4 flights)
     if (freq <= 7) return [249, 115, 22];   // Vivid Blaze Orange (5-7 flights)
     if (freq <= 11) return [239, 68, 68];   // Hot Crimson Red (8-11 flights)
     return [236, 72, 153];                  // Intense Hyper Magenta / Plasma Pink (12+ flights)
@@ -456,6 +456,13 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     const [selectedCountry, setSelectedCountry] = useState<any | null>(null);
     const [isFlightListExpanded, setIsFlightListExpanded] = useState<boolean>(false);
 
+    // View history and selection refs for click-outside dismissal
+    const previousViewRef = useRef<{ center: [number, number]; zoom: number; pitch?: number; bearing?: number } | null>(null);
+    const selectedCorridorRef = useRef(selectedCorridor);
+    selectedCorridorRef.current = selectedCorridor;
+    const selectedCountryRef = useRef(selectedCountry);
+    selectedCountryRef.current = selectedCountry;
+
     // Runway dataset demand loading
     const [runwayDatasetLoaded, setRunwayDatasetLoaded] = useState(false);
     useEffect(() => {
@@ -613,6 +620,16 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         const corridor = corridorMap.get(corridorId);
         if (!corridor || !mapRef.current) return;
 
+        // Remember previous camera view before focusing on the corridor
+        if (!selectedCorridor && mapRef.current) {
+            previousViewRef.current = {
+                center: [mapRef.current.getCenter().lng, mapRef.current.getCenter().lat],
+                zoom: mapRef.current.getZoom(),
+                pitch: mapRef.current.getPitch(),
+                bearing: mapRef.current.getBearing()
+            };
+        }
+
         const centerLng = (corridor.originCoords[0] + corridor.destCoords[0]) / 2;
         const centerLat = (corridor.originCoords[1] + corridor.destCoords[1]) / 2;
 
@@ -631,18 +648,31 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         });
 
         setSelectedCorridor(corridor);
-    }, [corridorMap]);
+    }, [corridorMap, selectedCorridor]);
 
     const handleResetCorridor = useCallback(() => {
         if (mapRef.current) {
-            mapRef.current.flyTo({
-                center: [0, 20],
-                zoom: effectiveProjection === 'globe' ? 1.0 : 1.3,
-                duration: 1000,
-                essential: true
-            });
+            if (previousViewRef.current) {
+                mapRef.current.flyTo({
+                    center: previousViewRef.current.center,
+                    zoom: previousViewRef.current.zoom,
+                    pitch: previousViewRef.current.pitch ?? 0,
+                    bearing: previousViewRef.current.bearing ?? 0,
+                    duration: 1000,
+                    essential: true
+                });
+                previousViewRef.current = null;
+            } else {
+                mapRef.current.flyTo({
+                    center: [0, 20],
+                    zoom: effectiveProjection === 'globe' ? 1.0 : 1.3,
+                    duration: 1000,
+                    essential: true
+                });
+            }
         }
         setSelectedCorridor(null);
+        setSelectedCountry(null);
     }, [effectiveProjection]);
 
     // Multi-modal routes request (Rail & Highway)
@@ -950,6 +980,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     const handleSelectCorridorRef = useRef(handleSelectCorridor);
     handleSelectCorridorRef.current = handleSelectCorridor;
 
+    const handleResetCorridorRef = useRef(handleResetCorridor);
+    handleResetCorridorRef.current = handleResetCorridor;
+
     const onTripClickRef = useRef(onTripClick);
     onTripClickRef.current = onTripClick;
 
@@ -1113,17 +1146,17 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     getPath: (d: any) => d.path,
                     getColor: (d: any) => {
                         if (selectedCorridor) {
-                            return d.corridorId === selectedCorridor.id ? [52, 211, 153, 255] : [100, 115, 135, 25];
+                            return d.corridorId === selectedCorridor.id ? [52, 211, 153, 255] : [100, 115, 135, 30];
                         }
                         return hoveredRouteKey === d.corridorId ? [255, 255, 255, 255] : d.color;
                     },
                     getWidth: (d: any) => {
-                        if (selectedCorridor && d.corridorId === selectedCorridor.id) return 3.5;
-                        return hoveredRouteKey === d.corridorId ? 2.5 : 1.5;
+                        if (selectedCorridor && d.corridorId === selectedCorridor.id) return 4.0;
+                        return hoveredRouteKey === d.corridorId ? 3.2 : 2.2;
                     },
                     widthUnits: 'pixels',
-                    widthMinPixels: 1.2,
-                    widthMaxPixels: 8,
+                    widthMinPixels: 2.0,
+                    widthMaxPixels: 10,
                     capRounded: true,
                     jointRounded: true,
                     wrapLongitude: true,
@@ -1138,9 +1171,64 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             );
         }
 
-        // 6. GPU Great-Circle Flight Arcs (AirTrail Benchmark Architecture)
+        // 6. GPU Great-Circle Flight Arcs (High-Visibility AirTrail Architecture)
         if (flightArcs.length > 0 && showFlightRoutes && viewMode !== 'scratch') {
-            // Visible Arc Layer
+            const arcHeight = effectiveProjection === 'globe' ? (isElevatedActive ? 0.45 : 0.28) : (isElevatedActive ? 0.35 : 0);
+
+            // Luminous Glow Arc Underlayer for enhanced visibility against dark globe, satellite & twilight
+            layers.push(
+                new ArcLayer({
+                    id: 'flight-arcs-glow',
+                    data: flightArcs,
+                    getSourcePosition: (d: any) => [d.originLng, d.originLat],
+                    getTargetPosition: (d: any) => [d.destLng, d.destLat],
+                    greatCircle: true,
+                    getHeight: arcHeight,
+                    getSourceColor: (d: any) => {
+                        if (selectedCorridor) {
+                            return d.corridorId === selectedCorridor.id ? [52, 211, 153, 140] : [0, 0, 0, 0];
+                        }
+                        if (hoveredRouteKey === d.corridorId) return [255, 255, 255, 180];
+                        if (activeAppearance.routeColorMode === 'gradient') {
+                            return [...getGeoGradientRGB(d.originLat, d.originLng), 100];
+                        }
+                        if (activeAppearance.routeColorMode === 'frequency') {
+                            return [...getFrequencyRGB(d.count), 100];
+                        }
+                        return [56, 189, 248, 100];
+                    },
+                    getTargetColor: (d: any) => {
+                        if (selectedCorridor) {
+                            return d.corridorId === selectedCorridor.id ? [52, 211, 153, 140] : [0, 0, 0, 0];
+                        }
+                        if (hoveredRouteKey === d.corridorId) return [255, 255, 255, 180];
+                        if (activeAppearance.routeColorMode === 'gradient') {
+                            return [...getGeoGradientRGB(d.destLat, d.destLng), 100];
+                        }
+                        if (activeAppearance.routeColorMode === 'frequency') {
+                            return [...getFrequencyRGB(d.count), 100];
+                        }
+                        return [56, 189, 248, 100];
+                    },
+                    getWidth: (d: any) => {
+                        const baseStroke = isWidthByFreq
+                            ? Math.min(5.5, 2.2 + Math.log2(d.count) * 0.9)
+                            : 2.4;
+                        return (baseStroke * scaleMultiplier) + 3.5;
+                    },
+                    widthUnits: 'pixels',
+                    widthMinPixels: 4.5,
+                    widthMaxPixels: 20,
+                    pickable: false,
+                    updateTriggers: {
+                        getSourceColor: [selectedCorridor?.id, hoveredRouteKey, activeAppearance.routeColorMode],
+                        getTargetColor: [selectedCorridor?.id, hoveredRouteKey, activeAppearance.routeColorMode],
+                        getWidth: [selectedCorridor?.id, hoveredRouteKey, isWidthByFreq, scaleMultiplier]
+                    }
+                })
+            );
+
+            // High-Contrast Core Visible Arc Layer
             layers.push(
                 new ArcLayer({
                     id: 'flight-arcs-layer',
@@ -1148,45 +1236,45 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     getSourcePosition: (d: any) => [d.originLng, d.originLat],
                     getTargetPosition: (d: any) => [d.destLng, d.destLat],
                     greatCircle: true,
-                    getHeight: isElevatedActive ? 0.35 : 0,
+                    getHeight: arcHeight,
                     getSourceColor: (d: any) => {
                         if (selectedCorridor) {
-                            return d.corridorId === selectedCorridor.id ? [52, 211, 153, 255] : [100, 115, 135, 15];
+                            return d.corridorId === selectedCorridor.id ? [52, 211, 153, 255] : [100, 115, 135, 30];
                         }
                         if (hoveredRouteKey === d.corridorId) return [255, 255, 255, 255];
                         if (activeAppearance.routeColorMode === 'gradient') {
-                            return [...getGeoGradientRGB(d.originLat, d.originLng), 235];
+                            return [...getGeoGradientRGB(d.originLat, d.originLng), 255];
                         }
                         if (activeAppearance.routeColorMode === 'frequency') {
-                            return [...getFrequencyRGB(d.count), 235];
+                            return [...getFrequencyRGB(d.count), 255];
                         }
-                        return [59, 130, 246, 235];
+                        return [56, 189, 248, 255];
                     },
                     getTargetColor: (d: any) => {
                         if (selectedCorridor) {
-                            return d.corridorId === selectedCorridor.id ? [52, 211, 153, 255] : [100, 115, 135, 15];
+                            return d.corridorId === selectedCorridor.id ? [52, 211, 153, 255] : [100, 115, 135, 30];
                         }
                         if (hoveredRouteKey === d.corridorId) return [255, 255, 255, 255];
                         if (activeAppearance.routeColorMode === 'gradient') {
-                            return [...getGeoGradientRGB(d.destLat, d.destLng), 235];
+                            return [...getGeoGradientRGB(d.destLat, d.destLng), 255];
                         }
                         if (activeAppearance.routeColorMode === 'frequency') {
-                            return [...getFrequencyRGB(d.count), 235];
+                            return [...getFrequencyRGB(d.count), 255];
                         }
-                        return [59, 130, 246, 235];
+                        return [56, 189, 248, 255];
                     },
                     getWidth: (d: any) => {
                         const baseStroke = isWidthByFreq
-                            ? Math.min(4.5, 1.2 + Math.log2(d.count) * 0.75)
-                            : 1.5;
+                            ? Math.min(5.5, 2.2 + Math.log2(d.count) * 0.9)
+                            : 2.4;
                         const strokeWidth = baseStroke * scaleMultiplier;
                         if (selectedCorridor && d.corridorId === selectedCorridor.id) return strokeWidth * 2.2;
-                        if (hoveredRouteKey === d.corridorId) return strokeWidth + 1.5;
+                        if (hoveredRouteKey === d.corridorId) return strokeWidth + 1.8;
                         return strokeWidth;
                     },
                     widthUnits: 'pixels',
-                    widthMinPixels: 1,
-                    widthMaxPixels: 12,
+                    widthMinPixels: 2.2,
+                    widthMaxPixels: 14,
                     pickable: false, // Handled by wide ghost arc for effortless interaction
                     updateTriggers: {
                         getSourceColor: [selectedCorridor?.id, hoveredRouteKey, activeAppearance.routeColorMode],
@@ -1204,10 +1292,10 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     getSourcePosition: (d: any) => [d.originLng, d.originLat],
                     getTargetPosition: (d: any) => [d.destLng, d.destLat],
                     greatCircle: true,
-                    getHeight: isElevatedActive ? 0.35 : 0,
+                    getHeight: arcHeight,
                     getSourceColor: [0, 0, 0, 0],
                     getTargetColor: [0, 0, 0, 0],
-                    getWidth: 16,
+                    getWidth: 18,
                     widthUnits: 'pixels',
                     pickable: true,
                     onHover: handleRouteHover,
@@ -1405,7 +1493,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             }
         });
 
-        // Forward MapLibre Canvas Clicks to Deck.gl overlay for instant corridor selection
+        // Forward MapLibre Canvas Clicks to Deck.gl overlay for instant corridor selection or click-outside to reset
         map.on('click', (e) => {
             if (!overlayRef.current) return;
             const picked = overlayRef.current.pickObject({
@@ -1417,6 +1505,11 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 handleSelectCorridorRef.current(picked.object.corridorId);
             } else if (picked?.object?.tripId && onTripClickRef.current) {
                 onTripClickRef.current(picked.object.tripId);
+            } else {
+                // If user clicks on the map outside a route, return to previous view
+                if (selectedCorridorRef.current || selectedCountryRef.current) {
+                    handleResetCorridorRef.current();
+                }
             }
         });
 
@@ -1664,9 +1757,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 </GlassPanel>
             </div>
 
-            {/* Top-Center Floating "Back to previous view" Button with Liquid Glass */}
+            {/* Top-Center Floating "Back to previous view" Button with Liquid Glass (Positioned just below Tab Selector) */}
             {selectedCorridor && (
-                <div className="absolute top-5 left-1/2 -translate-x-1/2 z-30 pointer-events-auto animate-fade-in">
+                <div className="absolute top-[74px] left-1/2 -translate-x-1/2 z-30 pointer-events-auto animate-fade-in">
                     <GlassPanel
                         padding="6px 14px"
                         overrides={{ borderRadius: 999 }}

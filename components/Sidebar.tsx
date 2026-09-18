@@ -4,6 +4,7 @@ import { ViewState, Trip, User } from '../types';
 import { dataService } from '../services/mockDb';
 import { motion, AnimatePresence } from 'motion/react';
 import GlassPanel from './glass/GlassPanel';
+import Icon from './ui/Icon';
 
 interface SidebarProps {
   currentView: ViewState;
@@ -12,12 +13,31 @@ interface SidebarProps {
   onThemeToggle: (theme: 'light' | 'dark' | 'auto') => void;
   onLogout?: () => void;
   currentUser: User | null;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme, onThemeToggle, onLogout, currentUser }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ 
+  currentView, 
+  onNavigate, 
+  theme, 
+  onThemeToggle, 
+  onLogout, 
+  currentUser,
+  isCollapsed: controlledIsCollapsed,
+  onToggleCollapse,
+}) => {
   const [nextTrip, setNextTrip] = useState<Trip | null>(null);
   const [daysUntil, setDaysUntil] = useState<number>(0);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [internalIsCollapsed, setInternalIsCollapsed] = useState(false);
+  const isCollapsed = controlledIsCollapsed !== undefined ? controlledIsCollapsed : internalIsCollapsed;
+  const toggleCollapse = () => {
+    if (onToggleCollapse) {
+      onToggleCollapse();
+    } else {
+      setInternalIsCollapsed(!internalIsCollapsed);
+    }
+  };
   const [isDbMode, setIsDbMode] = useState<boolean>(true);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
 
@@ -83,136 +103,145 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
 
   return (
     <>
-      {/* Desktop Sidebar with Crystal edge styles */}
-      <aside className={`hidden md:flex flex-shrink-0 flex-col h-full border-r border-gray-200/5 bg-white/[0.02] dark:bg-zinc-950/20 backdrop-blur-xl transition-all duration-300 relative z-30 border-t-white/5 shadow-[0_8px_32px_0_rgba(0,0,0,0.08)] ${isCollapsed ? 'w-24' : 'w-72'}`}>
-        
-        <button 
-           onClick={() => setIsCollapsed(!isCollapsed)}
-           className="absolute -right-3 top-10 w-6 h-6 rounded-full bg-white/90 dark:bg-zinc-900/90 border border-zinc-200/20 dark:border-white/5 flex items-center justify-center text-zinc-400 hover:text-indigo-500 transition-all z-50 shadow-[0_2px_8px_rgba(0,0,0,0.05)] hover:scale-110 active:scale-95 cursor-pointer backdrop-blur-md"
-           title={isCollapsed ? "Expand" : "Collapse"}
-        >
-           <span className="material-icons-outlined text-xs">{isCollapsed ? 'chevron_right' : 'chevron_left'}</span>
-        </button>
+      {/* Desktop Floating Sidebar with Liquid Glass */}
+      <aside className={`hidden md:flex flex-shrink-0 flex-col fixed top-4 left-4 bottom-4 z-40 transition-all duration-300 pointer-events-none ${isCollapsed ? 'w-20' : 'w-72'}`}>
+        <div className="relative w-full h-full pointer-events-auto">
+          <button 
+             onClick={toggleCollapse}
+             className="absolute -right-3 top-10 w-6 h-6 rounded-full bg-white/90 dark:bg-zinc-900/90 border border-zinc-200/20 dark:border-white/5 flex items-center justify-center text-zinc-400 hover:text-indigo-500 transition-all z-50 shadow-[0_2px_8px_rgba(0,0,0,0.05)] hover:scale-110 active:scale-95 cursor-pointer backdrop-blur-md"
+             title={isCollapsed ? "Expand" : "Collapse"}
+          >
+             <Icon name={isCollapsed ? 'caret_right' : 'caret_left'} className="text-xs" />
+          </button>
 
-        <div className={`p-8 ${isCollapsed ? 'px-4' : 'px-8'} pb-4`}>
-          <div className={`flex items-center gap-3.5 mb-8 ${isCollapsed ? 'justify-center' : ''}`}>
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500/10 to-purple-600/10 dark:from-indigo-500/20 dark:to-purple-600/20 border border-indigo-500/20 dark:border-indigo-500/30 flex items-center justify-center text-xl shrink-0 shadow-inner">
-              🏔️
-            </div>
-            {!isCollapsed && (
-               <h1 className="text-xl font-bold text-gray-800 dark:text-white tracking-tight whitespace-nowrap overflow-hidden bg-gradient-to-r from-gray-950 via-zinc-800 to-zinc-900 dark:from-white dark:via-zinc-200 dark:to-zinc-400 bg-clip-text text-transparent">WanderGrid</h1>
-            )}
-          </div>
-
-          <nav className={`flex flex-col gap-1.5 ${isCollapsed ? 'items-center animate-fade-in' : ''}`}>
-            {navItems.map((item) => (
-              <button
-                key={item.value}
-                onClick={() => onNavigate(item.value)}
-                className={`flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-bold select-none cursor-pointer relative transition-all duration-200
-                  ${currentView === item.value 
-                    ? 'text-indigo-600 dark:text-indigo-400 font-extrabold z-10' 
-                    : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100/50 dark:hover:bg-white/[0.02] z-0'
-                  }
-                  ${isCollapsed ? 'justify-center px-0 w-12 h-12 border border-transparent' : 'w-full'}
-                `}
-                title={isCollapsed ? item.label : undefined}
-              >
-                {currentView === item.value && (
-                  <motion.div
-                    layoutId="activeTabGlow"
-                    className="absolute inset-0 bg-zinc-100 dark:bg-white/[0.06] rounded-2xl border border-zinc-200/50 dark:border-white/10 shadow-sm"
-                    transition={{ type: "spring", stiffness: 385, damping: 32 }}
-                    style={{ originY: "center" }}
-                  />
-                )}
-                <span className="material-icons-outlined text-xl opacity-90 relative z-20 shrink-0">{item.icon}</span>
-                {!isCollapsed && <span className="relative z-20 font-medium tracking-tight">{item.label}</span>}
-              </button>
-            ))}
-          </nav>
-        </div>
-
-        <div className={`mt-auto pb-8 pt-0 animate-fade-in flex flex-col gap-3 ${isCollapsed ? 'px-3 items-center' : 'px-8'}`}>
-                {!isCollapsed ? (
-               nextTrip ? (
-                <GlassPanel
-                  className="wg-glass-card shadow-lg"
-                  overrides={{ borderRadius: 20 }}
-                  padding="14px"
-                >
-                  <p className="text-2xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-1.5">Coming Up Next</p>
-                  <div className="flex items-center gap-3 mb-1">
-                      <span className="text-xl filter drop-shadow">{nextTrip.icon || '✈️'}</span>
-                      <p className="font-semibold text-xs truncate text-zinc-700 dark:text-zinc-200" title={nextTrip.name}>{nextTrip.name}</p>
+          <GlassPanel
+            className="wg-glass-card shadow-2xl h-full flex flex-col"
+            overrides={{ borderRadius: 28 }}
+            padding="0px"
+          >
+            <div className="flex flex-col h-full w-full overflow-hidden">
+              <div className={`p-6 ${isCollapsed ? 'px-2' : 'px-6'} pb-4`}>
+                <div className={`flex items-center gap-3.5 mb-8 ${isCollapsed ? 'justify-center' : ''}`}>
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500/10 to-purple-600/10 dark:from-indigo-500/20 dark:to-purple-600/20 border border-indigo-500/20 dark:border-indigo-500/30 flex items-center justify-center text-xl shrink-0 shadow-inner">
+                    🏔️
                   </div>
-                  <p className="text-xs font-bold tracking-wide text-indigo-500 dark:text-indigo-400">
-                      {daysUntil > 0 ? `In ${daysUntil} days` : daysUntil === 0 ? 'Starts today!' : 'Ongoing'}
-                  </p>
-                </GlassPanel>
-              ) : (
-                <div className="p-4 rounded-2xl bg-white/5 dark:bg-white/5 border border-dashed border-zinc-250 dark:border-white/10 text-center">
-                  <span className="material-icons-outlined text-zinc-400 text-xl mb-1">explore</span>
-                  <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest leading-none">No trips planned</p>
-                  <button 
-                      onClick={() => onNavigate(ViewState.DASHBOARD)} 
-                      className="text-xs text-indigo-500 dark:text-indigo-400 font-bold mt-2 hover:underline cursor-pointer"
-                  >
-                      Book next adventure
-                  </button>
+                  {!isCollapsed && (
+                     <h1 className="text-xl font-bold text-gray-800 dark:text-white tracking-tight whitespace-nowrap overflow-hidden bg-gradient-to-r from-gray-950 via-zinc-800 to-zinc-900 dark:from-white dark:via-zinc-200 dark:to-zinc-400 bg-clip-text text-transparent">WanderGrid</h1>
+                  )}
                 </div>
-              )
-          ) : (
-               nextTrip ? (
-                  <GlassPanel
-                    className="wg-glass-pill shadow-md cursor-help flex items-center justify-center w-12 h-12"
-                    overrides={{ borderRadius: 16 }}
-                    padding="0px"
-                  >
-                    <span className="text-lg leading-none" title={`Next: ${nextTrip.name} (${daysUntil} days)`}>{nextTrip.icon || '✈️'}</span>
-                  </GlassPanel>
-              ) : null
-          )}
 
-          {/* Bottom Settings / Action Cluster */}
-          <div className="flex items-center justify-between pt-4 border-t border-zinc-200/50 dark:border-white/5">
-              <button 
-                  onClick={handleThemeCycle}
-                  className="w-9 h-9 rounded-xl flex items-center justify-center text-zinc-400 hover:text-zinc-800 dark:hover:text-white hover:bg-zinc-200/30 dark:hover:bg-white/[0.04] transition-all cursor-pointer"
-                  title="Toggle Visual Appearance Mode"
-              >
-                  <span className="material-icons-outlined text-lg">{theme === 'dark' ? 'light_mode' : 'dark_mode'}</span>
-              </button>
+                <nav className={`flex flex-col gap-1.5 ${isCollapsed ? 'items-center animate-fade-in' : ''}`}>
+                  {navItems.map((item) => (
+                    <button
+                      key={item.value}
+                      onClick={() => onNavigate(item.value)}
+                      className={`flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-bold select-none cursor-pointer relative transition-all duration-200
+                        ${currentView === item.value 
+                          ? 'text-indigo-600 dark:text-indigo-400 font-extrabold z-10' 
+                          : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100/50 dark:hover:bg-white/[0.02] z-0'
+                        }
+                        ${isCollapsed ? 'justify-center px-0 w-12 h-12 border border-transparent' : 'w-full'}
+                      `}
+                      title={isCollapsed ? item.label : undefined}
+                    >
+                      {currentView === item.value && (
+                        <motion.div
+                          layoutId="activeTabGlow"
+                          className="absolute inset-0 bg-zinc-100 dark:bg-white/[0.06] rounded-2xl border border-zinc-200/50 dark:border-white/10 shadow-sm"
+                          transition={{ type: "spring", stiffness: 385, damping: 32 }}
+                          style={{ originY: "center" }}
+                        />
+                      )}
+                      <Icon name={item.icon} className="text-xl opacity-90 relative z-20 shrink-0" />
+                      {!isCollapsed && <span className="relative z-20 font-medium tracking-tight">{item.label}</span>}
+                    </button>
+                  ))}
+                </nav>
+              </div>
 
-              <button 
-                  onClick={() => onNavigate(ViewState.SETTINGS)}
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
-                      currentView === ViewState.SETTINGS 
-                      ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/20' 
-                      : 'text-zinc-400 hover:text-zinc-800 dark:hover:text-white hover:bg-zinc-200/30 dark:hover:bg-white/[0.04]'
-                  }`}
-                  title="Settings & Workspace Preferences"
-              >
-                  <span className="material-icons-outlined text-lg">settings</span>
-              </button>
-
-              {/* User Profile Avatar Icon Button */}
-              {currentUser && (
-                  <button 
-                      onClick={() => onNavigate(ViewState.USER_DETAIL, currentUser.id)}
-                      className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all border cursor-pointer ${
-                          currentView === ViewState.USER_DETAIL 
-                          ? 'bg-indigo-50 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-900/40 text-indigo-600 dark:text-indigo-400 font-bold' 
-                          : 'bg-transparent border-transparent hover:border-zinc-200/40 dark:hover:border-white/10 hover:bg-zinc-200/30 dark:hover:bg-white/[0.04]'
-                      }`}
-                      title={`Profile: ${currentUser.name} (${currentUser.role})`}
-                  >
-                      <div className="w-6 h-6 rounded-lg flex items-center justify-center text-2xs font-bold text-white bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-sm shrink-0">
-                          {currentUser.name.charAt(0)}
+              <div className={`mt-auto pb-6 pt-0 animate-fade-in flex flex-col gap-3 ${isCollapsed ? 'px-2 items-center' : 'px-6'}`}>
+                {!isCollapsed ? (
+                   nextTrip ? (
+                    <GlassPanel
+                      className="wg-glass-card shadow-lg"
+                      overrides={{ borderRadius: 20 }}
+                      padding="14px"
+                    >
+                      <p className="text-2xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-1.5">Coming Up Next</p>
+                      <div className="flex items-center gap-3 mb-1">
+                          <span className="text-xl filter drop-shadow">{nextTrip.icon || '✈️'}</span>
+                          <p className="font-semibold text-xs truncate text-zinc-700 dark:text-zinc-200" title={nextTrip.name}>{nextTrip.name}</p>
                       </div>
-                  </button>
-              )}
-          </div>
+                      <p className="text-xs font-bold tracking-wide text-indigo-500 dark:text-indigo-400">
+                          {daysUntil > 0 ? `In ${daysUntil} days` : daysUntil === 0 ? 'Starts today!' : 'Ongoing'}
+                      </p>
+                    </GlassPanel>
+                  ) : (
+                    <div className="p-4 rounded-2xl bg-white/5 dark:bg-white/5 border border-dashed border-zinc-250 dark:border-white/10 text-center">
+                      <Icon name="compass" className="text-zinc-400 text-xl mb-1" />
+                      <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest leading-none">No trips planned</p>
+                      <button 
+                          onClick={() => onNavigate(ViewState.DASHBOARD)} 
+                          className="text-xs text-indigo-500 dark:text-indigo-400 font-bold mt-2 hover:underline cursor-pointer"
+                      >
+                          Book next adventure
+                      </button>
+                    </div>
+                  )
+                ) : (
+                   nextTrip ? (
+                      <GlassPanel
+                        className="wg-glass-pill shadow-md cursor-help flex items-center justify-center w-12 h-12"
+                        overrides={{ borderRadius: 16 }}
+                        padding="0px"
+                      >
+                        <span className="text-lg leading-none" title={`Next: ${nextTrip.name} (${daysUntil} days)`}>{nextTrip.icon || '✈️'}</span>
+                      </GlassPanel>
+                  ) : null
+                )}
+
+                {/* Bottom Settings / Action Cluster */}
+                <div className="flex items-center justify-between pt-3 border-t border-zinc-200/50 dark:border-white/5">
+                    <button 
+                        onClick={handleThemeCycle}
+                        className="w-9 h-9 rounded-xl flex items-center justify-center text-zinc-400 hover:text-zinc-800 dark:hover:text-white hover:bg-zinc-200/30 dark:hover:bg-white/[0.04] transition-all cursor-pointer"
+                        title="Toggle Visual Appearance Mode"
+                    >
+                        <Icon name={theme === 'dark' ? 'sun' : 'moon'} className="text-lg" />
+                    </button>
+
+                    <button 
+                        onClick={() => onNavigate(ViewState.SETTINGS)}
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+                            currentView === ViewState.SETTINGS 
+                            ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/20' 
+                            : 'text-zinc-400 hover:text-zinc-800 dark:hover:text-white hover:bg-zinc-200/30 dark:hover:bg-white/[0.04]'
+                        }`}
+                        title="Settings & Workspace Preferences"
+                    >
+                        <Icon name="gear" className="text-lg" />
+                    </button>
+
+                    {/* User Profile Avatar Icon Button */}
+                    {currentUser && (
+                        <button 
+                            onClick={() => onNavigate(ViewState.USER_DETAIL, currentUser.id)}
+                            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all border cursor-pointer ${
+                                currentView === ViewState.USER_DETAIL 
+                                ? 'bg-indigo-50 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-900/40 text-indigo-600 dark:text-indigo-400 font-bold' 
+                                : 'bg-transparent border-transparent hover:border-zinc-200/40 dark:hover:border-white/10 hover:bg-zinc-200/30 dark:hover:bg-white/[0.04]'
+                            }`}
+                            title={`Profile: ${currentUser.name} (${currentUser.role})`}
+                        >
+                            <div className="w-6 h-6 rounded-lg flex items-center justify-center text-2xs font-bold text-white bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-sm shrink-0">
+                                {currentUser.name.charAt(0)}
+                            </div>
+                        </button>
+                    )}
+                </div>
+              </div>
+            </div>
+          </GlassPanel>
         </div>
       </aside>
 
@@ -244,7 +273,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
                       : 'text-gray-400 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
                     }`}
                 >
-                  <span className="material-icons-outlined text-xl leading-none">{item.icon}</span>
+                  <Icon name={item.icon} className="text-xl leading-none" />
                   <span className="text-2xs font-bold uppercase tracking-wider mt-1 text-center leading-tight max-w-full line-clamp-2 hyphens-auto font-sans">
                     {item.label}
                   </span>
@@ -268,7 +297,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
                   : 'text-gray-400 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
                 }`}
             >
-              <span className="material-icons-outlined text-xl leading-none">more_horiz</span>
+              <Icon name="more_horiz" className="text-xl leading-none" />
               <span className="text-2xs font-bold uppercase tracking-wider mt-1 text-center leading-tight font-sans">More</span>
               {(currentView === ViewState.PLANNER || currentView === ViewState.SETTINGS || currentView === ViewState.USER_DETAIL || currentView === ViewState.ROADTRIPS) && (
                 <motion.div 
@@ -321,7 +350,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
-                      <span className="material-icons-outlined text-lg">map</span>
+                      <Icon name="map" className="text-lg" />
                       <span>Planner</span>
                     </div>
                     {currentView === ViewState.PLANNER && <span className="w-1.5 h-1.5 rounded-full bg-primary-500" />}
@@ -340,7 +369,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
-                      <span className="material-icons-outlined text-lg">directions_car</span>
+                      <Icon name="directions_car" className="text-lg" />
                       <span>Road Trips</span>
                     </div>
                     {currentView === ViewState.ROADTRIPS && <span className="w-1.5 h-1.5 rounded-full bg-primary-500" />}
@@ -359,7 +388,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, theme
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
-                      <span className="material-icons-outlined text-lg">settings</span>
+                      <Icon name="gear" className="text-lg" />
                       <span>Settings</span>
                     </div>
                     {currentView === ViewState.SETTINGS && <span className="w-1.5 h-1.5 rounded-full bg-primary-500" />}

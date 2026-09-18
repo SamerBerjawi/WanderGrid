@@ -1,27 +1,27 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-    Plane, 
+    Airplane as Plane, 
     Train, 
     Bus, 
-    Navigation, 
-    Calendar, 
-    Trash2, 
+    NavigationArrow as Navigation, 
+    CalendarBlank as Calendar, 
+    Trash as Trash2, 
     Plus, 
     MapPin, 
     ArrowUp, 
     ArrowDown, 
     Check,
     Compass,
-    Link2,
+    LinkSimple as Link2,
     Lock,
-    Unlock,
-    HelpCircle,
-    Route,
-    Earth,
+    LockOpen as Unlock,
+    Question as HelpCircle,
+    Path as Route,
+    Globe as Earth,
     Shuffle,
-    GripVertical
-} from 'lucide-react';
+    DotsSixVertical as GripVertical
+} from '@phosphor-icons/react';
 import { Button, Input, Autocomplete, Select, Card, Badge } from './ui';
 import { LocationEntry, Transport, TransportMode } from '../types';
 import { searchLocations, getCoordinates, getCoordinatesSync, calculateDistance } from '../services/geocoding';

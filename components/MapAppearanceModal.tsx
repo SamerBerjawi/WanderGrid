@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, RotateCcw, Map as MapIcon, Plane, Layers, Compass, Sparkles } from 'lucide-react';
+import { X, ArrowCounterClockwise as RotateCcw, MapTrifold as MapIcon, Airplane as Plane, Stack as Layers, Compass, Sparkle as Sparkles } from '@phosphor-icons/react';
 import { MapAppearanceSettings, DEFAULT_MAP_APPEARANCE } from '../types/mapAppearance';
 
 interface MapAppearanceModalProps {

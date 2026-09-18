@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { AlertCircle } from 'lucide-react';
+import { WarningCircle as AlertCircle } from '@phosphor-icons/react';
 import { Modal, Button, Input } from './ui';
 import { flightTracker } from '../services/flightTracker';
 import { FlightStatusResponse, Transport } from '../types';

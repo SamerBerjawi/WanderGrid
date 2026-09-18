@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { 
-  Search, Filter, Plus, Calendar, MapPin, Trash2, Edit2, Check, Square, CheckSquare, Edit3, ChevronRight, ChevronDown, ChevronUp, AlertCircle,
-  ArrowRight, Plane, Landmark, Award, Clock, DollarSign, BarChart2, Briefcase, FileText, Compass, Heart, HelpCircle, RefreshCw, Upload, Download, Tag, UserCheck, Star, Sparkles, Grid, List,
+  MagnifyingGlass as Search, Funnel as Filter, Plus, CalendarBlank as Calendar, MapPin, Trash as Trash2, PencilSimple as Edit2, Check, Square, CheckSquare, PencilSimpleLine as Edit3, CaretRight as ChevronRight, CaretDown as ChevronDown, CaretUp as ChevronUp, WarningCircle as AlertCircle,
+  ArrowRight, Airplane as Plane, Bank as Landmark, Trophy as Award, Clock, CurrencyDollar as DollarSign, ChartBar as BarChart2, SuitcaseSimple as Briefcase, FileText, Compass, Heart, Question as HelpCircle, ArrowsClockwise as RefreshCw, UploadSimple as Upload, DownloadSimple as Download, Tag, UserCheck, Star, Sparkle as Sparkles, SquaresFour as Grid, List,
   ArrowUpRight, ArrowDownLeft, FolderPlus, FolderMinus, X
-} from 'lucide-react';
+} from '@phosphor-icons/react';
 import { Card, Button, Input, Select, Badge, TimeInput, Autocomplete } from '../components/ui';
 import { Trip, Transport, User, Carrier, WorkspaceSettings, FlightStatusResponse } from '../types';
 import { getMerchantLogoUrl } from '../utils/brandfetch';

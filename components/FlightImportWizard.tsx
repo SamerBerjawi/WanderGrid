@@ -7,23 +7,23 @@ import { dataService } from '../services/mockDb';
 import { invalidateGlobalWanderCache } from '../hooks/useWanderSync';
 import { getCarrierName, onlineCarrierIcaoToIata } from '../utils/flightData';
 import { 
-    Upload, 
+    UploadSimple as Upload, 
     Columns, 
     Check, 
-    ChevronRight, 
+    CaretRight as ChevronRight, 
     Eye, 
-    AlertCircle, 
-    Sparkles, 
-    Plane, 
-    Calendar, 
+    WarningCircle as AlertCircle, 
+    Sparkle as Sparkles, 
+    Airplane as Plane, 
+    CalendarBlank as Calendar, 
     MapPin, 
     Tag, 
-    Grid,
-    Clock,
-    UserCheck,
-    XCircle,
-    Filter
-} from 'lucide-react';
+    SquaresFour as Grid,
+    Clock, 
+    UserCheck, 
+    XCircle, 
+    Funnel as Filter
+} from '@phosphor-icons/react';
 
 interface FlightImportWizardProps {
     isOpen: boolean;

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Transport, User } from '../types';
 import { ComposableMap, Geographies, Geography, Line, Marker } from 'react-simple-maps';
-import { Plane, Award, Compass, Globe, Shield, Navigation } from 'lucide-react';
+import { Airplane as Plane, Trophy as Award, Compass, Globe, ShieldCheck as Shield, NavigationArrow as Navigation } from '@phosphor-icons/react';
 import { getCoordinatesSync } from '../services/geocoding';
 
 const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";

@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState, useRef, useMemo, Suspense } from 'react';
-import { ChevronUp, ChevronDown } from 'lucide-react';
+import { CaretUp as ChevronUp, CaretDown as ChevronDown } from '@phosphor-icons/react';
 import { Card, Button, Badge, Tabs, Modal, Input, Autocomplete, TimeInput, Select } from '../components/ui';
 import { TransportConfigurator } from '../components/FlightConfigurator';
 import { AccommodationConfigurator } from '../components/AccommodationConfigurator';

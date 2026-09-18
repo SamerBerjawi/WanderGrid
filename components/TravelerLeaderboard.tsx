@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Award, Globe, Compass, Star, ArrowUp, User, Plane, Eye } from 'lucide-react';
+import { Trophy as Award, Globe, Compass, Star, ArrowUp, User, Airplane as Plane, Eye } from '@phosphor-icons/react';
 import { VisitedCountry } from './PassportStamp';
 import { Sticker, StickerClaim, ICONIC_STICKERS } from '../utils/stickersData';
 

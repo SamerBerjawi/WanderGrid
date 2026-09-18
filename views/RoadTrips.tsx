@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { 
-  Plus, Search, Filter, Calendar, MapPin, Trash2, Edit2, 
-  ChevronDown, ChevronUp, Clock, DollarSign, Compass, 
-  Map, ArrowRight, Server, Sparkles, Navigation, Train, 
-  Bus, HelpCircle, RefreshCw, Leaf, Anchor, Grid, Info
-} from 'lucide-react';
+  Plus, MagnifyingGlass as Search, Funnel as Filter, CalendarBlank as Calendar, MapPin, Trash as Trash2, PencilSimple as Edit2, 
+  CaretDown as ChevronDown, CaretUp as ChevronUp, Clock, CurrencyDollar as DollarSign, Compass, 
+  MapTrifold as Map, ArrowRight, HardDrives as Server, Sparkle as Sparkles, NavigationArrow as Navigation, Train, 
+  Bus, Question as HelpCircle, ArrowsClockwise as RefreshCw, Leaf, Anchor, SquaresFour as Grid, Info
+} from '@phosphor-icons/react';
 import { Card, Button, Input, Select, Badge, TimeInput, Autocomplete, Modal, BentoGrid, BentoCard } from '../components/ui';
 import { Trip, Transport, TransportMode, RoadTripWaypoint, ViewState } from '../types';
 import { dataService } from '../services/mockDb';

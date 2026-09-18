@@ -189,20 +189,23 @@
   transform: none !important;
 }
 
-/* Specular highlight border rings must match 100% of the panel dimensions */
+/* Specular highlight border rings - subdued physical Apple glass rim with reduced border glow */
 .wg-glass-wrapper > div > span {
   position: absolute !important;
   width: 100% !important;
   height: 100% !important;
   pointer-events: none !important;
+  opacity: 0.45 !important;
+  box-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.22) inset, 0 1px 2px rgba(255, 255, 255, 0.1) inset, 0 1px 3px rgba(0, 0, 0, 0.25) !important;
 }
 
-/* Background shadow backer layers */
+/* Background shadow backer layers and hover/active radial bursts */
 .wg-glass-wrapper > div > div:not(.wg-glass-panel) {
   position: absolute !important;
   width: 100% !important;
   height: 100% !important;
   pointer-events: none !important;
+  opacity: 0.12 !important;
 }
 
 /* Content container (GlassContainer) must be in-flow to size the panel naturally */

@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Award, Compass, Search, Stars, CheckCircle2, Lock, Plane, Globe, MapPin } from 'lucide-react';
+import { Trophy as Award, Compass, MagnifyingGlass as Search, Sparkle as Stars, CheckCircle as CheckCircle2, Lock, Airplane as Plane, Globe, MapPin } from '@phosphor-icons/react';
 import { Trip } from '../types';
 import { VisitedCountry } from './PassportStamp';
 

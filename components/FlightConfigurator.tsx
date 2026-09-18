@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Plane, AlertCircle, Search } from 'lucide-react';
+import { Airplane as Plane, WarningCircle as AlertCircle, MagnifyingGlass as Search } from '@phosphor-icons/react';
 import { Button, Input, Select, Autocomplete, Badge, TimeInput } from './ui';
 import { Transport, TransportMode, FlightStatusResponse } from '../types';
 import { dataService } from '../services/mockDb';

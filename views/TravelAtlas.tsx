@@ -6,11 +6,11 @@ import { getFlagEmoji, getRegion } from '../services/geoData';
 import { resolvePlaceName, getCoordinates, cleanCityName, formatPlaceName } from '../services/geocoding';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Compass, MapPin, Globe, Calendar, Plus, Trash2, Edit3, 
-  Map as MapIcon, RefreshCw, Layers, CheckCircle2, AlertTriangle, Info,
-  Bookmark, Shield, ChevronRight, X, Sparkles, Filter, Check,
-  Star, Heart, Plane, Home, Landmark
-} from 'lucide-react';
+  Compass, MapPin, Globe, CalendarBlank as Calendar, Plus, Trash as Trash2, PencilSimpleLine as Edit3, 
+  MapTrifold as MapIcon, ArrowsClockwise as RefreshCw, Stack as Layers, CheckCircle as CheckCircle2, Warning as AlertTriangle, Info,
+  BookmarkSimple as Bookmark, ShieldCheck as Shield, CaretRight as ChevronRight, X, Sparkle as Sparkles, Funnel as Filter, Check,
+  Star, Heart, Airplane as Plane, House as Home, Bank as Landmark
+} from '@phosphor-icons/react';
 import { Card, Button, Input, Select, BentoGrid, BentoCard } from '../components/ui';
 import { CLOSE_BTN_STYLE } from '../constants';
 

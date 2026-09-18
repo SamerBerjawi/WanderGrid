@@ -1,25 +1,25 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Calendar as CalendarIcon, 
-  ChevronLeft, 
-  ChevronRight, 
+  CalendarBlank as CalendarIcon, 
+  CaretLeft as ChevronLeft, 
+  CaretRight as ChevronRight, 
   Users, 
-  Sparkles, 
+  Sparkle as Sparkles, 
   Info, 
-  Plane, 
+  Airplane as Plane, 
   Clock, 
-  AlertCircle, 
-  Search, 
-  Filter, 
+  WarningCircle as AlertCircle, 
+  MagnifyingGlass as Search, 
+  Funnel as Filter, 
   Check, 
   MapPin, 
-  Layers, 
-  Grid,
-  List,
-  Compass,
+  Stack as Layers, 
+  SquaresFour as Grid,
+  List, 
+  Compass, 
   ArrowRight
-} from 'lucide-react';
+} from '@phosphor-icons/react';
 import { Button, Badge, Card, Modal, Select } from '../components/ui';
 import { dataService } from '../services/mockDb';
 import { useWanderSync } from '../hooks/useWanderSync';

@@ -1,6 +1,6 @@
 import React, { ReactNode, useState, useEffect, useRef, forwardRef } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown, X } from 'lucide-react';
+import { CaretDown as ChevronDown, X } from '@phosphor-icons/react';
 import {
   INPUT_BASE_STYLE,
   BTN_PRIMARY_STYLE,

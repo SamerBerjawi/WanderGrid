@@ -3,29 +3,30 @@ import {
     Compass, 
     Globe, 
     SlidersHorizontal, 
-    RefreshCw, 
+    ArrowsClockwise as RefreshCw, 
     Play, 
-    Activity, 
+    Pulse as Activity, 
     MapPin, 
-    Layers, 
-    Calendar,
-    Sparkles,
-    Zap,
-    Map as MapIcon,
-    Plane,
+    Stack as Layers, 
+    CalendarBlank as Calendar,
+    Sparkle as Sparkles,
+    Lightning as Zap,
+    MapTrifold as MapIcon,
+    Airplane as Plane,
     X,
-    Filter,
+    Funnel as Filter,
     Radio,
     Eye,
-    RotateCcw,
-    Ship,
+    ArrowCounterClockwise as RotateCcw,
+    Boat as Ship,
     Train,
     Car,
-    Maximize,
-    Minimize,
+    ArrowsOut as Maximize,
+    ArrowsIn as Minimize,
     Moon
-} from 'lucide-react';
+} from '@phosphor-icons/react';
 const DeckFlightMap = lazy(() => import('../components/DeckFlightMap').then(m => ({ default: m.DeckFlightMap || m.default })));
+import { motion } from 'motion/react';
 import GlassPanel from '../components/glass/GlassPanel';
 import { dataService } from '../services/mockDb';
 import { Trip, CountryResidenceStatus, PredefinedMapMode, getResidenceStatuses } from '../types';
@@ -802,33 +803,45 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                 </div>
             </div>
 
-            {/* 2.5 FLOATING TOP-CENTER PREDEFINED VIEW MODES SELECTOR with Liquid Glass */}
+            {/* 2.5 FLOATING TOP-CENTER PREDEFINED VIEW MODES SELECTOR with Kokonut UI Smooth Tab & Liquid Glass */}
             <div className="absolute top-5 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
                 <GlassPanel
                     className="wg-glass-pill shadow-glass-card"
                     padding="4px"
                     overrides={{ borderRadius: 20 }}
                 >
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 relative">
                         {[
                             { id: 'flights', label: 'Flights', icon: Plane },
                             { id: 'land_sea', label: 'Land & Sea', icon: Compass },
                             { id: 'scratch', label: 'Scratch', icon: MapIcon },
                             { id: 'all', label: 'All Expeditions', icon: Globe }
-                        ].map((m) => (
-                            <button
-                                key={m.id}
-                                onClick={() => handleSelectViewMode(m.id as PredefinedMapMode)}
-                                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-150 flex items-center gap-1.5 cursor-pointer active:scale-95 ${
-                                    viewMode === m.id
-                                        ? 'bg-primary-500 text-white shadow-sm'
-                                        : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-black/5 dark:hover:bg-white/5'
-                                }`}
-                            >
-                                <m.icon className="w-3.5 h-3.5" />
-                                <span>{m.label}</span>
-                            </button>
-                        ))}
+                        ].map((m) => {
+                            const isSelected = viewMode === m.id;
+                            return (
+                                <button
+                                    key={m.id}
+                                    onClick={() => handleSelectViewMode(m.id as PredefinedMapMode)}
+                                    className={`relative px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors duration-200 flex items-center gap-1.5 cursor-pointer select-none active:scale-95 ${
+                                        isSelected
+                                            ? 'text-white'
+                                            : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
+                                    }`}
+                                >
+                                    {isSelected && (
+                                        <motion.div
+                                            layoutId="kokonutSmoothTabActive"
+                                            className="absolute inset-0 rounded-xl bg-primary-500 shadow-md shadow-primary-500/25 z-0"
+                                            transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                                        />
+                                    )}
+                                    <span className="relative z-10 flex items-center gap-1.5">
+                                        <m.icon className="w-3.5 h-3.5" />
+                                        <span>{m.label}</span>
+                                    </span>
+                                </button>
+                            );
+                        })}
                     </div>
                 </GlassPanel>
             </div>

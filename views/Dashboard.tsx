@@ -15,8 +15,27 @@ import { StickerStamp } from '../components/StickerStamp';
 import { AchievementMilestones } from '../components/AchievementMilestones';
 import { ICONIC_STICKERS, loadStickersProgress, StickerClaim, STICKER_CATEGORIES } from '../utils/stickersData';
 import { formatDate } from '../utils/formatters';
-import { motion, AnimatePresence } from 'motion/react';
-import { Globe, Plane, Award, Compass, Search, MapPin, Calendar, CheckCircle, Shield, Briefcase, ChevronRight, TrendingUp, Cpu, Layers, Wifi, Sparkles, Ticket, Activity, Info } from 'lucide-react';
+import { 
+    Globe, 
+    Airplane as Plane, 
+    Trophy as Award, 
+    Compass, 
+    MagnifyingGlass as Search, 
+    MapPin, 
+    CalendarBlank as Calendar, 
+    CheckCircle, 
+    ShieldCheck as Shield, 
+    SuitcaseSimple as Briefcase, 
+    CaretRight as ChevronRight, 
+    TrendUp as TrendingUp, 
+    Cpu, 
+    Stack as Layers, 
+    WifiHigh as Wifi, 
+    Sparkle as Sparkles, 
+    Ticket, 
+    Pulse as Activity, 
+    Info 
+} from '@phosphor-icons/react';
 
 interface DashboardProps {
     onUserClick?: (userId: string) => void;

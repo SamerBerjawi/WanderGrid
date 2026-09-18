@@ -1,5 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { AlertTriangle, RotateCcw, LayoutGrid } from 'lucide-react';
+import { Warning as AlertTriangle, ArrowCounterClockwise as RotateCcw, SquaresFour as LayoutGrid } from '@phosphor-icons/react';
 
 interface Props {
   children: ReactNode;

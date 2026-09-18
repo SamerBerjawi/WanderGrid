@@ -5,6 +5,7 @@ import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { ViewState, User } from './types';
 import { dataService } from './services/mockDb';
 import { motion, AnimatePresence } from 'motion/react';
+import { IconContext } from '@phosphor-icons/react';
 
 // Lazy load views to split the bundle and improve performance
 const Dashboard = lazy(() => import('./views/Dashboard').then(m => ({ default: m.Dashboard })));
@@ -114,6 +115,7 @@ export default function App() {
   const [view, setView] = useState<ViewState>(initialState.view);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(initialState.userId || null);
   const [selectedTripId, setSelectedTripId] = useState<string | null>(initialState.tripId || null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
   
   const [theme, setTheme] = useState<'light' | 'dark' | 'auto'>('dark');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -346,39 +348,47 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-[#FAFAFA] dark:bg-[#050505] transition-colors duration-700 text-light-text dark:text-dark-text relative">
-      {/* Dynamic Ambient Spot Glow Filter representing current state */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-          <div className={`absolute -top-64 -left-64 w-[850px] h-[850px] rounded-full ${currentAccent.glow1} blur-[165px] animate-[pulse_12s_infinite] transition-colors duration-[1.5s]`} />
-          <div className={`absolute top-[20%] -right-64 w-[800px] h-[800px] rounded-full ${currentAccent.glow2} blur-[150px] animate-[pulse_15s_infinite] delay-1000 transition-colors duration-[1.5s]`} />
-          <div className={`absolute -bottom-64 left-[20%] w-[750px] h-[750px] rounded-full ${currentAccent.glow3} blur-[165px] animate-[pulse_13s_infinite] delay-2000 transition-colors duration-[1.5s]`} />
+    <IconContext.Provider value={{ weight: 'duotone' }}>
+      <div className="flex h-screen w-full overflow-hidden bg-[#FAFAFA] dark:bg-[#050505] transition-colors duration-700 text-light-text dark:text-dark-text relative">
+        {/* Dynamic Ambient Spot Glow Filter representing current state */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+            <div className={`absolute -top-64 -left-64 w-[850px] h-[850px] rounded-full ${currentAccent.glow1} blur-[165px] animate-[pulse_12s_infinite] transition-colors duration-[1.5s]`} />
+            <div className={`absolute top-[20%] -right-64 w-[800px] h-[800px] rounded-full ${currentAccent.glow2} blur-[150px] animate-[pulse_15s_infinite] delay-1000 transition-colors duration-[1.5s]`} />
+            <div className={`absolute -bottom-64 left-[20%] w-[750px] h-[750px] rounded-full ${currentAccent.glow3} blur-[165px] animate-[pulse_13s_infinite] delay-2000 transition-colors duration-[1.5s]`} />
+        </div>
+        <Sidebar 
+          currentView={view} 
+          onNavigate={(v, id) => navigate(v, id)} 
+          theme={theme}
+          onThemeToggle={handleThemeChange}
+          onLogout={handleLogout}
+          currentUser={currentUser}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        />
+        <main className={`flex-1 h-full relative z-10 transition-all duration-300 ${
+          view === ViewState.MAP 
+            ? 'p-0 overflow-hidden' 
+            : `p-4 md:p-8 pb-28 md:pb-8 overflow-y-auto custom-scrollbar ${isSidebarCollapsed ? 'md:pl-28' : 'md:pl-80'}`
+        }`}>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={routeKey}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="w-full h-full"
+            >
+              <Suspense fallback={<ViewLoader />}>
+                <AppErrorBoundary routeKey={routeKey} onResetToDashboard={() => navigate(ViewState.DASHBOARD)}>
+                  {renderView()}
+                </AppErrorBoundary>
+              </Suspense>
+            </motion.div>
+          </AnimatePresence>
+        </main>
       </div>
-      <Sidebar 
-        currentView={view} 
-        onNavigate={(v, id) => navigate(v, id)} 
-        theme={theme}
-        onThemeToggle={handleThemeChange}
-        onLogout={handleLogout}
-        currentUser={currentUser}
-      />
-      <main className={`flex-1 h-full relative z-10 ${view === ViewState.MAP ? 'p-0 overflow-hidden' : 'p-4 md:p-8 pb-28 md:pb-8 overflow-y-auto custom-scrollbar'}`}>
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={routeKey}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.18, ease: "easeOut" }}
-            className="w-full h-full"
-          >
-            <Suspense fallback={<ViewLoader />}>
-              <AppErrorBoundary routeKey={routeKey} onResetToDashboard={() => navigate(ViewState.DASHBOARD)}>
-                {renderView()}
-              </AppErrorBoundary>
-            </Suspense>
-          </motion.div>
-        </AnimatePresence>
-      </main>
-    </div>
+    </IconContext.Provider>
   );
 }

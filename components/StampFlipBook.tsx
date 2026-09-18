@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { BookOpen, ChevronLeft, ChevronRight, Compass, Stars, Map, Award, HelpCircle } from 'lucide-react';
+import { BookOpen, CaretLeft as ChevronLeft, CaretRight as ChevronRight, Compass, Sparkle as Stars, MapTrifold as Map, Trophy as Award, Question as HelpCircle } from '@phosphor-icons/react';
 import { VisitedCountry } from './PassportStamp';
 import { Sticker, StickerClaim, ICONIC_STICKERS } from '../utils/stickersData';
 import { PassportStamp } from './PassportStamp';
