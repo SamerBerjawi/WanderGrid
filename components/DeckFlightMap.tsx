@@ -1169,7 +1169,13 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     capRounded: true,
                     jointRounded: true,
                     wrapLongitude: true,
-                    parameters: { depthTest: false },
+                    parameters: {
+                        cullMode: 'none',
+                        cull: false,
+                        depthWriteEnabled: false,
+                        depthCompare: 'always',
+                        depthTest: false
+                    },
                     pickable: true,
                     onHover: handleRouteHover,
                     onClick: handleRouteClick,
@@ -1195,7 +1201,13 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     getTargetPosition: (d: any) => [d.destLng, d.destLat],
                     greatCircle: true,
                     getHeight: arcHeight,
-                    parameters: { depthTest: false, cull: false },
+                    parameters: {
+                        cullMode: 'none',
+                        cull: false,
+                        depthWriteEnabled: false,
+                        depthCompare: 'always',
+                        depthTest: false
+                    },
                     getSourceColor: (d: any) => {
                         if (selectedCorridor) {
                             return d.corridorId === selectedCorridor.id ? [52, 211, 153, 255] : [100, 115, 135, 15];
@@ -1238,7 +1250,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     updateTriggers: {
                         getSourceColor: [selectedCorridor?.id, hoveredRouteKey, activeAppearance.routeColorMode],
                         getTargetColor: [selectedCorridor?.id, hoveredRouteKey, activeAppearance.routeColorMode],
-                        getWidth: [selectedCorridor?.id, hoveredRouteKey, isWidthByFreq, scaleMultiplier, effectiveProjection]
+                        getWidth: [selectedCorridor?.id, hoveredRouteKey, isWidthByFreq, scaleMultiplier, effectiveProjection],
+                        getHeight: [arcHeight, effectiveProjection, isElevatedActive]
                     }
                 })
             );
@@ -1252,14 +1265,23 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     getTargetPosition: (d: any) => [d.destLng, d.destLat],
                     greatCircle: true,
                     getHeight: arcHeight,
-                    parameters: { depthTest: false, cull: false },
+                    parameters: {
+                        cullMode: 'none',
+                        cull: false,
+                        depthWriteEnabled: false,
+                        depthCompare: 'always',
+                        depthTest: false
+                    },
                     getSourceColor: [0, 0, 0, 0],
                     getTargetColor: [0, 0, 0, 0],
                     getWidth: 20,
                     widthUnits: 'pixels',
                     pickable: true,
                     onHover: handleRouteHover,
-                    onClick: handleRouteClick
+                    onClick: handleRouteClick,
+                    updateTriggers: {
+                        getHeight: [arcHeight, effectiveProjection, isElevatedActive]
+                    }
                 })
             );
         }
