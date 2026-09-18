@@ -37,7 +37,8 @@ import {
     MapAppearanceSettings, 
     DEFAULT_MAP_APPEARANCE, 
     loadMapAppearanceSettings, 
-    saveMapAppearanceSettings 
+    saveMapAppearanceSettings,
+    getEffectiveBasemap
 } from '../types/mapAppearance';
 
 interface ExpeditionMapViewProps {
@@ -1040,58 +1041,36 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                             <div>
                                 <div className="flex items-center justify-between mb-3">
                                     <h3 className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase">Cartographic Basemap</h3>
-                                    <span className="text-xs font-medium text-light-text-secondary/70 dark:text-dark-text-secondary/70">5 Curated Tilesets</span>
+                                    <span className="text-xs font-medium text-light-text-secondary/70 dark:text-dark-text-secondary/70">3 Curated Tilesets ({isDark ? 'Dark Mode' : 'Light Mode'})</span>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-2.5">
-                                    {[
+                                <div className="grid grid-cols-3 gap-2.5">
+                                    {(isDark ? [
                                         { 
-                                            id: 'default', 
-                                            label: 'Onyx & Snow Canvas', 
-                                            desc: 'High-contrast deep black / pure white',
+                                            id: 'onyx', 
+                                            label: 'Onyx', 
+                                            desc: 'High-contrast deep black',
                                             renderSwatch: () => (
-                                                <div className="w-full h-8 rounded-xl border border-black/10 dark:border-white/15 flex items-center px-2.5 justify-between bg-gradient-to-r from-zinc-200 to-zinc-300 dark:from-zinc-950 dark:to-zinc-800 relative overflow-hidden">
+                                                <div className="w-full h-8 rounded-xl border border-white/15 flex items-center px-2.5 justify-between bg-gradient-to-r from-black via-zinc-950 to-zinc-900 relative overflow-hidden">
                                                     <div className="flex items-center gap-1.5 z-10">
                                                         <span className="text-2xs">🌑</span>
-                                                        <span className="text-2xs font-bold text-zinc-700 dark:text-zinc-300">Onyx</span>
-                                                        <span className="text-2xs text-zinc-400">/</span>
-                                                        <span className="text-2xs">❄️</span>
-                                                        <span className="text-2xs font-bold text-zinc-700 dark:text-zinc-300">Snow</span>
+                                                        <span className="text-2xs font-bold text-white drop-shadow">Onyx</span>
                                                     </div>
-                                                    <div className="w-2 h-2 rounded-full border border-black/30 dark:border-white/40 z-10" />
-                                                </div>
-                                            )
-                                        },
-                                        { 
-                                            id: 'vibrant', 
-                                            label: 'Vibrant Elements', 
-                                            desc: 'Colorized parks, water, highways & terrain',
-                                            renderSwatch: () => (
-                                                <div className="w-full h-8 rounded-xl border border-emerald-500/30 flex items-center px-2.5 justify-between bg-gradient-to-r from-[#031526] via-[#06241a] to-[#241a06] relative overflow-hidden">
-                                                    <div className="flex items-center gap-1.5 z-10">
-                                                        <span className="text-2xs">🎨</span>
-                                                        <span className="text-2xs font-bold text-emerald-300">Vibrant</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-1 z-10">
-                                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_4px_#38bdf8]" title="Water" />
-                                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_4px_#34d399]" title="Parks" />
-                                                        <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_4px_#fbbf24]" title="Roads" />
-                                                    </div>
+                                                    <div className="w-2 h-2 rounded-full border border-white/40 z-10" />
                                                 </div>
                                             )
                                         },
                                         { 
                                             id: 'citylights', 
-                                            label: 'NASA Earth at Night', 
+                                            label: 'NASA Lights', 
                                             desc: 'VIIRS night city lights',
                                             renderSwatch: () => (
                                                 <div className="w-full h-8 rounded-xl border border-amber-500/30 flex items-center px-2.5 justify-between bg-[#040711] relative overflow-hidden">
                                                     <div className="absolute top-1.5 right-12 w-1.5 h-1.5 rounded-full bg-amber-400/90 shadow-[0_0_6px_#f59e0b] animate-pulse" />
                                                     <div className="absolute bottom-1.5 right-7 w-1 h-1 rounded-full bg-amber-300/80 shadow-[0_0_4px_#f59e0b]" />
-                                                    <div className="absolute top-3.5 right-16 w-0.5 h-0.5 rounded-full bg-amber-200/60 shadow-[0_0_3px_#f59e0b]" />
                                                     <div className="flex items-center gap-1.5 z-10">
                                                         <span className="text-2xs">✨</span>
-                                                        <span className="text-2xs font-bold text-amber-100 drop-shadow-sm">NASA Lights</span>
+                                                        <span className="text-2xs font-bold text-amber-100 drop-shadow-sm">NASA</span>
                                                     </div>
                                                     <div className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_6px_#f59e0b] z-10" />
                                                 </div>
@@ -1099,8 +1078,8 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                         },
                                         { 
                                             id: 'satellite', 
-                                            label: 'Earth Observation', 
-                                            desc: 'High-res satellite',
+                                            label: 'Satellite', 
+                                            desc: 'High-res Earth observation',
                                             renderSwatch: () => (
                                                 <div className="w-full h-8 rounded-xl border border-emerald-500/20 flex items-center px-2.5 justify-between bg-gradient-to-r from-[#0a1a14] to-[#0d2a1f] relative overflow-hidden">
                                                     <div className="flex items-center gap-1.5 z-10">
@@ -1110,38 +1089,74 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                                     <div className="w-2 h-2 rounded-full border border-emerald-400/50 z-10" />
                                                 </div>
                                             )
+                                        }
+                                    ] : [
+                                        { 
+                                            id: 'snow', 
+                                            label: 'Snow', 
+                                            desc: 'Clean high-contrast white',
+                                            renderSwatch: () => (
+                                                <div className="w-full h-8 rounded-xl border border-black/10 flex items-center px-2.5 justify-between bg-gradient-to-r from-zinc-100 via-white to-zinc-200 relative overflow-hidden">
+                                                    <div className="flex items-center gap-1.5 z-10">
+                                                        <span className="text-2xs">❄️</span>
+                                                        <span className="text-2xs font-bold text-zinc-800">Snow</span>
+                                                    </div>
+                                                    <div className="w-2 h-2 rounded-full border border-zinc-400 z-10" />
+                                                </div>
+                                            )
+                                        },
+                                        { 
+                                            id: 'vibrant', 
+                                            label: 'Vibrant', 
+                                            desc: 'Parks, water & terrain',
+                                            renderSwatch: () => (
+                                                <div className="w-full h-8 rounded-xl border border-emerald-500/30 flex items-center px-2.5 justify-between bg-gradient-to-r from-[#e0f2fe] via-[#ecfdf5] to-[#fef3c7] relative overflow-hidden">
+                                                    <div className="flex items-center gap-1.5 z-10">
+                                                        <span className="text-2xs">🎨</span>
+                                                        <span className="text-2xs font-bold text-emerald-800">Vibrant</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1 z-10">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_4px_#38bdf8]" title="Water" />
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_4px_#34d399]" title="Parks" />
+                                                    </div>
+                                                </div>
+                                            )
                                         },
                                         { 
                                             id: 'ocean', 
-                                            label: 'Ocean Bathymetry', 
-                                            desc: 'Sea floor topography',
+                                            label: 'Bathymetry', 
+                                            desc: 'Marine sea floor topography',
                                             renderSwatch: () => (
-                                                <div className="w-full h-8 rounded-xl border border-cyan-500/20 flex items-center px-2.5 justify-between bg-gradient-to-r from-[#041424] to-[#08223a] relative overflow-hidden">
+                                                <div className="w-full h-8 rounded-xl border border-cyan-500/30 flex items-center px-2.5 justify-between bg-gradient-to-r from-[#e0f7fa] to-[#b2ebf2] relative overflow-hidden">
                                                     <div className="flex items-center gap-1.5 z-10">
                                                         <span className="text-2xs">🌊</span>
-                                                        <span className="text-2xs font-bold text-cyan-200">Bathymetry</span>
+                                                        <span className="text-2xs font-bold text-cyan-900">Bathymetry</span>
                                                     </div>
-                                                    <div className="w-2 h-2 rounded-full border border-cyan-400/50 z-10" />
+                                                    <div className="w-2 h-2 rounded-full border border-cyan-500/60 z-10" />
                                                 </div>
                                             )
                                         }
-                                    ].map(b => (
-                                        <button
-                                            key={b.id}
-                                            onClick={() => handleUpdateAppearance({ ...appearance, basemap: b.id as any })}
-                                            className={`p-3 rounded-2xl border transition-all duration-150 text-left flex flex-col justify-between gap-2 cursor-pointer active:scale-[0.98] ${
-                                                appearance.basemap === b.id
-                                                    ? 'border-sky-500 bg-sky-500/10 ring-2 ring-sky-500/30'
-                                                    : 'border-black/5 dark:border-white/10 bg-white/50 dark:bg-white/[0.04] hover:border-black/15 dark:hover:border-white/20'
-                                            }`}
-                                        >
-                                            {b.renderSwatch()}
-                                            <div>
-                                                <p className="text-xs font-bold text-light-text dark:text-dark-text">{b.label}</p>
-                                                <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary">{b.desc}</p>
-                                            </div>
-                                        </button>
-                                    ))}
+                                    ]).map(b => {
+                                        const effectiveBasemap = getEffectiveBasemap(appearance.basemap, isDark);
+                                        const isSelected = effectiveBasemap === b.id;
+                                        return (
+                                            <button
+                                                key={b.id}
+                                                onClick={() => handleUpdateAppearance({ ...appearance, basemap: b.id as any })}
+                                                className={`p-2.5 rounded-2xl border transition-all duration-150 text-left flex flex-col justify-between gap-2 cursor-pointer active:scale-[0.98] ${
+                                                    isSelected
+                                                        ? 'border-sky-500 bg-sky-500/10 ring-2 ring-sky-500/30'
+                                                        : 'border-black/5 dark:border-white/10 bg-white/50 dark:bg-white/[0.04] hover:border-black/15 dark:hover:border-white/20'
+                                                }`}
+                                            >
+                                                {b.renderSwatch()}
+                                                <div>
+                                                    <p className="text-xs font-bold text-light-text dark:text-dark-text truncate">{b.label}</p>
+                                                    <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary line-clamp-1">{b.desc}</p>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
 

@@ -108,7 +108,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="relative w-full h-full pointer-events-auto">
           <button 
              onClick={toggleCollapse}
-             className="absolute -right-3 top-10 w-6 h-6 rounded-full bg-white/90 dark:bg-zinc-900/90 border border-zinc-200/20 dark:border-white/5 flex items-center justify-center text-zinc-400 hover:text-indigo-500 transition-all z-50 shadow-[0_2px_8px_rgba(0,0,0,0.05)] hover:scale-110 active:scale-95 cursor-pointer backdrop-blur-md"
+             className="absolute -right-3 top-10 w-6 h-6 rounded-full bg-white/90 dark:bg-zinc-800/95 border border-zinc-200/20 dark:border-white/15 flex items-center justify-center text-zinc-400 dark:text-zinc-200 hover:text-indigo-500 dark:hover:text-white transition-all z-50 shadow-[0_2px_8px_rgba(0,0,0,0.05)] hover:scale-110 active:scale-95 cursor-pointer backdrop-blur-md"
              title={isCollapsed ? "Expand" : "Collapse"}
           >
              <Icon name={isCollapsed ? 'caret_right' : 'caret_left'} className="text-xs" />
@@ -126,7 +126,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     🏔️
                   </div>
                   {!isCollapsed && (
-                     <h1 className="text-xl font-bold text-gray-800 dark:text-white tracking-tight whitespace-nowrap overflow-hidden bg-gradient-to-r from-gray-950 via-zinc-800 to-zinc-900 dark:from-white dark:via-zinc-200 dark:to-zinc-400 bg-clip-text text-transparent">WanderGrid</h1>
+                     <h1 className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight whitespace-nowrap overflow-hidden bg-gradient-to-r from-gray-950 via-zinc-800 to-zinc-900 dark:from-white dark:via-white dark:to-zinc-100 bg-clip-text text-transparent">WanderGrid</h1>
                   )}
                 </div>
 
@@ -137,8 +137,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       onClick={() => onNavigate(item.value)}
                       className={`flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-bold select-none cursor-pointer relative transition-all duration-200
                         ${currentView === item.value 
-                          ? 'text-indigo-600 dark:text-indigo-400 font-extrabold z-10' 
-                          : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100/50 dark:hover:bg-white/[0.02] z-0'
+                          ? 'text-indigo-600 dark:text-indigo-300 font-black z-10' 
+                          : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-100 dark:hover:text-white hover:bg-zinc-100/50 dark:hover:bg-white/[0.08] z-0'
                         }
                         ${isCollapsed ? 'justify-center px-0 w-12 h-12 border border-transparent' : 'w-full'}
                       `}
@@ -147,13 +147,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       {currentView === item.value && (
                         <motion.div
                           layoutId="activeTabGlow"
-                          className="absolute inset-0 bg-zinc-100 dark:bg-white/[0.06] rounded-2xl border border-zinc-200/50 dark:border-white/10 shadow-sm"
+                          className="absolute inset-0 bg-zinc-100 dark:bg-white/[0.14] rounded-2xl border border-zinc-200/50 dark:border-white/20 shadow-sm"
                           transition={{ type: "spring", stiffness: 385, damping: 32 }}
                           style={{ originY: "center" }}
                         />
                       )}
-                      <Icon name={item.icon} className="text-xl opacity-90 relative z-20 shrink-0" />
-                      {!isCollapsed && <span className="relative z-20 font-medium tracking-tight">{item.label}</span>}
+                      <Icon name={item.icon} className="text-xl opacity-90 dark:opacity-100 relative z-20 shrink-0" />
+                      {!isCollapsed && <span className="relative z-20 font-bold tracking-tight">{item.label}</span>}
                     </button>
                   ))}
                 </nav>
@@ -167,22 +167,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       overrides={{ borderRadius: 20 }}
                       padding="14px"
                     >
-                      <p className="text-2xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-1.5">Coming Up Next</p>
+                      <p className="text-2xs font-bold text-zinc-500 dark:text-zinc-300 uppercase tracking-widest mb-1.5">Coming Up Next</p>
                       <div className="flex items-center gap-3 mb-1">
                           <span className="text-xl filter drop-shadow">{nextTrip.icon || '✈️'}</span>
-                          <p className="font-semibold text-xs truncate text-zinc-700 dark:text-zinc-200" title={nextTrip.name}>{nextTrip.name}</p>
+                          <p className="font-bold text-xs truncate text-zinc-800 dark:text-white" title={nextTrip.name}>{nextTrip.name}</p>
                       </div>
-                      <p className="text-xs font-bold tracking-wide text-indigo-500 dark:text-indigo-400">
+                      <p className="text-xs font-extrabold tracking-wide text-indigo-600 dark:text-indigo-300">
                           {daysUntil > 0 ? `In ${daysUntil} days` : daysUntil === 0 ? 'Starts today!' : 'Ongoing'}
                       </p>
                     </GlassPanel>
                   ) : (
-                    <div className="p-4 rounded-2xl bg-white/5 dark:bg-white/5 border border-dashed border-zinc-250 dark:border-white/10 text-center">
-                      <Icon name="compass" className="text-zinc-400 text-xl mb-1" />
-                      <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest leading-none">No trips planned</p>
+                    <div className="p-4 rounded-2xl bg-white/5 dark:bg-white/[0.08] border border-dashed border-zinc-250 dark:border-white/20 text-center">
+                      <Icon name="compass" className="text-zinc-400 dark:text-zinc-300 text-xl mb-1" />
+                      <p className="text-xs font-bold text-zinc-500 dark:text-zinc-300 uppercase tracking-widest leading-none">No trips planned</p>
                       <button 
                           onClick={() => onNavigate(ViewState.DASHBOARD)} 
-                          className="text-xs text-indigo-500 dark:text-indigo-400 font-bold mt-2 hover:underline cursor-pointer"
+                          className="text-xs text-indigo-600 dark:text-indigo-300 font-bold mt-2 hover:underline cursor-pointer"
                       >
                           Book next adventure
                       </button>
@@ -201,14 +201,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 )}
 
                 {/* Bottom Settings / Action Cluster */}
-                <div className={`pt-3 border-t border-zinc-200/50 dark:border-white/5 ${
+                <div className={`pt-3 border-t border-zinc-200/50 dark:border-white/10 ${
                     isCollapsed 
                       ? 'flex flex-col items-center gap-2.5 w-full' 
                       : 'flex items-center justify-between'
                 }`}>
                     <button 
                         onClick={handleThemeCycle}
-                        className={`${isCollapsed ? 'w-10 h-10' : 'w-9 h-9'} rounded-xl flex items-center justify-center text-zinc-400 hover:text-zinc-800 dark:hover:text-white hover:bg-zinc-200/30 dark:hover:bg-white/[0.04] transition-all cursor-pointer`}
+                        className={`${isCollapsed ? 'w-10 h-10' : 'w-9 h-9'} rounded-xl flex items-center justify-center text-zinc-500 hover:text-zinc-800 dark:text-zinc-200 dark:hover:text-white hover:bg-zinc-200/30 dark:hover:bg-white/[0.08] transition-all cursor-pointer`}
                         title="Toggle Visual Appearance Mode"
                     >
                         <Icon name={theme === 'dark' ? 'sun' : 'moon'} className="text-lg" />
@@ -218,8 +218,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         onClick={() => onNavigate(ViewState.SETTINGS)}
                         className={`${isCollapsed ? 'w-10 h-10' : 'w-9 h-9'} rounded-xl flex items-center justify-center transition-all cursor-pointer ${
                             currentView === ViewState.SETTINGS 
-                            ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/20' 
-                            : 'text-zinc-400 hover:text-zinc-800 dark:hover:text-white hover:bg-zinc-200/30 dark:hover:bg-white/[0.04]'
+                            ? 'text-indigo-600 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40' 
+                            : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-200 dark:hover:text-white hover:bg-zinc-200/30 dark:hover:bg-white/[0.08]'
                         }`}
                         title="Settings & Workspace Preferences"
                     >
@@ -232,8 +232,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             onClick={() => onNavigate(ViewState.USER_DETAIL, currentUser.id)}
                             className={`${isCollapsed ? 'w-10 h-10' : 'w-9 h-9'} rounded-xl flex items-center justify-center transition-all border cursor-pointer ${
                                 currentView === ViewState.USER_DETAIL 
-                                ? 'bg-indigo-50 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-900/40 text-indigo-600 dark:text-indigo-400 font-bold' 
-                                : 'bg-transparent border-transparent hover:border-zinc-200/40 dark:hover:border-white/10 hover:bg-zinc-200/30 dark:hover:bg-white/[0.04]'
+                                ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-300 font-bold' 
+                                : 'bg-transparent border-transparent hover:border-zinc-200/40 dark:hover:border-white/20 hover:bg-zinc-200/30 dark:hover:bg-white/[0.08]'
                             }`}
                             title={`Profile: ${currentUser.name} (${currentUser.role})`}
                         >
@@ -274,7 +274,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   className={`flex flex-col items-center justify-center flex-1 h-14 min-w-0 rounded-2xl transition-all duration-300 relative select-none cursor-pointer px-0.5
                     ${isActive 
                       ? 'text-primary-500 font-extrabold scale-105' 
-                      : 'text-gray-400 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                      : 'text-gray-500 dark:text-zinc-200 hover:text-gray-900 dark:hover:text-white'
                     }`}
                 >
                   <Icon name={item.icon} className="text-xl leading-none" />
@@ -298,7 +298,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               className={`flex flex-col items-center justify-center flex-1 h-14 min-w-0 rounded-2xl transition-all duration-300 relative select-none cursor-pointer px-0.5
                 ${(currentView === ViewState.PLANNER || currentView === ViewState.SETTINGS || currentView === ViewState.USER_DETAIL || currentView === ViewState.ROADTRIPS)
                   ? 'text-primary-500 font-extrabold scale-105'
-                  : 'text-gray-400 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                  : 'text-gray-500 dark:text-zinc-200 hover:text-gray-900 dark:hover:text-white'
                 }`}
             >
               <Icon name="more_horiz" className="text-xl leading-none" />

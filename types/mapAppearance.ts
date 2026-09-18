@@ -1,6 +1,23 @@
+export type BasemapMode = 'default' | 'onyx' | 'snow' | 'vibrant' | 'satellite' | 'ocean' | 'citylights';
+
+export const getEffectiveBasemap = (
+    basemap: string | undefined,
+    isDark: boolean
+): 'onyx' | 'citylights' | 'satellite' | 'snow' | 'vibrant' | 'ocean' => {
+    if (isDark) {
+        if (basemap === 'citylights') return 'citylights';
+        if (basemap === 'satellite') return 'satellite';
+        return 'onyx';
+    } else {
+        if (basemap === 'vibrant') return 'vibrant';
+        if (basemap === 'ocean') return 'ocean';
+        return 'snow';
+    }
+};
+
 export interface MapAppearanceSettings {
     // Atlas & Cartography
-    basemap: 'default' | 'vibrant' | 'satellite' | 'ocean' | 'citylights';
+    basemap: BasemapMode;
     airportDetail: 'standard' | 'detailed'; // standard circles vs detailed runway markings
     projection: 'flat' | 'globe';
 

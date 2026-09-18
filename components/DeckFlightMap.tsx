@@ -36,7 +36,8 @@ import {
     MapAppearanceSettings, 
     DEFAULT_MAP_APPEARANCE, 
     loadMapAppearanceSettings, 
-    saveMapAppearanceSettings 
+    saveMapAppearanceSettings,
+    getEffectiveBasemap
 } from '../types/mapAppearance';
 import { getTwilightGradientGeoJSON } from '../services/solarTerminator';
 import { getLatestRainRadarMetadata, RainRadarMetadata } from '../services/rainViewer';
@@ -260,7 +261,9 @@ export const createMapLibreStyle = (
     let maxzoom = 20;
     let attribution = '© CARTO, © OpenStreetMap contributors';
 
-    switch (layer) {
+    const effectiveLayer = getEffectiveBasemap(layer, isDark);
+
+    switch (effectiveLayer) {
         case 'satellite':
             tiles = ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'];
             maxzoom = 19;
@@ -277,11 +280,14 @@ export const createMapLibreStyle = (
             attribution = 'NASA EOSDIS GIBS';
             break;
         case 'vibrant':
-            tiles = isDark ? getCartoTiles('dark_all') : getCartoTiles('voyager');
+            tiles = getCartoTiles('voyager');
             break;
-        case 'default':
+        case 'snow':
+            tiles = getCartoTiles('light_all');
+            break;
+        case 'onyx':
         default:
-            tiles = isDark ? getCartoTiles('dark_all') : getCartoTiles('light_all');
+            tiles = getCartoTiles('dark_all');
             break;
     }
 
