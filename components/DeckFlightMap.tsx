@@ -78,14 +78,14 @@ const isCountryVisited = (f: any, visitedList: string[]): boolean => {
     return false;
 };
 
-// --- Gradient Color Logic & Regional Poles (Luminous High-Contrast Palette) ---
+// --- Gradient Color Logic & Regional Poles ---
 const COLOR_POLES = [
-    { lat: 55, lng: -100, color: [56, 189, 248] },    // NA: Vibrant Sky Blue / Electric Cyan
-    { lat: -15, lng: -60, color: [52, 211, 153] },     // SA: Vivid Emerald Mint
-    { lat: 10, lng: 20, color: [251, 191, 36] },      // Africa: Radiant Amber Gold
-    { lat: 50, lng: 15, color: [167, 139, 250] },     // Europe: Luminous Lilac / Violet
-    { lat: 35, lng: 105, color: [251, 113, 133] },     // Asia: Vivid Coral Rose
-    { lat: -25, lng: 135, color: [34, 211, 238] },    // Oceania: Vivid Electric Cyan
+    { lat: 55, lng: -100, color: [0, 122, 255] },    // NA: Vivid Blue
+    { lat: -15, lng: -60, color: [0, 200, 83] },     // SA: Vivid Emerald
+    { lat: 10, lng: 20, color: [255, 179, 0] },      // Africa: Vivid Amber/Gold
+    { lat: 50, lng: 15, color: [124, 58, 237] },     // Europe: Vivid Violet
+    { lat: 35, lng: 105, color: [255, 23, 68] },     // Asia: Vivid Red
+    { lat: -25, lng: 135, color: [0, 229, 255] },    // Oceania: Vivid Cyan
 ];
 
 const geoGradientCache = new Map<string, [number, number, number]>();
@@ -120,9 +120,9 @@ const getGeoGradientRGB = (lat: number, lng: number): [number, number, number] =
 
 // High-contrast, vibrant thermal energy heatmap density color progression
 const getFrequencyRGB = (freq: number): [number, number, number] => {
-    if (freq <= 1) return [56, 189, 248];   // Vibrant Sky Blue (1 flight)
-    if (freq === 2) return [52, 211, 153];  // Emerald Mint Green (2 flights)
-    if (freq <= 4) return [251, 191, 36];   // Radiant Sun Gold (3-4 flights)
+    if (freq <= 1) return [6, 182, 212];    // Electric Cyan / Teal (1 flight)
+    if (freq === 2) return [16, 185, 129];  // Emerald Mint Green (2 flights)
+    if (freq <= 4) return [234, 179, 8];    // Radiant Sun Gold (3-4 flights)
     if (freq <= 7) return [249, 115, 22];   // Vivid Blaze Orange (5-7 flights)
     if (freq <= 11) return [239, 68, 68];   // Hot Crimson Red (8-11 flights)
     return [236, 72, 153];                  // Intense Hyper Magenta / Plasma Pink (12+ flights)
@@ -338,6 +338,7 @@ export interface DeckFlightMapProps {
     initialElevated?: boolean;
     appearanceSettings?: MapAppearanceSettings;
     onChangeAppearanceSettings?: (settings: MapAppearanceSettings) => void;
+    isSidebarCollapsed?: boolean;
 }
 
 export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
@@ -367,7 +368,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     initialProjection = 'flat',
     initialElevated = false,
     appearanceSettings: appearanceSettingsProp,
-    onChangeAppearanceSettings
+    onChangeAppearanceSettings,
+    isSidebarCollapsed = false
 }) => {
     const isDark = useDarkMode();
     const { data: workspaceSettings } = useWanderSync<WorkspaceSettings>(
@@ -1146,17 +1148,17 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     getPath: (d: any) => d.path,
                     getColor: (d: any) => {
                         if (selectedCorridor) {
-                            return d.corridorId === selectedCorridor.id ? [52, 211, 153, 255] : [100, 115, 135, 30];
+                            return d.corridorId === selectedCorridor.id ? [52, 211, 153, 255] : [100, 115, 135, 25];
                         }
                         return hoveredRouteKey === d.corridorId ? [255, 255, 255, 255] : d.color;
                     },
                     getWidth: (d: any) => {
-                        if (selectedCorridor && d.corridorId === selectedCorridor.id) return 4.0;
-                        return hoveredRouteKey === d.corridorId ? 3.2 : 2.2;
+                        if (selectedCorridor && d.corridorId === selectedCorridor.id) return 3.5;
+                        return hoveredRouteKey === d.corridorId ? 2.5 : 1.5;
                     },
                     widthUnits: 'pixels',
-                    widthMinPixels: 2.0,
-                    widthMaxPixels: 10,
+                    widthMinPixels: 1.2,
+                    widthMaxPixels: 8,
                     capRounded: true,
                     jointRounded: true,
                     wrapLongitude: true,
@@ -1171,64 +1173,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             );
         }
 
-        // 6. GPU Great-Circle Flight Arcs (High-Visibility AirTrail Architecture)
+        // 6. GPU Great-Circle Flight Arcs (AirTrail Benchmark Architecture)
         if (flightArcs.length > 0 && showFlightRoutes && viewMode !== 'scratch') {
-            const arcHeight = effectiveProjection === 'globe' ? (isElevatedActive ? 0.45 : 0.28) : (isElevatedActive ? 0.35 : 0);
-
-            // Luminous Glow Arc Underlayer for enhanced visibility against dark globe, satellite & twilight
-            layers.push(
-                new ArcLayer({
-                    id: 'flight-arcs-glow',
-                    data: flightArcs,
-                    getSourcePosition: (d: any) => [d.originLng, d.originLat],
-                    getTargetPosition: (d: any) => [d.destLng, d.destLat],
-                    greatCircle: true,
-                    getHeight: arcHeight,
-                    getSourceColor: (d: any) => {
-                        if (selectedCorridor) {
-                            return d.corridorId === selectedCorridor.id ? [52, 211, 153, 140] : [0, 0, 0, 0];
-                        }
-                        if (hoveredRouteKey === d.corridorId) return [255, 255, 255, 180];
-                        if (activeAppearance.routeColorMode === 'gradient') {
-                            return [...getGeoGradientRGB(d.originLat, d.originLng), 100];
-                        }
-                        if (activeAppearance.routeColorMode === 'frequency') {
-                            return [...getFrequencyRGB(d.count), 100];
-                        }
-                        return [56, 189, 248, 100];
-                    },
-                    getTargetColor: (d: any) => {
-                        if (selectedCorridor) {
-                            return d.corridorId === selectedCorridor.id ? [52, 211, 153, 140] : [0, 0, 0, 0];
-                        }
-                        if (hoveredRouteKey === d.corridorId) return [255, 255, 255, 180];
-                        if (activeAppearance.routeColorMode === 'gradient') {
-                            return [...getGeoGradientRGB(d.destLat, d.destLng), 100];
-                        }
-                        if (activeAppearance.routeColorMode === 'frequency') {
-                            return [...getFrequencyRGB(d.count), 100];
-                        }
-                        return [56, 189, 248, 100];
-                    },
-                    getWidth: (d: any) => {
-                        const baseStroke = isWidthByFreq
-                            ? Math.min(5.5, 2.2 + Math.log2(d.count) * 0.9)
-                            : 2.4;
-                        return (baseStroke * scaleMultiplier) + 3.5;
-                    },
-                    widthUnits: 'pixels',
-                    widthMinPixels: 4.5,
-                    widthMaxPixels: 20,
-                    pickable: false,
-                    updateTriggers: {
-                        getSourceColor: [selectedCorridor?.id, hoveredRouteKey, activeAppearance.routeColorMode],
-                        getTargetColor: [selectedCorridor?.id, hoveredRouteKey, activeAppearance.routeColorMode],
-                        getWidth: [selectedCorridor?.id, hoveredRouteKey, isWidthByFreq, scaleMultiplier]
-                    }
-                })
-            );
-
-            // High-Contrast Core Visible Arc Layer
+            // Visible Arc Layer
             layers.push(
                 new ArcLayer({
                     id: 'flight-arcs-layer',
@@ -1236,45 +1183,45 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     getSourcePosition: (d: any) => [d.originLng, d.originLat],
                     getTargetPosition: (d: any) => [d.destLng, d.destLat],
                     greatCircle: true,
-                    getHeight: arcHeight,
+                    getHeight: isElevatedActive ? 0.35 : 0,
                     getSourceColor: (d: any) => {
                         if (selectedCorridor) {
-                            return d.corridorId === selectedCorridor.id ? [52, 211, 153, 255] : [100, 115, 135, 30];
+                            return d.corridorId === selectedCorridor.id ? [52, 211, 153, 255] : [100, 115, 135, 15];
                         }
                         if (hoveredRouteKey === d.corridorId) return [255, 255, 255, 255];
                         if (activeAppearance.routeColorMode === 'gradient') {
-                            return [...getGeoGradientRGB(d.originLat, d.originLng), 255];
+                            return [...getGeoGradientRGB(d.originLat, d.originLng), 235];
                         }
                         if (activeAppearance.routeColorMode === 'frequency') {
-                            return [...getFrequencyRGB(d.count), 255];
+                            return [...getFrequencyRGB(d.count), 235];
                         }
-                        return [56, 189, 248, 255];
+                        return [59, 130, 246, 235];
                     },
                     getTargetColor: (d: any) => {
                         if (selectedCorridor) {
-                            return d.corridorId === selectedCorridor.id ? [52, 211, 153, 255] : [100, 115, 135, 30];
+                            return d.corridorId === selectedCorridor.id ? [52, 211, 153, 255] : [100, 115, 135, 15];
                         }
                         if (hoveredRouteKey === d.corridorId) return [255, 255, 255, 255];
                         if (activeAppearance.routeColorMode === 'gradient') {
-                            return [...getGeoGradientRGB(d.destLat, d.destLng), 255];
+                            return [...getGeoGradientRGB(d.destLat, d.destLng), 235];
                         }
                         if (activeAppearance.routeColorMode === 'frequency') {
-                            return [...getFrequencyRGB(d.count), 255];
+                            return [...getFrequencyRGB(d.count), 235];
                         }
-                        return [56, 189, 248, 255];
+                        return [59, 130, 246, 235];
                     },
                     getWidth: (d: any) => {
                         const baseStroke = isWidthByFreq
-                            ? Math.min(5.5, 2.2 + Math.log2(d.count) * 0.9)
-                            : 2.4;
+                            ? Math.min(4.5, 1.2 + Math.log2(d.count) * 0.75)
+                            : 1.5;
                         const strokeWidth = baseStroke * scaleMultiplier;
                         if (selectedCorridor && d.corridorId === selectedCorridor.id) return strokeWidth * 2.2;
-                        if (hoveredRouteKey === d.corridorId) return strokeWidth + 1.8;
+                        if (hoveredRouteKey === d.corridorId) return strokeWidth + 1.5;
                         return strokeWidth;
                     },
                     widthUnits: 'pixels',
-                    widthMinPixels: 2.2,
-                    widthMaxPixels: 14,
+                    widthMinPixels: 1,
+                    widthMaxPixels: 12,
                     pickable: false, // Handled by wide ghost arc for effortless interaction
                     updateTriggers: {
                         getSourceColor: [selectedCorridor?.id, hoveredRouteKey, activeAppearance.routeColorMode],
@@ -1292,7 +1239,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     getSourcePosition: (d: any) => [d.originLng, d.originLat],
                     getTargetPosition: (d: any) => [d.destLng, d.destLat],
                     greatCircle: true,
-                    getHeight: arcHeight,
+                    getHeight: isElevatedActive ? 0.35 : 0,
                     getSourceColor: [0, 0, 0, 0],
                     getTargetColor: [0, 0, 0, 0],
                     getWidth: 18,
@@ -1718,7 +1665,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             <div ref={mapContainerRef} className="w-full h-full" />
 
             {/* Zoom & View Navigation Controls with Liquid Glass (Bottom Left) */}
-            <div className="absolute bottom-6 left-6 z-20 flex flex-col gap-2 pointer-events-auto">
+            <div className={`absolute bottom-6 z-20 flex flex-col gap-2 pointer-events-auto transition-all duration-300 ${isSidebarCollapsed ? 'left-6 md:left-28' : 'left-6 md:left-80'}`}>
                 <GlassPanel
                     padding="0px"
                     overrides={{ borderRadius: 20 }}
@@ -1779,7 +1726,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             {/* Left Scratch Map Country Inspector & Labeling Card */}
             {selectedCountry && (
                 <div 
-                    className="absolute top-5 left-5 z-30 w-80 max-h-[calc(100%-2.5rem)] flex flex-col rounded-3xl bg-white/95 dark:bg-dark-card/95 backdrop-blur-sm border border-black/10 dark:border-white/15 shadow-glass-modal overflow-hidden text-light-text dark:text-dark-text animate-fade-in"
+                    className={`absolute top-5 z-30 w-80 max-h-[calc(100%-2.5rem)] flex flex-col rounded-3xl bg-white/95 dark:bg-dark-card/95 backdrop-blur-sm border border-black/10 dark:border-white/15 shadow-glass-modal overflow-hidden text-light-text dark:text-dark-text animate-fade-in transition-all duration-300 ${isSidebarCollapsed ? 'left-5 md:left-28' : 'left-5 md:left-80'}`}
                     style={{ WebkitBackdropFilter: 'blur(4px)' }}
                 >
                     {(() => {
@@ -1988,21 +1935,30 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             {/* AirTrail Style Route Corridor Inspector Card with Liquid Glass */}
             {selectedCorridor && (
                 <div 
-                    className="absolute top-20 left-5 z-30 w-[360px] sm:w-[380px] max-h-[calc(100vh-6rem)] flex flex-col animate-airtrail-slide-in pointer-events-auto"
+                    className={`absolute top-20 z-30 w-[360px] sm:w-[380px] max-h-[calc(100vh-6rem)] flex flex-col animate-airtrail-slide-in pointer-events-auto transition-all duration-300 ${isSidebarCollapsed ? 'left-5 md:left-28' : 'left-5 md:left-80'}`}
                 >
                     <GlassPanel
                         className="wg-glass-card w-full max-h-[calc(100vh-6.5rem)] flex flex-col shadow-2xl relative"
-                        padding="20px"
+                        padding="18px"
                         overrides={{ borderRadius: 28 }}
                     >
-                        {/* Top Right Close Button */}
-                        <button
-                            onClick={handleResetCorridor}
-                            className="absolute top-4 right-4 w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer shrink-0 z-20"
-                            aria-label="Close route details"
-                        >
-                            <X className="w-4 h-4" />
-                        </button>
+                        {/* Top Header Bar with Colored Title & Close Button */}
+                        <div className="flex items-center justify-between pb-3 mb-2 border-b border-black/5 dark:border-white/10 shrink-0">
+                            <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-primary-500 shadow-sm shadow-primary-500/50" />
+                                <span className="text-xs font-extrabold uppercase tracking-wider bg-gradient-to-r from-primary-600 via-sky-500 to-indigo-500 dark:from-primary-400 dark:via-sky-400 dark:to-teal-300 bg-clip-text text-transparent">
+                                    Route Corridor
+                                </span>
+                            </div>
+                            <button
+                                onClick={handleResetCorridor}
+                                className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-all cursor-pointer shrink-0"
+                                aria-label="Close route details"
+                                title="Close route details"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
 
                         {/* Scrollable Container */}
                         <div className="flex-1 overflow-y-auto custom-scrollbar -mr-1 pr-1">
@@ -2012,7 +1968,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                 const originDisplay = formatAirportCityDotName(selectedCorridor.originName, selectedCorridor.originCity);
                                 return (
                                     <div className="space-y-1">
-                                        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate block pr-8">
+                                        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate block">
                                             {originDisplay}
                                         </span>
                                         <div className="flex items-center justify-between">
@@ -2180,8 +2136,16 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                 overrides={{ borderRadius: 24 }}
                             >
                                 {/* Header */}
-                                <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 mb-2">
-                                    Route
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-primary-500 shadow-sm shadow-primary-500/50" />
+                                        <span className="text-xs font-extrabold uppercase tracking-wider bg-gradient-to-r from-primary-600 via-sky-500 to-indigo-500 dark:from-primary-400 dark:via-sky-400 dark:to-teal-300 bg-clip-text text-transparent">
+                                            Route
+                                        </span>
+                                    </div>
+                                    <span className="text-2xs font-bold uppercase tracking-wider text-primary-600 dark:text-primary-400 bg-primary-500/10 px-2 py-0.5 rounded-full border border-primary-500/20">
+                                        Corridor
+                                    </span>
                                 </div>
 
                                 {/* Origin Row */}

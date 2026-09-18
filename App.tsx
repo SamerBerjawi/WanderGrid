@@ -300,7 +300,7 @@ export default function App() {
       case ViewState.TRIP_DETAIL:
         return <TripDetail tripId={selectedTripId!} onBack={() => navigate(ViewState.DASHBOARD)} />;
       case ViewState.MAP:
-        return <ExpeditionMapView onTripClick={handleTripClick} />;
+        return <ExpeditionMapView onTripClick={handleTripClick} isSidebarCollapsed={isSidebarCollapsed} />;
       case ViewState.GAMIFICATION:
         return <Dashboard onUserClick={handleUserClick} onTripClick={handleTripClick} />;
       case ViewState.FLIGHTS:

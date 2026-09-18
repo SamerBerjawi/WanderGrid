@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, lazy, Suspense } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Card, Button } from '../components/ui';
 const DeckFlightMap = lazy(() => import('../components/DeckFlightMap').then(m => ({ default: m.DeckFlightMap || m.default })));
 import { FlightTrackerModal } from '../components/FlightTrackerModal';

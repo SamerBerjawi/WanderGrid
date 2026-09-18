@@ -201,10 +201,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 )}
 
                 {/* Bottom Settings / Action Cluster */}
-                <div className="flex items-center justify-between pt-3 border-t border-zinc-200/50 dark:border-white/5">
+                <div className={`pt-3 border-t border-zinc-200/50 dark:border-white/5 ${
+                    isCollapsed 
+                      ? 'flex flex-col items-center gap-2.5 w-full' 
+                      : 'flex items-center justify-between'
+                }`}>
                     <button 
                         onClick={handleThemeCycle}
-                        className="w-9 h-9 rounded-xl flex items-center justify-center text-zinc-400 hover:text-zinc-800 dark:hover:text-white hover:bg-zinc-200/30 dark:hover:bg-white/[0.04] transition-all cursor-pointer"
+                        className={`${isCollapsed ? 'w-10 h-10' : 'w-9 h-9'} rounded-xl flex items-center justify-center text-zinc-400 hover:text-zinc-800 dark:hover:text-white hover:bg-zinc-200/30 dark:hover:bg-white/[0.04] transition-all cursor-pointer`}
                         title="Toggle Visual Appearance Mode"
                     >
                         <Icon name={theme === 'dark' ? 'sun' : 'moon'} className="text-lg" />
@@ -212,7 +216,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
                     <button 
                         onClick={() => onNavigate(ViewState.SETTINGS)}
-                        className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+                        className={`${isCollapsed ? 'w-10 h-10' : 'w-9 h-9'} rounded-xl flex items-center justify-center transition-all cursor-pointer ${
                             currentView === ViewState.SETTINGS 
                             ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/20' 
                             : 'text-zinc-400 hover:text-zinc-800 dark:hover:text-white hover:bg-zinc-200/30 dark:hover:bg-white/[0.04]'
@@ -226,7 +230,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     {currentUser && (
                         <button 
                             onClick={() => onNavigate(ViewState.USER_DETAIL, currentUser.id)}
-                            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all border cursor-pointer ${
+                            className={`${isCollapsed ? 'w-10 h-10' : 'w-9 h-9'} rounded-xl flex items-center justify-center transition-all border cursor-pointer ${
                                 currentView === ViewState.USER_DETAIL 
                                 ? 'bg-indigo-50 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-900/40 text-indigo-600 dark:text-indigo-400 font-bold' 
                                 : 'bg-transparent border-transparent hover:border-zinc-200/40 dark:hover:border-white/10 hover:bg-zinc-200/30 dark:hover:bg-white/[0.04]'

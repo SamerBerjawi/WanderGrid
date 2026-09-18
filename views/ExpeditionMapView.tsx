@@ -42,6 +42,7 @@ import {
 
 interface ExpeditionMapViewProps {
     onTripClick: (tripId: string) => void;
+    isSidebarCollapsed?: boolean;
 }
 
 const useDarkMode = () => {
@@ -93,7 +94,7 @@ const getGreatCircleDistance = (lat1: number, lng1: number, lat2: number, lng2: 
     return R * c;
 };
 
-export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClick }) => {
+export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClick, isSidebarCollapsed = false }) => {
     const [trips, setTrips] = useState<Trip[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -769,12 +770,13 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                         focusTransportCoordinates={focusCoord}
                         appearanceSettings={appearance}
                         onChangeAppearanceSettings={handleUpdateAppearance}
+                        isSidebarCollapsed={isSidebarCollapsed}
                     />
                 </Suspense>
             </div>
 
             {/* 2. FLOATING TOP HUD BAR (Brand & Telemetry) with Liquid Glass */}
-            <div className="absolute top-5 left-5 z-20 flex items-center gap-3 pointer-events-none">
+            <div className={`absolute top-5 z-20 flex items-center gap-3 pointer-events-none transition-all duration-300 ${isSidebarCollapsed ? 'left-5 md:left-28' : 'left-5 md:left-80'}`}>
                 {/* Brand & Status Pill */}
                 <div className="pointer-events-auto">
                     <GlassPanel
