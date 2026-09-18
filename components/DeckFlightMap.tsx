@@ -80,12 +80,12 @@ const isCountryVisited = (f: any, visitedList: string[]): boolean => {
 
 // --- Gradient Color Logic & Regional Poles ---
 const COLOR_POLES = [
-    { lat: 55, lng: -100, color: [0, 122, 255] },    // NA: Vivid Blue
-    { lat: -15, lng: -60, color: [0, 200, 83] },     // SA: Vivid Emerald
-    { lat: 10, lng: 20, color: [255, 179, 0] },      // Africa: Vivid Amber/Gold
-    { lat: 50, lng: 15, color: [124, 58, 237] },     // Europe: Vivid Violet
-    { lat: 35, lng: 105, color: [255, 23, 68] },     // Asia: Vivid Red
-    { lat: -25, lng: 135, color: [0, 229, 255] },    // Oceania: Vivid Cyan
+    { lat: 55, lng: -100, color: [56, 189, 248] },   // NA: Bright Sky Blue
+    { lat: -15, lng: -60, color: [52, 211, 153] },    // SA: Bright Mint/Emerald
+    { lat: 10, lng: 20, color: [251, 191, 36] },      // Africa: Bright Gold/Amber
+    { lat: 50, lng: 15, color: [192, 132, 252] },     // Europe: Bright Lilac/Violet (high contrast on dark basemaps)
+    { lat: 35, lng: 105, color: [251, 113, 133] },    // Asia: Bright Coral/Rose
+    { lat: -25, lng: 135, color: [34, 211, 238] },    // Oceania: Electric Aqua
 ];
 
 const geoGradientCache = new Map<string, [number, number, number]>();
@@ -1153,21 +1153,23 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         return hoveredRouteKey === d.corridorId ? [255, 255, 255, 255] : d.color;
                     },
                     getWidth: (d: any) => {
-                        if (selectedCorridor && d.corridorId === selectedCorridor.id) return 3.5;
-                        return hoveredRouteKey === d.corridorId ? 2.5 : 1.5;
+                        const base = effectiveProjection === 'globe' ? 2.5 : 1.5;
+                        if (selectedCorridor && d.corridorId === selectedCorridor.id) return base * 2.2;
+                        return hoveredRouteKey === d.corridorId ? base + 1.5 : base;
                     },
                     widthUnits: 'pixels',
-                    widthMinPixels: 1.2,
+                    widthMinPixels: effectiveProjection === 'globe' ? 2.2 : 1.2,
                     widthMaxPixels: 8,
                     capRounded: true,
                     jointRounded: true,
                     wrapLongitude: true,
+                    parameters: { depthTest: false },
                     pickable: true,
                     onHover: handleRouteHover,
                     onClick: handleRouteClick,
                     updateTriggers: {
                         getColor: [hoveredRouteKey, selectedCorridor?.id],
-                        getWidth: [hoveredRouteKey, selectedCorridor?.id]
+                        getWidth: [hoveredRouteKey, selectedCorridor?.id, effectiveProjection]
                     }
                 })
             );
@@ -1175,6 +1177,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
         // 6. GPU Great-Circle Flight Arcs (AirTrail Benchmark Architecture)
         if (flightArcs.length > 0 && showFlightRoutes && viewMode !== 'scratch') {
+            // Arc height elevation: on 3D globe, default to 0.25 (or 0.45 if elevated) to soar above sphere curvature
+            const arcHeight = effectiveProjection === 'globe' ? (isElevatedActive ? 0.45 : 0.25) : 0;
+
             // Visible Arc Layer
             layers.push(
                 new ArcLayer({
@@ -1183,19 +1188,20 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     getSourcePosition: (d: any) => [d.originLng, d.originLat],
                     getTargetPosition: (d: any) => [d.destLng, d.destLat],
                     greatCircle: true,
-                    getHeight: isElevatedActive ? 0.35 : 0,
+                    getHeight: arcHeight,
+                    parameters: { depthTest: false, cull: false },
                     getSourceColor: (d: any) => {
                         if (selectedCorridor) {
                             return d.corridorId === selectedCorridor.id ? [52, 211, 153, 255] : [100, 115, 135, 15];
                         }
                         if (hoveredRouteKey === d.corridorId) return [255, 255, 255, 255];
                         if (activeAppearance.routeColorMode === 'gradient') {
-                            return [...getGeoGradientRGB(d.originLat, d.originLng), 235];
+                            return [...getGeoGradientRGB(d.originLat, d.originLng), 255];
                         }
                         if (activeAppearance.routeColorMode === 'frequency') {
-                            return [...getFrequencyRGB(d.count), 235];
+                            return [...getFrequencyRGB(d.count), 255];
                         }
-                        return [59, 130, 246, 235];
+                        return [56, 189, 248, 255];
                     },
                     getTargetColor: (d: any) => {
                         if (selectedCorridor) {
@@ -1203,30 +1209,30 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         }
                         if (hoveredRouteKey === d.corridorId) return [255, 255, 255, 255];
                         if (activeAppearance.routeColorMode === 'gradient') {
-                            return [...getGeoGradientRGB(d.destLat, d.destLng), 235];
+                            return [...getGeoGradientRGB(d.destLat, d.destLng), 255];
                         }
                         if (activeAppearance.routeColorMode === 'frequency') {
-                            return [...getFrequencyRGB(d.count), 235];
+                            return [...getFrequencyRGB(d.count), 255];
                         }
-                        return [59, 130, 246, 235];
+                        return [56, 189, 248, 255];
                     },
                     getWidth: (d: any) => {
-                        const baseStroke = isWidthByFreq
-                            ? Math.min(4.5, 1.2 + Math.log2(d.count) * 0.75)
-                            : 1.5;
+                        const baseStroke = effectiveProjection === 'globe'
+                            ? (isWidthByFreq ? Math.min(6.0, 2.4 + Math.log2(d.count) * 0.8) : 2.5)
+                            : (isWidthByFreq ? Math.min(4.5, 1.2 + Math.log2(d.count) * 0.75) : 1.5);
                         const strokeWidth = baseStroke * scaleMultiplier;
                         if (selectedCorridor && d.corridorId === selectedCorridor.id) return strokeWidth * 2.2;
                         if (hoveredRouteKey === d.corridorId) return strokeWidth + 1.5;
                         return strokeWidth;
                     },
                     widthUnits: 'pixels',
-                    widthMinPixels: 1,
+                    widthMinPixels: effectiveProjection === 'globe' ? 2.5 : 1.5,
                     widthMaxPixels: 12,
                     pickable: false, // Handled by wide ghost arc for effortless interaction
                     updateTriggers: {
                         getSourceColor: [selectedCorridor?.id, hoveredRouteKey, activeAppearance.routeColorMode],
                         getTargetColor: [selectedCorridor?.id, hoveredRouteKey, activeAppearance.routeColorMode],
-                        getWidth: [selectedCorridor?.id, hoveredRouteKey, isWidthByFreq, scaleMultiplier]
+                        getWidth: [selectedCorridor?.id, hoveredRouteKey, isWidthByFreq, scaleMultiplier, effectiveProjection]
                     }
                 })
             );
@@ -1239,10 +1245,11 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     getSourcePosition: (d: any) => [d.originLng, d.originLat],
                     getTargetPosition: (d: any) => [d.destLng, d.destLat],
                     greatCircle: true,
-                    getHeight: isElevatedActive ? 0.35 : 0,
+                    getHeight: arcHeight,
+                    parameters: { depthTest: false, cull: false },
                     getSourceColor: [0, 0, 0, 0],
                     getTargetColor: [0, 0, 0, 0],
-                    getWidth: 18,
+                    getWidth: 20,
                     widthUnits: 'pixels',
                     pickable: true,
                     onHover: handleRouteHover,
@@ -1435,6 +1442,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     (map as any).setProjection({ type: 'globe' });
                 }
                 map.addControl(overlay as any);
+                overlay.setProps({
+                    layers: deckLayers
+                });
             } catch (err) {
                 console.warn('[MapLibre] Load init warning:', err);
             }
@@ -1583,6 +1593,11 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     zoom: isGlobe ? 1.0 : 1.3,
                     duration: 600
                 });
+                if (overlayRef.current) {
+                    overlayRef.current.setProps({
+                        layers: deckLayers
+                    });
+                }
             } catch (e) {
                 console.warn('[MapLibre] setProjection warning:', e);
             }
@@ -1593,7 +1608,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         } else {
             map.once('load', applyProj);
         }
-    }, [effectiveProjection]);
+    }, [effectiveProjection, deckLayers]);
 
     // Navigation Controls Handlers
     const handleZoomIn = () => {
