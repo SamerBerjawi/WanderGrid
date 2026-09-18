@@ -1966,8 +1966,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         {/* Top Header Bar with Colored Title & Prominent Close Button */}
                         <div className="flex items-center justify-between pb-3 mb-2.5 border-b border-black/5 dark:border-white/10 shrink-0">
                             <div className="flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-gradient-to-r from-primary-500 to-sky-500 shadow-sm shadow-primary-500/50" />
-                                <span className="text-xs font-extrabold uppercase tracking-wider bg-gradient-to-r from-primary-600 via-sky-500 to-indigo-500 dark:from-primary-400 dark:via-sky-400 dark:to-teal-300 bg-clip-text text-transparent">
+                                <span className="w-2 h-2 rounded-full bg-primary-500 shadow-sm shadow-primary-500/50" />
+                                <span className="text-xs font-extrabold uppercase tracking-wider text-primary-600 dark:text-primary-400">
                                     Route
                                 </span>
                             </div>
@@ -2159,8 +2159,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                 {/* Header */}
                                 <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center gap-1.5">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-primary-500 to-sky-500 shadow-sm shadow-primary-500/50" />
-                                        <span className="text-xs font-extrabold uppercase tracking-wider bg-gradient-to-r from-primary-600 via-sky-500 to-indigo-500 dark:from-primary-400 dark:via-sky-400 dark:to-teal-300 bg-clip-text text-transparent">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-primary-500 shadow-sm shadow-primary-500/50" />
+                                        <span className="text-xs font-extrabold uppercase tracking-wider text-primary-600 dark:text-primary-400">
                                             Route
                                         </span>
                                     </div>
