@@ -1075,17 +1075,17 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
     };
 
     return (
-        <div className="space-y-8 max-w-[1440px] mx-auto pt-3 sm:pt-4 px-2 sm:px-4 pb-28 font-sans select-none animate-fade-in">
+        <div className="space-y-8 max-w-[1440px] mx-auto pt-2 sm:pt-4 px-1 sm:px-4 pb-28 font-sans select-none animate-fade-in">
             
             {/* Header: Frosted Glass Command Banner */}
-            <header className="relative overflow-hidden bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl border border-black/5 dark:border-white/10 rounded-3xl p-6 sm:p-8 shadow-sm">
+            <header className="relative overflow-hidden bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl border border-black/5 dark:border-white/10 rounded-3xl p-5 sm:p-8 shadow-sm">
                 {/* Ambient designer lighting gradients */}
                 <div className="absolute top-0 right-1/4 w-96 h-96 bg-gradient-to-br from-primary-500/10 via-amber-500/5 to-transparent rounded-full blur-3xl pointer-events-none -z-10" />
                 <div className="absolute -bottom-10 -left-10 w-72 h-72 bg-gradient-to-tr from-sky-500/10 to-indigo-500/5 rounded-full blur-2xl pointer-events-none -z-10" />
 
-                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 relative z-10">
-                    <div className="space-y-2">
-                        <div className="flex flex-wrap items-center gap-2.5">
+                <div className="flex flex-col lg:flex-row justify-between items-center lg:items-center text-center lg:text-left gap-5 sm:gap-6 relative z-10">
+                    <div className="space-y-2 flex flex-col items-center lg:items-start">
+                        <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2.5">
                             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-2xs font-mono font-bold uppercase tracking-widest text-primary-600 dark:text-primary-400 bg-primary-500/10 border border-primary-500/20 shadow-xs">
                                 <span className="w-1.5 h-1.5 rounded-full bg-primary-500 animate-pulse" />
                                 Expedition Logistics Hub
@@ -1095,9 +1095,9 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                             </span>
                         </div>
 
-                        <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-light-text dark:text-dark-text flex items-center gap-3">
+                        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-light-text dark:text-dark-text flex items-center justify-center lg:justify-start gap-2.5 sm:gap-3">
                             <span>Active Planner</span>
-                            <Sparkles className="w-6 h-6 text-primary-500 shrink-0" />
+                            <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-primary-500 shrink-0" />
                         </h1>
 
                         <p className="text-xs sm:text-sm text-light-text-secondary dark:text-dark-text-secondary max-w-2xl leading-relaxed font-normal">
@@ -1105,11 +1105,11 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                         </p>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+                    <div className="flex flex-wrap items-center justify-center lg:justify-end gap-3 w-full lg:w-auto">
                         <button
                             type="button"
                             onClick={toggleSelectionMode}
-                            className={`${BTN_SECONDARY_STYLE} px-4 py-2.5 text-xs font-bold uppercase tracking-wider flex items-center gap-2 cursor-pointer`}
+                            className={`${BTN_SECONDARY_STYLE} px-4 py-2.5 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer w-full sm:w-auto`}
                         >
                             <Merge className="w-4 h-4 text-primary-500" />
                             <span>{isSelectionMode ? 'Cancel Batch' : 'Batch Merge'}</span>
@@ -1118,7 +1118,7 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                         <button
                             type="button"
                             onClick={() => { setEditingTrip(null); setIsCreateTripOpen(true); }}
-                            className={`${BTN_PRIMARY_STYLE} px-5 py-2.5 text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-primary-500/20 cursor-pointer`}
+                            className={`${BTN_PRIMARY_STYLE} px-5 py-2.5 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-primary-500/20 cursor-pointer w-full sm:w-auto`}
                         >
                             <Plus className="w-4 h-4" />
                             <span>New Expedition</span>

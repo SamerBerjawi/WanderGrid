@@ -20,8 +20,10 @@ import {
 import Icon from './ui/Icon';
 import GlassPanel from './glass/GlassPanel';
 import GlassButton from './glass/GlassButton';
+import GlassInput from './glass/GlassInput';
+import GlassSelect from './glass/GlassSelect';
 
-export { GlassPanel, GlassButton };
+export { GlassPanel, GlassButton, GlassInput, GlassSelect };
 
 // --- Utils ---
 const cn = (...classes: (string | undefined | null | false)[]) => classes.filter(Boolean).join(' ');
@@ -33,23 +35,27 @@ interface CardProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'title'> 
   noPadding?: boolean;
 }
 export const Card = forwardRef<HTMLDivElement, CardProps>(({ className, title, action, children, noPadding = false, ...props }, ref) => (
-  <div 
-    ref={ref}
-    className={cn(
-      "relative flex flex-col bg-white dark:bg-dark-card border border-black/5 dark:border-white/5 shadow-sm rounded-3xl overflow-hidden transition-all duration-300",
-      className
-    )} 
-    {...props}
-  >
-    {(title || action) && (
-      <div className="px-6 py-5 border-b border-black/5 dark:border-white/5 flex justify-between items-center bg-black/[0.02] dark:bg-white/[0.02]">
-        <div className="text-base font-bold text-light-text dark:text-dark-text tracking-tight">{title}</div>
-        {action && <div>{action}</div>}
+  <div ref={ref} className="rounded-[28px] overflow-hidden">
+    <GlassPanel
+      className={cn(
+        "wg-glass-card shadow-glass-card flex flex-col h-full overflow-hidden border border-black/5 dark:border-white/10 transition-all duration-300",
+        className
+      )}
+      overrides={{ borderRadius: 28 }}
+      padding="0px"
+    >
+      <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px]" {...props}>
+        {(title || action) && (
+          <div className="px-6 py-5 border-b border-black/5 dark:border-white/5 flex justify-between items-center bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">
+            <div className="text-base font-bold text-light-text dark:text-dark-text tracking-tight">{title}</div>
+            {action && <div>{action}</div>}
+          </div>
+        )}
+        <div className={cn("flex-1 min-h-0 flex flex-col w-full relative", !noPadding && "p-6")}>
+          {children}
+        </div>
       </div>
-    )}
-    <div className={cn("flex-1 min-h-0 flex flex-col w-full relative", !noPadding && "p-6")}>
-      {children}
-    </div>
+    </GlassPanel>
   </div>
 ));
 Card.displayName = "Card";
@@ -83,26 +89,21 @@ Button.displayName = "Button";
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
+  leftElement?: ReactNode;
   rightElement?: ReactNode;
+  containerClassName?: string;
 }
-export const Input = forwardRef<HTMLInputElement, InputProps>(({ label, error, className, rightElement, ...props }, ref) => (
-  <div className="flex flex-col gap-1.5 w-full">
-    {label && <label className={SECTION_LABEL_STYLE}>{label}</label>}
-    <div className="relative group">
-      <input
-        ref={ref}
-        className={cn(
-          INPUT_BASE_STYLE,
-          "h-10 text-xs font-bold",
-          error && "!border-semantic-red !ring-semantic-red/20",
-          className
-        )}
-        {...props}
-      />
-      {rightElement && <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">{rightElement}</div>}
-    </div>
-    {error && <p className="text-2xs text-semantic-red font-bold ml-1">{error}</p>}
-  </div>
+export const Input = forwardRef<HTMLInputElement, InputProps>(({ label, error, className, leftElement, rightElement, containerClassName, ...props }, ref) => (
+  <GlassInput
+    ref={ref}
+    label={label}
+    error={error}
+    leftElement={leftElement}
+    rightElement={rightElement}
+    className={className}
+    containerClassName={containerClassName}
+    {...props}
+  />
 ));
 Input.displayName = "Input";
 
@@ -197,33 +198,24 @@ export const TimeInput: React.FC<TimeInputProps> = ({ label, value, onChange, cl
 // --- Select ---
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
-  options: { label: string; value: string }[];
+  options?: { label: string; value: string }[];
   error?: string;
+  leftElement?: ReactNode;
+  containerClassName?: string;
 }
-export const Select = forwardRef<HTMLSelectElement, SelectProps>(({ label, options, error, className, ...props }, ref) => (
-  <div className="flex flex-col gap-1.5 w-full">
-    {label && <label className={SECTION_LABEL_STYLE}>{label}</label>}
-    <div className="relative">
-      <select
-        ref={ref}
-        className={cn(
-          INPUT_BASE_STYLE,
-          "h-10 text-xs font-bold appearance-none cursor-pointer pr-10",
-          error && "!border-semantic-red !ring-semantic-red/20",
-          className
-        )}
-        {...props}
-      >
-        {options.map((opt) => (
-          <option key={opt.value} value={opt.value} className="bg-white dark:bg-dark-card text-light-text dark:text-dark-text">{opt.label}</option>
-        ))}
-      </select>
-      <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-light-text-secondary dark:text-dark-text-secondary opacity-60">
-        <ChevronDown className="w-4 h-4" />
-      </div>
-    </div>
-    {error && <p className="text-2xs text-semantic-red font-bold ml-1">{error}</p>}
-  </div>
+export const Select = forwardRef<HTMLSelectElement, SelectProps>(({ label, options, error, className, leftElement, containerClassName, children, ...props }, ref) => (
+  <GlassSelect
+    ref={ref}
+    label={label}
+    options={options}
+    error={error}
+    leftElement={leftElement}
+    className={className}
+    containerClassName={containerClassName}
+    {...props}
+  >
+    {children}
+  </GlassSelect>
 ));
 Select.displayName = "Select";
 
@@ -441,24 +433,42 @@ interface TabsProps {
   className?: string;
 }
 export const Tabs: React.FC<TabsProps> = ({ tabs, activeTab, onChange, className }) => (
-  <div className={cn(SEGMENTED_TAB_WRAPPER, className)}>
-    {tabs.map((tab) => {
-      const isActive = activeTab === tab.id;
-      return (
-        <button
-          key={tab.id}
-          type="button"
-          onClick={() => onChange(tab.id)}
-          className={cn(
-            "flex-1 flex items-center justify-center gap-2",
-            isActive ? SEGMENTED_TAB_ACTIVE : SEGMENTED_TAB_INACTIVE
-          )}
-        >
-          {tab.icon && <span>{tab.icon}</span>}
-          <span>{tab.label}</span>
-        </button>
-      );
-    })}
+  <div className={cn("flex items-center justify-center sm:justify-start overflow-x-auto sm:overflow-visible no-scrollbar p-3 -m-3 shrink-0", className)}>
+    <GlassPanel
+      className="wg-glass-pill shadow-lg shadow-black/5 dark:shadow-black/25 shrink-0"
+      padding="4px 6px"
+      overrides={{ borderRadius: 9999 }}
+    >
+      <div className="flex gap-1 relative items-center">
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => onChange(tab.id)}
+              className={cn(
+                "relative rounded-full text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none active:scale-95 px-4 sm:px-5 py-2.5",
+                isActive 
+                  ? "text-primary-700 dark:text-primary-300" 
+                  : "text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text"
+              )}
+            >
+              {isActive && (
+                <div
+                  className="absolute inset-0 rounded-full bg-primary-500/20 dark:bg-primary-500/30 backdrop-blur-md border border-primary-500/40 dark:border-primary-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(99,102,241,0.3)] z-0"
+                  style={{ WebkitBackdropFilter: 'blur(12px)' }}
+                />
+              )}
+              <span className="relative z-10 flex items-center gap-2">
+                {tab.icon && <span className="shrink-0">{tab.icon}</span>}
+                <span className={cn("tracking-tight", isActive ? "inline" : "hidden sm:inline")}>{tab.label}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </GlassPanel>
   </div>
 );
 

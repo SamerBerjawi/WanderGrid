@@ -910,7 +910,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
   }
 
   return (
-    <div className="relative pb-24 px-4 sm:px-8 max-w-[108rem] mx-auto space-y-8 animate-fade-in text-gray-900 dark:text-gray-100">
+    <div className="relative pb-24 px-1 sm:px-6 md:px-8 max-w-[108rem] mx-auto space-y-8 animate-fade-in text-gray-900 dark:text-gray-100">
         
         {/* Soft designer lighting gradients */}
         <div className="absolute top-0 left-1/4 w-[40rem] h-[30rem] bg-gradient-to-tr from-blue-500/[0.04] to-indigo-500/[0.04] dark:from-blue-600/[0.08] dark:to-indigo-500/[0.06] rounded-full blur-[120px] pointer-events-none select-none -z-10" />
@@ -919,14 +919,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
         {/* ========================================================= */}
         {/* SWISS MODERN DESIGNER PROFILE TERMINAL HEADER */}
         {/* ========================================================= */}
-        <div className="relative overflow-hidden bg-white/70 dark:bg-[#0c0c0e]/80 border border-gray-200/50 dark:border-white/5 rounded-3xl p-6 sm:p-8 backdrop-blur-xl shadow-sm transition-all duration-350">
-            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 relative z-10">
+        <div className="relative overflow-hidden bg-white/70 dark:bg-[#0c0c0e]/80 border border-gray-200/50 dark:border-white/5 rounded-3xl p-5 sm:p-8 backdrop-blur-xl shadow-sm transition-all duration-350">
+            <div className="flex flex-col xl:flex-row items-center xl:items-center justify-between text-center xl:text-left gap-5 sm:gap-6 relative z-10">
                 
                 {/* Explorer Terminal Profile Info */}
-                <div className="flex items-center gap-5">
+                <div className="flex flex-col sm:flex-row items-center text-center sm:text-left gap-4 sm:gap-5">
                     <div className="relative group shrink-0 select-none">
                         <div className="absolute inset-0 bg-gradient-to-tr from-blue-600 via-indigo-500 to-amber-500 rounded-full blur opacity-25 group-hover:scale-105 transition-all duration-550" />
-                        <div className="relative w-16 h-16 rounded-full bg-slate-100 dark:bg-zinc-900 text-zinc-900 dark:text-white flex items-center justify-center font-black text-2xl border border-gray-200/50 dark:border-white/10 shadow-sm">
+                        <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-slate-100 dark:bg-zinc-900 text-zinc-900 dark:text-white flex items-center justify-center font-black text-xl sm:text-2xl border border-gray-200/50 dark:border-white/10 shadow-sm">
                             <span className="bg-gradient-to-tr from-blue-600 to-indigo-400 dark:from-white dark:to-zinc-300 bg-clip-text text-transparent font-extrabold">
                                 {currentUser?.name ? currentUser.name.charAt(0) : currentUser?.email ? currentUser.email.charAt(0) : 'E'}
                             </span>
@@ -936,9 +936,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                             <div className="w-2 h-2 bg-white rounded-full" />
                         </div>
                     </div>
-                    <div>
-                        <div className="flex flex-wrap items-center gap-2.5">
-                            <h2 id="explorer-name-banner" className="text-2xl sm:text-3xl font-black tracking-tight text-gray-900 dark:text-white flex items-center gap-2">
+                    <div className="flex flex-col items-center sm:items-start">
+                        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
+                            <h2 id="explorer-name-banner" className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight text-gray-900 dark:text-white flex items-center justify-center sm:justify-start gap-2">
                                 Welcome back, {currentUser?.name || currentUser?.email?.split('@')[0] || 'Explorer'}
                                 <Sparkles className="w-5 h-5 text-amber-550 dark:text-amber-400 animate-pulse text-amber-500 shrink-0" />
                             </h2>
@@ -953,7 +953,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                 </div>
 
                 {/* Swiss chronometric live timers and actions */}
-                <div className="flex flex-wrap items-center gap-4 border-t xl:border-t-0 border-gray-200/40 dark:border-white/5 pt-4 xl:pt-0">
+                <div className="flex flex-wrap items-center justify-center xl:justify-end gap-3 sm:gap-4 border-t xl:border-t-0 border-gray-200/40 dark:border-white/5 pt-4 xl:pt-0 w-full xl:w-auto">
                     <div className="flex items-center gap-3 bg-slate-50/50 dark:bg-white/[0.02] border border-gray-200/40 dark:border-white/5 py-2 px-4 rounded-xl shadow-sm">
                         <Calendar className="w-4 h-4 text-zinc-400" />
                         <div className="text-left font-mono">

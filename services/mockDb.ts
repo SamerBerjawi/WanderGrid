@@ -27,7 +27,7 @@ const DEFAULT_MASTER_LIST: PackingItem[] = [
 const DEFAULT_WORKSPACE_SETTINGS: WorkspaceSettings = {
   orgName: 'WanderGrid Workspace',
   currency: 'USD',
-  dateFormat: 'MM/DD/YYYY',
+  dateFormat: 'ddd D MMM, YYYY',
   autoSync: false,
   theme: 'dark',
   workingDays: [1, 2, 3, 4, 5],
@@ -39,7 +39,9 @@ const DEFAULT_WORKSPACE_SETTINGS: WorkspaceSettings = {
   carriers: [],
   defaultTravelClass: 'Economy',
   defaultStartingAirport: '',
-  defaultLandTransportMethod: 'Train'
+  defaultLandTransportMethod: 'Train',
+  defaultBasemapLight: 'snow',
+  defaultBasemapDark: 'onyx'
 };
 
 export interface ImportState {
@@ -1081,6 +1083,9 @@ class DataService {
   async updateWorkspaceSettings(settings: WorkspaceSettings): Promise<void> { 
     safeStorage.setItem('wandergrid_workspace_settings', JSON.stringify(settings));
     safeStorage.setItem('wandergrid_settings', JSON.stringify(settings));
+    try {
+      window.dispatchEvent(new CustomEvent('wandergrid_settings_updated', { detail: settings }));
+    } catch (e) {}
     await this.fetch('/settings', { method: 'PUT', body: JSON.stringify(settings) }); 
   }
   async wipeDatabase(): Promise<void> {

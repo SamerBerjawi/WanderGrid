@@ -136,6 +136,20 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick }) => {
     const [selectedMonth, setSelectedMonth] = useState<string>('all');
     const [selectedDestination, setSelectedDestination] = useState<string>('all');
 
+    // 5. Collapsible Bucket Columns State (Past, Confirmed, Planned)
+    const [collapsedBuckets, setCollapsedBuckets] = useState<Record<'past' | 'confirmed' | 'planned', boolean>>({
+        past: false,
+        confirmed: false,
+        planned: false
+    });
+
+    const toggleBucket = (bucket: 'past' | 'confirmed' | 'planned') => {
+        setCollapsedBuckets(prev => ({
+            ...prev,
+            [bucket]: !prev[bucket]
+        }));
+    };
+
     // Responsive screen-size detection for clean mobile layout
     const [isMobile, setIsMobile] = useState(() => (typeof window !== 'undefined' ? window.innerWidth < 640 : false));
 
@@ -280,32 +294,34 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick }) => {
     };
 
     return (
-        <div className="w-full max-w-[1680px] mx-auto pt-3 sm:pt-4 px-4 sm:px-6 lg:px-8 flex flex-col gap-6 animate-fadeIn pb-16">
+        <div className="w-full max-w-[1680px] mx-auto pt-2 sm:pt-4 px-1 sm:px-4 md:px-6 lg:px-8 flex flex-col gap-5 sm:gap-6 animate-fadeIn pb-16">
             
             {/* ========================================================================= */}
-            {/* HERO HEADER: Clean Title & Liquid-Glass Action (had-homeassistantdashboard style) */}
+            {/* HERO HEADER: Title Aligned Left, Button Aligned Right on Mobile & Desktop */}
             {/* ========================================================================= */}
-            <div className="flex items-center justify-between gap-4 w-full pt-1 pb-1">
-                {/* Left: Pure Icon (without background and border) + Page Name */}
-                <div className="flex items-center gap-3 md:gap-4">
+            <div className="flex flex-row items-center justify-between gap-2.5 sm:gap-4 w-full pt-1 pb-1">
+                {/* Left: Pure Icon + Responsive Page Name (Aligned Left) */}
+                <div className="flex items-center justify-start gap-2 sm:gap-3 md:gap-4 min-w-0">
                     <Compass 
-                        className="w-9 h-9 md:w-12 md:h-12 text-emerald-500 dark:text-emerald-400 shrink-0" 
+                        className="w-7 h-7 sm:w-9 sm:h-9 md:w-12 md:h-12 text-emerald-500 dark:text-emerald-400 shrink-0" 
                         weight="duotone" 
                     />
-                    <h1 className="text-4xl md:text-5xl font-black text-light-text dark:text-white tracking-tight leading-none">
+                    <h1 className="text-xl sm:text-3xl md:text-5xl font-black text-light-text dark:text-white tracking-tight leading-tight sm:leading-none truncate sm:overflow-visible">
                         Expedition Planner
                     </h1>
                 </div>
 
-                {/* Right: + New Trip Button (Matches Add Flight in Flights.tsx with standard icon) */}
-                <Button 
-                    variant="primary" 
-                    className="rounded-2xl cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 px-6 shrink-0"
-                    onClick={() => handleOpenNewTrip('Planning')}
-                    icon={<Plus className="w-4 h-4" />}
-                >
-                    New Trip
-                </Button>
+                {/* Right: + New Trip Button (Aligned Right on Mobile & Desktop) */}
+                <div className="flex items-center justify-end shrink-0">
+                    <Button 
+                        variant="primary" 
+                        className="justify-center rounded-2xl cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 px-3.5 sm:px-6 shrink-0"
+                        onClick={() => handleOpenNewTrip('Planning')}
+                        icon={<Plus className="w-4 h-4" />}
+                    >
+                        New Trip
+                    </Button>
+                </div>
             </div>
 
             {/* ========================================================================= */}
@@ -315,8 +331,8 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick }) => {
             {/* RESPONSIVE BAR: TABS (LEFT) & FILTER (RIGHT) ON DESKTOP, STACKED ON MOBILE*/}
             {/* ========================================================================= */}
             <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3 w-full">
-                {/* 1. Tabs Row (Left on desktop) - Unclipped for smooth shadow */}
-                <div className="flex items-center justify-start overflow-x-auto sm:overflow-visible no-scrollbar p-3 -m-3 shrink-0">
+                {/* 1. Tabs Row (Left on desktop, centered on mobile) - Unclipped for smooth shadow */}
+                <div className="flex items-center justify-center sm:justify-start overflow-x-auto sm:overflow-visible no-scrollbar p-3 -m-3 shrink-0 w-full sm:w-auto">
                     <GlassPanel
                         className="wg-glass-pill shadow-lg shadow-black/5 dark:shadow-black/25 shrink-0"
                         padding="4px 6px"
@@ -483,68 +499,106 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick }) => {
                 {/* BUCKET 1: PAST (Land & Sea / Emerald)                                 */}
                 {/* --------------------------------------------------------------------- */}
                 {(activeTab === 'all' || activeTab === 'past') && (
-                    <div className={`flex flex-col ${activeTab === 'past' ? 'lg:col-span-12' : 'lg:col-span-4'}`}>
+                    <div className={`flex flex-col overflow-hidden rounded-[28px] ${activeTab === 'past' ? 'lg:col-span-12' : 'lg:col-span-4'}`}>
                         <GlassPanel
                             className="wg-glass-card shadow-glass-card flex flex-col h-full overflow-hidden border border-black/5 dark:border-white/10"
                             overrides={{ borderRadius: 28 }}
                             padding="0px"
                         >
-                            {/* Bucket Header Banner */}
-                            <div className="p-5 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent shrink-0">
-                                <div className="flex items-center gap-3 min-w-0">
-                                    <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-emerald-500 to-teal-600 shadow-md shadow-emerald-500/20 shrink-0">
-                                        <ClockCounterClockwise className="w-5 h-5" weight="duotone" />
-                                    </div>
-                                    <div className="min-w-0">
-                                        <div className="flex items-center gap-2">
-                                            <h2 className="text-base font-bold text-light-text dark:text-dark-text tracking-tight">
-                                                Past
-                                            </h2>
-                                            <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25">
-                                                {pastTrips.length}
-                                            </span>
+                            <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px]">
+                                {/* Bucket Header Banner - Clickable to collapse/expand */}
+                                <div 
+                                    onClick={() => toggleBucket('past')}
+                                    className={`p-5 flex items-center justify-between bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent shrink-0 cursor-pointer select-none transition-colors hover:from-emerald-500/15 ${
+                                        collapsedBuckets.past ? '' : 'border-b border-black/5 dark:border-white/5'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-emerald-500 to-teal-600 shadow-md shadow-emerald-500/20 shrink-0">
+                                            <ClockCounterClockwise className="w-5 h-5" weight="duotone" />
                                         </div>
-                                        <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary font-medium truncate mt-0.5">
-                                            Travel history &amp; logged memories
-                                        </p>
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <h2 className="text-base font-bold text-light-text dark:text-dark-text tracking-tight">
+                                                    Past
+                                                </h2>
+                                                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25">
+                                                    {pastTrips.length}
+                                                </span>
+                                            </div>
+                                            <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary font-medium truncate mt-0.5">
+                                                Travel history &amp; logged memories
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                        <GlassPanel
+                                            className="wg-glass-pill shadow-xs transition-transform hover:scale-105 active:scale-95 shrink-0"
+                                            padding="0px"
+                                            overrides={{ borderRadius: 12 }}
+                                        >
+                                            <button
+                                                type="button"
+                                                onClick={() => handleOpenNewTrip('Past')}
+                                                className="w-9 h-9 rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-emerald-500 hover:bg-emerald-500/10 transition-colors cursor-pointer"
+                                                title="Log past trip"
+                                            >
+                                                <Plus className="w-4 h-4" />
+                                            </button>
+                                        </GlassPanel>
+
+                                        <GlassPanel
+                                            className="wg-glass-pill shadow-xs transition-transform hover:scale-105 active:scale-95 shrink-0"
+                                            padding="0px"
+                                            overrides={{ borderRadius: 12 }}
+                                        >
+                                            <button
+                                                type="button"
+                                                onClick={() => toggleBucket('past')}
+                                                className="w-9 h-9 rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-emerald-500 hover:bg-emerald-500/10 transition-colors cursor-pointer"
+                                                title={collapsedBuckets.past ? "Expand Past trips" : "Collapse Past trips"}
+                                                aria-expanded={!collapsedBuckets.past}
+                                            >
+                                                <CaretDown className={`w-4 h-4 transition-transform duration-300 ${collapsedBuckets.past ? '-rotate-90' : 'rotate-0'}`} />
+                                            </button>
+                                        </GlassPanel>
                                     </div>
                                 </div>
 
-                                <GlassPanel
-                                    className="wg-glass-pill shadow-xs transition-transform hover:scale-105 active:scale-95 shrink-0"
-                                    padding="0px"
-                                    overrides={{ borderRadius: 12 }}
-                                >
-                                    <button
-                                        type="button"
-                                        onClick={() => handleOpenNewTrip('Past')}
-                                        className="w-9 h-9 rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-emerald-500 hover:bg-emerald-500/10 transition-colors cursor-pointer"
-                                        title="Log past trip"
-                                    >
-                                        <Plus className="w-4 h-4" />
-                                    </button>
-                                </GlassPanel>
-                            </div>
-
-                            {/* Bucket Card Inventory */}
-                            <div className="p-4 sm:p-5 flex-1 flex flex-col gap-3.5 overflow-y-auto custom-scrollbar">
-                                {pastTrips.length > 0 ? (
-                                    pastTrips.map(trip => (
-                                        <TripCard 
-                                            key={trip.id} 
-                                            trip={trip} 
-                                            stage="emerald" 
-                                            onClick={() => onTripClick?.(trip.id)} 
-                                        />
-                                    ))
-                                ) : (
-                                    <EmptyBucketPlaceholder 
-                                        stage="Past"
-                                        label={isFilterActive ? "No past trips match filter" : "No past trips recorded"}
-                                        actionLabel={isFilterActive ? "Clear Filters" : "Log a past journey"}
-                                        onAction={isFilterActive ? handleClearFilters : () => handleOpenNewTrip('Past')}
-                                    />
-                                )}
+                                {/* Bucket Card Inventory - Animated Collapsible */}
+                                <AnimatePresence initial={false}>
+                                    {!collapsedBuckets.past && (
+                                        <motion.div
+                                            key="past-column-content"
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: 'auto', opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            transition={{ duration: 0.25, ease: "easeInOut" }}
+                                            className="overflow-hidden flex flex-col flex-1"
+                                        >
+                                            <div className="p-4 sm:p-5 flex-1 flex flex-col gap-3.5 overflow-y-auto custom-scrollbar">
+                                                {pastTrips.length > 0 ? (
+                                                    pastTrips.map(trip => (
+                                                        <TripCard 
+                                                            key={trip.id} 
+                                                            trip={trip} 
+                                                            stage="emerald" 
+                                                            onClick={() => onTripClick?.(trip.id)} 
+                                                        />
+                                                    ))
+                                                ) : (
+                                                    <EmptyBucketPlaceholder 
+                                                        stage="Past"
+                                                        label={isFilterActive ? "No past trips match filter" : "No logged past journeys yet"}
+                                                        actionLabel={isFilterActive ? "Clear Filters" : "Log first trip"}
+                                                        onAction={isFilterActive ? handleClearFilters : () => handleOpenNewTrip('Past')}
+                                                    />
+                                                )}
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
                         </GlassPanel>
                     </div>
@@ -554,68 +608,106 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick }) => {
                 {/* BUCKET 2: CONFIRMED (Aviation / Sky)                                  */}
                 {/* --------------------------------------------------------------------- */}
                 {(activeTab === 'all' || activeTab === 'confirmed') && (
-                    <div className={`flex flex-col ${activeTab === 'confirmed' ? 'lg:col-span-12' : 'lg:col-span-4'}`}>
+                    <div className={`flex flex-col overflow-hidden rounded-[28px] ${activeTab === 'confirmed' ? 'lg:col-span-12' : 'lg:col-span-4'}`}>
                         <GlassPanel
                             className="wg-glass-card shadow-glass-card flex flex-col h-full overflow-hidden border border-black/5 dark:border-white/10"
                             overrides={{ borderRadius: 28 }}
                             padding="0px"
                         >
-                            {/* Bucket Header Banner */}
-                            <div className="p-5 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-sky-500/10 via-sky-500/5 to-transparent shrink-0">
-                                <div className="flex items-center gap-3 min-w-0">
-                                    <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-sky-500 to-blue-600 shadow-md shadow-sky-500/20 shrink-0">
-                                        <CheckCircle className="w-5 h-5" weight="duotone" />
-                                    </div>
-                                    <div className="min-w-0">
-                                        <div className="flex items-center gap-2">
-                                            <h2 className="text-base font-bold text-light-text dark:text-dark-text tracking-tight">
-                                                Confirmed
-                                            </h2>
-                                            <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-700 dark:text-sky-300 border border-sky-500/25">
-                                                {confirmedTrips.length}
-                                            </span>
+                            <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px]">
+                                {/* Bucket Header Banner - Clickable to collapse/expand */}
+                                <div 
+                                    onClick={() => toggleBucket('confirmed')}
+                                    className={`p-5 flex items-center justify-between bg-gradient-to-r from-sky-500/10 via-sky-500/5 to-transparent shrink-0 cursor-pointer select-none transition-colors hover:from-sky-500/15 ${
+                                        collapsedBuckets.confirmed ? '' : 'border-b border-black/5 dark:border-white/5'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-sky-500 to-blue-600 shadow-md shadow-sky-500/20 shrink-0">
+                                            <CheckCircle className="w-5 h-5" weight="duotone" />
                                         </div>
-                                        <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary font-medium truncate mt-0.5">
-                                            Upcoming bookings &amp; confirmed itineraries
-                                        </p>
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <h2 className="text-base font-bold text-light-text dark:text-dark-text tracking-tight">
+                                                    Confirmed
+                                                </h2>
+                                                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-700 dark:text-sky-300 border border-sky-500/25">
+                                                    {confirmedTrips.length}
+                                                </span>
+                                            </div>
+                                            <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary font-medium truncate mt-0.5">
+                                                Upcoming bookings &amp; confirmed itineraries
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                        <GlassPanel
+                                            className="wg-glass-pill shadow-xs transition-transform hover:scale-105 active:scale-95 shrink-0"
+                                            padding="0px"
+                                            overrides={{ borderRadius: 12 }}
+                                        >
+                                            <button
+                                                type="button"
+                                                onClick={() => handleOpenNewTrip('Upcoming')}
+                                                className="w-9 h-9 rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-sky-500 hover:bg-sky-500/10 transition-colors cursor-pointer"
+                                                title="Add confirmed trip"
+                                            >
+                                                <Plus className="w-4 h-4" />
+                                            </button>
+                                        </GlassPanel>
+
+                                        <GlassPanel
+                                            className="wg-glass-pill shadow-xs transition-transform hover:scale-105 active:scale-95 shrink-0"
+                                            padding="0px"
+                                            overrides={{ borderRadius: 12 }}
+                                        >
+                                            <button
+                                                type="button"
+                                                onClick={() => toggleBucket('confirmed')}
+                                                className="w-9 h-9 rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-sky-500 hover:bg-sky-500/10 transition-colors cursor-pointer"
+                                                title={collapsedBuckets.confirmed ? "Expand Confirmed trips" : "Collapse Confirmed trips"}
+                                                aria-expanded={!collapsedBuckets.confirmed}
+                                            >
+                                                <CaretDown className={`w-4 h-4 transition-transform duration-300 ${collapsedBuckets.confirmed ? '-rotate-90' : 'rotate-0'}`} />
+                                            </button>
+                                        </GlassPanel>
                                     </div>
                                 </div>
 
-                                <GlassPanel
-                                    className="wg-glass-pill shadow-xs transition-transform hover:scale-105 active:scale-95 shrink-0"
-                                    padding="0px"
-                                    overrides={{ borderRadius: 12 }}
-                                >
-                                    <button
-                                        type="button"
-                                        onClick={() => handleOpenNewTrip('Upcoming')}
-                                        className="w-9 h-9 rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-sky-500 hover:bg-sky-500/10 transition-colors cursor-pointer"
-                                        title="Add confirmed trip"
-                                    >
-                                        <Plus className="w-4 h-4" />
-                                    </button>
-                                </GlassPanel>
-                            </div>
-
-                            {/* Bucket Card Inventory */}
-                            <div className="p-4 sm:p-5 flex-1 flex flex-col gap-3.5 overflow-y-auto custom-scrollbar">
-                                {confirmedTrips.length > 0 ? (
-                                    confirmedTrips.map(trip => (
-                                        <TripCard 
-                                            key={trip.id} 
-                                            trip={trip} 
-                                            stage="sky" 
-                                            onClick={() => onTripClick?.(trip.id)} 
-                                        />
-                                    ))
-                                ) : (
-                                    <EmptyBucketPlaceholder 
-                                        stage="Confirmed"
-                                        label={isFilterActive ? "No confirmed trips match filter" : "No confirmed bookings yet"}
-                                        actionLabel={isFilterActive ? "Clear Filters" : "Add confirmed trip"}
-                                        onAction={isFilterActive ? handleClearFilters : () => handleOpenNewTrip('Upcoming')}
-                                    />
-                                )}
+                                {/* Bucket Card Inventory - Animated Collapsible */}
+                                <AnimatePresence initial={false}>
+                                    {!collapsedBuckets.confirmed && (
+                                        <motion.div
+                                            key="confirmed-column-content"
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: 'auto', opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            transition={{ duration: 0.25, ease: "easeInOut" }}
+                                            className="overflow-hidden flex flex-col flex-1"
+                                        >
+                                            <div className="p-4 sm:p-5 flex-1 flex flex-col gap-3.5 overflow-y-auto custom-scrollbar">
+                                                {confirmedTrips.length > 0 ? (
+                                                    confirmedTrips.map(trip => (
+                                                        <TripCard 
+                                                            key={trip.id} 
+                                                            trip={trip} 
+                                                            stage="sky" 
+                                                            onClick={() => onTripClick?.(trip.id)} 
+                                                        />
+                                                    ))
+                                                ) : (
+                                                    <EmptyBucketPlaceholder 
+                                                        stage="Confirmed"
+                                                        label={isFilterActive ? "No confirmed trips match filter" : "No confirmed bookings yet"}
+                                                        actionLabel={isFilterActive ? "Clear Filters" : "Add confirmed trip"}
+                                                        onAction={isFilterActive ? handleClearFilters : () => handleOpenNewTrip('Upcoming')}
+                                                    />
+                                                )}
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
                         </GlassPanel>
                     </div>
@@ -625,68 +717,106 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick }) => {
                 {/* BUCKET 3: PLANNED (Scratch / Amber)                                   */}
                 {/* --------------------------------------------------------------------- */}
                 {(activeTab === 'all' || activeTab === 'planned') && (
-                    <div className={`flex flex-col ${activeTab === 'planned' ? 'lg:col-span-12' : 'lg:col-span-4'}`}>
+                    <div className={`flex flex-col overflow-hidden rounded-[28px] ${activeTab === 'planned' ? 'lg:col-span-12' : 'lg:col-span-4'}`}>
                         <GlassPanel
                             className="wg-glass-card shadow-glass-card flex flex-col h-full overflow-hidden border border-black/5 dark:border-white/10"
                             overrides={{ borderRadius: 28 }}
                             padding="0px"
                         >
-                            {/* Bucket Header Banner */}
-                            <div className="p-5 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent shrink-0">
-                                <div className="flex items-center gap-3 min-w-0">
-                                    <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-amber-500 to-orange-500 shadow-md shadow-amber-500/20 shrink-0">
-                                        <Clock className="w-5 h-5" weight="duotone" />
-                                    </div>
-                                    <div className="min-w-0">
-                                        <div className="flex items-center gap-2">
-                                            <h2 className="text-base font-bold text-light-text dark:text-dark-text tracking-tight">
-                                                Planned
-                                            </h2>
-                                            <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/25">
-                                                {plannedTrips.length}
-                                            </span>
+                            <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px]">
+                                {/* Bucket Header Banner - Clickable to collapse/expand */}
+                                <div 
+                                    onClick={() => toggleBucket('planned')}
+                                    className={`p-5 flex items-center justify-between bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent shrink-0 cursor-pointer select-none transition-colors hover:from-amber-500/15 ${
+                                        collapsedBuckets.planned ? '' : 'border-b border-black/5 dark:border-white/5'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-amber-500 to-orange-500 shadow-md shadow-amber-500/20 shrink-0">
+                                            <Clock className="w-5 h-5" weight="duotone" />
                                         </div>
-                                        <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary font-medium truncate mt-0.5">
-                                            Ideas, drafts, &amp; wishlist expeditions
-                                        </p>
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <h2 className="text-base font-bold text-light-text dark:text-dark-text tracking-tight">
+                                                    Planned
+                                                </h2>
+                                                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/25">
+                                                    {plannedTrips.length}
+                                                </span>
+                                            </div>
+                                            <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary font-medium truncate mt-0.5">
+                                                Ideas, drafts, &amp; wishlist expeditions
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                        <GlassPanel
+                                            className="wg-glass-pill shadow-xs transition-transform hover:scale-105 active:scale-95 shrink-0"
+                                            padding="0px"
+                                            overrides={{ borderRadius: 12 }}
+                                        >
+                                            <button
+                                                type="button"
+                                                onClick={() => handleOpenNewTrip('Planning')}
+                                                className="w-9 h-9 rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-amber-500 hover:bg-amber-500/10 transition-colors cursor-pointer"
+                                                title="Add draft plan"
+                                            >
+                                                <Plus className="w-4 h-4" />
+                                            </button>
+                                        </GlassPanel>
+
+                                        <GlassPanel
+                                            className="wg-glass-pill shadow-xs transition-transform hover:scale-105 active:scale-95 shrink-0"
+                                            padding="0px"
+                                            overrides={{ borderRadius: 12 }}
+                                        >
+                                            <button
+                                                type="button"
+                                                onClick={() => toggleBucket('planned')}
+                                                className="w-9 h-9 rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-amber-500 hover:bg-amber-500/10 transition-colors cursor-pointer"
+                                                title={collapsedBuckets.planned ? "Expand Planned trips" : "Collapse Planned trips"}
+                                                aria-expanded={!collapsedBuckets.planned}
+                                            >
+                                                <CaretDown className={`w-4 h-4 transition-transform duration-300 ${collapsedBuckets.planned ? '-rotate-90' : 'rotate-0'}`} />
+                                            </button>
+                                        </GlassPanel>
                                     </div>
                                 </div>
 
-                                <GlassPanel
-                                    className="wg-glass-pill shadow-xs transition-transform hover:scale-105 active:scale-95 shrink-0"
-                                    padding="0px"
-                                    overrides={{ borderRadius: 12 }}
-                                >
-                                    <button
-                                        type="button"
-                                        onClick={() => handleOpenNewTrip('Planning')}
-                                        className="w-9 h-9 rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-amber-500 hover:bg-amber-500/10 transition-colors cursor-pointer"
-                                        title="Add draft plan"
-                                    >
-                                        <Plus className="w-4 h-4" />
-                                    </button>
-                                </GlassPanel>
-                            </div>
-
-                            {/* Bucket Card Inventory */}
-                            <div className="p-4 sm:p-5 flex-1 flex flex-col gap-3.5 overflow-y-auto custom-scrollbar">
-                                {plannedTrips.length > 0 ? (
-                                    plannedTrips.map(trip => (
-                                        <TripCard 
-                                            key={trip.id} 
-                                            trip={trip} 
-                                            stage="amber" 
-                                            onClick={() => onTripClick?.(trip.id)} 
-                                        />
-                                    ))
-                                ) : (
-                                    <EmptyBucketPlaceholder 
-                                        stage="Planned"
-                                        label={isFilterActive ? "No planned trips match filter" : "No draft plans yet"}
-                                        actionLabel={isFilterActive ? "Clear Filters" : "Create new plan"}
-                                        onAction={isFilterActive ? handleClearFilters : () => handleOpenNewTrip('Planning')}
-                                    />
-                                )}
+                                {/* Bucket Card Inventory - Animated Collapsible */}
+                                <AnimatePresence initial={false}>
+                                    {!collapsedBuckets.planned && (
+                                        <motion.div
+                                            key="planned-column-content"
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: 'auto', opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            transition={{ duration: 0.25, ease: "easeInOut" }}
+                                            className="overflow-hidden flex flex-col flex-1"
+                                        >
+                                            <div className="p-4 sm:p-5 flex-1 flex flex-col gap-3.5 overflow-y-auto custom-scrollbar">
+                                                {plannedTrips.length > 0 ? (
+                                                    plannedTrips.map(trip => (
+                                                        <TripCard 
+                                                            key={trip.id} 
+                                                            trip={trip} 
+                                                            stage="amber" 
+                                                            onClick={() => onTripClick?.(trip.id)} 
+                                                        />
+                                                    ))
+                                                ) : (
+                                                    <EmptyBucketPlaceholder 
+                                                        stage="Planned"
+                                                        label={isFilterActive ? "No planned trips match filter" : "No draft plans yet"}
+                                                        actionLabel={isFilterActive ? "Clear Filters" : "Create new plan"}
+                                                        onAction={isFilterActive ? handleClearFilters : () => handleOpenNewTrip('Planning')}
+                                                    />
+                                                )}
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
                         </GlassPanel>
                     </div>

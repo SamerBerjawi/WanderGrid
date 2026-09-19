@@ -2298,22 +2298,22 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
   return (
     <div className="space-y-8 pb-12">
       {/* Dynamic Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 relative">
-        <div className="space-y-1">
-          <h1 className="text-4xl md:text-5xl font-black text-zinc-900 dark:text-white tracking-tight flex items-center gap-3 mt-1.5">
-            <span className="p-2.5 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white shadow-lg shadow-blue-500/20 inline-flex items-center justify-center">
-              <Plane className="w-8 h-8 rotate-45 shrink-0" />
+      <div className="flex flex-col md:flex-row items-center md:items-center justify-between text-center md:text-left gap-4 sm:gap-6 relative">
+        <div className="space-y-1 flex flex-col items-center md:items-start">
+          <h1 className="text-2xl sm:text-3xl md:text-5xl font-black text-zinc-900 dark:text-white tracking-tight flex items-center justify-center md:justify-start gap-2.5 sm:gap-3 mt-1.5">
+            <span className="p-2 sm:p-2.5 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white shadow-lg shadow-blue-500/20 inline-flex items-center justify-center">
+              <Plane className="w-6 h-6 sm:w-8 sm:h-8 rotate-45 shrink-0" />
             </span>
             Flight Center
           </h1>
-          <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+          <p className="text-xs sm:text-sm font-medium text-zinc-500 dark:text-zinc-400">
             Add, track, schedule, and view the global timeline of your family expeditions.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3 shrink-0">
+        <div className="flex flex-wrap items-center justify-center md:justify-end gap-3 w-full md:w-auto shrink-0">
           <Button 
             variant="primary" 
-            className="rounded-2xl cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 px-6"
+            className="w-full sm:w-auto justify-center rounded-2xl cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 px-6"
             onClick={() => openFlightForm()}
             icon={<Plus className="w-4 h-4" />}
           >

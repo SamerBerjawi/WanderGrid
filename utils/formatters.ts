@@ -7,7 +7,7 @@ import { WorkspaceSettings } from '../types';
  */
 
 // Fallback format when settings are loading or unavailable
-const DEFAULT_DATE_FORMAT = 'MM/DD/YYYY';
+const DEFAULT_DATE_FORMAT = 'ddd D MMM, YYYY';
 const DEFAULT_CURRENCY = 'USD';
 
 /**
@@ -99,6 +99,10 @@ export function formatDate(
 
   const isDayFirst = formatPreference === 'DD/MM/YYYY';
   const isIso = formatPreference === 'YYYY-MM-DD';
+  const isCustomWeekday = formatPreference === 'ddd D MMM, YYYY' 
+    || formatPreference === 'Mon 21 Sep, 2026'
+    || formatPreference === 'EEE d MMM, yyyy'
+    || formatPreference === 'ddd DD MMM, YYYY';
 
   const year = d.getFullYear();
   const monthNum = String(d.getMonth() + 1).padStart(2, '0');
@@ -113,40 +117,56 @@ export function formatDate(
     case 'numeric':
       if (isIso) return `${year}-${monthNum}-${dayNum}`;
       if (isDayFirst) return `${dayNum}/${monthNum}/${year}`;
+      if (isCustomWeekday) return `${weekdayShort} ${d.getDate()} ${monthShort}, ${year}`;
       return `${monthNum}/${dayNum}/${year}`;
 
     case 'short':
+      if (isIso) return `${monthNum}-${dayNum}`;
+      if (isCustomWeekday) return `${weekdayShort} ${d.getDate()} ${monthShort}`;
       return isDayFirst ? `${d.getDate()} ${monthShort}` : `${monthShort} ${d.getDate()}`;
 
     case 'short-with-year':
+      if (isIso) return `${year}-${monthNum}-${dayNum}`;
+      if (isCustomWeekday) return `${weekdayShort} ${d.getDate()} ${monthShort}, ${year}`;
       return isDayFirst ? `${d.getDate()} ${monthShort} ${year}` : `${monthShort} ${d.getDate()}, ${year}`;
 
     case 'medium':
+      if (isIso) return `${year}-${monthNum}-${dayNum}`;
+      if (isCustomWeekday) return `${weekdayShort} ${d.getDate()} ${monthShort}, ${year}`;
       return isDayFirst ? `${d.getDate()} ${monthShort}, ${year}` : `${monthShort} ${d.getDate()}, ${year}`;
 
     case 'long':
+      if (isIso) return `${year}-${monthNum}-${dayNum}`;
+      if (isCustomWeekday) return `${weekdayLong} ${d.getDate()} ${monthLong}, ${year}`;
       return isDayFirst ? `${d.getDate()} ${monthLong} ${year}` : `${monthLong} ${d.getDate()}, ${year}`;
 
     case 'weekday-short':
+      if (isIso) return `${weekdayShort}, ${year}-${monthNum}-${dayNum}`;
+      if (isCustomWeekday) return `${weekdayShort} ${d.getDate()} ${monthShort}`;
       return isDayFirst 
         ? `${weekdayShort}, ${d.getDate()} ${monthShort}` 
         : `${weekdayShort}, ${monthShort} ${d.getDate()}`;
 
     case 'weekday-long':
+      if (isIso) return `${weekdayLong}, ${year}-${monthNum}-${dayNum}`;
+      if (isCustomWeekday) return `${weekdayLong} ${d.getDate()} ${monthLong}, ${year}`;
       return isDayFirst 
         ? `${weekdayLong}, ${d.getDate()} ${monthLong} ${year}` 
         : `${weekdayLong}, ${monthLong} ${d.getDate()}, ${year}`;
 
     case 'month-year':
+      if (isIso) return `${year}-${monthNum}`;
       return `${monthShort} ${year}`;
 
     default:
+      if (isIso) return `${year}-${monthNum}-${dayNum}`;
+      if (isCustomWeekday) return `${weekdayShort} ${d.getDate()} ${monthShort}, ${year}`;
       return isDayFirst ? `${d.getDate()} ${monthShort} ${year}` : `${monthShort} ${d.getDate()}, ${year}`;
   }
 }
 
 /**
- * Formats a date range cleanly (e.g. "Sep 2 – Sep 10, 2026" or "2 Sep – 10 Sep 2026")
+ * Formats a date range cleanly (e.g. "Mon 21 – Fri 25 Sep, 2026" or "Sep 2 – Sep 10, 2026" or "2026-09-02 – 2026-09-10")
  */
 export function formatDateRange(
   startDate: string | Date | number | null | undefined,
@@ -165,17 +185,43 @@ export function formatDateRange(
     ? settingsOrFormat 
     : getActiveDateFormat(settingsOrFormat);
   const isDayFirst = formatPreference === 'DD/MM/YYYY';
+  const isIso = formatPreference === 'YYYY-MM-DD';
+  const isCustomWeekday = formatPreference === 'ddd D MMM, YYYY' 
+    || formatPreference === 'Mon 21 Sep, 2026'
+    || formatPreference === 'EEE d MMM, yyyy'
+    || formatPreference === 'ddd DD MMM, YYYY';
 
   const sYear = s.getFullYear();
   const eYear = e.getFullYear();
   const sMonth = s.toLocaleDateString('en-US', { month: 'short' });
   const eMonth = e.toLocaleDateString('en-US', { month: 'short' });
+  const sWeekday = s.toLocaleDateString('en-US', { weekday: 'short' });
+  const eWeekday = e.toLocaleDateString('en-US', { weekday: 'short' });
   const sDay = s.getDate();
   const eDay = e.getDate();
 
   // Same day
   if (s.getTime() === e.getTime()) {
     return formatDate(s, 'short-with-year', settingsOrFormat);
+  }
+
+  // ISO Format Range: YYYY-MM-DD – YYYY-MM-DD
+  if (isIso) {
+    return `${formatDate(s, 'numeric', settingsOrFormat)} – ${formatDate(e, 'numeric', settingsOrFormat)}`;
+  }
+
+  // Custom Weekday Format Range (Mon 21 – Fri 25 Sep, 2026)
+  if (isCustomWeekday) {
+    // Same month & year
+    if (sYear === eYear && sMonth === eMonth) {
+      return `${sWeekday} ${sDay} – ${eWeekday} ${eDay} ${sMonth}, ${sYear}`;
+    }
+    // Same year, different months
+    if (sYear === eYear) {
+      return `${sWeekday} ${sDay} ${sMonth} – ${eWeekday} ${eDay} ${eMonth}, ${sYear}`;
+    }
+    // Different years
+    return `${sWeekday} ${sDay} ${sMonth}, ${sYear} – ${eWeekday} ${eDay} ${eMonth}, ${eYear}`;
   }
 
   // Same month & year
@@ -198,7 +244,7 @@ export function formatDateRange(
   if (isDayFirst) {
     return `${sDay} ${sMonth} ${sYear} – ${eDay} ${eMonth} ${eYear}`;
   }
-  return `${sMonth} ${sDay}, ${sYear} – ${eMonth} ${eDay}, ${eYear}`;
+  return `${sMonth} ${sDay}, ${sYear} – ${eMonth} ${eDay}, ${sYear}`;
 }
 
 /**

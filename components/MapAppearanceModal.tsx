@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, ArrowCounterClockwise as RotateCcw, MapTrifold as MapIcon, Airplane as Plane, Stack as Layers, Compass, Sparkle as Sparkles } from '@phosphor-icons/react';
+import { X, ArrowCounterClockwise as RotateCcw, MapTrifold as MapIcon, Airplane as Plane, Stack as Layers, Compass, Sparkle as Sparkles, Globe } from '@phosphor-icons/react';
 import { MapAppearanceSettings, DEFAULT_MAP_APPEARANCE, getEffectiveBasemap } from '../types/mapAppearance';
 
 const useDarkMode = () => {
@@ -190,54 +190,45 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                         <div className="p-1.5 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/30">
                                             <Compass className="w-4 h-4" />
                                         </div>
-                                        <div>
-                                            <h3 className="text-xs font-bold uppercase tracking-wider text-white">Projection Engine</h3>
-                                            <p className="text-xs text-zinc-400">Choose between 3D Globe and 2D Mercator</p>
-                                        </div>
+                                        <h3 className="text-xs font-bold uppercase tracking-wider text-white">Projection Engine</h3>
                                     </div>
                                     <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400 border border-blue-500/30">
                                         {settings.projection === 'globe' ? '3D Orbital' : '2D Planar'}
                                     </span>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-2.5 pt-1">
+                                <div className="grid grid-cols-2 gap-2 pt-1">
                                     <button
                                         onClick={() => updateField('projection', 'globe')}
-                                        className={`p-3 rounded-2xl border text-left transition-all cursor-pointer relative flex flex-col justify-between h-20 ${
+                                        className={`p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer transition-all duration-150 active:scale-[0.98] ${
                                             settings.projection === 'globe'
-                                                ? 'bg-blue-600/20 border-blue-400 ring-2 ring-blue-500/30 text-white'
+                                                ? 'bg-blue-600/20 border-blue-400 ring-1 ring-blue-500/30 text-white font-bold'
                                                 : 'bg-zinc-900/60 border-white/10 text-zinc-400 hover:border-white/20'
                                         }`}
                                     >
-                                        <div className="flex items-center justify-between">
-                                            <span className="material-icons-outlined text-lg text-blue-400">public</span>
-                                            {settings.projection === 'globe' && <div className="w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_8px_#60a5fa]" />}
-                                        </div>
-                                        <div>
-                                            <p className="text-xs font-bold text-white">3D Celestial Globe</p>
-                                            <p className="text-2xs text-zinc-400">Spherical geodesics</p>
-                                        </div>
+                                        <Globe className={`w-4 h-4 shrink-0 transition-colors duration-200 ${
+                                            settings.projection === 'globe' ? 'text-blue-400' : 'text-zinc-400'
+                                        }`} />
+                                        <span className="text-xs font-bold leading-tight truncate">3D Globe</span>
                                     </button>
 
                                     <button
                                         onClick={() => updateField('projection', 'flat')}
-                                        className={`p-3 rounded-2xl border text-left transition-all cursor-pointer relative flex flex-col justify-between h-20 ${
+                                        className={`p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer transition-all duration-150 active:scale-[0.98] ${
                                             settings.projection === 'flat'
-                                                ? 'bg-blue-600/20 border-blue-400 ring-2 ring-blue-500/30 text-white'
+                                                ? 'bg-blue-600/20 border-blue-400 ring-1 ring-blue-500/30 text-white font-bold'
                                                 : 'bg-zinc-900/60 border-white/10 text-zinc-400 hover:border-white/20'
                                         }`}
                                     >
-                                        <div className="flex items-center justify-between">
-                                            <span className="material-icons-outlined text-lg text-indigo-400">map</span>
-                                            {settings.projection === 'flat' && <div className="w-2 h-2 rounded-full bg-indigo-400 shadow-[0_0_8px_#818cf8]" />}
-                                        </div>
-                                        <div>
-                                            <p className="text-xs font-bold text-white">2D Mercator Atlas</p>
-                                            <p className="text-2xs text-zinc-400">Flat planar view</p>
-                                        </div>
+                                        <MapIcon className={`w-4 h-4 shrink-0 transition-colors duration-200 ${
+                                            settings.projection === 'flat' ? 'text-blue-400' : 'text-zinc-400'
+                                        }`} />
+                                        <span className="text-xs font-bold leading-tight truncate">2D Flat Map</span>
                                     </button>
                                 </div>
-                                                   {/* BASEMAP TILES */}
+                            </div>
+
+                            {/* BASEMAP TILES */}
                             <div>
                                 <div className="flex items-center justify-between mb-3">
                                     <h3 className="text-xs font-bold text-zinc-400 tracking-wider uppercase">Cartographic Basemap</h3>
@@ -358,7 +349,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                         );
                                     })}
                                 </div>
-                            </div>                           </div>
+                            </div>
 
                             {/* SCRATCH CITY PINS */}
                             <div className="p-4 rounded-3xl bg-gradient-to-b from-white/[0.07] to-white/[0.02] border border-white/10 shadow-xl space-y-3">

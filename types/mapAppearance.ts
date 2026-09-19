@@ -2,15 +2,47 @@ export type BasemapMode = 'default' | 'onyx' | 'snow' | 'vibrant' | 'satellite' 
 
 export const getEffectiveBasemap = (
     basemap: string | undefined,
-    isDark: boolean
+    isDark: boolean,
+    defaultLight?: string,
+    defaultDark?: string
 ): 'onyx' | 'citylights' | 'satellite' | 'snow' | 'vibrant' | 'ocean' => {
+    // If an explicit layer style other than 'default' is requested, respect it
+    if (basemap && basemap !== 'default') {
+        if (isDark) {
+            if (basemap === 'citylights') return 'citylights';
+            if (basemap === 'satellite') return 'satellite';
+            if (basemap === 'onyx') return 'onyx';
+        } else {
+            if (basemap === 'vibrant') return 'vibrant';
+            if (basemap === 'ocean') return 'ocean';
+            if (basemap === 'snow') return 'snow';
+        }
+    }
+
+    // Resolve from arguments or persistent workspace settings
+    let resolvedLight = defaultLight;
+    let resolvedDark = defaultDark;
+
+    if (!resolvedLight || !resolvedDark) {
+        try {
+            const raw = typeof localStorage !== 'undefined' 
+                ? (localStorage.getItem('wandergrid_workspace_settings') || localStorage.getItem('wandergrid_settings')) 
+                : null;
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (!resolvedLight && parsed.defaultBasemapLight) resolvedLight = parsed.defaultBasemapLight;
+                if (!resolvedDark && parsed.defaultBasemapDark) resolvedDark = parsed.defaultBasemapDark;
+            }
+        } catch {}
+    }
+
     if (isDark) {
-        if (basemap === 'citylights') return 'citylights';
-        if (basemap === 'satellite') return 'satellite';
+        if (resolvedDark === 'citylights') return 'citylights';
+        if (resolvedDark === 'satellite') return 'satellite';
         return 'onyx';
     } else {
-        if (basemap === 'vibrant') return 'vibrant';
-        if (basemap === 'ocean') return 'ocean';
+        if (resolvedLight === 'vibrant') return 'vibrant';
+        if (resolvedLight === 'ocean') return 'ocean';
         return 'snow';
     }
 };

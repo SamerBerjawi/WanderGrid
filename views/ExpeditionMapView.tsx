@@ -1228,60 +1228,43 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                         {activeSidebarTab === 'cartography' && (
                             <div className="space-y-6">
                                 {/* PROJECTION */}
-                                <div className="p-4 rounded-2xl bg-white/40 dark:bg-white/[0.03] backdrop-blur-sm border border-black/5 dark:border-white/5 shadow-sm space-y-3">
+                                <div className="p-4 rounded-2xl bg-white/40 dark:bg-white/[0.03] backdrop-blur-sm border border-black/5 dark:border-white/5 space-y-2.5">
                                     <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2.5">
-                                            <div className="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-500 border border-sky-500/20 flex items-center justify-center shrink-0">
-                                                <Compass className="w-4 h-4" />
-                                            </div>
-                                            <h3 className="text-xs font-bold uppercase tracking-wider text-light-text dark:text-dark-text">Projection Engine</h3>
-                                        </div>
+                                        <h4 className="text-xs font-bold uppercase tracking-wider text-light-text dark:text-dark-text">Projection Engine</h4>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-2.5 pt-1">
-                                        <GlassPanel
-                                            className="wg-glass-card shadow-xs w-full"
-                                            overrides={{ borderRadius: 16 }}
-                                            padding="0px"
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleUpdateAppearance({ ...appearance, projection: 'globe' })}
+                                            className={`p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer transition-all duration-150 active:scale-[0.98] ${
+                                                appearance.projection === 'globe'
+                                                    ? 'bg-sky-500/15 dark:bg-sky-500/25 backdrop-blur-md border-sky-500/40 dark:border-sky-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(14,165,233,0.15)] text-sky-700 dark:text-sky-300 font-bold'
+                                                    : 'bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
+                                            }`}
+                                            style={appearance.projection === 'globe' ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
                                         >
-                                            <button
-                                                onClick={() => handleUpdateAppearance({ ...appearance, projection: 'globe' })}
-                                                className={`w-full p-3 rounded-2xl border text-left transition-all duration-150 cursor-pointer relative overflow-hidden flex flex-col justify-between h-16 active:scale-[0.98] backdrop-blur-md ${
-                                                    appearance.projection === 'globe'
-                                                        ? 'bg-sky-500/15 dark:bg-sky-500/25 border-sky-500/40 dark:border-sky-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(14,165,233,0.15)] text-sky-700 dark:text-sky-300 font-bold'
-                                                        : 'bg-white/60 dark:bg-white/[0.06] border-black/10 dark:border-white/15 shadow-[inset_0_1px_1px_rgba(255,255,255,0.35)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] text-light-text-secondary dark:text-dark-text-secondary hover:bg-white/80 dark:hover:bg-white/[0.12] hover:text-light-text dark:hover:text-dark-text hover:border-black/20 dark:hover:border-white/25'
-                                                }`}
-                                                style={{ WebkitBackdropFilter: 'blur(12px)' }}
-                                            >
-                                                <div className="flex items-center justify-between">
-                                                    <span className="material-icons-outlined text-lg text-sky-500">public</span>
-                                                    {appearance.projection === 'globe' && <div className="w-2 h-2 rounded-full bg-sky-500 shadow-[0_0_8px_#0284c7]" />}
-                                                </div>
-                                                <p className="text-xs font-bold text-light-text dark:text-dark-text">3D Celestial Globe</p>
-                                            </button>
-                                        </GlassPanel>
+                                            <Globe className={`w-4 h-4 shrink-0 transition-colors duration-200 ${
+                                                appearance.projection === 'globe' ? 'text-sky-500 dark:text-sky-400' : 'text-light-text-secondary dark:text-dark-text-secondary'
+                                            }`} />
+                                            <span className="text-xs font-bold leading-tight truncate">3D Globe</span>
+                                        </button>
 
-                                        <GlassPanel
-                                            className="wg-glass-card shadow-xs w-full"
-                                            overrides={{ borderRadius: 16 }}
-                                            padding="0px"
+                                        <button
+                                            type="button"
+                                            onClick={() => handleUpdateAppearance({ ...appearance, projection: 'flat' })}
+                                            className={`p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer transition-all duration-150 active:scale-[0.98] ${
+                                                appearance.projection === 'flat'
+                                                    ? 'bg-sky-500/15 dark:bg-sky-500/25 backdrop-blur-md border-sky-500/40 dark:border-sky-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(14,165,233,0.15)] text-sky-700 dark:text-sky-300 font-bold'
+                                                    : 'bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
+                                            }`}
+                                            style={appearance.projection === 'flat' ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
                                         >
-                                            <button
-                                                onClick={() => handleUpdateAppearance({ ...appearance, projection: 'flat' })}
-                                                className={`w-full p-3 rounded-2xl border text-left transition-all duration-150 cursor-pointer relative overflow-hidden flex flex-col justify-between h-16 active:scale-[0.98] backdrop-blur-md ${
-                                                    appearance.projection === 'flat'
-                                                        ? 'bg-sky-500/15 dark:bg-sky-500/25 border-sky-500/40 dark:border-sky-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(14,165,233,0.15)] text-sky-700 dark:text-sky-300 font-bold'
-                                                        : 'bg-white/60 dark:bg-white/[0.06] border-black/10 dark:border-white/15 shadow-[inset_0_1px_1px_rgba(255,255,255,0.35)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] text-light-text-secondary dark:text-dark-text-secondary hover:bg-white/80 dark:hover:bg-white/[0.12] hover:text-light-text dark:hover:text-dark-text hover:border-black/20 dark:hover:border-white/25'
-                                                }`}
-                                                style={{ WebkitBackdropFilter: 'blur(12px)' }}
-                                            >
-                                                <div className="flex items-center justify-between">
-                                                    <span className="material-icons-outlined text-lg text-sky-500">map</span>
-                                                    {appearance.projection === 'flat' && <div className="w-2 h-2 rounded-full bg-sky-500 shadow-[0_0_8px_#0284c7]" />}
-                                                </div>
-                                                <p className="text-xs font-bold text-light-text dark:text-dark-text">2D Mercator Atlas</p>
-                                            </button>
-                                        </GlassPanel>
+                                            <MapIcon className={`w-4 h-4 shrink-0 transition-colors duration-200 ${
+                                                appearance.projection === 'flat' ? 'text-sky-500 dark:text-sky-400' : 'text-light-text-secondary dark:text-dark-text-secondary'
+                                            }`} />
+                                            <span className="text-xs font-bold leading-tight truncate">2D Flat Map</span>
+                                        </button>
                                     </div>
                                 </div>
 
@@ -1414,20 +1397,19 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                             const isSelected = viewMode === modeKey;
                                             const IconComponent = config.icon;
                                             return (
-                                                <GlassPanel key={modeKey} className="wg-glass-card shadow-xs w-full" overrides={{ borderRadius: 14 }} padding="0px">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleSelectViewMode(modeKey)}
-                                                        className={`w-full h-11 px-3 py-2 rounded-xl border text-left flex items-center gap-2.5 cursor-pointer transition-all duration-150 active:scale-[0.98] ${isSelected
-                                                                ? `${config.cardActiveBg} backdrop-blur-md border ${config.cardActiveBorder} ${config.cardActiveText} font-bold ${config.cardActiveShadow}`
-                                                                : 'bg-white/60 dark:bg-white/[0.06] border-black/10 dark:border-white/15 shadow-[inset_0_1px_1px_rgba(255,255,255,0.35)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] text-light-text-secondary dark:text-dark-text-secondary hover:bg-white/80 dark:hover:bg-white/[0.12] hover:text-light-text dark:hover:text-dark-text hover:border-black/20 dark:hover:border-white/25 backdrop-blur-md'
-                                                            }`}
-                                                        style={{ WebkitBackdropFilter: 'blur(12px)' }}
-                                                    >
-                                                        <IconComponent className={`w-4 h-4 shrink-0 transition-colors duration-200 ${isSelected ? config.color : 'text-light-text-secondary dark:text-dark-text-secondary'}`} />
-                                                        <span className="text-xs font-bold leading-tight truncate">{config.label}</span>
-                                                    </button>
-                                                </GlassPanel>
+                                                <button
+                                                    key={modeKey}
+                                                    type="button"
+                                                    onClick={() => handleSelectViewMode(modeKey)}
+                                                    className={`p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer transition-all duration-150 active:scale-[0.98] ${isSelected
+                                                            ? `${config.cardActiveBg} backdrop-blur-md border ${config.cardActiveBorder} ${config.cardActiveText} font-bold ${config.cardActiveShadow}`
+                                                            : 'bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
+                                                        }`}
+                                                    style={isSelected ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
+                                                >
+                                                    <IconComponent className={`w-4 h-4 shrink-0 transition-colors duration-200 ${isSelected ? config.color : 'text-light-text-secondary dark:text-dark-text-secondary'}`} />
+                                                    <span className="text-xs font-bold leading-tight truncate">{config.label}</span>
+                                                </button>
                                             );
                                         })}
                                     </div>
@@ -1446,19 +1428,18 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                             { id: 'medium', label: 'Normal' },
                                             { id: 'large', label: 'Expansive' }
                                         ].map(sz => (
-                                            <GlassPanel key={sz.id} className="wg-glass-pill shadow-xs w-full" overrides={{ borderRadius: 12 }} padding="0px">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleUpdateAppearance({ ...appearance, scratchCitySize: sz.id as any })}
-                                                    className={`w-full py-2 rounded-xl text-xs font-semibold text-center border transition-all duration-150 cursor-pointer active:scale-[0.98] ${(appearance.scratchCitySize || 'medium') === sz.id
-                                                            ? 'bg-sky-500/20 dark:bg-sky-500/30 backdrop-blur-md text-sky-700 dark:text-sky-300 font-bold border border-sky-500/40 dark:border-sky-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(14,165,233,0.15)]'
-                                                            : 'bg-white/60 dark:bg-white/[0.06] border-black/10 dark:border-white/15 shadow-[inset_0_1px_1px_rgba(255,255,255,0.35)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] text-light-text-secondary dark:text-dark-text-secondary hover:bg-white/80 dark:hover:bg-white/[0.12] hover:text-light-text dark:hover:text-dark-text hover:border-black/20 dark:hover:border-white/25 backdrop-blur-md'
-                                                        }`}
-                                                    style={{ WebkitBackdropFilter: 'blur(12px)' }}
-                                                >
-                                                    {sz.label}
-                                                </button>
-                                            </GlassPanel>
+                                            <button
+                                                key={sz.id}
+                                                type="button"
+                                                onClick={() => handleUpdateAppearance({ ...appearance, scratchCitySize: sz.id as any })}
+                                                className={`py-2 rounded-xl text-xs font-semibold text-center border transition-all duration-150 cursor-pointer active:scale-[0.98] ${(appearance.scratchCitySize || 'medium') === sz.id
+                                                        ? 'bg-sky-500/20 dark:bg-sky-500/30 backdrop-blur-md text-sky-700 dark:text-sky-300 font-bold border border-sky-500/40 dark:border-sky-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(14,165,233,0.15)]'
+                                                        : 'bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
+                                                    }`}
+                                                style={(appearance.scratchCitySize || 'medium') === sz.id ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
+                                            >
+                                                {sz.label}
+                                            </button>
                                         ))}
                                     </div>
                                 </div>
@@ -1562,33 +1543,29 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-2.5">
-                                        <GlassPanel className="wg-glass-card shadow-xs w-full" overrides={{ borderRadius: 14 }} padding="0px">
-                                            <button
-                                                type="button"
-                                                onClick={() => handleUpdateAppearance({ ...appearance, airportDetail: 'standard' })}
-                                                className={`w-full h-11 px-3 py-2 rounded-xl border text-center transition-all duration-150 cursor-pointer active:scale-[0.98] flex items-center justify-center ${appearance.airportDetail === 'standard'
-                                                        ? 'bg-indigo-500/15 dark:bg-indigo-500/25 backdrop-blur-md border border-indigo-500/40 dark:border-indigo-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(99,102,241,0.15)] text-indigo-700 dark:text-indigo-300 font-bold'
-                                                        : 'bg-white/60 dark:bg-white/[0.06] border-black/10 dark:border-white/15 shadow-[inset_0_1px_1px_rgba(255,255,255,0.35)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] text-light-text-secondary dark:text-dark-text-secondary hover:bg-white/80 dark:hover:bg-white/[0.12] hover:text-light-text dark:hover:text-dark-text hover:border-black/20 dark:hover:border-white/25 backdrop-blur-md'
-                                                    }`}
-                                                style={{ WebkitBackdropFilter: 'blur(12px)' }}
-                                            >
-                                                <span className="text-xs font-bold">Minimal Beacon</span>
-                                            </button>
-                                        </GlassPanel>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleUpdateAppearance({ ...appearance, airportDetail: 'standard' })}
+                                            className={`p-3 rounded-xl border text-center transition-all duration-150 cursor-pointer active:scale-[0.98] flex items-center justify-center ${appearance.airportDetail === 'standard'
+                                                    ? 'bg-indigo-500/15 dark:bg-indigo-500/25 backdrop-blur-md border border-indigo-500/40 dark:border-indigo-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(99,102,241,0.15)] text-indigo-700 dark:text-indigo-300 font-bold'
+                                                    : 'border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
+                                                }`}
+                                            style={appearance.airportDetail === 'standard' ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
+                                        >
+                                            <span className="text-xs font-bold">Minimal Beacon</span>
+                                        </button>
 
-                                        <GlassPanel className="wg-glass-card shadow-xs w-full" overrides={{ borderRadius: 14 }} padding="0px">
-                                            <button
-                                                type="button"
-                                                onClick={() => handleUpdateAppearance({ ...appearance, airportDetail: 'detailed' })}
-                                                className={`w-full h-11 px-3 py-2 rounded-xl border text-center transition-all duration-150 cursor-pointer active:scale-[0.98] flex items-center justify-center ${appearance.airportDetail === 'detailed'
-                                                        ? 'bg-indigo-500/15 dark:bg-indigo-500/25 backdrop-blur-md border border-indigo-500/40 dark:border-indigo-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(99,102,241,0.15)] text-indigo-700 dark:text-indigo-300 font-bold'
-                                                        : 'bg-white/60 dark:bg-white/[0.06] border-black/10 dark:border-white/15 shadow-[inset_0_1px_1px_rgba(255,255,255,0.35)] dark:shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] text-light-text-secondary dark:text-dark-text-secondary hover:bg-white/80 dark:hover:bg-white/[0.12] hover:text-light-text dark:hover:text-dark-text hover:border-black/20 dark:hover:border-white/25 backdrop-blur-md'
-                                                    }`}
-                                                style={{ WebkitBackdropFilter: 'blur(12px)' }}
-                                            >
-                                                <span className="text-xs font-bold">True Runways</span>
-                                            </button>
-                                        </GlassPanel>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleUpdateAppearance({ ...appearance, airportDetail: 'detailed' })}
+                                            className={`p-3 rounded-xl border text-center transition-all duration-150 cursor-pointer active:scale-[0.98] flex items-center justify-center ${appearance.airportDetail === 'detailed'
+                                                    ? 'bg-indigo-500/15 dark:bg-indigo-500/25 backdrop-blur-md border border-indigo-500/40 dark:border-indigo-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(99,102,241,0.15)] text-indigo-700 dark:text-indigo-300 font-bold'
+                                                    : 'border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
+                                                }`}
+                                            style={appearance.airportDetail === 'detailed' ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
+                                        >
+                                            <span className="text-xs font-bold">True Runways</span>
+                                        </button>
                                     </div>
                                 </div>
 

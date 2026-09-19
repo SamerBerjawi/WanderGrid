@@ -111,12 +111,23 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    dataService.getWorkspaceSettings().then(settings => {
-      setTheme(settings.theme);
-    }).catch(err => {
+    const applySettings = (settings: any) => {
+      if (settings?.theme) setTheme(settings.theme);
+    };
+
+    dataService.getWorkspaceSettings().then(applySettings).catch(err => {
       console.warn("Failed to load workspace settings:", err);
     });
+
+    const handleSettingsUpdated = (e: any) => {
+      if (e?.detail) applySettings(e.detail);
+    };
+
+    window.addEventListener('wandergrid_settings_updated', handleSettingsUpdated);
+    return () => window.removeEventListener('wandergrid_settings_updated', handleSettingsUpdated);
+  }, []);
     
+  useEffect(() => {
     const storedUserStr = localStorage.getItem('wandergrid_session_user');
     if (storedUserStr) {
         try {
@@ -318,7 +329,7 @@ export default function App() {
         <main className={`flex-1 h-full relative z-10 transition-all duration-300 ${
           view === ViewState.MAP 
             ? 'p-0 overflow-hidden' 
-            : `px-4 md:px-8 pt-4 pb-28 md:pb-8 overflow-y-auto custom-scrollbar ${isSidebarCollapsed ? 'md:pl-28' : 'md:pl-80'}`
+            : `px-2 sm:px-4 md:px-8 pt-2 sm:pt-4 pb-28 md:pb-8 overflow-y-auto custom-scrollbar ${isSidebarCollapsed ? 'md:pl-28' : 'md:pl-80'}`
         }`}>
           <AnimatePresence mode="wait">
             <motion.div

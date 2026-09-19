@@ -278,4 +278,37 @@ export const StandardDrawer: React.FC<DrawerProps> = ({
 - **Shared Empty States:** Whenever queries or collections yield empty states, use the shared `<EmptyState />` component from `/components/EmptyState.tsx`.
 - **Apple HIG 44px Minimum Touch Targets:** All clickable triggers, close buttons, and tab controls must enforce at least `min-w-[44px] min-h-[44px]` touch targets, with clear `aria-label` attributes for icon-only buttons.
 
+---
+
+## 9. Design System Authority & Universal Page Layout (`design.md`)
+
+All existing, new, and refactored UI components and views across the application must strictly adhere to the master design specification in [`design.md`](file:///Users/samerberjawi/Documents/wandergrid/design.md).
+
+### 9.1 Automatic Liquid-Glass Enforcement
+- All buttons, text fields, dropdown selectors, tabs, and content cards must automatically render with Liquid Glass (`@nkzw/liquid-glass` via `<GlassPanel />` or `<GlassButton />`).
+- `<Card>` in `components/ui.tsx` automatically renders inside `GlassPanel` (`wg-glass-card`, `rounded-[28px] overflow-hidden`).
+- All buttons imported from `components/ui` automatically render inside `GlassPanel` (`wg-glass-pill`).
+- All inputs and select controls must adhere to `INPUT_BASE_STYLE` with `min-h-[44px]` and subtle backdrop blur.
+- All plus icons on buttons or triggers must strictly use the **standard Phosphor `Plus` icon (NOT duotone)**.
+
+### 9.2 The "Planner Standard" Universal Page Blueprint
+Every view (Planner, Settings, Dashboard, Flights, Travel Atlas, Vacation Calendar, etc.) must follow the Planner page layout:
+1. **Container & Gutters:** `w-full max-w-[1680px] mx-auto pt-2 sm:pt-4 px-1 sm:px-4 md:px-6 lg:px-8 flex flex-col gap-5 sm:gap-6 animate-fadeIn pb-16`.
+2. **Hero Header:** Unboxed, horizontal layout with pure duotone Phosphor icon and scaled title (`text-xl sm:text-3xl md:text-5xl font-black`) aligned **LEFT**, and primary action button aligned **RIGHT** on both mobile and desktop.
+3. **Everything Else Center:** All intermediate controls below the header (tab navigation, filter bars, search controls) are **CENTERED** on mobile viewports.
+4. **Tab Navigation:** Floating `GlassPanel` (`wg-glass-pill`, `borderRadius: 9999`) with physics-based spring indicator (`motion.div layoutId`), duotone icons, and responsive label collapse on small screens.
+5. **Multi-Column Bucket Grid:** `grid grid-cols-1 lg:grid-cols-12 gap-6 items-start` encased in `rounded-[28px] overflow-hidden` with `GlassPanel` (`wg-glass-card`) and semantic gradient header banners.
+
+### 9.3 Radical Simplicity & Zero Text Clutter
+- Cluttering the interface with obvious informational text or verbose helper paragraphs is strictly prohibited.
+- Text must be direct, relevant, and straight to the point.
+- Use semantic status pills (`px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider`) and active microcopy instead of explanatory paragraphs.
+
+### 9.4 Mobile-First Adaptability
+- Minimal horizontal margins on mobile (`px-1`).
+- Header title aligned **LEFT** and header action button aligned **RIGHT** on mobile viewports.
+- All intermediate controls (tabs, filter bars, search inputs) centered on mobile viewports.
+- All interactive triggers enforce Apple HIG 44px touch targets.
+- Multi-column grids stack naturally on mobile viewports without horizontal clipping.
+
 
