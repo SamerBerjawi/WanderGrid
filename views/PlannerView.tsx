@@ -280,7 +280,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick }) => {
     };
 
     return (
-        <div className="w-full max-w-[1680px] mx-auto px-2 sm:px-4 lg:px-6 flex flex-col gap-6 animate-fadeIn pb-16">
+        <div className="w-full max-w-[1680px] mx-auto pt-3 sm:pt-4 px-4 sm:px-6 lg:px-8 flex flex-col gap-6 animate-fadeIn pb-16">
             
             {/* ========================================================================= */}
             {/* HERO HEADER: Clean Title & Liquid-Glass Action (had-homeassistantdashboard style) */}
@@ -323,7 +323,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick }) => {
                         overrides={{ borderRadius: 9999 }}
                     >
                         <div className="flex gap-1 relative items-center">
-                            {(['confirmed', 'past', 'planned', 'all'] as TabKey[]).map((tabKey) => {
+                            {(['past', 'confirmed', 'planned', 'all'] as TabKey[]).map((tabKey) => {
                                 const config = PLANNER_TAB_THEMES[tabKey];
                                 const isSelected = activeTab === tabKey;
                                 const IconComponent = config.icon;
@@ -475,83 +475,12 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick }) => {
             </div>
 
             {/* ========================================================================= */}
-            {/* 3-COLUMN PANORAMIC BUCKETS: Confirmed, Past, Planned                      */}
+            {/* 3-COLUMN PANORAMIC BUCKETS: Past, Confirmed, Planned                      */}
             {/* ========================================================================= */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                 
                 {/* --------------------------------------------------------------------- */}
-                {/* BUCKET 1: CONFIRMED (Aviation / Sky)                                  */}
-                {/* --------------------------------------------------------------------- */}
-                {(activeTab === 'all' || activeTab === 'confirmed') && (
-                    <div className={`flex flex-col ${activeTab === 'confirmed' ? 'lg:col-span-12' : 'lg:col-span-4'}`}>
-                        <GlassPanel
-                            className="wg-glass-card shadow-glass-card flex flex-col h-full overflow-hidden border border-black/5 dark:border-white/10"
-                            overrides={{ borderRadius: 28 }}
-                            padding="0px"
-                        >
-                            {/* Bucket Header Banner */}
-                            <div className="p-5 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-sky-500/10 via-sky-500/5 to-transparent shrink-0">
-                                <div className="flex items-center gap-3 min-w-0">
-                                    <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-sky-500 to-blue-600 shadow-md shadow-sky-500/20 shrink-0">
-                                        <CheckCircle className="w-5 h-5" weight="duotone" />
-                                    </div>
-                                    <div className="min-w-0">
-                                        <div className="flex items-center gap-2">
-                                            <h2 className="text-base font-bold text-light-text dark:text-dark-text tracking-tight">
-                                                Confirmed
-                                            </h2>
-                                            <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-700 dark:text-sky-300 border border-sky-500/25">
-                                                {confirmedTrips.length}
-                                            </span>
-                                        </div>
-                                        <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary font-medium truncate mt-0.5">
-                                            Upcoming bookings &amp; confirmed itineraries
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <GlassPanel
-                                    className="wg-glass-pill shadow-xs transition-transform hover:scale-105 active:scale-95 shrink-0"
-                                    padding="0px"
-                                    overrides={{ borderRadius: 12 }}
-                                >
-                                    <button
-                                        type="button"
-                                        onClick={() => handleOpenNewTrip('Upcoming')}
-                                        className="w-9 h-9 rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-sky-500 hover:bg-sky-500/10 transition-colors cursor-pointer"
-                                        title="Add confirmed trip"
-                                    >
-                                        <Plus className="w-4 h-4" weight="duotone" />
-                                    </button>
-                                </GlassPanel>
-                            </div>
-
-                            {/* Bucket Card Inventory */}
-                            <div className="p-4 sm:p-5 flex-1 flex flex-col gap-3.5 overflow-y-auto custom-scrollbar">
-                                {confirmedTrips.length > 0 ? (
-                                    confirmedTrips.map(trip => (
-                                        <TripCard 
-                                            key={trip.id} 
-                                            trip={trip} 
-                                            stage="sky" 
-                                            onClick={() => onTripClick?.(trip.id)} 
-                                        />
-                                    ))
-                                ) : (
-                                    <EmptyBucketPlaceholder 
-                                        stage="Confirmed"
-                                        label={isFilterActive ? "No confirmed trips match filter" : "No confirmed bookings yet"}
-                                        actionLabel={isFilterActive ? "Clear Filters" : "Add confirmed trip"}
-                                        onAction={isFilterActive ? handleClearFilters : () => handleOpenNewTrip('Upcoming')}
-                                    />
-                                )}
-                            </div>
-                        </GlassPanel>
-                    </div>
-                )}
-
-                {/* --------------------------------------------------------------------- */}
-                {/* BUCKET 2: PAST (Land & Sea / Emerald)                                 */}
+                {/* BUCKET 1: PAST (Land & Sea / Emerald)                                 */}
                 {/* --------------------------------------------------------------------- */}
                 {(activeTab === 'all' || activeTab === 'past') && (
                     <div className={`flex flex-col ${activeTab === 'past' ? 'lg:col-span-12' : 'lg:col-span-4'}`}>
@@ -614,6 +543,77 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick }) => {
                                         label={isFilterActive ? "No past trips match filter" : "No past trips recorded"}
                                         actionLabel={isFilterActive ? "Clear Filters" : "Log a past journey"}
                                         onAction={isFilterActive ? handleClearFilters : () => handleOpenNewTrip('Past')}
+                                    />
+                                )}
+                            </div>
+                        </GlassPanel>
+                    </div>
+                )}
+
+                {/* --------------------------------------------------------------------- */}
+                {/* BUCKET 2: CONFIRMED (Aviation / Sky)                                  */}
+                {/* --------------------------------------------------------------------- */}
+                {(activeTab === 'all' || activeTab === 'confirmed') && (
+                    <div className={`flex flex-col ${activeTab === 'confirmed' ? 'lg:col-span-12' : 'lg:col-span-4'}`}>
+                        <GlassPanel
+                            className="wg-glass-card shadow-glass-card flex flex-col h-full overflow-hidden border border-black/5 dark:border-white/10"
+                            overrides={{ borderRadius: 28 }}
+                            padding="0px"
+                        >
+                            {/* Bucket Header Banner */}
+                            <div className="p-5 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-sky-500/10 via-sky-500/5 to-transparent shrink-0">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-sky-500 to-blue-600 shadow-md shadow-sky-500/20 shrink-0">
+                                        <CheckCircle className="w-5 h-5" weight="duotone" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <h2 className="text-base font-bold text-light-text dark:text-dark-text tracking-tight">
+                                                Confirmed
+                                            </h2>
+                                            <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-700 dark:text-sky-300 border border-sky-500/25">
+                                                {confirmedTrips.length}
+                                            </span>
+                                        </div>
+                                        <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary font-medium truncate mt-0.5">
+                                            Upcoming bookings &amp; confirmed itineraries
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <GlassPanel
+                                    className="wg-glass-pill shadow-xs transition-transform hover:scale-105 active:scale-95 shrink-0"
+                                    padding="0px"
+                                    overrides={{ borderRadius: 12 }}
+                                >
+                                    <button
+                                        type="button"
+                                        onClick={() => handleOpenNewTrip('Upcoming')}
+                                        className="w-9 h-9 rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-sky-500 hover:bg-sky-500/10 transition-colors cursor-pointer"
+                                        title="Add confirmed trip"
+                                    >
+                                        <Plus className="w-4 h-4" weight="duotone" />
+                                    </button>
+                                </GlassPanel>
+                            </div>
+
+                            {/* Bucket Card Inventory */}
+                            <div className="p-4 sm:p-5 flex-1 flex flex-col gap-3.5 overflow-y-auto custom-scrollbar">
+                                {confirmedTrips.length > 0 ? (
+                                    confirmedTrips.map(trip => (
+                                        <TripCard 
+                                            key={trip.id} 
+                                            trip={trip} 
+                                            stage="sky" 
+                                            onClick={() => onTripClick?.(trip.id)} 
+                                        />
+                                    ))
+                                ) : (
+                                    <EmptyBucketPlaceholder 
+                                        stage="Confirmed"
+                                        label={isFilterActive ? "No confirmed trips match filter" : "No confirmed bookings yet"}
+                                        actionLabel={isFilterActive ? "Clear Filters" : "Add confirmed trip"}
+                                        onAction={isFilterActive ? handleClearFilters : () => handleOpenNewTrip('Upcoming')}
                                     />
                                 )}
                             </div>

@@ -492,7 +492,15 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
 
     // Split into Tabs
     const plannedTrips = useMemo(() => {
-        return filteredTrips.filter(t => t.status === 'Planning');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return filteredTrips.filter(t => {
+            if (t.status !== 'Planning') return false;
+            // Ensure planned trip is future (not expired in the past)
+            if (t.endDate && new Date(t.endDate) < today) return false;
+            if (t.startDate && new Date(t.startDate) < today && (!t.endDate || new Date(t.endDate) < today)) return false;
+            return true;
+        });
     }, [filteredTrips]);
 
     const confirmedTrips = useMemo(() => {
@@ -504,7 +512,12 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
     const historyTrips = useMemo(() => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        return filteredTrips.filter(t => t.status !== 'Planning' && t.endDate && new Date(t.endDate) < today);
+        return filteredTrips.filter(t => {
+            if (t.status === 'Past') return true;
+            if (t.endDate && new Date(t.endDate) < today) return true;
+            if (t.startDate && new Date(t.startDate) < today && (!t.endDate || new Date(t.endDate) < today)) return true;
+            return false;
+        });
     }, [filteredTrips]);
 
     // Active Tab Set with Sorting
@@ -558,17 +571,18 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
     // -------------------------------------------------------------
 
     const nextTripCountdown = useMemo(() => {
-        if (confirmedTrips.length === 0) return null;
+        const candidateTrips = [...confirmedTrips, ...plannedTrips].filter(t => t.startDate);
+        if (candidateTrips.length === 0) return null;
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        const sorted = [...confirmedTrips].sort((a, b) => {
+        const sorted = [...candidateTrips].sort((a, b) => {
             const timeA = a.startDate ? new Date(a.startDate).getTime() : 0;
             const timeB = b.startDate ? new Date(b.startDate).getTime() : 0;
             return timeA - timeB;
         });
 
-        const next = sorted[0];
+        const next = sorted.find(t => new Date(t.startDate) >= today) || sorted[0];
         if (!next || !next.startDate) return null;
 
         const diffTime = new Date(next.startDate).getTime() - today.getTime();
@@ -1061,7 +1075,7 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
     };
 
     return (
-        <div className="space-y-8 max-w-[1440px] mx-auto pb-28 font-sans select-none animate-fade-in">
+        <div className="space-y-8 max-w-[1440px] mx-auto pt-3 sm:pt-4 px-2 sm:px-4 pb-28 font-sans select-none animate-fade-in">
             
             {/* Header: Frosted Glass Command Banner */}
             <header className="relative overflow-hidden bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl border border-black/5 dark:border-white/10 rounded-3xl p-6 sm:p-8 shadow-sm">
@@ -1252,16 +1266,16 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                     <div className="bg-black/5 dark:bg-white/5 p-1 rounded-2xl flex border border-black/5 dark:border-white/5 shrink-0 overflow-x-auto no-scrollbar">
                         <button
                             type="button"
-                            onClick={() => setActiveTab('Planned')}
+                            onClick={() => setActiveTab('History')}
                             className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${
-                                activeTab === 'Planned'
+                                activeTab === 'History'
                                     ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm'
                                     : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
                             }`}
                         >
-                            <span>Draft Blueprints</span>
+                            <span>Archive Chronology</span>
                             <span className="px-2 py-0.5 rounded-full text-2xs bg-primary-500/15 text-primary-600 dark:text-primary-400 font-mono font-bold">
-                                {plannedTrips.length}
+                                {historyTrips.length}
                             </span>
                         </button>
 
@@ -1282,16 +1296,16 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
 
                         <button
                             type="button"
-                            onClick={() => setActiveTab('History')}
+                            onClick={() => setActiveTab('Planned')}
                             className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${
-                                activeTab === 'History'
+                                activeTab === 'Planned'
                                     ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm'
                                     : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
                             }`}
                         >
-                            <span>Archive Chronology</span>
+                            <span>Draft Blueprints</span>
                             <span className="px-2 py-0.5 rounded-full text-2xs bg-primary-500/15 text-primary-600 dark:text-primary-400 font-mono font-bold">
-                                {historyTrips.length}
+                                {plannedTrips.length}
                             </span>
                         </button>
                     </div>

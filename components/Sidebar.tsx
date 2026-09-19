@@ -6,6 +6,13 @@ import { motion, AnimatePresence } from 'motion/react';
 import GlassPanel from './glass/GlassPanel';
 import Icon from './ui/Icon';
 import { PAGE_THEMES } from '../config/pageThemes';
+import { 
+  Moon, 
+  Sun, 
+  Desktop, 
+  SidebarSimple, 
+  Compass
+} from '@phosphor-icons/react';
 
 interface SidebarProps {
   currentView: ViewState;
@@ -47,32 +54,55 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, []);
 
   useEffect(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const loadNextTrip = () => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
 
-    dataService.getTrips().then(trips => {
-      // Find upcoming trips where the end date hasn't passed yet
-      const upcoming = trips
-        .filter(t => {
-            const startDate = new Date(t.startDate);
-            const endDate = new Date(t.endDate);
-            // Include trips that are currently happening or starting in the future
-            return t.status === 'Upcoming' && endDate >= today;
-        })
-        .sort((a,b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
-      
-      if (upcoming.length > 0) {
-        const trip = upcoming[0];
-        setNextTrip(trip);
-        const start = new Date(trip.startDate);
-        start.setHours(0,0,0,0);
-        const diff = start.getTime() - today.getTime();
-        setDaysUntil(Math.ceil(diff / (1000 * 60 * 60 * 24)));
-      } else {
-        setNextTrip(null);
-      }
-    });
-  }, [currentView]); // Re-check when view changes (likely after a booking)
+      dataService.getTrips().then(trips => {
+        // Find upcoming or planned future trips where the end date (or start date) hasn't passed yet
+        const upcoming = trips
+          .filter(t => {
+              if (t.status === 'Cancelled' || t.status === 'Past') return false;
+              
+              if (t.endDate) {
+                  return new Date(t.endDate) >= today;
+              }
+              if (t.startDate) {
+                  return new Date(t.startDate) >= today;
+              }
+              return t.status === 'Planning' || t.status === 'Upcoming';
+          })
+          .sort((a, b) => {
+              const dateA = a.startDate ? new Date(a.startDate).getTime() : Infinity;
+              const dateB = b.startDate ? new Date(b.startDate).getTime() : Infinity;
+              return dateA - dateB;
+          });
+        
+        if (upcoming.length > 0) {
+          const trip = upcoming[0];
+          setNextTrip(trip);
+          if (trip.startDate) {
+            const start = new Date(trip.startDate);
+            start.setHours(0, 0, 0, 0);
+            const diff = start.getTime() - today.getTime();
+            setDaysUntil(Math.ceil(diff / (1000 * 60 * 60 * 24)));
+          } else {
+            setDaysUntil(0);
+          }
+        } else {
+          setNextTrip(null);
+        }
+      });
+    };
+
+    loadNextTrip();
+
+    const handleDbUpdate = () => {
+      loadNextTrip();
+    };
+    window.addEventListener('wandergrid_db_updated', handleDbUpdate);
+    return () => window.removeEventListener('wandergrid_db_updated', handleDbUpdate);
+  }, [currentView]);
 
   const isDark = theme === 'dark' || (theme === 'auto' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
@@ -89,16 +119,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   const handleThemeCycle = () => {
-      const nextTheme = theme === 'dark' ? 'light' : 'dark';
+      // 3-way toggle: dark -> light -> auto -> dark
+      const nextTheme = theme === 'dark' ? 'light' : theme === 'light' ? 'auto' : 'dark';
       onThemeToggle(nextTheme);
   };
 
   const getThemeIcon = () => {
-      return theme === 'dark' ? 'dark_mode' : 'light_mode';
+      return theme === 'dark' ? 'dark_mode' : theme === 'light' ? 'light_mode' : 'auto_mode';
   };
 
   const getThemeLabel = () => {
-      return theme === 'dark' ? 'Dark Mode' : 'Light Mode';
+      return theme === 'dark' ? 'Dark Mode' : theme === 'light' ? 'Light Mode' : 'Auto (System)';
   };
 
   const nameParts = currentUser ? currentUser.name.split(' ') : ['Guest', ''];
@@ -110,14 +141,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Desktop Fixed Sidebar with Liquid Glass */}
       <aside className={`hidden md:flex flex-shrink-0 flex-col fixed inset-y-0 left-0 z-40 transition-all duration-300 pointer-events-none ${isCollapsed ? 'w-20' : 'w-72'}`}>
         <div className="relative w-full h-full pointer-events-auto">
-          <button 
-             onClick={toggleCollapse}
-             className="absolute -right-3 top-10 w-6 h-6 rounded-full bg-white/90 dark:bg-zinc-800/95 border border-zinc-200/20 dark:border-white/15 flex items-center justify-center text-zinc-400 dark:text-zinc-200 hover:text-indigo-500 dark:hover:text-white transition-all z-50 shadow-[0_2px_8px_rgba(0,0,0,0.05)] hover:scale-110 active:scale-95 cursor-pointer backdrop-blur-md"
-             title={isCollapsed ? "Expand" : "Collapse"}
-          >
-             <Icon name={isCollapsed ? 'caret_right' : 'caret_left'} className="text-xs" />
-          </button>
-
           <GlassPanel
             className="wg-glass-card shadow-2xl h-full flex flex-col"
             overrides={{ borderRadius: 0, displacementScale: 0 }}
@@ -185,85 +208,122 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {!isCollapsed ? (
                    nextTrip ? (
                     <GlassPanel
-                      className="wg-glass-card shadow-lg"
+                      className="wg-glass-card shadow-lg cursor-pointer hover:scale-[1.01] transition-transform"
                       overrides={{ borderRadius: 20 }}
                       padding="14px"
                     >
-                      <p className="text-2xs font-bold text-zinc-500 dark:text-zinc-300 uppercase tracking-widest mb-1.5">Coming Up Next</p>
-                      <div className="flex items-center gap-3 mb-1">
-                          <span className="text-xl filter drop-shadow">{nextTrip.icon || '✈️'}</span>
-                          <p className="font-bold text-xs truncate text-zinc-800 dark:text-white" title={nextTrip.name}>{nextTrip.name}</p>
+                      <div onClick={() => onNavigate(ViewState.TRIP_DETAIL, nextTrip.id)}>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <p className="text-2xs font-bold text-zinc-500 dark:text-zinc-300 uppercase tracking-widest">
+                            {nextTrip.status === 'Planning' ? 'Planned Trip' : 'Coming Up Next'}
+                          </p>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                            nextTrip.status === 'Planning' 
+                              ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20' 
+                              : 'bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/20'
+                          }`}>
+                            {nextTrip.status === 'Planning' ? 'Planned' : 'Confirmed'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 mb-1">
+                            <span className="text-xl filter drop-shadow">{nextTrip.icon || '✈️'}</span>
+                            <p className="font-bold text-xs truncate text-zinc-800 dark:text-white" title={nextTrip.name}>{nextTrip.name}</p>
+                        </div>
+                        <p className="text-xs font-extrabold tracking-wide text-indigo-600 dark:text-indigo-300">
+                            {daysUntil > 0 
+                              ? `In ${daysUntil} ${daysUntil === 1 ? 'day' : 'days'}` 
+                              : daysUntil === 0 
+                              ? (nextTrip.startDate ? 'Starts today!' : 'Timeline pending') 
+                              : 'Ongoing'}
+                        </p>
                       </div>
-                      <p className="text-xs font-extrabold tracking-wide text-indigo-600 dark:text-indigo-300">
-                          {daysUntil > 0 ? `In ${daysUntil} days` : daysUntil === 0 ? 'Starts today!' : 'Ongoing'}
-                      </p>
                     </GlassPanel>
                   ) : (
                     <div className="p-4 rounded-2xl bg-white/5 dark:bg-white/[0.08] border border-dashed border-zinc-250 dark:border-white/20 text-center">
-                      <Icon name="compass" className="text-zinc-400 dark:text-zinc-300 text-xl mb-1" />
+                      <Compass weight="duotone" className="text-zinc-400 dark:text-zinc-300 text-xl mx-auto mb-1" />
                       <p className="text-xs font-bold text-zinc-500 dark:text-zinc-300 uppercase tracking-widest leading-none">No trips planned</p>
                       <button 
-                          onClick={() => onNavigate(ViewState.DASHBOARD)} 
+                          onClick={() => onNavigate(ViewState.PLANNER)} 
                           className="text-xs text-indigo-600 dark:text-indigo-300 font-bold mt-2 hover:underline cursor-pointer"
                       >
-                          Book next adventure
+                          Plan next adventure
                       </button>
                     </div>
                   )
                 ) : (
                    nextTrip ? (
                       <GlassPanel
-                        className="wg-glass-pill shadow-md cursor-help flex items-center justify-center w-12 h-12"
+                        className="wg-glass-pill shadow-md cursor-pointer hover:scale-105 transition-transform flex items-center justify-center w-12 h-12"
                         overrides={{ borderRadius: 16 }}
                         padding="0px"
                       >
-                        <span className="text-lg leading-none" title={`Next: ${nextTrip.name} (${daysUntil} days)`}>{nextTrip.icon || '✈️'}</span>
+                        <button 
+                          type="button"
+                          onClick={() => onNavigate(ViewState.TRIP_DETAIL, nextTrip.id)}
+                          className="w-full h-full flex items-center justify-center cursor-pointer"
+                          title={`Next: ${nextTrip.name} (${daysUntil > 0 ? `${daysUntil} days` : 'today'})`}
+                        >
+                          <span className="text-lg leading-none">{nextTrip.icon || '✈️'}</span>
+                        </button>
                       </GlassPanel>
                   ) : null
                 )}
 
-                {/* Bottom Settings / Action Cluster */}
+                {/* Bottom Action Cluster: User Profile, Theme Toggle (Dark/Light/Auto), Collapse Button */}
                 <div className={`pt-3 border-t border-zinc-200/50 dark:border-white/10 ${
                     isCollapsed 
                       ? 'flex flex-col items-center gap-2.5 w-full' 
-                      : 'flex items-center justify-between'
+                      : 'flex items-center justify-between px-1'
                 }`}>
-                    <button 
-                        onClick={handleThemeCycle}
-                        className={`${isCollapsed ? 'w-10 h-10' : 'w-9 h-9'} rounded-xl flex items-center justify-center text-zinc-500 hover:text-zinc-800 dark:text-zinc-200 dark:hover:text-white hover:bg-zinc-200/30 dark:hover:bg-white/[0.08] transition-all cursor-pointer`}
-                        title="Toggle Visual Appearance Mode"
-                    >
-                        <Icon name={theme === 'dark' ? 'sun' : 'moon'} className="text-lg" />
-                    </button>
-
-                    <button 
-                        onClick={() => onNavigate(ViewState.SETTINGS)}
-                        className={`${isCollapsed ? 'w-10 h-10' : 'w-9 h-9'} rounded-xl flex items-center justify-center transition-all cursor-pointer ${
-                            currentView === ViewState.SETTINGS 
-                            ? `${isDark ? PAGE_THEMES[ViewState.SETTINGS].activeSidebarDark : PAGE_THEMES[ViewState.SETTINGS].activeSidebarLight} ${PAGE_THEMES[ViewState.SETTINGS].color}` 
-                            : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-200 dark:hover:text-white hover:bg-zinc-200/30 dark:hover:bg-white/[0.08]'
-                        }`}
-                        title="Settings & Workspace Preferences"
-                    >
-                        <Icon name="gear" className="text-lg" />
-                    </button>
-
-                    {/* User Profile Avatar Icon Button */}
+                    {/* 1. User Profile Avatar with User Photo */}
                     {currentUser && (
                         <button 
                             onClick={() => onNavigate(ViewState.USER_DETAIL, currentUser.id)}
-                            className={`${isCollapsed ? 'w-10 h-10' : 'w-9 h-9'} rounded-xl flex items-center justify-center transition-all border cursor-pointer ${
+                            className={`${isCollapsed ? 'w-10 h-10' : 'w-9 h-9'} rounded-xl flex items-center justify-center transition-all border cursor-pointer overflow-hidden p-0.5 group hover:scale-105 active:scale-95 ${
                                 currentView === ViewState.USER_DETAIL 
-                                ? `${isDark ? PAGE_THEMES[ViewState.USER_DETAIL].activeSidebarDark : PAGE_THEMES[ViewState.USER_DETAIL].activeSidebarLight}` 
+                                ? `${isDark ? PAGE_THEMES[ViewState.USER_DETAIL].activeSidebarDark : PAGE_THEMES[ViewState.USER_DETAIL].activeSidebarLight} border-primary-500/50` 
                                 : 'bg-transparent border-transparent hover:border-zinc-200/40 dark:hover:border-white/20 hover:bg-zinc-200/30 dark:hover:bg-white/[0.08]'
                             }`}
                             title={`Profile: ${currentUser.name} (${currentUser.role})`}
                         >
-                            <div className="w-6 h-6 rounded-lg flex items-center justify-center text-2xs font-bold text-white bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-sm shrink-0">
-                                {currentUser.name.charAt(0)}
-                            </div>
+                            <img 
+                                src={currentUser.profilePicture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'} 
+                                alt={currentUser.name} 
+                                className="w-full h-full object-cover rounded-[10px] shadow-sm"
+                                referrerPolicy="no-referrer"
+                            />
                         </button>
                     )}
+
+                    {/* 2. Theme Toggle (Dark / Light / Auto) */}
+                    <button 
+                        onClick={handleThemeCycle}
+                        className={`${isCollapsed ? 'w-10 h-10' : 'w-9 h-9'} rounded-xl flex items-center justify-center text-zinc-500 hover:text-zinc-800 dark:text-zinc-200 dark:hover:text-white hover:bg-zinc-200/30 dark:hover:bg-white/[0.08] transition-all cursor-pointer hover:scale-105 active:scale-95`}
+                        title={
+                          theme === 'dark' 
+                            ? 'Appearance: Dark Mode (Click for Light)' 
+                            : theme === 'light' 
+                            ? 'Appearance: Light Mode (Click for Auto)' 
+                            : 'Appearance: System Auto (Click for Dark)'
+                        }
+                    >
+                        {theme === 'dark' ? (
+                          <Moon weight="duotone" className="w-5 h-5 text-indigo-400" />
+                        ) : theme === 'light' ? (
+                          <Sun weight="duotone" className="w-5 h-5 text-amber-500" />
+                        ) : (
+                          <Desktop weight="duotone" className="w-5 h-5 text-sky-400" />
+                        )}
+                    </button>
+
+                    {/* 3. Collapse Button (Moved from top right of sidebar) */}
+                    <button 
+                        onClick={toggleCollapse}
+                        className={`${isCollapsed ? 'w-10 h-10' : 'w-9 h-9'} rounded-xl flex items-center justify-center text-zinc-500 hover:text-zinc-800 dark:text-zinc-200 dark:hover:text-white hover:bg-zinc-200/30 dark:hover:bg-white/[0.08] transition-all cursor-pointer hover:scale-105 active:scale-95`}
+                        title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+                    >
+                        <SidebarSimple weight="duotone" className="w-5 h-5" />
+                    </button>
                 </div>
               </div>
             </div>
@@ -476,10 +536,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       }`}
                     >
                       <div className="flex items-center gap-2.5">
-                        <div className={`w-5 h-5 rounded-md flex items-center justify-center text-2xs font-black text-white shrink-0 ${
-                          currentUser.role === 'Partner' ? 'bg-gradient-to-br from-blue-500 to-indigo-600' : 'bg-gradient-to-br from-emerald-500 to-teal-600'
-                        }`}>
-                          {currentUser.name.charAt(0)}
+                        <div className="w-6 h-6 rounded-md flex items-center justify-center overflow-hidden shrink-0 shadow-xs border border-white/10">
+                          <img 
+                            src={currentUser.profilePicture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'} 
+                            alt={currentUser.name} 
+                            className="w-full h-full object-cover" 
+                            referrerPolicy="no-referrer" 
+                          />
                         </div>
                         <div className="flex flex-col text-left min-w-0">
                           <span className="truncate max-w-[8rem] text-xs font-bold">{currentUser.name}</span>
