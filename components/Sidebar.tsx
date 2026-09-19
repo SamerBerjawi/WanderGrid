@@ -80,7 +80,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { label: 'Dashboard', value: ViewState.DASHBOARD, icon: 'grid_view' },
     { label: 'Map', value: ViewState.MAP, icon: 'public' },
     { label: 'Planner', value: ViewState.PLANNER, icon: 'map' }, 
-    { label: 'Vacation Calendar', value: ViewState.VACATION_CALENDAR, icon: 'calendar_month' }, 
+    { label: 'Planner-2', value: ViewState.PLANNER_2, icon: 'calendar_month' }, 
+    { label: 'Vacation Calendar', value: ViewState.VACATION_CALENDAR, icon: 'calendar_today' }, 
     { label: 'Travel Atlas', value: ViewState.TRAVEL_ATLAS, icon: 'explore' },
     { label: 'Flights', value: ViewState.FLIGHTS, icon: 'flight_takeoff' }, 
     { label: 'Road Trips', value: ViewState.ROADTRIPS, icon: 'directions_car' }, 
@@ -395,6 +396,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </div>
                     {currentView === ViewState.PLANNER && (
                       <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: PAGE_THEMES[ViewState.PLANNER].accentHex }} />
+                    )}
+                  </button>
+
+                  {/* Planner-2 button option */}
+                  <button
+                    onClick={() => {
+                      onNavigate(ViewState.PLANNER_2);
+                      setIsMoreOpen(false);
+                    }}
+                    className={`flex items-center justify-between w-full p-2.5 px-3 rounded-xl text-left text-xs font-bold font-sans transition-all duration-150 border cursor-pointer ${
+                      currentView === ViewState.PLANNER_2
+                        ? `${isDark ? PAGE_THEMES[ViewState.PLANNER_2].activeSidebarDark : PAGE_THEMES[ViewState.PLANNER_2].activeSidebarLight} ${PAGE_THEMES[ViewState.PLANNER_2].color}`
+                        : 'text-light-text dark:text-dark-text bg-transparent border-transparent hover:bg-black/5 dark:hover:bg-white/5'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Icon name="calendar_month" className={`text-lg ${PAGE_THEMES[ViewState.PLANNER_2].color}`} />
+                      <span>Planner-2</span>
+                    </div>
+                    {currentView === ViewState.PLANNER_2 && (
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: PAGE_THEMES[ViewState.PLANNER_2].accentHex }} />
                     )}
                   </button>
 

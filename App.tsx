@@ -11,6 +11,7 @@ import { IconContext } from '@phosphor-icons/react';
 const Dashboard = lazy(() => import('./views/Dashboard').then(m => ({ default: m.Dashboard })));
 const Settings = lazy(() => import('./views/Settings').then(m => ({ default: m.Settings })));
 const UserDetail = lazy(() => import('./views/UserDetail').then(m => ({ default: m.UserDetail })));
+const PlannerView = lazy(() => import('./views/PlannerView').then(m => ({ default: m.PlannerView })));
 const VacationPlanner = lazy(() => import('./views/VacationPlanner').then(m => ({ default: m.VacationPlanner })));
 const TripDetail = lazy(() => import('./views/TripDetail').then(m => ({ default: m.TripDetail })));
 const ExpeditionMapView = lazy(() => import('./views/ExpeditionMapView').then(m => ({ default: m.ExpeditionMapView })));
@@ -25,6 +26,7 @@ const getUrlState = () => {
         const path = window.location.pathname;
         if (path === '/settings') return { view: ViewState.SETTINGS };
         if (path === '/planner') return { view: ViewState.PLANNER };
+        if (path === '/planner-2' || path === '/planner2') return { view: ViewState.PLANNER_2 };
         if (path === '/map') return { view: ViewState.MAP };
         if (path === '/gamification') return { view: ViewState.DASHBOARD };
         if (path === '/flights') return { view: ViewState.FLIGHTS };
@@ -72,6 +74,7 @@ export default function App() {
       switch(newView) {
           case ViewState.SETTINGS: path = '/settings'; break;
           case ViewState.PLANNER: path = '/planner'; break;
+          case ViewState.PLANNER_2: path = '/planner-2'; break;
           case ViewState.MAP: path = '/map'; break;
           case ViewState.GAMIFICATION: path = '/gamification'; break;
           case ViewState.FLIGHTS: path = '/flights'; break;
@@ -239,6 +242,8 @@ export default function App() {
       case ViewState.USER_DETAIL:
         return <UserDetail userId={selectedUserId!} onBack={() => navigate(ViewState.DASHBOARD)} onLogout={handleLogout} />;
       case ViewState.PLANNER:
+        return <PlannerView onTripClick={handleTripClick} />;
+      case ViewState.PLANNER_2:
         return <VacationPlanner onTripClick={handleTripClick} />;
       case ViewState.TRIP_DETAIL:
         return <TripDetail tripId={selectedTripId!} onBack={() => navigate(ViewState.DASHBOARD)} />;
@@ -313,7 +318,7 @@ export default function App() {
         <main className={`flex-1 h-full relative z-10 transition-all duration-300 ${
           view === ViewState.MAP 
             ? 'p-0 overflow-hidden' 
-            : `p-4 md:p-8 pb-28 md:pb-8 overflow-y-auto custom-scrollbar ${isSidebarCollapsed ? 'md:pl-28' : 'md:pl-80'}`
+            : `px-4 md:px-8 pt-4 pb-28 md:pb-8 overflow-y-auto custom-scrollbar ${isSidebarCollapsed ? 'md:pl-28' : 'md:pl-80'}`
         }`}>
           <AnimatePresence mode="wait">
             <motion.div

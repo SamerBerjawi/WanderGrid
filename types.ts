@@ -173,6 +173,8 @@ export interface Trip {
   id: string;
   name: string;
   originalName?: string;
+  subtitle?: string;
+  description?: string;
   location: string;
   startDate: string;
   endDate: string;
@@ -294,6 +296,7 @@ export enum ViewState {
   SETTINGS = 'settings',
   USER_DETAIL = 'user_detail',
   PLANNER = 'planner',
+  PLANNER_2 = 'planner_2',
   TRIP_DETAIL = 'trip_detail',
   MAP = 'map',
   GAMIFICATION = 'gamification',

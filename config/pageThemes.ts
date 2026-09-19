@@ -58,6 +58,20 @@ export const PAGE_THEMES: Record<ViewState, PageThemeConfig> = {
     activeSidebarLight: 'bg-gradient-to-r from-emerald-500/15 to-teal-500/10 text-emerald-950 border border-emerald-500/30 shadow-[0_0_15px_-3px_rgba(16,185,129,0.2)]',
     indicator: 'bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)]'
   },
+  [ViewState.PLANNER_2]: {
+    id: ViewState.PLANNER_2,
+    title: 'Planner-2',
+    color: 'text-teal-500 dark:text-teal-400',
+    accentHex: '#14b8a6',
+    glowGradients: {
+      primary: '#14b8a6',
+      secondary: '#06b6d4',
+      tertiary: '#10b981'
+    },
+    activeSidebarDark: 'bg-gradient-to-r from-teal-500/20 to-cyan-500/15 text-white border border-teal-400/30 shadow-[0_0_15px_-3px_rgba(20,184,166,0.25)]',
+    activeSidebarLight: 'bg-gradient-to-r from-teal-500/15 to-cyan-500/10 text-teal-950 border border-teal-500/30 shadow-[0_0_15px_-3px_rgba(20,184,166,0.2)]',
+    indicator: 'bg-teal-400 shadow-[0_0_8px_rgba(20,184,166,0.8)]'
+  },
   [ViewState.VACATION_CALENDAR]: {
     id: ViewState.VACATION_CALENDAR,
     title: 'Vacation Calendar',
