@@ -314,6 +314,64 @@ export const createMapLibreStyle = (
     };
 };
 
+export function getMapContentPadding(isSidebarCollapsed: boolean, width: number, height: number) {
+    const isMobile = width < 768;
+    if (isMobile) {
+        return {
+            top: 16,
+            left: 16,
+            right: 16,
+            bottom: 80, // Space for bottom navigation bar on mobile devices
+        };
+    }
+    return {
+        top: 24,
+        left: isSidebarCollapsed ? 116 : 324, // Sidebar footprint (collapsed ~116px, expanded ~324px)
+        right: 24,
+        bottom: 24,
+    };
+}
+
+export function calculateAdaptiveWorldCamera(
+    containerWidth: number,
+    containerHeight: number,
+    isSidebarCollapsed: boolean,
+    isGlobe: boolean
+) {
+    const padding = getMapContentPadding(isSidebarCollapsed, containerWidth, containerHeight);
+    const availW = Math.max(100, containerWidth - padding.left - padding.right);
+    const availH = Math.max(100, containerHeight - padding.top - padding.bottom);
+
+    if (isGlobe) {
+        // Globe projection in MapLibre: scale globe diameter to fit within available space
+        const targetDiameter = Math.min(availW, availH) * 0.86;
+        const zoom = Math.max(0.1, Math.min(3.0, Math.log2(targetDiameter / 512) + 1.0));
+        return {
+            center: [0, 15] as [number, number],
+            zoom: Number(zoom.toFixed(2)),
+            padding,
+        };
+    }
+
+    // Flat Mercator projection:
+    // Earth spans longitude [-180, 180] (360 degrees = full tile width at zoom 0 = 512px)
+    // Landmasses span roughly latitude -65°S to +82°N (spanY ≈ 0.56 of normalized Mercator space)
+    // Scale factor is constrained by the tighter of available width or height
+    const spanX = 1.0;
+    const spanY = 0.56;
+    const scaleX = availW / (spanX * 512);
+    const scaleY = availH / (spanY * 512);
+    const scale = Math.min(scaleX, scaleY);
+    const calculatedZoom = Math.log2(scale);
+    const zoom = Math.max(0, Math.min(3.5, calculatedZoom));
+
+    return {
+        center: [0, 18] as [number, number],
+        zoom: Number(zoom.toFixed(2)),
+        padding,
+    };
+}
+
 export type DeckLayerType = 'standard' | 'night' | 'satellite' | 'topography' | 'hillshade' | 'physical' | 'ocean';
 
 export interface DeckFlightMapProps {
@@ -671,9 +729,14 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 });
                 previousViewRef.current = null;
             } else {
+                const rect = mapContainerRef.current?.getBoundingClientRect();
+                const width = rect?.width || window.innerWidth || 1200;
+                const height = rect?.height || window.innerHeight || 800;
+                const cam = calculateAdaptiveWorldCamera(width, height, isSidebarCollapsed, effectiveProjection === 'globe');
+                mapRef.current.setPadding(cam.padding);
                 mapRef.current.flyTo({
-                    center: [0, 20],
-                    zoom: effectiveProjection === 'globe' ? 1.0 : 1.3,
+                    center: cam.center,
+                    zoom: cam.zoom,
                     duration: 1000,
                     essential: true
                 });
@@ -681,7 +744,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         }
         setSelectedCorridor(null);
         setSelectedCountry(null);
-    }, [effectiveProjection]);
+    }, [effectiveProjection, isSidebarCollapsed]);
 
     // Multi-modal routes request (Rail & Highway)
     useEffect(() => {
@@ -722,42 +785,11 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         }
     }, [focusTransportCoordinates]);
 
-    // Auto-fit initial bounds
-    const fittedRef = useRef(false);
+    // Preserve initial adaptive full earth view on load without clustering into local trip bounding box
+    const fittedRef = useRef<boolean>(false);
     useEffect(() => {
         if (fittedRef.current || enrichedTrips.length === 0 || !mapRef.current) return;
-        const pts: [number, number][] = [];
-        enrichedTrips.forEach(trip => {
-            trip.transports?.forEach(t => {
-                if (t.originLat && t.originLng && !isNaN(t.originLat) && !isNaN(t.originLng)) pts.push([t.originLng, t.originLat]);
-                if (t.destLat && t.destLng && !isNaN(t.destLat) && !isNaN(t.destLng)) pts.push([t.destLng, t.destLat]);
-            });
-        });
-        if (pts.length > 0) {
-            fittedRef.current = true;
-            let minLng = 180, maxLng = -180, minLat = 90, maxLat = -90;
-            pts.forEach(([lng, lat]) => {
-                if (lng < minLng) minLng = lng;
-                if (lng > maxLng) maxLng = lng;
-                if (lat < minLat) minLat = lat;
-                if (lat > maxLat) maxLat = lat;
-            });
-
-            if (effectiveProjection === 'globe') {
-                mapRef.current.flyTo({
-                    center: [(minLng + maxLng) / 2, (minLat + maxLat) / 2],
-                    zoom: 1.0,
-                    duration: 800,
-                    essential: true
-                });
-            } else {
-                mapRef.current.fitBounds([[minLng, minLat], [maxLng, maxLat]], {
-                    padding: 60,
-                    maxZoom: 4.5,
-                    duration: 800
-                });
-            }
-        }
+        fittedRef.current = true;
     }, [enrichedTrips, effectiveProjection]);
 
     // --- High-Performance Flight Arc Deduplication & Geometry Preparation (AirTrail Architecture) ---
@@ -1447,16 +1479,26 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
         const style = createMapLibreStyle(currentLayer, isDark, workspaceSettings?.cartoApiKey);
 
+        const isGlobe = effectiveProjection === 'globe';
+        const rect = mapContainerRef.current.getBoundingClientRect();
+        const width = rect.width || window.innerWidth || 1200;
+        const height = rect.height || window.innerHeight || 800;
+        const initialCamera = calculateAdaptiveWorldCamera(width, height, isSidebarCollapsed, isGlobe);
+
         const map = new maplibregl.Map({
             container: mapContainerRef.current,
             style,
-            center: [0, 20],
-            zoom: effectiveProjection === 'globe' ? 1.0 : 1.3,
+            center: initialCamera.center,
+            zoom: initialCamera.zoom,
+            renderWorldCopies: false,
             pitch: 0,
             bearing: 0,
-            dragRotate: effectiveProjection === 'globe',
+            dragRotate: isGlobe,
             attributionControl: false
         });
+
+        map.setPadding(initialCamera.padding);
+        map.setMinZoom(Math.max(0, initialCamera.zoom - 0.6));
 
         const overlay = new MapboxOverlay({
             interleaved: false,
@@ -1466,8 +1508,20 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         map.on('load', () => {
             isMapLoadedRef.current = true;
             try {
-                if (effectiveProjection === 'globe' && (map as any).setProjection) {
+                if (isGlobe && (map as any).setProjection) {
                     (map as any).setProjection({ type: 'globe' });
+                }
+                const curRect = mapContainerRef.current?.getBoundingClientRect();
+                if (curRect && curRect.width && curRect.height) {
+                    const freshCam = calculateAdaptiveWorldCamera(curRect.width, curRect.height, isSidebarCollapsed, isGlobe);
+                    map.setPadding(freshCam.padding);
+                    map.setMinZoom(Math.max(0, freshCam.zoom - 0.6));
+                    map.jumpTo({
+                        center: freshCam.center,
+                        zoom: freshCam.zoom,
+                        pitch: 0,
+                        bearing: 0
+                    });
                 }
                 map.addControl(overlay as any);
                 overlay.setProps({
@@ -1621,8 +1675,15 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         const applyProj = () => {
             try {
                 (map as any).setProjection({ type: isGlobe ? 'globe' : 'mercator' });
+                const rect = mapContainerRef.current?.getBoundingClientRect();
+                const width = rect?.width || window.innerWidth || 1200;
+                const height = rect?.height || window.innerHeight || 800;
+                const cam = calculateAdaptiveWorldCamera(width, height, isSidebarCollapsed, isGlobe);
+                map.setPadding(cam.padding);
+                map.setMinZoom(Math.max(0, cam.zoom - 0.6));
                 map.easeTo({
-                    zoom: isGlobe ? 1.0 : 1.3,
+                    center: cam.center,
+                    zoom: cam.zoom,
                     duration: 600
                 });
             } catch (e) {
@@ -1637,6 +1698,48 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         }
     }, [effectiveProjection]);
 
+    // Adaptive camera & padding synchronization on resize or sidebar collapse/expansion
+    useEffect(() => {
+        const map = mapRef.current;
+        const container = mapContainerRef.current;
+        if (!map || !container) return;
+
+        const updateAdaptiveCamera = () => {
+            if (!mapRef.current || !mapContainerRef.current) return;
+            const rect = mapContainerRef.current.getBoundingClientRect();
+            if (!rect.width || !rect.height) return;
+
+            const isGlobe = effectiveProjection === 'globe';
+            const cam = calculateAdaptiveWorldCamera(rect.width, rect.height, isSidebarCollapsed, isGlobe);
+
+            mapRef.current.setPadding(cam.padding);
+            mapRef.current.setMinZoom(Math.max(0, cam.zoom - 0.6));
+
+            // Only adapt zoom/center if user is not currently inspecting a corridor or country
+            if (!selectedCorridor && !selectedCountry) {
+                mapRef.current.easeTo({
+                    center: cam.center,
+                    zoom: cam.zoom,
+                    duration: 350,
+                    essential: true
+                });
+            }
+        };
+
+        const resizeObserver = new ResizeObserver(() => {
+            map.resize();
+            updateAdaptiveCamera();
+        });
+        resizeObserver.observe(container);
+
+        // Immediate update when isSidebarCollapsed changes
+        updateAdaptiveCamera();
+
+        return () => {
+            resizeObserver.disconnect();
+        };
+    }, [isSidebarCollapsed, effectiveProjection, selectedCorridor, selectedCountry]);
+
     // Navigation Controls Handlers
     const handleZoomIn = () => {
         mapRef.current?.zoomIn({ duration: 300 });
@@ -1647,9 +1750,17 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     };
 
     const handleReset100 = () => {
-        mapRef.current?.flyTo({
-            center: [0, 20],
-            zoom: effectiveProjection === 'globe' ? 1.0 : 1.3,
+        if (!mapRef.current || !mapContainerRef.current) return;
+        const rect = mapContainerRef.current.getBoundingClientRect();
+        const width = rect.width || window.innerWidth || 1200;
+        const height = rect.height || window.innerHeight || 800;
+        const isGlobe = effectiveProjection === 'globe';
+        const cam = calculateAdaptiveWorldCamera(width, height, isSidebarCollapsed, isGlobe);
+
+        mapRef.current.setPadding(cam.padding);
+        mapRef.current.flyTo({
+            center: cam.center,
+            zoom: cam.zoom,
             pitch: 0,
             bearing: 0,
             duration: 600,
@@ -1682,6 +1793,11 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         });
 
         if (hasCoords) {
+            const rect = mapContainerRef.current?.getBoundingClientRect();
+            const width = rect?.width || window.innerWidth || 1200;
+            const height = rect?.height || window.innerHeight || 800;
+            const padding = getMapContentPadding(isSidebarCollapsed, width, height);
+
             if (effectiveProjection === 'globe') {
                 mapRef.current.flyTo({
                     center: [(minLng + maxLng) / 2, (minLat + maxLat) / 2],
@@ -1691,7 +1807,12 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 });
             } else {
                 mapRef.current.fitBounds([[minLng, minLat], [maxLng, maxLat]], {
-                    padding: 60,
+                    padding: {
+                        top: padding.top + 30,
+                        left: padding.left + 30,
+                        right: padding.right + 30,
+                        bottom: padding.bottom + 30,
+                    },
                     maxZoom: 5,
                     duration: 800
                 });
