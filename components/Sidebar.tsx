@@ -139,14 +139,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <>
       {/* Desktop Fixed Sidebar with Liquid Glass */}
-      <aside className={`hidden md:flex flex-shrink-0 flex-col fixed inset-y-0 left-0 z-40 transition-all duration-300 pointer-events-none ${isCollapsed ? 'w-20' : 'w-72'}`}>
+      <aside className={`hidden md:flex flex-shrink-0 flex-col fixed top-4 left-4 bottom-4 z-40 transition-all duration-300 pointer-events-none ${isCollapsed ? 'w-20' : 'w-72'}`}>
         <div className="relative w-full h-full pointer-events-auto">
           <GlassPanel
             className="wg-glass-card shadow-2xl h-full flex flex-col"
-            overrides={{ borderRadius: 0, displacementScale: 0 }}
+            overrides={{ borderRadius: 28 }}
             padding="0px"
           >
-            <div className="flex flex-col h-full w-full overflow-hidden">
+            <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px]">
               <div className={`p-6 ${isCollapsed ? 'px-2' : 'px-6'} pb-4`}>
                 <div className={`flex items-center gap-3.5 mb-8 ${isCollapsed ? 'justify-center' : ''}`}>
                   <img 

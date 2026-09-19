@@ -297,12 +297,12 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick }) => {
                     </h1>
                 </div>
 
-                {/* Right: + New Trip Button (Matches Add Flight in Flights.tsx with duotone icon) */}
+                {/* Right: + New Trip Button (Matches Add Flight in Flights.tsx with standard icon) */}
                 <Button 
                     variant="primary" 
                     className="rounded-2xl cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 px-6 shrink-0"
                     onClick={() => handleOpenNewTrip('Planning')}
-                    icon={<Plus className="w-4 h-4" weight="duotone" />}
+                    icon={<Plus className="w-4 h-4" />}
                 >
                     New Trip
                 </Button>
@@ -315,10 +315,10 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick }) => {
             {/* RESPONSIVE BAR: TABS (LEFT) & FILTER (RIGHT) ON DESKTOP, STACKED ON MOBILE*/}
             {/* ========================================================================= */}
             <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3 w-full">
-                {/* 1. Tabs Row (Left on desktop) */}
-                <div className="flex items-center justify-start overflow-x-auto no-scrollbar py-0.5 shrink-0">
+                {/* 1. Tabs Row (Left on desktop) - Unclipped for smooth shadow */}
+                <div className="flex items-center justify-start overflow-x-auto sm:overflow-visible no-scrollbar p-3 -m-3 shrink-0">
                     <GlassPanel
-                        className="wg-glass-pill shadow-glass-card shrink-0"
+                        className="wg-glass-pill shadow-lg shadow-black/5 dark:shadow-black/25 shrink-0"
                         padding="4px 6px"
                         overrides={{ borderRadius: 9999 }}
                     >
@@ -521,7 +521,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick }) => {
                                         className="w-9 h-9 rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-emerald-500 hover:bg-emerald-500/10 transition-colors cursor-pointer"
                                         title="Log past trip"
                                     >
-                                        <Plus className="w-4 h-4" weight="duotone" />
+                                        <Plus className="w-4 h-4" />
                                     </button>
                                 </GlassPanel>
                             </div>
@@ -592,7 +592,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick }) => {
                                         className="w-9 h-9 rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-sky-500 hover:bg-sky-500/10 transition-colors cursor-pointer"
                                         title="Add confirmed trip"
                                     >
-                                        <Plus className="w-4 h-4" weight="duotone" />
+                                        <Plus className="w-4 h-4" />
                                     </button>
                                 </GlassPanel>
                             </div>
@@ -663,7 +663,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick }) => {
                                         className="w-9 h-9 rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-amber-500 hover:bg-amber-500/10 transition-colors cursor-pointer"
                                         title="Add draft plan"
                                     >
-                                        <Plus className="w-4 h-4" weight="duotone" />
+                                        <Plus className="w-4 h-4" />
                                     </button>
                                 </GlassPanel>
                             </div>
@@ -949,7 +949,7 @@ const EmptyBucketPlaceholder: React.FC<EmptyBucketPlaceholderProps> = ({ stage, 
                     onClick={onAction}
                     className="px-3.5 py-1.5 rounded-xl text-2xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 transition-all cursor-pointer flex items-center gap-1.5"
                 >
-                    <Plus className="w-3 h-3" weight="duotone" />
+                    <Plus className="w-3 h-3" />
                     <span>{actionLabel}</span>
                 </button>
             </GlassPanel>
