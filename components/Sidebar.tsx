@@ -125,9 +125,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="flex flex-col h-full w-full overflow-hidden">
               <div className={`p-6 ${isCollapsed ? 'px-2' : 'px-6'} pb-4`}>
                 <div className={`flex items-center gap-3.5 mb-8 ${isCollapsed ? 'justify-center' : ''}`}>
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500/10 to-purple-600/10 dark:from-indigo-500/20 dark:to-purple-600/20 border border-indigo-500/20 dark:border-indigo-500/30 flex items-center justify-center text-xl shrink-0 shadow-inner">
-                    🏔️
-                  </div>
+                  <img 
+                    src="/app-icon.png" 
+                    alt="WanderGrid" 
+                    className="w-10 h-10 rounded-xl object-contain shrink-0 shadow-md transition-transform group-hover:scale-105" 
+                  />
                   {!isCollapsed && (
                      <h1 className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight whitespace-nowrap overflow-hidden bg-gradient-to-r from-gray-950 via-zinc-800 to-zinc-900 dark:from-white dark:via-white dark:to-zinc-100 bg-clip-text text-transparent">WanderGrid</h1>
                   )}

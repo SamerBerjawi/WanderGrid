@@ -127,9 +127,11 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
 
             <Card className="w-full max-w-md z-10 !bg-white/80 dark:!bg-gray-900/80 backdrop-blur-xl shadow-2xl border border-white/50 dark:border-white/10" noPadding>
                 <div className="p-8 text-center">
-                    <div className="w-16 h-16 mx-auto bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center shadow-lg mb-6 text-3xl">
-                        <span>🏔️</span>
-                    </div>
+                    <img 
+                        src="/app-icon.png" 
+                        alt="WanderGrid" 
+                        className="w-16 h-16 mx-auto rounded-2xl shadow-lg mb-6 object-contain" 
+                    />
                     <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight mb-2">
                         {mode === 'setup_admin' ? 'Initial System Setup' : mode === 'signin' ? 'Welcome Back' : 'Join WanderGrid'}
                     </h2>
