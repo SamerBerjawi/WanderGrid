@@ -14,8 +14,9 @@ import { Trip, User, Transport, Accommodation, WorkspaceSettings, Activity, Tran
 import { searchLocations, resolvePlaceName, getCoordinates } from '../services/geocoding';
 import { GoogleGenAI } from "@google/genai";
 const DeckFlightMap = React.lazy(() => import('../components/DeckFlightMap').then(m => ({ default: m.DeckFlightMap || m.default })));
+const FlightImportWizard = React.lazy(() => import('../components/FlightImportWizard').then(m => ({ default: m.FlightImportWizard })));
 import { getMerchantLogoUrl } from '../utils/brandfetch';
-import { formatDate, formatDateRange, formatCurrency } from '../utils/formatters';
+import { formatDate, formatDateRange, formatCurrency, getCurrencySymbol } from '../utils/formatters';
 import { EmptyState } from '../components/EmptyState';
 
 interface AirlineLogoProps {
@@ -823,14 +824,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         setCalendarDate(newDate);
     };
 
-    const getCurrencySymbol = (code: string) => {
-        const symbols: Record<string, string> = { 'USD': '$', 'EUR': '€', 'GBP': '£', 'AUD': 'A$', 'JPY': '¥' };
-        return symbols[code] || code || '$';
-    };
-    const formatCurrency = (amount: number) => {
-        if (!settings) return `$${amount}`;
-        try { return new Intl.NumberFormat('en-US', { style: 'currency', currency: settings.currency }).format(amount); } catch (e) { return `${settings.currency} ${amount}`; }
-    };
     const formatTime = (time24?: string) => {
         if (!time24) return '';
         const [h, m] = time24.split(':');

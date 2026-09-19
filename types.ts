@@ -122,6 +122,9 @@ export interface Transport {
   isApproximate?: boolean;
   approximateYear?: number;
   customFields?: Array<{ key: string; value: string }>;
+  // Associated Trip (for flattened/query contexts)
+  tripId?: string;
+  tripName?: string;
 }
 
 export interface Accommodation {
@@ -175,6 +178,7 @@ export interface Trip {
   originalName?: string;
   subtitle?: string;
   description?: string;
+  notes?: string;
   location: string;
   startDate: string;
   endDate: string;

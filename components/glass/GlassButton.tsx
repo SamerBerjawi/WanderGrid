@@ -16,7 +16,7 @@ export interface GlassButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLBu
   };
 }
 
-export const GlassButton: React.FC<GlassButtonProps> = ({
+export const GlassButton = React.forwardRef<HTMLButtonElement, GlassButtonProps>(({
   children,
   variant = 'secondary',
   size = 'md',
@@ -28,7 +28,7 @@ export const GlassButton: React.FC<GlassButtonProps> = ({
   overrides,
   type = 'button',
   ...props
-}) => {
+}, ref) => {
   const sizePadding = {
     sm: '6px 14px',
     md: '10px 20px',
@@ -53,6 +53,7 @@ export const GlassButton: React.FC<GlassButtonProps> = ({
 
   return (
     <button
+      ref={ref}
       type={type}
       disabled={disabled || isLoading}
       onClick={disabled || isLoading ? undefined : onClick}
@@ -78,6 +79,7 @@ export const GlassButton: React.FC<GlassButtonProps> = ({
       </GlassPanel>
     </button>
   );
-};
+});
+GlassButton.displayName = 'GlassButton';
 
 export default GlassButton;

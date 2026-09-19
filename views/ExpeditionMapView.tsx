@@ -920,8 +920,8 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                 </Suspense>
             </div>
 
-            {/* 2. FLOATING TOP-CENTER PREDEFINED VIEW MODES SELECTOR (Desktop md+) */}
-            <div className="hidden md:block absolute top-5 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
+            {/* 2. FLOATING BOTTOM-CENTER PREDEFINED VIEW MODES SELECTOR (Desktop md+) */}
+            <div className="hidden md:block absolute bottom-6 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
                 <GlassPanel
                     className="wg-glass-pill shadow-glass-card"
                     padding="4px 6px"

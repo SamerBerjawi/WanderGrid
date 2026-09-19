@@ -2732,8 +2732,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           action={{
             label: "Add Boarding Pass",
             onClick: () => {
-              resetForm();
-              setIsEditing(true);
+              openFlightForm();
             },
             icon: "flight_takeoff"
           }}

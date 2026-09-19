@@ -47,7 +47,7 @@ import { Button, Badge, Modal, BentoGrid, BentoCard } from '../components/ui';
 import { TripModal } from '../components/TripModal';
 import { dataService } from '../services/mockDb';
 import { useWanderSync } from '../hooks/useWanderSync';
-import { Trip, User, WorkspaceSettings, EntitlementType, PublicHoliday, Transport, Location } from '../types';
+import { Trip, User, WorkspaceSettings, EntitlementType, PublicHoliday, Transport } from '../types';
 import { getCoordinatesSync, calculateDistance, formatPlaceName } from '../services/geocoding';
 import { getFlagEmoji, getRegion } from '../services/geoData';
 import { formatDate, formatDateRange, formatCurrency } from '../utils/formatters';
@@ -458,7 +458,7 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                 const nameMatch = (t.name || '').toLowerCase().includes(q);
                 const locMatch = (t.location || '').toLowerCase().includes(q);
                 const stopsMatch = (t.locations || []).some(l => (l.name || '').toLowerCase().includes(q));
-                const notesMatch = (t.notes || '').toLowerCase().includes(q);
+                const notesMatch = ((t.notes || t.description) || '').toLowerCase().includes(q);
                 if (!nameMatch && !locMatch && !stopsMatch && !notesMatch) return false;
             }
 

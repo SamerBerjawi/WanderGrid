@@ -15,6 +15,7 @@ export interface EmptyStateProps {
   secondaryAction?: {
     label: string;
     onClick: () => void;
+    icon?: string | ReactNode;
   };
   compact?: boolean;
   className?: string;
@@ -80,9 +81,16 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
             <button
               type="button"
               onClick={secondaryAction.onClick}
-              className={`${BTN_SECONDARY_STYLE} min-h-[44px] px-5 py-2.5 text-xs font-bold uppercase tracking-wider`}
+              className={`${BTN_SECONDARY_STYLE} min-h-[44px] px-5 py-2.5 text-xs font-bold uppercase tracking-wider flex items-center gap-2`}
             >
-              {secondaryAction.label}
+              {secondaryAction.icon && (
+                typeof secondaryAction.icon === 'string' ? (
+                  <Icon name={secondaryAction.icon} className="text-sm" />
+                ) : (
+                  secondaryAction.icon
+                )
+              )}
+              <span>{secondaryAction.label}</span>
             </button>
           )}
         </div>
