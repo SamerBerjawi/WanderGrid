@@ -1,5 +1,6 @@
 
 # WanderGrid
+Note: The app is highly inspired by AirTrail (https://github.com/johanohly/AirTrail). It is not a fork, but the it was actually a great starting point from the architecture and design perspective for the Map page and flight routes planning and visualization. 
 
 **The Ultimate Self-Hosted Expedition & Leave Management System.**
 
