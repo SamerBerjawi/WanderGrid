@@ -5,6 +5,7 @@ import { dataService } from '../services/mockDb';
 import { motion, AnimatePresence } from 'motion/react';
 import GlassPanel from './glass/GlassPanel';
 import Icon from './ui/Icon';
+import { PAGE_THEMES } from '../config/pageThemes';
 
 interface SidebarProps {
   currentView: ViewState;
@@ -73,6 +74,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     });
   }, [currentView]); // Re-check when view changes (likely after a booking)
 
+  const isDark = theme === 'dark' || (theme === 'auto' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
   const navItems = [
     { label: 'Dashboard', value: ViewState.DASHBOARD, icon: 'grid_view' },
     { label: 'Map', value: ViewState.MAP, icon: 'public' },
@@ -131,31 +134,47 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </div>
 
                 <nav className={`flex flex-col gap-1.5 ${isCollapsed ? 'items-center animate-fade-in' : ''}`}>
-                  {navItems.map((item) => (
-                    <button
-                      key={item.value}
-                      onClick={() => onNavigate(item.value)}
-                      className={`flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-bold select-none cursor-pointer relative transition-all duration-200
-                        ${currentView === item.value 
-                          ? 'text-indigo-600 dark:text-indigo-300 font-black z-10' 
-                          : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-100 dark:hover:text-white hover:bg-zinc-100/50 dark:hover:bg-white/[0.08] z-0'
-                        }
-                        ${isCollapsed ? 'justify-center px-0 w-12 h-12 border border-transparent' : 'w-full'}
-                      `}
-                      title={isCollapsed ? item.label : undefined}
-                    >
-                      {currentView === item.value && (
-                        <motion.div
-                          layoutId="activeTabGlow"
-                          className="absolute inset-0 bg-zinc-100 dark:bg-white/[0.14] rounded-2xl border border-zinc-200/50 dark:border-white/20 shadow-sm"
-                          transition={{ type: "spring", stiffness: 385, damping: 32 }}
-                          style={{ originY: "center" }}
+                  {navItems.map((item) => {
+                    const itemTheme = PAGE_THEMES[item.value] || PAGE_THEMES[ViewState.DASHBOARD];
+                    const isActive = currentView === item.value;
+                    return (
+                      <button
+                        key={item.value}
+                        onClick={() => onNavigate(item.value)}
+                        className={`flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-bold select-none cursor-pointer relative transition-all duration-200 group
+                          ${isActive 
+                            ? 'font-black z-10' 
+                            : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-200 dark:hover:text-white hover:bg-zinc-100/50 dark:hover:bg-white/[0.08] z-0'
+                          }
+                          ${isCollapsed ? 'justify-center px-0 w-12 h-12 border border-transparent' : 'w-full'}
+                        `}
+                        title={isCollapsed ? item.label : undefined}
+                      >
+                        {isActive && (
+                          <motion.div
+                            layoutId="activeTabGlow"
+                            className={`absolute inset-0 rounded-2xl ${isDark ? itemTheme.activeSidebarDark : itemTheme.activeSidebarLight}`}
+                            transition={{ type: "spring", stiffness: 385, damping: 32 }}
+                            style={{ originY: "center" }}
+                          />
+                        )}
+                        <Icon 
+                          name={item.icon} 
+                          className={`text-xl relative z-20 shrink-0 transition-transform duration-200 group-hover:scale-105 ${itemTheme.color} ${
+                            isActive ? 'opacity-100' : 'opacity-75 group-hover:opacity-100'
+                          }`} 
                         />
-                      )}
-                      <Icon name={item.icon} className="text-xl opacity-90 dark:opacity-100 relative z-20 shrink-0" />
-                      {!isCollapsed && <span className="relative z-20 font-bold tracking-tight">{item.label}</span>}
-                    </button>
-                  ))}
+                        {!isCollapsed && (
+                          <span className={`relative z-20 font-bold tracking-tight ${isActive ? itemTheme.color : ''}`}>
+                            {item.label}
+                          </span>
+                        )}
+                        {isActive && !isCollapsed && (
+                          <span className={`ml-auto relative z-20 w-1.5 h-3.5 rounded-full ${itemTheme.indicator}`} />
+                        )}
+                      </button>
+                    );
+                  })}
                 </nav>
               </div>
 
@@ -218,7 +237,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         onClick={() => onNavigate(ViewState.SETTINGS)}
                         className={`${isCollapsed ? 'w-10 h-10' : 'w-9 h-9'} rounded-xl flex items-center justify-center transition-all cursor-pointer ${
                             currentView === ViewState.SETTINGS 
-                            ? 'text-indigo-600 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40' 
+                            ? `${isDark ? PAGE_THEMES[ViewState.SETTINGS].activeSidebarDark : PAGE_THEMES[ViewState.SETTINGS].activeSidebarLight} ${PAGE_THEMES[ViewState.SETTINGS].color}` 
                             : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-200 dark:hover:text-white hover:bg-zinc-200/30 dark:hover:bg-white/[0.08]'
                         }`}
                         title="Settings & Workspace Preferences"
@@ -232,7 +251,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             onClick={() => onNavigate(ViewState.USER_DETAIL, currentUser.id)}
                             className={`${isCollapsed ? 'w-10 h-10' : 'w-9 h-9'} rounded-xl flex items-center justify-center transition-all border cursor-pointer ${
                                 currentView === ViewState.USER_DETAIL 
-                                ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-300 font-bold' 
+                                ? `${isDark ? PAGE_THEMES[ViewState.USER_DETAIL].activeSidebarDark : PAGE_THEMES[ViewState.USER_DETAIL].activeSidebarLight}` 
                                 : 'bg-transparent border-transparent hover:border-zinc-200/40 dark:hover:border-white/20 hover:bg-zinc-200/30 dark:hover:bg-white/[0.08]'
                             }`}
                             title={`Profile: ${currentUser.name} (${currentUser.role})`}
@@ -264,6 +283,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               { label: 'Travel Atlas', shortLabel: 'Atlas', value: ViewState.TRAVEL_ATLAS, icon: 'explore' },
             ].map((item) => {
               const isActive = currentView === item.value;
+              const itemTheme = PAGE_THEMES[item.value] || PAGE_THEMES[ViewState.DASHBOARD];
               return (
                 <button
                   key={item.value}
@@ -273,18 +293,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   }}
                   className={`flex flex-col items-center justify-center flex-1 h-14 min-w-0 rounded-2xl transition-all duration-300 relative select-none cursor-pointer px-0.5
                     ${isActive 
-                      ? 'text-primary-500 font-extrabold scale-105' 
+                      ? `${itemTheme.color} font-extrabold scale-105` 
                       : 'text-gray-500 dark:text-zinc-200 hover:text-gray-900 dark:hover:text-white'
                     }`}
                 >
-                  <Icon name={item.icon} className="text-xl leading-none" />
-                  <span className="text-[10px] font-bold uppercase tracking-tight mt-1 text-center leading-tight max-w-full truncate font-sans">
+                  <Icon name={item.icon} className={`text-xl leading-none ${isActive ? itemTheme.color : ''}`} />
+                  <span className={`text-[10px] font-bold uppercase tracking-tight mt-1 text-center leading-tight max-w-full truncate font-sans ${isActive ? itemTheme.color : ''}`}>
                     {item.shortLabel || item.label}
                   </span>
                   {isActive && (
                     <motion.div 
                       layoutId="mobileActiveIndicatorDot"
-                      className="absolute -bottom-1 w-1.5 h-1.5 rounded-full bg-primary-500 shadow-[0_0_8px_0_rgba(250,154,29,0.8)]"
+                      className="absolute -bottom-1 w-1.5 h-1.5 rounded-full"
+                      style={{ 
+                        backgroundColor: itemTheme.accentHex,
+                        boxShadow: `0 0 8px 0 ${itemTheme.accentHex}` 
+                      }}
                       transition={{ type: "spring", stiffness: 350, damping: 25 }}
                     />
                   )}
@@ -293,24 +317,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
             })}
 
             {/* Dynamic More popup trigger */}
-            <button
-              onClick={() => setIsMoreOpen(!isMoreOpen)}
-              className={`flex flex-col items-center justify-center flex-1 h-14 min-w-0 rounded-2xl transition-all duration-300 relative select-none cursor-pointer px-0.5
-                ${(currentView === ViewState.PLANNER || currentView === ViewState.SETTINGS || currentView === ViewState.USER_DETAIL || currentView === ViewState.ROADTRIPS)
-                  ? 'text-primary-500 font-extrabold scale-105'
-                  : 'text-gray-500 dark:text-zinc-200 hover:text-gray-900 dark:hover:text-white'
-                }`}
-            >
-              <Icon name="more_horiz" className="text-xl leading-none" />
-              <span className="text-[10px] font-bold uppercase tracking-tight mt-1 text-center leading-tight font-sans">More</span>
-              {(currentView === ViewState.PLANNER || currentView === ViewState.SETTINGS || currentView === ViewState.USER_DETAIL || currentView === ViewState.ROADTRIPS) && (
-                <motion.div 
-                  layoutId="mobileActiveIndicatorDot"
-                  className="absolute -bottom-1 w-1.5 h-1.5 rounded-full bg-primary-500 shadow-[0_0_8px_0_rgba(250,154,29,0.8)]"
-                  transition={{ type: "spring", stiffness: 350, damping: 25 }}
-                />
-              )}
-            </button>
+            {(() => {
+              const isMoreActive = (currentView === ViewState.PLANNER || currentView === ViewState.SETTINGS || currentView === ViewState.USER_DETAIL || currentView === ViewState.ROADTRIPS);
+              const moreTheme = isMoreActive ? (PAGE_THEMES[currentView] || PAGE_THEMES[ViewState.PLANNER]) : null;
+              return (
+                <button
+                  onClick={() => setIsMoreOpen(!isMoreOpen)}
+                  className={`flex flex-col items-center justify-center flex-1 h-14 min-w-0 rounded-2xl transition-all duration-300 relative select-none cursor-pointer px-0.5
+                    ${isMoreActive
+                      ? `${moreTheme?.color} font-extrabold scale-105`
+                      : 'text-gray-500 dark:text-zinc-200 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                >
+                  <Icon name="more_horiz" className={`text-xl leading-none ${isMoreActive ? moreTheme?.color : ''}`} />
+                  <span className={`text-[10px] font-bold uppercase tracking-tight mt-1 text-center leading-tight font-sans ${isMoreActive ? moreTheme?.color : ''}`}>More</span>
+                  {isMoreActive && (
+                    <motion.div 
+                      layoutId="mobileActiveIndicatorDot"
+                      className="absolute -bottom-1 w-1.5 h-1.5 rounded-full"
+                      style={{
+                        backgroundColor: moreTheme?.accentHex,
+                        boxShadow: `0 0 8px 0 ${moreTheme?.accentHex}`
+                      }}
+                      transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                    />
+                  )}
+                </button>
+              );
+            })()}
           </div>
         </GlassPanel>
       </div>
@@ -349,15 +383,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     }}
                     className={`flex items-center justify-between w-full p-2.5 px-3 rounded-xl text-left text-xs font-bold font-sans transition-all duration-150 border cursor-pointer ${
                       currentView === ViewState.PLANNER
-                        ? 'bg-primary-500/10 text-primary-600 dark:text-primary-400 border-primary-500/20'
+                        ? `${isDark ? PAGE_THEMES[ViewState.PLANNER].activeSidebarDark : PAGE_THEMES[ViewState.PLANNER].activeSidebarLight} ${PAGE_THEMES[ViewState.PLANNER].color}`
                         : 'text-light-text dark:text-dark-text bg-transparent border-transparent hover:bg-black/5 dark:hover:bg-white/5'
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
-                      <Icon name="map" className="text-lg" />
+                      <Icon name="map" className={`text-lg ${PAGE_THEMES[ViewState.PLANNER].color}`} />
                       <span>Planner</span>
                     </div>
-                    {currentView === ViewState.PLANNER && <span className="w-1.5 h-1.5 rounded-full bg-primary-500" />}
+                    {currentView === ViewState.PLANNER && (
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: PAGE_THEMES[ViewState.PLANNER].accentHex }} />
+                    )}
                   </button>
 
                   {/* Road Trips option */}
@@ -368,15 +404,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     }}
                     className={`flex items-center justify-between w-full p-2.5 px-3 rounded-xl text-left text-xs font-bold font-sans transition-all duration-150 border cursor-pointer ${
                       currentView === ViewState.ROADTRIPS
-                        ? 'bg-primary-500/10 text-primary-600 dark:text-primary-400 border-primary-500/20'
+                        ? `${isDark ? PAGE_THEMES[ViewState.ROADTRIPS].activeSidebarDark : PAGE_THEMES[ViewState.ROADTRIPS].activeSidebarLight} ${PAGE_THEMES[ViewState.ROADTRIPS].color}`
                         : 'text-light-text dark:text-dark-text bg-transparent border-transparent hover:bg-black/5 dark:hover:bg-white/5'
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
-                      <Icon name="directions_car" className="text-lg" />
+                      <Icon name="directions_car" className={`text-lg ${PAGE_THEMES[ViewState.ROADTRIPS].color}`} />
                       <span>Road Trips</span>
                     </div>
-                    {currentView === ViewState.ROADTRIPS && <span className="w-1.5 h-1.5 rounded-full bg-primary-500" />}
+                    {currentView === ViewState.ROADTRIPS && (
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: PAGE_THEMES[ViewState.ROADTRIPS].accentHex }} />
+                    )}
                   </button>
 
                   {/* Settings button option */}
@@ -387,15 +425,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     }}
                     className={`flex items-center justify-between w-full p-2.5 px-3 rounded-xl text-left text-xs font-bold font-sans transition-all duration-150 border cursor-pointer ${
                       currentView === ViewState.SETTINGS
-                        ? 'bg-primary-500/10 text-primary-600 dark:text-primary-400 border-primary-500/20'
+                        ? `${isDark ? PAGE_THEMES[ViewState.SETTINGS].activeSidebarDark : PAGE_THEMES[ViewState.SETTINGS].activeSidebarLight} ${PAGE_THEMES[ViewState.SETTINGS].color}`
                         : 'text-light-text dark:text-dark-text bg-transparent border-transparent hover:bg-black/5 dark:hover:bg-white/5'
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
-                      <Icon name="gear" className="text-lg" />
+                      <Icon name="gear" className={`text-lg ${PAGE_THEMES[ViewState.SETTINGS].color}`} />
                       <span>Settings</span>
                     </div>
-                    {currentView === ViewState.SETTINGS && <span className="w-1.5 h-1.5 rounded-full bg-primary-500" />}
+                    {currentView === ViewState.SETTINGS && (
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: PAGE_THEMES[ViewState.SETTINGS].accentHex }} />
+                    )}
                   </button>
 
                   {/* Me (User profile) button option */}
@@ -407,7 +447,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       }}
                       className={`flex items-center justify-between w-full p-2.5 px-3 rounded-xl text-left text-xs font-bold font-sans transition-all duration-150 border cursor-pointer ${
                         currentView === ViewState.USER_DETAIL
-                          ? 'bg-primary-500/10 text-primary-600 dark:text-primary-400 border-primary-500/20'
+                          ? `${isDark ? PAGE_THEMES[ViewState.USER_DETAIL].activeSidebarDark : PAGE_THEMES[ViewState.USER_DETAIL].activeSidebarLight} ${PAGE_THEMES[ViewState.USER_DETAIL].color}`
                           : 'text-light-text dark:text-dark-text bg-transparent border-transparent hover:bg-black/5 dark:hover:bg-white/5'
                       }`}
                     >
@@ -421,7 +461,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           <span className="truncate max-w-[8rem] text-xs font-bold">{currentUser.name}</span>
                         </div>
                       </div>
-                      {currentView === ViewState.USER_DETAIL && <span className="w-1.5 h-1.5 rounded-full bg-primary-500" />}
+                      {currentView === ViewState.USER_DETAIL && (
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: PAGE_THEMES[ViewState.USER_DETAIL].accentHex }} />
+                      )}
                     </button>
                   )}
                 </div>

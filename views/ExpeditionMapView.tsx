@@ -95,6 +95,88 @@ const getGreatCircleDistance = (lat1: number, lng1: number, lat2: number, lng2: 
     return R * c;
 };
 
+const MAP_MODE_THEMES: Record<PredefinedMapMode, {
+    label: string;
+    shortLabel: string;
+    desc: string;
+    icon: any;
+    color: string;
+    activeText: string;
+    activeBg: string;
+    activeBorder: string;
+    activeShadow: string;
+    badgeStyle: string;
+    cardActiveBg: string;
+    cardActiveBorder: string;
+    cardActiveText: string;
+    cardActiveShadow: string;
+}> = {
+    flights: {
+        label: 'Flights',
+        shortLabel: 'Flights',
+        desc: 'Aviation arcs & hubs',
+        icon: Plane,
+        color: 'text-sky-500 dark:text-sky-400',
+        activeText: 'text-sky-700 dark:text-sky-300',
+        activeBg: 'bg-sky-500/20 dark:bg-sky-500/30',
+        activeBorder: 'border-sky-500/40 dark:border-sky-400/50',
+        activeShadow: 'shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(14,165,233,0.3)]',
+        badgeStyle: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20',
+        cardActiveBg: 'bg-sky-500/15 dark:bg-sky-500/25',
+        cardActiveBorder: 'border-sky-500/40 dark:border-sky-400/50',
+        cardActiveText: 'text-sky-700 dark:text-sky-300',
+        cardActiveShadow: 'shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(14,165,233,0.2)]'
+    },
+    land_sea: {
+        label: 'Land & Sea',
+        shortLabel: 'Land',
+        desc: 'Road trips & rail',
+        icon: Compass,
+        color: 'text-emerald-500 dark:text-emerald-400',
+        activeText: 'text-emerald-700 dark:text-emerald-300',
+        activeBg: 'bg-emerald-500/20 dark:bg-emerald-500/30',
+        activeBorder: 'border-emerald-500/40 dark:border-emerald-400/50',
+        activeShadow: 'shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(16,185,129,0.3)]',
+        badgeStyle: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+        cardActiveBg: 'bg-emerald-500/15 dark:bg-emerald-500/25',
+        cardActiveBorder: 'border-emerald-500/40 dark:border-emerald-400/50',
+        cardActiveText: 'text-emerald-700 dark:text-emerald-300',
+        cardActiveShadow: 'shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(16,185,129,0.2)]'
+    },
+    scratch: {
+        label: 'Scratch',
+        shortLabel: 'Scratch',
+        desc: 'Territory explorer',
+        icon: MapIcon,
+        color: 'text-amber-500 dark:text-amber-400',
+        activeText: 'text-amber-700 dark:text-amber-300',
+        activeBg: 'bg-amber-500/20 dark:bg-amber-500/30',
+        activeBorder: 'border-amber-500/40 dark:border-amber-400/50',
+        activeShadow: 'shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(245,158,11,0.3)]',
+        badgeStyle: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+        cardActiveBg: 'bg-amber-500/15 dark:bg-amber-500/25',
+        cardActiveBorder: 'border-amber-500/40 dark:border-amber-400/50',
+        cardActiveText: 'text-amber-700 dark:text-amber-300',
+        cardActiveShadow: 'shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(245,158,11,0.2)]'
+    },
+    all: {
+        label: 'All Expeditions',
+        shortLabel: 'All',
+        desc: 'Full unified network',
+        icon: Globe,
+        color: 'text-indigo-500 dark:text-indigo-400',
+        activeText: 'text-indigo-700 dark:text-indigo-300',
+        activeBg: 'bg-indigo-500/20 dark:bg-indigo-500/30',
+        activeBorder: 'border-indigo-500/40 dark:border-indigo-400/50',
+        activeShadow: 'shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(99,102,241,0.3)]',
+        badgeStyle: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20',
+        cardActiveBg: 'bg-indigo-500/15 dark:bg-indigo-500/25',
+        cardActiveBorder: 'border-indigo-500/40 dark:border-indigo-400/50',
+        cardActiveText: 'text-indigo-700 dark:text-indigo-300',
+        cardActiveShadow: 'shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(99,102,241,0.2)]'
+    }
+};
+
 export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClick, isSidebarCollapsed = false }) => {
     const [trips, setTrips] = useState<Trip[]>([]);
     const [loading, setLoading] = useState(true);
@@ -814,34 +896,31 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                     overrides={{ borderRadius: 28 }}
                 >
                     <div className="flex gap-1 relative">
-                        {[
-                            { id: 'flights', label: 'Flights', icon: Plane },
-                            { id: 'land_sea', label: 'Land & Sea', icon: Compass },
-                            { id: 'scratch', label: 'Scratch', icon: MapIcon },
-                            { id: 'all', label: 'All Expeditions', icon: Globe }
-                        ].map((m) => {
-                            const isSelected = viewMode === m.id;
+                        {(['flights', 'land_sea', 'scratch', 'all'] as PredefinedMapMode[]).map((modeKey) => {
+                            const config = MAP_MODE_THEMES[modeKey];
+                            const isSelected = viewMode === modeKey;
+                            const IconComponent = config.icon;
                             return (
                                 <button
-                                    key={m.id}
-                                    onClick={() => handleSelectViewMode(m.id as PredefinedMapMode)}
+                                    key={modeKey}
+                                    onClick={() => handleSelectViewMode(modeKey)}
                                     className={`relative px-4 py-2 rounded-2xl text-xs font-bold transition-colors duration-200 flex items-center gap-1.5 cursor-pointer select-none active:scale-95 ${
                                         isSelected
-                                            ? 'text-primary-700 dark:text-primary-300'
+                                            ? config.activeText
                                             : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
                                     }`}
                                 >
                                     {isSelected && (
                                         <motion.div
                                             layoutId="kokonutSmoothTabActive"
-                                            className="absolute inset-0 rounded-2xl bg-primary-500/20 dark:bg-primary-500/30 backdrop-blur-md border border-primary-500/40 dark:border-primary-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_8px_rgba(234,88,12,0.2)] z-0"
+                                            className={`absolute inset-0 rounded-2xl ${config.activeBg} backdrop-blur-md border ${config.activeBorder} ${config.activeShadow} z-0`}
                                             style={{ WebkitBackdropFilter: 'blur(12px)' }}
                                             transition={{ type: "spring", stiffness: 450, damping: 32 }}
                                         />
                                     )}
                                     <span className="relative z-10 flex items-center gap-1.5">
-                                        <m.icon className={`w-3.5 h-3.5 ${isSelected ? 'text-primary-600 dark:text-primary-400' : ''}`} />
-                                        <span>{m.label}</span>
+                                        <IconComponent className={`w-3.5 h-3.5 transition-colors duration-200 ${isSelected ? config.color : 'opacity-70'}`} />
+                                        <span>{config.label}</span>
                                     </span>
                                 </button>
                             );
@@ -970,35 +1049,32 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                         overrides={{ borderRadius: 28 }}
                     >
                         <div className="grid grid-cols-4 gap-1 w-full relative">
-                            {[
-                                { id: 'flights', label: 'Flights', icon: Plane },
-                                { id: 'land_sea', label: 'Land', icon: Compass },
-                                { id: 'scratch', label: 'Scratch', icon: MapIcon },
-                                { id: 'all', label: 'All', icon: Globe }
-                            ].map((m) => {
-                                const isSelected = viewMode === m.id;
+                            {(['flights', 'land_sea', 'scratch', 'all'] as PredefinedMapMode[]).map((modeKey) => {
+                                const config = MAP_MODE_THEMES[modeKey];
+                                const isSelected = viewMode === modeKey;
+                                const IconComponent = config.icon;
                                 return (
                                     <button
-                                        key={m.id}
-                                        onClick={() => handleSelectViewMode(m.id as PredefinedMapMode)}
+                                        key={modeKey}
+                                        onClick={() => handleSelectViewMode(modeKey)}
                                         className={`relative h-10 rounded-2xl text-xs font-bold transition-colors duration-200 flex items-center justify-center gap-1.5 cursor-pointer select-none active:scale-95 min-w-0 ${
                                             isSelected
-                                                ? 'text-primary-700 dark:text-primary-300'
+                                                ? config.activeText
                                                 : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
                                         }`}
-                                        title={m.label}
+                                        title={config.label}
                                     >
                                         {isSelected && (
                                             <motion.div
                                                 layoutId="kokonutSmoothTabActiveMobile"
-                                                className="absolute inset-0 rounded-2xl bg-primary-500/20 dark:bg-primary-500/30 backdrop-blur-md border border-primary-500/40 dark:border-primary-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_8px_rgba(234,88,12,0.2)] z-0"
+                                                className={`absolute inset-0 rounded-2xl ${config.activeBg} backdrop-blur-md border ${config.activeBorder} ${config.activeShadow} z-0`}
                                                 style={{ WebkitBackdropFilter: 'blur(12px)' }}
                                                 transition={{ type: "spring", stiffness: 450, damping: 32 }}
                                             />
                                         )}
                                         <span className="relative z-10 flex items-center justify-center gap-1.5 truncate">
-                                            <m.icon className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-primary-600 dark:text-primary-400' : ''}`} />
-                                            <span className="text-xs font-bold tracking-tight">{m.label}</span>
+                                            <IconComponent className={`w-3.5 h-3.5 shrink-0 transition-colors duration-200 ${isSelected ? config.color : 'opacity-70'}`} />
+                                            <span className="text-xs font-bold tracking-tight">{config.shortLabel}</span>
                                         </span>
                                     </button>
                                 );
@@ -1291,35 +1367,35 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                             <div className="p-4 rounded-2xl bg-white/40 dark:bg-white/[0.03] backdrop-blur-sm border border-black/5 dark:border-white/5 space-y-2.5">
                                 <div className="flex items-center justify-between">
                                     <h4 className="text-xs font-bold uppercase tracking-wider text-light-text dark:text-dark-text">Expedition View Mode</h4>
-                                    <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
-                                        {viewMode}
+                                    <span className={`px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider border ${MAP_MODE_THEMES[viewMode]?.badgeStyle || 'bg-sky-500/10 text-sky-600 border-sky-500/20'}`}>
+                                        {MAP_MODE_THEMES[viewMode]?.label || viewMode}
                                     </span>
                                 </div>
                                 <div className="grid grid-cols-2 gap-2">
-                                    {[
-                                        { id: 'flights', label: 'Flights', desc: 'Aviation arcs & hubs', icon: Plane },
-                                        { id: 'land_sea', label: 'Land & Sea', desc: 'Road trips & rail', icon: Compass },
-                                        { id: 'scratch', label: 'Scratch Map', desc: 'Territory explorer', icon: MapIcon },
-                                        { id: 'all', label: 'All Expeditions', desc: 'Full unified network', icon: Globe }
-                                    ].map(m => (
-                                        <button
-                                            key={m.id}
-                                            type="button"
-                                            onClick={() => handleSelectViewMode(m.id as PredefinedMapMode)}
-                                            className={`p-2.5 rounded-xl border text-left flex items-start gap-2 cursor-pointer transition-all duration-150 active:scale-[0.98] ${
-                                                viewMode === m.id
-                                                    ? 'bg-sky-500/15 dark:bg-sky-500/25 backdrop-blur-md border border-sky-500/40 dark:border-sky-400/50 text-sky-700 dark:text-sky-300 font-bold shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(14,165,233,0.15)]'
-                                                    : 'bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
-                                            }`}
-                                            style={viewMode === m.id ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
-                                        >
-                                            <m.icon className={`w-4 h-4 mt-0.5 shrink-0 ${viewMode === m.id ? 'text-sky-500' : 'text-light-text-secondary dark:text-dark-text-secondary'}`} />
-                                            <div>
-                                                <p className="text-xs font-bold leading-tight">{m.label}</p>
-                                                <p className="text-xs opacity-75 mt-0.5 leading-tight">{m.desc}</p>
-                                            </div>
-                                        </button>
-                                    ))}
+                                    {(['flights', 'land_sea', 'scratch', 'all'] as PredefinedMapMode[]).map((modeKey) => {
+                                        const config = MAP_MODE_THEMES[modeKey];
+                                        const isSelected = viewMode === modeKey;
+                                        const IconComponent = config.icon;
+                                        return (
+                                            <button
+                                                key={modeKey}
+                                                type="button"
+                                                onClick={() => handleSelectViewMode(modeKey)}
+                                                className={`p-2.5 rounded-xl border text-left flex items-start gap-2 cursor-pointer transition-all duration-150 active:scale-[0.98] ${
+                                                    isSelected
+                                                        ? `${config.cardActiveBg} backdrop-blur-md border ${config.cardActiveBorder} ${config.cardActiveText} font-bold ${config.cardActiveShadow}`
+                                                        : 'bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
+                                                }`}
+                                                style={isSelected ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
+                                            >
+                                                <IconComponent className={`w-4 h-4 mt-0.5 shrink-0 transition-colors duration-200 ${isSelected ? config.color : 'text-light-text-secondary dark:text-dark-text-secondary'}`} />
+                                                <div>
+                                                    <p className="text-xs font-bold leading-tight">{config.label}</p>
+                                                    <p className="text-xs opacity-75 mt-0.5 leading-tight">{config.desc}</p>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
 

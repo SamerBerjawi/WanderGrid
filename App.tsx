@@ -52,63 +52,8 @@ const ViewLoader = () => (
     </div>
 );
 
-const VIEW_ACCENTS: Record<ViewState, { glow1: string; glow2: string; glow3: string }> = {
-  [ViewState.DASHBOARD]: { 
-    glow1: 'bg-sky-500/4 dark:bg-sky-500/5', 
-    glow2: 'bg-indigo-500/4 dark:bg-indigo-500/5',
-    glow3: 'bg-blue-500/2 dark:bg-blue-500/2' 
-  },
-  [ViewState.SETTINGS]: { 
-    glow1: 'bg-emerald-500/4 dark:bg-emerald-500/5', 
-    glow2: 'bg-teal-500/4 dark:bg-teal-500/5',
-    glow3: 'bg-green-500/2 dark:bg-green-500/2'
-  },
-  [ViewState.USER_DETAIL]: { 
-    glow1: 'bg-rose-500/4 dark:bg-rose-500/5', 
-    glow2: 'bg-pink-500/4 dark:bg-pink-500/5',
-    glow3: 'bg-orange-500/2 dark:bg-orange-500/2'
-  },
-  [ViewState.PLANNER]: { 
-    glow1: 'bg-violet-500/4 dark:bg-violet-500/5', 
-    glow2: 'bg-fuchsia-500/4 dark:bg-fuchsia-500/5',
-    glow3: 'bg-purple-500/2 dark:bg-purple-500/2'
-  },
-  [ViewState.TRIP_DETAIL]: { 
-    glow1: 'bg-amber-500/4 dark:bg-amber-500/5', 
-    glow2: 'bg-orange-500/4 dark:bg-orange-500/5',
-    glow3: 'bg-yellow-500/2 dark:bg-yellow-500/2'
-  },
-  [ViewState.MAP]: { 
-    glow1: 'bg-cyan-500/4 dark:bg-cyan-500/5', 
-    glow2: 'bg-blue-500/4 dark:bg-blue-500/5',
-    glow3: 'bg-indigo-500/2 dark:bg-indigo-500/2'
-  },
-  [ViewState.GAMIFICATION]: { 
-    glow1: 'bg-yellow-500/4 dark:bg-yellow-500/5', 
-    glow2: 'bg-amber-500/4 dark:bg-amber-500/5',
-    glow3: 'bg-orange-500/2 dark:bg-orange-500/2'
-  },
-  [ViewState.FLIGHTS]: { 
-    glow1: 'bg-cyan-500/4 dark:bg-cyan-500/5', 
-    glow2: 'bg-teal-500/4 dark:bg-teal-500/5',
-    glow3: 'bg-blue-500/2 dark:bg-blue-500/2' 
-  },
-  [ViewState.ROADTRIPS]: { 
-    glow1: 'bg-indigo-500/4 dark:bg-indigo-500/5', 
-    glow2: 'bg-amber-500/4 dark:bg-amber-500/5',
-    glow3: 'bg-emerald-500/2 dark:bg-emerald-500/2' 
-  },
-  [ViewState.VACATION_CALENDAR]: { 
-    glow1: 'bg-indigo-500/4 dark:bg-indigo-500/5', 
-    glow2: 'bg-purple-500/4 dark:bg-purple-500/5',
-    glow3: 'bg-blue-500/2 dark:bg-blue-500/2' 
-  },
-  [ViewState.TRAVEL_ATLAS]: {
-    glow1: 'bg-emerald-500/4 dark:bg-emerald-500/5',
-    glow2: 'bg-sky-500/4 dark:bg-sky-500/5',
-    glow3: 'bg-teal-500/2 dark:bg-teal-500/2'
-  },
-};
+import { AmbientBackground } from './components/AmbientBackground';
+import { getPageTheme } from './config/pageThemes';
 
 export default function App() {
   const initialState = getUrlState();
@@ -120,8 +65,6 @@ export default function App() {
   const [theme, setTheme] = useState<'light' | 'dark' | 'auto'>('dark');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isAuthReady, setIsAuthReady] = useState<boolean>(false);
-
-  const currentAccent = VIEW_ACCENTS[view] || VIEW_ACCENTS[ViewState.DASHBOARD];
 
   // Handle URL Navigation (Push State)
   const navigate = (newView: ViewState, id?: string) => {
@@ -347,15 +290,16 @@ export default function App() {
       );
   }
 
+  const isDarkMode = theme === 'dark' || (theme === 'auto' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
   return (
     <IconContext.Provider value={{ weight: 'duotone' }}>
       <div className="flex h-screen w-full overflow-hidden bg-[#FAFAFA] dark:bg-[#050505] transition-colors duration-700 text-light-text dark:text-dark-text relative">
-        {/* Dynamic Ambient Spot Glow Filter representing current state */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-            <div className={`absolute -top-64 -left-64 w-[850px] h-[850px] rounded-full ${currentAccent.glow1} blur-[165px] animate-[pulse_12s_infinite] transition-colors duration-[1.5s]`} />
-            <div className={`absolute top-[20%] -right-64 w-[800px] h-[800px] rounded-full ${currentAccent.glow2} blur-[150px] animate-[pulse_15s_infinite] delay-1000 transition-colors duration-[1.5s]`} />
-            <div className={`absolute -bottom-64 left-[20%] w-[750px] h-[750px] rounded-full ${currentAccent.glow3} blur-[165px] animate-[pulse_13s_infinite] delay-2000 transition-colors duration-[1.5s]`} />
-        </div>
+        {/* Dynamic Ambient Background Glow representing current page theme */}
+        <AmbientBackground 
+          theme={getPageTheme(view)} 
+          darkMode={isDarkMode} 
+        />
         <Sidebar 
           currentView={view} 
           onNavigate={(v, id) => navigate(v, id)} 
