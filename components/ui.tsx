@@ -62,55 +62,19 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   isLoading?: boolean;
 }
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(({ children, variant = 'primary', size = 'md', className, icon, isLoading, disabled, ...props }, ref) => {
-  if (variant === 'glass') {
-    return (
-      <GlassButton
-        ref={ref}
-        size={size}
-        className={className}
-        icon={icon}
-        isLoading={isLoading}
-        disabled={disabled}
-        {...props}
-      >
-        {children}
-      </GlassButton>
-    );
-  }
-
-  const variants = {
-    primary: BTN_PRIMARY_STYLE,
-    secondary: BTN_SECONDARY_STYLE,
-    ghost: "bg-transparent text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5 rounded-2xl transition-all font-bold active:scale-95",
-    danger: BTN_DANGER_STYLE,
-    outline: "bg-transparent border border-black/10 dark:border-white/10 text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/5 rounded-2xl transition-all font-bold active:scale-95"
-  };
-
-  const sizes = {
-    sm: "px-3.5 py-1.5 text-xs rounded-xl",
-    md: "px-5 py-2.5 text-xs uppercase tracking-wider rounded-2xl",
-    lg: "px-6 py-3 text-xs uppercase tracking-wider rounded-2xl"
-  };
-
   return (
-    <button 
+    <GlassButton
       ref={ref}
-      className={cn(
-        "flex items-center justify-center gap-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 cursor-pointer select-none",
-        variants[variant],
-        sizes[size],
-        className
-      )} 
-      disabled={disabled || isLoading}
+      variant={variant}
+      size={size}
+      className={className}
+      icon={icon}
+      isLoading={isLoading}
+      disabled={disabled}
       {...props}
     >
-      {isLoading ? (
-        <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-      ) : icon ? (
-        <span className="flex items-center text-lg">{icon}</span>
-      ) : null}
       {children}
-    </button>
+    </GlassButton>
   );
 });
 Button.displayName = "Button";

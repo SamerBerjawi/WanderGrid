@@ -8,13 +8,13 @@ export const INPUT_BASE_STYLE =
   'w-full px-4 py-2.5 min-h-[44px] rounded-xl bg-white/70 dark:bg-dark-card/70 backdrop-blur-md border border-black/10 dark:border-white/10 text-light-text dark:text-dark-text placeholder-light-text-secondary/50 dark:placeholder-dark-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 transition-all duration-150 text-sm';
 
 export const BTN_PRIMARY_STYLE = 
-  'bg-primary-500 hover:bg-primary-600 text-white font-medium rounded-xl transition-all duration-150 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm';
+  'bg-primary-500/85 hover:bg-primary-500 text-white font-medium rounded-xl backdrop-blur-md border border-white/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_8px_rgba(0,0,0,0.15)] transition-all duration-150 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed';
 
 export const BTN_SECONDARY_STYLE = 
-  'bg-white/10 hover:bg-white/20 dark:bg-white/5 dark:hover:bg-white/10 text-light-text dark:text-dark-text font-medium rounded-xl border border-black/5 dark:border-white/10 transition-all duration-150 active:scale-[0.98]';
+  'bg-white/40 hover:bg-white/60 dark:bg-white/10 dark:hover:bg-white/20 text-light-text dark:text-dark-text font-medium rounded-xl backdrop-blur-md border border-black/10 dark:border-white/15 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)] transition-all duration-150 active:scale-[0.98]';
 
 export const BTN_DANGER_STYLE = 
-  'bg-semantic-red hover:bg-semantic-red/90 text-white font-medium rounded-xl transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm active:scale-[0.98]';
+  'bg-semantic-red/85 hover:bg-semantic-red text-white font-medium rounded-xl backdrop-blur-md border border-white/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_8px_rgba(0,0,0,0.15)] transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]';
 
 // --- Semantic Status Surface Tokens ---
 export const STATUS_DANGER_STYLE = 

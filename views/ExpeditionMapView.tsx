@@ -31,6 +31,7 @@ import GlassPanel from '../components/glass/GlassPanel';
 import { dataService } from '../services/mockDb';
 import { Trip, CountryResidenceStatus, PredefinedMapMode, getResidenceStatuses } from '../types';
 import { Input, MultiSelect } from '../components/ui';
+import { LiquidGlassSelect, LiquidGlassMultiSelect } from '../components/LiquidGlassSelect';
 import { getCoordinates, getCoordinatesSync, STATIC_GEO_DATA } from '../services/geocoding';
 import { runAfterFirstPaint, mapWithConcurrency } from '../services/utils';
 import { 
@@ -734,8 +735,27 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
 
     // Filter Trips
     const filteredTrips = useMemo(() => {
+        const today = new Date().toISOString().split('T')[0];
+
         return trips.filter(trip => {
-            if (statusFilter !== 'all' && trip.status !== statusFilter) return false;
+            if (statusFilter !== 'all') {
+                const hasPastDates = Boolean(
+                    (trip.endDate && trip.endDate < today) ||
+                    (trip.startDate && trip.startDate < today && (!trip.endDate || trip.endDate < today))
+                );
+                const isPastTrip = trip.status === 'Past' || hasPastDates;
+
+                if (statusFilter === 'Past') {
+                    // Past should show previous trips
+                    if (!isPastTrip) return false;
+                } else if (statusFilter === 'Upcoming') {
+                    // Upcoming should show future trips that are active/upcoming
+                    if (isPastTrip || trip.status !== 'Upcoming') return false;
+                } else if (statusFilter === 'Planning') {
+                    // Planning should show future trips in planning stage
+                    if (isPastTrip || trip.status !== 'Planning') return false;
+                }
+            }
 
             if (yearFilter !== 'all') {
                 const tripYear = trip.startDate ? new Date(trip.startDate).getFullYear().toString() : '';
@@ -759,25 +779,67 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
         });
     }, [trips, statusFilter, yearFilter, depFilter, arrFilter, dateFrom, dateTo]);
 
-    // Summary Metrics
-    const { totalDistanceKm, activeSectorsCount } = useMemo(() => {
-        let totalDist = 0;
-        let sectors = 0;
+    // Summary Metrics & Accurate Expedition Type Tallies (Counts & Distance)
+    const expeditionTypeMetrics = useMemo(() => {
+        let flightsCount = 0;
+        let flightsDist = 0;
+
+        let landSeaCount = 0;
+        let landSeaDist = 0;
 
         filteredTrips.forEach(t => {
-            t.transports?.forEach(tr => {
-                if (tr.originLat && tr.originLng && tr.destLat && tr.destLng) {
-                    totalDist += getGreatCircleDistance(tr.originLat, tr.originLng, tr.destLat, tr.destLng);
-                    sectors++;
+            (t.transports || []).forEach(tr => {
+                const mode = (tr.mode || 'Flight').trim().toLowerCase();
+                const isFlight = mode === 'flight' || mode === 'air' || mode === 'plane';
+                const isLandSea = ['train', 'rail', 'bus', 'car', 'road', 'drive', 'driving', 'taxi', 'ferry', 'cruise', 'boat', 'ship'].some(m => mode.includes(m));
+
+                let dist = tr.distance || 0;
+                if (!dist && tr.originLat && tr.originLng && tr.destLat && tr.destLng) {
+                    dist = getGreatCircleDistance(tr.originLat, tr.originLng, tr.destLat, tr.destLng);
+                }
+
+                if (isFlight) {
+                    flightsCount++;
+                    flightsDist += dist;
+                } else if (isLandSea) {
+                    landSeaCount++;
+                    landSeaDist += dist;
                 }
             });
+
+            // Handle trips with extrapolated flight journeys or flight indicators where transports array is empty
+            if (!t.transports?.length && (t as any).isExtrapolated) {
+                flightsCount++;
+            }
         });
 
+        const allCount = flightsCount + landSeaCount;
+        const allDist = flightsDist + landSeaDist;
+
         return {
-            totalDistanceKm: Math.round(totalDist),
-            activeSectorsCount: sectors
+            flights: {
+                count: flightsCount,
+                distanceStr: `${Math.round(flightsDist).toLocaleString()} km`
+            },
+            land_sea: {
+                count: landSeaCount,
+                distanceStr: `${Math.round(landSeaDist).toLocaleString()} km`
+            },
+            scratch: {
+                count: visitedCountryCodes.length,
+                distanceStr: `${visitedCountryCodes.length} countries`
+            },
+            all: {
+                count: allCount,
+                distanceStr: `${Math.round(allDist).toLocaleString()} km`
+            },
+            activeSectorsCount: allCount,
+            totalDistanceKm: Math.round(allDist)
         };
-    }, [filteredTrips]);
+    }, [filteredTrips, visitedCountryCodes]);
+
+    const activeSectorsCount = expeditionTypeMetrics.activeSectorsCount;
+    const totalDistanceKm = expeditionTypeMetrics.totalDistanceKm;
 
     const [isFullscreen, setIsFullscreen] = useState(false);
     const mapContainerRef = React.useRef<HTMLDivElement>(null);
@@ -822,7 +884,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
             <div className="absolute inset-0 w-full h-full">
                 <Suspense fallback={
                     <div className="w-full h-full flex flex-col items-center justify-center bg-light-bg dark:bg-[#050505] space-y-4">
-                        <Compass className="w-10 h-10 text-primary-500 animate-[spin_4s_linear_infinite]" />
+                        <Compass className="w-10 h-10 text-primary-500 animate-[spin_4s_linear_infinite]" weight="duotone" />
                         <p className="text-xs font-bold uppercase tracking-[0.2em] text-light-text-secondary dark:text-dark-text-secondary">Loading Geospatial Engine...</p>
                     </div>
                 }>
@@ -858,69 +920,55 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                 </Suspense>
             </div>
 
-            {/* 2. FLOATING TOP HUD BAR (Brand & Telemetry) with Liquid Glass (Desktop Large Only) */}
-            <div className={`hidden lg:flex absolute top-5 z-20 items-center gap-3 pointer-events-none transition-all duration-300 ${isSidebarCollapsed ? 'left-5 md:left-28' : 'left-5 md:left-80'}`}>
-                {/* Brand & Status Pill */}
-                <div className="pointer-events-auto">
-                    <GlassPanel
-                        className="wg-glass-pill shadow-glass-card"
-                        padding="8px 14px"
-                        overrides={{ borderRadius: 20 }}
-                    >
-                        <div className="flex items-center gap-3.5">
-                            <div className="w-8 h-8 rounded-xl bg-primary-500/15 border border-primary-500/25 flex items-center justify-center text-primary-500 shrink-0">
-                                <Compass className="w-4 h-4 animate-[spin_20s_linear_infinite]" />
-                            </div>
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-xs font-bold text-light-text dark:text-dark-text tracking-tight leading-none">WanderGrid Atlas</span>
-                                    <span className="flex h-2 w-2 relative">
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                                    </span>
-                                </div>
-                                <p className="text-2xs font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider mt-0.5 leading-none">
-                                    {activeSectorsCount} Active Sectors • {totalDistanceKm.toLocaleString()} KM
-                                </p>
-                            </div>
-                        </div>
-                    </GlassPanel>
-                </div>
-            </div>
-
-            {/* 2.5 FLOATING TOP-CENTER PREDEFINED VIEW MODES SELECTOR (Desktop md+) */}
+            {/* 2. FLOATING TOP-CENTER PREDEFINED VIEW MODES SELECTOR (Desktop md+) */}
             <div className="hidden md:block absolute top-5 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
                 <GlassPanel
                     className="wg-glass-pill shadow-glass-card"
                     padding="4px 6px"
-                    overrides={{ borderRadius: 28 }}
+                    overrides={{ borderRadius: 9999 }}
                 >
-                    <div className="flex gap-1 relative">
+                    <div className="flex gap-1 relative items-center">
                         {(['flights', 'land_sea', 'scratch', 'all'] as PredefinedMapMode[]).map((modeKey) => {
                             const config = MAP_MODE_THEMES[modeKey];
                             const isSelected = viewMode === modeKey;
                             const IconComponent = config.icon;
+                            const metrics = expeditionTypeMetrics[modeKey];
                             return (
                                 <button
                                     key={modeKey}
                                     onClick={() => handleSelectViewMode(modeKey)}
-                                    className={`relative px-4 py-2 rounded-2xl text-xs font-bold transition-colors duration-200 flex items-center gap-1.5 cursor-pointer select-none active:scale-95 ${
+                                    title={`${config.label} (${metrics.count} expeditions • ${metrics.distanceStr})`}
+                                    className={`relative rounded-full text-xs font-bold transition-all duration-200 flex flex-col items-center justify-center cursor-pointer select-none active:scale-95 ${
                                         isSelected
-                                            ? config.activeText
-                                            : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
+                                            ? `${config.activeText} px-4 sm:px-6 py-2`
+                                            : `${config.color} hover:opacity-100 opacity-85 px-3 sm:px-5 py-2`
                                     }`}
                                 >
                                     {isSelected && (
                                         <motion.div
                                             layoutId="kokonutSmoothTabActive"
-                                            className={`absolute inset-0 rounded-2xl ${config.activeBg} backdrop-blur-md border ${config.activeBorder} ${config.activeShadow} z-0`}
+                                            className={`absolute inset-0 rounded-full ${config.activeBg} backdrop-blur-md border ${config.activeBorder} ${config.activeShadow} z-0`}
                                             style={{ WebkitBackdropFilter: 'blur(12px)' }}
                                             transition={{ type: "spring", stiffness: 450, damping: 32 }}
                                         />
                                     )}
-                                    <span className="relative z-10 flex items-center gap-1.5">
-                                        <IconComponent className={`w-3.5 h-3.5 transition-colors duration-200 ${isSelected ? config.color : 'opacity-70'}`} />
-                                        <span>{config.label}</span>
+                                    <span className="relative z-10 flex flex-col items-center gap-0.5">
+                                        <span className="flex items-center gap-1.5 sm:gap-2">
+                                            <IconComponent className={`w-4.5 h-4.5 shrink-0 transition-colors duration-200 ${config.color}`} weight="duotone" />
+                                            <span className={`tracking-tight ${isSelected ? 'inline' : 'hidden sm:inline'} ${isSelected ? config.activeText : config.color}`}>
+                                                {config.label}
+                                            </span>
+                                            <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold border transition-colors ${config.badgeStyle} ${
+                                                isSelected 
+                                                    ? 'inline shadow-xs' 
+                                                    : 'hidden sm:inline opacity-90 hover:opacity-100'
+                                            }`}>
+                                                {metrics.count}
+                                            </span>
+                                        </span>
+                                        <span className="text-[10px] font-mono tracking-tight font-bold text-black dark:text-white">
+                                            {metrics.distanceStr}
+                                        </span>
                                     </span>
                                 </button>
                             );
@@ -1046,35 +1094,44 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                     <GlassPanel
                         className="wg-glass-pill shadow-2xl w-full"
                         padding="4px"
-                        overrides={{ borderRadius: 28 }}
+                        overrides={{ borderRadius: 9999 }}
                     >
                         <div className="grid grid-cols-4 gap-1 w-full relative">
                             {(['flights', 'land_sea', 'scratch', 'all'] as PredefinedMapMode[]).map((modeKey) => {
                                 const config = MAP_MODE_THEMES[modeKey];
                                 const isSelected = viewMode === modeKey;
                                 const IconComponent = config.icon;
+                                const metrics = expeditionTypeMetrics[modeKey];
                                 return (
                                     <button
                                         key={modeKey}
                                         onClick={() => handleSelectViewMode(modeKey)}
-                                        className={`relative h-10 rounded-2xl text-xs font-bold transition-colors duration-200 flex items-center justify-center gap-1.5 cursor-pointer select-none active:scale-95 min-w-0 ${
+                                        className={`relative h-12 py-1 rounded-full text-xs font-bold transition-colors duration-200 flex flex-col items-center justify-center cursor-pointer select-none active:scale-95 min-w-0 ${
                                             isSelected
                                                 ? config.activeText
-                                                : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
+                                                : `${config.color} opacity-85 hover:opacity-100`
                                         }`}
-                                        title={config.label}
+                                        title={`${config.label} (${metrics.count} • ${metrics.distanceStr})`}
                                     >
                                         {isSelected && (
                                             <motion.div
                                                 layoutId="kokonutSmoothTabActiveMobile"
-                                                className={`absolute inset-0 rounded-2xl ${config.activeBg} backdrop-blur-md border ${config.activeBorder} ${config.activeShadow} z-0`}
+                                                className={`absolute inset-0 rounded-full ${config.activeBg} backdrop-blur-md border ${config.activeBorder} ${config.activeShadow} z-0`}
                                                 style={{ WebkitBackdropFilter: 'blur(12px)' }}
                                                 transition={{ type: "spring", stiffness: 450, damping: 32 }}
                                             />
                                         )}
-                                        <span className="relative z-10 flex items-center justify-center gap-1.5 truncate">
-                                            <IconComponent className={`w-3.5 h-3.5 shrink-0 transition-colors duration-200 ${isSelected ? config.color : 'opacity-70'}`} />
-                                            <span className="text-xs font-bold tracking-tight">{config.shortLabel}</span>
+                                        <span className="relative z-10 flex flex-col items-center justify-center truncate px-0.5">
+                                            <span className="flex items-center gap-1 truncate">
+                                                <IconComponent className={`w-3.5 h-3.5 shrink-0 transition-colors duration-200 ${config.color}`} weight="duotone" />
+                                                <span className={`text-[11px] font-bold tracking-tight ${isSelected ? config.activeText : config.color}`}>{config.shortLabel}</span>
+                                                <span className={`text-[8.5px] font-mono px-1 py-0.2 rounded-full font-bold border transition-colors ${config.badgeStyle}`}>
+                                                    {metrics.count}
+                                                </span>
+                                            </span>
+                                            <span className="text-[8.5px] font-mono tracking-tight font-bold text-black dark:text-white mt-0.5">
+                                                {metrics.distanceStr}
+                                            </span>
                                         </span>
                                     </button>
                                 );
@@ -1164,12 +1221,12 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                 className={`flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-t-xl text-xs font-bold transition-all duration-200 cursor-pointer relative truncate ${
                                     isActive
                                         ? tab.activeClass
-                                        : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-black/5 dark:hover:bg-white/5'
+                                        : `${tab.iconColor} opacity-75 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/5`
                                 }`}
                                 style={isActive ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
                                 title={tab.label}
                             >
-                                <tab.icon className={`w-4 h-4 shrink-0 ${isActive ? tab.iconColor : 'opacity-70'}`} />
+                                <tab.icon className={`w-4 h-4 shrink-0 ${tab.iconColor}`} />
                                 <span className="truncate">{tab.label}</span>
                             </button>
                         );
@@ -1887,19 +1944,24 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                 <label className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase block mb-2">
                                     Trip Status
                                 </label>
-                                <div className="grid grid-cols-3 gap-2">
-                                    {['all', 'Past', 'Upcoming'].map((s) => (
+                                <div className="grid grid-cols-4 gap-1.5">
+                                    {[
+                                        { id: 'all', label: 'All' },
+                                        { id: 'Past', label: 'Past' },
+                                        { id: 'Upcoming', label: 'Upcoming' },
+                                        { id: 'Planning', label: 'Planning' }
+                                    ].map((s) => (
                                         <button
-                                            key={s}
-                                            onClick={() => setStatusFilter(s as any)}
+                                            key={s.id}
+                                            onClick={() => setStatusFilter(s.id as any)}
                                             className={`py-2 rounded-xl text-xs font-semibold tracking-wide transition-all duration-150 text-center cursor-pointer active:scale-[0.98] ${
-                                                statusFilter === s
+                                                statusFilter === s.id
                                                     ? 'bg-emerald-500/20 dark:bg-emerald-500/30 backdrop-blur-md text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-500/40 dark:border-emerald-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(16,185,129,0.15)]'
                                                     : 'bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm border border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
                                             }`}
-                                            style={statusFilter === s ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
+                                            style={statusFilter === s.id ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
                                         >
-                                            {s === 'all' ? 'All' : s}
+                                            {s.label}
                                         </button>
                                     ))}
                                 </div>
@@ -1910,14 +1972,17 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                 <label className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase block mb-2">
                                     Operation Year
                                 </label>
-                                <select
+                                <LiquidGlassSelect
                                     value={yearFilter}
-                                    onChange={(e) => setYearFilter(e.target.value)}
-                                    className="w-full bg-white/60 dark:bg-white/[0.06] backdrop-blur-md border border-black/10 dark:border-white/10 rounded-xl px-3 py-2.5 text-xs font-bold text-light-text dark:text-dark-text outline-none cursor-pointer shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)] focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all"
-                                >
-                                    <option value="all">All Years</option>
-                                    {years.map(y => <option key={y} value={y}>{y}</option>)}
-                                </select>
+                                    onChange={setYearFilter}
+                                    options={[
+                                        { value: 'all', label: 'All Years' },
+                                        ...years.map(y => ({ value: y, label: y }))
+                                    ]}
+                                    placeholder="All Years"
+                                    icon={Calendar}
+                                    fullWidth
+                                />
                             </div>
 
                             {/* Departure Station */}
@@ -1925,11 +1990,14 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                 <label className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase block mb-2">
                                     Departure Hub
                                 </label>
-                                <MultiSelect
+                                <LiquidGlassMultiSelect
                                     placeholder="Any Departure Hub"
                                     options={uniqueAirports.origins}
                                     value={depFilter}
                                     onChange={setDepFilter}
+                                    icon={Plane}
+                                    searchable
+                                    fullWidth
                                 />
                             </div>
 
@@ -1938,11 +2006,14 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                 <label className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase block mb-2">
                                     Arrival Hub
                                 </label>
-                                <MultiSelect
+                                <LiquidGlassMultiSelect
                                     placeholder="Any Arrival Hub"
                                     options={uniqueAirports.destinations}
                                     value={arrFilter}
                                     onChange={setArrFilter}
+                                    icon={MapPin}
+                                    searchable
+                                    fullWidth
                                 />
                             </div>
 
@@ -1954,24 +2025,43 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                 <div className="grid grid-cols-2 gap-2">
                                     <div>
                                         <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold block mb-1">From</span>
-                                        <Input
+                                        <input
                                             type="date"
                                             value={dateFrom}
                                             onChange={(e) => setDateFrom(e.target.value)}
-                                            className="!py-1.5 !px-2.5 !text-xs !font-bold bg-white/60 dark:bg-white/[0.06] backdrop-blur-md text-light-text dark:text-dark-text border border-black/10 dark:border-white/10 rounded-xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)] focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all"
+                                            className="w-full h-10 sm:h-11 px-3 text-xs font-bold bg-black/5 dark:bg-white/5 text-light-text dark:text-dark-text border border-black/5 dark:border-white/10 rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all cursor-pointer"
                                         />
                                     </div>
                                     <div>
                                         <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold block mb-1">To</span>
-                                        <Input
+                                        <input
                                             type="date"
                                             value={dateTo}
                                             onChange={(e) => setDateTo(e.target.value)}
-                                            className="!py-1.5 !px-2.5 !text-xs !font-bold bg-white/60 dark:bg-white/[0.06] backdrop-blur-md text-light-text dark:text-dark-text border border-black/10 dark:border-white/10 rounded-xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)] focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all"
+                                            className="w-full h-10 sm:h-11 px-3 text-xs font-bold bg-black/5 dark:bg-white/5 text-light-text dark:text-dark-text border border-black/5 dark:border-white/10 rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all cursor-pointer"
                                         />
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Reset Active Filters Action */}
+                            {(statusFilter !== 'all' || yearFilter !== 'all' || depFilter.length > 0 || arrFilter.length > 0 || dateFrom || dateTo) && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setStatusFilter('all');
+                                        setYearFilter('all');
+                                        setDepFilter([]);
+                                        setArrFilter([]);
+                                        setDateFrom('');
+                                        setDateTo('');
+                                    }}
+                                    className="w-full py-2.5 rounded-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98]"
+                                >
+                                    <X className="w-3.5 h-3.5" weight="bold" />
+                                    <span>Reset All Filters</span>
+                                </button>
+                            )}
                         </div>
                     )}
                 </div>

@@ -11,6 +11,7 @@ if (typeof (maplibregl as any).setWorkerUrl === 'function') {
 import { MapboxOverlay } from '@deck.gl/mapbox';
 import { ArcLayer, ScatterplotLayer, GeoJsonLayer, PathLayer, BitmapLayer, TextLayer } from '@deck.gl/layers';
 import { TileLayer, TripsLayer } from '@deck.gl/geo-layers';
+import { geoInterpolate } from 'd3';
 import { 
     ArrowsOut as Maximize2, 
     CornersOut as Scan, 
@@ -354,16 +355,16 @@ export function calculateAdaptiveWorldCamera(
     }
 
     // Flat Mercator projection:
-    // Earth spans longitude [-180, 180] (360 degrees = full tile width at zoom 0 = 512px)
-    // Landmasses span roughly latitude -65°S to +82°N (spanY ≈ 0.56 of normalized Mercator space)
-    // Scale factor is constrained by the tighter of available width or height
-    const spanX = 1.0;
-    const spanY = 0.56;
-    const scaleX = availW / (spanX * 512);
+    // Earth spans longitude [-180, 180] (360 degrees = full tile width at zoom 0 = 512px).
+    // The default zoom level is framed to show exactly ONE map view horizontally across the available width:
+    // With world width = 512 * 2^zoom, setting scaleX = availW / 512 fits exactly one world map view
+    // without repeating additional copies horizontally at the default zoom.
+    const scaleX = availW / 512;
+    const spanY = 0.58;
     const scaleY = availH / (spanY * 512);
-    const scale = Math.min(scaleX, scaleY);
+    const scale = Math.max(scaleX, scaleY);
     const calculatedZoom = Math.log2(scale);
-    const zoom = Math.max(0, Math.min(3.5, calculatedZoom));
+    const zoom = Math.max(0.1, Math.min(3.5, calculatedZoom));
 
     return {
         center: [0, 18] as [number, number],
@@ -905,7 +906,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 const isDestAirport = dCode.length === 3 || dCode.length === 4;
                 const metaOrigin = isOriginAirport ? resolveLocationMetadata(oCode, t.originLat, t.originLng) : null;
                 const metaDest = isDestAirport ? resolveLocationMetadata(dCode, t.destLat, t.destLng) : null;
-                const baseOriginRadius = activeAppearance.airportSize === 'small' ? 3.5 : activeAppearance.airportSize === 'large' ? 7.5 : 5.0;
+                const baseOriginRadius = activeAppearance.airportSize === 'small' ? 2.5 : activeAppearance.airportSize === 'large' ? 7.5 : 5.0;
                 const origFreq = airportFreqMap.get(p1) || 1;
                 const destFreq = airportFreqMap.get(p2) || 1;
 
@@ -920,7 +921,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         color: isOriginAirport ? [250, 154, 29, 240] : [251, 191, 36, 240],
                         strokeColor: [255, 255, 255, 230],
                         radius: activeAppearance.airportMode === 'frequency'
-                            ? Math.min(16, baseOriginRadius + Math.log2(origFreq) * 1.6)
+                            ? (activeAppearance.airportSize === 'small'
+                                ? Math.min(7.0, baseOriginRadius + Math.log2(origFreq) * 0.75)
+                                : Math.min(16, baseOriginRadius + Math.log2(origFreq) * 1.6))
                             : baseOriginRadius
                     });
                 }
@@ -935,7 +938,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         color: isDestAirport ? [250, 154, 29, 240] : [251, 191, 36, 240],
                         strokeColor: [255, 255, 255, 230],
                         radius: activeAppearance.airportMode === 'frequency'
-                            ? Math.min(16, baseOriginRadius + Math.log2(destFreq) * 1.6)
+                            ? (activeAppearance.airportSize === 'small'
+                                ? Math.min(7.0, baseOriginRadius + Math.log2(destFreq) * 0.75)
+                                : Math.min(16, baseOriginRadius + Math.log2(destFreq) * 1.6))
                             : baseOriginRadius
                     });
                 }
@@ -997,6 +1002,145 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         clusterMode,
         runwayDatasetLoaded
     ]);
+
+    // -------------------------------------------------------------------------
+    // COMET FLOW (Deck.gl TripsLayer Perpetual Animation Engine)
+    // -------------------------------------------------------------------------
+    const COMET_LOOP_DURATION = 1200;
+    const [currentTime, setCurrentTime] = useState(COMET_LOOP_DURATION);
+
+    useEffect(() => {
+        if (!animateRoutes) return;
+
+        let animId: number;
+        let lastTime = performance.now();
+        let accumulatedTime = 0;
+
+        const loop = (now: number) => {
+            const delta = now - lastTime;
+            lastTime = now;
+            accumulatedTime += delta * 0.25; // Smooth sweeping speed: ~4.8s per cycle
+            const t = COMET_LOOP_DURATION + (accumulatedTime % COMET_LOOP_DURATION);
+            setCurrentTime(t);
+            animId = requestAnimationFrame(loop);
+        };
+
+        animId = requestAnimationFrame(loop);
+        return () => cancelAnimationFrame(animId);
+    }, [animateRoutes]);
+
+    const animatedTripPaths = useMemo(() => {
+        if (!animateRoutes) return [];
+
+        const result: {
+            path: [number, number][];
+            timestamps: number[];
+            color: [number, number, number, number];
+        }[] = [];
+
+        const getPhase = (str: string) => {
+            let h = 0;
+            for (let i = 0; i < str.length; i++) {
+                h = (h * 31 + str.charCodeAt(i)) >>> 0;
+            }
+            return h % COMET_LOOP_DURATION;
+        };
+
+        // 1. Flight routes: Generate smooth Great-Circle paths using d3.geoInterpolate
+        if (showFlightRoutes && viewMode !== 'scratch' && flightArcs.length > 0) {
+            flightArcs.forEach(arc => {
+                if (!arc.originLng || !arc.destLng) return;
+                try {
+                    const interp = geoInterpolate([arc.originLng, arc.originLat], [arc.destLng, arc.destLat]);
+                    const numPoints = 40;
+                    const singlePath: [number, number][] = [];
+                    for (let i = 0; i <= numPoints; i++) {
+                        const [lng, lat] = interp(i / numPoints);
+                        singlePath.push([lng, lat]);
+                    }
+
+                    const phase = getPhase(arc.corridorId || `${arc.originLat}_${arc.destLng}`);
+                    const duration = COMET_LOOP_DURATION;
+
+                    // Comet color follows the active appearance routeColorMode (Aurora, Heatmap, Blue)
+                    let cometColor: [number, number, number, number];
+                    if (selectedCorridor) {
+                        if (arc.corridorId === selectedCorridor.id) {
+                            cometColor = [52, 211, 153, 255]; // Emerald highlight
+                        } else {
+                            cometColor = [100, 115, 135, 40]; // Dimmed
+                        }
+                    } else if (activeAppearance.routeColorMode === 'gradient') {
+                        // Aurora: follow destination geographic gradient
+                        const rgb = getGeoGradientRGB(arc.destLat, arc.destLng);
+                        cometColor = [rgb[0], rgb[1], rgb[2], 255];
+                    } else if (activeAppearance.routeColorMode === 'frequency') {
+                        // Heatmap: follow route frequency
+                        const rgb = getFrequencyRGB(arc.count || 1);
+                        cometColor = [rgb[0], rgb[1], rgb[2], 255];
+                    } else {
+                        // Blue / classic sky
+                        cometColor = [56, 189, 248, 255];
+                    }
+
+                    // Dual tiled cycles for seamless perpetual wrapping without frame jumps
+                    result.push({
+                        path: singlePath,
+                        timestamps: singlePath.map((_, i) => phase + (i / numPoints) * duration),
+                        color: cometColor
+                    });
+                    result.push({
+                        path: singlePath,
+                        timestamps: singlePath.map((_, i) => phase + duration + (i / numPoints) * duration),
+                        color: cometColor
+                    });
+                } catch {
+                    // Ignore rare errors on degenerate points
+                }
+            });
+        }
+
+        // 2. Overland & Maritime routes: Trace multi-modal paths
+        if (showLandSeaRoutes && viewMode !== 'scratch' && overlandSegments.length > 0) {
+            overlandSegments.forEach(seg => {
+                if (!seg.path || seg.path.length < 2) return;
+                const singlePath: [number, number][] = seg.path.map((p: any) => [p[0], p[1]]);
+                const n = singlePath.length - 1;
+                const phase = getPhase(seg.routeKey || `${seg.origin}_${seg.destination}`);
+                const duration = COMET_LOOP_DURATION;
+
+                let modeColor: [number, number, number, number];
+                if (selectedCorridor) {
+                    if (seg.corridorId === selectedCorridor.id) {
+                        modeColor = [52, 211, 153, 255];
+                    } else {
+                        modeColor = [100, 115, 135, 40];
+                    }
+                } else if (activeAppearance.routeColorMode === 'gradient') {
+                    const lastPt = singlePath[singlePath.length - 1];
+                    const rgb = getGeoGradientRGB(lastPt[1], lastPt[0]);
+                    modeColor = [rgb[0], rgb[1], rgb[2], 255];
+                } else {
+                    modeColor = seg.color 
+                        ? [seg.color[0], seg.color[1], seg.color[2], 255] 
+                        : [245, 158, 11, 255];
+                }
+
+                result.push({
+                    path: singlePath,
+                    timestamps: singlePath.map((_, i) => phase + (i / n) * duration),
+                    color: modeColor
+                });
+                result.push({
+                    path: singlePath,
+                    timestamps: singlePath.map((_, i) => phase + duration + (i / n) * duration),
+                    color: modeColor
+                });
+            });
+        }
+
+        return result;
+    }, [animateRoutes, flightArcs, overlandSegments, showFlightRoutes, showLandSeaRoutes, viewMode, activeAppearance.routeColorMode, selectedCorridor]);
 
     // Handle Hover & Click interactions
     const handleRouteHover = useCallback((info: any) => {
@@ -1318,6 +1462,32 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             );
         }
 
+        // 6.5 Animated Comet Flow Layer (Deck.gl TripsLayer)
+        if (animateRoutes && animatedTripPaths.length > 0) {
+            layers.push(
+                new TripsLayer({
+                    id: 'comet-flow-layer',
+                    data: animatedTripPaths,
+                    getPath: (d: any) => d.path,
+                    getTimestamps: (d: any) => d.timestamps,
+                    getColor: (d: any) => d.color,
+                    opacity: 1,
+                    widthUnits: 'pixels',
+                    getWidth: 3.5,
+                    trailLength: 160,
+                    currentTime: currentTime,
+                    fadeTrail: true,
+                    capRounded: true,
+                    jointRounded: true,
+                    parameters: {
+                        depthWriteEnabled: false,
+                        depthCompare: 'always',
+                        depthTest: false
+                    }
+                })
+            );
+        }
+
         // 7. Detailed Runways Markings
         if (activeAppearance.airportDetail === 'detailed' && detailedRunways.length > 0) {
             const allStrips: { path: [number, number, number][]; width: number }[] = [];
@@ -1421,11 +1591,11 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                             return d.radius;
                         },
                         radiusUnits: 'pixels',
-                        radiusMinPixels: 2,
+                        radiusMinPixels: activeAppearance.airportSize === 'small' ? 1.0 : 2,
                         radiusMaxPixels: 24,
                         stroked: true,
                         lineWidthUnits: 'pixels',
-                        getLineWidth: 1.2,
+                        getLineWidth: activeAppearance.airportSize === 'small' ? 0.75 : 1.2,
                         wrapLongitude: true,
                         pickable: true,
                         autoHighlight: true,
@@ -1468,6 +1638,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         clusterMode,
         clusterNodes,
         airportPoints,
+        animateRoutes,
+        animatedTripPaths,
+        currentTime,
         handleRouteHover,
         handleRouteClick,
         onTripClick
@@ -1490,7 +1663,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             style,
             center: initialCamera.center,
             zoom: initialCamera.zoom,
-            renderWorldCopies: false,
+            renderWorldCopies: true,
             pitch: 0,
             bearing: 0,
             dragRotate: isGlobe,
@@ -1498,7 +1671,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         });
 
         map.setPadding(initialCamera.padding);
-        map.setMinZoom(Math.max(0, initialCamera.zoom - 0.6));
+        map.setMinZoom(0);
 
         const overlay = new MapboxOverlay({
             interleaved: false,
@@ -1515,7 +1688,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 if (curRect && curRect.width && curRect.height) {
                     const freshCam = calculateAdaptiveWorldCamera(curRect.width, curRect.height, isSidebarCollapsed, isGlobe);
                     map.setPadding(freshCam.padding);
-                    map.setMinZoom(Math.max(0, freshCam.zoom - 0.6));
+                    map.setMinZoom(0);
                     map.jumpTo({
                         center: freshCam.center,
                         zoom: freshCam.zoom,
@@ -1680,7 +1853,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 const height = rect?.height || window.innerHeight || 800;
                 const cam = calculateAdaptiveWorldCamera(width, height, isSidebarCollapsed, isGlobe);
                 map.setPadding(cam.padding);
-                map.setMinZoom(Math.max(0, cam.zoom - 0.6));
+                map.setMinZoom(0);
                 map.easeTo({
                     center: cam.center,
                     zoom: cam.zoom,
@@ -1713,7 +1886,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             const cam = calculateAdaptiveWorldCamera(rect.width, rect.height, isSidebarCollapsed, isGlobe);
 
             mapRef.current.setPadding(cam.padding);
-            mapRef.current.setMinZoom(Math.max(0, cam.zoom - 0.6));
+            mapRef.current.setMinZoom(0);
 
             // Only adapt zoom/center if user is not currently inspecting a corridor or country
             if (!selectedCorridor && !selectedCountry) {

@@ -107,8 +107,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <>
-      {/* Desktop Floating Sidebar with Liquid Glass */}
-      <aside className={`hidden md:flex flex-shrink-0 flex-col fixed top-4 left-4 bottom-4 z-40 transition-all duration-300 pointer-events-none ${isCollapsed ? 'w-20' : 'w-72'}`}>
+      {/* Desktop Fixed Sidebar with Liquid Glass */}
+      <aside className={`hidden md:flex flex-shrink-0 flex-col fixed inset-y-0 left-0 z-40 transition-all duration-300 pointer-events-none ${isCollapsed ? 'w-20' : 'w-72'}`}>
         <div className="relative w-full h-full pointer-events-auto">
           <button 
              onClick={toggleCollapse}
@@ -120,7 +120,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           <GlassPanel
             className="wg-glass-card shadow-2xl h-full flex flex-col"
-            overrides={{ borderRadius: 28 }}
+            overrides={{ borderRadius: 0, displacementScale: 0 }}
             padding="0px"
           >
             <div className="flex flex-col h-full w-full overflow-hidden">

@@ -1,15 +1,24 @@
 import LiquidGlass from '@nkzw/liquid-glass';
 import type { ReactNode, CSSProperties, RefObject } from 'react';
 
+export interface WanderGridGlassConfig {
+  displacementScale: number;
+  blurAmount: number;
+  saturation: number;
+  aberrationIntensity: number;
+  elasticity: number;
+  borderRadius: number;
+}
+
 // Locked WanderGrid Liquid Glass spec — see liquid-glass-wandergrid-SKILL.md
-export const WANDERGRID_GLASS_CONFIG = {
+export const WANDERGRID_GLASS_CONFIG: WanderGridGlassConfig = {
   displacementScale: 200,
   blurAmount: 0.3,
   saturation: 200,
   aberrationIntensity: 10,
   elasticity: 0.0,
   borderRadius: 32,
-} as const;
+};
 
 type GlassPanelProps = {
   children: ReactNode;
@@ -20,7 +29,7 @@ type GlassPanelProps = {
   onClick?: () => void;
   mouseContainer?: RefObject<HTMLElement | null> | null;
   /** Escape hatch for one-off overrides. Prefer not to use this. */
-  overrides?: Partial<typeof WANDERGRID_GLASS_CONFIG>;
+  overrides?: Partial<WanderGridGlassConfig>;
 };
 
 export default function GlassPanel({
