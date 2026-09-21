@@ -240,7 +240,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </GlassPanel>
                   ) : (
                     <div className="p-4 rounded-2xl bg-white/5 dark:bg-white/[0.08] border border-dashed border-zinc-250 dark:border-white/20 text-center">
-                      <Compass weight="duotone" className="text-zinc-400 dark:text-zinc-300 text-xl mx-auto mb-1" />
+                      <Compass size={22} weight="duotone" className="w-5 h-5 text-zinc-400 dark:text-zinc-300 mx-auto mb-1.5" />
                       <p className="text-xs font-bold text-zinc-500 dark:text-zinc-300 uppercase tracking-widest leading-none">No trips planned</p>
                       <button 
                           onClick={() => onNavigate(ViewState.PLANNER)} 

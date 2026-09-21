@@ -52,7 +52,7 @@ The hero header must be clean, horizontal, and unboxed—no heavy rectangular ba
   <div className="flex items-center justify-end shrink-0">
     <Button 
       variant="primary" 
-      className="justify-center rounded-2xl cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 px-3.5 sm:px-6 shrink-0"
+      className="shrink-0"
       onClick={handlePrimaryAction}
       icon={<Plus className="w-4 h-4" />} // Standard Phosphor Plus, NEVER duotone
     >

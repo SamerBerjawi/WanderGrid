@@ -2313,7 +2313,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
         <div className="flex flex-wrap items-center justify-center md:justify-end gap-3 w-full md:w-auto shrink-0">
           <Button 
             variant="primary" 
-            className="w-full sm:w-auto justify-center rounded-2xl cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 px-6"
+            className="w-full sm:w-auto shrink-0"
             onClick={() => openFlightForm()}
             icon={<Plus className="w-4 h-4" />}
           >

@@ -15,8 +15,8 @@ import {
     Hourglass,
     Sparkle
 } from '@phosphor-icons/react';
-import GlassPanel from './glass/GlassPanel';
 import GlassButton from './glass/GlassButton';
+import GlassPanel from './glass/GlassPanel';
 import { dataService } from '../services/mockDb';
 import { Trip, User } from '../types';
 import { searchLocationSuggestions, ParsedLocationItem, parseGoogleMapsUrl } from '../services/locationParser';
@@ -406,19 +406,19 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
             id: 'Planning' as const,
             label: 'Planned',
             Icon: Compass,
-            activeStyle: 'bg-amber-500/25 text-amber-600 dark:text-amber-400 border-amber-500/30'
+            activeStyle: 'bg-white dark:bg-dark-card text-amber-600 dark:text-amber-400 shadow-sm border border-amber-500/30'
         },
         {
             id: 'Upcoming' as const,
             label: 'Confirmed',
             Icon: CalendarCheck,
-            activeStyle: 'bg-emerald-500/25 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+            activeStyle: 'bg-white dark:bg-dark-card text-emerald-600 dark:text-emerald-400 shadow-sm border border-emerald-500/30'
         },
         {
             id: 'Past' as const,
             label: 'Past',
             Icon: Hourglass,
-            activeStyle: 'bg-violet-500/25 text-violet-600 dark:text-violet-400 border-violet-500/30'
+            activeStyle: 'bg-white dark:bg-dark-card text-violet-600 dark:text-violet-400 shadow-sm border border-violet-500/30'
         }
     ];
 
@@ -426,7 +426,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
         <div className="fixed inset-0 z-modal overflow-hidden font-sans">
             {/* 1. Frosted Backdrop */}
             <div 
-                className={`fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md transition-opacity duration-300 ${
+                className={`fixed inset-0 bg-gray-900/40 dark:bg-black/80 backdrop-blur-md transition-opacity duration-300 ${
                     isVisible ? 'opacity-100' : 'opacity-0'
                 }`}
                 style={{ WebkitBackdropFilter: 'blur(12px)' }}
@@ -436,12 +436,12 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
             {/* 2. Slide-out Shell with Full Liquid Glass */}
             <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
                 <div 
-                    className={`w-screen max-w-lg h-full flex flex-col transform transition-transform duration-300 ease-out ${
+                    className={`w-screen max-w-lg h-full border-l border-black/10 dark:border-white/15 flex flex-col transform transition-transform duration-300 ease-out ${
                         isVisible ? 'translate-x-0' : 'translate-x-full'
                     }`}
                 >
                     <GlassPanel
-                        className="wg-glass-card w-full h-full flex flex-col shadow-2xl overflow-hidden border-l border-black/10 dark:border-white/15"
+                        className="wg-glass-card w-full h-full flex flex-col shadow-2xl overflow-hidden bg-white/90 dark:bg-dark-card/90"
                         padding="0px"
                         overrides={{ borderRadius: 0 }}
                     >
@@ -452,7 +452,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                     <MapTrifold weight="duotone" className="w-6 h-6" />
                                 </div>
                                 <div className="min-w-0">
-                                    <h2 className="text-xl font-black text-light-text dark:text-dark-text tracking-tight truncate">
+                                    <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight truncate">
                                         {initialData ? 'Edit Trip' : 'New Trip'}
                                     </h2>
                                 </div>
@@ -460,7 +460,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                             <button 
                                 type="button"
                                 onClick={handleClose}
-                                className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-2xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/10 transition-colors shrink-0 cursor-pointer"
+                                className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-2xl flex items-center justify-center text-slate-500 dark:text-zinc-400 hover:bg-black/5 dark:hover:bg-white/10 transition-colors shrink-0 cursor-pointer"
                                 aria-label="Close drawer"
                             >
                                 <X weight="bold" className="w-5 h-5" />
@@ -474,8 +474,8 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                     <Trash weight="duotone" className="w-10 h-10" />
                                 </div>
                                 <div className="space-y-2 max-w-sm">
-                                    <h3 className="text-xl font-bold text-light-text dark:text-dark-text">Archive Journey?</h3>
-                                    <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary leading-relaxed">
+                                    <h3 className="text-xl font-bold text-slate-900 dark:text-white">Archive Journey?</h3>
+                                    <p className="text-xs text-slate-600 dark:text-zinc-300 leading-relaxed">
                                         This will permanently remove <strong>{title || initialData?.name}</strong> and its registered stops, itineraries, and timeline bookings.
                                     </p>
                                 </div>
@@ -514,18 +514,18 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
 
                                     {/* 1. Trip Title (Liquid Glass Input) */}
                                     <GlassPanel
-                                        className="wg-glass-card border border-black/10 dark:border-white/15 focus-within:border-primary-500/60 shadow-glass-card transition-all"
+                                        className="wg-glass-card bg-white/70 dark:bg-dark-fill/50 focus-within:border-primary-500/60 shadow-glass-card transition-all"
                                         padding="14px 18px"
                                         overrides={{ borderRadius: 22 }}
                                     >
-                                        <label className="block text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary mb-1">
+                                        <label className="block text-2xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400 mb-1">
                                             Trip Title <span className="text-rose-500">*</span>
                                         </label>
                                         <input
                                             type="text"
                                             value={title}
                                             onChange={(e) => setTitle(e.target.value)}
-                                            className="w-full bg-transparent text-lg font-bold text-light-text dark:text-dark-text placeholder-zinc-400 dark:placeholder-zinc-500 outline-none"
+                                            className="w-full bg-transparent text-lg font-bold text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 outline-none"
                                             placeholder="e.g. Summer in Tokyo"
                                             required
                                             autoFocus
@@ -533,8 +533,8 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                     </GlassPanel>
 
                                     {/* 2. Badge & Emoji Selector (Liquid Glass Container) */}
-                                    <div className="p-4 rounded-3xl bg-white/40 dark:bg-dark-fill/40 backdrop-blur-md border border-black/5 dark:border-white/10 shadow-glass-card flex items-center gap-4">
-                                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-primary-500/25 to-primary-500/5 dark:from-primary-500/30 dark:to-dark-card border-2 border-primary-500/30 flex items-center justify-center text-3xl shadow-glass-card relative select-none transition-transform hover:scale-105 shrink-0">
+                                    <div className="p-4 rounded-3xl bg-white/70 dark:bg-dark-fill/40 backdrop-blur-md border border-black/5 dark:border-white/10 shadow-glass-card flex items-center gap-4">
+                                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-primary-500/25 to-primary-500/10 dark:from-primary-500/30 dark:to-dark-card border-2 border-primary-500/30 flex items-center justify-center text-3xl shadow-glass-card relative select-none transition-transform hover:scale-105 shrink-0">
                                             <span>{icon}</span>
                                             <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-primary-500 text-white rounded-md flex items-center justify-center text-2xs shadow-sm">
                                                 <Sparkle weight="duotone" className="w-3 h-3" />
@@ -542,7 +542,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                         </div>
 
                                         <div className="flex-1 space-y-1.5 min-w-0">
-                                            <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
+                                            <label className="text-2xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400 block">
                                                 Badge & Icon
                                             </label>
                                             <div className="flex flex-wrap gap-1.5 items-center">
@@ -554,7 +554,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                                         className={`w-8 h-8 flex items-center justify-center rounded-xl text-base transition-all active:scale-95 cursor-pointer ${
                                                             icon === e.trim()
                                                                 ? 'bg-primary-500 text-white shadow-md shadow-primary-500/30 font-bold scale-105 border border-white/20'
-                                                                : 'bg-white/60 dark:bg-white/10 hover:bg-white/90 dark:hover:bg-white/20 border border-black/5 dark:border-white/10'
+                                                                : 'bg-white/80 dark:bg-white/10 hover:bg-white dark:hover:bg-white/20 border border-black/10 dark:border-white/10 text-slate-800 dark:text-white shadow-xs'
                                                         }`}
                                                     >
                                                         {e.trim()}
@@ -567,7 +567,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                                     className={`h-8 px-2.5 flex items-center gap-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer active:scale-95 ${
                                                         showEmojiPicker
                                                             ? 'border-primary-500 bg-primary-500/20 text-primary-600 dark:text-primary-400 shadow-sm'
-                                                            : 'border-black/10 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/10'
+                                                            : 'bg-white/80 dark:bg-white/10 border-black/10 dark:border-white/10 text-slate-600 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/15 shadow-xs'
                                                     }`}
                                                     title="Explore all emojis"
                                                 >
@@ -580,11 +580,11 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
 
                                     {/* 3. Trip Stage (Liquid Glass Segmented Buttons) */}
                                     <div className="space-y-2">
-                                        <label className="block text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary ml-1">
+                                        <label className="block text-2xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400 ml-1">
                                             Stage
                                         </label>
                                         <GlassPanel
-                                            className="wg-glass-card p-1.5 flex gap-1.5 border border-black/5 dark:border-white/10 shadow-xs"
+                                            className="wg-glass-card bg-black/5 dark:bg-white/5 p-1.5 flex gap-1.5 shadow-xs"
                                             padding="4px"
                                             overrides={{ borderRadius: 20 }}
                                         >
@@ -598,8 +598,8 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                                         onClick={() => setStatus(s.id)}
                                                         className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer select-none active:scale-95 ${
                                                             isSelected
-                                                                ? `${s.activeStyle} shadow-sm border backdrop-blur-md`
-                                                                : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/5'
+                                                                ? `${s.activeStyle} shadow-md`
+                                                                : 'text-slate-600 dark:text-zinc-400 opacity-70 hover:opacity-100 hover:bg-white/40 dark:hover:bg-white/10'
                                                         }`}
                                                     >
                                                         <IconComponent weight="duotone" className="w-4 h-4 shrink-0" />
@@ -612,18 +612,18 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
 
                                     {/* 4. Timeline Dates (Liquid Glass Date Pickers) */}
                                     <div className="space-y-2">
-                                        <label className="block text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary ml-1">
+                                        <label className="block text-2xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400 ml-1">
                                             Timeline <span className="text-rose-500">*</span>
                                         </label>
                                         <div className="grid grid-cols-2 gap-3">
                                             <GlassPanel
-                                                className="wg-glass-card border border-black/10 dark:border-white/15 focus-within:border-primary-500/60 shadow-glass-card transition-all"
+                                                className="wg-glass-card bg-white/70 dark:bg-dark-fill/50 focus-within:border-primary-500/60 shadow-glass-card transition-all"
                                                 padding="12px 14px"
                                                 overrides={{ borderRadius: 20 }}
                                             >
                                                 <div className="flex items-center gap-2 mb-1">
                                                     <CalendarBlank weight="duotone" className="w-4 h-4 text-primary-500 shrink-0" />
-                                                    <span className="text-[10.5px] font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                                                    <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
                                                         Departure
                                                     </span>
                                                 </div>
@@ -631,19 +631,19 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                                     type="date"
                                                     value={startDate}
                                                     onChange={(e) => setStartDate(e.target.value)}
-                                                    className="w-full bg-transparent text-xs font-bold text-light-text dark:text-dark-text outline-none cursor-pointer"
+                                                    className="w-full bg-transparent text-xs font-bold text-slate-900 dark:text-white outline-none cursor-pointer"
                                                     required
                                                 />
                                             </GlassPanel>
 
                                             <GlassPanel
-                                                className="wg-glass-card border border-black/10 dark:border-white/15 focus-within:border-primary-500/60 shadow-glass-card transition-all"
+                                                className="wg-glass-card bg-white/70 dark:bg-dark-fill/50 focus-within:border-primary-500/60 shadow-glass-card transition-all"
                                                 padding="12px 14px"
                                                 overrides={{ borderRadius: 20 }}
                                             >
                                                 <div className="flex items-center gap-2 mb-1">
                                                     <CalendarBlank weight="duotone" className="w-4 h-4 text-primary-500 shrink-0" />
-                                                    <span className="text-[10.5px] font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                                                    <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
                                                         Conclusion
                                                     </span>
                                                 </div>
@@ -652,7 +652,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                                     value={endDate}
                                                     min={startDate}
                                                     onChange={(e) => setEndDate(e.target.value)}
-                                                    className="w-full bg-transparent text-xs font-bold text-light-text dark:text-dark-text outline-none cursor-pointer"
+                                                    className="w-full bg-transparent text-xs font-bold text-slate-900 dark:text-white outline-none cursor-pointer"
                                                     required
                                                 />
                                             </GlassPanel>
@@ -662,10 +662,10 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                     {/* 5. Destinations (Liquid Glass Input & Chips) */}
                                     <div ref={destWrapperRef} className="space-y-2">
                                         <div className="flex items-center justify-between ml-1">
-                                            <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
+                                            <label className="text-2xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400 block">
                                                 Destinations
                                             </label>
-                                            <span className="text-[11px] text-light-text-secondary dark:text-dark-text-secondary font-medium">
+                                            <span className="text-[11px] text-slate-500 dark:text-zinc-400 font-medium">
                                                 City name or Google Maps link
                                             </span>
                                         </div>
@@ -674,21 +674,25 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                         {destinations.length > 0 && (
                                             <div className="flex flex-wrap gap-2 pb-1">
                                                 {destinations.map((dest, idx) => (
-                                                    <span 
+                                                    <GlassPanel
                                                         key={idx}
-                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white/70 dark:bg-dark-card/70 backdrop-blur-md border border-black/10 dark:border-white/10 shadow-xs text-light-text dark:text-dark-text animate-fade-in"
+                                                        className="wg-glass-pill bg-white/80 dark:bg-dark-card/80 shadow-xs"
+                                                        padding="6px 12px"
+                                                        overrides={{ borderRadius: 14 }}
                                                     >
-                                                        <span>{dest.flag || '📍'}</span>
-                                                        <span>{dest.name}</span>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleRemoveDestination(idx)}
-                                                            className="p-0.5 hover:text-rose-500 rounded-md transition-colors cursor-pointer ml-0.5"
-                                                            aria-label={`Remove ${dest.name}`}
-                                                        >
-                                                            <XCircle weight="duotone" className="w-3.5 h-3.5" />
-                                                        </button>
-                                                    </span>
+                                                        <div className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-900 dark:text-white">
+                                                            <span>{dest.flag || '📍'}</span>
+                                                            <span>{dest.name}</span>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleRemoveDestination(idx)}
+                                                                className="p-0.5 hover:text-rose-500 rounded-md transition-colors cursor-pointer ml-0.5 text-slate-400 hover:text-rose-500"
+                                                                aria-label={`Remove ${dest.name}`}
+                                                            >
+                                                                <XCircle weight="duotone" className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        </div>
+                                                    </GlassPanel>
                                                 ))}
                                             </div>
                                         )}
@@ -696,7 +700,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                         {/* Liquid Glass Destination Input */}
                                         <div className="relative">
                                             <GlassPanel
-                                                className="wg-glass-card border border-black/10 dark:border-white/15 focus-within:border-emerald-500/60 shadow-glass-card transition-all"
+                                                className="wg-glass-card bg-white/70 dark:bg-dark-fill/50 focus-within:border-emerald-500/60 shadow-glass-card transition-all"
                                                 padding="11px 14px"
                                                 overrides={{ borderRadius: 20 }}
                                             >
@@ -710,7 +714,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                                         onFocus={() => {
                                                             if (suggestions.length > 0) setShowSuggestions(true);
                                                         }}
-                                                        className="w-full bg-transparent text-xs font-semibold text-light-text dark:text-dark-text placeholder-zinc-400 dark:placeholder-zinc-500 outline-none"
+                                                        className="w-full bg-transparent text-xs font-bold text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 outline-none"
                                                         placeholder="Add destination (e.g. Rome, Tokyo)..."
                                                         autoComplete="off"
                                                     />
@@ -724,7 +728,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                                                 setDestinationInput('');
                                                                 setShowSuggestions(false);
                                                             }}
-                                                            className="p-0.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer shrink-0"
+                                                            className="p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200 cursor-pointer shrink-0"
                                                         >
                                                             <XCircle weight="duotone" className="w-4 h-4" />
                                                         </button>
@@ -736,7 +740,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                             {showSuggestions && suggestions.length > 0 && (
                                                 <div className="absolute top-full left-0 mt-2 w-full z-[70]">
                                                     <GlassPanel
-                                                        className="wg-glass-card shadow-2xl overflow-hidden border border-black/10 dark:border-white/15 max-h-52 overflow-y-auto custom-scrollbar"
+                                                        className="wg-glass-card bg-white/95 dark:bg-dark-card/95 shadow-2xl overflow-hidden max-h-52 overflow-y-auto custom-scrollbar"
                                                         padding="4px"
                                                         overrides={{ borderRadius: 18 }}
                                                     >
@@ -745,13 +749,13 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                                                 key={idx}
                                                                 type="button"
                                                                 onClick={() => handleAddDestination(item)}
-                                                                className="w-full text-left px-3.5 py-2.5 text-xs hover:bg-black/5 dark:hover:bg-white/10 text-light-text dark:text-dark-text border-b border-black/5 dark:border-white/5 last:border-0 font-medium flex items-center justify-between gap-2 transition-colors cursor-pointer rounded-xl"
+                                                                className="w-full text-left px-3.5 py-2.5 text-xs hover:bg-black/5 dark:hover:bg-white/10 text-slate-800 dark:text-dark-text border-b border-black/5 dark:border-white/5 last:border-0 font-medium flex items-center justify-between gap-2 transition-colors cursor-pointer rounded-xl"
                                                             >
                                                                 <div className="flex items-center gap-2 truncate">
                                                                     <span>{item.flag || '📍'}</span>
-                                                                    <span className="font-bold text-light-text dark:text-dark-text truncate">{item.name}</span>
+                                                                    <span className="font-bold text-slate-900 dark:text-white truncate">{item.name}</span>
                                                                     {item.country && (
-                                                                        <span className="text-light-text-secondary dark:text-dark-text-secondary truncate text-[11px]">
+                                                                        <span className="text-slate-500 dark:text-zinc-400 truncate text-[11px]">
                                                                             · {item.country}
                                                                         </span>
                                                                     )}
@@ -770,7 +774,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                 </div>
 
                                 {/* Sticky Frosted Footer with Liquid Glass Actions */}
-                                <div className="p-6 border-t border-black/5 dark:border-white/10 bg-white/60 dark:bg-dark-card/60 backdrop-blur-md flex items-center justify-between gap-3 shrink-0">
+                                <div className="p-6 border-t border-black/5 dark:border-white/10 bg-white/80 dark:bg-dark-card/80 backdrop-blur-md flex items-center justify-between gap-3 shrink-0">
                                     {initialData && (onDelete || initialData.id) ? (
                                         <GlassButton 
                                             type="button" 
@@ -820,17 +824,17 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                 </div>
             </div>
 
-            {/* Floating Custom Emoji Picker with Liquid Glass Portal */}
+            {/* Floating Custom Emoji Picker with Frosted Glass Portal */}
             {showEmojiPicker && pickerPosition && createPortal(
                 <div 
                     ref={emojiPickerMenuRef}
-                    className="fixed w-80 z-modal animate-fade-in shadow-2xl"
+                    className="fixed z-modal animate-fade-in"
                     style={{ top: pickerPosition.top, left: pickerPosition.left }}
                 >
-                    <GlassPanel 
-                        className="wg-glass-card border border-black/10 dark:border-white/15 p-4 shadow-2xl"
-                        padding="14px"
-                        overrides={{ borderRadius: 22 }}
+                    <GlassPanel
+                        className="wg-glass-card bg-white/95 dark:bg-dark-card/95 w-80 shadow-2xl overflow-hidden p-4"
+                        padding="16px"
+                        overrides={{ borderRadius: 24 }}
                     >
                         <div className="mb-3">
                             <input 
@@ -838,7 +842,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                 autoFocus 
                                 value={emojiSearch} 
                                 onChange={e => setEmojiSearch(e.target.value)} 
-                                className="w-full py-2 px-3 text-xs rounded-xl bg-white/60 dark:bg-dark-card/60 border border-black/10 dark:border-white/10 outline-none focus:border-primary-500 font-medium" 
+                                className="w-full py-2 px-3 text-xs rounded-xl bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/10 outline-none focus:border-primary-500 font-medium text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500" 
                             />
                         </div>
                         
@@ -868,7 +872,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                         if (!emojis || emojis.length === 0) return null;
                                         return (
                                             <div key={cat}>
-                                                <h5 className="sticky top-0 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm py-1 mb-1 text-2xs font-bold text-gray-400 uppercase tracking-widest border-b border-black/5 dark:border-white/5">
+                                                <h5 className="sticky top-0 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm py-1 mb-1 text-2xs font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-widest border-b border-black/5 dark:border-white/5">
                                                     {cat}
                                                 </h5>
                                                 <div className="grid grid-cols-6 gap-1 content-start">

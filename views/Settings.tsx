@@ -370,7 +370,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
           )}
           <Button
             variant="primary"
-            className="justify-center rounded-2xl cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 px-3.5 sm:px-6 shrink-0"
+            className="shrink-0"
             onClick={handleSaveOrgSettings}
             disabled={isSavingOrg}
             icon={isSavingOrg ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Check className="w-4 h-4" />}

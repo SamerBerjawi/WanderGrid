@@ -57,7 +57,7 @@ export const GlassButton = React.forwardRef<HTMLButtonElement, GlassButtonProps>
       type={type}
       disabled={disabled || isLoading}
       onClick={disabled || isLoading ? undefined : onClick}
-      className={`inline-block transition-transform duration-150 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${className}`}
+      className={`inline-flex items-center justify-center p-0 border-none bg-transparent outline-none focus:outline-none transition-transform duration-150 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${className}`}
       {...props}
     >
       <GlassPanel
