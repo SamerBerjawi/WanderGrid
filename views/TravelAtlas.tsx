@@ -724,13 +724,16 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
             <span className="hidden sm:inline">Scan History</span>
           </Button>
           <Button 
+            variant="primary"
+            color="primary"
             onClick={() => handleOpenAdd('country')} 
-            className="rounded-full bg-primary-500 hover:bg-primary-600 text-white shadow-md text-xs"
+            className="text-xs"
             id="btn-add-country"
             aria-label="Add visited country"
+            icon={<Plus className="sm:mr-1.5 h-3.5 w-3.5" />}
           >
-            <Plus className="sm:mr-1.5 h-3.5 w-3.5" />
             <span className="hidden sm:inline">Visited Country</span>
+            <span className="sm:hidden">Country</span>
           </Button>
           <Button 
             onClick={() => handleOpenAdd('city')} 

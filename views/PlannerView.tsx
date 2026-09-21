@@ -315,6 +315,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick }) => {
                 <div className="flex items-center justify-end shrink-0">
                     <Button 
                         variant="primary" 
+                        color="emerald"
                         className="shrink-0"
                         onClick={() => handleOpenNewTrip('Planning')}
                         icon={<Plus className="w-4 h-4" />}

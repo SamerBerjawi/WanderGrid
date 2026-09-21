@@ -192,22 +192,91 @@
   display: inline-flex !important;
 }
 
-:root:not(.dark) .wg-glass-wrapper.wg-glass-pill {
+:root:not(.dark) .wg-glass-wrapper.wg-glass-pill:not(.wg-glass-pill-colored) {
   border: 1px solid rgba(0, 0, 0, 0.09) !important;
   box-shadow: 0 2px 8px -1px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04) !important;
 }
 
-:root:not(.dark) .wg-glass-wrapper.wg-glass-pill:hover {
+:root:not(.dark) .wg-glass-wrapper.wg-glass-pill:not(.wg-glass-pill-colored):hover {
   border-color: rgba(0, 0, 0, 0.14) !important;
 }
 
-.dark .wg-glass-wrapper.wg-glass-pill {
+.dark .wg-glass-wrapper.wg-glass-pill:not(.wg-glass-pill-colored) {
   border: 1px solid rgba(255, 255, 255, 0.12) !important;
   box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.5) !important;
 }
 
-.dark .wg-glass-wrapper.wg-glass-pill:hover {
+.dark .wg-glass-wrapper.wg-glass-pill:not(.wg-glass-pill-colored):hover {
   border-color: rgba(255, 255, 255, 0.20) !important;
+}
+
+/* Colored Liquid Glass Pill / Primary Buttons */
+.wg-glass-wrapper.wg-glass-pill-colored {
+  border: 1px solid rgba(255, 255, 255, 0.30) !important;
+}
+
+:root:not(.dark) .wg-glass-wrapper.wg-glass-pill-colored {
+  box-shadow: 0 4px 14px -2px var(--pill-shadow-color, rgba(0, 0, 0, 0.2)), 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+.dark .wg-glass-wrapper.wg-glass-pill-colored {
+  box-shadow: 0 4px 16px -2px var(--pill-shadow-color, rgba(0, 0, 0, 0.5)), 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+}
+
+.wg-glass-pill-emerald {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.92)) !important;
+  --pill-shadow-color: rgba(16, 185, 129, 0.45);
+  color: #ffffff !important;
+}
+.wg-glass-pill-emerald:hover {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 1), rgba(5, 150, 105, 0.98)) !important;
+  --pill-shadow-color: rgba(16, 185, 129, 0.6);
+}
+
+.wg-glass-pill-blue,
+.wg-glass-pill-sky {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.95), rgba(29, 78, 216, 0.92)) !important;
+  --pill-shadow-color: rgba(37, 99, 235, 0.45);
+  color: #ffffff !important;
+}
+.wg-glass-pill-blue:hover,
+.wg-glass-pill-sky:hover {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 1), rgba(29, 78, 216, 0.98)) !important;
+  --pill-shadow-color: rgba(37, 99, 235, 0.6);
+}
+
+.wg-glass-pill-primary,
+.wg-glass-pill-amber {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.95), rgba(217, 119, 6, 0.92)) !important;
+  --pill-shadow-color: rgba(245, 158, 11, 0.45);
+  color: #ffffff !important;
+}
+.wg-glass-pill-primary:hover,
+.wg-glass-pill-amber:hover {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 1), rgba(217, 119, 6, 0.98)) !important;
+  --pill-shadow-color: rgba(245, 158, 11, 0.6);
+}
+
+.wg-glass-pill-rose,
+.wg-glass-pill-danger {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(220, 38, 38, 0.92)) !important;
+  --pill-shadow-color: rgba(239, 68, 68, 0.45);
+  color: #ffffff !important;
+}
+.wg-glass-pill-rose:hover,
+.wg-glass-pill-danger:hover {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 1), rgba(220, 38, 38, 0.98)) !important;
+  --pill-shadow-color: rgba(239, 68, 68, 0.6);
+}
+
+.wg-glass-pill-indigo {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.95), rgba(79, 70, 229, 0.92)) !important;
+  --pill-shadow-color: rgba(99, 102, 241, 0.45);
+  color: #ffffff !important;
+}
+.wg-glass-pill-indigo:hover {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 1), rgba(79, 70, 229, 0.98)) !important;
+  --pill-shadow-color: rgba(99, 102, 241, 0.6);
 }
 
 /* LiquidGlass Root Div & GlassContainer Shells */

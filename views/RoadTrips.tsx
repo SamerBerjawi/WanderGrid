@@ -752,8 +752,9 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
         </div>
         <Button 
           variant="primary" 
+          color="emerald"
           onClick={handleOpenCreateModal} 
-          className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl shadow-emerald-500/20 shrink-0 min-h-[44px]"
+          className="shrink-0 min-h-[44px]"
           icon={<Plus className="w-4 h-4" />}
           aria-label="Add Land Journey"
         >

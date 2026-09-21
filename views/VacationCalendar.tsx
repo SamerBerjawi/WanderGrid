@@ -1565,6 +1565,7 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
                   {onTripClick && (
                     <Button 
                       variant="primary" 
+                      color="emerald"
                       onClick={() => {
                         onTripClick(selectedItemDetails.meta.id);
                         setSelectedItemDetails(null);

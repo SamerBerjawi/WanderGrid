@@ -964,11 +964,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
 
                     <Button 
                         variant="primary" 
-                        className="bg-primary-600 font-extrabold hover:bg-primary-700 shadow-md text-white py-2.5 px-5 rounded-xl flex items-center gap-2 text-xs uppercase tracking-wider transition-all duration-200 shrink-0 min-h-[44px]" 
+                        color="blue"
+                        className="shrink-0 min-h-[44px]" 
                         onClick={() => setIsFlightTrackerOpen(true)}
                         aria-label="Track active flight"
+                        icon={<Plane className="w-4 h-4" weight="duotone" />}
                     >
-                        <Plane className="w-4 h-4 text-white" weight="duotone" /> Track Active Flight
+                        Track Active Flight
                     </Button>
                 </div>
             </div>

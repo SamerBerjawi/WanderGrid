@@ -2322,6 +2322,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
         <div className="flex items-center justify-end shrink-0 gap-2 sm:gap-3">
           <Button 
             variant="primary" 
+            color="blue"
             className="shrink-0"
             onClick={() => openFlightForm()}
             icon={<Plus className="w-4 h-4" />}
@@ -4216,6 +4217,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                 <Button 
                   type="submit" 
                   variant="primary" 
+                  color="blue"
                   className="flex-1 rounded-2xl cursor-pointer"
                 >
                   Save Boarding Stub

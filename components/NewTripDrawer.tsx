@@ -512,13 +512,9 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                         </div>
                                     )}
 
-                                    {/* 1. Trip Title (Liquid Glass Input) */}
-                                    <GlassPanel
-                                        className="wg-glass-card bg-white/70 dark:bg-dark-fill/50 focus-within:border-primary-500/60 shadow-glass-card transition-all"
-                                        padding="14px 18px"
-                                        overrides={{ borderRadius: 22 }}
-                                    >
-                                        <label className="block text-2xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400 mb-1">
+                                    {/* 1. Trip Title */}
+                                    <div className="p-4 rounded-2xl bg-white dark:bg-dark-card border border-black/15 dark:border-white/10 shadow-xs focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-500/20 transition-all">
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-zinc-200 mb-1.5">
                                             Trip Title <span className="text-rose-500">*</span>
                                         </label>
                                         <input
@@ -530,11 +526,11 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                             required
                                             autoFocus
                                         />
-                                    </GlassPanel>
+                                    </div>
 
-                                    {/* 2. Badge & Emoji Selector (Liquid Glass Container) */}
-                                    <div className="p-4 rounded-3xl bg-white/70 dark:bg-dark-fill/40 backdrop-blur-md border border-black/5 dark:border-white/10 shadow-glass-card flex items-center gap-4">
-                                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-primary-500/25 to-primary-500/10 dark:from-primary-500/30 dark:to-dark-card border-2 border-primary-500/30 flex items-center justify-center text-3xl shadow-glass-card relative select-none transition-transform hover:scale-105 shrink-0">
+                                    {/* 2. Badge & Emoji Selector */}
+                                    <div className="p-4 rounded-2xl bg-white dark:bg-dark-card border border-black/15 dark:border-white/10 shadow-xs flex items-center gap-4">
+                                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-primary-500/25 to-primary-500/10 dark:from-primary-500/30 dark:to-dark-card border-2 border-primary-500/40 flex items-center justify-center text-3xl shadow-sm relative select-none transition-transform hover:scale-105 shrink-0">
                                             <span>{icon}</span>
                                             <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-primary-500 text-white rounded-md flex items-center justify-center text-2xs shadow-sm">
                                                 <Sparkle weight="duotone" className="w-3 h-3" />
@@ -542,7 +538,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                         </div>
 
                                         <div className="flex-1 space-y-1.5 min-w-0">
-                                            <label className="text-2xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400 block">
+                                            <label className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-zinc-200 block">
                                                 Badge & Icon
                                             </label>
                                             <div className="flex flex-wrap gap-1.5 items-center">
@@ -553,8 +549,8 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                                         onClick={() => setIcon(e.trim())}
                                                         className={`w-8 h-8 flex items-center justify-center rounded-xl text-base transition-all active:scale-95 cursor-pointer ${
                                                             icon === e.trim()
-                                                                ? 'bg-primary-500 text-white shadow-md shadow-primary-500/30 font-bold scale-105 border border-white/20'
-                                                                : 'bg-white/80 dark:bg-white/10 hover:bg-white dark:hover:bg-white/20 border border-black/10 dark:border-white/10 text-slate-800 dark:text-white shadow-xs'
+                                                                ? 'bg-primary-500 text-white shadow-md shadow-primary-500/30 font-bold scale-105 border border-white/30'
+                                                                : 'bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 border border-black/12 dark:border-white/10 text-slate-900 dark:text-white shadow-2xs'
                                                         }`}
                                                     >
                                                         {e.trim()}
@@ -567,7 +563,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                                     className={`h-8 px-2.5 flex items-center gap-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer active:scale-95 ${
                                                         showEmojiPicker
                                                             ? 'border-primary-500 bg-primary-500/20 text-primary-600 dark:text-primary-400 shadow-sm'
-                                                            : 'bg-white/80 dark:bg-white/10 border-black/10 dark:border-white/10 text-slate-600 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/15 shadow-xs'
+                                                            : 'bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 border-black/12 dark:border-white/10 text-slate-800 dark:text-zinc-200 shadow-2xs'
                                                     }`}
                                                     title="Explore all emojis"
                                                 >
@@ -578,16 +574,12 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                         </div>
                                     </div>
 
-                                    {/* 3. Trip Stage (Liquid Glass Segmented Buttons) */}
+                                    {/* 3. Trip Stage (Segmented Controls) */}
                                     <div className="space-y-2">
-                                        <label className="block text-2xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400 ml-1">
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-zinc-200 ml-0.5">
                                             Stage
                                         </label>
-                                        <GlassPanel
-                                            className="wg-glass-card bg-black/5 dark:bg-white/5 p-1.5 flex gap-1.5 shadow-xs"
-                                            padding="4px"
-                                            overrides={{ borderRadius: 20 }}
-                                        >
+                                        <div className="bg-slate-100/90 dark:bg-white/5 p-1.5 rounded-2xl flex gap-1.5 border border-black/12 dark:border-white/10 shadow-inner">
                                             {STAGE_CONFIGS.map(s => {
                                                 const isSelected = status === s.id;
                                                 const IconComponent = s.Icon;
@@ -599,7 +591,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                                         className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer select-none active:scale-95 ${
                                                             isSelected
                                                                 ? `${s.activeStyle} shadow-md`
-                                                                : 'text-slate-600 dark:text-zinc-400 opacity-70 hover:opacity-100 hover:bg-white/40 dark:hover:bg-white/10'
+                                                                : 'text-slate-700 dark:text-zinc-300 font-bold hover:text-slate-900 dark:hover:text-white hover:bg-white/80 dark:hover:bg-white/10'
                                                         }`}
                                                     >
                                                         <IconComponent weight="duotone" className="w-4 h-4 shrink-0" />
@@ -607,23 +599,19 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                                     </button>
                                                 );
                                             })}
-                                        </GlassPanel>
+                                        </div>
                                     </div>
 
-                                    {/* 4. Timeline Dates (Liquid Glass Date Pickers) */}
+                                    {/* 4. Timeline Dates */}
                                     <div className="space-y-2">
-                                        <label className="block text-2xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400 ml-1">
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-zinc-200 ml-0.5">
                                             Timeline <span className="text-rose-500">*</span>
                                         </label>
                                         <div className="grid grid-cols-2 gap-3">
-                                            <GlassPanel
-                                                className="wg-glass-card bg-white/70 dark:bg-dark-fill/50 focus-within:border-primary-500/60 shadow-glass-card transition-all"
-                                                padding="12px 14px"
-                                                overrides={{ borderRadius: 20 }}
-                                            >
-                                                <div className="flex items-center gap-2 mb-1">
+                                            <div className="p-3.5 rounded-2xl bg-white dark:bg-dark-card border border-black/15 dark:border-white/10 shadow-xs focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-500/20 transition-all">
+                                                <div className="flex items-center gap-2 mb-1.5">
                                                     <CalendarBlank weight="duotone" className="w-4 h-4 text-primary-500 shrink-0" />
-                                                    <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+                                                    <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-zinc-300">
                                                         Departure
                                                     </span>
                                                 </div>
@@ -632,18 +620,15 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                                     value={startDate}
                                                     onChange={(e) => setStartDate(e.target.value)}
                                                     className="w-full bg-transparent text-xs font-bold text-slate-900 dark:text-white outline-none cursor-pointer"
+                                                    style={{ colorScheme: 'light dark' }}
                                                     required
                                                 />
-                                            </GlassPanel>
+                                            </div>
 
-                                            <GlassPanel
-                                                className="wg-glass-card bg-white/70 dark:bg-dark-fill/50 focus-within:border-primary-500/60 shadow-glass-card transition-all"
-                                                padding="12px 14px"
-                                                overrides={{ borderRadius: 20 }}
-                                            >
-                                                <div className="flex items-center gap-2 mb-1">
+                                            <div className="p-3.5 rounded-2xl bg-white dark:bg-dark-card border border-black/15 dark:border-white/10 shadow-xs focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-500/20 transition-all">
+                                                <div className="flex items-center gap-2 mb-1.5">
                                                     <CalendarBlank weight="duotone" className="w-4 h-4 text-primary-500 shrink-0" />
-                                                    <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+                                                    <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-zinc-300">
                                                         Conclusion
                                                     </span>
                                                 </div>
@@ -653,19 +638,20 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                                     min={startDate}
                                                     onChange={(e) => setEndDate(e.target.value)}
                                                     className="w-full bg-transparent text-xs font-bold text-slate-900 dark:text-white outline-none cursor-pointer"
+                                                    style={{ colorScheme: 'light dark' }}
                                                     required
                                                 />
-                                            </GlassPanel>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    {/* 5. Destinations (Liquid Glass Input & Chips) */}
+                                    {/* 5. Destinations */}
                                     <div ref={destWrapperRef} className="space-y-2">
-                                        <div className="flex items-center justify-between ml-1">
-                                            <label className="text-2xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400 block">
+                                        <div className="flex items-center justify-between ml-0.5">
+                                            <label className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-zinc-200 block">
                                                 Destinations
                                             </label>
-                                            <span className="text-[11px] text-slate-500 dark:text-zinc-400 font-medium">
+                                            <span className="text-xs text-slate-600 dark:text-zinc-400 font-medium">
                                                 City name or Google Maps link
                                             </span>
                                         </div>
@@ -674,98 +660,82 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                         {destinations.length > 0 && (
                                             <div className="flex flex-wrap gap-2 pb-1">
                                                 {destinations.map((dest, idx) => (
-                                                    <GlassPanel
+                                                    <div
                                                         key={idx}
-                                                        className="wg-glass-pill bg-white/80 dark:bg-dark-card/80 shadow-xs"
-                                                        padding="6px 12px"
-                                                        overrides={{ borderRadius: 14 }}
+                                                        className="px-3 py-1.5 rounded-xl bg-white dark:bg-dark-card border border-black/15 dark:border-white/10 shadow-xs inline-flex items-center gap-1.5 text-xs font-bold text-slate-900 dark:text-white"
                                                     >
-                                                        <div className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-900 dark:text-white">
-                                                            <span>{dest.flag || '📍'}</span>
-                                                            <span>{dest.name}</span>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleRemoveDestination(idx)}
-                                                                className="p-0.5 hover:text-rose-500 rounded-md transition-colors cursor-pointer ml-0.5 text-slate-400 hover:text-rose-500"
-                                                                aria-label={`Remove ${dest.name}`}
-                                                            >
-                                                                <XCircle weight="duotone" className="w-3.5 h-3.5" />
-                                                            </button>
-                                                        </div>
-                                                    </GlassPanel>
+                                                        <span>{dest.flag || '📍'}</span>
+                                                        <span>{dest.name}</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleRemoveDestination(idx)}
+                                                            className="p-0.5 hover:text-rose-500 rounded-md transition-colors cursor-pointer ml-0.5 text-slate-400 hover:text-rose-500"
+                                                            aria-label={`Remove ${dest.name}`}
+                                                        >
+                                                            <XCircle weight="duotone" className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    </div>
                                                 ))}
                                             </div>
                                         )}
 
-                                        {/* Liquid Glass Destination Input */}
+                                        {/* Destination Input */}
                                         <div className="relative">
-                                            <GlassPanel
-                                                className="wg-glass-card bg-white/70 dark:bg-dark-fill/50 focus-within:border-emerald-500/60 shadow-glass-card transition-all"
-                                                padding="11px 14px"
-                                                overrides={{ borderRadius: 20 }}
-                                            >
-                                                <div className="flex items-center gap-2.5">
-                                                    <MapPin weight="duotone" className="w-4 h-4 text-emerald-500 shrink-0" />
-                                                    <input
-                                                        type="text"
-                                                        value={destinationInput}
-                                                        onChange={(e) => setDestinationInput(e.target.value)}
-                                                        onKeyDown={handleKeyDownDestinationInput}
-                                                        onFocus={() => {
-                                                            if (suggestions.length > 0) setShowSuggestions(true);
+                                            <div className="p-3.5 rounded-2xl bg-white dark:bg-dark-card border border-black/15 dark:border-white/10 shadow-xs focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all flex items-center gap-2.5">
+                                                <MapPin weight="duotone" className="w-4 h-4 text-emerald-500 shrink-0" />
+                                                <input
+                                                    type="text"
+                                                    value={destinationInput}
+                                                    onChange={(e) => setDestinationInput(e.target.value)}
+                                                    onKeyDown={handleKeyDownDestinationInput}
+                                                    onFocus={() => {
+                                                        if (suggestions.length > 0) setShowSuggestions(true);
+                                                    }}
+                                                    className="w-full bg-transparent text-xs font-bold text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 outline-none"
+                                                    placeholder="Add destination (e.g. Rome, Tokyo)..."
+                                                    autoComplete="off"
+                                                />
+                                                {isSearching && (
+                                                    <div className="w-3.5 h-3.5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin shrink-0" />
+                                                )}
+                                                {destinationInput && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setDestinationInput('');
+                                                            setShowSuggestions(false);
                                                         }}
-                                                        className="w-full bg-transparent text-xs font-bold text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 outline-none"
-                                                        placeholder="Add destination (e.g. Rome, Tokyo)..."
-                                                        autoComplete="off"
-                                                    />
-                                                    {isSearching && (
-                                                        <div className="w-3.5 h-3.5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin shrink-0" />
-                                                    )}
-                                                    {destinationInput && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => {
-                                                                setDestinationInput('');
-                                                                setShowSuggestions(false);
-                                                            }}
-                                                            className="p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200 cursor-pointer shrink-0"
-                                                        >
-                                                            <XCircle weight="duotone" className="w-4 h-4" />
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </GlassPanel>
-
-                                            {/* Suggestions Flyout with Liquid Glass */}
-                                            {showSuggestions && suggestions.length > 0 && (
-                                                <div className="absolute top-full left-0 mt-2 w-full z-[70]">
-                                                    <GlassPanel
-                                                        className="wg-glass-card bg-white/95 dark:bg-dark-card/95 shadow-2xl overflow-hidden max-h-52 overflow-y-auto custom-scrollbar"
-                                                        padding="4px"
-                                                        overrides={{ borderRadius: 18 }}
+                                                        className="p-0.5 text-slate-400 hover:text-slate-700 dark:hover:text-zinc-200 cursor-pointer shrink-0"
                                                     >
-                                                        {suggestions.map((item, idx) => (
-                                                            <button
-                                                                key={idx}
-                                                                type="button"
-                                                                onClick={() => handleAddDestination(item)}
-                                                                className="w-full text-left px-3.5 py-2.5 text-xs hover:bg-black/5 dark:hover:bg-white/10 text-slate-800 dark:text-dark-text border-b border-black/5 dark:border-white/5 last:border-0 font-medium flex items-center justify-between gap-2 transition-colors cursor-pointer rounded-xl"
-                                                            >
-                                                                <div className="flex items-center gap-2 truncate">
-                                                                    <span>{item.flag || '📍'}</span>
-                                                                    <span className="font-bold text-slate-900 dark:text-white truncate">{item.name}</span>
-                                                                    {item.country && (
-                                                                        <span className="text-slate-500 dark:text-zinc-400 truncate text-[11px]">
-                                                                            · {item.country}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                                <span className="text-2xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/20 shrink-0">
-                                                                    Select
-                                                                </span>
-                                                            </button>
-                                                        ))}
-                                                    </GlassPanel>
+                                                        <XCircle weight="duotone" className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            {/* Suggestions Flyout */}
+                                            {showSuggestions && suggestions.length > 0 && (
+                                                <div className="absolute top-full left-0 mt-2 w-full z-[70] bg-white dark:bg-dark-card border border-black/15 dark:border-white/15 rounded-2xl shadow-xl overflow-hidden max-h-52 overflow-y-auto custom-scrollbar p-1.5">
+                                                    {suggestions.map((item, idx) => (
+                                                        <button
+                                                            key={idx}
+                                                            type="button"
+                                                            onClick={() => handleAddDestination(item)}
+                                                            className="w-full text-left px-3.5 py-2.5 text-xs hover:bg-slate-100 dark:hover:bg-white/10 text-slate-800 dark:text-dark-text border-b border-black/5 dark:border-white/5 last:border-0 font-medium flex items-center justify-between gap-2 transition-colors cursor-pointer rounded-xl"
+                                                        >
+                                                            <div className="flex items-center gap-2 truncate">
+                                                                <span>{item.flag || '📍'}</span>
+                                                                <span className="font-bold text-slate-900 dark:text-white truncate">{item.name}</span>
+                                                                {item.country && (
+                                                                    <span className="text-slate-600 dark:text-zinc-400 truncate text-xs">
+                                                                        · {item.country}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <span className="text-2xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/20 shrink-0">
+                                                                Select
+                                                            </span>
+                                                        </button>
+                                                    ))}
                                                 </div>
                                             )}
                                         </div>
@@ -810,6 +780,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                         <GlassButton 
                                             type="submit" 
                                             variant="primary"
+                                            color="emerald"
                                             disabled={isSubmitting}
                                             isLoading={isSubmitting}
                                             icon={<Check weight="bold" className="w-4 h-4" />}

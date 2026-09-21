@@ -68,6 +68,10 @@ export const GlassPanel = forwardRef<HTMLDivElement, GlassPanelProps>(({
     if (token === 'wg-glass-card' || token === 'wg-glass-pill') {
       continue;
     }
+    if (token.startsWith('wg-glass-pill-')) {
+      outerTokens.push(token);
+      continue;
+    }
     // Eliminate rectangular background/rounded/generic border utilities that cause double shells
     if (/^(?:[\w-]+:)*(?:border$|border-[0-9]|border-black|border-white|rounded|bg-|backdrop-blur)[^\s]*/.test(token)) {
       continue;

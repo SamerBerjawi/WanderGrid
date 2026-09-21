@@ -62,15 +62,17 @@ Card.displayName = "Card";
 // --- Button ---
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline' | 'glass';
+  color?: 'primary' | 'emerald' | 'blue' | 'sky' | 'amber' | 'rose' | 'indigo' | string;
   size?: 'sm' | 'md' | 'lg';
   icon?: ReactNode;
   isLoading?: boolean;
 }
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(({ children, variant = 'primary', size = 'md', className, icon, isLoading, disabled, ...props }, ref) => {
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(({ children, variant = 'primary', color, size = 'md', className, icon, isLoading, disabled, ...props }, ref) => {
   return (
     <GlassButton
       ref={ref}
       variant={variant}
+      color={color}
       size={size}
       className={className}
       icon={icon}

@@ -1066,15 +1066,16 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                         <span className="hidden sm:inline">{isSelectionMode ? 'Cancel Batch' : 'Batch Merge'}</span>
                     </button>
 
-                    <button
-                        type="button"
+                    <Button
+                        variant="primary"
+                        color="primary"
                         onClick={() => { setEditingTrip(null); setIsCreateTripOpen(true); }}
                         aria-label="New Expedition"
-                        className={`${BTN_PRIMARY_STYLE} min-h-[44px] px-4 sm:px-5 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 sm:gap-2 shadow-lg shadow-primary-500/20 cursor-pointer shrink-0`}
+                        icon={<Plus className="w-4 h-4" />}
+                        className="shrink-0 min-h-[44px]"
                     >
-                        <Plus className="w-4 h-4" />
-                        <span>New Trip</span>
-                    </button>
+                        New Trip
+                    </Button>
                 </div>
             </div>
 

@@ -1,9 +1,12 @@
 import React, { ReactNode } from 'react';
 import GlassPanel from './GlassPanel';
 
+export type ButtonAccentColor = 'primary' | 'emerald' | 'blue' | 'sky' | 'amber' | 'rose' | 'indigo' | string;
+
 export interface GlassButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'onClick'> {
   children?: ReactNode;
   variant?: 'primary' | 'secondary' | 'pill' | 'ghost' | 'danger' | 'outline' | 'glass';
+  color?: ButtonAccentColor;
   size?: 'sm' | 'md' | 'lg';
   icon?: ReactNode;
   isLoading?: boolean;
@@ -19,6 +22,7 @@ export interface GlassButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLBu
 export const GlassButton = React.forwardRef<HTMLButtonElement, GlassButtonProps>(({
   children,
   variant = 'secondary',
+  color,
   size = 'md',
   icon,
   isLoading,
@@ -41,12 +45,15 @@ export const GlassButton = React.forwardRef<HTMLButtonElement, GlassButtonProps>
     lg: 24,
   }[size];
 
+  const resolvedColor = color || 'primary';
+  const colorClass = `wg-glass-pill-colored wg-glass-pill-${resolvedColor}`;
+
   const variantStyles = {
-    primary: 'bg-primary-500/25 text-primary-600 dark:text-primary-400 font-bold border border-primary-500/30 shadow-xs',
+    primary: `${colorClass} text-white font-bold`,
     secondary: 'bg-black/5 dark:bg-white/5 text-light-text dark:text-dark-text font-bold hover:bg-black/10 dark:hover:bg-white/10',
     pill: 'text-light-text dark:text-dark-text font-semibold',
     ghost: 'bg-transparent text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text font-bold',
-    danger: 'bg-rose-500/20 text-rose-600 dark:text-rose-400 font-bold border border-rose-500/30',
+    danger: 'wg-glass-pill-colored wg-glass-pill-danger text-white font-bold',
     outline: 'bg-transparent border border-black/10 dark:border-white/10 text-light-text dark:text-dark-text font-bold',
     glass: 'bg-white/20 dark:bg-white/10 text-light-text dark:text-dark-text font-bold',
   }[variant] || 'text-light-text dark:text-dark-text font-bold';
@@ -68,7 +75,7 @@ export const GlassButton = React.forwardRef<HTMLButtonElement, GlassButtonProps>
           ...overrides,
         }}
       >
-        <span className="flex items-center gap-2 justify-center leading-none text-xs uppercase tracking-wider font-sans select-none">
+        <span className={`flex items-center gap-2 justify-center leading-none text-xs uppercase tracking-wider font-sans select-none ${variant === 'primary' || variant === 'danger' ? 'text-white' : ''}`}>
           {isLoading ? (
             <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
           ) : icon ? (
