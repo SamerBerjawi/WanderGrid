@@ -460,9 +460,8 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                             <Autocomplete 
                                                 placeholder="e.g. Santorini, Greece" 
                                                 value={destination} 
-                                                onChange={setDestination} 
+                                                onChange={handleDestinationChange} 
                                                 fetchSuggestions={fetchLocationSuggestions} 
-                                                onSelectCoordinate={handleDestinationSelect}
                                             />
                                         </div>
                                         <div className="grid grid-cols-2 gap-2">
@@ -808,7 +807,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 </h3>
                                 {basicsError && <p className="text-xs font-semibold text-semantic-red p-2 bg-semantic-red/10 rounded-xl">{basicsError}</p>}
                                 <Input label="Expedition Title *" placeholder="e.g. Italian Lakes & Alps" value={title} onChange={e => setTitle(e.target.value)} />
-                                <Autocomplete label="Destination *" placeholder="e.g. Lake Como, Italy" value={destination} onChange={setDestination} fetchSuggestions={fetchLocationSuggestions} />
+                                <Autocomplete label="Destination *" placeholder="e.g. Lake Como, Italy" value={destination} onChange={handleDestinationChange} fetchSuggestions={fetchLocationSuggestions} />
                                 <div className="grid grid-cols-2 gap-3">
                                     <Input label="Start Date *" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
                                     <Input label="End Date *" type="date" value={endDate} min={startDate} onChange={e => setEndDate(e.target.value)} />

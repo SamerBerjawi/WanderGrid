@@ -1557,11 +1557,15 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                 return (
                                     <VirtualListItem key={dateStr} minHeight={120}>
                                         <div className="relative md:pl-20 group">
-                                            <div className="hidden md:flex absolute left-0 top-0 w-16 h-16 bg-light-card dark:bg-dark-card border border-black/10 dark:border-white/10 rounded-2xl items-center justify-center flex-col z-10 shadow-sm">
+                                            <GlassPanel 
+                                                className="hidden md:flex absolute left-0 top-0 w-16 h-16 wg-glass-card rounded-2xl items-center justify-center flex-col z-10 shadow-sm"
+                                                overrides={{ borderRadius: 16 }}
+                                                padding="0px"
+                                            >
                                                 <span className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest">{formatDate(dateObj, 'short', settings).split(' ')[0]}</span>
                                                 <span className="text-xl font-black text-light-text dark:text-dark-text leading-none">{dateObj.getUTCDate()}</span>
                                                 <span className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-tighter mt-0.5">Day {index + 1}</span>
-                                            </div>
+                                            </GlassPanel>
                                             <div className="md:hidden mb-2 flex items-center gap-3">
                                                 <div className="bg-primary-500 text-white px-3 py-1 rounded-lg text-xs font-bold">Day {index + 1}</div>
                                                 <span className="text-lg font-black text-light-text dark:text-dark-text">{formatDate(dateObj, 'weekday-long', settings)}</span>
@@ -1578,14 +1582,20 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                         if (item.type === 'Transport') {
                                                             const t = item.ref;
                                                             return (
-                                                                <div key={item.id} className="bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all">
-                                                                    <div className="w-10 h-10 rounded-xl bg-blue-500 text-white flex items-center justify-center shadow-lg shadow-blue-500/30">
+                                                                <GlassPanel 
+                                                                    key={item.id} 
+                                                                    className="wg-glass-card rounded-2xl p-4 flex items-center gap-4 hover:shadow-md transition-all cursor-pointer group"
+                                                                    overrides={{ borderRadius: 16 }}
+                                                                    padding="0px"
+                                                                    onClick={() => openTransportModal([t])}
+                                                                >
+                                                                    <div className="w-10 h-10 rounded-xl bg-blue-500 text-white flex items-center justify-center shadow-lg shadow-blue-500/30 shrink-0">
                                                                         <TripItemIcon name={item.icon} className="w-5 h-5 text-white" />
                                                                     </div>
-                                                                    <div className="flex-1">
+                                                                    <div className="flex-1 min-w-0">
                                                                         <div className="flex items-center gap-2">
                                                                             <span className="text-xs font-black text-blue-600 dark:text-blue-400 whitespace-nowrap">{formatTime(item.time)}</span>
-                                                                            <h4 className="font-bold text-light-text dark:text-dark-text text-sm">
+                                                                            <h4 className="font-bold text-light-text dark:text-dark-text text-sm truncate">
                                                                                 {item.title}
                                                                             </h4>
                                                                         </div>
@@ -1594,32 +1604,38 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                                                 {t.provider} {t.identifier}
                                                                             </p>
                                                                             {item.meta && (
-                                                                                <p className="text-2xs text-light-text-secondary font-bold uppercase tracking-wider">
+                                                                                <p className="text-2xs text-light-text-secondary font-bold uppercase tracking-wider truncate">
                                                                                     {item.meta}
                                                                                 </p>
                                                                             )}
                                                                         </div>
                                                                     </div>
-                                                                    <button onClick={() => openTransportModal([t])} aria-label="Edit transport booking" className="text-light-text-secondary hover:text-blue-500 min-w-[36px] min-h-[36px] flex items-center justify-center cursor-pointer">
+                                                                    <button onClick={(e) => { e.stopPropagation(); openTransportModal([t]); }} aria-label="Edit transport booking" className="text-light-text-secondary hover:text-blue-500 min-w-[36px] min-h-[36px] flex items-center justify-center cursor-pointer">
                                                                         <PencilSimple className="w-4 h-4" />
                                                                     </button>
-                                                                </div>
+                                                                </GlassPanel>
                                                             );
                                                         } else if (item.type === 'Accommodation') {
                                                             const a = item.ref;
                                                             const isCheckIn = !item.isCheckOut && !item.isOvernight;
                                                             const statusLabel = isCheckIn ? 'Check-In' : (item.isCheckOut ? 'Check-Out' : 'Overnight Stay');
                                                             return (
-                                                                <div key={item.id} className="bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all">
-                                                                    <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-lg shadow-amber-500/30">
+                                                                <GlassPanel 
+                                                                    key={item.id} 
+                                                                    className="wg-glass-card rounded-2xl p-4 flex items-center gap-4 hover:shadow-md transition-all cursor-pointer group"
+                                                                    overrides={{ borderRadius: 16 }}
+                                                                    padding="0px"
+                                                                    onClick={() => openAccommodationModal()}
+                                                                >
+                                                                    <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-lg shadow-amber-500/30 shrink-0">
                                                                         <TripItemIcon name={item.icon} className="w-5 h-5 text-white" />
                                                                     </div>
-                                                                    <div className="flex-1">
+                                                                    <div className="flex-1 min-w-0">
                                                                         <div className="flex items-center gap-2">
                                                                             {!item.isOvernight && (
                                                                                 <span className="text-xs font-black text-amber-600 dark:text-amber-400 whitespace-nowrap">{formatTime(item.time)}</span>
                                                                             )}
-                                                                            <h4 className="font-bold text-light-text dark:text-dark-text text-sm">
+                                                                            <h4 className="font-bold text-light-text dark:text-dark-text text-sm truncate">
                                                                                 {item.title}
                                                                             </h4>
                                                                         </div>
@@ -1628,22 +1644,28 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                                                 {statusLabel}
                                                                             </p>
                                                                             {item.meta && (
-                                                                                <p className="text-2xs text-light-text-secondary font-bold uppercase tracking-wider">
+                                                                                <p className="text-2xs text-light-text-secondary font-bold uppercase tracking-wider truncate">
                                                                                     {item.meta}
                                                                                 </p>
                                                                             )}
                                                                         </div>
                                                                     </div>
-                                                                    <button onClick={() => openAccommodationModal()} aria-label="Edit accommodation booking" className="text-light-text-secondary hover:text-amber-500 min-w-[36px] min-h-[36px] flex items-center justify-center cursor-pointer">
+                                                                    <button onClick={(e) => { e.stopPropagation(); openAccommodationModal(); }} aria-label="Edit accommodation booking" className="text-light-text-secondary hover:text-amber-500 min-w-[36px] min-h-[36px] flex items-center justify-center cursor-pointer">
                                                                         <PencilSimple className="w-4 h-4" />
                                                                     </button>
-                                                                </div>
+                                                                </GlassPanel>
                                                             );
                                                         } else {
                                                             const isRes = item.type === 'Reservation';
                                                             const act = item.ref;
                                                             return (
-                                                                <div key={item.id} className="p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all group/act bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5">
+                                                                <GlassPanel 
+                                                                    key={item.id} 
+                                                                    className="wg-glass-card rounded-2xl p-4 flex items-center gap-4 hover:shadow-md transition-all group/act cursor-pointer"
+                                                                    overrides={{ borderRadius: 16 }}
+                                                                    padding="0px"
+                                                                    onClick={() => handleOpenActivityModal(dateStr, act)}
+                                                                >
                                                                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
                                                                         isRes 
                                                                         ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' 
@@ -1662,10 +1684,10 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                                     {item.cost && <div className={`text-xs font-bold whitespace-nowrap ${isRes ? 'text-orange-600 dark:text-orange-400' : 'text-light-text dark:text-dark-text'}`}>{formatCurrency(item.cost)}</div>}
                                                                     
                                                                     <div className="flex items-center gap-1 opacity-0 group-hover/act:opacity-100 transition-opacity">
-                                                                        <button onClick={() => handleOpenActivityModal(dateStr, act)} aria-label="Edit activity" className="p-1.5 text-light-text-secondary hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all min-w-[36px] min-h-[36px] flex items-center justify-center cursor-pointer"><PencilSimple className="w-4 h-4" /></button>
-                                                                        <button onClick={() => handleDeleteActivity(act.id)} aria-label="Delete activity" className="p-1.5 text-light-text-secondary hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all min-w-[36px] min-h-[36px] flex items-center justify-center cursor-pointer"><Trash className="w-4 h-4" /></button>
+                                                                        <button onClick={(e) => { e.stopPropagation(); handleOpenActivityModal(dateStr, act); }} aria-label="Edit activity" className="p-1.5 text-light-text-secondary hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all min-w-[36px] min-h-[36px] flex items-center justify-center cursor-pointer"><PencilSimple className="w-4 h-4" /></button>
+                                                                        <button onClick={(e) => { e.stopPropagation(); handleDeleteActivity(act.id); }} aria-label="Delete activity" className="p-1.5 text-light-text-secondary hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all min-w-[36px] min-h-[36px] flex items-center justify-center cursor-pointer"><Trash className="w-4 h-4" /></button>
                                                                     </div>
-                                                                </div>
+                                                                </GlassPanel>
                                                             );
                                                         }
                                                     })

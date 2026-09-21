@@ -263,10 +263,12 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
         if (item.type === 'Transport') {
             const t = item.ref as Transport;
             return (
-                <div 
+                <GlassPanel 
                     key={item.id}
                     onClick={() => onEditTransport([t])}
-                    className="p-3.5 rounded-2xl bg-white/90 dark:bg-dark-card/90 backdrop-blur-md border border-black/10 dark:border-white/10 hover:border-blue-500/50 hover:shadow-md transition-all cursor-pointer group space-y-2"
+                    className="wg-glass-card rounded-2xl p-3.5 border border-black/10 dark:border-white/10 hover:border-blue-500/50 hover:shadow-md transition-all cursor-pointer group space-y-2"
+                    overrides={{ borderRadius: 16 }}
+                    padding="0px"
                 >
                     <div className="flex items-center justify-between">
                         <span className={`px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider ${STATUS_INFO_STYLE} flex items-center gap-1`}>
@@ -292,17 +294,19 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                         <span className="truncate max-w-[140px]">{item.meta || t.provider}</span>
                         {item.cost ? <span className="font-bold font-mono text-light-text dark:text-dark-text">{formatCurrency(item.cost)}</span> : null}
                     </div>
-                </div>
+                </GlassPanel>
             );
         }
 
         if (item.type === 'Accommodation') {
             const a = item.ref as Accommodation;
             return (
-                <div 
+                <GlassPanel 
                     key={item.id}
                     onClick={() => onEditAccommodation(a)}
-                    className="p-3.5 rounded-2xl bg-white/90 dark:bg-dark-card/90 backdrop-blur-md border border-black/10 dark:border-white/10 hover:border-emerald-500/50 hover:shadow-md transition-all cursor-pointer group space-y-2"
+                    className="wg-glass-card rounded-2xl p-3.5 border border-black/10 dark:border-white/10 hover:border-emerald-500/50 hover:shadow-md transition-all cursor-pointer group space-y-2"
+                    overrides={{ borderRadius: 16 }}
+                    padding="0px"
                 >
                     <div className="flex items-center justify-between">
                         <span className={`px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider ${STATUS_SUCCESS_STYLE} flex items-center gap-1`}>
@@ -332,7 +336,7 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                             <span className="font-bold font-mono text-emerald-600 dark:text-emerald-400">{formatCurrency(item.cost)}</span>
                         )}
                     </div>
-                </div>
+                </GlassPanel>
             );
         }
 
@@ -340,10 +344,12 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
         const act = item.ref as Activity;
         const isReservation = act.type === 'Reservation';
         return (
-            <div 
+            <GlassPanel 
                 key={item.id}
                 onClick={() => onEditActivity(dateStr || act.date, act)}
-                className="p-3.5 rounded-2xl bg-white/90 dark:bg-dark-card/90 backdrop-blur-md border border-black/10 dark:border-white/10 hover:border-amber-500/50 hover:shadow-md transition-all cursor-pointer group space-y-2"
+                className="wg-glass-card rounded-2xl p-3.5 border border-black/10 dark:border-white/10 hover:border-amber-500/50 hover:shadow-md transition-all cursor-pointer group space-y-2"
+                overrides={{ borderRadius: 16 }}
+                padding="0px"
             >
                 <div className="flex items-center justify-between">
                     <span className={`px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider ${STATUS_WARNING_STYLE} flex items-center gap-1`}>
@@ -369,7 +375,7 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                     <span className="truncate max-w-[130px]">{act.description || 'Confirmed'}</span>
                     {act.cost ? <span className="font-bold font-mono text-light-text dark:text-dark-text">{formatCurrency(act.cost)}</span> : null}
                 </div>
-            </div>
+            </GlassPanel>
         );
     };
 
@@ -502,7 +508,7 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                                 <button
                                     type="button"
                                     onClick={() => onEditActivity(activeDateStr)}
-                                    className={`${BTN_PRIMARY_STYLE} flex-1 h-11 text-2xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5`}
+                                    className="flex-1 h-11 text-2xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-95 shadow-xs cursor-pointer"
                                 >
                                     <Plus className="w-3.5 h-3.5" />
                                     <span>Activity</span>
@@ -510,15 +516,15 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                                 <button
                                     type="button"
                                     onClick={() => onEditAccommodation()}
-                                    className={`${BTN_SECONDARY_STYLE} flex-1 h-11 text-2xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5`}
+                                    className="flex-1 h-11 text-2xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-95 shadow-xs cursor-pointer"
                                 >
                                     <Plus className="w-3.5 h-3.5" />
                                     <span>Stay</span>
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => onEditTransport()}
-                                    className={`${BTN_SECONDARY_STYLE} flex-1 h-11 text-2xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5`}
+                                    onClick={() => onEditTransport(undefined, activeDateStr)}
+                                    className="flex-1 h-11 text-2xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-95 shadow-xs cursor-pointer"
                                 >
                                     <Plus className="w-3.5 h-3.5" />
                                     <span>Transport</span>
@@ -609,32 +615,32 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                                 </div>
 
                                 {/* Column Footer: Quick-add triggers */}
-                                <div className="p-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between gap-1 bg-white/40 dark:bg-dark-card/40 rounded-b-[28px]">
+                                <div className="p-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between gap-1.5 bg-black/[0.01] dark:bg-white/[0.01] rounded-b-[28px]">
                                     <button
                                         type="button"
                                         onClick={() => onEditActivity(dateStr)}
-                                        className="flex-1 py-1.5 px-1 rounded-xl text-[10px] font-bold uppercase tracking-wider text-light-text-secondary hover:text-primary-600 hover:bg-black/5 dark:hover:bg-white/5 transition-colors flex items-center justify-center gap-1 cursor-pointer truncate"
+                                        className="flex-1 py-2 px-1 rounded-xl text-2xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-xs"
                                         title="Add activity or tour"
                                     >
-                                        <Plus className="w-3 h-3 shrink-0" />
+                                        <Plus className="w-3.5 h-3.5 shrink-0" />
                                         <span>Activity</span>
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => onEditAccommodation()}
-                                        className="flex-1 py-1.5 px-1 rounded-xl text-[10px] font-bold uppercase tracking-wider text-light-text-secondary hover:text-emerald-600 hover:bg-black/5 dark:hover:bg-white/5 transition-colors flex items-center justify-center gap-1 cursor-pointer truncate"
+                                        className="flex-1 py-2 px-1 rounded-xl text-2xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-xs"
                                         title="Add accommodation stay"
                                     >
-                                        <Plus className="w-3 h-3 shrink-0" />
+                                        <Plus className="w-3.5 h-3.5 shrink-0" />
                                         <span>Stay</span>
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => onEditTransport(undefined, dateStr)}
-                                        className="flex-1 py-1.5 px-1 rounded-xl text-[10px] font-bold uppercase tracking-wider text-light-text-secondary hover:text-blue-600 hover:bg-black/5 dark:hover:bg-white/5 transition-colors flex items-center justify-center gap-1 cursor-pointer truncate"
+                                        className="flex-1 py-2 px-1 rounded-xl text-2xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-xs"
                                         title="Add transport leg"
                                     >
-                                        <Plus className="w-3 h-3 shrink-0" />
+                                        <Plus className="w-3.5 h-3.5 shrink-0" />
                                         <span>Transport</span>
                                     </button>
                                 </div>
