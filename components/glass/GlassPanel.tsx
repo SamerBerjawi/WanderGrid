@@ -1,5 +1,5 @@
 import LiquidGlass from '@nkzw/liquid-glass';
-import type { ReactNode, CSSProperties, RefObject } from 'react';
+import React, { forwardRef, type ReactNode, type CSSProperties, type RefObject } from 'react';
 
 export interface WanderGridGlassConfig {
   displacementScale: number;
@@ -20,48 +20,82 @@ export const WANDERGRID_GLASS_CONFIG: WanderGridGlassConfig = {
   borderRadius: 32,
 };
 
-type GlassPanelProps = {
+export type GlassPanelProps = {
   children: ReactNode;
   className?: string;
+  id?: string;
   style?: CSSProperties;
   padding?: string;
   overLight?: boolean;
-  onClick?: () => void;
+  onClick?: (e?: React.MouseEvent<HTMLDivElement>) => void;
   mouseContainer?: RefObject<HTMLElement | null> | null;
   /** Escape hatch for one-off overrides. Prefer not to use this. */
   overrides?: Partial<WanderGridGlassConfig>;
 };
 
-export default function GlassPanel({
+export const GlassPanel = forwardRef<HTMLDivElement, GlassPanelProps>(({
   children,
   className = '',
+  id,
   style,
   padding,
   overLight = false,
   onClick,
   mouseContainer,
   overrides,
-}: GlassPanelProps) {
+}, ref) => {
   const config = { ...WANDERGRID_GLASS_CONFIG, ...overrides };
 
   const isCard = className.includes('wg-glass-card');
   const isPill = className.includes('wg-glass-pill');
   const variantClass = isCard ? 'wg-glass-card' : (isPill ? 'wg-glass-pill' : '');
 
-  // Strip rectangular CSS border and rounded classes to ensure only the Liquid Glass specular highlight ring renders
-  const cleanClassName = className
-    .replace(/(?:[\w-]+:)*(?:border|rounded)[^\s]*/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+  // Master defaults per WanderGrid design spec:
+  // - Pills are capsules (radius 9999) with compact 4px 6px padding
+  // - Cards are rounded-28 with 0px default padding so inner content controls layout
+  const resolvedBorderRadius = overrides?.borderRadius ?? (isPill ? 9999 : (isCard ? 28 : config.borderRadius));
+  const resolvedPadding = padding ?? (isPill ? '4px 6px' : '0px');
 
-  const isFullWidth = cleanClassName.includes('w-full');
-  const isFullHeight = cleanClassName.includes('h-full');
+  // Token classification:
+  // 1. Container visual decorations (borders, shadows, backgrounds, rounded) are stripped to prevent double-container shells.
+  // 2. Inner layout/padding tokens (p-*, flex, gap-*, space-*) are passed to the inner content container.
+  // 3. Outer flow/positioning tokens (w-*, h-*, relative, shrink-0, etc.) are passed to the outer wrapper.
+  const rawTokens = className.split(/\s+/).filter(Boolean);
+  const outerTokens: string[] = [];
+  const innerTokens: string[] = [];
+
+  for (const token of rawTokens) {
+    if (token === 'wg-glass-card' || token === 'wg-glass-pill') {
+      continue;
+    }
+    // Eliminate container-decorating utilities that create double shells
+    if (/^(?:[\w-]+:)*(?:border|rounded|shadow|bg-|backdrop-blur|ring)[^\s]*/.test(token)) {
+      continue;
+    }
+    // Inner layout & padding tokens
+    if (
+      /^(?:[\w-]+:)*(?:p-|px-|py-|pt-|pb-|pl-|pr-|space-y-|space-x-|gap-|items-|justify-|content-|text-|leading-|tracking-)[^\s]*/.test(token) ||
+      token === 'flex' || token === 'inline-flex' || token === 'flex-col' || token === 'flex-row' || token === 'flex-wrap'
+    ) {
+      innerTokens.push(token);
+      continue;
+    }
+    // Outer positioning, sizing, and flow tokens
+    outerTokens.push(token);
+  }
+
+  const outerClassName = outerTokens.join(' ');
+  const innerClassName = innerTokens.join(' ');
+  const isFullWidth = className.includes('w-full') || outerClassName.includes('w-full');
+  const isFullHeight = className.includes('h-full') || outerClassName.includes('h-full');
 
   return (
     <div
-      className={`wg-glass-wrapper ${variantClass} ${cleanClassName}`.trim()}
+      ref={ref}
+      id={id}
+      className={`wg-glass-wrapper ${variantClass} ${outerClassName}`.trim()}
       style={{
-        borderRadius: config.borderRadius,
+        borderRadius: resolvedBorderRadius,
         ...style,
       }}
       onClick={onClick}
@@ -72,16 +106,23 @@ export default function GlassPanel({
         saturation={config.saturation}
         aberrationIntensity={config.aberrationIntensity}
         elasticity={config.elasticity}
-        borderRadius={config.borderRadius}
+        borderRadius={resolvedBorderRadius}
         className={`wg-glass-panel ${variantClass} ${isFullHeight ? 'h-full' : ''} ${isFullWidth ? 'w-full' : ''}`.trim()}
-        padding={padding}
+        padding={resolvedPadding}
         overLight={overLight}
         mouseContainer={mouseContainer}
       >
-        {children}
+        {innerClassName ? (
+          <div className={`w-full ${isFullHeight ? 'h-full' : ''} ${innerClassName}`.trim()}>
+            {children}
+          </div>
+        ) : (
+          children
+        )}
       </LiquidGlass>
     </div>
   );
-}
+});
 
-export { GlassPanel };
+GlassPanel.displayName = 'GlassPanel';
+export default GlassPanel;

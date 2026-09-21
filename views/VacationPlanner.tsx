@@ -1212,75 +1212,81 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                 <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
                     
                     {/* Status Tabs (Segmented Switcher) */}
-                    <GlassPanel className="wg-glass-pill p-1.5 rounded-full flex gap-1 border border-black/5 dark:border-white/10 shrink-0 overflow-x-auto no-scrollbar shadow-glass-card">
-                        <button
-                            type="button"
-                            onClick={() => setActiveTab('History')}
-                            className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-10 ${
-                                activeTab === 'History'
-                                    ? 'text-primary-600 dark:text-primary-400 font-extrabold'
-                                    : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
-                            }`}
-                        >
-                            {activeTab === 'History' && (
-                                <motion.div
-                                    layoutId="vacationPlannerActiveTab"
-                                    className="absolute inset-0 bg-white dark:bg-dark-card rounded-full shadow-sm -z-10"
-                                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                                />
-                            )}
-                            <ClockCounterClockwise className="w-4 h-4" weight={activeTab === 'History' ? 'duotone' : 'regular'} />
-                            <span>Archive Chronology</span>
-                            <span className="px-2 py-0.5 rounded-full text-2xs bg-primary-500/15 text-primary-600 dark:text-primary-400 font-mono font-bold">
-                                {historyTrips.length}
-                            </span>
-                        </button>
+                    <GlassPanel
+                        className="wg-glass-pill shadow-lg shadow-black/5 dark:shadow-black/25 shrink-0"
+                        padding="4px 6px"
+                        overrides={{ borderRadius: 9999 }}
+                    >
+                        <div className="flex gap-1 relative items-center">
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab('History')}
+                                className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-10 ${
+                                    activeTab === 'History'
+                                        ? 'text-primary-600 dark:text-primary-400 font-extrabold'
+                                        : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
+                                }`}
+                            >
+                                {activeTab === 'History' && (
+                                    <motion.div
+                                        layoutId="vacationPlannerActiveTab"
+                                        className="absolute inset-0 bg-white dark:bg-dark-card rounded-full shadow-sm -z-10"
+                                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                                    />
+                                )}
+                                <ClockCounterClockwise className="w-4 h-4" weight={activeTab === 'History' ? 'duotone' : 'regular'} />
+                                <span>Archive Chronology</span>
+                                <span className="px-2 py-0.5 rounded-full text-2xs bg-primary-500/15 text-primary-600 dark:text-primary-400 font-mono font-bold">
+                                    {historyTrips.length}
+                                </span>
+                            </button>
 
-                        <button
-                            type="button"
-                            onClick={() => setActiveTab('Confirmed')}
-                            className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-10 ${
-                                activeTab === 'Confirmed'
-                                    ? 'text-primary-600 dark:text-primary-400 font-extrabold'
-                                    : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
-                            }`}
-                        >
-                            {activeTab === 'Confirmed' && (
-                                <motion.div
-                                    layoutId="vacationPlannerActiveTab"
-                                    className="absolute inset-0 bg-white dark:bg-dark-card rounded-full shadow-sm -z-10"
-                                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                                />
-                            )}
-                            <CheckCircle2 className="w-4 h-4" weight={activeTab === 'Confirmed' ? 'duotone' : 'regular'} />
-                            <span>Locked Timeline</span>
-                            <span className="px-2 py-0.5 rounded-full text-2xs bg-primary-500/15 text-primary-600 dark:text-primary-400 font-mono font-bold">
-                                {confirmedTrips.length}
-                            </span>
-                        </button>
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab('Confirmed')}
+                                className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-10 ${
+                                    activeTab === 'Confirmed'
+                                        ? 'text-primary-600 dark:text-primary-400 font-extrabold'
+                                        : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
+                                }`}
+                            >
+                                {activeTab === 'Confirmed' && (
+                                    <motion.div
+                                        layoutId="vacationPlannerActiveTab"
+                                        className="absolute inset-0 bg-white dark:bg-dark-card rounded-full shadow-sm -z-10"
+                                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                                    />
+                                )}
+                                <CheckCircle2 className="w-4 h-4" weight={activeTab === 'Confirmed' ? 'duotone' : 'regular'} />
+                                <span>Locked Timeline</span>
+                                <span className="px-2 py-0.5 rounded-full text-2xs bg-primary-500/15 text-primary-600 dark:text-primary-400 font-mono font-bold">
+                                    {confirmedTrips.length}
+                                </span>
+                            </button>
 
-                        <button
-                            type="button"
-                            onClick={() => setActiveTab('Planned')}
-                            className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-10 ${
-                                activeTab === 'Planned'
-                                    ? 'text-primary-600 dark:text-primary-400 font-extrabold'
-                                    : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
-                            }`}
-                        >
-                            {activeTab === 'Planned' && (
-                                <motion.div
-                                    layoutId="vacationPlannerActiveTab"
-                                    className="absolute inset-0 bg-white dark:bg-dark-card rounded-full shadow-sm -z-10"
-                                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                                />
-                            )}
-                            <Compass className="w-4 h-4" weight={activeTab === 'Planned' ? 'duotone' : 'regular'} />
-                            <span>Draft Blueprints</span>
-                            <span className="px-2 py-0.5 rounded-full text-2xs bg-primary-500/15 text-primary-600 dark:text-primary-400 font-mono font-bold">
-                                {plannedTrips.length}
-                            </span>
-                        </button>
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab('Planned')}
+                                className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-10 ${
+                                    activeTab === 'Planned'
+                                        ? 'text-primary-600 dark:text-primary-400 font-extrabold'
+                                        : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
+                                }`}
+                            >
+                                {activeTab === 'Planned' && (
+                                    <motion.div
+                                        layoutId="vacationPlannerActiveTab"
+                                        className="absolute inset-0 bg-white dark:bg-dark-card rounded-full shadow-sm -z-10"
+                                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                                    />
+                                )}
+                                <Compass className="w-4 h-4" weight={activeTab === 'Planned' ? 'duotone' : 'regular'} />
+                                <span>Draft Blueprints</span>
+                                <span className="px-2 py-0.5 rounded-full text-2xs bg-primary-500/15 text-primary-600 dark:text-primary-400 font-mono font-bold">
+                                    {plannedTrips.length}
+                                </span>
+                            </button>
+                        </div>
                     </GlassPanel>
 
                     {/* Search & View Switcher */}
@@ -1306,46 +1312,52 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                         </div>
 
                         {/* View Switcher Controls */}
-                        <GlassPanel className="wg-glass-pill p-1 rounded-full flex border border-black/5 dark:border-white/10 shrink-0 shadow-glass-card">
-                            <button
-                                type="button"
-                                onClick={() => setViewMode('grid')}
-                                aria-label="Grid cards view"
-                                className={`p-2 rounded-full transition-all cursor-pointer ${
-                                    viewMode === 'grid' 
-                                        ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm' 
-                                        : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
-                                }`}
-                                title="Grid Cards View"
-                            >
-                                <Grid3X3 className="w-4 h-4" />
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setViewMode('timeline')}
-                                aria-label="Timeline rail view"
-                                className={`p-2 rounded-full transition-all cursor-pointer ${
-                                    viewMode === 'timeline' 
-                                        ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm' 
-                                        : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
-                                }`}
-                                title="Timeline Rail View"
-                            >
-                                <Route className="w-4 h-4" />
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setViewMode('table')}
-                                aria-label="Logistics table view"
-                                className={`p-2 rounded-full transition-all cursor-pointer ${
-                                    viewMode === 'table' 
-                                        ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm' 
-                                        : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
-                                }`}
-                                title="Logistics Table View"
-                            >
-                                <List className="w-4 h-4" />
-                            </button>
+                        <GlassPanel
+                            className="wg-glass-pill shadow-lg shadow-black/5 dark:shadow-black/25 shrink-0"
+                            padding="4px 6px"
+                            overrides={{ borderRadius: 9999 }}
+                        >
+                            <div className="flex gap-1 relative items-center">
+                                <button
+                                    type="button"
+                                    onClick={() => setViewMode('grid')}
+                                    aria-label="Grid cards view"
+                                    className={`p-2 rounded-full transition-all cursor-pointer ${
+                                        viewMode === 'grid' 
+                                            ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm' 
+                                            : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
+                                    }`}
+                                    title="Grid Cards View"
+                                >
+                                    <Grid3X3 className="w-4 h-4" />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setViewMode('timeline')}
+                                    aria-label="Timeline rail view"
+                                    className={`p-2 rounded-full transition-all cursor-pointer ${
+                                        viewMode === 'timeline' 
+                                            ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm' 
+                                            : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
+                                    }`}
+                                    title="Timeline Rail View"
+                                >
+                                    <Route className="w-4 h-4" />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setViewMode('table')}
+                                    aria-label="Logistics table view"
+                                    className={`p-2 rounded-full transition-all cursor-pointer ${
+                                        viewMode === 'table' 
+                                            ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm' 
+                                            : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
+                                    }`}
+                                    title="Logistics Table View"
+                                >
+                                    <List className="w-4 h-4" />
+                                </button>
+                            </div>
                         </GlassPanel>
 
                         {/* Filter Toggle */}

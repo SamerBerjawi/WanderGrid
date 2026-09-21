@@ -35,28 +35,27 @@ interface CardProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'title'> 
   noPadding?: boolean;
 }
 export const Card = forwardRef<HTMLDivElement, CardProps>(({ className, title, action, children, noPadding = false, ...props }, ref) => (
-  <div ref={ref} className="rounded-[28px] overflow-hidden">
-    <GlassPanel
-      className={cn(
-        "wg-glass-card shadow-glass-card flex flex-col h-full overflow-hidden border border-black/5 dark:border-white/10 transition-all duration-300",
-        className
-      )}
-      overrides={{ borderRadius: 28 }}
-      padding="0px"
-    >
-      <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px]" {...props}>
-        {(title || action) && (
-          <div className="px-6 py-5 border-b border-black/5 dark:border-white/5 flex justify-between items-center bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">
-            <div className="text-base font-bold text-light-text dark:text-dark-text tracking-tight">{title}</div>
-            {action && <div>{action}</div>}
-          </div>
-        )}
-        <div className={cn("flex-1 min-h-0 flex flex-col w-full relative", !noPadding && "p-6")}>
-          {children}
+  <GlassPanel
+    ref={ref}
+    className={cn(
+      "wg-glass-card flex flex-col h-full transition-all duration-300",
+      className
+    )}
+    overrides={{ borderRadius: 28 }}
+    padding="0px"
+  >
+    <div className="flex flex-col h-full w-full" {...props}>
+      {(title || action) && (
+        <div className="px-6 py-5 border-b border-black/5 dark:border-white/5 flex justify-between items-center bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">
+          <div className="text-base font-bold text-light-text dark:text-dark-text tracking-tight">{title}</div>
+          {action && <div>{action}</div>}
         </div>
+      )}
+      <div className={cn("flex-1 min-h-0 flex flex-col w-full relative", !noPadding && "p-6")}>
+        {children}
       </div>
-    </GlassPanel>
-  </div>
+    </div>
+  </GlassPanel>
 ));
 Card.displayName = "Card";
 

@@ -1173,7 +1173,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
             
             {/* Segmentation Switch Box (Liquid Glass Pill) */}
             <div className="flex flex-col xl:flex-row gap-4 items-center justify-between border-b border-black/5 dark:border-white/5 pb-4">
-                <GlassPanel className="wg-glass-pill rounded-full p-1.5 flex items-center gap-1 shrink-0 overflow-x-auto max-w-full no-scrollbar">
+                <GlassPanel
+                    className="wg-glass-pill shadow-lg shadow-black/5 dark:shadow-black/25 shrink-0"
+                    padding="4px 6px"
+                    overrides={{ borderRadius: 9999 }}
+                >
+                    <div className="flex items-center gap-1 shrink-0 overflow-x-auto max-w-full no-scrollbar">
                     {[
                         { id: 'stamps', label: 'Passport Stamps', icon: IdentificationCard },
                         { id: 'flipbook', label: '3D Album', icon: BookOpen },
@@ -1208,6 +1213,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                             </button>
                         );
                     })}
+                    </div>
                 </GlassPanel>
 
                 <div className="flex items-center gap-4 text-xs font-mono text-light-text-secondary dark:text-dark-text-secondary text-right">

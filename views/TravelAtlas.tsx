@@ -837,7 +837,12 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
 
       {/* Main Tabs Navigation (Liquid Glass Pill) */}
       <div className="flex justify-center w-full my-2">
-        <GlassPanel className="wg-glass-pill p-1.5 rounded-full flex gap-1 border border-black/5 dark:border-white/10 shrink-0 overflow-x-auto no-scrollbar shadow-glass-card">
+        <GlassPanel
+          className="wg-glass-pill shadow-lg shadow-black/5 dark:shadow-black/25 shrink-0"
+          padding="4px 6px"
+          overrides={{ borderRadius: 9999 }}
+        >
+          <div className="flex gap-1 relative items-center overflow-x-auto no-scrollbar">
           <button 
             type="button"
             onClick={() => setActiveTab('visited')}
@@ -952,6 +957,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
               <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
             )}
           </button>
+          </div>
         </GlassPanel>
       </div>
 

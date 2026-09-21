@@ -1683,7 +1683,10 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 <div className="space-y-12 animate-fade-in text-light-text dark:text-dark-text">
                     {/* Transport Section */}
                     <div className="space-y-6">
-                        <GlassPanel className="wg-glass-pill rounded-2xl p-4 flex justify-between items-center">
+                        <GlassPanel 
+                            className="wg-glass-card rounded-2xl p-4 flex flex-row justify-between items-center"
+                            overrides={{ borderRadius: 16 }}
+                        >
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center border border-indigo-500/20 shadow-sm">
                                     <Car className="w-5 h-5 text-indigo-500" weight="duotone" />
@@ -1899,7 +1902,10 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
 
                     {/* Accommodation Section */}
                     <div className="space-y-6">
-                        <GlassPanel className="wg-glass-pill rounded-2xl p-4 flex justify-between items-center">
+                        <GlassPanel 
+                            className="wg-glass-card rounded-2xl p-4 flex flex-row justify-between items-center"
+                            overrides={{ borderRadius: 16 }}
+                        >
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20 shadow-sm">
                                     <Buildings className="w-5 h-5 text-amber-600" weight="duotone" />

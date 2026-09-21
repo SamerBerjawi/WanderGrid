@@ -152,12 +152,15 @@
    and ensures specular highlights, refraction, and content align pixel-perfectly.
    ========================================================================== */
 
-/* Outer GlassPanel wrapper */
+/* Outer GlassPanel wrapper - purely an invisible layout anchor to prevent double-container shells */
 .wg-glass-wrapper {
   position: relative;
   display: inline-block;
   border: none !important;
   outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  padding: 0 !important;
 }
 
 .wg-glass-wrapper.wg-glass-card {
