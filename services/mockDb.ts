@@ -101,8 +101,25 @@ export function flushPendingStorageWrites() {
   pendingWrites.clear();
 }
 
+export function clearMemoryCache() {
+  if (writeDebounceTimer) {
+    clearTimeout(writeDebounceTimer);
+    writeDebounceTimer = null;
+  }
+  pendingWrites.clear();
+  Object.keys(memoryCache).forEach(k => delete memoryCache[k]);
+}
+
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeunload', flushPendingStorageWrites);
+  window.addEventListener('storage', (e) => {
+    if (e.key && e.key.startsWith('wandergrid_')) {
+      delete memoryCache[e.key];
+      try {
+        window.dispatchEvent(new CustomEvent('wandergrid_db_updated', { detail: { key: e.key } }));
+      } catch (err) {}
+    }
+  });
 }
 
 function getCachedStorage<T>(storageKey: string, defaultValue: T): T {
@@ -1136,6 +1153,12 @@ class DataService {
       });
       localStorage.removeItem('flightFormDraft');
       localStorage.removeItem('wandergrid_users');
+      
+      // Clear in-memory document cache and pending writes immediately
+      clearMemoryCache();
+      try {
+        window.dispatchEvent(new CustomEvent('wandergrid_db_updated'));
+      } catch (e) {}
   }
   async exportFullState(): Promise<string> {
       let geoCache: any[] = [];

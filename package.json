@@ -20,7 +20,6 @@
     "deck.gl": "^9.3.10",
     "html2canvas": "1.4.1",
     "leaflet": "1.9.4",
-    "lucide-react": "^1.16.0",
     "maplibre-gl": "^6.4.1",
     "motion": "^12.40.0",
     "prop-types": "^15.8.1",

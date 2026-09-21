@@ -1040,25 +1040,27 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
         <div className="w-full max-w-[1680px] mx-auto pt-2 sm:pt-4 px-1 sm:px-4 md:px-6 lg:px-8 flex flex-col gap-5 sm:gap-6 animate-fadeIn pb-16">
             
             {/* Header: Universal Page Blueprint */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="flex items-center gap-3">
-                    <Compass className="w-8 h-8 sm:w-10 sm:h-10 text-primary-500 shrink-0" weight="duotone" />
-                    <div>
-                        <h1 className="text-xl sm:text-3xl md:text-5xl font-black tracking-tight text-light-text dark:text-dark-text">
+            <div className="flex flex-row items-center justify-between gap-2.5 sm:gap-4 w-full pt-1 pb-1">
+                {/* Left: Pure Icon + Responsive Scaled Title (Aligned Left) */}
+                <div className="flex items-center justify-start gap-2 sm:gap-3 md:gap-4 min-w-0">
+                    <Compass className="w-6 h-6 sm:w-9 sm:h-9 md:w-12 md:h-12 text-primary-500 shrink-0" weight="duotone" />
+                    <div className="min-w-0">
+                        <h1 className="text-xl sm:text-3xl md:text-5xl font-black tracking-tight text-light-text dark:text-dark-text leading-tight sm:leading-none truncate sm:overflow-visible">
                             Vacation Planner
                         </h1>
-                        <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium mt-0.5">
-                            Design expedition blueprints, synchronize flight itineraries, optimize holiday PTO savings, and consolidate multi-stay tracks.
+                        <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium mt-0.5 truncate">
+                            Expedition blueprints & timeline tracks
                         </p>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3 self-end sm:self-auto">
+                {/* Right: Primary Action Buttons (Aligned Right on Mobile & Desktop) */}
+                <div className="flex items-center justify-end shrink-0 gap-2 sm:gap-3">
                     <button
                         type="button"
                         onClick={toggleSelectionMode}
                         aria-label={isSelectionMode ? 'Cancel Batch' : 'Batch Merge'}
-                        className={`${BTN_SECONDARY_STYLE} h-11 px-4 text-xs font-bold uppercase tracking-wider flex items-center gap-2 cursor-pointer`}
+                        className={`${BTN_SECONDARY_STYLE} min-h-[44px] px-3 sm:px-4 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0`}
                     >
                         <Merge className="w-4 h-4 text-primary-500" weight="duotone" />
                         <span className="hidden sm:inline">{isSelectionMode ? 'Cancel Batch' : 'Batch Merge'}</span>
@@ -1068,7 +1070,7 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                         type="button"
                         onClick={() => { setEditingTrip(null); setIsCreateTripOpen(true); }}
                         aria-label="New Expedition"
-                        className={`${BTN_PRIMARY_STYLE} h-11 px-5 text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-primary-500/20 cursor-pointer`}
+                        className={`${BTN_PRIMARY_STYLE} min-h-[44px] px-4 sm:px-5 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 sm:gap-2 shadow-lg shadow-primary-500/20 cursor-pointer shrink-0`}
                     >
                         <Plus className="w-4 h-4" />
                         <span>New Trip</span>

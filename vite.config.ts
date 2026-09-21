@@ -76,7 +76,7 @@ export default defineConfig(({ mode }) => {
                 if (id.includes('motion') || id.includes('framer-motion')) {
                   return 'vendor-motion';
                 }
-                if (id.includes('lucide-react')) {
+                if (id.includes('@phosphor-icons')) {
                   return 'vendor-icons';
                 }
               }

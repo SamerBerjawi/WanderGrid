@@ -732,22 +732,21 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
   return (
     <div className="w-full max-w-[1680px] mx-auto pt-2 sm:pt-4 px-1 sm:px-4 md:px-6 lg:px-8 flex flex-col gap-5 sm:gap-6 animate-fadeIn pb-16 text-light-text dark:text-dark-text">
       {/* Universal Page Blueprint Hero Header */}
-      <div className="flex items-center justify-between gap-4 w-full">
-        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl sm:rounded-3xl bg-emerald-500/10 dark:bg-emerald-400/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0 shadow-sm">
-            <Compass weight="duotone" className="w-7 h-7 sm:w-9 sm:h-9" />
-          </div>
+      <div className="flex flex-row items-center justify-between gap-2.5 sm:gap-4 w-full pt-1 pb-1">
+        {/* Left: Pure Icon + Responsive Scaled Title (Aligned Left) */}
+        <div className="flex items-center justify-start gap-2 sm:gap-3 md:gap-4 min-w-0">
+          <Compass weight="duotone" className="w-6 h-6 sm:w-9 sm:h-9 md:w-12 md:h-12 text-emerald-500 shrink-0" />
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-3xl md:text-5xl font-black text-light-text dark:text-dark-text tracking-tight truncate">
+              <h1 className="text-xl sm:text-3xl md:text-5xl font-black text-light-text dark:text-dark-text tracking-tight leading-tight sm:leading-none truncate sm:overflow-visible">
                 Road Trips & Land Travels
               </h1>
               <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                 Land & Sea
               </span>
             </div>
-            <p className="text-xs sm:text-sm text-light-text-secondary dark:text-dark-text-secondary truncate mt-0.5 font-medium">
-              Single source of truth for buses, trains, personal cars, and cruises
+            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary truncate mt-0.5 font-medium">
+              Buses, trains, vehicles & ferry routes
             </p>
           </div>
         </div>

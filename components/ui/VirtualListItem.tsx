@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 interface VirtualListItemProps {
   children: React.ReactNode;
   estimatedHeight?: number;
+  minHeight?: number;
   rootMargin?: string;
   className?: string;
 }
@@ -16,9 +17,11 @@ interface VirtualListItemProps {
 export const VirtualListItem: React.FC<VirtualListItemProps> = React.memo(({
   children,
   estimatedHeight = 160,
+  minHeight,
   rootMargin = '600px 0px',
   className = '',
 }) => {
+  const effectiveHeight = minHeight ?? estimatedHeight;
   const [isVisible, setIsVisible] = useState(false);
   const [measuredHeight, setMeasuredHeight] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -59,7 +62,7 @@ export const VirtualListItem: React.FC<VirtualListItemProps> = React.memo(({
         !isVisible && measuredHeight
           ? { minHeight: `${measuredHeight}px` }
           : !isVisible
-          ? { minHeight: `${estimatedHeight}px` }
+          ? { minHeight: `${effectiveHeight}px` }
           : undefined
       }
     >

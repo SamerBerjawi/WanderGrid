@@ -1,6 +1,7 @@
 import { type ComponentPropsWithoutRef, type ReactNode } from "react"
-import { ArrowRight } from "lucide-react"
+import { ArrowRight } from "@phosphor-icons/react"
 import { cn } from "@/lib/utils"
+import GlassPanel from "../glass/GlassPanel"
 
 interface BentoGridProps extends ComponentPropsWithoutRef<"div"> {
   children: ReactNode
@@ -45,18 +46,21 @@ const BentoCard = ({
   onClick,
   ...props
 }: BentoCardProps) => (
-  <div
-    key={name}
-    onClick={onClick}
+  <GlassPanel
     className={cn(
-      "group relative flex flex-col justify-between overflow-hidden rounded-3xl transition-all duration-300",
-      // Surface & Glassmorphism
-      "bg-white/80 dark:bg-dark-card/80 backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-glass-card hover:shadow-xl",
+      "wg-glass-card rounded-[28px] overflow-hidden group relative flex flex-col justify-between transition-all duration-300",
       onClick ? "cursor-pointer active:scale-[0.99]" : "",
       className
     )}
-    {...props}
+    overrides={{ borderRadius: 28 }}
+    padding="0px"
+    onClick={onClick}
   >
+    <div
+      key={name}
+      className="relative flex flex-col justify-between h-full w-full"
+      {...props}
+    >
     {background && <div className="absolute inset-0 pointer-events-none overflow-hidden">{background}</div>}
     
     {children ? (
@@ -105,7 +109,8 @@ const BentoCard = ({
 
     {/* Ambient Glow on Hover */}
     <div className="pointer-events-none absolute inset-0 transform-gpu transition-opacity duration-300 opacity-0 group-hover:opacity-100 bg-gradient-to-br from-primary-500/[0.04] to-transparent" />
-  </div>
+    </div>
+  </GlassPanel>
 )
 
 export { BentoCard, BentoGrid }
