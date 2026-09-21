@@ -6,6 +6,8 @@ import {
   Bus, Question as HelpCircle, ArrowsClockwise as RefreshCw, Leaf, Anchor, SquaresFour as Grid, Info
 } from '@phosphor-icons/react';
 import { Card, Button, Input, Select, Badge, TimeInput, Autocomplete, Modal, BentoGrid, BentoCard } from '../components/ui';
+import GlassPanel from '../components/glass/GlassPanel';
+import { INPUT_BASE_STYLE } from '../constants';
 import { Trip, Transport, TransportMode, RoadTripWaypoint, ViewState } from '../types';
 import { dataService } from '../services/mockDb';
 import { motion, AnimatePresence } from 'motion/react';
@@ -728,29 +730,36 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
   };
 
   return (
-    <div className="space-y-6 md:space-y-8 animate-fade-in pb-12">
-      {/* Upper Title Hub */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/30 dark:bg-zinc-900/10 p-4 md:p-6 rounded-3xl border border-gray-200/40 dark:border-white/5 backdrop-blur-md">
-        <div>
-          <div className="flex items-center gap-2">
-            <Badge variant="primary" className="bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/10">
-              <Sparkles className="w-3 h-3 mr-1 inline-block" /> Land & Sea Hub
-            </Badge>
+    <div className="w-full max-w-[1680px] mx-auto pt-2 sm:pt-4 px-1 sm:px-4 md:px-6 lg:px-8 flex flex-col gap-5 sm:gap-6 animate-fadeIn pb-16 text-light-text dark:text-dark-text">
+      {/* Universal Page Blueprint Hero Header */}
+      <div className="flex items-center justify-between gap-4 w-full">
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl sm:rounded-3xl bg-emerald-500/10 dark:bg-emerald-400/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0 shadow-sm">
+            <Compass weight="duotone" className="w-7 h-7 sm:w-9 sm:h-9" />
           </div>
-          <h1 className="text-2xl md:text-3.5xl font-extrabold font-sans text-gray-900 dark:text-white tracking-tight mt-1">
-            Road Trips & Land Travels
-          </h1>
-          <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-xl">
-            Single source of truth for buses, trains, personal cars, and cruises. Automatically pulls information from planned itineraries.
-          </p>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl sm:text-3xl md:text-5xl font-black text-light-text dark:text-dark-text tracking-tight truncate">
+                Road Trips & Land Travels
+              </h1>
+              <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                Land & Sea
+              </span>
+            </div>
+            <p className="text-xs sm:text-sm text-light-text-secondary dark:text-dark-text-secondary truncate mt-0.5 font-medium">
+              Single source of truth for buses, trains, personal cars, and cruises
+            </p>
+          </div>
         </div>
         <Button 
           variant="primary" 
           onClick={handleOpenCreateModal} 
-          className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl shadow-emerald-500/20 w-full md:w-auto"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl shadow-emerald-500/20 shrink-0 min-h-[44px]"
           icon={<Plus className="w-4 h-4" />}
+          aria-label="Add Land Journey"
         >
-          Add Land Journey
+          <span className="hidden sm:inline">Add Land Journey</span>
+          <span className="sm:hidden">Add</span>
         </Button>
       </div>
 
@@ -1031,24 +1040,25 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
       </Card>
 
       {/* Filter and Command Deck */}
-      <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between bg-white/40 dark:bg-zinc-900/30 p-4 rounded-3xl border border-gray-100 dark:border-white/5 shadow-sm">
+      <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden p-4 sm:p-5 flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between shadow-glass-card">
         <div className="flex-1 relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 dark:text-zinc-500" />
           <input 
             type="text" 
             placeholder="Search land journey by station, operator, tickets, notes..."
-            className="w-full pl-11 pr-4 py-3 text-xs md:text-sm bg-gray-50/50 border border-gray-200 focus:bg-white focus:border-blue-500 rounded-2xl dark:bg-gray-800/40 dark:border-white/10 dark:text-zinc-200 placeholder-zinc-500 outline-none transition-all"
+            className={`${INPUT_BASE_STYLE} pl-11 pr-4 min-h-[44px] text-xs md:text-sm`}
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
           />
         </div>
         
         <div className="flex flex-wrap items-center gap-2">
-          <div className="w-32">
+          <div className="w-full sm:w-36">
             <select
               value={modeFilter}
               onChange={e => setModeFilter(e.target.value)}
-              className="w-full px-3 py-2.5 text-xs bg-gray-50/50 border border-gray-200 rounded-xl dark:bg-gray-800/40 dark:border-white/10 text-zinc-700 dark:text-zinc-200 outline-none cursor-pointer"
+              className={`${INPUT_BASE_STYLE} min-h-[44px] px-3 text-xs cursor-pointer`}
+              aria-label="Filter by transport mode"
             >
               <option value="All">All Modes</option>
               <option value="Train">Train</option>
@@ -1060,11 +1070,12 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
             </select>
           </div>
 
-          <div className="w-32">
+          <div className="w-full sm:w-36">
             <select
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value as any)}
-              className="w-full px-3 py-2.5 text-xs bg-gray-50/50 border border-gray-200 rounded-xl dark:bg-gray-800/40 dark:border-white/10 text-zinc-700 dark:text-zinc-200 outline-none cursor-pointer"
+              className={`${INPUT_BASE_STYLE} min-h-[44px] px-3 text-xs cursor-pointer`}
+              aria-label="Filter by schedule"
             >
               <option value="All">All Schedules</option>
               <option value="Upcoming">Upcoming</option>
@@ -1072,11 +1083,12 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
             </select>
           </div>
 
-          <div className="w-40">
+          <div className="w-full sm:w-44">
             <select
               value={sortBy}
               onChange={e => setSortBy(e.target.value as any)}
-              className="w-full px-3 py-2.5 text-xs bg-gray-50/50 border border-gray-200 rounded-xl dark:bg-gray-800/40 dark:border-white/10 text-zinc-700 dark:text-zinc-200 outline-none cursor-pointer"
+              className={`${INPUT_BASE_STYLE} min-h-[44px] px-3 text-xs cursor-pointer`}
+              aria-label="Sort journeys by"
             >
               <option value="date-asc">Date (Oldest First)</option>
               <option value="date-desc">Date (Soonest First)</option>
@@ -1085,7 +1097,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
             </select>
           </div>
         </div>
-      </div>
+      </GlassPanel>
 
       {loading && (
         <div className="flex flex-col items-center justify-center py-16 gap-3">
@@ -1119,15 +1131,13 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                 const isDraftPlannedRoute = tr.itineraryId === 'route-gen' || tr.itineraryId === 'route-booked';
                 
                 return (
-                  <motion.div
+                  <GlassPanel
                     key={tr.id}
-                    layout
-                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                    className={`group relative flex flex-col bg-white/70 dark:bg-gray-900/60 backdrop-blur-2xl border ${
+                    className={`wg-glass-card rounded-[28px] overflow-hidden shadow-glass-card transition-all duration-300 ${
                       isDraftPlannedRoute 
                         ? 'border-dashed border-emerald-500/30' 
-                        : 'border-zinc-200/50 dark:border-white/5'
-                    } hover:border-zinc-300 dark:hover:border-white/10 shadow-lg hover:shadow-xl rounded-3xl overflow-hidden transition-all duration-300`}
+                        : ''
+                    }`}
                   >
                     <div className="p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
                       {/* Left side: Icon & Origin/Destination */}
@@ -1203,8 +1213,10 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                           {/* Associate trip link trigger */}
                           {tr.tripId ? (
                             <button
+                              type="button"
                               onClick={() => onTripClick && onTripClick(tr.tripId)}
                               className="text-xs font-bold text-blue-500 hover:text-blue-600 mt-1 cursor-pointer flex items-center"
+                              aria-label={`View trip ${tr.tripName || ''}`}
                             >
                               <span className="truncate max-w-[120px]">{tr.tripName || 'Go to Trip'}</span>
                               <ChevronDown className="w-3 h-3 rotate-[270deg]" />
@@ -1217,8 +1229,10 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                         {/* Dropdown Toggle for details */}
                         <div className="flex items-center gap-2">
                           <button
+                            type="button"
                             onClick={(e) => handleToggleCard(tr.id, e)}
-                            className="p-2.5 rounded-xl bg-gray-100 dark:bg-white/5 border border-zinc-200/50 dark:border-white/5 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-150 transition-all cursor-pointer"
+                            className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center bg-gray-100 dark:bg-white/5 border border-zinc-200/50 dark:border-white/5 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-150 transition-all cursor-pointer"
+                            aria-label="Toggle Stops & Route Waypoints"
                             title="Toggle Stops & Route Waypoints"
                           >
                             {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -1227,15 +1241,19 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                           {!isDraftPlannedRoute && (
                             <>
                               <button
+                                type="button"
                                 onClick={() => handleOpenEditModal(tr)}
-                                className="p-2.5 rounded-xl bg-blue-500/10 dark:bg-blue-400/5 text-blue-500 hover:bg-blue-500 hover:text-white border border-blue-500/20 transition-all cursor-pointer"
+                                className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center bg-blue-500/10 dark:bg-blue-400/5 text-blue-500 hover:bg-blue-500 hover:text-white border border-blue-500/20 transition-all cursor-pointer"
+                                aria-label="Edit Itinerary Details"
                                 title="Edit Itinerary Details"
                               >
                                 <Edit2 className="w-4 h-4" />
                               </button>
                               <button
+                                type="button"
                                 onClick={() => handleDeleteTransport(tr.id, tr.tripId)}
-                                className="p-2.5 rounded-xl bg-red-500/10 dark:bg-red-400/5 text-red-500 hover:bg-red-600 hover:text-white border border-red-500/20 transition-all cursor-pointer"
+                                className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center bg-red-500/10 dark:bg-red-400/5 text-red-500 hover:bg-red-600 hover:text-white border border-red-500/20 transition-all cursor-pointer"
+                                aria-label="Delete Travel Record"
                                 title="Delete Travel Record"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -1330,7 +1348,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                         </motion.div>
                       )}
                     </AnimatePresence>
-                  </motion.div>
+                  </GlassPanel>
                 );
               })}
             </div>

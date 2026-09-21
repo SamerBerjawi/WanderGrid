@@ -12,7 +12,8 @@ import {
   Star, Heart, Airplane as Plane, House as Home, Bank as Landmark
 } from '@phosphor-icons/react';
 import { Card, Button, Input, Select, BentoGrid, BentoCard } from '../components/ui';
-import { CLOSE_BTN_STYLE } from '../constants';
+import { GlassPanel } from '../components/glass/GlassPanel';
+import { CLOSE_BTN_STYLE, INPUT_BASE_STYLE } from '../constants';
 
 interface TravelAtlasProps {
   onTripClick?: (tripId: string) => void;
@@ -689,61 +690,57 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
   }, [loading, visitedItems.length]);
 
   return (
-    <div className="container mx-auto px-4 lg:px-8 py-8 md:py-12 max-w-7xl animate-fade-in text-gray-900 dark:text-gray-100">
+    <div className="w-full max-w-[1680px] mx-auto pt-2 sm:pt-4 px-1 sm:px-4 md:px-6 lg:px-8 flex flex-col gap-5 sm:gap-6 animate-fadeIn pb-16 text-light-text dark:text-dark-text">
       
-      {/* Dynamic tactile Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 pb-6 border-b border-gray-100 dark:border-white/5">
-        <div>
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="p-2 rounded-2xl bg-indigo-500/10 text-indigo-500">
-              <Compass className="w-6 h-6 animate-spin-slow" />
-            </span>
-            <span className="text-xs font-black tracking-widest uppercase text-indigo-500 dark:text-indigo-400">Footprint Registry</span>
+      {/* Universal Page Blueprint Header */}
+      <div className="flex flex-row items-center justify-between gap-4 pb-2 border-b border-black/5 dark:border-white/5 shrink-0">
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl sm:rounded-3xl bg-primary-500/10 dark:bg-primary-500/20 text-primary-600 dark:text-primary-400 flex items-center justify-center shrink-0 shadow-sm border border-primary-500/20">
+            <Compass className="w-6 h-6 sm:w-8 sm:h-8" weight="duotone" />
           </div>
-          <h1 className="text-4xl lg:text-5xl font-black text-gray-900 dark:text-white tracking-tight">Travel Atlas</h1>
-          <p className="text-sm text-gray-400 mt-1 max-w-xl leading-relaxed">
-            Your absolute source of truth. Manage curated lists of countries and cities visited vs wishlist destinations. Reclaim control of maps, passport stamps, and exclude transition points dynamically.
-          </p>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl sm:text-3xl md:text-5xl font-black text-light-text dark:text-dark-text tracking-tight truncate">
+                Travel Atlas
+              </h1>
+              <span className="hidden sm:inline-flex px-2.5 py-0.5 rounded-full text-2xs font-mono font-bold uppercase tracking-wider bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
+                Footprint Registry
+              </span>
+            </div>
+            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium truncate mt-0.5">
+              Curated global footprint & wishlist registry
+            </p>
+          </div>
         </div>
 
-        <div className="flex flex-wrap gap-3">
+        <div className="flex items-center gap-2 shrink-0">
           <Button 
             onClick={handleRunScan} 
             variant="outline" 
-            className="rounded-full shadow-sm hover:shadow"
+            className="rounded-full shadow-sm hover:shadow text-xs"
             id="btn-scan-log"
+            aria-label="Scan travel history"
           >
-            <RefreshCw className="mr-2 h-4 w-4" /> Scan History
+            <RefreshCw className="sm:mr-1.5 h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Scan History</span>
           </Button>
           <Button 
             onClick={() => handleOpenAdd('country')} 
-            className="rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md hover:opacity-95"
+            className="rounded-full bg-primary-500 hover:bg-primary-600 text-white shadow-md text-xs"
             id="btn-add-country"
+            aria-label="Add visited country"
           >
-            <Plus className="mr-1.5 h-4 w-4" /> Visited Country
-          </Button>
-          <Button 
-            onClick={() => handleOpenAdd('layover')} 
-            variant="outline"
-            className="rounded-full border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 shadow-sm"
-            id="btn-add-layover"
-          >
-            <Plane className="mr-1.5 h-4 w-4" /> Layover Country
-          </Button>
-          <Button 
-            onClick={() => handleOpenAdd('wishlist')} 
-            className="rounded-full bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-md hover:opacity-95"
-            id="btn-add-wishlist"
-          >
-            <Star className="mr-1.5 h-4 w-4 fill-white" /> Wishlist Target
+            <Plus className="sm:mr-1.5 h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Visited Country</span>
           </Button>
           <Button 
             onClick={() => handleOpenAdd('city')} 
             variant="outline" 
-            className="rounded-full shadow-sm"
+            className="rounded-full shadow-sm text-xs hidden md:inline-flex"
             id="btn-add-city"
+            aria-label="Add city"
           >
-            <Plus className="mr-1.5 h-4 w-4" /> City
+            <Plus className="mr-1.5 h-3.5 w-3.5" /> City
           </Button>
         </div>
       </div>
@@ -838,85 +835,148 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
         </motion.div>
       ) : null}
 
-      {/* Main Tabs Navigation */}
-      <div className="flex items-center gap-2 border-b border-gray-100 dark:border-white/5 mb-6 overflow-x-auto custom-scrollbar">
-        <button 
-          onClick={() => setActiveTab('visited')}
-          className={`pb-4 px-3 text-sm font-black tracking-wider uppercase transition-all border-b-2 relative flex items-center gap-2 shrink-0 ${
-            activeTab === 'visited' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-gray-400 hover:text-gray-600'
-          }`}
-        >
-          <span>Visited Countries</span>
-          <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
-            {visitedCountriesList.length}
-          </span>
-        </button>
-        <button 
-          onClick={() => setActiveTab('layovers')}
-          className={`pb-4 px-3 text-sm font-black tracking-wider uppercase transition-all border-b-2 relative flex items-center gap-2 shrink-0 ${
-            activeTab === 'layovers' ? 'border-amber-500 text-amber-600 dark:text-amber-400' : 'border-transparent text-gray-400 hover:text-gray-600'
-          }`}
-        >
-          <span className="flex items-center gap-1.5">
-            <Plane className="w-3.5 h-3.5" />
-            <span>Layover Countries</span>
-          </span>
-          <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-            {layoverCountriesList.length}
-          </span>
-        </button>
-        <button 
-          onClick={() => setActiveTab('wishlist')}
-          className={`pb-4 px-3 text-sm font-black tracking-wider uppercase transition-all border-b-2 relative flex items-center gap-2 shrink-0 ${
-            activeTab === 'wishlist' ? 'border-rose-500 text-rose-600 dark:text-rose-400' : 'border-transparent text-gray-400 hover:text-gray-600'
-          }`}
-        >
-          <span className="flex items-center gap-1.5">
-            <Star className="w-3.5 h-3.5 fill-current" />
-            <span>Wishlist Destinations</span>
-          </span>
-          <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
-            {wishlistCountriesList.length}
-          </span>
-        </button>
-        <button 
-          onClick={() => setActiveTab('cities')}
-          className={`pb-4 px-3 text-sm font-black tracking-wider uppercase transition-all border-b-2 relative flex items-center gap-2 shrink-0 ${
-            activeTab === 'cities' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-gray-400 hover:text-gray-600'
-          }`}
-        >
-          <span>Track Cities</span>
-          <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-            {filteredCities.length}
-          </span>
-        </button>
-        <button 
-          onClick={() => setActiveTab('sync')}
-          className={`pb-4 px-3 text-sm font-black tracking-wider uppercase transition-all border-b-2 relative flex items-center gap-1.5 shrink-0 ${
-            activeTab === 'sync' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-gray-400 hover:text-gray-600'
-          }`}
-        >
-          <span>Sync Scanner</span>
-          {scanResults.countries.length + scanResults.cities.length > 0 && (
-            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-          )}
-        </button>
+      {/* Main Tabs Navigation (Liquid Glass Pill) */}
+      <div className="flex justify-center w-full my-2">
+        <GlassPanel className="wg-glass-pill p-1.5 rounded-full flex gap-1 border border-black/5 dark:border-white/10 shrink-0 overflow-x-auto no-scrollbar shadow-glass-card">
+          <button 
+            type="button"
+            onClick={() => setActiveTab('visited')}
+            className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-10 ${
+              activeTab === 'visited'
+                ? 'text-primary-600 dark:text-primary-400 font-extrabold'
+                : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
+            }`}
+          >
+            {activeTab === 'visited' && (
+              <motion.div
+                layoutId="atlasActiveTab"
+                className="absolute inset-0 bg-white dark:bg-dark-card rounded-full shadow-sm -z-10"
+                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              />
+            )}
+            <Globe className="w-4 h-4" weight={activeTab === 'visited' ? 'duotone' : 'regular'} />
+            <span className="hidden sm:inline">Visited</span>
+            <span className="px-2 py-0.5 rounded-full text-2xs bg-primary-500/15 text-primary-600 dark:text-primary-400 font-mono font-bold">
+              {visitedCountriesList.length}
+            </span>
+          </button>
+
+          <button 
+            type="button"
+            onClick={() => setActiveTab('layovers')}
+            className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-10 ${
+              activeTab === 'layovers'
+                ? 'text-amber-600 dark:text-amber-400 font-extrabold'
+                : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
+            }`}
+          >
+            {activeTab === 'layovers' && (
+              <motion.div
+                layoutId="atlasActiveTab"
+                className="absolute inset-0 bg-white dark:bg-dark-card rounded-full shadow-sm -z-10"
+                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              />
+            )}
+            <Plane className="w-4 h-4" weight={activeTab === 'layovers' ? 'duotone' : 'regular'} />
+            <span className="hidden sm:inline">Layovers</span>
+            <span className="px-2 py-0.5 rounded-full text-2xs bg-amber-500/15 text-amber-600 dark:text-amber-400 font-mono font-bold">
+              {layoverCountriesList.length}
+            </span>
+          </button>
+
+          <button 
+            type="button"
+            onClick={() => setActiveTab('wishlist')}
+            className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-10 ${
+              activeTab === 'wishlist'
+                ? 'text-rose-600 dark:text-rose-400 font-extrabold'
+                : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
+            }`}
+          >
+            {activeTab === 'wishlist' && (
+              <motion.div
+                layoutId="atlasActiveTab"
+                className="absolute inset-0 bg-white dark:bg-dark-card rounded-full shadow-sm -z-10"
+                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              />
+            )}
+            <Star className="w-4 h-4" weight={activeTab === 'wishlist' ? 'duotone' : 'regular'} />
+            <span className="hidden sm:inline">Wishlist</span>
+            <span className="px-2 py-0.5 rounded-full text-2xs bg-rose-500/15 text-rose-600 dark:text-rose-400 font-mono font-bold">
+              {wishlistCountriesList.length}
+            </span>
+          </button>
+
+          <button 
+            type="button"
+            onClick={() => setActiveTab('cities')}
+            className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-10 ${
+              activeTab === 'cities'
+                ? 'text-blue-600 dark:text-blue-400 font-extrabold'
+                : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
+            }`}
+          >
+            {activeTab === 'cities' && (
+              <motion.div
+                layoutId="atlasActiveTab"
+                className="absolute inset-0 bg-white dark:bg-dark-card rounded-full shadow-sm -z-10"
+                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              />
+            )}
+            <MapPin className="w-4 h-4" weight={activeTab === 'cities' ? 'duotone' : 'regular'} />
+            <span className="hidden sm:inline">Cities</span>
+            <span className="px-2 py-0.5 rounded-full text-2xs bg-blue-500/15 text-blue-600 dark:text-blue-400 font-mono font-bold">
+              {filteredCities.length}
+            </span>
+          </button>
+
+          <button 
+            type="button"
+            onClick={() => setActiveTab('sync')}
+            className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-10 ${
+              activeTab === 'sync'
+                ? 'text-primary-600 dark:text-primary-400 font-extrabold'
+                : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
+            }`}
+          >
+            {activeTab === 'sync' && (
+              <motion.div
+                layoutId="atlasActiveTab"
+                className="absolute inset-0 bg-white dark:bg-dark-card rounded-full shadow-sm -z-10"
+                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              />
+            )}
+            <RefreshCw className="w-4 h-4" weight={activeTab === 'sync' ? 'duotone' : 'regular'} />
+            <span className="hidden sm:inline">Sync Scanner</span>
+            {scanResults.countries.length + scanResults.cities.length > 0 && (
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+            )}
+          </button>
+        </GlassPanel>
       </div>
 
       {/* Filtering Section - Skip for Scan tab */}
       {activeTab !== 'sync' && (
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 max-w-4xl mx-auto w-full mb-4">
           <div className="md:col-span-8 relative">
+            <Filter className="w-4 h-4 text-light-text-secondary dark:text-dark-text-secondary absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input 
               type="text"
               placeholder={`Search ${activeTab === 'visited' ? 'visited countries' : activeTab === 'layovers' ? 'layover countries' : activeTab === 'wishlist' ? 'wishlist destinations' : 'cities'}...`} 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white/50 dark:bg-zinc-900/40 border border-gray-200 dark:border-white/10 rounded-2xl py-3 pl-11 pr-4 text-xs font-medium focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+              className={`${INPUT_BASE_STYLE} pl-10 min-h-[44px] text-xs font-semibold`}
             />
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-              <Filter className="w-4 h-4" />
-            </div>
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                aria-label="Clear search"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
           <div className="md:col-span-4 select-none">
@@ -966,97 +1026,102 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                     <motion.div 
                       key={item.id} 
                       layout
-                      className="p-6 rounded-3xl border relative transition-all bg-white dark:bg-zinc-900/50 shadow-sm hover:shadow-md border-gray-100 dark:border-white/5"
                     >
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          <span className="text-4xl" role="img" aria-label="flag">
-                            {getFlagEmoji(item.code)}
-                          </span>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-black text-lg text-gray-900 dark:text-white tracking-tight leading-tight">{item.name}</h3>
+                      <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden p-6 relative transition-all hover:shadow-lg h-full flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                              <span className="text-4xl" role="img" aria-label="flag">
+                                {getFlagEmoji(item.code)}
+                              </span>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <h3 className="font-black text-lg text-light-text dark:text-dark-text tracking-tight leading-tight">{item.name}</h3>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                                  {getResidenceStatuses(item).map(status => {
+                                    if (status === 'lived_current') {
+                                      return (
+                                        <span key="lived_current" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-emerald-500/10 dark:bg-emerald-400/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25 leading-none">
+                                          <Home className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
+                                          <span>Current Home</span>
+                                        </span>
+                                      );
+                                    }
+                                    if (status === 'lived_past') {
+                                      return (
+                                        <span key="lived_past" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-indigo-500/10 dark:bg-indigo-400/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/25 leading-none">
+                                          <Landmark className="w-2.5 h-2.5 text-indigo-600 dark:text-indigo-400" />
+                                          <span>Past Home</span>
+                                        </span>
+                                      );
+                                    }
+                                    if (status === 'visited') {
+                                      return (
+                                        <span key="visited" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-primary-500/10 dark:bg-primary-400/10 text-primary-700 dark:text-primary-300 border border-primary-500/25 leading-none">
+                                          <Sparkles className="w-2.5 h-2.5 text-primary-600 dark:text-primary-400" />
+                                          <span>Visited</span>
+                                        </span>
+                                      );
+                                    }
+                                    return null;
+                                  })}
+                                </div>
+                                <span className="text-2xs font-bold text-primary-500 dark:text-primary-400 uppercase tracking-widest">{item.code} • {getRegion(item.code)}</span>
+                              </div>
                             </div>
-                            <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                              {getResidenceStatuses(item).map(status => {
-                                if (status === 'lived_current') {
-                                  return (
-                                    <span key="lived_current" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-emerald-500/10 dark:bg-emerald-400/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25 leading-none">
-                                      <Home className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
-                                      <span>Current Home</span>
-                                    </span>
-                                  );
-                                }
-                                if (status === 'lived_past') {
-                                  return (
-                                    <span key="lived_past" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-indigo-500/10 dark:bg-indigo-400/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/25 leading-none">
-                                      <Landmark className="w-2.5 h-2.5 text-indigo-600 dark:text-indigo-400" />
-                                      <span>Past Home</span>
-                                    </span>
-                                  );
-                                }
-                                if (status === 'visited') {
-                                  return (
-                                    <span key="visited" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-primary-500/10 dark:bg-primary-400/10 text-primary-700 dark:text-primary-300 border border-primary-500/25 leading-none">
-                                      <Sparkles className="w-2.5 h-2.5 text-primary-600 dark:text-primary-400" />
-                                      <span>Visited</span>
-                                    </span>
-                                  );
-                                }
-                                return null;
-                              })}
+
+                            {/* Top corner actions */}
+                            <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 p-1 rounded-xl">
+                              <button 
+                                onClick={() => handleOpenEdit(item)}
+                                title="Edit Record" 
+                                aria-label="Edit Record"
+                                className="p-1 px-2 rounded-lg text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-white dark:hover:bg-dark-card transition-all flex items-center cursor-pointer"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteItem(item.id)}
+                                title="Remove country" 
+                                aria-label="Remove country"
+                                className="p-1 px-2 rounded-lg text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary hover:text-rose-500 hover:bg-white dark:hover:bg-dark-card transition-all flex items-center cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
                             </div>
-                            <span className="text-2xs font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-widest">{item.code} • {getRegion(item.code)}</span>
+                          </div>
+
+                          {item.notes && (
+                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary bg-black/5 dark:bg-white/5 p-3 rounded-2xl mb-4 italic">
+                              "{item.notes}"
+                            </p>
+                          )}
+
+                          <div className="grid grid-cols-2 gap-2 text-xs border-t border-black/5 dark:border-white/5 pt-4">
+                            <div>
+                              <span className="text-light-text-secondary dark:text-dark-text-secondary block text-2xs font-bold uppercase tracking-wider">Visited Date</span>
+                              <span className="font-semibold">{item.visitDate || 'Not specified'}</span>
+                            </div>
+                            <div>
+                              <span className="text-light-text-secondary dark:text-dark-text-secondary block text-2xs font-bold uppercase tracking-wider">Record Origin</span>
+                              <span className="font-semibold text-zinc-500">{item.isManual ? 'Manual Edit' : 'Scanned'}</span>
+                            </div>
                           </div>
                         </div>
 
-                        {/* Top corner actions */}
-                        <div className="flex items-center gap-1 bg-gray-50 dark:bg-white/5 p-1.5 rounded-2xl">
-                          <button 
-                            onClick={() => handleOpenEdit(item)}
-                            title="Edit Record" 
-                            className="p-1 px-2 rounded-xl text-xs font-semibold text-gray-400 hover:text-black dark:hover:text-white hover:bg-white dark:hover:bg-zinc-800 transition-all flex items-center"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteItem(item.id)}
-                            title="Remove country" 
-                            className="p-1 px-2 rounded-xl text-xs font-semibold text-gray-400 hover:text-red-500 hover:bg-white dark:hover:bg-zinc-800 transition-all flex items-center"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {item.notes && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-white/5 p-3 rounded-2xl mb-4 italic">
-                          "{item.notes}"
-                        </p>
-                      )}
-
-                      <div className="grid grid-cols-2 gap-2 text-xs border-t border-gray-100 dark:border-white/5 pt-4">
-                        <div>
-                          <span className="text-gray-400 block text-2xs font-bold uppercase tracking-wider">Visited Date</span>
-                          <span className="font-semibold">{item.visitDate || 'Not specified'}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-400 block text-2xs font-bold uppercase tracking-wider">Record Origin</span>
-                          <span className="font-semibold text-zinc-500">{item.isManual ? 'Manual Edit' : 'Scanned'}</span>
-                        </div>
-                      </div>
-
-                      {/* Convert to Layover button */}
-                      <button 
-                        onClick={() => handleToggleTransit(item)}
-                        className="w-full mt-4 flex items-center justify-between text-xs font-bold tracking-wider uppercase px-4.5 py-3 rounded-2xl border transition-all duration-200 bg-indigo-100/50 hover:bg-indigo-100/70 border-indigo-200/50 text-indigo-900 dark:bg-indigo-950/30 dark:hover:bg-indigo-950/50 dark:border-indigo-900/30 dark:text-indigo-300"
-                      >
-                        <span className="flex items-center gap-1.5">
-                          <Plane className="w-3.5 h-3.5" />
-                          Move to Layovers
-                        </span>
-                        <span className="font-bold underline text-2xs">Transit</span>
-                      </button>
+                        {/* Convert to Layover button */}
+                        <button 
+                          onClick={() => handleToggleTransit(item)}
+                          className="w-full mt-4 flex items-center justify-between text-xs font-bold tracking-wider uppercase px-4.5 py-3 rounded-2xl border transition-all duration-200 bg-primary-500/10 hover:bg-primary-500/20 border-primary-500/20 text-primary-700 dark:text-primary-300 cursor-pointer"
+                        >
+                          <span className="flex items-center gap-1.5">
+                            <Plane className="w-3.5 h-3.5" />
+                            Move to Layovers
+                          </span>
+                          <span className="font-bold underline text-2xs">Transit</span>
+                        </button>
+                      </GlassPanel>
                     </motion.div>
                   ))
                 )}
@@ -1075,8 +1140,8 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                 {filteredLayoverCountries.length === 0 ? (
                   <div className="col-span-full py-16 text-center text-gray-400 bg-white/40 dark:bg-zinc-900/20 border border-dashed border-amber-500/20 dark:border-amber-500/10 rounded-3xl">
                     <Plane className="w-10 h-10 mx-auto text-amber-400 dark:text-amber-500/40 mb-2 rotate-45" />
-                    <p className="text-sm font-bold text-gray-700 dark:text-gray-300">No Layover Countries Catalogued</p>
-                    <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
+                    <p className="text-sm font-bold text-light-text dark:text-dark-text">No Layover Countries Catalogued</p>
+                    <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-1 max-w-sm mx-auto">
                       Airport transfers and transit stops are tracked here. They are highlighted with special amber tones on your map and kept distinct from fully explored countries.
                     </p>
                     <Button 
@@ -1091,77 +1156,82 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                     <motion.div 
                       key={item.id} 
                       layout
-                      className="p-6 rounded-3xl border relative transition-all bg-white dark:bg-zinc-900/50 shadow-sm hover:shadow-md border-amber-500/20 dark:border-amber-500/15 bg-gradient-to-b from-amber-500/[0.03] to-transparent"
                     >
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          <span className="text-4xl" role="img" aria-label="flag">
-                            {getFlagEmoji(item.code)}
-                          </span>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-black text-lg text-gray-900 dark:text-white tracking-tight leading-tight">{item.name}</h3>
-                            </div>
-                            <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-amber-500/10 dark:bg-amber-400/10 text-amber-700 dark:text-amber-300 border border-amber-500/25 leading-none">
-                                <Plane className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400" />
-                                <span>Layover</span>
+                      <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden p-6 relative transition-all hover:shadow-lg border-amber-500/20 dark:border-amber-500/15 h-full flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                              <span className="text-4xl" role="img" aria-label="flag">
+                                {getFlagEmoji(item.code)}
                               </span>
-                              {getResidenceStatuses(item).includes('wishlist') && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-rose-500/10 dark:bg-rose-400/10 text-rose-700 dark:text-rose-300 border border-rose-500/25 leading-none">
-                                  <Star className="w-2.5 h-2.5 fill-rose-500/40 text-rose-600 dark:text-rose-400" />
-                                  <span>Wishlist</span>
-                                </span>
-                              )}
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <h3 className="font-black text-lg text-light-text dark:text-dark-text tracking-tight leading-tight">{item.name}</h3>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-amber-500/10 dark:bg-amber-400/10 text-amber-700 dark:text-amber-300 border border-amber-500/25 leading-none">
+                                    <Plane className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400" />
+                                    <span>Layover</span>
+                                  </span>
+                                  {getResidenceStatuses(item).includes('wishlist') && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-rose-500/10 dark:bg-rose-400/10 text-rose-700 dark:text-rose-300 border border-rose-500/25 leading-none">
+                                      <Star className="w-2.5 h-2.5 fill-rose-500/40 text-rose-600 dark:text-rose-400" />
+                                      <span>Wishlist</span>
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-2xs font-bold text-amber-500 dark:text-amber-400 uppercase tracking-widest">{item.code} • {getRegion(item.code)}</span>
+                              </div>
                             </div>
-                            <span className="text-2xs font-bold text-amber-500 dark:text-amber-400 uppercase tracking-widest">{item.code} • {getRegion(item.code)}</span>
+
+                            {/* Top corner actions */}
+                            <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 p-1 rounded-xl">
+                              <button 
+                                onClick={() => handleOpenEdit(item)}
+                                title="Edit Record" 
+                                aria-label="Edit Record"
+                                className="p-1 px-2 rounded-lg text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-white dark:hover:bg-dark-card transition-all flex items-center cursor-pointer"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteItem(item.id)}
+                                title="Remove country" 
+                                aria-label="Remove country"
+                                className="p-1 px-2 rounded-lg text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary hover:text-rose-500 hover:bg-white dark:hover:bg-dark-card transition-all flex items-center cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {item.notes && (
+                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary bg-black/5 dark:bg-white/5 p-3 rounded-2xl mb-4 italic">
+                              "{item.notes}"
+                            </p>
+                          )}
+
+                          <div className="grid grid-cols-2 gap-2 text-xs border-t border-black/5 dark:border-white/5 pt-4">
+                            <div>
+                              <span className="text-light-text-secondary dark:text-dark-text-secondary block text-2xs font-bold uppercase tracking-wider">Transit Date</span>
+                              <span className="font-semibold">{item.visitDate || 'Transit connection'}</span>
+                            </div>
+                            <div>
+                              <span className="text-light-text-secondary dark:text-dark-text-secondary block text-2xs font-bold uppercase tracking-wider">Classification</span>
+                              <span className="font-semibold text-amber-500">Transit Only</span>
+                            </div>
                           </div>
                         </div>
 
-                        {/* Top corner actions */}
-                        <div className="flex items-center gap-1 bg-gray-50 dark:bg-white/5 p-1.5 rounded-2xl">
-                          <button 
-                            onClick={() => handleOpenEdit(item)}
-                            title="Edit Record" 
-                            className="p-1 px-2 rounded-xl text-xs font-semibold text-gray-400 hover:text-black dark:hover:text-white hover:bg-white dark:hover:bg-zinc-800 transition-all flex items-center"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteItem(item.id)}
-                            title="Remove country" 
-                            className="p-1 px-2 rounded-xl text-xs font-semibold text-gray-400 hover:text-red-500 hover:bg-white dark:hover:bg-zinc-800 transition-all flex items-center"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {item.notes && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-white/5 p-3 rounded-2xl mb-4 italic">
-                          "{item.notes}"
-                        </p>
-                      )}
-
-                      <div className="grid grid-cols-2 gap-2 text-xs border-t border-gray-100 dark:border-white/5 pt-4">
-                        <div>
-                          <span className="text-gray-400 block text-2xs font-bold uppercase tracking-wider">Transit Date</span>
-                          <span className="font-semibold">{item.visitDate || 'Transit connection'}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-400 block text-2xs font-bold uppercase tracking-wider">Classification</span>
-                          <span className="font-semibold text-amber-500">Transit Only</span>
-                        </div>
-                      </div>
-
-                      {/* 1-Click Promote to Visited */}
-                      <button 
-                        onClick={() => handlePromoteLayoverToVisited(item)}
-                        className="w-full mt-4 flex items-center justify-center gap-2 text-xs font-bold tracking-wider uppercase px-4.5 py-3 rounded-2xl border border-amber-500/20 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 transition-all duration-200 cursor-pointer shadow-sm active:scale-[0.98]"
-                      >
-                        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                        <span>Promote to Explored / Visited</span>
-                      </button>
+                        {/* 1-Click Promote to Visited */}
+                        <button 
+                          onClick={() => handlePromoteLayoverToVisited(item)}
+                          className="w-full mt-4 flex items-center justify-center gap-2 text-xs font-bold tracking-wider uppercase px-4.5 py-3 rounded-2xl border border-amber-500/20 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 transition-all duration-200 cursor-pointer shadow-sm active:scale-[0.98]"
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                          <span>Promote to Explored / Visited</span>
+                        </button>
+                      </GlassPanel>
                     </motion.div>
                   ))
                 )}
@@ -1177,96 +1247,95 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                 exit={{ opacity: 0 }}
                 className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
               >
-                {filteredWishlistCountries.length === 0 ? (
+                {wishlistCountriesList.length === 0 ? (
                   <div className="col-span-full py-16 text-center text-gray-400 bg-white/40 dark:bg-zinc-900/20 border border-dashed border-rose-500/20 dark:border-rose-500/10 rounded-3xl">
-                    <Star className="w-10 h-10 mx-auto text-rose-400 dark:text-rose-500/40 mb-2 fill-current" />
-                    <p className="text-sm font-bold text-gray-700 dark:text-gray-300">No Wishlist Destinations Added Yet</p>
-                    <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
-                      Save dream expeditions to your wishlist. You can add them here or click any unexplored territory on the Scratch Map.
+                    <Star className="w-10 h-10 mx-auto text-rose-400 dark:text-rose-500/40 mb-2" />
+                    <p className="text-sm font-bold text-light-text dark:text-dark-text">No Wishlist Destinations Added</p>
+                    <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-1 max-w-sm mx-auto">
+                      Mark target destinations you aspire to explore. They'll glow with distinctive wishlist highlights.
                     </p>
                     <Button 
                       onClick={() => handleOpenAdd('wishlist')} 
                       className="mt-4 rounded-full bg-gradient-to-r from-rose-500 to-pink-600 text-white text-xs font-bold"
                     >
-                      <Plus className="mr-1.5 h-4 w-4" /> Add Wishlist Destination
+                      <Star className="mr-1.5 h-4 w-4 fill-white" /> Add Target Wishlist
                     </Button>
                   </div>
                 ) : (
-                  filteredWishlistCountries.map(item => (
+                  wishlistCountriesList.map(item => (
                     <motion.div 
                       key={item.id} 
                       layout
-                      className="p-6 rounded-3xl border relative transition-all bg-white dark:bg-zinc-900/50 shadow-sm hover:shadow-md border-rose-500/20 dark:border-rose-500/15 bg-gradient-to-b from-rose-500/[0.03] to-transparent"
                     >
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          <span className="text-4xl" role="img" aria-label="flag">
-                            {getFlagEmoji(item.code)}
-                          </span>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-black text-lg text-gray-900 dark:text-white tracking-tight leading-tight">{item.name}</h3>
-                            </div>
-                            <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-rose-500/10 dark:bg-rose-400/10 text-rose-700 dark:text-rose-300 border border-rose-500/25 leading-none">
-                                <Star className="w-2.5 h-2.5 fill-rose-500/40 text-rose-600 dark:text-rose-400" />
-                                <span>Wishlist</span>
+                      <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden p-6 relative transition-all hover:shadow-lg border-rose-500/20 dark:border-rose-500/15 h-full flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                              <span className="text-4xl" role="img" aria-label="flag">
+                                {getFlagEmoji(item.code)}
                               </span>
-                              {getResidenceStatuses(item).includes('layover') && (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-amber-500/10 dark:bg-amber-400/10 text-amber-700 dark:text-amber-300 border border-amber-500/25 leading-none">
-                                  <Plane className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400" />
-                                  <span>Layover</span>
-                                </span>
-                              )}
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <h3 className="font-black text-lg text-light-text dark:text-dark-text tracking-tight leading-tight">{item.name}</h3>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-rose-500/10 dark:bg-rose-400/10 text-rose-700 dark:text-rose-300 border border-rose-500/25 leading-none">
+                                    <Star className="w-2.5 h-2.5 fill-rose-500/40 text-rose-600 dark:text-rose-400" />
+                                    <span>Wishlist</span>
+                                  </span>
+                                </div>
+                                <span className="text-2xs font-bold text-rose-500 dark:text-rose-400 uppercase tracking-widest">{item.code} • {getRegion(item.code)}</span>
+                              </div>
                             </div>
-                            <span className="text-2xs font-bold text-rose-500 dark:text-rose-400 uppercase tracking-widest">{item.code} • {getRegion(item.code)}</span>
+
+                            {/* Top corner actions */}
+                            <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 p-1 rounded-xl">
+                              <button 
+                                onClick={() => handleOpenEdit(item)}
+                                title="Edit Record" 
+                                aria-label="Edit Record"
+                                className="p-1 px-2 rounded-lg text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-white dark:hover:bg-dark-card transition-all flex items-center cursor-pointer"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteItem(item.id)}
+                                title="Remove country" 
+                                aria-label="Remove country"
+                                className="p-1 px-2 rounded-lg text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary hover:text-rose-500 hover:bg-white dark:hover:bg-dark-card transition-all flex items-center cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {item.notes && (
+                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary bg-black/5 dark:bg-white/5 p-3 rounded-2xl mb-4 italic">
+                              "{item.notes}"
+                            </p>
+                          )}
+
+                          <div className="grid grid-cols-2 gap-2 text-xs border-t border-black/5 dark:border-white/5 pt-4">
+                            <div>
+                              <span className="text-light-text-secondary dark:text-dark-text-secondary block text-2xs font-bold uppercase tracking-wider">Target Voyage</span>
+                              <span className="font-semibold">{item.visitDate || 'Future dream'}</span>
+                            </div>
+                            <div>
+                              <span className="text-light-text-secondary dark:text-dark-text-secondary block text-2xs font-bold uppercase tracking-wider">Classification</span>
+                              <span className="font-semibold text-rose-500">Dream Destination</span>
+                            </div>
                           </div>
                         </div>
 
-                        {/* Top corner actions */}
-                        <div className="flex items-center gap-1 bg-gray-50 dark:bg-white/5 p-1.5 rounded-2xl">
-                          <button 
-                            onClick={() => handleOpenEdit(item)}
-                            title="Edit Record" 
-                            className="p-1 px-2 rounded-xl text-xs font-semibold text-gray-400 hover:text-black dark:hover:text-white hover:bg-white dark:hover:bg-zinc-800 transition-all flex items-center"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteItem(item.id)}
-                            title="Remove country" 
-                            className="p-1 px-2 rounded-xl text-xs font-semibold text-gray-400 hover:text-red-500 hover:bg-white dark:hover:bg-zinc-800 transition-all flex items-center"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {item.notes && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-white/5 p-3 rounded-2xl mb-4 italic">
-                          "{item.notes}"
-                        </p>
-                      )}
-
-                      <div className="grid grid-cols-2 gap-2 text-xs border-t border-gray-100 dark:border-white/5 pt-4">
-                        <div>
-                          <span className="text-gray-400 block text-2xs font-bold uppercase tracking-wider">Target Voyage</span>
-                          <span className="font-semibold">{item.visitDate || 'Future dream'}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-400 block text-2xs font-bold uppercase tracking-wider">Classification</span>
-                          <span className="font-semibold text-rose-500">Dream Destination</span>
-                        </div>
-                      </div>
-
-                      {/* 1-Click Promote to Visited */}
-                      <button 
-                        onClick={() => handlePromoteWishlistToVisited(item)}
-                        className="w-full mt-4 flex items-center justify-center gap-2 text-xs font-bold tracking-wider uppercase px-4.5 py-3 rounded-2xl border border-rose-500/20 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 transition-all duration-200 cursor-pointer shadow-sm active:scale-[0.98]"
-                      >
-                        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                        <span>Mark as Explored / Visited</span>
-                      </button>
+                        {/* 1-Click Promote to Visited */}
+                        <button 
+                          onClick={() => handlePromoteWishlistToVisited(item)}
+                          className="w-full mt-4 flex items-center justify-center gap-2 text-xs font-bold tracking-wider uppercase px-4.5 py-3 rounded-2xl border border-rose-500/20 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 transition-all duration-200 cursor-pointer shadow-sm active:scale-[0.98]"
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                          <span>Mark as Explored / Visited</span>
+                        </button>
+                      </GlassPanel>
                     </motion.div>
                   ))
                 )}
@@ -1280,71 +1349,74 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="bg-white/80 dark:bg-zinc-900/30 border border-gray-100 dark:border-white/5 rounded-3xl overflow-hidden"
               >
-                {filteredCities.length === 0 ? (
-                  <div className="py-20 text-center text-gray-400">
-                    <MapPin className="w-10 h-10 mx-auto text-gray-300 dark:text-zinc-700 mb-2" />
-                    <p className="text-sm font-bold">No cities registered in your map dataset yet</p>
-                    <p className="text-xs text-gray-500 mt-1">Try to trigger History Scanner or custom Register city with Coordinates manually.</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto min-w-full">
-                    <table className="min-w-full border-collapse text-left text-xs">
-                      <thead>
-                        <tr className="border-b border-gray-100 dark:border-white/5 text-gray-400 uppercase tracking-widest font-black text-2xs bg-gray-50/50 dark:bg-white/5">
-                          <th className="p-5 pl-8">City Name</th>
-                          <th className="p-5">Country</th>
-                          <th className="p-5">Map coordinates</th>
-                          <th className="p-5">Visit Date</th>
-                          <th className="p-5">Notes</th>
-                          <th className="p-5 pr-8 text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredCities.map((item, idx) => (
-                          <tr key={item.id} className="border-b border-gray-100 dark:border-white/5 hover:bg-gray-50/50 dark:hover:bg-whiteScale-5 transition-all">
-                            <td className="p-5 pl-8 font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
-                              <span className="font-mono text-2xs text-zinc-400">#{idx + 1}</span>
-                              {item.name}
-                            </td>
-                            <td className="p-5">
-                              <span className="flex items-center gap-1.5 font-bold">
-                                <span className="text-lg">{item.countryCode ? getFlagEmoji(item.countryCode) : '🏳️'}</span>
-                                {item.countryName || item.countryCode}
-                              </span>
-                            </td>
-                            <td className="p-5">
-                              <span className="font-mono bg-indigo-50/60 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 p-2 py-1 px-3 rounded-xl border border-indigo-500/10 font-bold block w-fit">
-                                Lat: {item.lat?.toFixed(4) || '??'} • Lng: {item.lng?.toFixed(4) || '??'}
-                              </span>
-                            </td>
-                            <td className="p-5 font-semibold text-gray-500">{item.visitDate || 'No date Logged'}</td>
-                            <td className="p-5 text-gray-500 italic max-w-xs truncate" title={item.notes}>{item.notes || '—'}</td>
-                            <td className="p-5 pr-8 text-right">
-                              <div className="flex items-center justify-end gap-1.5">
-                                <button 
-                                  onClick={() => handleOpenEdit(item)}
-                                  className="p-2 bg-gray-50 hover:bg-indigo-500 hover:text-white dark:bg-zinc-800 text-gray-500 rounded-xl transition-all"
-                                  title="Edit Coordinates & Details"
-                                >
-                                  <Edit3 className="w-3.5 h-3.5" />
-                                </button>
-                                <button 
-                                  onClick={() => handleDeleteItem(item.id)}
-                                  className="p-2 bg-gray-50 hover:bg-red-500 hover:text-white dark:bg-zinc-800 text-gray-500 rounded-xl transition-all"
-                                  title="Remove City"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </td>
+                <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden shadow-glass-card">
+                  {filteredCities.length === 0 ? (
+                    <div className="py-20 text-center text-gray-400">
+                      <MapPin className="w-10 h-10 mx-auto text-gray-300 dark:text-zinc-700 mb-2" />
+                      <p className="text-sm font-bold">No cities registered in your map dataset yet</p>
+                      <p className="text-xs text-gray-500 mt-1">Try to trigger History Scanner or custom Register city with Coordinates manually.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto min-w-full">
+                      <table className="min-w-full border-collapse text-left text-xs">
+                        <thead>
+                          <tr className="border-b border-black/5 dark:border-white/5 text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest font-black text-2xs bg-black/5 dark:bg-white/5">
+                            <th className="p-5 pl-8">City Name</th>
+                            <th className="p-5">Country</th>
+                            <th className="p-5">Map coordinates</th>
+                            <th className="p-5">Visit Date</th>
+                            <th className="p-5">Notes</th>
+                            <th className="p-5 pr-8 text-right">Actions</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                        </thead>
+                        <tbody>
+                          {filteredCities.map((item, idx) => (
+                            <tr key={item.id} className="border-b border-black/5 dark:border-white/5 hover:bg-black/5 dark:hover:bg-white/5 transition-all">
+                              <td className="p-5 pl-8 font-extrabold text-light-text dark:text-dark-text flex items-center gap-2">
+                                <span className="font-mono text-2xs text-zinc-400">#{idx + 1}</span>
+                                {item.name}
+                              </td>
+                              <td className="p-5">
+                                <span className="flex items-center gap-1.5 font-bold">
+                                  <span className="text-lg">{item.countryCode ? getFlagEmoji(item.countryCode) : '🏳️'}</span>
+                                  {item.countryName || item.countryCode}
+                                </span>
+                              </td>
+                              <td className="p-5">
+                                <span className="font-mono bg-primary-500/10 text-primary-600 dark:text-primary-400 p-2 py-1 px-3 rounded-xl border border-primary-500/20 font-bold block w-fit">
+                                  Lat: {item.lat?.toFixed(4) || '??'} • Lng: {item.lng?.toFixed(4) || '??'}
+                                </span>
+                              </td>
+                              <td className="p-5 font-semibold text-light-text-secondary dark:text-dark-text-secondary">{item.visitDate || 'No date Logged'}</td>
+                              <td className="p-5 text-light-text-secondary dark:text-dark-text-secondary italic max-w-xs truncate" title={item.notes}>{item.notes || '—'}</td>
+                              <td className="p-5 pr-8 text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <button 
+                                    onClick={() => handleOpenEdit(item)}
+                                    className="p-2 bg-black/5 hover:bg-primary-500 hover:text-white dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary rounded-xl transition-all cursor-pointer"
+                                    title="Edit Coordinates & Details"
+                                    aria-label="Edit Coordinates & Details"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button 
+                                    onClick={() => handleDeleteItem(item.id)}
+                                    className="p-2 bg-black/5 hover:bg-rose-500 hover:text-white dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary rounded-xl transition-all cursor-pointer"
+                                    title="Remove City"
+                                    aria-label="Remove City"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </GlassPanel>
               </motion.div>
             )}
 

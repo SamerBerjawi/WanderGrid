@@ -41,9 +41,12 @@ import {
     Sun,
     CalendarCheck,
     Path as Route,
-    ArrowsDownUp as ArrowUpDown
+    ArrowsDownUp as ArrowUpDown,
+    ClockCounterClockwise
 } from '@phosphor-icons/react';
 import { Button, Badge, Modal, BentoGrid, BentoCard } from '../components/ui';
+import { GlassPanel } from '../components/glass/GlassPanel';
+import { VirtualListItem } from '../components/ui/VirtualListItem';
 import { TripModal } from '../components/TripModal';
 import { dataService } from '../services/mockDb';
 import { useWanderSync } from '../hooks/useWanderSync';
@@ -633,315 +636,272 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
         const isPast = activeTab === 'History';
 
         return (
-            <motion.div
-                key={trip.id}
-                layout
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.98 }}
-                onClick={() => {
-                    if (isSelectionMode) {
-                        toggleTripSelection(trip.id);
-                    } else if (onTripClick) {
-                        onTripClick(trip.id);
-                    } else {
-                        handleEditTrip(trip);
-                    }
-                }}
-                className={`group relative bg-white/80 dark:bg-dark-card/80 backdrop-blur-xl border rounded-3xl shadow-glass-card hover:shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden flex flex-col ${
-                    isSelectionMode && isSelected 
-                        ? 'border-primary-500 ring-4 ring-primary-500/20 scale-[1.02]' 
-                        : 'border-black/5 dark:border-white/10 hover:border-black/15 dark:hover:border-white/20'
-                }`}
-                whileHover={{ y: -4 }}
-            >
-                {/* Floating Batch Selection Checkbox */}
-                {isSelectionMode && (
-                    <div className="absolute top-4 right-4 z-20">
-                        <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all ${
-                            isSelected 
-                                ? 'bg-primary-500 border-primary-500 text-white shadow-md shadow-primary-500/30' 
-                                : 'bg-white dark:bg-dark-card border-black/20 dark:border-white/20'
-                        }`}>
-                            {isSelected && <Check className="w-4 h-4 text-white stroke-[3]" />}
-                        </div>
-                    </div>
-                )}
-
-                {/* Accent Top Gradient Strip */}
-                <div className={`h-2 w-full shrink-0 ${
-                    trip.status === 'Planning'
-                        ? 'bg-gradient-to-r from-amber-400 via-orange-500 to-amber-500'
-                        : trip.status === 'Upcoming'
-                        ? 'bg-gradient-to-r from-emerald-400 via-teal-500 to-emerald-600'
-                        : 'bg-gradient-to-r from-indigo-400 via-purple-500 to-indigo-600'
-                }`} />
-
-                {/* Card Header Frame */}
-                <div className="p-6 pb-3 flex items-start justify-between gap-4">
-                    <div className="flex items-center gap-3.5 min-w-0">
-                        <div className="w-13 h-13 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/10 text-2xl flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
-                            {trip.icon || loc.flag}
-                        </div>
-                        <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                                <h3 className="text-base font-bold text-light-text dark:text-dark-text tracking-tight truncate group-hover:text-primary-500 transition-colors">
-                                    {trip.name}
-                                </h3>
-                            </div>
-                            <div className="flex items-center gap-1.5 text-xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5 truncate font-medium">
-                                <span className="text-sm leading-none">{loc.flag}</span>
-                                <span className="truncate">{loc.name}</span>
-                                <span>•</span>
-                                <span className="text-2xs uppercase tracking-wider font-bold opacity-75">{loc.region}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {!isSelectionMode && (
-                        <span className={`px-2.5 py-1 rounded-full text-2xs font-bold uppercase tracking-wider shrink-0 flex items-center gap-1 border ${
-                            trip.privacy === 'Public'
-                                ? 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20'
-                                : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary border-black/10 dark:border-white/10'
-                        }`}>
-                            {trip.privacy === 'Public' ? <Globe className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
-                            <span>{trip.privacy || 'Private'}</span>
-                        </span>
-                    )}
-                </div>
-
-                {/* Dates & Duration Banner */}
-                <div className="px-6 py-2">
-                    <div className="p-3 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2 min-w-0">
-                            <CalendarIcon className="w-4 h-4 text-primary-500 shrink-0" />
-                            <span className="font-mono font-bold text-xs text-light-text dark:text-dark-text truncate">
-                                {formatDateRange(trip.startDate, trip.endDate, settingsData)}
-                            </span>
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                            <span className="px-2.5 py-0.5 rounded-lg bg-black/5 dark:bg-white/10 text-light-text dark:text-dark-text text-2xs font-mono font-bold">
-                                {totalDays} {totalDays === 1 ? 'Day' : 'Days'}
-                            </span>
-                            {weekdays > 0 && (
-                                <span className="text-2xs font-mono text-light-text-secondary dark:text-dark-text-secondary font-semibold hidden sm:inline">
-                                    ({weekdays} PTO {weekdays === 1 ? 'day' : 'days'})
-                                </span>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Public Holiday Matcher & Conflict Alerts */}
-                {(matchingHolidays.length > 0 || conflicts.length > 0) && (
-                    <div className="px-6 py-1 space-y-1.5">
-                        {matchingHolidays.length > 0 && (
-                            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-2xs font-bold flex items-center gap-1.5">
-                                <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                                <span className="truncate">
-                                    {matchingHolidays.length} Public {matchingHolidays.length === 1 ? 'Holiday' : 'Holidays'} ({matchingHolidays.map(h => h.name).join(', ')})
-                                </span>
+            <VirtualListItem key={trip.id} minHeight={380}>
+                <motion.div
+                    layout
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.98 }}
+                    onClick={() => {
+                        if (isSelectionMode) {
+                            toggleTripSelection(trip.id);
+                        } else if (onTripClick) {
+                            onTripClick(trip.id);
+                        } else {
+                            handleEditTrip(trip);
+                        }
+                    }}
+                    whileHover={{ y: -4 }}
+                    className="h-full"
+                >
+                    <GlassPanel className={`group relative wg-glass-card rounded-[28px] overflow-hidden shadow-glass-card hover:shadow-2xl transition-all duration-300 cursor-pointer flex flex-col h-full ${
+                        isSelectionMode && isSelected 
+                            ? 'border-primary-500 ring-4 ring-primary-500/20 scale-[1.02]' 
+                            : 'border-black/5 dark:border-white/10 hover:border-black/15 dark:hover:border-white/20'
+                    }`}>
+                        {/* Floating Batch Selection Checkbox */}
+                        {isSelectionMode && (
+                            <div className="absolute top-4 right-4 z-20">
+                                <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all ${
+                                    isSelected 
+                                        ? 'bg-primary-500 border-primary-500 text-white shadow-md shadow-primary-500/30' 
+                                        : 'bg-white dark:bg-dark-card border-black/20 dark:border-white/20'
+                                }`}>
+                                    {isSelected && <Check className="w-4 h-4 text-white stroke-[3]" />}
+                                </div>
                             </div>
                         )}
-                        {conflicts.length > 0 && (
-                            <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-700 dark:text-rose-300 text-2xs font-bold flex items-center gap-1.5">
-                                <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                                <span className="truncate">
-                                    Schedule Conflict with: {conflicts.map(c => c.name).join(', ')}
-                                </span>
-                            </div>
-                        )}
-                    </div>
-                )}
 
-                {/* Route Progression Track & Multi-Modal Transit */}
-                <div className="px-6 py-2 flex-1">
-                    {(trip.locations && trip.locations.length > 0) ? (
-                        <div className="p-3 rounded-2xl bg-light-fill/60 dark:bg-dark-fill/30 border border-black/5 dark:border-white/5 space-y-2">
-                            <div className="flex items-center justify-between text-2xs uppercase tracking-wider font-bold text-light-text-secondary dark:text-dark-text-secondary">
-                                <span className="flex items-center gap-1">
-                                    <Route className="w-3 h-3 text-primary-500" />
-                                    <span>Route Track ({trip.locations.length} stops)</span>
-                                </span>
-                                {totalDistanceKm > 0 && (
-                                    <span className="font-mono text-primary-600 dark:text-primary-400">
-                                        {totalDistanceKm.toLocaleString()} km
-                                    </span>
-                                )}
-                            </div>
-                            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-                                {trip.locations.slice(0, 3).map((locItem, idx) => (
-                                    <React.Fragment key={idx}>
-                                        {idx > 0 && <span className="text-light-text-secondary/40 dark:text-dark-text-secondary/40 text-2xs font-bold">&bull;</span>}
-                                        <span className="text-2xs font-bold px-2 py-1 rounded-lg bg-white/90 dark:bg-dark-card/90 border border-black/5 dark:border-white/10 text-light-text dark:text-dark-text truncate max-w-[90px]" title={locItem.name}>
-                                            {locItem.name}
-                                        </span>
-                                    </React.Fragment>
-                                ))}
-                                {trip.locations.length > 3 && (
-                                    <span className="text-2xs font-bold px-2 py-1 rounded-lg bg-primary-500/15 text-primary-600 dark:text-primary-400 border border-primary-500/20 shrink-0">
-                                        +{trip.locations.length - 3}
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="p-3 rounded-2xl border border-dashed border-black/10 dark:border-white/10 text-2xs font-medium text-light-text-secondary dark:text-dark-text-secondary flex items-center justify-between">
-                            <span className="flex items-center gap-1.5">
-                                <Compass className="w-3.5 h-3.5 opacity-60" />
-                                <span>Direct Journey (Single destination)</span>
-                            </span>
-                            {totalDistanceKm > 0 && (
-                                <span className="font-mono font-bold text-light-text dark:text-dark-text">
-                                    {totalDistanceKm.toLocaleString()} km
-                                </span>
-                            )}
-                        </div>
-                    )}
-                </div>
+                        {/* Accent Top Gradient Strip */}
+                        <div className={`h-2 w-full shrink-0 ${
+                            trip.status === 'Planning'
+                                ? 'bg-gradient-to-r from-amber-400 via-orange-500 to-amber-500'
+                                : trip.status === 'Upcoming'
+                                ? 'bg-gradient-to-r from-emerald-400 via-teal-500 to-emerald-600'
+                                : 'bg-gradient-to-r from-indigo-400 via-purple-500 to-indigo-600'
+                        }`} />
 
-                {/* Completeness & Co-Travelers Avatars */}
-                <div className="px-6 py-2.5 space-y-3">
-                    <div className="space-y-1.5">
-                        <div className="flex items-center justify-between text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
-                            <span>Planning Completeness</span>
-                            <span className={`font-mono font-black ${completeness === 100 ? 'text-emerald-500' : 'text-primary-500'}`}>
-                                {completeness}%
-                            </span>
-                        </div>
-                        <div className="w-full h-1.5 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden">
-                            <motion.div 
-                                initial={{ width: 0 }}
-                                animate={{ width: `${completeness}%` }}
-                                transition={{ duration: 0.8, ease: 'easeOut' }}
-                                className={`h-full rounded-full ${
-                                    completeness === 100 
-                                        ? 'bg-emerald-500' 
-                                        : completeness >= 60 
-                                        ? 'bg-primary-500' 
-                                        : 'bg-amber-500'
-                                }`}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="flex items-center justify-between border-t border-black/5 dark:border-white/5 pt-2.5">
-                        <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
-                            Co-Travelers
-                        </span>
-                        <div className="flex -space-x-2">
-                            {(trip.participants || []).slice(0, 4).map((pid) => {
-                                const u = users.find(user => user.id === pid);
-                                if (!u) return null;
-                                return (
-                                    <div 
-                                        key={pid} 
-                                        className="w-6.5 h-6.5 rounded-full border-2 border-white dark:border-dark-card flex items-center justify-center text-2xs font-bold text-white shrink-0 shadow-xs bg-primary-500"
-                                        title={u.name}
-                                    >
-                                        {u.name.charAt(0).toUpperCase()}
+                        {/* Card Header Frame */}
+                        <div className="p-6 pb-3 flex items-start justify-between gap-4">
+                            <div className="flex items-center gap-3.5 min-w-0">
+                                <div className="w-13 h-13 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/10 text-2xl flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+                                    {trip.icon || loc.flag}
+                                </div>
+                                <div className="min-w-0">
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="text-base font-bold text-light-text dark:text-dark-text tracking-tight truncate group-hover:text-primary-500 transition-colors">
+                                            {trip.name}
+                                        </h3>
                                     </div>
-                                );
-                            })}
-                            {(trip.participants || []).length > 4 && (
-                                <div className="w-6.5 h-6.5 rounded-full border-2 border-white dark:border-dark-card bg-black/60 dark:bg-white/20 text-white flex items-center justify-center text-2xs font-bold shrink-0">
-                                    +{(trip.participants || []).length - 4}
+                                    <div className="flex items-center gap-1.5 text-xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5 truncate font-medium">
+                                        <span className="text-sm leading-none">{loc.flag}</span>
+                                        <span className="truncate">{loc.name}</span>
+                                        <span>•</span>
+                                        <span className="text-2xs uppercase tracking-wider font-bold opacity-75">{loc.region}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {!isSelectionMode && (
+                                <span className={`px-2.5 py-1 rounded-full text-2xs font-bold uppercase tracking-wider shrink-0 flex items-center gap-1 border ${
+                                    trip.privacy === 'Public'
+                                        ? 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20'
+                                        : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary border-black/10 dark:border-white/10'
+                                }`}>
+                                    {trip.privacy === 'Public' ? <Globe className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
+                                    <span>{trip.privacy || 'Private'}</span>
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Dates & Duration Banner */}
+                        <div className="px-6 py-2">
+                            <div className="p-3 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 flex items-center justify-between text-xs">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <CalendarIcon className="w-4 h-4 text-primary-500 shrink-0" />
+                                    <span className="font-mono font-bold text-xs text-light-text dark:text-dark-text truncate">
+                                        {formatDateRange(trip.startDate, trip.endDate, settingsData)}
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                    <span className="px-2.5 py-0.5 rounded-lg bg-black/5 dark:bg-white/10 text-light-text dark:text-dark-text text-2xs font-mono font-bold">
+                                        {totalDays} {totalDays === 1 ? 'Day' : 'Days'}
+                                    </span>
+                                    {weekdays > 0 && (
+                                        <span className="text-2xs font-mono text-light-text-secondary dark:text-dark-text-secondary font-semibold hidden sm:inline">
+                                            ({weekdays} PTO {weekdays === 1 ? 'day' : 'days'})
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Public Holiday Matcher & Conflict Alerts */}
+                        {(matchingHolidays.length > 0 || conflicts.length > 0) && (
+                            <div className="px-6 py-1 space-y-1.5">
+                                {matchingHolidays.length > 0 && (
+                                    <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-2xs font-bold flex items-center gap-1.5">
+                                        <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                                        <span className="truncate">
+                                            {matchingHolidays.length} Public {matchingHolidays.length === 1 ? 'Holiday' : 'Holidays'} ({matchingHolidays.map(h => h.name).join(', ')})
+                                        </span>
+                                    </div>
+                                )}
+                                {conflicts.length > 0 && (
+                                    <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-700 dark:text-rose-300 text-2xs font-bold flex items-center gap-1.5">
+                                        <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                                        <span className="truncate">
+                                            Schedule Conflict with: {conflicts.map(c => c.name).join(', ')}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Completion Pipeline Bar */}
+                        <div className="px-6 py-2">
+                            <div className="flex items-center justify-between text-2xs font-mono font-bold text-light-text-secondary dark:text-dark-text-secondary mb-1.5 uppercase">
+                                <span>Itinerary Completeness</span>
+                                <span className={completeness.percent === 100 ? 'text-emerald-500 font-bold' : 'text-primary-500'}>
+                                    {completeness.percent}%
+                                </span>
+                            </div>
+                            <div className="h-1.5 w-full bg-black/5 dark:bg-white/5 rounded-full overflow-hidden">
+                                <div 
+                                    className={`h-full rounded-full transition-all duration-500 ${
+                                        completeness.percent === 100 
+                                            ? 'bg-emerald-500' 
+                                            : completeness.percent >= 50 
+                                            ? 'bg-primary-500' 
+                                            : 'bg-amber-500'
+                                    }`} 
+                                    style={{ width: `${completeness.percent}%` }} 
+                                />
+                            </div>
+                        </div>
+
+                        {/* Co-Travelers */}
+                        <div className="px-6 py-2 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary font-mono">
+                                    Co-Travelers
+                                </span>
+                                <div className="flex -space-x-2">
+                                    {(trip.participants || []).slice(0, 4).map((pid) => {
+                                        const u = users.find(user => user.id === pid);
+                                        if (!u) return null;
+                                        return (
+                                            <div 
+                                                key={pid} 
+                                                className="w-6.5 h-6.5 rounded-full border-2 border-white dark:border-dark-card flex items-center justify-center text-2xs font-bold text-white shrink-0 shadow-xs bg-primary-500"
+                                                title={u.name}
+                                            >
+                                                {u.name.charAt(0).toUpperCase()}
+                                            </div>
+                                        );
+                                    })}
+                                    {(trip.participants || []).length > 4 && (
+                                        <div className="w-6.5 h-6.5 rounded-full border-2 border-white dark:border-dark-card bg-black/60 dark:bg-white/20 text-white flex items-center justify-center text-2xs font-bold shrink-0">
+                                            +{(trip.participants || []).length - 4}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer Logistics & Action Strip */}
+                        <div className="mt-auto bg-light-fill/80 dark:bg-dark-fill/50 border-t border-black/5 dark:border-white/5 p-4 space-y-3">
+                            {/* Live Counts & Budget Strip */}
+                            <div className="flex items-center justify-between text-xs">
+                                <div className="flex items-center gap-2 text-light-text-secondary dark:text-dark-text-secondary font-semibold">
+                                    <span title="Transports" className="flex items-center gap-0.5">
+                                        <Plane className="w-3.5 h-3.5" />
+                                        <span>{transportCount}</span>
+                                    </span>
+                                    <span>•</span>
+                                    <span title="Stays" className="flex items-center gap-0.5">
+                                        <Briefcase className="w-3.5 h-3.5" />
+                                        <span>{accommodationCount}</span>
+                                    </span>
+                                    <span>•</span>
+                                    <span title="Activities" className="flex items-center gap-0.5">
+                                        <Compass className="w-3.5 h-3.5" />
+                                        <span>{activityCount}</span>
+                                    </span>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                                        {formatCurrency(totalBudget)}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Interactive Action Buttons */}
+                            {!isSelectionMode && (
+                                <div className="flex items-center gap-2 pt-1">
+                                    {!isPast && (
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleUpdateStatus(trip, trip.status === 'Planning' ? 'Upcoming' : 'Planning');
+                                            }}
+                                            className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 min-h-[38px] rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                                trip.status === 'Planning'
+                                                    ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25'
+                                                    : 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500/25'
+                                            }`}
+                                        >
+                                            {trip.status === 'Planning' ? (
+                                                <>
+                                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                                    <span>Lock In</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <RotateCcw className="w-3.5 h-3.5" />
+                                                    <span>Draft</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (onTripClick) onTripClick(trip.id);
+                                            else handleEditTrip(trip);
+                                        }}
+                                        className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 min-h-[38px] rounded-xl text-xs font-bold bg-primary-500 hover:bg-primary-600 text-white shadow-sm transition-all cursor-pointer"
+                                    >
+                                        <Eye className="w-3.5 h-3.5" />
+                                        <span>Manage</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleEditTrip(trip);
+                                        }}
+                                        className="w-9 h-9 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-xl text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5 hover:text-light-text dark:hover:text-dark-text transition-colors cursor-pointer"
+                                        title="Edit Itinerary Config"
+                                        aria-label="Edit Itinerary Config"
+                                    >
+                                        <Settings className="w-4 h-4" />
+                                    </button>
                                 </div>
                             )}
                         </div>
-                    </div>
-                </div>
-
-                {/* Footer Logistics & Action Strip */}
-                <div className="mt-auto bg-light-fill/80 dark:bg-dark-fill/50 border-t border-black/5 dark:border-white/5 p-4 space-y-3">
-                    {/* Live Counts & Budget Strip */}
-                    <div className="flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2 text-light-text-secondary dark:text-dark-text-secondary font-semibold">
-                            <span title="Transports" className="flex items-center gap-0.5">
-                                <Plane className="w-3.5 h-3.5" />
-                                <span>{transportCount}</span>
-                            </span>
-                            <span>•</span>
-                            <span title="Stays" className="flex items-center gap-0.5">
-                                <Briefcase className="w-3.5 h-3.5" />
-                                <span>{accommodationCount}</span>
-                            </span>
-                            <span>•</span>
-                            <span title="Activities" className="flex items-center gap-0.5">
-                                <Compass className="w-3.5 h-3.5" />
-                                <span>{activityCount}</span>
-                            </span>
-                        </div>
-                        <div className="text-right">
-                            <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                                {formatCurrency(totalBudget)}
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* Interactive Action Buttons */}
-                    {!isSelectionMode && (
-                        <div className="flex items-center gap-2 pt-1">
-                            {!isPast && (
-                                <button
-                                    type="button"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleUpdateStatus(trip, trip.status === 'Planning' ? 'Upcoming' : 'Planning');
-                                    }}
-                                    className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                                        trip.status === 'Planning'
-                                            ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25'
-                                            : 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500/25'
-                                    }`}
-                                >
-                                    {trip.status === 'Planning' ? (
-                                        <>
-                                            <CheckCircle2 className="w-3.5 h-3.5" />
-                                            <span>Lock In</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <RotateCcw className="w-3.5 h-3.5" />
-                                            <span>Draft</span>
-                                        </>
-                                    )}
-                                </button>
-                            )}
-                            <button
-                                type="button"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (onTripClick) onTripClick(trip.id);
-                                    else handleEditTrip(trip);
-                                }}
-                                className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold bg-primary-500 hover:bg-primary-600 text-white shadow-sm transition-all cursor-pointer"
-                            >
-                                <Eye className="w-3.5 h-3.5" />
-                                <span>Manage</span>
-                            </button>
-                            <button
-                                type="button"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleEditTrip(trip);
-                                }}
-                                className="p-2 rounded-xl text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5 hover:text-light-text dark:hover:text-dark-text transition-colors cursor-pointer"
-                                title="Edit Itinerary Config"
-                            >
-                                <Settings className="w-4 h-4" />
-                            </button>
-                        </div>
-                    )}
-                </div>
-            </motion.div>
+                    </GlassPanel>
+                </motion.div>
+            </VirtualListItem>
         );
     };
 
     // Compact Logistics Table View
     const renderTableView = () => {
         return (
-            <div className="bg-white/80 dark:bg-dark-card/80 backdrop-blur-xl border border-black/5 dark:border-white/10 rounded-3xl overflow-hidden shadow-glass-card">
+            <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden shadow-glass-card">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs border-collapse">
                         <thead>
@@ -1050,15 +1010,17 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                                             <div className="flex items-center justify-end gap-1.5">
                                                 <button
                                                     onClick={() => handleUpdateStatus(trip, trip.status === 'Planning' ? 'Upcoming' : 'Planning')}
-                                                    className="p-1.5 rounded-lg text-xs font-bold bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+                                                    className="p-1.5 rounded-lg text-xs font-bold bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer"
                                                     title={trip.status === 'Planning' ? 'Lock In Itinerary' : 'Revert to Draft'}
+                                                    aria-label={trip.status === 'Planning' ? 'Lock In Itinerary' : 'Revert to Draft'}
                                                 >
                                                     {trip.status === 'Planning' ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> : <RotateCcw className="w-3.5 h-3.5 text-amber-500" />}
                                                 </button>
                                                 <button
                                                     onClick={() => handleEditTrip(trip)}
-                                                    className="p-1.5 rounded-lg text-xs font-bold bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+                                                    className="p-1.5 rounded-lg text-xs font-bold bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer"
                                                     title="Configure Trip"
+                                                    aria-label="Configure Trip"
                                                 >
                                                     <Edit3 className="w-3.5 h-3.5 text-primary-500" />
                                                 </button>
@@ -1070,62 +1032,49 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                         </tbody>
                     </table>
                 </div>
-            </div>
+            </GlassPanel>
         );
     };
 
     return (
-        <div className="space-y-8 max-w-[1440px] mx-auto pt-2 sm:pt-4 px-1 sm:px-4 pb-28 font-sans select-none animate-fade-in">
+        <div className="w-full max-w-[1680px] mx-auto pt-2 sm:pt-4 px-1 sm:px-4 md:px-6 lg:px-8 flex flex-col gap-5 sm:gap-6 animate-fadeIn pb-16">
             
-            {/* Header: Frosted Glass Command Banner */}
-            <header className="relative overflow-hidden bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl border border-black/5 dark:border-white/10 rounded-3xl p-5 sm:p-8 shadow-sm">
-                {/* Ambient designer lighting gradients */}
-                <div className="absolute top-0 right-1/4 w-96 h-96 bg-gradient-to-br from-primary-500/10 via-amber-500/5 to-transparent rounded-full blur-3xl pointer-events-none -z-10" />
-                <div className="absolute -bottom-10 -left-10 w-72 h-72 bg-gradient-to-tr from-sky-500/10 to-indigo-500/5 rounded-full blur-2xl pointer-events-none -z-10" />
-
-                <div className="flex flex-col lg:flex-row justify-between items-center lg:items-center text-center lg:text-left gap-5 sm:gap-6 relative z-10">
-                    <div className="space-y-2 flex flex-col items-center lg:items-start">
-                        <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2.5">
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-2xs font-mono font-bold uppercase tracking-widest text-primary-600 dark:text-primary-400 bg-primary-500/10 border border-primary-500/20 shadow-xs">
-                                <span className="w-1.5 h-1.5 rounded-full bg-primary-500 animate-pulse" />
-                                Expedition Logistics Hub
-                            </span>
-                            <span className="text-2xs font-mono font-semibold text-light-text-secondary/70 dark:text-dark-text-secondary/70">
-                                {trips.length} Active Records
-                            </span>
-                        </div>
-
-                        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-light-text dark:text-dark-text flex items-center justify-center lg:justify-start gap-2.5 sm:gap-3">
-                            <span>Active Planner</span>
-                            <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-primary-500 shrink-0" />
+            {/* Header: Universal Page Blueprint */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="flex items-center gap-3">
+                    <Compass className="w-8 h-8 sm:w-10 sm:h-10 text-primary-500 shrink-0" weight="duotone" />
+                    <div>
+                        <h1 className="text-xl sm:text-3xl md:text-5xl font-black tracking-tight text-light-text dark:text-dark-text">
+                            Vacation Planner
                         </h1>
-
-                        <p className="text-xs sm:text-sm text-light-text-secondary dark:text-dark-text-secondary max-w-2xl leading-relaxed font-normal">
+                        <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium mt-0.5">
                             Design expedition blueprints, synchronize flight itineraries, optimize holiday PTO savings, and consolidate multi-stay tracks.
                         </p>
                     </div>
-
-                    <div className="flex flex-wrap items-center justify-center lg:justify-end gap-3 w-full lg:w-auto">
-                        <button
-                            type="button"
-                            onClick={toggleSelectionMode}
-                            className={`${BTN_SECONDARY_STYLE} px-4 py-2.5 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer w-full sm:w-auto`}
-                        >
-                            <Merge className="w-4 h-4 text-primary-500" />
-                            <span>{isSelectionMode ? 'Cancel Batch' : 'Batch Merge'}</span>
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={() => { setEditingTrip(null); setIsCreateTripOpen(true); }}
-                            className={`${BTN_PRIMARY_STYLE} px-5 py-2.5 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-primary-500/20 cursor-pointer w-full sm:w-auto`}
-                        >
-                            <Plus className="w-4 h-4" />
-                            <span>New Expedition</span>
-                        </button>
-                    </div>
                 </div>
-            </header>
+
+                <div className="flex items-center gap-3 self-end sm:self-auto">
+                    <button
+                        type="button"
+                        onClick={toggleSelectionMode}
+                        aria-label={isSelectionMode ? 'Cancel Batch' : 'Batch Merge'}
+                        className={`${BTN_SECONDARY_STYLE} h-11 px-4 text-xs font-bold uppercase tracking-wider flex items-center gap-2 cursor-pointer`}
+                    >
+                        <Merge className="w-4 h-4 text-primary-500" weight="duotone" />
+                        <span className="hidden sm:inline">{isSelectionMode ? 'Cancel Batch' : 'Batch Merge'}</span>
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={() => { setEditingTrip(null); setIsCreateTripOpen(true); }}
+                        aria-label="New Expedition"
+                        className={`${BTN_PRIMARY_STYLE} h-11 px-5 text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-primary-500/20 cursor-pointer`}
+                    >
+                        <Plus className="w-4 h-4" />
+                        <span>New Trip</span>
+                    </button>
+                </div>
+            </div>
 
             {/* Bento Analytics Overview (MagicUI Bento Grid) */}
             <BentoGrid className="grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -1263,16 +1212,24 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                 <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
                     
                     {/* Status Tabs (Segmented Switcher) */}
-                    <div className="bg-black/5 dark:bg-white/5 p-1 rounded-2xl flex border border-black/5 dark:border-white/5 shrink-0 overflow-x-auto no-scrollbar">
+                    <GlassPanel className="wg-glass-pill p-1.5 rounded-full flex gap-1 border border-black/5 dark:border-white/10 shrink-0 overflow-x-auto no-scrollbar shadow-glass-card">
                         <button
                             type="button"
                             onClick={() => setActiveTab('History')}
-                            className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${
+                            className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-10 ${
                                 activeTab === 'History'
-                                    ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm'
-                                    : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
+                                    ? 'text-primary-600 dark:text-primary-400 font-extrabold'
+                                    : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
                             }`}
                         >
+                            {activeTab === 'History' && (
+                                <motion.div
+                                    layoutId="vacationPlannerActiveTab"
+                                    className="absolute inset-0 bg-white dark:bg-dark-card rounded-full shadow-sm -z-10"
+                                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                                />
+                            )}
+                            <ClockCounterClockwise className="w-4 h-4" weight={activeTab === 'History' ? 'duotone' : 'regular'} />
                             <span>Archive Chronology</span>
                             <span className="px-2 py-0.5 rounded-full text-2xs bg-primary-500/15 text-primary-600 dark:text-primary-400 font-mono font-bold">
                                 {historyTrips.length}
@@ -1282,12 +1239,20 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                         <button
                             type="button"
                             onClick={() => setActiveTab('Confirmed')}
-                            className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${
+                            className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-10 ${
                                 activeTab === 'Confirmed'
-                                    ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm'
-                                    : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
+                                    ? 'text-primary-600 dark:text-primary-400 font-extrabold'
+                                    : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
                             }`}
                         >
+                            {activeTab === 'Confirmed' && (
+                                <motion.div
+                                    layoutId="vacationPlannerActiveTab"
+                                    className="absolute inset-0 bg-white dark:bg-dark-card rounded-full shadow-sm -z-10"
+                                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                                />
+                            )}
+                            <CheckCircle2 className="w-4 h-4" weight={activeTab === 'Confirmed' ? 'duotone' : 'regular'} />
                             <span>Locked Timeline</span>
                             <span className="px-2 py-0.5 rounded-full text-2xs bg-primary-500/15 text-primary-600 dark:text-primary-400 font-mono font-bold">
                                 {confirmedTrips.length}
@@ -1297,18 +1262,26 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                         <button
                             type="button"
                             onClick={() => setActiveTab('Planned')}
-                            className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer ${
+                            className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-10 ${
                                 activeTab === 'Planned'
-                                    ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm'
-                                    : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
+                                    ? 'text-primary-600 dark:text-primary-400 font-extrabold'
+                                    : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
                             }`}
                         >
+                            {activeTab === 'Planned' && (
+                                <motion.div
+                                    layoutId="vacationPlannerActiveTab"
+                                    className="absolute inset-0 bg-white dark:bg-dark-card rounded-full shadow-sm -z-10"
+                                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                                />
+                            )}
+                            <Compass className="w-4 h-4" weight={activeTab === 'Planned' ? 'duotone' : 'regular'} />
                             <span>Draft Blueprints</span>
                             <span className="px-2 py-0.5 rounded-full text-2xs bg-primary-500/15 text-primary-600 dark:text-primary-400 font-mono font-bold">
                                 {plannedTrips.length}
                             </span>
                         </button>
-                    </div>
+                    </GlassPanel>
 
                     {/* Search & View Switcher */}
                     <div className="flex items-center gap-2.5 flex-1 max-w-xl">
@@ -1324,7 +1297,8 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                             {searchQuery && (
                                 <button 
                                     onClick={() => setSearchQuery('')}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text"
+                                    aria-label="Clear search"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text cursor-pointer"
                                 >
                                     <X className="w-3.5 h-3.5" />
                                 </button>
@@ -1332,11 +1306,12 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                         </div>
 
                         {/* View Switcher Controls */}
-                        <div className="bg-black/5 dark:bg-white/5 p-1 rounded-xl flex border border-black/5 dark:border-white/5 shrink-0">
+                        <GlassPanel className="wg-glass-pill p-1 rounded-full flex border border-black/5 dark:border-white/10 shrink-0 shadow-glass-card">
                             <button
                                 type="button"
                                 onClick={() => setViewMode('grid')}
-                                className={`p-2 rounded-lg transition-all cursor-pointer ${
+                                aria-label="Grid cards view"
+                                className={`p-2 rounded-full transition-all cursor-pointer ${
                                     viewMode === 'grid' 
                                         ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm' 
                                         : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
@@ -1348,7 +1323,8 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                             <button
                                 type="button"
                                 onClick={() => setViewMode('timeline')}
-                                className={`p-2 rounded-lg transition-all cursor-pointer ${
+                                aria-label="Timeline rail view"
+                                className={`p-2 rounded-full transition-all cursor-pointer ${
                                     viewMode === 'timeline' 
                                         ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm' 
                                         : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
@@ -1360,7 +1336,8 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                             <button
                                 type="button"
                                 onClick={() => setViewMode('table')}
-                                className={`p-2 rounded-lg transition-all cursor-pointer ${
+                                aria-label="Logistics table view"
+                                className={`p-2 rounded-full transition-all cursor-pointer ${
                                     viewMode === 'table' 
                                         ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm' 
                                         : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
@@ -1369,12 +1346,13 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                             >
                                 <List className="w-4 h-4" />
                             </button>
-                        </div>
+                        </GlassPanel>
 
                         {/* Filter Toggle */}
                         <button
                             type="button"
                             onClick={() => setShowAdvancedFilters(prev => !prev)}
+                            aria-label="Toggle filters"
                             className={`p-2.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
                                 showAdvancedFilters || filterYear !== 'all' || filterPrivacy !== 'all' || filterUser !== 'all' || filterTransportMode !== 'all'
                                     ? 'bg-primary-500/15 border-primary-500 text-primary-600 dark:text-primary-400'
@@ -1548,6 +1526,7 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                                                 : 'bg-white dark:bg-dark-card border-primary-500 text-primary-500 shadow-md shadow-primary-500/20'
                                         }`}
                                         title={isCollapsed ? 'Expand Year' : 'Collapse Year'}
+                                        aria-label={isCollapsed ? `Expand ${year}` : `Collapse ${year}`}
                                     >
                                         <ChevronDown 
                                             className={`w-4 h-4 transition-transform duration-300 ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} 

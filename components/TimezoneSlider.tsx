@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, Button, Input } from './ui';
+import { Clock, Plus, X } from '@phosphor-icons/react';
 import { resolvePlaceName, getCoordinates } from '../services/geocoding';
 
 interface TimezoneLocation {
@@ -140,7 +141,7 @@ export const TimezoneSlider: React.FC = () => {
             <div className="p-6 border-b border-gray-100 dark:border-white/5 bg-gradient-to-r from-amber-500/10 to-orange-500/10">
                 <div className="flex items-center gap-3 mb-2">
                     <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-lg shadow-amber-500/20">
-                        <span className="material-icons-outlined">schedule</span>
+                        <Clock className="w-5 h-5" />
                     </div>
                     <div>
                         <h3 className="text-xl font-bold text-gray-900 dark:text-white leading-none">Timezone Sync</h3>
@@ -156,8 +157,8 @@ export const TimezoneSlider: React.FC = () => {
                         onKeyDown={e => e.key === 'Enter' && handleAddLocation()}
                         className="!bg-white/60 dark:!bg-black/20 !border-transparent !h-10 !text-xs"
                     />
-                    <Button size="sm" onClick={handleAddLocation} isLoading={isAdding} className="!h-10 !w-10 !p-0 rounded-xl bg-white dark:bg-white/10 text-gray-600 dark:text-white shadow-none hover:bg-gray-50">
-                        <span className="material-icons-outlined text-sm">add</span>
+                    <Button size="sm" onClick={handleAddLocation} isLoading={isAdding} className="!h-10 !w-10 !p-0 rounded-xl bg-white dark:bg-white/10 text-gray-600 dark:text-white shadow-none hover:bg-gray-50" aria-label="Add city to timezone sync">
+                        <Plus className="w-4 h-4" />
                     </Button>
                 </div>
             </div>
@@ -180,8 +181,8 @@ export const TimezoneSlider: React.FC = () => {
                             <div className="w-28 shrink-0">
                                 <div className="flex justify-between items-center">
                                     <h4 className="font-bold text-gray-800 dark:text-white text-sm truncate">{loc.name}</h4>
-                                    <button onClick={() => removeLocation(loc.id)} className="text-gray-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <span className="material-icons-outlined text-xs">close</span>
+                                    <button type="button" onClick={() => removeLocation(loc.id)} className="text-gray-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer p-1" aria-label={`Remove ${loc.name}`}>
+                                        <X className="w-3.5 h-3.5" />
                                     </button>
                                 </div>
                                 <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">

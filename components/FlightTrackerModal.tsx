@@ -1,6 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { WarningCircle as AlertCircle } from '@phosphor-icons/react';
+import { 
+  WarningCircle as AlertCircle, WarningCircle, Info, AirplaneTakeoff, 
+  AirplaneTilt, NavigationArrow, Sparkle, Broadcast, Database 
+} from '@phosphor-icons/react';
 import { Modal, Button, Input } from './ui';
 import { flightTracker } from '../services/flightTracker';
 import { FlightStatusResponse, Transport } from '../types';
@@ -90,38 +93,42 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
                     <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Flight Data Engine</label>
                     <div className="grid grid-cols-4 gap-1 p-1 bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5">
                         {[
-                            { id: 'ai_guessing', label: 'Gemini AI', icon: 'auto_awesome' },
-                            { id: 'adsbdb', label: 'ADSBdb (Free)', icon: 'sensors' },
-                            { id: 'aviationstack', label: 'AvStack', icon: 'flight' },
-                            { id: 'aerodatabox', label: 'AeroData', icon: 'database' }
-                        ].map(p => (
-                            <button
-                                key={p.id}
-                                onClick={() => setProvider(p.id as any)}
-                                className={`flex flex-col md:flex-row items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                                    provider === p.id 
-                                        ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm' 
-                                        : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
-                                }`}
-                            >
-                                <span className="material-icons-outlined text-sm">{p.icon}</span>
-                                <span className="hidden sm:inline">{p.label}</span>
-                                <span className="sm:hidden text-2xs">{p.label.split(' ')[0]}</span>
-                            </button>
-                        ))}
+                            { id: 'ai_guessing', label: 'Gemini AI', Icon: Sparkle },
+                            { id: 'adsbdb', label: 'ADSBdb (Free)', Icon: Broadcast },
+                            { id: 'aviationstack', label: 'AvStack', Icon: AirplaneTakeoff },
+                            { id: 'aerodatabox', label: 'AeroData', Icon: Database }
+                        ].map(p => {
+                            const PIcon = p.Icon;
+                            return (
+                                <button
+                                    key={p.id}
+                                    type="button"
+                                    onClick={() => setProvider(p.id as any)}
+                                    className={`flex flex-col md:flex-row items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                                        provider === p.id 
+                                            ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm' 
+                                            : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
+                                    }`}
+                                >
+                                    <PIcon className="w-4 h-4" />
+                                    <span className="hidden sm:inline">{p.label}</span>
+                                    <span className="sm:hidden text-2xs">{p.label.split(' ')[0]}</span>
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
 
                 {provider === 'aviationstack' && !aviationKey && (
                     <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs font-semibold flex items-center gap-3">
-                        <span className="material-icons-outlined text-base">warning</span>
+                        <WarningCircle className="w-5 h-5 shrink-0" />
                         <span>AviationStack API Key is missing. Standard lookup will automatically fallback to AI Flight Guessing.</span>
                     </div>
                 )}
                 
                 {provider === 'ai_guessing' && !geminiKey && (
                     <div className="p-4 rounded-2xl bg-primary-500/10 border border-primary-500/20 text-primary-700 dark:text-primary-300 text-xs font-semibold flex items-center gap-2">
-                        <span className="material-icons-outlined text-base">info</span>
+                        <Info className="w-5 h-5 shrink-0" />
                         <span>Gemini AI works in sandbox mode. Add a Gemini API Key in Settings for live pinpoint accuracy.</span>
                     </div>
                 )}
@@ -131,7 +138,7 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
                     <div className="p-4 rounded-2xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-2xl bg-primary-500 text-white flex items-center justify-center shadow-md">
-                                <span className="material-icons-outlined text-lg">flight_takeoff</span>
+                                <AirplaneTakeoff className="w-5 h-5" />
                             </div>
                             <div>
                                 <p className="text-2xs font-bold text-primary-600 dark:text-primary-400 uppercase tracking-wider">Itinerary Match</p>
@@ -203,7 +210,7 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
                             <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 flex items-center justify-center px-24 pointer-events-none opacity-20">
                                 <div className="h-0.5 w-full bg-gray-300 dark:bg-gray-600 relative">
                                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 p-2 rounded-full">
-                                        <span className="material-icons-outlined text-2xl transform rotate-90 text-gray-400">flight</span>
+                                        <AirplaneTilt className="w-6 h-6 transform rotate-90 text-gray-400" />
                                     </div>
                                 </div>
                             </div>
@@ -278,7 +285,7 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
                         {/* Live Lat/Lon if available */}
                         {flightData.live && (
                             <div className="p-3 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl flex items-center gap-3">
-                                <span className="material-icons-outlined text-blue-500 animate-pulse">my_location</span>
+                                <NavigationArrow className="w-4 h-4 text-blue-500 animate-pulse" />
                                 <span className="text-xs font-bold text-blue-700 dark:text-blue-300">
                                     Live Position: {flightData.live.latitude.toFixed(4)}, {flightData.live.longitude.toFixed(4)} • Alt: {flightData.live.altitude}m
                                 </span>

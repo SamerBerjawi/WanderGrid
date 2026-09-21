@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button, Input, Select, Autocomplete, Badge, TimeInput } from './ui';
+import { Trash, Bed, House, Buildings, PencilSimple, X, MapPin, MagnifyingGlass, Plus } from '@phosphor-icons/react';
 import { Accommodation } from '../types';
 import { dataService } from '../services/mockDb';
 import { searchLocations } from '../services/geocoding';
@@ -189,8 +190,8 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
     if (showDeleteConfirm) {
         return (
             <div className="text-center space-y-6 animate-fade-in py-8">
-                <div className="w-20 h-20 bg-rose-100 rounded-full flex items-center justify-center mx-auto text-rose-600 animate-pulse">
-                    <span className="material-icons-outlined text-4xl">delete_forever</span>
+                <div className="w-20 h-20 bg-rose-100 dark:bg-rose-950/40 rounded-full flex items-center justify-center mx-auto text-rose-600 animate-pulse">
+                    <Trash className="w-10 h-10" />
                 </div>
                 <div>
                     <h4 className="text-xl font-bold text-gray-900 dark:text-white">Delete All Accommodations?</h4>
@@ -218,9 +219,7 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                                 {item.logoUrl ? (
                                     <img src={item.logoUrl} alt="Logo" className="w-full h-full object-cover" />
                                 ) : (
-                                    <span className="material-icons-outlined">
-                                        {item.type === 'Hotel' ? 'hotel' : item.type === 'Airbnb' ? 'house' : 'apartment'}
-                                    </span>
+                                    item.type === 'Hotel' ? <Bed className="w-6 h-6" /> : item.type === 'Airbnb' ? <House className="w-6 h-6" /> : <Buildings className="w-6 h-6" />
                                 )}
                             </div>
                             <div>
@@ -238,11 +237,11 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                             </div>
                         </div>
                         <div className="flex items-center gap-1.5">
-                            <button onClick={() => handleEditItem(item)} className="w-8 h-8 rounded-xl flex items-center justify-center text-primary-500 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer" title="Edit">
-                                <span className="material-icons-outlined text-lg">edit</span>
+                            <button type="button" onClick={() => handleEditItem(item)} className="w-8 h-8 rounded-xl flex items-center justify-center text-primary-500 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer" title="Edit" aria-label="Edit accommodation">
+                                <PencilSimple className="w-4 h-4" />
                             </button>
-                            <button onClick={() => handleDeleteItem(item.id)} className="w-8 h-8 rounded-xl flex items-center justify-center text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer" title="Delete">
-                                <span className="material-icons-outlined text-lg">close</span>
+                            <button type="button" onClick={() => handleDeleteItem(item.id)} className="w-8 h-8 rounded-xl flex items-center justify-center text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer" title="Delete" aria-label="Delete accommodation">
+                                <X className="w-4 h-4" />
                             </button>
                         </div>
                     </div>
@@ -254,12 +253,12 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                 <div className="p-6 rounded-3xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-4 animate-fade-in relative">
                     <div className="flex justify-between items-center mb-2">
                         <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1.5">
-                            <span className="material-icons-outlined text-base text-primary-500">edit_location_alt</span>
+                            <MapPin className="w-4 h-4 text-primary-500" />
                             {items.find(i => i.id === editingId) ? 'Edit Accommodation' : 'New Stay Details'}
                         </span>
                         {items.length > 0 && (
-                            <button onClick={() => setEditingId(null)} className="w-8 h-8 rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer">
-                                <span className="material-icons-outlined text-base">close</span>
+                            <button type="button" onClick={() => setEditingId(null)} className="w-8 h-8 rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer" aria-label="Close form">
+                                <X className="w-4 h-4" />
                             </button>
                         )}
                     </div>
@@ -276,15 +275,17 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                                     rightElement={
                                         brandfetchKey && (
                                             <button 
+                                                type="button"
                                                 onClick={handleFetchBrand}
                                                 disabled={isFetchingBrand || !form.name}
-                                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-blue-500 disabled:opacity-50 transition-colors"
+                                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-blue-500 disabled:opacity-50 transition-colors cursor-pointer"
                                                 title="Auto-fetch Brand Logo"
+                                                aria-label="Auto-fetch Brand Logo"
                                             >
                                                 {isFetchingBrand ? (
                                                     <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin block" />
                                                 ) : (
-                                                    <span className="material-icons-outlined text-lg">image_search</span>
+                                                    <MagnifyingGlass className="w-4 h-4" />
                                                 )}
                                             </button>
                                         )
@@ -414,9 +415,10 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
             {!editingId && (
                 <Button 
                     variant="secondary" 
-                    className="w-full border-dashed py-6 text-gray-500 hover:text-gray-700 hover:border-gray-400 transition-all" 
-                    icon={<span className="material-icons-outlined text-2xl">add_location</span>}
+                    className="w-full border-dashed py-6 text-gray-500 hover:text-gray-700 hover:border-gray-400 transition-all min-h-[44px]" 
+                    icon={<Plus className="w-5 h-5" />}
                     onClick={prepareNewItem}
+                    aria-label="Add Another Accommodation"
                 >
                     Add Another Accommodation
                 </Button>
@@ -425,7 +427,7 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
             {/* Footer Actions */}
             <div className="p-4 border-t border-black/5 dark:border-white/5 sticky bottom-0 bg-light-card/80 dark:bg-dark-card/80 backdrop-blur-md flex items-center justify-between gap-3 rounded-2xl z-20">
                 {initialData && initialData.length > 0 && onDelete && (
-                    <Button variant="danger" size="sm" onClick={() => setShowDeleteConfirm(true)} icon={<span className="material-icons-outlined text-base">delete</span>}>
+                    <Button variant="danger" size="sm" onClick={() => setShowDeleteConfirm(true)} icon={<Trash className="w-4 h-4" />} aria-label="Delete All Accommodations">
                         Delete All
                     </Button>
                 )}

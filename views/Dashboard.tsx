@@ -16,6 +16,9 @@ import { StickerStamp } from '../components/StickerStamp';
 import { AchievementMilestones } from '../components/AchievementMilestones';
 import { ICONIC_STICKERS, loadStickersProgress, StickerClaim, STICKER_CATEGORIES } from '../utils/stickersData';
 import { formatDate } from '../utils/formatters';
+import { GlassPanel } from '../components/glass/GlassPanel';
+import { LiveClock } from '../components/LiveClock';
+import { EmptyState } from '../components/EmptyState';
 import { 
     Globe, 
     Airplane as Plane, 
@@ -35,7 +38,15 @@ import {
     Sparkle as Sparkles, 
     Ticket, 
     Pulse as Activity, 
-    Info 
+    Info,
+    IdentificationCard,
+    BookOpen,
+    Star,
+    Trophy,
+    ChartBar,
+    Lightbulb,
+    X,
+    AirplaneTilt
 } from '@phosphor-icons/react';
 
 interface DashboardProps {
@@ -182,7 +193,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
 
   const [isFlightTrackerOpen, setIsFlightTrackerOpen] = useState(false);
   const [todaysFlight, setTodaysFlight] = useState<{ iata: string; origin: string; destination: string; date: string } | undefined>(undefined);
-  const [currentTime, setCurrentTime] = useState(new Date());
 
   const [mapViewMode, setMapViewMode] = useState<'3d' | '2d'>(() => {
     return (localStorage.getItem('wandergrid_map_view_mode') as '3d' | '2d') || '2d';
@@ -198,10 +208,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
             setCurrentUser(JSON.parse(sessionUser));
         } catch (e) {}
     }
-
-    // Gentle clock ticking for header
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -910,94 +916,77 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
   }
 
   return (
-    <div className="relative pb-24 px-1 sm:px-6 md:px-8 max-w-[108rem] mx-auto space-y-8 animate-fade-in text-gray-900 dark:text-gray-100">
+    <div className="w-full max-w-[1680px] mx-auto pt-2 sm:pt-4 px-1 sm:px-4 md:px-6 lg:px-8 flex flex-col gap-5 sm:gap-6 animate-fadeIn pb-16">
         
         {/* Soft designer lighting gradients */}
-        <div className="absolute top-0 left-1/4 w-[40rem] h-[30rem] bg-gradient-to-tr from-blue-500/[0.04] to-indigo-500/[0.04] dark:from-blue-600/[0.08] dark:to-indigo-500/[0.06] rounded-full blur-[120px] pointer-events-none select-none -z-10" />
-        <div className="absolute top-[40%] right-10 w-[35rem] h-[35rem] bg-gradient-to-bl from-amber-500/[0.03] to-orange-500/[0.03] dark:from-amber-500/[0.04] dark:to-orange-550/[0.04] rounded-full blur-[140px] pointer-events-none select-none -z-10" />
+        <div className="absolute top-0 left-1/4 w-[40rem] h-[30rem] bg-gradient-to-tr from-primary-500/[0.04] to-indigo-500/[0.04] dark:from-primary-600/[0.08] dark:to-indigo-500/[0.06] rounded-full blur-[120px] pointer-events-none select-none -z-10" />
+        <div className="absolute top-[40%] right-10 w-[35rem] h-[35rem] bg-gradient-to-bl from-amber-500/[0.03] to-orange-500/[0.03] dark:from-amber-500/[0.04] dark:to-orange-500/[0.04] rounded-full blur-[140px] pointer-events-none select-none -z-10" />
 
         {/* ========================================================= */}
         {/* SWISS MODERN DESIGNER PROFILE TERMINAL HEADER */}
         {/* ========================================================= */}
-        <div className="relative overflow-hidden bg-white/70 dark:bg-[#0c0c0e]/80 border border-gray-200/50 dark:border-white/5 rounded-3xl p-5 sm:p-8 backdrop-blur-xl shadow-sm transition-all duration-350">
-            <div className="flex flex-col xl:flex-row items-center xl:items-center justify-between text-center xl:text-left gap-5 sm:gap-6 relative z-10">
+        <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden p-5 sm:p-8">
+            <div className="flex flex-col xl:flex-row items-center justify-between text-center xl:text-left gap-5 sm:gap-6 relative z-10">
                 
                 {/* Explorer Terminal Profile Info */}
                 <div className="flex flex-col sm:flex-row items-center text-center sm:text-left gap-4 sm:gap-5">
                     <div className="relative group shrink-0 select-none">
-                        <div className="absolute inset-0 bg-gradient-to-tr from-blue-600 via-indigo-500 to-amber-500 rounded-full blur opacity-25 group-hover:scale-105 transition-all duration-550" />
-                        <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-slate-100 dark:bg-zinc-900 text-zinc-900 dark:text-white flex items-center justify-center font-black text-xl sm:text-2xl border border-gray-200/50 dark:border-white/10 shadow-sm">
-                            <span className="bg-gradient-to-tr from-blue-600 to-indigo-400 dark:from-white dark:to-zinc-300 bg-clip-text text-transparent font-extrabold">
+                        <div className="absolute inset-0 bg-gradient-to-tr from-primary-600 via-indigo-500 to-amber-500 rounded-full blur opacity-25 group-hover:scale-105 transition-all duration-500" />
+                        <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-black/5 dark:bg-white/5 text-light-text dark:text-dark-text flex items-center justify-center font-black text-xl sm:text-2xl border border-black/10 dark:border-white/10 shadow-sm">
+                            <span className="bg-gradient-to-tr from-primary-600 to-indigo-400 dark:from-white dark:to-zinc-300 bg-clip-text text-transparent font-extrabold">
                                 {currentUser?.name ? currentUser.name.charAt(0) : currentUser?.email ? currentUser.email.charAt(0) : 'E'}
                             </span>
                         </div>
-                        <div className="absolute bottom-0 right-0 bg-emerald-500 rounded-full p-1 border-2 border-white dark:border-[#0c0c0e] shadow-md">
+                        <div className="absolute -bottom-1 -right-1 bg-emerald-500 rounded-full p-1 border-2 border-white dark:border-[#0c0c0e] shadow-md">
                             <div className="w-2 h-2 bg-white rounded-full animate-ping absolute" />
                             <div className="w-2 h-2 bg-white rounded-full" />
                         </div>
                     </div>
                     <div className="flex flex-col items-center sm:items-start">
                         <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
-                            <h2 id="explorer-name-banner" className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight text-gray-900 dark:text-white flex items-center justify-center sm:justify-start gap-2">
+                            <h2 id="explorer-name-banner" className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight text-light-text dark:text-dark-text flex items-center justify-center sm:justify-start gap-2">
                                 Welcome back, {currentUser?.name || currentUser?.email?.split('@')[0] || 'Explorer'}
-                                <Sparkles className="w-5 h-5 text-amber-550 dark:text-amber-400 animate-pulse text-amber-500 shrink-0" />
+                                <Sparkles className="w-5 h-5 text-amber-500 animate-pulse shrink-0" weight="duotone" />
                             </h2>
                             <span className="inline-flex items-center gap-1 text-2xs font-mono font-bold uppercase bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 py-1 px-2.5 rounded-lg leading-none">
-                                <Shield className="w-3.5 h-3.5" /> Checked-In
+                                <Shield className="w-3.5 h-3.5" weight="duotone" /> Checked-In
                             </span>
                         </div>
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400 font-semibold tracking-wide mt-1.5 leading-relaxed">
-                            Status: <span className="font-extrabold text-zinc-800 dark:text-zinc-200">{currentLevel.name}</span> (Level {currentLevel.level}) • Airport registries operational
+                        <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-semibold tracking-wide mt-1.5 leading-relaxed">
+                            Status: <span className="font-extrabold text-light-text dark:text-dark-text">{currentLevel.name}</span> (Level {currentLevel.level}) • Airport registries operational
                         </p>
                     </div>
                 </div>
 
-                {/* Swiss chronometric live timers and actions */}
-                <div className="flex flex-wrap items-center justify-center xl:justify-end gap-3 sm:gap-4 border-t xl:border-t-0 border-gray-200/40 dark:border-white/5 pt-4 xl:pt-0 w-full xl:w-auto">
-                    <div className="flex items-center gap-3 bg-slate-50/50 dark:bg-white/[0.02] border border-gray-200/40 dark:border-white/5 py-2 px-4 rounded-xl shadow-sm">
-                        <Calendar className="w-4 h-4 text-zinc-400" />
-                        <div className="text-left font-mono">
-                            <span className="block text-2xs text-zinc-400 uppercase font-bold tracking-widest leading-none mb-0.5">Chronometer</span>
-                            <span className="text-xs font-bold text-zinc-800 dark:text-zinc-100">
-                                {formatDate(currentTime, 'weekday-short')}
-                            </span>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 bg-slate-50/50 dark:bg-white/[0.02] border border-gray-200/40 dark:border-white/5 py-2 px-4 rounded-xl shadow-sm">
-                        <Compass className="w-4 h-4 text-blue-500 animate-[spin_24s_linear_infinite]" />
-                        <div className="text-left font-mono">
-                            <span className="block text-2xs text-zinc-400 uppercase font-bold tracking-widest leading-none mb-0.5">World Time</span>
-                            <span className="text-xs font-bold text-zinc-800 dark:text-zinc-100">
-                                {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
-                            </span>
-                        </div>
-                    </div>
+                {/* Live Clock & Action */}
+                <div className="flex flex-wrap items-center justify-center xl:justify-end gap-3 sm:gap-4 border-t xl:border-t-0 border-black/5 dark:border-white/5 pt-4 xl:pt-0 w-full xl:w-auto">
+                    <LiveClock />
 
                     <Button 
                         variant="primary" 
-                        className="bg-blue-600 font-extrabold hover:bg-blue-700 shadow-md text-white py-2.5 px-5 rounded-xl flex items-center gap-2 text-xs uppercase tracking-wider transition-all duration-200 border-t border-white/25 shrink-0" 
+                        className="bg-primary-600 font-extrabold hover:bg-primary-700 shadow-md text-white py-2.5 px-5 rounded-xl flex items-center gap-2 text-xs uppercase tracking-wider transition-all duration-200 shrink-0 min-h-[44px]" 
                         onClick={() => setIsFlightTrackerOpen(true)}
+                        aria-label="Track active flight"
                     >
-                        <Plane className="w-4 h-4 text-white" /> Track Active Flight
+                        <Plane className="w-4 h-4 text-white" weight="duotone" /> Track Active Flight
                     </Button>
                 </div>
             </div>
-        </div>
+        </GlassPanel>
 
         {/* ========================================================= */}
         {/* ROW 2: BENTO HUB (MAP CONSOLE & MEMBERSHIP COMPOSITION) */}
         {/* ========================================================= */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-stretch">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-stretch">
             
             {/* Interactive World Map Widget (Col-span 2) */}
-            <div className="xl:col-span-2 relative h-[36rem] rounded-3xl overflow-hidden border border-gray-200/60 dark:border-white/5 shadow-sm bg-slate-50/40 dark:bg-black/10 backdrop-blur-2xl flex flex-col">
+            <GlassPanel className="xl:col-span-2 relative h-[36rem] rounded-[28px] overflow-hidden flex flex-col wg-glass-card">
                 <div className="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-white/35 dark:from-black/10 to-transparent pointer-events-none z-10" />
                 
                 <Suspense fallback={
-                    <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900/5 dark:bg-black/30 space-y-4">
-                        <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-                        <p className="text-2xs font-bold uppercase tracking-[0.2em] text-zinc-400">Loading Expedition Coordinates...</p>
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-black/5 dark:bg-black/30 space-y-4">
+                        <div className="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                        <p className="text-2xs font-bold uppercase tracking-[0.2em] text-light-text-secondary dark:text-dark-text-secondary">Loading Expedition Coordinates...</p>
                     </div>
                 }>
                     <DeckFlightMap 
@@ -1016,7 +1005,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                     />
                 </Suspense>
                 
-                {/* Floating Glass Tactile Map Controls (Top Right of Map) */}
+                {/* Floating Tactile Map Controls */}
                 <div className="absolute top-5 right-5 z-20 flex items-center">
                     <button
                         type="button"
@@ -1025,32 +1014,33 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                             setMapViewMode(nextMode);
                             localStorage.setItem('wandergrid_map_view_mode', nextMode);
                         }}
-                        className="bg-slate-900/90 dark:bg-[#09090b]/90 backdrop-blur-xl px-3.5 py-1.5 rounded-2xl border border-white/10 flex items-center gap-3 shadow-lg h-[36px] cursor-pointer hover:border-white/20 transition-all text-white group"
+                        aria-label={mapViewMode === '3d' ? 'Switch to 2D Map' : 'Switch to 3D Globe'}
+                        className="bg-black/70 dark:bg-black/80 px-3.5 py-1.5 rounded-2xl border border-white/10 flex items-center gap-3 shadow-lg min-h-[44px] cursor-pointer hover:border-white/20 transition-all text-white group"
                         title={mapViewMode === '3d' ? 'Switch to 2D Map' : 'Switch to 3D Globe'}
                     >
                         <div className="flex items-center gap-1.5">
-                            <Globe className={`w-3.5 h-3.5 transition-colors ${mapViewMode === '3d' ? 'text-blue-400' : 'text-zinc-400'}`} />
+                            <Globe className={`w-4 h-4 transition-colors ${mapViewMode === '3d' ? 'text-primary-400' : 'text-zinc-400'}`} weight="duotone" />
                             <span className="text-xs font-bold tracking-tight select-none">
                                 {mapViewMode === '3d' ? '3D Globe' : '2D Map'}
                             </span>
                         </div>
-                        <div className={`w-8 h-4 p-0.5 rounded-full transition-all duration-300 flex items-center ${mapViewMode === '3d' ? 'bg-blue-600 justify-end' : 'bg-zinc-700 justify-start'}`}>
+                        <div className={`w-8 h-4 p-0.5 rounded-full transition-all duration-300 flex items-center ${mapViewMode === '3d' ? 'bg-primary-600 justify-end' : 'bg-zinc-700 justify-start'}`}>
                             <div className="w-3 h-3 bg-white rounded-full shadow-sm" />
                         </div>
                     </button>
                 </div>
-            </div>
+            </GlassPanel>
 
             {/* Exclusive Loyalty & Passing Column (Col-span 1) */}
             <div className="xl:col-span-1 h-full flex flex-col justify-between gap-6">
                 
-                {/* REVOLUTIONARY METALLIC MEMBERSHIP CARD */}
-                <div id="holographic-titanium-card" className="relative overflow-hidden rounded-2xl p-6 bg-gradient-to-br from-zinc-900 via-zinc-950 to-slate-950 border border-white/10 shadow-lg group flex flex-col justify-between h-[15.5rem] transition-all duration-350">
+                {/* METALLIC MEMBERSHIP CARD */}
+                <div id="holographic-titanium-card" className="relative overflow-hidden rounded-[28px] p-6 bg-gradient-to-br from-zinc-900 via-zinc-950 to-slate-950 border border-white/10 shadow-lg group flex flex-col justify-between h-[15.5rem] transition-all duration-300">
                     
                     {/* Iridescent security holographic chip and light vectors */}
                     <div className="absolute top-[30%] right-[8%] w-11 h-14 bg-gradient-to-tr from-cyan-400 via-purple-400 to-yellow-300 opacity-20 blur-[1.5px] rounded rotate-12 pointer-events-none group-hover:opacity-45 transition-all duration-700 mx-auto select-none" />
-                    <div className="absolute -top-12 -left-12 w-32 h-32 bg-amber-500/5 rounded-full blur-[40px] group-hover:bg-amber-500/10 transition-all duration-550 pointer-events-none" />
-                    <div className="absolute -bottom-16 -right-16 w-40 h-40 bg-blue-500/10 rounded-full blur-[50px] pointer-events-none" />
+                    <div className="absolute -top-12 -left-12 w-32 h-32 bg-amber-500/5 rounded-full blur-[40px] group-hover:bg-amber-500/10 transition-all duration-500 pointer-events-none" />
+                    <div className="absolute -bottom-16 -right-16 w-40 h-40 bg-primary-500/10 rounded-full blur-[50px] pointer-events-none" />
 
                     <div className="flex justify-between items-start relative z-10 w-full">
                         <div>
@@ -1062,7 +1052,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                         </div>
                         <div className="flex flex-col items-end gap-1">
                             <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20 shadow-sm">
-                                <Cpu className="w-4 h-4 text-amber-500" />
+                                <Cpu className="w-4 h-4 text-amber-500" weight="duotone" />
                             </div>
                             <span className="text-2xs font-mono text-zinc-500 uppercase tracking-widest leading-none">Security RFID</span>
                         </div>
@@ -1087,7 +1077,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                             </div>
                             <div className="text-right">
                                 <span className="block text-2xs font-mono text-zinc-500 uppercase font-bold tracking-widest mb-0.5">Tier LEVEL</span>
-                                <span className="text-xs font-bold text-amber-550 uppercase tracking-wider">
+                                <span className="text-xs font-bold text-amber-500 uppercase tracking-wider">
                                     {currentLevel.name}
                                 </span>
                             </div>
@@ -1096,38 +1086,38 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                 </div>
 
                 {/* Altitude level details progress */}
-                <div className="bg-white/75 dark:bg-[#0c0c0e]/80 border border-gray-200/50 dark:border-white/5 rounded-2xl p-5 shadow-sm">
+                <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden p-5 shadow-sm">
                     <div className="flex justify-between items-end mb-2.5">
-                        <span className="text-2xs font-mono font-bold text-zinc-400 uppercase tracking-widest">Altitudal completion</span>
-                        <span className="text-xs font-mono font-bold text-blue-500">{Math.round(progressToNext)}% Completed</span>
+                        <span className="text-2xs font-mono font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest">Altitudal completion</span>
+                        <span className="text-xs font-mono font-bold text-primary-500">{Math.round(progressToNext)}% Completed</span>
                     </div>
                     
-                    <div className="h-3.5 w-full bg-slate-100 dark:bg-zinc-950 rounded-full overflow-hidden p-0.5 border border-gray-200/45 dark:border-white/5">
-                        <div className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-amber-500 transition-all duration-1000 ease-out rounded-full relative" style={{ width: `${progressToNext}%` }}>
+                    <div className="h-3.5 w-full bg-black/5 dark:bg-white/5 rounded-full overflow-hidden p-0.5 border border-black/5 dark:border-white/5">
+                        <div className="h-full bg-gradient-to-r from-primary-500 via-indigo-500 to-amber-500 transition-all duration-1000 ease-out rounded-full relative" style={{ width: `${progressToNext}%` }}>
                             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[pulse_1.5s_infinite]" />
                         </div>
                     </div>
 
                     {nextLevel && (
-                        <p className="text-2xs text-[#94a3b8] mt-2.5 font-bold text-center uppercase tracking-wider leading-relaxed">
-                            Arrive in <span className="font-extrabold text-gray-800 dark:text-zinc-200">{nextLevel.countries - visitedData.length} countries</span> to achieve <span className="font-bold text-amber-555 text-amber-500">{nextLevel.name}</span>
+                        <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary mt-2.5 font-bold text-center uppercase tracking-wider leading-relaxed">
+                            Arrive in <span className="font-extrabold text-light-text dark:text-dark-text">{nextLevel.countries - visitedData.length} countries</span> to achieve <span className="font-bold text-amber-500">{nextLevel.name}</span>
                         </p>
                     )}
-                </div>
+                </GlassPanel>
 
                 {/* BOARDING PASSES TRANSITING slips */}
-                <div id="transit-passes-scroller" className="bg-white/75 dark:bg-[#0c0c0e]/80 border border-gray-200/50 dark:border-white/5 rounded-2xl p-5 flex-1 flex flex-col justify-between shadow-sm min-h-[14rem]">
+                <GlassPanel id="transit-passes-scroller" className="wg-glass-card rounded-[28px] overflow-hidden p-5 flex-1 flex flex-col justify-between shadow-sm min-h-[14rem]">
                     <div>
                         <div className="flex justify-between items-center mb-3">
-                            <h3 className="text-2xs font-mono font-bold text-zinc-400 uppercase tracking-widest">Active Boarding Register</h3>
-                            <span className="text-2xs font-mono bg-slate-100 dark:bg-white/5 py-0.5 px-2 rounded text-zinc-500 border border-gray-200/40 dark:border-white/5 uppercase font-bold">Gate</span>
+                            <h3 className="text-2xs font-mono font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest">Active Boarding Register</h3>
+                            <span className="text-2xs font-mono bg-black/5 dark:bg-white/5 py-0.5 px-2 rounded text-light-text-secondary dark:text-dark-text-secondary border border-black/5 dark:border-white/5 uppercase font-bold">Gate</span>
                         </div>
                         
                         {upcomingTripsList.length === 0 ? (
-                            <div className="p-4 py-8 rounded-2xl bg-zinc-150/10 dark:bg-white/[0.005] border border-dashed border-gray-200 dark:border-white/5 flex flex-col items-center justify-center text-center">
-                                <Compass className="w-5 h-5 text-zinc-400 mb-1.5 animate-[spin_32s_linear_infinite]" />
-                                <p className="text-xs font-mono font-bold text-zinc-450 dark:text-zinc-400 uppercase tracking-wider">No Active Slips queued</p>
-                                <p className="text-xs text-zinc-500 mt-1 font-medium leading-relaxed">Create itineraries in standard views to configure active transit keys</p>
+                            <div className="p-4 py-8 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-dashed border-black/10 dark:border-white/10 flex flex-col items-center justify-center text-center">
+                                <Compass className="w-5 h-5 text-zinc-400 mb-1.5 animate-[spin_32s_linear_infinite]" weight="duotone" />
+                                <p className="text-xs font-mono font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider">No Active Slips queued</p>
+                                <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-1 font-medium leading-relaxed">Create itineraries in standard views to configure active transit keys</p>
                             </div>
                         ) : (
                             <div className="space-y-3">
@@ -1135,28 +1125,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                     <div 
                                         key={t.id} 
                                         onClick={() => onTripClick && onTripClick(t.id)}
-                                        className="relative overflow-hidden p-3 bg-white/40 dark:bg-zinc-950/20 border border-gray-200/60 dark:border-white/5 rounded-xl flex items-center justify-between hover:bg-zinc-50/80 dark:hover:bg-zinc-950/40 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 shadow-sm group"
+                                        className="relative overflow-hidden p-3 bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 rounded-2xl flex items-center justify-between hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 shadow-sm group"
                                         title="Click to view boarding details"
                                     >
                                         {/* Classic boarding ticket side cutouts */}
-                                        <div className="absolute top-[40%] -left-1.5 w-3 h-3 bg-slate-100 dark:bg-zinc-950 border border-gray-250 dark:border-transparent rounded-full z-10" />
-                                        <div className="absolute top-[40%] -right-1.5 w-3 h-3 bg-slate-100 dark:bg-zinc-950 border border-gray-250 dark:border-transparent rounded-full z-10" />
+                                        <div className="absolute top-[40%] -left-1.5 w-3 h-3 bg-light-card dark:bg-dark-card border border-black/10 dark:border-white/10 rounded-full z-10" />
+                                        <div className="absolute top-[40%] -right-1.5 w-3 h-3 bg-light-card dark:bg-dark-card border border-black/10 dark:border-white/10 rounded-full z-10" />
 
                                         <div className="flex items-center gap-3 min-w-0 pl-1 z-10">
-                                            <div className="w-8.5 h-8.5 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-500 shrink-0">
+                                            <div className="w-8.5 h-8.5 rounded-xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-primary-600 dark:text-primary-400 shrink-0">
                                                 <span className="text-lg leading-none">{t.icon || '✈️'}</span>
                                             </div>
                                             <div className="min-w-0">
                                                 <div className="flex items-center gap-1.5">
-                                                    <span className="block text-xs font-bold text-zinc-800 dark:text-zinc-150 truncate leading-none">{t.name}</span>
-                                                    <Ticket className="w-3 h-3 text-zinc-450 shrink-0" />
+                                                    <span className="block text-xs font-bold text-light-text dark:text-dark-text truncate leading-none">{t.name}</span>
+                                                    <Ticket className="w-3 h-3 text-zinc-400 shrink-0" weight="duotone" />
                                                 </div>
-                                                <span className="block text-2xs font-mono font-bold text-zinc-400 uppercase mt-1 truncate tracking-wider">{t.location}</span>
+                                                <span className="block text-2xs font-mono font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase mt-1 truncate tracking-wider">{t.location}</span>
                                             </div>
                                         </div>
                                         
                                         <div className="text-right shrink-0 pr-1 font-mono z-10">
-                                            <span className="block text-xs font-bold text-blue-600 dark:text-blue-400 uppercase">
+                                            <span className="block text-xs font-bold text-primary-600 dark:text-primary-400 uppercase">
                                                 {formatDate(t.startDate, 'short')}
                                             </span>
                                             <div className="flex gap-0.5 justify-end opacity-20 h-3.5 mt-1">
@@ -1172,7 +1162,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                             </div>
                         )}
                     </div>
-                </div>
+                </GlassPanel>
             </div>
         </div>
 
@@ -1181,65 +1171,49 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
         {/* ========================================================= */}
         <div id="stats-tab-console" className="space-y-6">
             
-            {/* Segmentation Switch Box (Horizontal sliding pill headers) */}
-            <div className="flex flex-col xl:flex-row gap-4 items-center justify-between border-b border-gray-205 dark:border-white/5 pb-4">
-                <div className="flex p-1 bg-zinc-100/80 dark:bg-[#0c0c0e]/80 rounded-2xl gap-1 border border-gray-250/20 dark:border-white/5 relative shrink-0 overflow-x-auto max-w-full no-scrollbar">
-                    <button
-                        onClick={() => setActiveStatsTab('stamps')}
-                        className={`relative py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-350 whitespace-nowrap ${
-                            activeStatsTab === 'stamps' 
-                            ? 'bg-white dark:bg-zinc-900 text-gray-900 dark:text-white shadow-sm font-black' 
-                            : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 font-bold'
-                        }`}
-                    >
-                        PASSPORT STAMPS 🛂
-                    </button>
-                    <button
-                        onClick={() => setActiveStatsTab('flipbook')}
-                        className={`relative py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-350 whitespace-nowrap ${
-                            activeStatsTab === 'flipbook' 
-                            ? 'bg-white dark:bg-zinc-900 text-gray-900 dark:text-white shadow-sm font-black' 
-                            : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 font-bold'
-                        }`}
-                    >
-                        3D ALBUM 📖
-                    </button>
-                    <button
-                        onClick={() => setActiveStatsTab('stickers')}
-                        className={`relative py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-350 whitespace-nowrap ${
-                            activeStatsTab === 'stickers' 
-                            ? 'bg-white dark:bg-zinc-900 text-gray-900 dark:text-white shadow-sm font-black' 
-                            : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 font-bold'
-                        }`}
-                    >
-                        LANDMARK STICKERS ⭐️
-                    </button>
-                    <button
-                        onClick={() => setActiveStatsTab('milestones')}
-                        className={`relative py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-350 whitespace-nowrap ${
-                            activeStatsTab === 'milestones' 
-                            ? 'bg-white dark:bg-zinc-900 text-gray-900 dark:text-white shadow-sm font-black' 
-                            : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 font-bold'
-                        }`}
-                    >
-                        ACHIEVEMENTS 🏆
-                    </button>
-                    <button
-                        onClick={() => setActiveStatsTab('analytics')}
-                        className={`relative py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-350 whitespace-nowrap ${
-                            activeStatsTab === 'analytics' 
-                            ? 'bg-white dark:bg-zinc-900 text-gray-900 dark:text-white shadow-sm font-black' 
-                            : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 font-bold'
-                        }`}
-                    >
-                        FLIGHT COCKPIT 📊
-                    </button>
-                </div>
+            {/* Segmentation Switch Box (Liquid Glass Pill) */}
+            <div className="flex flex-col xl:flex-row gap-4 items-center justify-between border-b border-black/5 dark:border-white/5 pb-4">
+                <GlassPanel className="wg-glass-pill rounded-full p-1.5 flex items-center gap-1 shrink-0 overflow-x-auto max-w-full no-scrollbar">
+                    {[
+                        { id: 'stamps', label: 'Passport Stamps', icon: IdentificationCard },
+                        { id: 'flipbook', label: '3D Album', icon: BookOpen },
+                        { id: 'stickers', label: 'Landmark Stickers', icon: Star },
+                        { id: 'milestones', label: 'Achievements', icon: Trophy },
+                        { id: 'analytics', label: 'Flight Cockpit', icon: ChartBar },
+                    ].map(tab => {
+                        const Icon = tab.icon;
+                        const isActive = activeStatsTab === tab.id;
+                        return (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveStatsTab(tab.id)}
+                                aria-label={tab.label}
+                                className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer select-none whitespace-nowrap min-h-[44px] ${
+                                    isActive 
+                                    ? 'text-light-text dark:text-dark-text font-black' 
+                                    : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
+                                }`}
+                            >
+                                {isActive && (
+                                    <motion.div
+                                        layoutId="dashboardActiveTab"
+                                        className="absolute inset-0 bg-white dark:bg-dark-card rounded-full shadow-sm"
+                                        transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                                    />
+                                )}
+                                <span className="relative z-10 flex items-center gap-2">
+                                    <Icon className="w-4 h-4" weight={isActive ? "duotone" : "regular"} />
+                                    <span className="hidden sm:inline">{tab.label}</span>
+                                </span>
+                            </button>
+                        );
+                    })}
+                </GlassPanel>
 
-                <div className="flex items-center gap-4 text-xs font-mono text-zinc-400 text-right">
-                    <span className="flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5 text-emerald-500" /> Auto-Synchronized</span>
-                    <span className="hidden sm:inline-block text-zinc-300">|</span>
-                    <span className="hidden sm:inline-block">Total distance: <strong className="text-zinc-700 dark:text-zinc-200">{totalDistance.toLocaleString()} KM</strong></span>
+                <div className="flex items-center gap-4 text-xs font-mono text-light-text-secondary dark:text-dark-text-secondary text-right">
+                    <span className="flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5 text-emerald-500" weight="duotone" /> Auto-Synchronized</span>
+                    <span className="hidden sm:inline-block text-zinc-300 dark:text-zinc-700">|</span>
+                    <span className="hidden sm:inline-block">Total distance: <strong className="text-light-text dark:text-dark-text">{totalDistance.toLocaleString()} KM</strong></span>
                 </div>
             </div>
 
@@ -1256,7 +1230,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                         className="space-y-6"
                     >
                         {/* Interactive Pill filtering controllers */}
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center bg-white/70 dark:bg-[#0c0c0e]/80 p-4 rounded-2xl border border-gray-200/55 dark:border-white/5 backdrop-blur-xl shadow-sm">
+                        <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden p-4 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
                              <div className="relative md:col-span-1">
                                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 w-4 h-4" />
                                  <input
@@ -1264,24 +1238,31 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                      placeholder="Query country or gateway..."
                                      value={stampSearch}
                                      onChange={(e) => setStampSearch(e.target.value)}
-                                     className="w-full bg-slate-50 dark:bg-black/40 border border-gray-200/50 dark:border-white/10 rounded-xl pl-10 pr-8 py-2 text-xs font-bold text-zinc-800 dark:text-zinc-200 placeholder-zinc-400 focus:outline-none focus:border-blue-500"
+                                     className="w-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl pl-10 pr-9 py-2 min-h-[44px] text-xs font-bold text-light-text dark:text-dark-text placeholder-zinc-400 focus:outline-none focus:border-primary-500"
                                  />
                                  {stampSearch && (
-                                     <button onClick={() => setStampSearch('')} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-black dark:hover:text-white text-xs leading-none">✕</button>
+                                     <button 
+                                         onClick={() => setStampSearch('')} 
+                                         aria-label="Clear stamp search"
+                                         className="w-8 h-8 min-w-[32px] min-h-[32px] flex items-center justify-center absolute right-1.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-black dark:hover:text-white rounded-lg transition-colors cursor-pointer"
+                                     >
+                                         <X className="w-3.5 h-3.5" />
+                                     </button>
                                  )}
                              </div>
 
                              <div className="md:col-span-3 flex items-center gap-2 overflow-x-auto w-full no-scrollbar py-0.5">
                                   {availableRegions.map(region => {
                                       const count = region === 'All' ? visitedData.length : (regionalProgress[region] || 0);
+                                      const isSelected = selectedRegion === region;
                                       return (
                                           <button
                                               key={region}
                                               onClick={() => setSelectedRegion(region)}
-                                              className={`px-3 py-2 rounded-xl border text-2xs font-mono font-bold uppercase tracking-wide shrink-0 transition-all duration-200 ${
-                                                  selectedRegion === region
-                                                      ? 'bg-blue-600/10 border-blue-500/20 text-blue-600 dark:text-blue-400 shadow-sm'
-                                                      : 'bg-slate-50/50 dark:bg-white/5 border-gray-250/50 dark:border-white/10 text-zinc-500 dark:text-zinc-400 hover:bg-slate-100'
+                                              className={`px-3.5 py-2 min-h-[40px] rounded-xl border text-2xs font-mono font-bold uppercase tracking-wide shrink-0 transition-all duration-200 cursor-pointer ${
+                                                  isSelected
+                                                      ? 'bg-primary-500/15 border-primary-500/30 text-primary-600 dark:text-primary-400 shadow-sm'
+                                                      : 'bg-black/5 dark:bg-white/5 border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/10 dark:hover:bg-white/10'
                                               }`}
                                           >
                                               {region} <span className="opacity-60 ml-1 font-bold">({count})</span>
@@ -1289,15 +1270,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                       );
                                   })}
                              </div>
-                        </div>
+                        </GlassPanel>
 
                         {/* Stamped passports grid container */}
                         {filteredVisitedData.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center p-16 rounded-3xl bg-slate-50/50 dark:bg-zinc-950/20 border border-dashed border-gray-200 dark:border-white/5 text-center">
-                                <Compass className="w-10 h-10 text-zinc-400 mb-3" />
-                                <h4 className="text-sm font-bold text-zinc-850 dark:text-white">Boundary Search Exhausted</h4>
-                                <p className="text-xs text-zinc-500 mt-1">We couldn't resolve any passports stamped for your active filter constraints.</p>
-                            </div>
+                            <EmptyState 
+                                icon={<Compass className="w-10 h-10 text-zinc-400" weight="duotone" />}
+                                title="Boundary Search Exhausted"
+                                description="We couldn't resolve any passports stamped for your active filter constraints."
+                            />
                         ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 perspective-[1200px]">
                                 {filteredVisitedData.map(c => (
@@ -1333,60 +1314,61 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                         className="space-y-6"
                     >
                         {/* Category and unlocked percentages metrics panel */}
-                        <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-6 bg-white/70 dark:bg-[#0c0c0e]/80 p-6 rounded-3xl border border-gray-200/50 dark:border-white/5 shadow-sm">
+                        <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden p-6 flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-6">
                             <div className="space-y-1.5">
                                 <span className="inline-block text-2xs font-mono font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2.5 py-1 rounded-lg border border-amber-500/20">
                                     ★ Collector Rank: {stickerStats.rank}
                                 </span>
-                                <h3 className="text-xl font-extrabold text-gray-900 dark:text-zinc-150 tracking-tight">Landmark Sticker Album</h3>
-                                <p className="text-xs text-zinc-505 dark:text-zinc-400 font-semibold">{stickerStats.rankDesc}</p>
+                                <h3 className="text-xl font-extrabold text-light-text dark:text-dark-text tracking-tight">Landmark Sticker Album</h3>
+                                <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-semibold">{stickerStats.rankDesc}</p>
                             </div>
 
                             <div className="flex flex-col items-center justify-center shrink-0 w-full lg:w-48 space-y-2">
-                                <div className="flex justify-between w-full text-2xs font-mono font-bold text-zinc-400">
+                                <div className="flex justify-between w-full text-2xs font-mono font-bold text-light-text-secondary dark:text-dark-text-secondary">
                                     <span>ALBUM PROGRESS</span>
-                                    <span className="text-amber-500">{stickerStats.percent}%</span>
+                                    <span className="text-amber-500 font-bold">{stickerStats.percent}%</span>
                                 </div>
-                                <div className="h-3 w-full bg-slate-100 dark:bg-zinc-950 rounded-full overflow-hidden relative border border-[#eeeeee] dark:border-white/5">
+                                <div className="h-3 w-full bg-black/5 dark:bg-white/5 rounded-full overflow-hidden relative border border-black/5 dark:border-white/5">
                                     <div 
                                         className="h-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all duration-1000 ease-out rounded-full relative" 
                                         style={{ width: `${stickerStats.percent}%` }}
                                     />
                                 </div>
-                                <span className="text-2xs font-mono font-bold text-zinc-500 uppercase tracking-widest text-center">
+                                <span className="text-2xs font-mono font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest text-center">
                                     {stickerStats.unlockedCount} / {stickerStats.totalCount} stickers adhered
                                 </span>
                             </div>
-                        </div>
+                        </GlassPanel>
 
                         {/* Searching categories filters */}
                         <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
-                            <div className="flex flex-wrap gap-1.5 p-1 bg-zinc-100/60 dark:bg-[#0c0c0e]/60 rounded-xl border border-gray-200/30 dark:border-white/5 overflow-x-auto no-scrollbar max-w-full">
+                            <div className="flex flex-wrap gap-1.5 p-1 bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5 overflow-x-auto no-scrollbar max-w-full">
                                 <button
                                     onClick={() => setSelectedStickerCategory('All')}
-                                    className={`px-3.5 py-2 rounded-lg text-xs font-bold uppercase tracking-wide transition-all cursor-pointer whitespace-nowrap ${
+                                    className={`px-3.5 py-2 min-h-[40px] rounded-xl text-xs font-bold uppercase tracking-wide transition-all cursor-pointer whitespace-nowrap ${
                                         selectedStickerCategory === 'All'
-                                            ? 'bg-white dark:bg-zinc-850 text-gray-900 dark:text-white shadow-sm font-black'
-                                            : 'text-zinc-500 hover:text-gray-950 dark:text-zinc-400 dark:hover:text-white'
+                                            ? 'bg-white dark:bg-dark-card text-light-text dark:text-dark-text shadow-sm font-black'
+                                            : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
                                     }`}
                                 >
                                     All Categories
                                 </button>
                                 {STICKER_CATEGORIES.map(cat => {
                                     const stats = stickerStats.categoryBreakdowns.find(cb => cb.category === cat);
+                                    const isSelected = selectedStickerCategory === cat;
                                     return (
                                         <button
                                             key={cat}
                                             onClick={() => setSelectedStickerCategory(cat)}
-                                            className={`px-3.5 py-2 rounded-lg text-xs font-bold uppercase tracking-wide transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
-                                                selectedStickerCategory === cat
-                                                    ? 'bg-white dark:bg-zinc-850 text-gray-900 dark:text-white shadow-sm font-black'
-                                                    : 'text-zinc-500 hover:text-gray-950 dark:text-zinc-400 dark:hover:text-white'
+                                            className={`px-3.5 py-2 min-h-[40px] rounded-xl text-xs font-bold uppercase tracking-wide transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                                                isSelected
+                                                    ? 'bg-white dark:bg-dark-card text-light-text dark:text-dark-text shadow-sm font-black'
+                                                    : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
                                             }`}
                                         >
                                             {cat}
                                             {stats && stats.unlocked > 0 && (
-                                                <span className={`text-2xs px-1.5 py-0.2 rounded font-bold leading-none ${stats.isCompleted ? 'bg-emerald-555 bg-emerald-500 text-white' : 'bg-amber-500/10 text-amber-500'}`}>
+                                                <span className={`text-2xs px-1.5 py-0.5 rounded font-bold leading-none ${stats.isCompleted ? 'bg-emerald-500 text-white' : 'bg-amber-500/10 text-amber-500'}`}>
                                                     {stats.unlocked}
                                                 </span>
                                             )}
@@ -1404,7 +1386,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                     placeholder="Find landmarks or countries..."
                                     value={stickerSearch}
                                     onChange={(e) => setStickerSearch(e.target.value)}
-                                    className="w-full md:w-64 pl-10 pr-4 py-2 text-xs rounded-xl bg-white/70 dark:bg-zinc-900/60 border border-gray-200/50 dark:border-white/10 outline-none focus:border-indigo-555 focus:border-indigo-500 text-gray-800 dark:text-white font-medium"
+                                    className="w-full md:w-64 pl-10 pr-4 py-2 min-h-[44px] text-xs rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 outline-none focus:border-primary-500 text-light-text dark:text-dark-text font-medium"
                                 />
                             </div>
                         </div>
@@ -1419,16 +1401,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                         className={`p-4 rounded-2xl border transition-all cursor-pointer hover:-translate-y-0.5 active:scale-98 ${
                                             item.isCompleted 
                                                 ? 'bg-emerald-500/[0.03] dark:bg-emerald-500/10 border-emerald-500/20 hover:bg-emerald-500/[0.05]'
-                                                : 'bg-[#fafafa] dark:bg-zinc-900/20 border-gray-200/40 dark:border-white/5 hover:bg-slate-100/50 dark:hover:bg-zinc-900/40'
+                                                : 'bg-black/[0.02] dark:bg-white/[0.02] border-black/5 dark:border-white/5 hover:bg-black/5 dark:hover:bg-white/5'
                                         }`}
                                     >
-                                        <span className="text-2xs font-mono font-bold text-zinc-400 uppercase tracking-wider">{item.unlocked === item.total ? '🏆 PERFECT' : 'ALBUM SECTION'}</span>
-                                        <h4 className="text-xs font-extrabold uppercase text-gray-900 dark:text-white mt-0.5 truncate">{item.category}</h4>
-                                        <div className="mt-3 flex items-center justify-between text-xs font-mono text-zinc-400">
-                                            <span className="text-zinc-500">{item.unlocked} of {item.total}</span>
+                                        <span className="text-2xs font-mono font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider">{item.unlocked === item.total ? '🏆 PERFECT' : 'ALBUM SECTION'}</span>
+                                        <h4 className="text-xs font-extrabold uppercase text-light-text dark:text-dark-text mt-0.5 truncate">{item.category}</h4>
+                                        <div className="mt-3 flex items-center justify-between text-xs font-mono text-light-text-secondary dark:text-dark-text-secondary">
+                                            <span>{item.unlocked} of {item.total}</span>
                                             <span className={item.isCompleted ? 'text-emerald-500 font-bold' : 'text-amber-500 font-bold'}>{item.percent}%</span>
                                         </div>
-                                        <div className="h-1.5 w-full bg-slate-100 dark:bg-zinc-950 rounded-full overflow-hidden mt-1.5">
+                                        <div className="h-1.5 w-full bg-black/5 dark:bg-white/5 rounded-full overflow-hidden mt-1.5">
                                             <div 
                                                 className={`h-full rounded-full transition-all duration-500 ${item.isCompleted ? 'bg-emerald-500' : 'bg-amber-500'}`} 
                                                 style={{ width: `${item.percent}%` }}
@@ -1439,10 +1421,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                             </div>
                         )}
 
-                        <div className="p-4 rounded-xl text-xs bg-indigo-500/5 text-indigo-700 dark:text-indigo-400 border border-indigo-500/10 font-semibold flex items-center gap-2">
-                            <span className="material-icons-outlined text-md">lightbulb</span>
+                        <div className="p-4 rounded-2xl text-xs bg-primary-500/10 text-primary-700 dark:text-primary-300 border border-primary-500/20 font-semibold flex items-center gap-3">
+                            <Lightbulb weight="duotone" className="w-5 h-5 text-primary-500 shrink-0" />
                             <span>
-                                💡 <strong>Sticker Verification Tip:</strong> Collect adhesive stamps automatically when you configure past trips within <strong>65km</strong> of any landmark, or trigger manual overrides to document elder memories!
+                                <strong>Sticker Verification Tip:</strong> Collect adhesive stamps automatically when you configure past trips within <strong>65km</strong> of any landmark, or trigger manual overrides to document elder memories!
                             </span>
                         </div>
 
@@ -1536,25 +1518,25 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                 <ExtremeFlightCard type="Shortest" flight={stats.shortestFlight} color="rose" />
                             </div>
                             <div className="lg:col-span-1">
-                                <div className="bg-white/70 dark:bg-[#0c0c0e]/80 border border-gray-200/50 dark:border-white/5 rounded-3xl p-6 backdrop-blur-2xl h-full flex flex-col justify-between">
+                                <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden p-6 h-full flex flex-col justify-between">
                                     <div className="flex justify-between items-center mb-4">
-                                        <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Preferred Class Segment</h3>
-                                        <TrendingUp className="w-4 h-4 text-emerald-500" />
+                                        <h3 className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest">Preferred Class Segment</h3>
+                                        <TrendingUp className="w-4 h-4 text-emerald-500" weight="duotone" />
                                     </div>
                                     <div className="flex-1 flex flex-col justify-center space-y-3.5">
                                         {stats.classCounts.map((cabin) => (
                                             <div key={cabin.label} className="space-y-1.5">
                                                 <div className="flex justify-between text-xs font-mono">
-                                                    <span className="font-bold text-zinc-650 dark:text-zinc-350">{cabin.label}</span>
-                                                    <span className="font-bold text-zinc-800 dark:text-zinc-100">{cabin.value} trips</span>
+                                                    <span className="font-bold text-light-text dark:text-dark-text">{cabin.label}</span>
+                                                    <span className="font-bold text-light-text dark:text-dark-text">{cabin.value} trips</span>
                                                 </div>
-                                                <div className="h-1.5 w-full bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
+                                                <div className="h-1.5 w-full bg-black/5 dark:bg-white/5 rounded-full overflow-hidden">
                                                     <div className="h-full rounded-full" style={{ width: `${(cabin.value / stats.totalFlights) * 100}%`, backgroundColor: cabin.color }} />
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
-                                </div>
+                                </GlassPanel>
                             </div>
                         </motion.div>
 

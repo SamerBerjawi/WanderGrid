@@ -1,7 +1,60 @@
 
 import React, { useEffect, useState, useRef, useMemo, Suspense } from 'react';
-import { CaretUp as ChevronUp, CaretDown as ChevronDown } from '@phosphor-icons/react';
+import { 
+    CaretUp as ChevronUp, 
+    CaretDown as ChevronDown,
+    CaretLeft,
+    CaretRight,
+    ArrowLeft,
+    ArrowRight,
+    ArrowsClockwise,
+    AirplaneTilt,
+    AirplaneTakeoff,
+    AirplaneLanding,
+    Train,
+    Bus,
+    Key,
+    Car,
+    Boat,
+    Buildings,
+    Bed,
+    Sparkle,
+    House,
+    ForkKnife,
+    Compass,
+    Ticket,
+    Moon,
+    Crown,
+    Armchair,
+    MapPin,
+    Clock,
+    Sun,
+    CloudSun,
+    Cloud,
+    CloudFog,
+    CloudRain,
+    Snowflake,
+    CloudLightning,
+    CalendarBlank,
+    CalendarCheck,
+    Path,
+    Receipt,
+    Backpack,
+    List,
+    Table,
+    FilmStrip,
+    Globe,
+    UploadSimple,
+    PencilSimple,
+    Trash,
+    Plus,
+    Check,
+    X,
+    PaperPlaneTilt
+} from '@phosphor-icons/react';
 import { Card, Button, Badge, Tabs, Modal, Input, Autocomplete, TimeInput, Select } from '../components/ui';
+import GlassPanel from '../components/glass/GlassPanel';
+import { VirtualListItem } from '../components/ui/VirtualListItem';
 import { TransportConfigurator } from '../components/FlightConfigurator';
 import { AccommodationConfigurator } from '../components/AccommodationConfigurator';
 import { LocationManager } from '../components/LocationManager';
@@ -19,6 +72,53 @@ import { getMerchantLogoUrl } from '../utils/brandfetch';
 import { formatDate, formatDateRange, formatCurrency, getCurrencySymbol } from '../utils/formatters';
 import { EmptyState } from '../components/EmptyState';
 
+export const TripItemIcon: React.FC<{ name: string; className?: string }> = React.memo(({ name, className = "w-4 h-4" }) => {
+    switch (name) {
+        case 'wb_sunny': return <Sun className={className} weight="duotone" />;
+        case 'partly_cloudy_day': return <CloudSun className={className} weight="duotone" />;
+        case 'cloud': return <Cloud className={className} weight="duotone" />;
+        case 'foggy': return <CloudFog className={className} weight="duotone" />;
+        case 'umbrella':
+        case 'rainy': return <CloudRain className={className} weight="duotone" />;
+        case 'ac_unit': return <Snowflake className={className} weight="duotone" />;
+        case 'thunderstorm': return <CloudLightning className={className} weight="duotone" />;
+        case 'flight_takeoff':
+        case 'flight':
+        case 'Flight': return <AirplaneTakeoff className={className} weight="duotone" />;
+        case 'flight_land': return <AirplaneLanding className={className} weight="duotone" />;
+        case 'train':
+        case 'Train': return <Train className={className} weight="duotone" />;
+        case 'directions_bus':
+        case 'Bus': return <Bus className={className} weight="duotone" />;
+        case 'key':
+        case 'Car Rental': return <Key className={className} weight="duotone" />;
+        case 'directions_car':
+        case 'Personal Car': return <Car className={className} weight="duotone" />;
+        case 'directions_boat':
+        case 'Cruise': return <Boat className={className} weight="duotone" />;
+        case 'hotel':
+        case 'Hotel':
+        case 'apartment':
+        case 'Apartment': return <Buildings className={className} weight="duotone" />;
+        case 'spa':
+        case 'Resort': return <Sparkle className={className} weight="duotone" />;
+        case 'home_work':
+        case 'Airbnb': return <House className={className} weight="duotone" />;
+        case 'restaurant': return <ForkKnife className={className} weight="duotone" />;
+        case 'tour': return <Compass className={className} weight="duotone" />;
+        case 'local_activity': return <Ticket className={className} weight="duotone" />;
+        case 'nights_stay': return <Moon className={className} weight="duotone" />;
+        case 'workspace_premium': return <Crown className={className} weight="duotone" />;
+        case 'airline_seat_recline_extra': return <Armchair className={className} weight="duotone" />;
+        case 'pin_drop':
+        case 'place':
+        case 'fmd_good': return <MapPin className={className} weight="duotone" />;
+        case 'schedule': return <Clock className={className} weight="duotone" />;
+        case 'repeat': return <ArrowsClockwise className={className} />;
+        default: return <Ticket className={className} weight="duotone" />;
+    }
+});
+
 interface AirlineLogoProps {
     provider?: string;
     brandfetchApiKey?: string;
@@ -26,7 +126,7 @@ interface AirlineLogoProps {
     fallback: React.ReactNode;
 }
 
-const AirlineLogo: React.FC<AirlineLogoProps> = ({ provider, brandfetchApiKey, carriers = [], fallback }) => {
+const AirlineLogo: React.FC<AirlineLogoProps> = React.memo(({ provider, brandfetchApiKey, carriers = [], fallback }) => {
     const [logoUrl, setLogoUrl] = useState<string>('');
     const [attempt, setAttempt] = useState(0);
 
@@ -104,7 +204,7 @@ const AirlineLogo: React.FC<AirlineLogoProps> = ({ provider, brandfetchApiKey, c
             onError={handleError}
         />
     );
-};
+});
 
 interface TripDetailProps {
     tripId: string;
@@ -122,7 +222,7 @@ interface ChatMessage {
     text: string;
 }
 
-const WeatherWidget: React.FC<{ location: string, coordinates?: { lat: number, lng: number } }> = ({ location, coordinates }) => {
+const WeatherWidget: React.FC<{ location: string, coordinates?: { lat: number, lng: number } }> = React.memo(({ location, coordinates }) => {
     const [weather, setWeather] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
@@ -170,7 +270,7 @@ const WeatherWidget: React.FC<{ location: string, coordinates?: { lat: number, l
     return (
         <div className="p-4 rounded-2xl bg-gradient-to-br from-sky-400 to-blue-600 text-white shadow-lg shadow-blue-500/20 border border-white/10 flex items-center gap-4">
             <div className="flex flex-col items-center">
-                <span className="material-icons-outlined text-3xl drop-shadow-md">{getWeatherIcon(weather.current_weather.weathercode)}</span>
+                <TripItemIcon name={getWeatherIcon(weather.current_weather.weathercode)} className="w-8 h-8 drop-shadow-md text-white" />
                 <span className="text-2xs font-bold uppercase tracking-widest opacity-80 mt-1">Now</span>
             </div>
             <div>
@@ -182,7 +282,7 @@ const WeatherWidget: React.FC<{ location: string, coordinates?: { lat: number, l
             </div>
         </div>
     );
-};
+});
 
 const getWeatherDescription = (code: number): string => {
     if (code === 0) return "Clear sky";
@@ -334,14 +434,14 @@ const NomadGuide: React.FC<{ trip: Trip }> = ({ trip }) => {
     };
 
     return (
-        <div className="flex flex-col h-[600px] bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-white/5 shadow-xl overflow-hidden">
-            <div className="p-6 border-b border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/5 flex items-center gap-4">
+        <GlassPanel className="flex flex-col h-[600px] wg-glass-card rounded-[28px] overflow-hidden">
+            <div className="p-6 border-b border-black/5 dark:border-white/10 bg-black/5 dark:bg-white/5 flex items-center gap-4">
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white shadow-lg">
-                    <span className="material-icons-outlined text-2xl">auto_awesome</span>
+                    <Sparkle className="w-6 h-6 text-white" weight="duotone" />
                 </div>
                 <div>
-                    <h3 className="text-lg font-black text-gray-900 dark:text-white">NomadGuide AI</h3>
-                    <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Real-time Intelligence</p>
+                    <h3 className="text-lg font-black text-light-text dark:text-dark-text">NomadGuide AI</h3>
+                    <p className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest">Real-time Intelligence</p>
                 </div>
             </div>
             
@@ -350,8 +450,8 @@ const NomadGuide: React.FC<{ trip: Trip }> = ({ trip }) => {
                     <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed shadow-sm ${
                             m.role === 'user' 
-                            ? 'bg-blue-600 text-white rounded-tr-sm' 
-                            : 'bg-white dark:bg-gray-800 border border-gray-100 dark:border-white/10 text-gray-800 dark:text-gray-200 rounded-tl-sm'
+                            ? 'bg-primary-500 text-white rounded-tr-sm' 
+                            : 'bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/10 text-light-text dark:text-dark-text rounded-tl-sm'
                         }`}>
                             <div dangerouslySetInnerHTML={{ __html: m.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>') }} />
                         </div>
@@ -359,7 +459,7 @@ const NomadGuide: React.FC<{ trip: Trip }> = ({ trip }) => {
                 ))}
                 {loading && (
                     <div className="flex justify-start">
-                        <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl rounded-tl-sm border border-gray-100 dark:border-white/10 shadow-sm flex gap-2">
+                        <div className="bg-light-fill dark:bg-dark-fill/50 p-4 rounded-2xl rounded-tl-sm border border-black/5 dark:border-white/10 shadow-sm flex gap-2">
                             <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
                             <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-75" />
                             <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-150" />
@@ -369,7 +469,7 @@ const NomadGuide: React.FC<{ trip: Trip }> = ({ trip }) => {
                 <div ref={messagesEndRef} />
             </div>
 
-            <div className="p-4 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-white/5">
+            <div className="p-4 bg-black/5 dark:bg-white/5 border-t border-black/5 dark:border-white/10">
                 <div className="relative">
                     <input 
                         type="text" 
@@ -377,18 +477,19 @@ const NomadGuide: React.FC<{ trip: Trip }> = ({ trip }) => {
                         onChange={e => setInput(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && handleSend()}
                         placeholder="Ask about local weather, food, or packing..."
-                        className="w-full pl-6 pr-14 py-4 rounded-2xl bg-gray-100 dark:bg-black/30 border-transparent focus:bg-white dark:focus:bg-black/50 border focus:border-purple-500 outline-none transition-all text-gray-900 dark:text-white placeholder-gray-500"
+                        className="w-full pl-6 pr-14 py-4 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 focus:bg-white dark:focus:bg-black/40 focus:border-purple-500 outline-none transition-all text-light-text dark:text-dark-text placeholder-light-text-secondary dark:placeholder-dark-text-secondary text-sm font-semibold"
                     />
                     <button 
                         onClick={handleSend}
                         disabled={!input.trim() || loading}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-purple-600 hover:bg-purple-700 text-white rounded-xl flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        aria-label="Send message to NomadGuide"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-purple-600 hover:bg-purple-700 text-white rounded-xl flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                     >
-                        <span className="material-icons-outlined text-lg">send</span>
+                        <PaperPlaneTilt className="w-5 h-5 text-white" weight="bold" />
                     </button>
                 </div>
             </div>
-        </div>
+        </GlassPanel>
     );
 };
 
@@ -1124,7 +1225,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         const daysInMonth = new Date(year, month + 1, 0).getDate();
         
         const grid: React.ReactNode[] = [];
-        for (let i = 0; i < startDay; i++) grid.push(<div key={`empty-${i}`} className="min-h-[8rem] bg-gray-50/20 dark:bg-white/5 rounded-xl" />);
+        for (let i = 0; i < startDay; i++) grid.push(<div key={`empty-${i}`} className="min-h-[8rem] bg-black/5 dark:bg-white/5 rounded-xl" />);
         
         for (let d = 1; d <= daysInMonth; d++) {
             const dateObj = new Date(year, month, d);
@@ -1135,15 +1236,15 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
             
             grid.push(
                 <div key={d} className={`min-h-[8rem] p-2 rounded-xl border flex flex-col relative group ${
-                    isToday ? 'bg-white ring-2 ring-blue-400 dark:bg-gray-800 dark:ring-blue-600' : 
-                    isInTrip ? 'bg-white dark:bg-gray-900 border-gray-200 dark:border-white/10' : 
-                    'bg-gray-50/50 dark:bg-black/20 border-gray-100 dark:border-white/5 opacity-70'
+                    isToday ? 'bg-light-card ring-2 ring-primary-400 dark:bg-dark-card dark:ring-primary-600' : 
+                    isInTrip ? 'bg-light-card dark:bg-dark-card border-black/10 dark:border-white/10' : 
+                    'bg-black/5 dark:bg-white/5 border-black/5 dark:border-white/5 opacity-70'
                 }`}>
                     <div className="flex justify-between items-start mb-1">
-                        <span className={`text-sm font-bold ${isToday ? 'text-blue-600' : isInTrip ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>{d}</span>
+                        <span className={`text-sm font-bold ${isToday ? 'text-primary-600 dark:text-primary-400' : isInTrip ? 'text-light-text dark:text-dark-text' : 'text-light-text-secondary dark:text-dark-text-secondary'}`}>{d}</span>
                         {isInTrip && (
-                            <button onClick={() => handleOpenActivityModal(dateStr)} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-500 transition-opacity">
-                                <span className="material-icons-outlined text-sm">add_circle</span>
+                            <button onClick={() => handleOpenActivityModal(dateStr)} aria-label="Add item to date" className="opacity-0 group-hover:opacity-100 text-light-text-secondary dark:text-dark-text-secondary hover:text-primary-500 transition-opacity p-1 min-w-[28px] min-h-[28px] flex items-center justify-center">
+                                <Plus className="w-4 h-4" />
                             </button>
                         )}
                     </div>
@@ -1162,7 +1263,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                     }}
                                     title={`${item.time ? formatTime(item.time) + ' - ' : ''}${item.name}`}
                                 >
-                                    <span className="material-icons-outlined text-xs">{item.icon}</span>
+                                    <TripItemIcon name={item.icon} className="w-3.5 h-3.5 shrink-0" />
                                     <span className="truncate">{item.time ? formatTime(item.time) : ''} {item.name}</span>
                                 </div>
                             );
@@ -1173,72 +1274,76 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         }
 
         return (
-            <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-white/5 shadow-xl overflow-hidden">
-                <div className="p-4 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-gray-50/50 dark:bg-white/5">
+            <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden">
+                <div className="p-4 border-b border-black/5 dark:border-white/10 flex justify-between items-center bg-black/5 dark:bg-white/5">
                     <div className="flex items-center gap-4">
-                        <button onClick={() => handleCalendarNavigate(-1)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition-colors">
-                            <span className="material-icons-outlined text-sm">chevron_left</span>
+                        <button onClick={() => handleCalendarNavigate(-1)} aria-label="Previous month" className="p-2 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center">
+                            <CaretLeft className="w-4 h-4" />
                         </button>
-                        <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight w-32 text-center">
+                        <h3 className="text-lg font-black text-light-text dark:text-dark-text uppercase tracking-tight w-32 text-center">
                             {calendarDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
                         </h3>
-                        <button onClick={() => handleCalendarNavigate(1)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition-colors">
-                            <span className="material-icons-outlined text-sm">chevron_right</span>
+                        <button onClick={() => handleCalendarNavigate(1)} aria-label="Next month" className="p-2 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center">
+                            <CaretRight className="w-4 h-4" />
                         </button>
                     </div>
-                    <button onClick={() => setCalendarDate(new Date(trip.startDate))} className="text-xs font-bold text-blue-500 hover:underline">Reset to Start</button>
+                    <button onClick={() => setCalendarDate(new Date(trip.startDate))} className="text-xs font-bold text-primary-500 hover:underline">Reset to Start</button>
                 </div>
                 <div className="p-4">
                     <div className="grid grid-cols-7 gap-3 mb-2">
                         {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
-                            <div key={d} className="text-center text-2xs font-bold text-gray-400 uppercase tracking-widest">{d}</div>
+                            <div key={d} className="text-center text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest">{d}</div>
                         ))}
                     </div>
                     <div className="grid grid-cols-7 gap-2">
                         {grid}
                     </div>
                 </div>
-            </div>
+            </GlassPanel>
         );
     };
 
     return (
-        <div className="space-y-8 animate-fade-in max-w-[1400px] mx-auto pb-12 px-4 md:px-0">
+        <div className="w-full max-w-[1680px] mx-auto pt-2 sm:pt-4 px-1 sm:px-4 md:px-6 lg:px-8 flex flex-col gap-5 sm:gap-6 animate-fadeIn pb-16">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
                 {/* Left Card: Trip Header Info, Stats, Actions */}
                 {(() => {
                     const vibe = getWeatherVibeStyle(weather?.current_weather?.weathercode);
                     return (
-                        <div className={`lg:col-span-8 relative rounded-3xl bg-white dark:bg-gray-900 shadow-2xl border ${vibe.border} overflow-hidden flex flex-col justify-between transition-all duration-500`}>
+                        <GlassPanel className="lg:col-span-8 wg-glass-card rounded-[28px] overflow-hidden p-6 lg:p-8 flex flex-col justify-between relative transition-all duration-500">
                             <div className={`absolute inset-0 bg-gradient-to-br ${vibe.bg} pointer-events-none transition-all duration-500`} />
-                            <div className="relative p-6 lg:p-8 flex flex-col gap-6 h-full justify-between">
+                            <div className="relative flex flex-col gap-6 h-full justify-between z-10">
                                 <div className="flex flex-col md:flex-row justify-between items-start gap-4">
                                     <div className="flex items-start gap-4">
-                                        <button onClick={onBack} className="w-12 h-12 rounded-xl bg-white dark:bg-gray-800 shadow-md border border-gray-100 dark:border-white/10 flex items-center justify-center text-gray-400 hover:text-blue-500 transition-colors shrink-0">
-                                            <span className="material-icons-outlined text-lg">arrow_back</span>
+                                        <button 
+                                            onClick={onBack} 
+                                            aria-label="Back to planner" 
+                                            className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-2xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:text-primary-500 hover:bg-black/10 dark:hover:bg-white/10 transition-all shrink-0 cursor-pointer"
+                                        >
+                                            <ArrowLeft className="w-5 h-5" />
                                         </button>
                                         <div>
                                             <div className="flex items-center gap-3">
                                                 <span className="text-3xl md:text-4xl">{trip.icon || '✈️'}</span>
-                                                <h1 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white tracking-tight">{trip.name}</h1>
+                                                <h1 className="text-2xl md:text-4xl font-black text-light-text dark:text-dark-text tracking-tight">{trip.name}</h1>
                                             </div>
                                             <div className="flex flex-wrap gap-3 mt-4 items-center">
                                                 {/* Address Info block with customized address icon */}
-                                                <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50/60 dark:bg-gray-800/20 border border-gray-150 dark:border-white/5 rounded-full text-xs md:text-sm font-bold text-gray-600 dark:text-gray-350 shadow-sm">
-                                                    <span className="material-icons-outlined text-base text-blue-500">fmd_good</span>
+                                                <div className="flex items-center gap-2 px-3 py-1.5 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-full text-xs md:text-sm font-bold text-light-text dark:text-dark-text shadow-sm">
+                                                    <MapPin className="w-4 h-4 text-primary-500" weight="duotone" />
                                                     <span>{trip.location}</span>
                                                 </div>
 
                                                 {/* Date Info block with customized calendar icon */}
-                                                <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50/60 dark:bg-gray-800/20 border border-gray-150 dark:border-white/5 rounded-full text-xs md:text-sm font-bold text-gray-600 dark:text-gray-350 shadow-sm">
-                                                    <span className="material-icons-outlined text-base text-purple-500">calendar_today</span>
+                                                <div className="flex items-center gap-2 px-3 py-1.5 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-full text-xs md:text-sm font-bold text-light-text dark:text-dark-text shadow-sm">
+                                                    <CalendarBlank className="w-4 h-4 text-purple-500" weight="duotone" />
                                                     <span>{formatDateRange(trip.startDate, trip.endDate, settings)}</span>
                                                 </div>
 
                                                 {/* Weather Condition Info block with customized dynamic weather icon */}
                                                 {weather && weather.current_weather && (
                                                     <div className={`flex items-center gap-2 px-3 py-1.5 border rounded-full text-xs md:text-sm font-bold shadow-sm transition-all duration-300 ${vibe.pillBg}`}>
-                                                        <span className="material-icons-outlined text-base">{vibe.icon}</span>
+                                                        <TripItemIcon name={vibe.icon} className="w-4 h-4" />
                                                         <span>
                                                             {Math.round(weather.current_weather.temperature)}°C · {getWeatherDescription(weather.current_weather.weathercode)}
                                                             {weather.daily && (
@@ -1250,7 +1355,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                     </div>
                                                 )}
                                                 {weatherLoading && (
-                                                    <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50/60 dark:bg-gray-800/20 border border-gray-150 dark:border-white/5 rounded-full text-xs md:text-sm font-bold text-gray-400 animate-pulse">
+                                                    <div className="flex items-center gap-2 px-3 py-1.5 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-full text-xs md:text-sm font-bold text-light-text-secondary animate-pulse">
                                                         <div className="w-3.5 h-3.5 rounded-full border-2 border-gray-300 border-t-purple-600 animate-spin" />
                                                         <span>Syncing weather...</span>
                                                     </div>
@@ -1260,12 +1365,12 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                     </div>
                                     <div className="flex flex-wrap items-center gap-2">
                                         <div className="flex flex-wrap gap-1.5 md:flex-col">
-                                            <Button size="sm" variant="secondary" onClick={() => setIsCinematicOpen(true)} icon={<span className="material-icons-outlined">movie_filter</span>}>Cinematic View</Button>
+                                            <Button size="sm" variant="secondary" onClick={() => setIsCinematicOpen(true)} icon={<FilmStrip className="w-4 h-4" weight="duotone" />}>Cinematic View</Button>
                                             <Button size="sm" variant="secondary" onClick={() => {
                                                 const ics = calendarService.generateIcsContent([trip], 'WanderGrid');
                                                 calendarService.downloadIcs(ics, `trip-${trip.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.ics`);
-                                            }} icon={<span className="material-icons-outlined">event</span>}>ICS Calendar</Button>
-                                            <Button size="sm" variant="secondary" onClick={() => setIsEditTripOpen(true)} icon={<span className="material-icons-outlined">edit</span>}>Edit Settings</Button>
+                                            }} icon={<CalendarBlank className="w-4 h-4" weight="duotone" />}>ICS Calendar</Button>
+                                            <Button size="sm" variant="secondary" onClick={() => setIsEditTripOpen(true)} icon={<PencilSimple className="w-4 h-4" weight="duotone" />}>Edit Settings</Button>
                                         </div>
                                     </div>
                                 </div>
@@ -1289,21 +1394,21 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                         </div>
                                         <span className="text-2xs font-bold text-purple-500/70 uppercase tracking-wider">Travelers</span>
                                     </div>
-                                    <div className="p-3 bg-gray-50/50 dark:bg-gray-800/40 border border-gray-100 dark:border-white/5 rounded-2xl text-center flex flex-col justify-center">
-                                        <span className="text-lg md:text-xl font-black text-gray-700 dark:text-gray-300">{(trip.transports?.length || 0) + (trip.accommodations?.length || 0) + (trip.activities?.length || 0)}</span>
-                                        <span className="text-2xs font-bold text-gray-400 uppercase tracking-wider mt-0.5 font-sans">Active Items</span>
+                                    <div className="p-3 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-2xl text-center flex flex-col justify-center">
+                                        <span className="text-lg md:text-xl font-black text-light-text dark:text-dark-text">{(trip.transports?.length || 0) + (trip.accommodations?.length || 0) + (trip.activities?.length || 0)}</span>
+                                        <span className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider mt-0.5 font-sans">Active Items</span>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </GlassPanel>
                     );
                 })()}
 
                 {/* Right Card: Beautiful interactive 2D Map Overview card of the configured routes */}
-                <div className="lg:col-span-4 relative rounded-3xl bg-white/35 dark:bg-zinc-950/15 backdrop-blur-xl border border-white/50 dark:border-white/10 shadow-[0_24px_64px_rgba(0,0,0,0.08)] dark:shadow-[0_24px_64px_rgba(0,0,0,0.45)] overflow-hidden min-h-[300px]">
-                    <div className="absolute top-4 left-4 z-10 flex items-center gap-1.5 bg-white/95 dark:bg-black/40 backdrop-blur px-3 py-1.5 rounded-full border border-white/50 dark:border-white/10 shadow-sm pointer-events-none">
-                        <span className="material-icons-outlined text-blue-500 text-sm">explore</span>
-                        <span className="text-2xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">Route Map Overview 2D</span>
+                <GlassPanel className="lg:col-span-4 wg-glass-card rounded-[28px] overflow-hidden min-h-[300px] relative">
+                    <div className="absolute top-4 left-4 z-10 flex items-center gap-1.5 bg-black/40 text-white backdrop-blur px-3 py-1.5 rounded-full border border-white/10 shadow-sm pointer-events-none">
+                        <Compass className="w-4 h-4 text-primary-500" weight="duotone" />
+                        <span className="text-2xs font-bold uppercase tracking-wider">Route Map Overview 2D</span>
                     </div>
                     <div className="absolute inset-0 bg-transparent">
                         <Suspense fallback={
@@ -1321,29 +1426,29 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                             />
                         </Suspense>
                     </div>
-                </div>
+                </GlassPanel>
             </div>
 
-            {/* ... (Tabs and Content Switcher - keep existing structure) ... */}
+            {/* Tabs and Content Switcher */}
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                 <Tabs 
                     tabs={[
-                        { id: 'planner', label: 'Daily Planner', icon: <span className="material-icons-outlined">calendar_view_day</span> }, 
-                        { id: 'route', label: 'Route', icon: <span className="material-icons-outlined">alt_route</span> },
-                        { id: 'itinerary', label: 'Bookings', icon: <span className="material-icons-outlined">commute</span> }, 
-                        { id: 'budget', label: 'Cost Breakdown', icon: <span className="material-icons-outlined">receipt_long</span> },
-                        { id: 'packing', label: 'Gear', icon: <span className="material-icons-outlined">backpack</span> },
-                        { id: 'intel', label: 'AI Guide', icon: <span className="material-icons-outlined">auto_awesome</span> }
+                        { id: 'planner', label: 'Daily Planner', icon: <CalendarBlank className="w-4 h-4" weight="duotone" /> }, 
+                        { id: 'route', label: 'Route', icon: <Path className="w-4 h-4" weight="duotone" /> },
+                        { id: 'itinerary', label: 'Bookings', icon: <Ticket className="w-4 h-4" weight="duotone" /> }, 
+                        { id: 'budget', label: 'Cost Breakdown', icon: <Receipt className="w-4 h-4" weight="duotone" /> },
+                        { id: 'packing', label: 'Gear', icon: <Backpack className="w-4 h-4" weight="duotone" /> },
+                        { id: 'intel', label: 'AI Guide', icon: <Sparkle className="w-4 h-4" weight="duotone" /> }
                     ]} 
                     activeTab={activeTab} 
                     onChange={setActiveTab} 
                 />
                 {activeTab === 'planner' && (
                     <div className="flex gap-2">
-                        <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
-                            <button onClick={() => setPlannerView('list')} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${plannerView === 'list' ? 'bg-white shadow text-blue-600 dark:bg-gray-700 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}><span className="material-icons-outlined text-sm align-middle mr-1">view_agenda</span> List</button>
-                            <button onClick={() => setPlannerView('table')} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${plannerView === 'table' ? 'bg-white shadow text-blue-600 dark:bg-gray-700 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}><span className="material-icons-outlined text-sm align-middle mr-1">table_chart</span> Table</button>
-                            <button onClick={() => setPlannerView('calendar')} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${plannerView === 'calendar' ? 'bg-white shadow text-blue-600 dark:bg-gray-700 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}><span className="material-icons-outlined text-sm align-middle mr-1">calendar_month</span> Calendar</button>
+                        <div className="flex p-1 bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5">
+                            <button onClick={() => setPlannerView('list')} aria-label="List view" className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 min-h-[44px] ${plannerView === 'list' ? 'bg-white dark:bg-dark-card shadow-sm text-primary-500' : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'}`}><List className="w-4 h-4" weight="bold" /> List</button>
+                            <button onClick={() => setPlannerView('table')} aria-label="Table view" className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 min-h-[44px] ${plannerView === 'table' ? 'bg-white dark:bg-dark-card shadow-sm text-primary-500' : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'}`}><Table className="w-4 h-4" weight="bold" /> Table</button>
+                            <button onClick={() => setPlannerView('calendar')} aria-label="Calendar view" className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 min-h-[44px] ${plannerView === 'calendar' ? 'bg-white dark:bg-dark-card shadow-sm text-primary-500' : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'}`}><CalendarBlank className="w-4 h-4" weight="bold" /> Calendar</button>
                         </div>
                     </div>
                 )}
@@ -1388,140 +1493,138 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                 const dayItems = getDayItems(dateStr);
 
                                 return (
-                                    <div key={dateStr} className="relative md:pl-20 group">
-                                        <div className="hidden md:flex absolute left-0 top-0 w-16 h-16 bg-white dark:bg-gray-900 border-4 border-gray-100 dark:border-border-800 rounded-2xl items-center justify-center flex-col z-10 shadow-sm">
-                                            <span className="text-2xs font-bold text-gray-400 uppercase tracking-widest">{formatDate(dateObj, 'short', settings).split(' ')[0]}</span>
-                                            <span className="text-xl font-black text-gray-800 dark:text-white leading-none">{dateObj.getUTCDate()}</span>
-                                            <span className="text-2xs font-bold text-gray-400 uppercase tracking-tighter mt-0.5">Day {index + 1}</span>
-                                        </div>
-                                        <div className="md:hidden mb-2 flex items-center gap-3">
-                                            <div className="bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-bold">Day {index + 1}</div>
-                                            <span className="text-lg font-black text-gray-800 dark:text-white">{formatDate(dateObj, 'weekday-long', settings)}</span>
-                                        </div>
-                                        <div className="space-y-3 pb-8">
-                                            {location && (
-                                                <div className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
-                                                    <span className="material-icons-outlined text-xs">place</span> {location.name}
-                                                </div>
-                                            )}
+                                    <VirtualListItem key={dateStr} minHeight={120}>
+                                        <div className="relative md:pl-20 group">
+                                            <div className="hidden md:flex absolute left-0 top-0 w-16 h-16 bg-light-card dark:bg-dark-card border border-black/10 dark:border-white/10 rounded-2xl items-center justify-center flex-col z-10 shadow-sm">
+                                                <span className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest">{formatDate(dateObj, 'short', settings).split(' ')[0]}</span>
+                                                <span className="text-xl font-black text-light-text dark:text-dark-text leading-none">{dateObj.getUTCDate()}</span>
+                                                <span className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-tighter mt-0.5">Day {index + 1}</span>
+                                            </div>
+                                            <div className="md:hidden mb-2 flex items-center gap-3">
+                                                <div className="bg-primary-500 text-white px-3 py-1 rounded-lg text-xs font-bold">Day {index + 1}</div>
+                                                <span className="text-lg font-black text-light-text dark:text-dark-text">{formatDate(dateObj, 'weekday-long', settings)}</span>
+                                            </div>
+                                            <div className="space-y-3 pb-8">
+                                                {location && (
+                                                    <div className="inline-flex items-center gap-1 px-3 py-1 bg-primary-500/10 text-primary-600 dark:text-primary-400 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
+                                                        <MapPin className="w-3.5 h-3.5" weight="duotone" /> {location.name}
+                                                    </div>
+                                                )}
 
-                                            {dayItems.length > 0 ? (
-                                                dayItems.map(item => {
-                                                    if (item.type === 'Transport') {
-                                                        const t = item.ref;
-                                                        return (
-                                                            <div key={item.id} className="bg-blue-50 dark:bg-gray-800 border border-blue-100 dark:border-gray-700 p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all">
-                                                                <div className="w-10 h-10 rounded-xl bg-blue-500 text-white flex items-center justify-center shadow-lg shadow-blue-500/30">
-                                                                    <span className="material-icons-outlined">{item.icon}</span>
-                                                                </div>
-                                                                <div className="flex-1">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <span className="text-xs font-black text-blue-600 dark:text-blue-400 whitespace-nowrap">{formatTime(item.time)}</span>
-                                                                        <h4 className="font-bold text-gray-900 dark:text-white text-sm">
-                                                                            {item.title}
-                                                                        </h4>
+                                                {dayItems.length > 0 ? (
+                                                    dayItems.map(item => {
+                                                        if (item.type === 'Transport') {
+                                                            const t = item.ref;
+                                                            return (
+                                                                <div key={item.id} className="bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all">
+                                                                    <div className="w-10 h-10 rounded-xl bg-blue-500 text-white flex items-center justify-center shadow-lg shadow-blue-500/30">
+                                                                        <TripItemIcon name={item.icon} className="w-5 h-5 text-white" />
                                                                     </div>
-                                                                    <div className="flex gap-4 mt-1">
-                                                                        <p className="text-2xs text-blue-600 dark:text-blue-300 font-bold uppercase tracking-wider">
-                                                                            {t.provider} {t.identifier}
-                                                                        </p>
-                                                                        {item.meta && (
-                                                                            <p className="text-2xs text-gray-500 font-bold uppercase tracking-wider">
-                                                                                {item.meta}
+                                                                    <div className="flex-1">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-xs font-black text-blue-600 dark:text-blue-400 whitespace-nowrap">{formatTime(item.time)}</span>
+                                                                            <h4 className="font-bold text-light-text dark:text-dark-text text-sm">
+                                                                                {item.title}
+                                                                            </h4>
+                                                                        </div>
+                                                                        <div className="flex gap-4 mt-1">
+                                                                            <p className="text-2xs text-blue-600 dark:text-blue-300 font-bold uppercase tracking-wider">
+                                                                                {t.provider} {t.identifier}
                                                                             </p>
-                                                                        )}
+                                                                            {item.meta && (
+                                                                                <p className="text-2xs text-light-text-secondary font-bold uppercase tracking-wider">
+                                                                                    {item.meta}
+                                                                                </p>
+                                                                            )}
+                                                                        </div>
                                                                     </div>
+                                                                    <button onClick={() => openTransportModal([t])} aria-label="Edit transport booking" className="text-light-text-secondary hover:text-blue-500 min-w-[36px] min-h-[36px] flex items-center justify-center cursor-pointer">
+                                                                        <PencilSimple className="w-4 h-4" />
+                                                                    </button>
                                                                 </div>
-                                                                <button onClick={() => openTransportModal([t])} className="text-gray-400 hover:text-blue-500">
-                                                                    <span className="material-icons-outlined text-sm">edit</span>
-                                                                </button>
-                                                            </div>
-                                                        );
-                                                    } else if (item.type === 'Accommodation') {
-                                                        const a = item.ref;
-                                                        const isCheckIn = !item.isCheckOut && !item.isOvernight;
-                                                        const statusLabel = isCheckIn ? 'Check-In' : (item.isCheckOut ? 'Check-Out' : 'Overnight Stay');
-                                                        return (
-                                                            <div key={item.id} className="bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all">
-                                                                <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-lg shadow-amber-500/30">
-                                                                    <span className="material-icons-outlined">{item.icon}</span>
-                                                                </div>
-                                                                <div className="flex-1">
-                                                                    <div className="flex items-center gap-2">
-                                                                        {!item.isOvernight && (
-                                                                            <span className="text-xs font-black text-amber-600 dark:text-amber-400 whitespace-nowrap">{formatTime(item.time)}</span>
-                                                                        )}
-                                                                        <h4 className="font-bold text-gray-900 dark:text-white text-sm">
-                                                                            {item.title}
-                                                                        </h4>
+                                                            );
+                                                        } else if (item.type === 'Accommodation') {
+                                                            const a = item.ref;
+                                                            const isCheckIn = !item.isCheckOut && !item.isOvernight;
+                                                            const statusLabel = isCheckIn ? 'Check-In' : (item.isCheckOut ? 'Check-Out' : 'Overnight Stay');
+                                                            return (
+                                                                <div key={item.id} className="bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all">
+                                                                    <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-lg shadow-amber-500/30">
+                                                                        <TripItemIcon name={item.icon} className="w-5 h-5 text-white" />
                                                                     </div>
-                                                                    <div className="flex gap-4 mt-1">
-                                                                        <p className="text-2xs text-amber-600 dark:text-amber-300 font-bold uppercase tracking-wider">
-                                                                            {statusLabel}
-                                                                        </p>
-                                                                        {item.meta && (
-                                                                            <p className="text-2xs text-gray-500 font-bold uppercase tracking-wider">
-                                                                                {item.meta}
+                                                                    <div className="flex-1">
+                                                                        <div className="flex items-center gap-2">
+                                                                            {!item.isOvernight && (
+                                                                                <span className="text-xs font-black text-amber-600 dark:text-amber-400 whitespace-nowrap">{formatTime(item.time)}</span>
+                                                                            )}
+                                                                            <h4 className="font-bold text-light-text dark:text-dark-text text-sm">
+                                                                                {item.title}
+                                                                            </h4>
+                                                                        </div>
+                                                                        <div className="flex gap-4 mt-1">
+                                                                            <p className="text-2xs text-amber-600 dark:text-amber-300 font-bold uppercase tracking-wider">
+                                                                                {statusLabel}
                                                                             </p>
-                                                                        )}
+                                                                            {item.meta && (
+                                                                                <p className="text-2xs text-light-text-secondary font-bold uppercase tracking-wider">
+                                                                                    {item.meta}
+                                                                                </p>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                    <button onClick={() => openAccommodationModal()} aria-label="Edit accommodation booking" className="text-light-text-secondary hover:text-amber-500 min-w-[36px] min-h-[36px] flex items-center justify-center cursor-pointer">
+                                                                        <PencilSimple className="w-4 h-4" />
+                                                                    </button>
+                                                                </div>
+                                                            );
+                                                        } else {
+                                                            const isRes = item.type === 'Reservation';
+                                                            const act = item.ref;
+                                                            return (
+                                                                <div key={item.id} className="p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all group/act bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5">
+                                                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                                                                        isRes 
+                                                                        ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' 
+                                                                        : 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'
+                                                                    }`}>
+                                                                        <TripItemIcon name={item.icon} className="w-5 h-5" />
+                                                                    </div>
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className={`text-xs font-black whitespace-nowrap ${isRes ? 'text-orange-400' : 'text-light-text-secondary'}`}>{formatTime(item.time)}</span>
+                                                                            <h4 className="font-bold text-light-text dark:text-dark-text text-sm truncate">{item.title}</h4>
+                                                                        </div>
+                                                                        {item.meta && <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5 line-clamp-1">{item.meta}</p>}
+                                                                        {item.location && <p className="text-xs text-light-text-secondary mt-0.5 flex items-center gap-1 truncate"><MapPin className="w-3 h-3 shrink-0" weight="duotone" /> {item.location}</p>}
+                                                                    </div>
+                                                                    {item.cost && <div className={`text-xs font-bold whitespace-nowrap ${isRes ? 'text-orange-600 dark:text-orange-400' : 'text-light-text dark:text-dark-text'}`}>{formatCurrency(item.cost)}</div>}
+                                                                    
+                                                                    <div className="flex items-center gap-1 opacity-0 group-hover/act:opacity-100 transition-opacity">
+                                                                        <button onClick={() => handleOpenActivityModal(dateStr, act)} aria-label="Edit activity" className="p-1.5 text-light-text-secondary hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all min-w-[36px] min-h-[36px] flex items-center justify-center cursor-pointer"><PencilSimple className="w-4 h-4" /></button>
+                                                                        <button onClick={() => handleDeleteActivity(act.id)} aria-label="Delete activity" className="p-1.5 text-light-text-secondary hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all min-w-[36px] min-h-[36px] flex items-center justify-center cursor-pointer"><Trash className="w-4 h-4" /></button>
                                                                     </div>
                                                                 </div>
-                                                                <button onClick={() => openAccommodationModal()} className="text-gray-400 hover:text-amber-500">
-                                                                    <span className="material-icons-outlined text-sm">edit</span>
-                                                                </button>
-                                                            </div>
-                                                        );
-                                                    } else {
-                                                        const isRes = item.type === 'Reservation';
-                                                        const act = item.ref;
-                                                        return (
-                                                            <div key={item.id} className={`p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all group/act border ${
-                                                                isRes 
-                                                                ? 'bg-orange-50/50 dark:bg-orange-900/10 border-orange-100 dark:border-orange-900/30' 
-                                                                : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-white/10'
-                                                            }`}>
-                                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                                                                    isRes 
-                                                                    ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' 
-                                                                    : 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'
-                                                                }`}>
-                                                                    <span className="material-icons-outlined">{item.icon}</span>
-                                                                </div>
-                                                                <div className="flex-1 min-w-0">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <span className={`text-xs font-black whitespace-nowrap ${isRes ? 'text-orange-400' : 'text-gray-400'}`}>{formatTime(item.time)}</span>
-                                                                        <h4 className="font-bold text-gray-900 dark:text-white text-sm truncate">{item.title}</h4>
-                                                                    </div>
-                                                                    {item.meta && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">{item.meta}</p>}
-                                                                    {item.location && <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1 truncate"><span className="material-icons-outlined text-xs">place</span> {item.location}</p>}
-                                                                </div>
-                                                                {item.cost && <div className={`text-xs font-bold whitespace-nowrap ${isRes ? 'text-orange-600 dark:text-orange-400' : 'text-gray-600 dark:text-gray-300'}`}>{formatCurrency(item.cost)}</div>}
-                                                                
-                                                                <div className="flex items-center gap-1 opacity-0 group-hover/act:opacity-100 transition-opacity">
-                                                                    <button onClick={() => handleOpenActivityModal(dateStr, act)} className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all"><span className="material-icons-outlined text-sm">edit</span></button>
-                                                                    <button onClick={() => handleDeleteActivity(act.id)} className="p-1.5 text-gray-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"><span className="material-icons-outlined text-sm">delete</span></button>
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    }
-                                                })
-                                            ) : (
-                                                <p className="text-xs text-gray-400 dark:text-gray-500 italic py-2 pl-4">No schedule items planned for today yet.</p>
-                                            )}
+                                                            );
+                                                        }
+                                                    })
+                                                ) : (
+                                                    <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary italic py-2 pl-4">No schedule items planned for today yet.</p>
+                                                )}
 
-                                            <button onClick={() => handleOpenActivityModal(dateStr)} className="w-full py-3 border-2 border-dashed border-gray-200 dark:border-white/10 rounded-2xl text-xs font-bold text-gray-400 uppercase tracking-widest hover:border-blue-300 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 focus:opacity-100">
-                                                <span className="material-icons-outlined text-sm">add</span> Add Schedule Item
-                                            </button>
+                                                <button onClick={() => handleOpenActivityModal(dateStr)} aria-label="Add schedule item" className="w-full py-3 border-2 border-dashed border-black/10 dark:border-white/10 rounded-2xl text-xs font-bold text-light-text-secondary uppercase tracking-widest hover:border-primary-300 hover:text-primary-500 hover:bg-primary-500/5 transition-all flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-pointer">
+                                                    <Plus className="w-4 h-4" /> Add Schedule Item
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
+                                    </VirtualListItem>
                                 );
                             })}
                         </div>
                     ) : (
-                        // Table View - Keep exact same structure
-                        <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-white/5 shadow-xl overflow-hidden">
+                        // Table View - Keep exact same structure with GlassPanel
+                        <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden">
                             <table className="w-full text-left border-collapse">
-                                <thead className="bg-gray-50/80 dark:bg-white/5 backdrop-blur border-b border-gray-100 dark:border-white/5 text-2xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 sticky top-0 z-20">
+                                <thead className="bg-light-fill dark:bg-dark-fill/50 border-b border-black/5 dark:border-white/5 text-2xs font-bold uppercase tracking-widest text-light-text-secondary dark:text-dark-text-secondary sticky top-0 z-20">
                                     <tr>
                                         <th className="p-6 w-32">Time</th>
                                         <th className="p-6 w-48">Category</th>
@@ -1538,30 +1641,30 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                         const isToday = new Date().toDateString() === dateObj.toDateString();
                                         return (
                                             <React.Fragment key={dateStr}>
-                                                <tr className={`border-b border-gray-50 dark:border-white/5 ${isToday ? 'bg-blue-50/50 dark:bg-blue-900/10' : 'bg-gray-50/30 dark:bg-black/20'}`}>
+                                                <tr className={`border-b border-black/5 dark:border-white/5 ${isToday ? 'bg-primary-500/10' : 'bg-black/[0.02] dark:bg-white/[0.02]'}`}>
                                                     <td colSpan={6} className="px-6 py-3">
                                                         <div className="flex items-center gap-3">
-                                                            <span className={`text-xs font-black uppercase tracking-wider ${isToday ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                                                            <span className={`text-xs font-black uppercase tracking-wider ${isToday ? 'text-primary-600 dark:text-primary-400' : 'text-light-text-secondary dark:text-dark-text-secondary'}`}>
                                                                 {formatDate(dateObj, 'weekday-long', settings)}
                                                             </span>
-                                                            {isToday && <span className="px-2 py-0.5 rounded text-2xs font-bold bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-300 uppercase tracking-widest">Today</span>}
+                                                            {isToday && <span className="px-2 py-0.5 rounded text-2xs font-bold bg-primary-100 dark:bg-primary-500/20 text-primary-600 dark:text-primary-400 uppercase tracking-widest">Today</span>}
                                                         </div>
                                                     </td>
                                                 </tr>
                                                 {items.length === 0 ? (
                                                     <tr>
-                                                        <td colSpan={6} className="px-6 py-8 text-center text-xs text-gray-400 dark:text-gray-600 italic font-medium">No scheduled items for this day</td>
+                                                        <td colSpan={6} className="px-6 py-8 text-center text-xs text-light-text-secondary dark:text-dark-text-secondary italic font-medium">No scheduled items for this day</td>
                                                     </tr>
                                                 ) : items.map((item, idx) => {
                                                     const styleClasses = getTypeStyles(item.type);
                                                     return (
-                                                        <tr key={`${dateStr}-${idx}`} className="group hover:bg-blue-50/30 dark:hover:bg-white/5 transition-all duration-200 border-b border-gray-50 dark:border-white/5 last:border-0">
-                                                            <td className="px-6 py-4"><div className="flex flex-col"><span className="text-sm font-bold text-gray-800 dark:text-gray-200 font-mono tracking-tight">{formatTime(item.time)}</span>{item.isDropoff && <span className="text-2xs font-bold text-gray-400 uppercase tracking-wider mt-0.5">Arrive</span>}</div></td>
-                                                            <td className="px-6 py-4"><div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-2xs font-bold uppercase tracking-wide ${styleClasses}`}><span className="material-icons-outlined text-sm">{item.icon}</span><span>{item.subType || item.type}</span></div></td>
-                                                            <td className="px-6 py-4"><div><p className="font-bold text-gray-900 dark:text-white text-sm leading-snug">{item.name}</p>{item.meta && (<p className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1.5 font-medium opacity-80">{item.type === 'Transport' && !item.isDropoff && <span className="material-icons-outlined text-xs">schedule</span>}{item.meta}</p>)}</div></td>
-                                                            <td className="px-6 py-4"><div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400 font-medium max-w-[180px]">{item.location ? (<><span className="material-icons-outlined text-sm opacity-60 shrink-0">place</span><span className="truncate" title={item.location}>{item.location}</span></>) : (<span className="opacity-30">-</span>)}</div></td>
-                                                            <td className="px-6 py-4 text-right">{item.cost ? (<span className="font-bold text-gray-900 dark:text-white text-sm tabular-nums tracking-tight">{formatCurrency(item.cost)}</span>) : (<span className="text-gray-300 dark:text-gray-600 text-xs font-mono">-</span>)}</td>
-                                                            <td className="px-6 py-4 text-right"><button onClick={() => { if (item.type === 'Transport') openTransportModal([item.ref]); if (item.type === 'Accommodation') openAccommodationModal(); if (item.type === 'Activity' || item.type === 'Reservation' || item.type === 'Tour') handleOpenActivityModal(dateStr, item.ref); }} className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all opacity-0 group-hover:opacity-100"><span className="material-icons-outlined text-lg">edit_note</span></button></td>
+                                                        <tr key={`${dateStr}-${idx}`} className="group hover:bg-black/5 dark:hover:bg-white/5 transition-all duration-200 border-b border-black/5 dark:border-white/5 last:border-0">
+                                                            <td className="px-6 py-4"><div className="flex flex-col"><span className="text-sm font-bold text-light-text dark:text-dark-text font-mono tracking-tight">{formatTime(item.time)}</span>{item.isDropoff && <span className="text-2xs font-bold text-light-text-secondary uppercase tracking-wider mt-0.5">Arrive</span>}</div></td>
+                                                            <td className="px-6 py-4"><div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-2xs font-bold uppercase tracking-wide ${styleClasses}`}><TripItemIcon name={item.icon} className="w-3.5 h-3.5" /><span>{item.subType || item.type}</span></div></td>
+                                                            <td className="px-6 py-4"><div><p className="font-bold text-light-text dark:text-dark-text text-sm leading-snug">{item.name}</p>{item.meta && (<p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-1 flex items-center gap-1.5 font-medium opacity-80">{item.type === 'Transport' && !item.isDropoff && <Clock className="w-3 h-3 text-light-text-secondary" />}{item.meta}</p>)}</div></td>
+                                                            <td className="px-6 py-4"><div className="flex items-center gap-1.5 text-xs text-light-text dark:text-dark-text font-medium max-w-[180px]">{item.location ? (<><MapPin className="w-3.5 h-3.5 opacity-60 shrink-0" /><span className="truncate" title={item.location}>{item.location}</span></>) : (<span className="opacity-30">-</span>)}</div></td>
+                                                            <td className="px-6 py-4 text-right">{item.cost ? (<span className="font-bold text-light-text dark:text-dark-text text-sm tabular-nums tracking-tight">{formatCurrency(item.cost)}</span>) : (<span className="text-light-text-secondary text-xs font-mono">-</span>)}</td>
+                                                            <td className="px-6 py-4 text-right"><button onClick={() => { if (item.type === 'Transport') openTransportModal([item.ref]); if (item.type === 'Accommodation') openAccommodationModal(); if (item.type === 'Activity' || item.type === 'Reservation' || item.type === 'Tour') handleOpenActivityModal(dateStr, item.ref); }} aria-label="Edit schedule entry" className="w-8 h-8 rounded-full flex items-center justify-center text-light-text-secondary hover:text-primary-600 hover:bg-black/5 dark:hover:bg-white/5 transition-all opacity-0 group-hover:opacity-100 cursor-pointer"><PencilSimple className="w-4 h-4" /></button></td>
                                                         </tr>
                                                     );
                                                 })}
@@ -1570,45 +1673,45 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                     })}
                                 </tbody>
                             </table>
-                        </div>
+                        </GlassPanel>
                     )}
                 </>
             )}
 
-            {/* ITINERARY (BOOKINGS) TAB - NEW DESIGN */}
+            {/* ITINERARY (BOOKINGS) TAB - LIQUID GLASS */}
             {activeTab === 'itinerary' && (
-                <div className="space-y-12 animate-fade-in text-zinc-900 dark:text-zinc-100">
+                <div className="space-y-12 animate-fade-in text-light-text dark:text-dark-text">
                     {/* Transport Section */}
                     <div className="space-y-6">
-                        <div className="flex justify-between items-center bg-white/20 dark:bg-white/[0.02] p-4 rounded-3xl border border-zinc-200/40 dark:border-white/5 backdrop-blur-xl">
+                        <GlassPanel className="wg-glass-pill rounded-2xl p-4 flex justify-between items-center">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-indigo-505/10 dark:bg-indigo-500/10 text-indigo-500 flex items-center justify-center border border-indigo-500/20 shadow-sm">
-                                    <span className="material-icons-outlined text-xl">commute</span>
+                                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center border border-indigo-500/20 shadow-sm">
+                                    <Car className="w-5 h-5 text-indigo-500" weight="duotone" />
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 tracking-tight leading-tight">Transportation</h3>
-                                    <p className="text-xs text-zinc-400 dark:text-zinc-500 font-medium">Flights, trains, and rental vehicles</p>
+                                    <h3 className="text-lg font-bold text-light-text dark:text-dark-text tracking-tight leading-tight">Transportation</h3>
+                                    <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium">Flights, trains, and rental vehicles</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
                                 <Button 
                                     size="sm" 
                                     variant="ghost" 
-                                    className="border-dashed border-2 border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500 hover:text-indigo-600 dark:hover:text-zinc-200 hover:border-indigo-300 dark:hover:border-zinc-700 font-bold transition-all" 
+                                    className="border-dashed border-2 border-black/10 dark:border-white/10 text-light-text-secondary hover:text-primary-600 font-bold transition-all" 
                                     onClick={() => setIsImportWizardOpen(true)}
                                 >
-                                    <span className="material-icons-outlined text-sm mr-1.5">upload_file</span> 
+                                    <UploadSimple className="w-4 h-4 mr-1.5" />
                                     Import
                                 </Button>
                                 <Button size="sm" variant="secondary" onClick={() => openTransportModal()} className="font-bold">
                                     + Add Booking
                                 </Button>
                             </div>
-                        </div>
+                        </GlassPanel>
 
                         {Object.keys(transportGroups).length === 0 ? (
                             <EmptyState
-                                icon={<span className="material-icons-outlined text-4xl text-primary-500">flight</span>}
+                                icon={<AirplaneTilt className="w-10 h-10 text-primary-500" weight="duotone" />}
                                 title="No Transport Bookings Yet"
                                 description="Log your flight, train, or drive segments to coordinate departure times and seat assignments."
                                 action={{
@@ -1628,36 +1731,37 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                 }).map(([id, group]: [string, Transport[]]) => {
                                     const first = group[0];
                                     return (
-                                        <div key={id} className="bg-white dark:bg-zinc-900/30 rounded-3xl overflow-hidden border border-zinc-200/50 dark:border-white/5 shadow-sm hover:shadow-md transition-all duration-300">
-                                            {/* Header */}
-                                            <div className="p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-zinc-50/50 dark:bg-white/[0.01] border-b border-zinc-150/50 dark:border-white/5">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-white/10 flex items-center justify-center overflow-hidden shadow-inner shrink-0">
-                                                        {first.mode === 'Flight' ? (
-                                                            <AirlineLogo 
-                                                                provider={first.provider} 
-                                                                brandfetchApiKey={settings?.brandfetchApiKey} 
-                                                                carriers={settings?.carriers} 
-                                                                fallback={<span className="material-icons-outlined text-zinc-600 dark:text-zinc-300 text-2xl">flight_takeoff</span>} 
-                                                            />
-                                                        ) : first.logoUrl ? (
-                                                            <img referrerPolicy="no-referrer" src={first.logoUrl} className="w-full h-full object-contain" />
-                                                        ) : (
-                                                            <span className="material-icons-outlined text-zinc-600 dark:text-zinc-300 text-2xl">{getTransportIcon(first.mode)}</span>
-                                                        )}
-                                                    </div>
-                                                    <div>
-                                                        <h4 className="font-bold text-zinc-800 dark:text-zinc-150 text-base leading-tight">{first.provider}</h4>
+                                        <VirtualListItem key={id} minHeight={180}>
+                                            <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden transition-all duration-300">
+                                                {/* Header */}
+                                                <div className="p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-black/[0.02] dark:bg-white/[0.01] border-b border-black/5 dark:border-white/5">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-12 h-12 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 flex items-center justify-center overflow-hidden shadow-inner shrink-0">
+                                                            {first.mode === 'Flight' ? (
+                                                                <AirlineLogo 
+                                                                    provider={first.provider} 
+                                                                    brandfetchApiKey={settings?.brandfetchApiKey} 
+                                                                    carriers={settings?.carriers} 
+                                                                    fallback={<AirplaneTakeoff className="w-6 h-6 text-zinc-600 dark:text-zinc-300" weight="duotone" />} 
+                                                                />
+                                                            ) : first.logoUrl ? (
+                                                                <img referrerPolicy="no-referrer" src={first.logoUrl} className="w-full h-full object-contain" />
+                                                            ) : (
+                                                                <TripItemIcon name={first.mode} className="w-6 h-6 text-zinc-600 dark:text-zinc-300" />
+                                                            )}
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="font-bold text-light-text dark:text-dark-text text-base leading-tight">{first.provider}</h4>
                                                         <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                                                            <span className="px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-white/5 text-2xs font-mono font-bold text-zinc-500 dark:text-zinc-400">
+                                                            <span className="px-2 py-0.5 rounded-md bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-2xs font-mono font-bold text-light-text-secondary dark:text-dark-text-secondary">
                                                                 {first.identifier || 'No ID'}
                                                             </span>
                                                             <span className="w-1 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700"></span>
-                                                            <span className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">{first.type}</span>
+                                                            <span className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider">{first.type}</span>
                                                             {first.confirmationCode && (
                                                                 <>
                                                                     <span className="w-1 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700"></span>
-                                                                    <span className="text-2xs font-mono tracking-widest text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-950/30 px-1.5 py-0.5 rounded border border-indigo-100 dark:border-indigo-900/20 select-all" title="Confirmation Code">
+                                                                    <span className="text-2xs font-mono tracking-widest text-primary-600 dark:text-primary-400 font-bold bg-primary-500/10 px-1.5 py-0.5 rounded border border-primary-500/20 select-all" title="Confirmation Code">
                                                                         CONF: {first.confirmationCode}
                                                                     </span>
                                                                 </>
@@ -1665,15 +1769,16 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto border-t sm:border-0 border-zinc-150 dark:border-white/5 pt-3 sm:pt-0">
-                                                    <div className="text-xl font-bold text-zinc-900 dark:text-white leading-none">
+                                                <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto border-t sm:border-0 border-black/5 dark:border-white/5 pt-3 sm:pt-0">
+                                                    <div className="text-xl font-bold text-light-text dark:text-dark-text leading-none">
                                                         {formatCurrency(group.reduce((acc, t) => acc + (t.cost || 0), 0))}
                                                     </div>
                                                     <button 
                                                         onClick={() => openTransportModal(group)} 
-                                                        className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 uppercase tracking-widest mt-1 cursor-pointer flex items-center gap-1 bg-indigo-50 dark:bg-indigo-950/20 px-2.5 py-1 rounded-lg border border-indigo-100 dark:border-indigo-900/10 hover:shadow-sm transition-all"
+                                                        aria-label="Edit transport details"
+                                                        className="text-xs font-bold text-primary-600 dark:text-primary-400 hover:text-primary-500 uppercase tracking-widest mt-1 cursor-pointer flex items-center gap-1 bg-primary-500/10 px-2.5 py-1 rounded-lg border border-primary-500/20 hover:shadow-sm transition-all"
                                                     >
-                                                        <span className="material-icons-outlined text-xs">edit_note</span> Edit Details
+                                                        <PencilSimple className="w-3.5 h-3.5" /> Edit Details
                                                     </button>
                                                 </div>
                                             </div>
@@ -1687,12 +1792,12 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                             {/* Divider if return */}
                                                             {isReturn && (
                                                                 <div className="flex items-center gap-4 py-4">
-                                                                    <div className="h-px bg-zinc-100 dark:bg-white/5 flex-1"></div>
-                                                                    <div className="px-3 py-1 rounded-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200/40 dark:border-zinc-800 text-2xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest flex items-center gap-1.5">
-                                                                        <span className="material-icons-outlined text-xs">repeat</span> 
+                                                                    <div className="h-px bg-black/5 dark:bg-white/5 flex-1"></div>
+                                                                    <div className="px-3 py-1 rounded-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest flex items-center gap-1.5">
+                                                                        <ArrowsClockwise className="w-3.5 h-3.5" /> 
                                                                         Return Journey • {Math.ceil((new Date(t.departureDate).getTime() - new Date(group[idx-1].arrivalDate).getTime()) / 86400000)} Days Later
                                                                     </div>
-                                                                    <div className="h-px bg-zinc-100 dark:bg-white/5 flex-1"></div>
+                                                                    <div className="h-px bg-black/5 dark:bg-white/5 flex-1"></div>
                                                                 </div>
                                                             )}
 
@@ -1700,16 +1805,16 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                                 
                                                                 {/* Left: Origin Info */}
                                                                 <div className="flex-1 flex items-center gap-4 min-w-[200px]">
-                                                                    <div className="w-10 h-10 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-150/50 dark:border-white/5 flex items-center justify-center shrink-0 shadow-sm text-zinc-400 dark:text-zinc-500">
-                                                                        <span className="material-icons-outlined text-lg">flight_takeoff</span>
+                                                                    <div className="w-10 h-10 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 flex items-center justify-center shrink-0 shadow-sm text-zinc-400 dark:text-zinc-500">
+                                                                        <AirplaneTakeoff className="w-5 h-5" weight="duotone" />
                                                                     </div>
                                                                     <div>
-                                                                        <p className="text-2xs uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider">Departure</p>
+                                                                        <p className="text-2xs uppercase font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider">Departure</p>
                                                                         <div className="flex items-baseline gap-2 mt-0.5">
-                                                                            <span className="text-xl font-black text-zinc-800 dark:text-white tracking-tight uppercase">{t.origin}</span>
-                                                                            <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 font-mono">{formatTime(t.departureTime)}</span>
+                                                                            <span className="text-xl font-black text-light-text dark:text-dark-text tracking-tight uppercase">{t.origin}</span>
+                                                                            <span className="text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary font-mono">{formatTime(t.departureTime)}</span>
                                                                         </div>
-                                                                        <p className="text-xs font-semibold text-zinc-400 dark:text-zinc-500 mt-1">
+                                                                        <p className="text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary mt-1">
                                                                             {formatDate(t.departureDate, 'weekday-short', settings)}
                                                                             {t.departureTerminal && ` · Term ${t.departureTerminal}`}
                                                                             {t.departureGate && ` · Gate ${t.departureGate}`}
@@ -1719,62 +1824,62 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
 
                                                                 {/* Center: Progress & Duration Vector */}
                                                                 <div className="flex flex-col items-center justify-center min-w-[120px] shrink-0 pointer-events-none select-none relative py-1 md:py-0">
-                                                                    <span className="text-2xs font-bold text-zinc-400 dark:text-zinc-500 tracking-tight mb-1.5">{calculateDuration(t)}</span>
+                                                                    <span className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-tight mb-1.5">{calculateDuration(t)}</span>
                                                                     <div className="w-full flex items-center gap-1.5 relative px-2">
                                                                         <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 border border-indigo-400 shrink-0"></div>
-                                                                        <div className="flex-1 h-[2px] border-t-2 border-dashed border-zinc-200 dark:border-zinc-800 relative flex items-center justify-center">
-                                                                            <span className="material-icons-outlined text-zinc-400 dark:text-zinc-600 text-sm absolute -top-1.5 scale-90 rotate-90">{getTransportIcon(t.mode) === 'flight_takeoff' ? 'flight' : 'arrow_forward'}</span>
+                                                                        <div className="flex-1 h-[2px] border-t-2 border-dashed border-black/10 dark:border-white/10 relative flex items-center justify-center">
+                                                                            <AirplaneTilt className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 absolute -top-2 rotate-90" weight="duotone" />
                                                                         </div>
                                                                         <div className="w-1.5 h-1.5 rounded-full bg-purple-500 border border-purple-400 shrink-0"></div>
                                                                     </div>
-                                                                    <span className="text-2xs font-bold uppercase tracking-wider text-zinc-350 dark:text-zinc-600 mt-1.5">Nonstop</span>
+                                                                    <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary mt-1.5">Nonstop</span>
                                                                 </div>
 
                                                                 {/* Right: Arrival Info */}
                                                                 <div className="flex-1 flex items-center justify-start md:justify-end gap-4 min-w-[200px]">
                                                                     <div className="md:text-right">
-                                                                        <p className="text-2xs uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider">Arrival</p>
+                                                                        <p className="text-2xs uppercase font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider">Arrival</p>
                                                                         <div className="flex items-baseline md:justify-end gap-2 mt-0.5">
-                                                                            <span className="text-xl font-black text-zinc-800 dark:text-white tracking-tight uppercase">{t.destination}</span>
-                                                                            <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 font-mono">{formatTime(t.arrivalTime)}</span>
+                                                                            <span className="text-xl font-black text-light-text dark:text-dark-text tracking-tight uppercase">{t.destination}</span>
+                                                                            <span className="text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary font-mono">{formatTime(t.arrivalTime)}</span>
                                                                         </div>
-                                                                        <p className="text-xs font-semibold text-zinc-400 dark:text-zinc-500 mt-1">
+                                                                        <p className="text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary mt-1">
                                                                             {formatDate(t.arrivalDate, 'weekday-short', settings)}
                                                                             {t.arrivalTerminal && ` · Term ${t.arrivalTerminal}`}
                                                                             {t.arrivalGate && ` · Gate ${t.arrivalGate}`}
                                                                         </p>
                                                                     </div>
-                                                                    <div className="w-10 h-10 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-150/50 dark:border-white/5 flex items-center justify-center shrink-0 order-first md:order-last shadow-sm text-zinc-400 dark:text-zinc-500">
-                                                                        <span className="material-icons-outlined text-lg">flight_land</span>
+                                                                    <div className="w-10 h-10 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 flex items-center justify-center shrink-0 order-first md:order-last shadow-sm text-zinc-400 dark:text-zinc-500">
+                                                                        <AirplaneLanding className="w-5 h-5" weight="duotone" />
                                                                     </div>
                                                                 </div>
                                                             </div>
 
                                                             {/* Additional Amenities/Seats row if present */}
                                                             {(t.travelClass || t.seatNumber || t.vehicleModel || t.pickupLocation) && (
-                                                                <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-zinc-150/40 dark:border-white/5">
+                                                                <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-black/5 dark:border-white/5">
                                                                     {t.travelClass && (
-                                                                        <div className="px-2.5 py-1 rounded-lg bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-white/5 text-2xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
-                                                                            <span className="material-icons-outlined text-xs text-zinc-400">workspace_premium</span> 
+                                                                        <div className="px-2.5 py-1 rounded-lg bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider flex items-center gap-1.5">
+                                                                            <Crown className="w-3.5 h-3.5 text-zinc-400" /> 
                                                                             {t.travelClass}
                                                                         </div>
                                                                     )}
                                                                     {t.seatNumber && (
-                                                                        <div className="px-2.5 py-1 rounded-lg bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/30 dark:border-indigo-900/15 text-2xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-1.5">
-                                                                            <span className="material-icons-outlined text-xs">airline_seat_recline_extra</span>
+                                                                        <div className="px-2.5 py-1 rounded-lg bg-primary-500/10 border border-primary-500/20 text-2xs font-bold text-primary-600 dark:text-primary-400 uppercase tracking-widest flex items-center gap-1.5">
+                                                                            <Armchair className="w-3.5 h-3.5" />
                                                                             Seat {t.seatNumber} {t.seatType && `(${t.seatType})`}
                                                                             {t.isExitRow && <span className="text-2xs font-bold text-rose-500 dark:text-rose-400 font-sans tracking-normal">Exit Row</span>}
                                                                         </div>
                                                                     )}
                                                                     {t.vehicleModel && (
-                                                                        <div className="px-2.5 py-1 rounded-lg bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100/30 dark:border-emerald-900/15 text-2xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                                                                            <span className="material-icons-outlined text-xs">directions_car</span> 
+                                                                        <div className="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-2xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                                                                            <Car className="w-3.5 h-3.5" /> 
                                                                             {t.vehicleModel}
                                                                         </div>
                                                                     )}
                                                                     {t.pickupLocation && (
-                                                                        <div className="px-2.5 py-1 rounded-lg bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-white/5 text-2xs font-bold text-zinc-550 dark:text-zinc-400 flex items-center gap-1">
-                                                                            <span className="material-icons-outlined text-xs text-zinc-400">pin_drop</span>
+                                                                        <div className="px-2.5 py-1 rounded-lg bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1">
+                                                                            <MapPin className="w-3.5 h-3.5 text-zinc-400" />
                                                                             Pickup: {t.pickupLocation}
                                                                         </div>
                                                                     )}
@@ -1784,7 +1889,8 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                     );
                                                 })}
                                             </div>
-                                        </div>
+                                        </GlassPanel>
+                                    </VirtualListItem>
                                     );
                                 })}
                             </div>
@@ -1793,24 +1899,24 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
 
                     {/* Accommodation Section */}
                     <div className="space-y-6">
-                        <div className="flex justify-between items-center bg-white/20 dark:bg-white/[0.02] p-4 rounded-3xl border border-zinc-200/40 dark:border-white/5 backdrop-blur-xl">
+                        <GlassPanel className="wg-glass-pill rounded-2xl p-4 flex justify-between items-center">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20 shadow-sm">
-                                    <span className="material-icons-outlined text-xl">hotel</span>
+                                    <Buildings className="w-5 h-5 text-amber-600" weight="duotone" />
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 tracking-tight leading-tight">Accommodation</h3>
-                                    <p className="text-xs text-zinc-400 dark:text-zinc-500 font-medium">Hotel stays, resorts, and vacation rentals</p>
+                                    <h3 className="text-lg font-bold text-light-text dark:text-dark-text tracking-tight leading-tight">Accommodation</h3>
+                                    <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium">Hotel stays, resorts, and vacation rentals</p>
                                 </div>
                             </div>
                             <Button size="sm" variant="secondary" onClick={() => openAccommodationModal()} className="font-bold">
                                 + Add Stay
                             </Button>
-                        </div>
+                        </GlassPanel>
 
                         {(!trip.accommodations || trip.accommodations.length === 0) ? (
                             <EmptyState
-                                icon={<span className="material-icons-outlined text-4xl text-primary-500">apartment</span>}
+                                icon={<Buildings className="w-10 h-10 text-primary-500" weight="duotone" />}
                                 title="No Accommodations Booked Yet"
                                 description="Track your hotels, rentals, or host stays to verify check-in windows and address details."
                                 action={{
@@ -1829,86 +1935,89 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                     if (dateA !== dateB) return dateA.localeCompare(dateB);
                                     return timeA.localeCompare(timeB);
                                 }).map(stay => (
-                                    <div key={stay.id} className="bg-white dark:bg-zinc-900/30 rounded-3xl p-6 sm:p-8 border border-zinc-200/50 dark:border-white/5 shadow-sm hover:shadow-md hover:border-zinc-350 dark:hover:border-white/10 transition-all duration-350 flex flex-col md:flex-row justify-between items-stretch gap-6 group relative">
-                                        
-                                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-5 flex-1">
-                                            {/* Brand Logo or Visual Accent */}
-                                            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-50 to-indigo-100 dark:from-indigo-950/20 dark:to-indigo-900/30 border border-indigo-100 dark:border-indigo-900/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-black text-2xl overflow-hidden shrink-0 shadow-sm">
-                                                {stay.logoUrl ? (
-                                                    <img referrerPolicy="no-referrer" src={stay.logoUrl} className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <span className="material-icons-outlined text-2xl">{stay.type === 'Airbnb' ? 'home_work' : stay.type === 'Resort' ? 'spa' : 'apartment'}</span>
-                                                )}
-                                            </div>
-                                            
-                                            <div className="space-y-1.5 flex-1 min-w-0">
-                                                <div className="flex flex-wrap items-center gap-2">
-                                                    <h4 className="font-bold text-zinc-800 dark:text-zinc-150 text-lg truncate leading-tight">{stay.name}</h4>
-                                                    <span className="px-2 py-0.5 rounded-md bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-white/5 text-2xs font-bold text-zinc-550 dark:text-zinc-400 uppercase tracking-widest">
-                                                        {stay.type}
-                                                    </span>
-                                                </div>
-                                                <p className="text-xs text-zinc-400 dark:text-zinc-500 font-medium flex items-center gap-1 max-w-full">
-                                                    <span className="material-icons-outlined text-sm shrink-0">place</span>
-                                                    <span className="truncate select-all" title={stay.address}>{stay.address}</span>
-                                                </p>
-                                                
-                                                <div className="flex flex-wrap gap-2 pt-1.5">
-                                                    <span className="bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-100/30 dark:border-indigo-900/10 text-indigo-600 dark:text-indigo-400 px-2.5 py-0.5 rounded-lg text-2xs font-bold uppercase tracking-wider flex items-center gap-1">
-                                                        <span className="material-icons-outlined text-xs">nights_stay</span>
-                                                        {calculateNights(stay.checkInDate, stay.checkOutDate)} Nights
-                                                    </span>
-                                                    <span className="bg-zinc-50 dark:bg-zinc-850/55 border border-zinc-150/40 dark:border-white/5 text-zinc-500 dark:text-zinc-400 px-2.5 py-0.5 rounded-lg text-2xs font-bold tracking-tight">
-                                                        {formatDateRange(stay.checkInDate, stay.checkOutDate, settings).toUpperCase()}
-                                                    </span>
-                                                    {stay.confirmationCode && (
-                                                        <span className="bg-zinc-100 dark:bg-zinc-850 border border-zinc-200 dark:border-white/5 text-zinc-400 dark:text-zinc-500 font-mono text-2xs uppercase font-bold px-2 py-0.5 rounded-lg select-all">
-                                                            CONF: {stay.confirmationCode}
-                                                        </span>
+                                    <VirtualListItem key={stay.id} minHeight={140}>
+                                        <GlassPanel className="wg-glass-card rounded-[28px] p-6 sm:p-8 flex flex-col md:flex-row justify-between items-stretch gap-6 group relative">
+                                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-5 flex-1">
+                                                {/* Brand Logo or Visual Accent */}
+                                                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-50 to-indigo-100 dark:from-indigo-950/20 dark:to-indigo-900/30 border border-indigo-100 dark:border-indigo-900/20 flex items-center justify-center text-primary-600 dark:text-primary-400 font-black text-2xl overflow-hidden shrink-0 shadow-sm">
+                                                    {stay.logoUrl ? (
+                                                        <img referrerPolicy="no-referrer" src={stay.logoUrl} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <TripItemIcon name={stay.type} className="w-7 h-7" />
                                                     )}
                                                 </div>
+                                                
+                                                <div className="space-y-1.5 flex-1 min-w-0">
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <h4 className="font-bold text-light-text dark:text-dark-text text-lg truncate leading-tight">{stay.name}</h4>
+                                                        <span className="px-2 py-0.5 rounded-md bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest">
+                                                            {stay.type}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium flex items-center gap-1 max-w-full">
+                                                        <MapPin className="w-3.5 h-3.5 shrink-0" weight="duotone" />
+                                                        <span className="truncate select-all" title={stay.address}>{stay.address}</span>
+                                                    </p>
+                                                    
+                                                    <div className="flex flex-wrap gap-2 pt-1.5">
+                                                        <span className="bg-primary-500/10 border border-primary-500/20 text-primary-600 dark:text-primary-400 px-2.5 py-0.5 rounded-lg text-2xs font-bold uppercase tracking-wider flex items-center gap-1">
+                                                            <Moon className="w-3 h-3" />
+                                                            {calculateNights(stay.checkInDate, stay.checkOutDate)} Nights
+                                                        </span>
+                                                        <span className="bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary px-2.5 py-0.5 rounded-lg text-2xs font-bold tracking-tight">
+                                                            {formatDateRange(stay.checkInDate, stay.checkOutDate, settings).toUpperCase()}
+                                                        </span>
+                                                        {stay.confirmationCode && (
+                                                            <span className="bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary font-mono text-2xs uppercase font-bold px-2 py-0.5 rounded-lg select-all">
+                                                                CONF: {stay.confirmationCode}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </div>
 
-                                        {/* Right: Stay Details / Pricing */}
-                                        <div className="flex sm:flex-row md:flex-col items-center justify-between md:justify-center md:items-end gap-3 shrink-0 border-t md:border-t-0 md:border-l border-zinc-150 dark:border-white/5 pt-4 md:pt-0 md:pl-6">
-                                            <div className="md:text-right">
-                                                <p className="text-2xs font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">Total Cost</p>
-                                                {stay.cost ? (
-                                                    <>
-                                                        <div className="text-xl font-bold text-semantic-green mt-0.5">{formatCurrency(stay.cost, settings?.currency)}</div>
-                                                        <p className="text-2xs font-semibold text-zinc-400 dark:text-zinc-500">
-                                                            {formatCurrency(Math.round(stay.cost / calculateNights(stay.checkInDate, stay.checkOutDate)), settings?.currency)} / night
-                                                        </p>
-                                                    </>
-                                                ) : (
-                                                    <div className="text-zinc-300 dark:text-zinc-600 font-mono text-xs italic">Unpriced</div>
-                                                )}
-                                            </div>
-                                            
-                                            <div className="flex gap-2">
-                                                {stay.website && (
-                                                    <a 
-                                                        href={stay.website} 
-                                                        target="_blank" 
-                                                        rel="noopener noreferrer" 
-                                                        className="w-8 h-8 rounded-lg bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-white/5 flex items-center justify-center text-zinc-500 dark:text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 transition-all cursor-pointer"
-                                                        title="Visit Website"
+                                            {/* Right: Stay Details / Pricing */}
+                                            <div className="flex sm:flex-row md:flex-col items-center justify-between md:justify-center md:items-end gap-3 shrink-0 border-t md:border-t-0 md:border-l border-black/5 dark:border-white/5 pt-4 md:pt-0 md:pl-6">
+                                                <div className="md:text-right">
+                                                    <p className="text-2xs font-bold uppercase tracking-widest text-light-text-secondary dark:text-dark-text-secondary">Total Cost</p>
+                                                    {stay.cost ? (
+                                                        <>
+                                                            <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">{formatCurrency(stay.cost, settings?.currency)}</div>
+                                                            <p className="text-2xs font-semibold text-light-text-secondary dark:text-dark-text-secondary">
+                                                                {formatCurrency(Math.round(stay.cost / calculateNights(stay.checkInDate, stay.checkOutDate)), settings?.currency)} / night
+                                                            </p>
+                                                        </>
+                                                    ) : (
+                                                        <div className="text-light-text-secondary font-mono text-xs italic">Unpriced</div>
+                                                    )}
+                                                </div>
+                                                
+                                                <div className="flex gap-2">
+                                                    {stay.website && (
+                                                        <a 
+                                                            href={stay.website} 
+                                                            target="_blank" 
+                                                            rel="noopener noreferrer" 
+                                                            className="w-8 h-8 rounded-lg bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 flex items-center justify-center text-light-text-secondary hover:text-primary-600 transition-all cursor-pointer"
+                                                            aria-label="Visit stay website"
+                                                            title="Visit Website"
+                                                        >
+                                                            <Globe className="w-4 h-4" />
+                                                        </a>
+                                                    )}
+                                                    <button 
+                                                        onClick={() => openAccommodationModal()} 
+                                                        className="w-8 h-8 rounded-lg bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 flex items-center justify-center text-light-text-secondary hover:text-primary-600 transition-all cursor-pointer"
+                                                        aria-label="Edit stay details"
+                                                        title="Edit Stay Details"
                                                     >
-                                                        <span className="material-icons-outlined text-base">language</span>
-                                                    </a>
-                                                )}
-                                                <button 
-                                                    onClick={() => openAccommodationModal()} 
-                                                    className="w-8 h-8 rounded-lg bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-white/5 flex items-center justify-center text-zinc-500 dark:text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 transition-all cursor-pointer"
-                                                    title="Edit Stay Details"
-                                                >
-                                                    <span className="material-icons-outlined text-base">edit</span>
-                                                </button>
+                                                        <PencilSimple className="w-4 h-4" />
+                                                    </button>
+                                                </div>
                                             </div>
-                                        </div>
 
-                                    </div>
+                                        </GlassPanel>
+                                    </VirtualListItem>
                                 ))}
                             </div>
                         )}
@@ -1916,115 +2025,115 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 </div>
             )}
 
-            {/* BUDGET TAB - NEW DESIGN */}
+            {/* BUDGET TAB - LIQUID GLASS */}
             {activeTab === 'budget' && (
                 <div className="space-y-8 animate-fade-in">
                     
                     {/* Summary Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {/* Total Cost Card (Emerald Gradient) */}
-                        <div className="p-8 rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-2xl relative overflow-hidden group">
+                        <GlassPanel className="p-8 rounded-[28px] wg-glass-card bg-gradient-to-br from-emerald-500/80 to-teal-600/80 text-white shadow-2xl relative overflow-hidden group">
                             <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/20 rounded-full blur-3xl group-hover:scale-110 transition-transform"></div>
                             <p className="text-xs font-bold text-emerald-100 uppercase tracking-widest mb-2">Total Trip Cost</p>
                             <h2 className="text-5xl font-black tracking-tight">{formatCurrency(totalCost)}</h2>
-                        </div>
+                        </GlassPanel>
 
                         {/* Cost Per Person */}
-                        <div className="p-8 rounded-3xl bg-[#1c1c1e] border border-white/5 shadow-xl relative">
-                            <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Cost Per Person</p>
-                            <h2 className="text-4xl font-black text-white">{formatCurrency(costPerPerson)}</h2>
-                            <p className="text-xs text-gray-500 mt-2">{(trip.participants || []).length} Travelers</p>
-                        </div>
+                        <GlassPanel className="p-8 rounded-[28px] wg-glass-card relative">
+                            <p className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest mb-2">Cost Per Person</p>
+                            <h2 className="text-4xl font-black text-light-text dark:text-dark-text">{formatCurrency(costPerPerson)}</h2>
+                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-2">{(trip.participants || []).length} Travelers</p>
+                        </GlassPanel>
 
                         {/* Daily Average */}
-                        <div className="p-8 rounded-3xl bg-[#1c1c1e] border border-white/5 shadow-xl relative">
-                            <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Daily Average</p>
-                            <h2 className="text-4xl font-black text-white">{formatCurrency(costPerDay)}</h2>
-                            <p className="text-xs text-gray-500 mt-2">{duration} Days</p>
-                        </div>
+                        <GlassPanel className="p-8 rounded-[28px] wg-glass-card relative">
+                            <p className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest mb-2">Daily Average</p>
+                            <h2 className="text-4xl font-black text-light-text dark:text-dark-text">{formatCurrency(costPerDay)}</h2>
+                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-2">{duration} Days</p>
+                        </GlassPanel>
                     </div>
 
                     {/* Lower Section Grid */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         {/* Donut Chart Section */}
-                        <div className="lg:col-span-1 bg-[#1c1c1e] rounded-3xl p-8 border border-white/5 shadow-xl flex flex-col items-center justify-center relative">
-                            <h4 className="absolute top-8 left-8 text-xs font-black text-gray-500 uppercase tracking-widest">Expense Distribution</h4>
+                        <GlassPanel className="lg:col-span-1 wg-glass-card rounded-[28px] p-8 flex flex-col items-center justify-center relative">
+                            <h4 className="absolute top-8 left-8 text-xs font-black text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest">Expense Distribution</h4>
                             
                             <div className="relative w-64 h-64 mt-4">
                                 <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
                                     {/* Background Circle */}
-                                    <circle cx="50" cy="50" r="40" fill="transparent" stroke="#2c2c2e" strokeWidth="12" />
+                                    <circle cx="50" cy="50" r="40" fill="transparent" stroke="currentColor" strokeWidth="12" className="text-black/10 dark:text-white/10" />
                                     
                                     {/* Segments - Simplified visualization logic */}
                                     <circle cx="50" cy="50" r="40" fill="transparent" stroke="#3b82f6" strokeWidth="12" 
                                         strokeDasharray={`${(transportCost/totalCost)*251} 251`} className="transition-all duration-1000" />
                                 </svg>
                                 <div className="absolute inset-0 flex items-center justify-center">
-                                    <span className="text-3xl font-black text-white">100%</span>
+                                    <span className="text-3xl font-black text-light-text dark:text-dark-text">100%</span>
                                 </div>
                             </div>
 
                             <div className="flex gap-4 mt-8">
                                 <div className="flex items-center gap-2">
                                     <span className="w-3 h-3 rounded-full bg-blue-500"></span>
-                                    <span className="text-xs font-bold text-gray-400">Transport</span>
+                                    <span className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary">Transport</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <span className="w-3 h-3 rounded-full bg-amber-500"></span>
-                                    <span className="text-xs font-bold text-gray-400">Stays</span>
+                                    <span className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary">Stays</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <span className="w-3 h-3 rounded-full bg-purple-500"></span>
-                                    <span className="text-xs font-bold text-gray-400">Activities</span>
+                                    <span className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary">Activities</span>
                                 </div>
                             </div>
-                        </div>
+                        </GlassPanel>
 
                         {/* Itemized List Section */}
                         <div className="lg:col-span-2 space-y-4">
-                            <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-4">Itemized Expenses</h4>
+                            <h4 className="text-xs font-black text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest mb-4">Itemized Expenses</h4>
                             
                             {/* Transportation Row */}
-                            <div className="bg-[#1c1c1e] p-6 rounded-3xl border border-white/5 flex items-center justify-between group hover:border-white/10 transition-all">
+                            <GlassPanel className="wg-glass-card rounded-2xl p-6 flex items-center justify-between group">
                                 <div className="flex items-center gap-5">
-                                    <div className="w-12 h-12 rounded-2xl bg-blue-900/30 text-blue-500 flex items-center justify-center">
-                                        <span className="material-icons-outlined text-2xl">flight</span>
+                                    <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                                        <AirplaneTilt className="w-6 h-6" weight="duotone" />
                                     </div>
                                     <div>
-                                        <h4 className="font-bold text-white text-lg">Transportation</h4>
-                                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">{trip.transports?.length || 0} Bookings</p>
+                                        <h4 className="font-bold text-light-text dark:text-dark-text text-lg">Transportation</h4>
+                                        <p className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider">{trip.transports?.length || 0} Bookings</p>
                                     </div>
                                 </div>
-                                <div className="text-xl font-bold text-white">{formatCurrency(transportCost)}</div>
-                            </div>
+                                <div className="text-xl font-bold text-light-text dark:text-dark-text">{formatCurrency(transportCost)}</div>
+                            </GlassPanel>
 
                             {/* Accommodation Row */}
-                            <div className="bg-[#1c1c1e] p-6 rounded-3xl border border-white/5 flex items-center justify-between group hover:border-white/10 transition-all">
+                            <GlassPanel className="wg-glass-card rounded-2xl p-6 flex items-center justify-between group">
                                 <div className="flex items-center gap-5">
-                                    <div className="w-12 h-12 rounded-2xl bg-amber-900/30 text-amber-500 flex items-center justify-center">
-                                        <span className="material-icons-outlined text-2xl">hotel</span>
+                                    <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+                                        <Buildings className="w-6 h-6" weight="duotone" />
                                     </div>
                                     <div>
-                                        <h4 className="font-bold text-white text-lg">Accommodation</h4>
-                                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">{trip.accommodations?.length || 0} Properties</p>
+                                        <h4 className="font-bold text-light-text dark:text-dark-text text-lg">Accommodation</h4>
+                                        <p className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider">{trip.accommodations?.length || 0} Properties</p>
                                     </div>
                                 </div>
-                                <div className="text-xl font-bold text-white">{formatCurrency(stayCost)}</div>
-                            </div>
+                                <div className="text-xl font-bold text-light-text dark:text-dark-text">{formatCurrency(stayCost)}</div>
+                            </GlassPanel>
 
                             {/* Activities Row */}
-                            <div className="bg-[#1c1c1e] p-6 rounded-3xl border border-white/5 flex items-center justify-between group hover:border-white/10 transition-all">
+                            <GlassPanel className="wg-glass-card rounded-2xl p-6 flex items-center justify-between group">
                                 <div className="flex items-center gap-5">
-                                    <div className="w-12 h-12 rounded-2xl bg-purple-900/30 text-purple-500 flex items-center justify-center">
-                                        <span className="material-icons-outlined text-2xl">local_activity</span>
+                                    <div className="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-500 flex items-center justify-center">
+                                        <Ticket className="w-6 h-6" weight="duotone" />
                                     </div>
                                     <div>
-                                        <h4 className="font-bold text-white text-lg">Activities & Tours</h4>
-                                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">{trip.activities?.length || 0} Items</p>
+                                        <h4 className="font-bold text-light-text dark:text-dark-text text-lg">Activities & Tours</h4>
+                                        <p className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider">{trip.activities?.length || 0} Items</p>
                                     </div>
                                 </div>
-                                <div className="text-xl font-bold text-white">{formatCurrency(activityCost)}</div>
-                            </div>
+                                <div className="text-xl font-bold text-light-text dark:text-dark-text">{formatCurrency(activityCost)}</div>
+                            </GlassPanel>
                         </div>
                     </div>
                 </div>
@@ -2149,7 +2258,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                             className="min-w-[44px] min-h-[44px] bg-black/60 hover:bg-black/80 text-white rounded-full p-2.5 backdrop-blur-md transition-colors border border-white/20 flex items-center justify-center cursor-pointer"
                             aria-label="Close cinematic view"
                         >
-                            <span className="material-icons-outlined text-2xl">close</span>
+                            <X className="w-6 h-6 text-white" />
                         </button>
                     </div>
                     <Suspense fallback={
@@ -2172,7 +2281,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
             {/* Import Modal */}
             <Modal isOpen={importPreview.open} onClose={() => setImportPreview({ open: false, candidates: [] })} title="AI Flight Analysis" maxWidth="max-w-4xl">
                <div className="space-y-6">
-                   <div className="flex flex-col md:flex-row gap-4 bg-gray-50 dark:bg-white/5 p-4 rounded-2xl border border-gray-100 dark:border-white/5">
+                   <div className="flex flex-col md:flex-row gap-4 bg-black/5 dark:bg-white/5 p-4 rounded-2xl border border-black/10 dark:border-white/10">
                        <Input placeholder="Filter by flight or location..." value={importFilters.search} onChange={e => setImportFilters({...importFilters, search: e.target.value})} className="!bg-white dark:!bg-black/20" />
                        <div className="flex gap-2">
                            <Input type="date" value={importFilters.minDate} onChange={e => setImportFilters({...importFilters, minDate: e.target.value})} className="!bg-white dark:!bg-black/20" />
@@ -2180,7 +2289,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                        </div>
                    </div>
                    <div className="flex justify-between items-center px-2">
-                       <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">{selectedCount} Selected</span>
+                       <span className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest">{selectedCount} Selected</span>
                        <Button size="sm" variant="ghost" onClick={toggleAllFiltered}>{filteredCandidates.every(c => c.selected) ? 'Deselect All' : 'Select All'}</Button>
                    </div>
                    <div className="space-y-3 max-h-[500px] overflow-y-auto custom-scrollbar p-1">
@@ -2189,34 +2298,36 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                            const isSelected = candidate.selected;
                            const isExpanded = expandedCandidateId === t.id;
                            return (
-                               <div key={t.id} className={`border rounded-2xl transition-all ${isSelected ? 'border-blue-500 bg-blue-50/20 dark:bg-blue-900/10' : 'border-gray-200 dark:border-white/10 bg-white dark:bg-gray-800'}`}>
-                                   <div className="p-4 flex items-center gap-4 cursor-pointer" onClick={() => toggleCandidateSelection(t.id)}>
-                                       <div className={`w-6 h-6 rounded border flex items-center justify-center transition-colors ${isSelected ? 'bg-blue-500 border-blue-500' : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600'}`}>
-                                           {isSelected && <span className="material-icons-outlined text-white text-xs">check</span>}
+                               <VirtualListItem key={t.id} minHeight={72}>
+                                   <div className={`border rounded-2xl transition-all ${isSelected ? 'border-primary-500 bg-primary-500/10' : 'border-black/10 dark:border-white/10 bg-light-card dark:bg-dark-card'}`}>
+                                       <div className="p-4 flex items-center gap-4 cursor-pointer" onClick={() => toggleCandidateSelection(t.id)}>
+                                           <div className={`w-6 h-6 rounded border flex items-center justify-center transition-colors ${isSelected ? 'bg-primary-500 border-primary-500' : 'bg-white dark:bg-dark-fill border-gray-300 dark:border-gray-600'}`}>
+                                               {isSelected && <Check className="w-3.5 h-3.5 text-white" weight="bold" />}
+                                           </div>
+                                           <div className="flex-1">
+                                                <div className="flex justify-between items-center"><h4 className="font-bold text-light-text dark:text-dark-text">{t.name}</h4><Badge color={candidate.confidence > 80 ? 'green' : candidate.confidence > 50 ? 'amber' : 'gray'}>{candidate.confidence}% Match</Badge></div>
+                                                <div className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-1 flex gap-3"><span>{formatDate(t.startDate, 'short-with-year', settings)}</span><span>•</span><span>{t.transports?.length} Flights</span></div>
+                                           </div>
+                                           <button onClick={(e) => { e.stopPropagation(); setExpandedCandidateId(isExpanded ? null : t.id); }} aria-label="Toggle flight details" className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full text-light-text-secondary min-w-[36px] min-h-[36px] flex items-center justify-center cursor-pointer">{isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}</button>
                                        </div>
-                                       <div className="flex-1">
-                                            <div className="flex justify-between items-center"><h4 className="font-bold text-gray-900 dark:text-white">{t.name}</h4><Badge color={candidate.confidence > 80 ? 'green' : candidate.confidence > 50 ? 'amber' : 'gray'}>{candidate.confidence}% Match</Badge></div>
-                                            <div className="text-xs text-gray-500 mt-1 flex gap-3"><span>{formatDate(t.startDate, 'short-with-year', settings)}</span><span>•</span><span>{t.transports?.length} Flights</span></div>
-                                        </div>
-                                       <button onClick={(e) => { e.stopPropagation(); setExpandedCandidateId(isExpanded ? null : t.id); }} className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full text-gray-400">{isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}</button>
+                                       {isExpanded && t.transports && (
+                                           <div className="border-t border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02] p-4 space-y-2">
+                                               {t.transports.map((tr, idx) => (
+                                                   <div key={tr.id || `${tr.identifier}-${tr.departureDate}-${idx}`} className="flex items-center gap-3 text-xs p-2 bg-light-card dark:bg-dark-card rounded-lg border border-black/5 dark:border-white/5">
+                                                       <span className="font-mono font-bold text-primary-600 dark:text-primary-400">{tr.departureTime}</span>
+                                                       <span className="font-bold">{tr.origin} &rarr; {tr.destination}</span>
+                                                       <span className="text-light-text-secondary">{tr.provider} {tr.identifier}</span>
+                                                   </div>
+                                               ))}
+                                           </div>
+                                       )}
                                    </div>
-                                   {isExpanded && t.transports && (
-                                       <div className="border-t border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-black/20 p-4 space-y-2">
-                                           {t.transports.map((tr, idx) => (
-                                               <div key={tr.id || `${tr.identifier}-${tr.departureDate}-${idx}`} className="flex items-center gap-3 text-xs p-2 bg-white dark:bg-white/5 rounded-lg border border-gray-100 dark:border-white/5">
-                                                   <span className="font-mono font-bold text-blue-600 dark:text-blue-400">{tr.departureTime}</span>
-                                                   <span className="font-bold">{tr.origin} &rarr; {tr.destination}</span>
-                                                   <span className="text-gray-500">{tr.provider} {tr.identifier}</span>
-                                               </div>
-                                           ))}
-                                       </div>
-                                   )}
-                               </div>
+                               </VirtualListItem>
                            );
                        })}
-                       {filteredCandidates.length === 0 && <div className="text-center py-10 text-gray-400">No flights match your filters.</div>}
+                       {filteredCandidates.length === 0 && <div className="text-center py-10 text-light-text-secondary">No flights match your filters.</div>}
                    </div>
-                   <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-white/5">
+                   <div className="flex justify-end gap-3 pt-4 border-t border-black/5 dark:border-white/5">
                         <Button variant="ghost" onClick={() => setImportPreview({ open: false, candidates: [] })}>Cancel</Button>
                         {trip && isImportWizardOpen && (
                             <React.Suspense fallback={null}>

@@ -3,6 +3,10 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Trip, PackingItem, WorkspaceSettings } from '../types';
 import { Button, Input, Select, Badge } from './ui';
 import { EmptyState } from './EmptyState';
+import { 
+  Backpack, Sparkle, Plus, Check, X, TShirt, Drop, 
+  DeviceMobile, FileText, FirstAid, SquaresFour 
+} from '@phosphor-icons/react';
 import { GoogleGenAI, Type } from "@google/genai";
 import { dataService } from '../services/mockDb';
 
@@ -12,12 +16,12 @@ interface PackingListProps {
 }
 
 const CATEGORIES = [
-    { id: 'Clothing', icon: 'checkroom', color: 'blue' },
-    { id: 'Toiletries', icon: 'soap', color: 'teal' },
-    { id: 'Electronics', icon: 'cable', color: 'purple' },
-    { id: 'Documents', icon: 'description', color: 'amber' },
-    { id: 'Health', icon: 'medical_services', color: 'rose' },
-    { id: 'Misc', icon: 'category', color: 'gray' },
+    { id: 'Clothing', Icon: TShirt, color: 'blue' },
+    { id: 'Toiletries', Icon: Drop, color: 'teal' },
+    { id: 'Electronics', Icon: DeviceMobile, color: 'purple' },
+    { id: 'Documents', Icon: FileText, color: 'amber' },
+    { id: 'Health', Icon: FirstAid, color: 'rose' },
+    { id: 'Misc', Icon: SquaresFour, color: 'gray' },
 ];
 
 export const PackingList: React.FC<PackingListProps> = ({ trip, onUpdate }) => {
@@ -193,7 +197,7 @@ export const PackingList: React.FC<PackingListProps> = ({ trip, onUpdate }) => {
                         <Button 
                             onClick={handleImportMaster} 
                             className="bg-white/10 text-white hover:bg-white/20 border border-white/20 shadow-lg backdrop-blur-md"
-                            icon={<span className="material-icons-outlined">backpack</span>}
+                            icon={<Backpack className="w-4 h-4" />}
                         >
                             Load Master List
                         </Button>
@@ -202,7 +206,7 @@ export const PackingList: React.FC<PackingListProps> = ({ trip, onUpdate }) => {
                         onClick={handleAiGenerate} 
                         isLoading={isGenerating}
                         className="bg-white text-blue-600 hover:bg-blue-50 border-none shadow-lg"
-                        icon={<span className="material-icons-outlined">auto_awesome</span>}
+                        icon={<Sparkle className="w-4 h-4" />}
                     >
                         Magic Generate
                     </Button>
@@ -228,7 +232,7 @@ export const PackingList: React.FC<PackingListProps> = ({ trip, onUpdate }) => {
                         className="!bg-gray-50 dark:!bg-black/20"
                     />
                 </div>
-                <Button onClick={handleAdd} className="h-[50px] w-[50px] !rounded-2xl !p-0" icon={<span className="material-icons-outlined">add</span>} />
+                <Button onClick={handleAdd} className="h-[50px] w-[50px] !rounded-2xl !p-0" icon={<Plus className="w-4 h-4" />} aria-label="Add packing item" />
             </div>
 
             {/* List Groups */}
@@ -250,11 +254,12 @@ export const PackingList: React.FC<PackingListProps> = ({ trip, onUpdate }) => {
                         blue: 'text-blue-500', teal: 'text-teal-500', purple: 'text-purple-500',
                         amber: 'text-amber-500', rose: 'text-rose-500', gray: 'text-gray-400'
                     };
+                    const CatIcon = cat.Icon;
 
                     return (
                         <div key={cat.id} className={`p-5 rounded-3xl border transition-all ${bgMap[cat.color]}`}>
                             <div className="flex items-center gap-3 mb-4">
-                                <span className={`material-icons-outlined text-xl ${iconMap[cat.color]}`}>{cat.icon}</span>
+                                <CatIcon className={`w-5 h-5 ${iconMap[cat.color]}`} />
                                 <h3 className="font-black text-gray-800 dark:text-gray-200">{cat.id}</h3>
                                 <span className="ml-auto text-xs font-bold text-gray-400">{catItems.filter(i => i.isChecked).length}/{catItems.length}</span>
                             </div>
@@ -266,17 +271,18 @@ export const PackingList: React.FC<PackingListProps> = ({ trip, onUpdate }) => {
                                         className="group flex items-center gap-3 p-3 bg-white/60 dark:bg-black/20 rounded-xl cursor-pointer hover:bg-white dark:hover:bg-white/5 transition-all"
                                     >
                                         <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${item.isChecked ? 'bg-green-500 border-green-500' : 'bg-transparent border-gray-300 dark:border-gray-600'}`}>
-                                            {item.isChecked && <span className="material-icons-outlined text-white text-xs font-bold">check</span>}
+                                            {item.isChecked && <Check className="text-white text-xs font-bold" />}
                                         </div>
                                         <span className={`flex-1 text-sm font-medium transition-all ${item.isChecked ? 'text-gray-400 line-through' : 'text-gray-800 dark:text-gray-200'}`}>
                                             {item.text}
                                         </span>
                                         <button 
+                                            type="button"
                                             onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
                                             className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-semantic-red p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-all cursor-pointer"
                                             aria-label={`Delete ${item.text}`}
                                         >
-                                            <span className="material-icons-outlined text-sm">close</span>
+                                            <X className="w-4 h-4" />
                                         </button>
                                     </div>
                                 ))}
@@ -287,7 +293,7 @@ export const PackingList: React.FC<PackingListProps> = ({ trip, onUpdate }) => {
                 {items.length === 0 && (
                     <div className="col-span-full">
                         <EmptyState
-                            icon={<span className="material-icons-outlined text-5xl text-primary-500">backpack</span>}
+                            icon={<Backpack className="w-12 h-12 text-primary-500" />}
                             title="Your Bag is Empty"
                             description="Start adding items to your packing list manually or generate smart suggestions."
                             action={{

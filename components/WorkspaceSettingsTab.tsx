@@ -1,4 +1,25 @@
 import React, { useState } from 'react';
+import { 
+    CheckCircle, 
+    GearSix, 
+    MapTrifold, 
+    Thermometer, 
+    Sparkle, 
+    AirplaneTilt, 
+    ArrowSquareOut, 
+    Image, 
+    UserPlus, 
+    UserMinus, 
+    PencilSimple, 
+    Trash, 
+    DownloadSimple, 
+    UploadSimple, 
+    Warning,
+    CalendarBlank,
+    Rss,
+    Wand,
+    ArrowsClockwise
+} from '@phosphor-icons/react';
 import { Card, Button, Input, Select, Modal } from './ui';
 import { User, WorkspaceSettings, SavedConfig } from '../types';
 import { ImportState, dataService } from '../services/mockDb';
@@ -64,7 +85,7 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                                     <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Global Identity & Region</p>
                                 </div>
                             </div>
-                            <Button variant="primary" size="lg" className="!rounded-2xl shadow-xl shadow-blue-500/20" onClick={handleSaveOrgSettings} isLoading={isSavingOrg} icon={<span className="material-icons-outlined">check_circle</span>}>Commit Changes</Button>
+                            <Button variant="primary" size="lg" className="!rounded-2xl shadow-xl shadow-blue-500/20" onClick={handleSaveOrgSettings} isLoading={isSavingOrg} icon={<CheckCircle weight="bold" className="text-lg" />}>Commit Changes</Button>
                         </div>
                     </div>
 
@@ -91,7 +112,7 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                         {/* Defaults Section */}
                         <div className="border-t border-gray-100 dark:border-white/5 pt-6 md:col-span-3 space-y-4">
                             <h4 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
-                                <span className="material-icons-outlined text-lg text-blue-500">settings_suggest</span>
+                                <GearSix weight="duotone" className="text-lg text-blue-500" />
                                 Transit & Travel Defaults
                             </h4>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -138,7 +159,7 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                             <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-white/10 rounded-2xl">
                                 <div className="flex items-center gap-4">
                                     <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                                        <span className="material-icons-outlined">map</span>
+                                        <MapTrifold weight="duotone" className="text-xl" />
                                     </div>
                                     <div>
                                         <h5 className="font-bold text-gray-900 dark:text-white text-sm">OpenStreetMap</h5>
@@ -155,7 +176,7 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                             <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-white/10 rounded-2xl">
                                 <div className="flex items-center gap-4">
                                     <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 flex items-center justify-center">
-                                        <span className="material-icons-outlined">thermostat</span>
+                                        <Thermometer weight="duotone" className="text-xl" />
                                     </div>
                                     <div>
                                         <h5 className="font-bold text-gray-900 dark:text-white text-sm">Open-Meteo</h5>
@@ -173,7 +194,7 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-4">
                                         <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center">
-                                            <span className="material-icons-outlined">auto_awesome</span>
+                                            <Sparkle weight="duotone" className="text-xl" />
                                         </div>
                                         <div>
                                             <h5 className="font-bold text-gray-900 dark:text-white text-sm">Google Gemini</h5>
@@ -202,7 +223,7 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-4">
                                         <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-                                            <span className="material-icons-outlined">flight</span>
+                                            <AirplaneTilt weight="duotone" className="text-xl" />
                                         </div>
                                         <div>
                                             <h5 className="font-bold text-gray-900 dark:text-white text-sm">AviationStack</h5>
@@ -215,7 +236,7 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                                         rel="noopener noreferrer"
                                         className="text-xs font-bold text-blue-500 hover:underline uppercase tracking-wider flex items-center gap-1"
                                     >
-                                        Get Key <span className="material-icons-outlined text-xs">open_in_new</span>
+                                        Get Key <ArrowSquareOut weight="bold" className="text-xs" />
                                     </a>
                                 </div>
                                 <Input 
@@ -232,7 +253,7 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-4">
                                         <div className="w-10 h-10 rounded-xl bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400 flex items-center justify-center">
-                                            <span className="material-icons-outlined">image</span>
+                                            <Image weight="duotone" className="text-xl" />
                                         </div>
                                         <div>
                                             <h5 className="font-bold text-gray-900 dark:text-white text-sm">Brandfetch</h5>
@@ -245,7 +266,7 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                                         rel="noopener noreferrer"
                                         className="text-xs font-bold text-blue-500 hover:underline uppercase tracking-wider flex items-center gap-1"
                                     >
-                                        Get Key <span className="material-icons-outlined text-xs">open_in_new</span>
+                                        Get Key <ArrowSquareOut weight="bold" className="text-xs" />
                                     </a>
                                 </div>
                                 <Input 
@@ -262,7 +283,7 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-4">
                                         <div className="w-10 h-10 rounded-xl bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400 flex items-center justify-center">
-                                            <span className="material-icons-outlined">map</span>
+                                            <MapTrifold weight="duotone" className="text-xl" />
                                         </div>
                                         <div>
                                             <h5 className="font-bold text-gray-900 dark:text-white text-sm">CARTO Maps API</h5>
@@ -275,7 +296,7 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                                         rel="noopener noreferrer"
                                         className="text-xs font-bold text-blue-500 hover:underline uppercase tracking-wider flex items-center gap-1"
                                     >
-                                        Get Key <span className="material-icons-outlined text-xs">open_in_new</span>
+                                        Get Key <ArrowSquareOut weight="bold" className="text-xs" />
                                     </a>
                                 </div>
                                 <Input 
@@ -296,13 +317,13 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                             <h3 className="text-2xl font-black text-gray-900 dark:text-white leading-none">Personnel Roster</h3>
                             <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Management of workspace inhabitants</p>
                         </div>
-                        <Button variant="secondary" className="!rounded-xl border-2" icon={<span className="material-icons-outlined text-lg">person_add</span>} onClick={handleCreateUser}>Enroll New Member</Button>
+                        <Button variant="secondary" className="!rounded-xl border-2" icon={<UserPlus weight="bold" className="text-lg" />} onClick={handleCreateUser}>Enroll New Member</Button>
                     </div>
 
                     <div className="p-4 space-y-3">
                         {users.length === 0 ? (
                             <div className="py-16 text-center">
-                                <span className="material-icons-outlined text-gray-200 dark:text-gray-800 text-6xl">person_off</span>
+                                <UserMinus weight="duotone" className="text-gray-200 dark:text-gray-800 text-6xl mx-auto" />
                                 <p className="text-gray-400 mt-4 font-bold uppercase tracking-widest text-xs">No active personnel data</p>
                             </div>
                         ) : (
@@ -328,8 +349,8 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                                             </div>
                                             
                                             <div className="flex items-center gap-1 mt-4 lg:mt-0 pl-4 border-l border-gray-100 dark:border-white/10 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button onClick={() => handleEditUser(user)} className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg"><span className="material-icons-outlined text-lg">edit</span></button>
-                                                <button onClick={() => initiateDeleteMember(user)} className="p-2 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg"><span className="material-icons-outlined text-lg">delete</span></button>
+                                                <button onClick={() => handleEditUser(user)} className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg" aria-label="Edit user"><PencilSimple weight="bold" className="text-lg" /></button>
+                                                <button onClick={() => initiateDeleteMember(user)} className="p-2 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg" aria-label="Delete user"><Trash weight="bold" className="text-lg" /></button>
                                             </div>
                                         </div>
                                     );
@@ -353,14 +374,14 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                         <div className="space-y-4">
                             <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center">
-                                    <span className="material-icons-outlined text-sm">settings_backup_restore</span>
+                                    <ArrowsClockwise weight="duotone" className="text-lg text-blue-600" />
                                 </div>
                                 <h4 className="text-sm font-black text-gray-800 dark:text-white uppercase tracking-widest">Database Lifecycle</h4>
                             </div>
 
                             <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30">
                                 <div className="flex items-start gap-3">
-                                    <span className="material-icons-outlined text-amber-500 mt-0.5">warning</span>
+                                    <Warning weight="fill" className="text-amber-500 text-lg mt-0.5" />
                                     <div className="space-y-1">
                                         <p className="text-xs font-bold text-amber-800 dark:text-amber-200">System Caution</p>
                                         <p className="text-xs text-amber-700/70 dark:text-amber-300/60 leading-relaxed font-medium">Restoring from a backup will overwrite all current users, trips, and workspace settings. Ensure you have a recent export.</p>
@@ -373,7 +394,7 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                                     onClick={handleExport} 
                                     variant="primary" 
                                     className="h-14 !rounded-2xl shadow-lg shadow-blue-500/20" 
-                                    icon={<span className="material-icons-outlined">download</span>}
+                                    icon={<DownloadSimple weight="bold" className="text-lg" />}
                                 >
                                     Generate Backup JSON
                                 </Button>
@@ -381,7 +402,7 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                                     onClick={handleImportTrigger} 
                                     variant="danger" 
                                     className="h-14 !rounded-2xl border-dashed border-2 bg-transparent hover:bg-rose-50 dark:hover:bg-rose-900/10" 
-                                    icon={<span className="material-icons-outlined">upload</span>}
+                                    icon={<UploadSimple weight="bold" className="text-lg" />}
                                 >
                                     Overwrite & Restore
                                 </Button>
@@ -389,7 +410,7 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                                     onClick={() => setIsResetModalOpen(true)} 
                                     variant="danger" 
                                     className="h-14 !rounded-2xl border-2 border-red-200 dark:border-red-900/40 bg-red-50/50 hover:bg-red-100 text-red-600 dark:bg-red-505/10 dark:text-red-400 font-bold flex items-center justify-center gap-2" 
-                                    icon={<span className="material-icons-outlined">delete_forever</span>}
+                                    icon={<Trash weight="fill" className="text-lg" />}
                                 >
                                     Wipe & Reset Application Data
                                 </Button>
@@ -401,17 +422,17 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                         <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-white/5">
                             <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 rounded-lg bg-teal-500/10 text-teal-600 flex items-center justify-center">
-                                    <span className="material-icons-outlined text-sm">event_note</span>
+                                    <CalendarBlank weight="duotone" className="text-lg text-teal-600" />
                                 </div>
                                 <h4 className="text-sm font-black text-gray-800 dark:text-white uppercase tracking-widest">Calendar Sync</h4>
                             </div>
                             
                             <div className="grid grid-cols-1 gap-3">
                                 <Button onClick={handleCalendarExport} variant="ghost" className="bg-gray-50 dark:bg-white/5 h-12 text-xs font-bold uppercase tracking-wider !rounded-xl">
-                                    <span className="material-icons-outlined text-sm mr-2">file_download</span> Download .ICS File
+                                    <DownloadSimple weight="bold" className="text-sm mr-2" /> Download .ICS File
                                 </Button>
                                 <Button onClick={handleCopySubscriptionLink} variant="ghost" className="bg-gray-50 dark:bg-white/5 h-12 text-xs font-bold uppercase tracking-wider !rounded-xl">
-                                    <span className="material-icons-outlined text-sm mr-2">rss_feed</span> Copy Sync Link
+                                    <Rss weight="bold" className="text-sm mr-2" /> Copy Sync Link
                                 </Button>
                             </div>
                         </div>
@@ -421,7 +442,7 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-600 flex items-center justify-center">
-                                        <span className="material-icons-outlined text-sm">flight</span>
+                                        <AirplaneTilt weight="duotone" className="text-lg text-indigo-600" />
                                     </div>
                                     <h4 className="text-sm font-black text-gray-800 dark:text-white uppercase tracking-widest">Flight Imports & Backups</h4>
                                 </div>
@@ -438,7 +459,7 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                                     variant="primary" 
                                     className="w-full h-11 text-xs font-black uppercase tracking-wider !rounded-2xl shadow-lg shadow-blue-500/15 flex items-center justify-center gap-2"
                                 >
-                                    <span className="material-icons-outlined text-sm">auto_fix_high</span>
+                                    <Wand weight="duotone" className="text-sm" />
                                     Load Flight File & Map Fields
                                 </Button>
                             </div>
@@ -493,7 +514,7 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                 <div className="space-y-6 text-left">
                     <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30">
                         <div className="flex items-start gap-3">
-                            <span className="material-icons-outlined text-red-500 mt-0.5">warning</span>
+                            <Warning weight="fill" className="text-red-500 text-lg mt-0.5" />
                             <div className="space-y-1">
                                 <p className="text-sm font-black text-red-800 dark:text-red-400 uppercase tracking-wider">Dangerous Action</p>
                                 <p className="text-xs text-red-700/80 dark:text-red-350/60 leading-relaxed font-semibold">

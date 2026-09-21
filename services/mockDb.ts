@@ -84,6 +84,63 @@ export const safeStorage = {
   }
 };
 
+// --- In-Memory Document Cache with Debounced Disk Sync (Performance Optimization) ---
+const memoryCache: Record<string, any> = {};
+const pendingWrites: Map<string, any> = new Map();
+let writeDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+export function flushPendingStorageWrites() {
+  if (pendingWrites.size === 0) return;
+  pendingWrites.forEach((value, storageKey) => {
+    try {
+      safeStorage.setItem(storageKey, JSON.stringify(value));
+    } catch (e) {
+      console.warn(`[STORAGE] Cache flush failure for ${storageKey}:`, e);
+    }
+  });
+  pendingWrites.clear();
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', flushPendingStorageWrites);
+}
+
+function getCachedStorage<T>(storageKey: string, defaultValue: T): T {
+  if (storageKey in memoryCache) {
+    return memoryCache[storageKey] as T;
+  }
+  const raw = safeStorage.getItem(storageKey);
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      memoryCache[storageKey] = parsed;
+      return parsed as T;
+    } catch (e) {
+      console.warn(`[STORAGE] Parse error for ${storageKey}, resetting:`, e);
+    }
+  }
+  memoryCache[storageKey] = defaultValue;
+  return defaultValue;
+}
+
+function setCachedStorage<T>(storageKey: string, value: T, immediate = false) {
+  memoryCache[storageKey] = value;
+  pendingWrites.set(storageKey, value);
+
+  if (immediate) {
+    flushPendingStorageWrites();
+    return;
+  }
+
+  if (writeDebounceTimer) {
+    clearTimeout(writeDebounceTimer);
+  }
+  writeDebounceTimer = setTimeout(() => {
+    flushPendingStorageWrites();
+    writeDebounceTimer = null;
+  }, 100);
+}
+
 // --- Browser Security Hashing helpers (Standard Web Crypto API) ---
 export async function hashPasswordInBrowser(password: string, saltHex?: string): Promise<string> {
   const isSecureContextAvailable = typeof window !== 'undefined' && 
@@ -455,11 +512,11 @@ class DataService {
       
       if (endpoint === '/settings') {
           if (method === 'GET') {
-              const s = localStorage.getItem(key('settings'));
-              return (s ? { ...DEFAULT_WORKSPACE_SETTINGS, ...JSON.parse(s) } : { ...DEFAULT_WORKSPACE_SETTINGS }) as T;
+              const s = getCachedStorage<any>(key('settings'), null);
+              return (s ? { ...DEFAULT_WORKSPACE_SETTINGS, ...s } : { ...DEFAULT_WORKSPACE_SETTINGS }) as T;
           }
           if (method === 'PUT') {
-              localStorage.setItem(key('settings'), JSON.stringify(body));
+              setCachedStorage(key('settings'), body, true);
               try { window.dispatchEvent(new CustomEvent('wandergrid_db_updated')); } catch (e) {}
               return body as T;
           }
@@ -477,29 +534,30 @@ class DataService {
 
        for (const col of collections) {
           if (endpoint === col.route) {
-              const list = JSON.parse(localStorage.getItem(key(col.storage)) || '[]');
+              const list = getCachedStorage<any[]>(key(col.storage), []);
               if (method === 'GET') return list as T;
               if (method === 'POST') {
-                  list.push(body);
-                  localStorage.setItem(key(col.storage), JSON.stringify(list));
+                  const updated = [...list, body];
+                  setCachedStorage(key(col.storage), updated);
                   try { window.dispatchEvent(new CustomEvent('wandergrid_db_updated')); } catch (e) {}
                   return body as T;
               }
           }
           if (endpoint.startsWith(`${col.route}/`)) {
               const id = endpoint.split('/')[2];
-              const list = JSON.parse(localStorage.getItem(key(col.storage)) || '[]');
+              const list = getCachedStorage<any[]>(key(col.storage), []);
               if (method === 'PUT') {
                   const idx = list.findIndex((i: any) => i.id === id);
-                  if (idx >= 0) list[idx] = body;
-                  else list.push(body); 
-                  localStorage.setItem(key(col.storage), JSON.stringify(list));
+                  const updated = [...list];
+                  if (idx >= 0) updated[idx] = body;
+                  else updated.push(body); 
+                  setCachedStorage(key(col.storage), updated);
                   try { window.dispatchEvent(new CustomEvent('wandergrid_db_updated')); } catch (e) {}
                   return body as T;
               }
               if (method === 'DELETE') {
                   const newList = list.filter((i: any) => i.id !== id);
-                  localStorage.setItem(key(col.storage), JSON.stringify(newList));
+                  setCachedStorage(key(col.storage), newList);
                   try { window.dispatchEvent(new CustomEvent('wandergrid_db_updated')); } catch (e) {}
                   return { success: true } as unknown as T;
               }
@@ -508,14 +566,15 @@ class DataService {
 
       if (endpoint === '/trips/bulk') {
           if (method === 'POST') {
-              const list = JSON.parse(localStorage.getItem(key('trips')) || '[]');
+              const list = getCachedStorage<any[]>(key('trips'), []);
+              const updated = [...list];
               const payload = body as any[];
               for (const trip of payload) {
-                  const idx = list.findIndex((i: any) => i.id === trip.id);
-                  if (idx >= 0) list[idx] = trip;
-                  else list.push(trip);
+                  const idx = updated.findIndex((i: any) => i.id === trip.id);
+                  if (idx >= 0) updated[idx] = trip;
+                  else updated.push(trip);
               }
-              localStorage.setItem(key('trips'), JSON.stringify(list));
+              setCachedStorage(key('trips'), updated);
               try { window.dispatchEvent(new CustomEvent('wandergrid_db_updated')); } catch (e) {}
               return { success: true, count: payload.length } as unknown as T;
           }
@@ -523,14 +582,15 @@ class DataService {
 
       if (endpoint === '/flights/bulk') {
           if (method === 'POST') {
-              const list = JSON.parse(localStorage.getItem(key('flights')) || '[]');
+              const list = getCachedStorage<any[]>(key('flights'), []);
+              const updated = [...list];
               const payload = body as any[];
               for (const flight of payload) {
-                  const idx = list.findIndex((i: any) => i.id === flight.id);
-                  if (idx >= 0) list[idx] = flight;
-                  else list.push(flight);
+                  const idx = updated.findIndex((i: any) => i.id === flight.id);
+                  if (idx >= 0) updated[idx] = flight;
+                  else updated.push(flight);
               }
-              localStorage.setItem(key('flights'), JSON.stringify(list));
+              setCachedStorage(key('flights'), updated);
               try { window.dispatchEvent(new CustomEvent('wandergrid_db_updated')); } catch (e) {}
               return { success: true, count: payload.length } as unknown as T;
           }
@@ -538,14 +598,15 @@ class DataService {
 
       if (endpoint === '/visited/bulk') {
           if (method === 'POST') {
-              const list = JSON.parse(localStorage.getItem(key('visited')) || '[]');
+              const list = getCachedStorage<any[]>(key('visited'), []);
+              const updated = [...list];
               const payload = body as any[];
               for (const item of payload) {
-                  const idx = list.findIndex((i: any) => i.id === item.id);
-                  if (idx >= 0) list[idx] = item;
-                  else list.push(item);
+                  const idx = updated.findIndex((i: any) => i.id === item.id);
+                  if (idx >= 0) updated[idx] = item;
+                  else updated.push(item);
               }
-              localStorage.setItem(key('visited'), JSON.stringify(list));
+              setCachedStorage(key('visited'), updated);
               try { window.dispatchEvent(new CustomEvent('wandergrid_db_updated')); } catch (e) {}
               return { success: true, count: payload.length } as unknown as T;
           }
@@ -553,9 +614,9 @@ class DataService {
 
       if (endpoint === '/backup') {
           const backup: any = { workspaceSettings: {} };
-          collections.forEach(c => backup[c.storage] = JSON.parse(localStorage.getItem(key(c.storage)) || '[]'));
-          const s = localStorage.getItem(key('settings'));
-          backup.workspaceSettings = s ? JSON.parse(s) : DEFAULT_WORKSPACE_SETTINGS;
+          collections.forEach(c => backup[c.storage] = getCachedStorage<any[]>(key(c.storage), []));
+          const s = getCachedStorage<any>(key('settings'), null);
+          backup.workspaceSettings = s || DEFAULT_WORKSPACE_SETTINGS;
           const cleanBackup = removeSensitiveData(backup);
           return cleanBackup as T;
       }
@@ -565,7 +626,7 @@ class DataService {
           collections.forEach(c => {
               if (data[c.storage] && Array.isArray(data[c.storage])) {
                   const keyName = key(c.storage);
-                  const existingList = JSON.parse(localStorage.getItem(keyName) || '[]');
+                  const existingList = getCachedStorage<any[]>(keyName, []);
                   const existingMap = new Map(existingList.map((item: any) => [item.id, item]));
 
                   const newList = data[c.storage].map((item: any) => {
@@ -581,11 +642,11 @@ class DataService {
                       }
                       return item;
                   });
-                  localStorage.setItem(keyName, JSON.stringify(newList));
+                  setCachedStorage(keyName, newList, true);
               }
           });
           if (data.workspaceSettings) {
-              const currentSettings = JSON.parse(localStorage.getItem(key('settings')) || '{}');
+              const currentSettings = getCachedStorage<any>(key('settings'), {});
               const restoredSettings = { ...DEFAULT_WORKSPACE_SETTINGS, ...data.workspaceSettings };
               const keysToCheck = ['aviationStackApiKey', 'brandfetchApiKey', 'googleGeminiApiKey', 'cartoApiKey'];
               keysToCheck.forEach(k => {
@@ -593,7 +654,7 @@ class DataService {
                       restoredSettings[k] = currentSettings[k];
                   }
               });
-              localStorage.setItem(key('settings'), JSON.stringify(restoredSettings));
+              setCachedStorage(key('settings'), restoredSettings, true);
           }
           try { window.dispatchEvent(new CustomEvent('wandergrid_db_updated')); } catch (e) {}
           return { success: true } as unknown as T;
@@ -603,44 +664,26 @@ class DataService {
   }
 
   async getUsers(): Promise<User[]> {
-      const list = await this.fetch<User[]>('/users');
-      try {
-          localStorage.setItem('wandergrid_users', JSON.stringify(list));
-      } catch (e) {}
-      return list;
+      return this.fetch<User[]>('/users');
   }
 
   async updateUser(user: User): Promise<void> {
       const userCopy = { ...user };
       try {
-          const storedUsers = localStorage.getItem('wandergrid_users');
-          if (storedUsers) {
-              const list = JSON.parse(storedUsers);
-              const prev = list.find((u: any) => u.id === user.id);
-              if (prev && userCopy.password) {
-                  if (userCopy.password !== prev.password) {
-                      if (!userCopy.password.includes(':')) {
-                          userCopy.password = await hashPasswordInBrowser(userCopy.password);
-                      }
+          const list = getCachedStorage<any[]>('wandergrid_users', []);
+          const prev = list.find((u: any) => u.id === user.id);
+          if (prev && userCopy.password) {
+              if (userCopy.password !== prev.password) {
+                  if (!userCopy.password.includes(':')) {
+                      userCopy.password = await hashPasswordInBrowser(userCopy.password);
                   }
-              } else if (userCopy.password && !userCopy.password.includes(':')) {
-                  userCopy.password = await hashPasswordInBrowser(userCopy.password);
               }
+          } else if (userCopy.password && !userCopy.password.includes(':')) {
+              userCopy.password = await hashPasswordInBrowser(userCopy.password);
           }
       } catch (e) {}
 
       await this.fetch(`/users/${user.id}`, { method: 'PUT', body: JSON.stringify(userCopy) });
-      try {
-          const stored = localStorage.getItem('wandergrid_users');
-          if (stored) {
-              const list = JSON.parse(stored);
-              const idx = list.findIndex((u: any) => u.id === user.id);
-              if (idx >= 0) {
-                  list[idx] = userCopy;
-                  localStorage.setItem('wandergrid_users', JSON.stringify(list));
-              }
-          }
-      } catch (e) {}
   }
 
   async addUser(user: User): Promise<void> {
@@ -649,24 +692,10 @@ class DataService {
           userCopy.password = await hashPasswordInBrowser(userCopy.password);
       }
       await this.fetch('/users', { method: 'POST', body: JSON.stringify(userCopy) });
-      try {
-          const stored = localStorage.getItem('wandergrid_users');
-          const list = stored ? JSON.parse(stored) : [];
-          list.push(userCopy);
-          localStorage.setItem('wandergrid_users', JSON.stringify(list));
-      } catch (e) {}
   }
 
   async deleteUser(id: string): Promise<void> {
       await this.fetch(`/users/${id}`, { method: 'DELETE' });
-      try {
-          const stored = localStorage.getItem('wandergrid_users');
-          if (stored) {
-              const list = JSON.parse(stored);
-              const newList = list.filter((u: any) => u.id !== id);
-              localStorage.setItem('wandergrid_users', JSON.stringify(newList));
-          }
-      } catch (e) {}
   }
 
   private async processGeocoding(trip: Trip): Promise<Trip> {

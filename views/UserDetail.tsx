@@ -1,5 +1,11 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Card, Button, Badge, Input, Select, Modal } from '../components/ui';
+import GlassPanel from '../components/glass/GlassPanel';
+import { 
+  ArrowLeft, SignOut, AirplaneTakeoff, Clock, CheckCircle, MapPin, 
+  CalendarBlank, Ticket, Compass, MapTrifold, Plus, AirplaneTilt, Bed, 
+  PencilSimple, Trash, Camera, Spinner
+} from '@phosphor-icons/react';
 import { dataService } from '../services/mockDb';
 import { User, Trip } from '../types';
 import { formatDate } from '../utils/formatters';
@@ -272,7 +278,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
     if (loading || !user) {
         return (
             <div className="flex flex-col items-center justify-center p-24 text-gray-400 gap-4 animate-pulse w-full">
-                <span className="material-icons-outlined text-5xl animate-spin text-blue-500">sync</span>
+                <Spinner className="w-12 h-12 animate-spin text-primary-500" />
                 <p className="font-bold text-xs uppercase tracking-widest text-zinc-550">Retrieving Traveler ID...</p>
             </div>
         );
@@ -290,15 +296,13 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
     const leavePercentage = Math.round(((user.takenLeave || 0) / (user.leaveBalance || 25)) * 100);
 
     return (
-        <div className="space-y-8 animate-fade-in max-w-[85rem] mx-auto pb-16 px-4 md:px-0 w-full">
+        <div className="w-full max-w-[1680px] mx-auto pt-2 sm:pt-4 px-1 sm:px-4 md:px-6 lg:px-8 flex flex-col gap-5 sm:gap-6 animate-fadeIn pb-16 text-light-text dark:text-dark-text">
             {/* HERO PROFILE HEADER */}
-            <div className="relative w-full rounded-3xl bg-white dark:bg-gray-900 border border-gray-150/45 dark:border-white/5 overflow-hidden shadow-2xl">
-                <div className="absolute top-0 right-0 w-[450px] h-[450px] bg-gradient-to-br from-blue-500/10 to-indigo-500/10 rounded-full blur-[90px] -translate-y-1/2 translate-x-1/3 pointer-events-none" />
-                
-                <div className="relative p-8 lg:p-12 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
+            <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden shadow-glass-card">
+                <div className="relative p-6 sm:p-8 lg:p-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 sm:gap-8">
                     <div className="flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
                         <div className="relative">
-                            <div className={`w-28 h-28 rounded-2xl flex items-center justify-center overflow-hidden text-5xl font-black text-white shadow-xl transition-all hover:scale-105 duration-300 border border-white/20
+                            <div className={`w-24 h-24 sm:w-28 sm:h-28 rounded-2xl flex items-center justify-center overflow-hidden text-5xl font-black text-white shadow-xl transition-all hover:scale-105 duration-300 border border-white/20
                                 ${user.role === 'Partner' ? 'bg-gradient-to-br from-blue-600 to-indigo-700 shadow-indigo-500/20' : 
                                   user.role === 'Admin' ? 'bg-gradient-to-br from-purple-500 to-indigo-650 shadow-purple-500/20' : 
                                   'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-teal-500/20'}`}>
@@ -318,8 +322,9 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                         
                         <div className="space-y-2">
                             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
-                                <h1 className="text-3xl lg:text-5xl font-black text-gray-950 dark:text-white tracking-tight leading-none">{user.name}</h1>
+                                <h1 className="text-2xl sm:text-3xl lg:text-5xl font-black text-light-text dark:text-dark-text tracking-tight leading-none">{user.name}</h1>
                                 <button 
+                                    type="button"
                                     onClick={() => {
                                         setEditName(user.name || '');
                                         setEditPassword(user.password || '');
@@ -335,14 +340,15 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                                         setEditPassportExpiryDate(user.passportExpiryDate || '');
                                         setIsEditing(true);
                                     }}
-                                    className="p-2 text-zinc-400 hover:text-blue-500 hover:bg-slate-100 dark:hover:bg-zinc-805 rounded-xl transition-colors cursor-pointer"
+                                    className="p-2 text-zinc-400 hover:text-blue-500 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"
                                     title="Edit Profile Details"
+                                    aria-label="Edit Profile Details"
                                 >
-                                    <span className="material-icons-outlined text-xl block">edit_note</span>
+                                    <PencilSimple className="w-5 h-5 block" />
                                 </button>
                             </div>
                             {user.email && (
-                                <p className="text-sm text-gray-500 dark:text-gray-400 font-semibold font-mono tracking-tight">{user.email}</p>
+                                <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary font-semibold font-mono tracking-tight">{user.email}</p>
                             )}
                             <div className="flex items-center justify-center sm:justify-start gap-2 mt-2 select-none">
                                 <span className="text-2xs font-mono tracking-widest font-bold text-gray-400 dark:text-zinc-500 uppercase block">CREDENTIAL-KEY: <span className="text-teal-500 font-black">{user.id}</span></span>
@@ -351,15 +357,16 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                     </div>
 
                     <div className="flex items-center gap-3 self-stretch sm:self-auto shrink-0 flex-wrap justify-center">
-                        <Button variant="secondary" className="!rounded-xl border-zinc-200" onClick={onBack} icon={<span className="material-icons-outlined text-sm">arrow_back</span>}>
+                        <Button variant="secondary" className="!rounded-xl min-h-[44px]" onClick={onBack} icon={<ArrowLeft className="w-4 h-4" />} aria-label="Back to dashboard">
                             Core Dashboard
                         </Button>
                         {onLogout && (
                             <Button 
                                 variant="danger" 
-                                className="!rounded-xl border-none" 
+                                className="!rounded-xl border-none min-h-[44px]" 
                                 onClick={onLogout} 
-                                icon={<span className="material-icons-outlined text-sm">logout</span>}
+                                icon={<SignOut className="w-4 h-4" />}
+                                aria-label="Sign out"
                             >
                                 Secure Exit
                             </Button>
@@ -368,38 +375,38 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                 </div>
 
                 {/* PASSPORT STATISTICS STATS GRID */}
-                <div className="grid grid-cols-2 md:grid-cols-5 border-t border-gray-150/45 dark:border-white/5 divide-x divide-y md:divide-y-0 divide-gray-100 dark:divide-white/5 bg-gray-50/40 dark:bg-zinc-950/20">
+                <div className="grid grid-cols-2 md:grid-cols-5 border-t border-black/5 dark:border-white/5 divide-x divide-y md:divide-y-0 divide-black/5 dark:divide-white/5 bg-gray-50/40 dark:bg-zinc-950/20">
                     <div className="p-6 flex flex-col items-center justify-center text-center gap-1">
-                        <span className="material-icons-outlined text-blue-500 text-2xl">flight_takeoff</span>
-                        <span className="text-3xl font-black text-gray-900 dark:text-white mt-1">{stats.total}</span>
+                        <AirplaneTakeoff weight="duotone" className="w-7 h-7 text-blue-500" />
+                        <span className="text-3xl font-black text-light-text dark:text-dark-text mt-1">{stats.total}</span>
                         <span className="text-2xs font-bold text-gray-450 dark:text-zinc-450 uppercase tracking-widest font-mono">Active Trips</span>
                     </div>
 
                     <div className="p-6 flex flex-col items-center justify-center text-center gap-1 border-t md:border-t-0">
-                        <span className="material-icons-outlined text-amber-500 text-2xl">upcoming</span>
-                        <span className="text-3xl font-black text-gray-900 dark:text-white mt-1">{stats.upcoming}</span>
+                        <Clock weight="duotone" className="w-7 h-7 text-amber-500" />
+                        <span className="text-3xl font-black text-light-text dark:text-dark-text mt-1">{stats.upcoming}</span>
                         <span className="text-2xs font-bold text-gray-450 dark:text-zinc-450 uppercase tracking-widest font-mono">Upcoming Journeys</span>
                     </div>
 
                     <div className="p-6 flex flex-col items-center justify-center text-center gap-1 border-t md:border-t-0">
-                        <span className="material-icons-outlined text-emerald-500 text-2xl">done_all</span>
-                        <span className="text-3xl font-black text-gray-900 dark:text-white mt-1">{stats.completed}</span>
+                        <CheckCircle weight="duotone" className="w-7 h-7 text-emerald-500" />
+                        <span className="text-3xl font-black text-light-text dark:text-dark-text mt-1">{stats.completed}</span>
                         <span className="text-2xs font-bold text-gray-450 dark:text-zinc-450 uppercase tracking-widest font-mono">Completed Voyages</span>
                     </div>
 
                     <div className="p-6 flex flex-col items-center justify-center text-center gap-1 border-t md:border-t-0">
-                        <span className="material-icons-outlined text-purple-500 text-2xl">room</span>
-                        <span className="text-3xl font-black text-gray-900 dark:text-white mt-1">{stats.uniqueDestinations}</span>
+                        <MapPin weight="duotone" className="w-7 h-7 text-purple-500" />
+                        <span className="text-3xl font-black text-light-text dark:text-dark-text mt-1">{stats.uniqueDestinations}</span>
                         <span className="text-2xs font-bold text-gray-450 dark:text-zinc-450 uppercase tracking-widest font-mono">Destinations Visited</span>
                     </div>
 
                     <div className="p-6 flex flex-col items-center justify-center text-center gap-1 col-span-2 md:col-span-1 border-t md:border-t-0">
-                        <span className="material-icons-outlined text-indigo-500 text-2xl">date_range</span>
-                        <span className="text-3xl font-black text-gray-900 dark:text-white mt-1">{stats.totalDays}</span>
+                        <CalendarBlank weight="duotone" className="w-7 h-7 text-indigo-500" />
+                        <span className="text-3xl font-black text-light-text dark:text-dark-text mt-1">{stats.totalDays}</span>
                         <span className="text-2xs font-bold text-gray-450 dark:text-zinc-450 uppercase tracking-widest font-mono">Total Days on Voyage</span>
                     </div>
                 </div>
-            </div>
+            </GlassPanel>
 
             {/* LOWER PORTION: TWO COLUMN DETAILS */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start w-full">
@@ -462,7 +469,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                         <div className="p-6">
                             {stats.uniqueDestinations === 0 ? (
                                 <div className="py-12 text-center text-zinc-400 border border-dashed border-gray-200 dark:border-zinc-800 rounded-2xl select-none">
-                                    <span className="material-icons-outlined text-4xl block text-zinc-400">confirmation_number</span>
+                                    <Ticket weight="duotone" className="w-10 h-10 mx-auto text-zinc-400" />
                                     <p className="text-xs font-mono tracking-widest font-bold uppercase mt-3">No active country seals stamped</p>
                                     <p className="text-xs opacity-75 mt-1">Stamps are visual seals dynamically minted from flight logs.</p>
                                 </div>
@@ -496,23 +503,23 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                 <div className="lg:col-span-8 space-y-6 w-full">
                     <div className="flex justify-between items-center px-1">
                         <div className="space-y-1">
-                            <h2 className="text-2xl font-black text-gray-950 dark:text-white tracking-tight">Expeditions Passport</h2>
-                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Chronological travel roster and calendar entries</p>
+                            <h2 className="text-2xl font-black text-light-text dark:text-dark-text tracking-tight">Expeditions Passport</h2>
+                            <p className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest">Chronological travel roster and calendar entries</p>
                         </div>
                     </div>
 
                     {trips.length === 0 ? (
-                        <Card className="rounded-3xl p-16 text-center border-dashed border-zinc-250 select-none bg-white dark:bg-gray-900">
-                            <span className="material-icons-outlined text-gray-300 dark:text-gray-700 text-6xl">explore_off</span>
+                        <GlassPanel className="wg-glass-card rounded-[28px] p-16 text-center select-none shadow-glass-card">
+                            <Compass weight="duotone" className="w-14 h-14 mx-auto text-gray-300 dark:text-gray-700" />
                             <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mt-4">No active expeditions found for this traveler</p>
                             <p className="text-xs text-gray-500 max-w-xs mx-auto mt-2">When this user joins or gets assigned to a trip, their complete flight route details will appear beautifully styled here.</p>
-                        </Card>
+                        </GlassPanel>
                     ) : (
-                        <Card noPadding className="rounded-3xl border-zinc-200 dark:border-white/5 bg-white dark:bg-gray-900 overflow-hidden shadow-xs">
+                        <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden shadow-glass-card">
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
                                     <thead>
-                                        <tr className="border-b border-gray-100 dark:border-white/4 bg-gray-50/40 dark:bg-white/5 text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+                                        <tr className="border-b border-black/5 dark:border-white/5 bg-gray-50/40 dark:bg-white/5 text-xs font-bold uppercase tracking-widest text-light-text-secondary dark:text-dark-text-secondary">
                                             <th className="py-4 px-6">Expedition</th>
                                             <th className="py-4 px-6">Schedule</th>
                                             <th className="py-4 px-6 text-center">Status</th>
@@ -520,7 +527,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                                             <th className="py-4 px-6 text-right">Actions</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                                    <tbody className="divide-y divide-black/5 dark:divide-white/5">
                                         {trips.map(trip => {
                                             const ongoing = new Date(trip.startDate) <= new Date() && new Date() <= new Date(trip.endDate);
                                             const departuresStr = formatDate(trip.startDate, 'short-with-year');
@@ -529,25 +536,25 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                                             const overnightsCount = trip.accommodations?.length || 0;
 
                                             return (
-                                                <tr key={trip.id} className="hover:bg-gray-50/40 dark:hover:bg-white/5/30 transition-colors group">
+                                                <tr key={trip.id} className="hover:bg-gray-50/40 dark:hover:bg-white/5 transition-colors group">
                                                     <td className="py-4 px-6">
                                                         <div className="flex items-center gap-4">
                                                             <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/10 rounded-xl flex items-center justify-center text-blue-500 text-xl group-hover:scale-105 transition-transform shrink-0">
-                                                                <span className="material-icons-outlined">{trip.icon || 'map'}</span>
+                                                                <MapTrifold className="w-5 h-5" />
                                                             </div>
                                                             <div className="min-w-0">
-                                                                <h4 className="font-bold text-gray-900 dark:text-white text-sm leading-snug truncate max-w-[12rem]" title={trip.name}>
+                                                                <h4 className="font-bold text-light-text dark:text-dark-text text-sm leading-snug truncate max-w-[12rem]" title={trip.name}>
                                                                     {trip.name}
                                                                 </h4>
-                                                                <div className="flex items-center gap-1 text-xs text-gray-450 dark:text-gray-500 mt-0.5 font-medium">
-                                                                    <span className="material-icons-outlined text-xs shrink-0">place</span>
+                                                                <div className="flex items-center gap-1 text-xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5 font-medium">
+                                                                    <MapPin className="w-3.5 h-3.5 shrink-0" />
                                                                     <span className="truncate max-w-[10rem]">{trip.location}</span>
                                                                 </div>
                                                             </div>
                                                         </div>
                                                     </td>
                                                     <td className="py-4 px-6">
-                                                        <div className="flex flex-col text-xs font-mono text-gray-500 dark:text-gray-400 font-semibold gap-0.5">
+                                                        <div className="flex flex-col text-xs font-mono text-light-text-secondary dark:text-dark-text-secondary font-semibold gap-0.5">
                                                             <div className="flex items-center gap-1.5">
                                                                 <span className="text-2xs font-bold uppercase text-gray-350 dark:text-gray-650 tracking-wider">DEP</span>
                                                                 <span>{departuresStr}</span>
@@ -561,14 +568,16 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                                                     <td className="py-4 px-6 text-center whitespace-nowrap">
                                                         {trip.isBundleOnly || trip.hideInPlanner ? (
                                                             <button
+                                                                type="button"
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     handleCreateTripFromBundle(trip);
                                                                 }}
-                                                                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold tracking-wide uppercase bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-950/30 dark:hover:bg-blue-900/40 dark:text-blue-400 rounded-lg border border-blue-100 dark:border-blue-900/20 transition-all cursor-pointer shadow-xs active:scale-95"
+                                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 min-h-[36px] text-xs font-bold tracking-wide uppercase bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-950/30 dark:hover:bg-blue-900/40 dark:text-blue-400 rounded-lg border border-blue-100 dark:border-blue-900/20 transition-all cursor-pointer shadow-xs active:scale-95"
                                                                 title="Add this travel schedule directly to your Planner boards"
+                                                                aria-label="Add this travel schedule directly to your Planner boards"
                                                             >
-                                                                <span className="material-icons-outlined text-xs">add</span>
+                                                                <Plus className="w-3.5 h-3.5" />
                                                                 <span>Create Trip</span>
                                                             </button>
                                                         ) : ongoing ? (
@@ -587,37 +596,41 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                                                     <td className="py-4 px-6 text-center">
                                                         <div className="flex items-center justify-center gap-2.5 text-xs">
                                                             <div className="flex items-center gap-1 bg-violet-50/50 dark:bg-violet-900/5 px-2 py-1 rounded-lg border border-violet-100/30 dark:border-violet-900/10" title={`${flightCount} Flight Legs`}>
-                                                                <span className="material-icons-outlined text-sm text-violet-555 dark:text-violet-400">flight</span>
-                                                                <span className="font-extrabold text-gray-800 dark:text-gray-200">{flightCount}</span>
+                                                                <AirplaneTilt className="w-3.5 h-3.5 text-violet-500 dark:text-violet-400" />
+                                                                <span className="font-extrabold text-light-text dark:text-dark-text">{flightCount}</span>
                                                             </div>
                                                             <div className="flex items-center gap-1 bg-emerald-50/50 dark:bg-emerald-900/5 px-2 py-1 rounded-lg border border-emerald-100/30 dark:border-emerald-900/10" title={`${overnightsCount} Overnights`}>
-                                                                <span className="material-icons-outlined text-sm text-emerald-555 dark:text-emerald-400">hotel</span>
-                                                                <span className="font-extrabold text-gray-800 dark:text-gray-200">{overnightsCount}</span>
+                                                                <Bed className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
+                                                                <span className="font-extrabold text-light-text dark:text-dark-text">{overnightsCount}</span>
                                                             </div>
                                                         </div>
                                                     </td>
                                                     <td className="py-4 px-6 text-right">
                                                         <div className="flex items-center justify-end gap-1.5">
                                                             <button
+                                                                type="button"
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     handleStartEditTrip(trip);
                                                                 }}
-                                                                className="p-1 px-2.5 rounded-lg bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-zinc-750 text-blue-500 font-bold flex items-center gap-1 transition-colors cursor-pointer border border-zinc-200 dark:border-white/5 text-xs"
+                                                                className="p-1 px-2.5 min-h-[36px] rounded-lg bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-zinc-750 text-blue-500 font-bold flex items-center gap-1 transition-colors cursor-pointer border border-zinc-200 dark:border-white/5 text-xs"
                                                                 title="Edit Trip Settings"
+                                                                aria-label="Edit Trip Settings"
                                                             >
-                                                                <span className="material-icons-outlined text-sm">edit</span>
+                                                                <PencilSimple className="w-3.5 h-3.5" />
                                                                 <span>Edit</span>
                                                             </button>
                                                             <button
+                                                                type="button"
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     handleDeleteTripClick(trip.id);
                                                                 }}
-                                                                className="p-1 px-2.5 rounded-lg bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-rose-950/20 text-rose-500 font-bold flex items-center gap-1 transition-colors cursor-pointer border border-zinc-200 dark:border-white/5 text-xs"
+                                                                className="p-1 px-2.5 min-h-[36px] rounded-lg bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-rose-950/20 text-rose-500 font-bold flex items-center gap-1 transition-colors cursor-pointer border border-zinc-200 dark:border-white/5 text-xs"
                                                                 title="Delete Trip"
+                                                                aria-label="Delete Trip"
                                                             >
-                                                                <span className="material-icons-outlined text-sm">delete</span>
+                                                                <Trash className="w-3.5 h-3.5" />
                                                                 <span>Delete</span>
                                                             </button>
                                                         </div>
@@ -628,7 +641,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                                     </tbody>
                                 </table>
                             </div>
-                        </Card>
+                        </GlassPanel>
                     )}
                 </div>
             </div>
@@ -712,7 +725,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                                             <img src={editProfilePicture} className="w-16 h-16 rounded-xl object-cover shrink-0 border border-black/10 dark:border-white/10 shadow-sm" alt="Preview" />
                                             <div className="flex-1 text-left">
                                                 <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
-                                                    <span className="material-icons-outlined text-sm">check_circle</span> Loaded Successfully
+                                                    <CheckCircle weight="fill" className="w-4 h-4" /> Loaded Successfully
                                                 </span>
                                                 <button 
                                                     type="button"
@@ -728,7 +741,7 @@ export const UserDetail: React.FC<UserDetailProps> = ({ userId, onBack, onLogout
                                         </div>
                                     ) : (
                                         <div className="text-center py-2">
-                                            <span className="material-icons-outlined text-2xl text-light-text-secondary dark:text-dark-text-secondary block mb-1 opacity-60">add_a_photo</span>
+                                            <Camera className="w-8 h-8 text-light-text-secondary dark:text-dark-text-secondary block mb-1 opacity-60 mx-auto" />
                                             <span className="text-xs font-bold text-light-text dark:text-dark-text block">Drag & drop or click to select image</span>
                                             <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary block font-mono mt-0.5 opacity-60">PNG, JPG, WebP</span>
                                         </div>

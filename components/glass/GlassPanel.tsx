@@ -83,3 +83,5 @@ export default function GlassPanel({
     </div>
   );
 }
+
+export { GlassPanel };

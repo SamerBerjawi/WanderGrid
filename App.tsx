@@ -46,12 +46,11 @@ const getUrlState = () => {
     return { view: ViewState.DASHBOARD };
 };
 
-// Beautiful loading state for lazy components
-const ViewLoader = () => (
-    <div className="w-full h-full flex flex-col items-center justify-center space-y-4 animate-fade-in">
-        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-400">Loading Module...</p>
-    </div>
+import ViewSkeleton from './components/skeletons/ViewSkeleton';
+
+// Content-shaped Liquid Glass skeleton fallback for lazy components
+const ViewLoader: React.FC<{ view?: ViewState | string }> = ({ view = 'dashboard' }) => (
+    <ViewSkeleton view={view} />
 );
 
 import { AmbientBackground } from './components/AmbientBackground';
@@ -340,7 +339,7 @@ export default function App() {
               transition={{ duration: 0.18, ease: "easeOut" }}
               className="w-full h-full"
             >
-              <Suspense fallback={<ViewLoader />}>
+              <Suspense fallback={<ViewLoader view={view} />}>
                 <AppErrorBoundary routeKey={routeKey} onResetToDashboard={() => navigate(ViewState.DASHBOARD)}>
                   {renderView()}
                 </AppErrorBoundary>

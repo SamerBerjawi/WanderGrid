@@ -2,10 +2,12 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   MagnifyingGlass as Search, Funnel as Filter, Plus, CalendarBlank as Calendar, MapPin, Trash as Trash2, PencilSimple as Edit2, Check, Square, CheckSquare, PencilSimpleLine as Edit3, CaretRight as ChevronRight, CaretDown as ChevronDown, CaretUp as ChevronUp, WarningCircle as AlertCircle,
-  ArrowRight, Airplane as Plane, Bank as Landmark, Trophy as Award, Clock, CurrencyDollar as DollarSign, ChartBar as BarChart2, SuitcaseSimple as Briefcase, FileText, Compass, Heart, Question as HelpCircle, ArrowsClockwise as RefreshCw, UploadSimple as Upload, DownloadSimple as Download, Tag, UserCheck, Star, Sparkle as Sparkles, SquaresFour as Grid, List,
+  ArrowRight, Airplane as Plane, AirplaneTilt, Bank as Landmark, Trophy as Award, Clock, CurrencyDollar as DollarSign, ChartBar as BarChart2, SuitcaseSimple as Briefcase, FileText, Compass, Heart, Question as HelpCircle, ArrowsClockwise as RefreshCw, UploadSimple as Upload, DownloadSimple as Download, Tag, UserCheck, Star, Sparkle as Sparkles, SquaresFour as Grid, List,
   ArrowUpRight, ArrowDownLeft, FolderPlus, FolderMinus, X
 } from '@phosphor-icons/react';
 import { Card, Button, Input, Select, Badge, TimeInput, Autocomplete } from '../components/ui';
+import GlassPanel from '../components/glass/GlassPanel';
+import VirtualListItem from '../components/ui/VirtualListItem';
 import { Trip, Transport, User, Carrier, WorkspaceSettings, FlightStatusResponse } from '../types';
 import { getMerchantLogoUrl } from '../utils/brandfetch';
 import { formatDate, formatCurrency } from '../utils/formatters';
@@ -23,7 +25,7 @@ import {
 import { flightTracker } from '../services/flightTracker';
 import { calculateDurationMinutes } from '../services/geocoding';
 
-const SeatLayoutOverlay = ({ cabinClass, seatNumber }: { cabinClass: string, seatNumber: string }) => {
+const SeatLayoutOverlay = React.memo(({ cabinClass, seatNumber }: { cabinClass: string, seatNumber: string }) => {
   const match = (seatNumber || '').trim().toUpperCase().match(/^(\d+)([A-Z])$/);
   let centerRow = 12;
   let targetCol = '';
@@ -85,10 +87,10 @@ const SeatLayoutOverlay = ({ cabinClass, seatNumber }: { cabinClass: string, sea
               </div>
            ))}
          </div>
-       </div>
+        </div>
     </div>
   );
-};
+});
 
 // Module-level shared cache for AirlineLogo to prevent N+1 queries for 500+ flights
 let sharedCarriers: Carrier[] | null = null;
@@ -172,7 +174,7 @@ const getAirlineLogoUrlCached = (airlineName: string, currentAttempt: number): s
   return chosenUrl;
 };
 
-const AirlineLogo: React.FC<{ provider?: string, fallback: React.ReactNode }> = ({ provider, fallback }) => {
+const AirlineLogo: React.FC<{ provider?: string, fallback: React.ReactNode }> = React.memo(({ provider, fallback }) => {
   const [attempt, setAttempt] = useState(0);
   const [failed, setFailed] = useState(false);
 
@@ -198,9 +200,9 @@ const AirlineLogo: React.FC<{ provider?: string, fallback: React.ReactNode }> = 
       onError={handleError}
     />
   );
-};
+});
 
-const BundleJourneyTimeline: React.FC<{ flights: Transport[] }> = ({ flights }) => {
+const BundleJourneyTimeline: React.FC<{ flights: Transport[] }> = React.memo(({ flights }) => {
   if (!flights || flights.length === 0) return null;
 
   const totalCost = flights.reduce((sum, f) => sum + (f.cost || 0), 0);
@@ -320,9 +322,9 @@ const BundleJourneyTimeline: React.FC<{ flights: Transport[] }> = ({ flights }) 
       </div>
     </div>
   );
-};
+});
 
-const SeatMap: React.FC<{ assignedSeat: string }> = ({ assignedSeat }) => {
+const SeatMap: React.FC<{ assignedSeat: string }> = React.memo(({ assignedSeat }) => {
   const match = assignedSeat.match(/(\d+)([A-Z])/i);
   let assignedRow = -1;
   let assignedLetter = '';
@@ -378,7 +380,7 @@ const SeatMap: React.FC<{ assignedSeat: string }> = ({ assignedSeat }) => {
       ))}
     </div>
   );
-};
+});
 
 interface FlightsProps {
   onTripClick?: (tripId: string) => void;
@@ -1783,6 +1785,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                       onClick={(e) => { e.stopPropagation(); openFlightForm({ flight, trip }); }}
                       className="p-1.5 rounded-lg bg-white dark:bg-zinc-800 text-zinc-400 hover:text-blue-500 dark:hover:text-blue-400 border border-zinc-200 dark:border-white/5 shadow-2xs transition-all cursor-pointer"
                       title="Edit flight"
+                      aria-label="Edit flight"
                     >
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
@@ -1790,6 +1793,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                       onClick={(e) => { e.stopPropagation(); handleDeleteFlight({ flight, trip }); }}
                       className="p-1.5 rounded-lg bg-white dark:bg-zinc-800 text-zinc-400 hover:text-rose-500 border border-zinc-200 dark:border-white/5 shadow-2xs transition-all cursor-pointer"
                       title="Delete flight"
+                      aria-label="Delete flight"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -1943,6 +1947,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                 onClick={(e) => { e.stopPropagation(); openFlightForm({ flight, trip }); }} 
                 className="p-1.5 text-zinc-500 hover:text-blue-500 transition-colors cursor-pointer"
                 title="Edit Flight"
+                aria-label="Edit Flight"
               >
                 <Edit2 className="w-3.5 h-3.5" />
               </button>
@@ -1950,6 +1955,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                 onClick={(e) => { e.stopPropagation(); handleDeleteFlight({ flight, trip }); }} 
                 className="p-1.5 text-zinc-500 hover:text-red-500 transition-colors cursor-pointer"
                 title="Delete Flight"
+                aria-label="Delete Flight"
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
@@ -2269,10 +2275,10 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           {/* 6. ACTIONS */}
           <td className="py-4 text-right pr-4 align-middle bg-white/45 dark:bg-zinc-950/20 group-hover:bg-blue-500/5 dark:group-hover:bg-blue-500/5 border-y border-zinc-200/40 dark:border-zinc-800/40 first:border-l last:border-r first:rounded-l-2xl last:rounded-r-2xl">
             <div className="flex justify-end gap-1.5 opacity-80 md:opacity-0 group-hover:opacity-100 transition-opacity">
-              <button onClick={() => openFlightForm({ flight, trip })} className="p-1.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:text-blue-500 hover:border-blue-500/40 dark:hover:border-blue-500/40 hover:shadow-xs transition-colors cursor-pointer" title="Edit Flight Bookings">
+              <button onClick={() => openFlightForm({ flight, trip })} className="p-1.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:text-blue-500 hover:border-blue-500/40 dark:hover:border-blue-500/40 hover:shadow-xs transition-colors cursor-pointer" title="Edit Flight Bookings" aria-label="Edit Flight Bookings">
                 <Edit2 className="w-3.5 h-3.5" />
               </button>
-              <button onClick={() => handleDeleteFlight({ flight, trip })} className="p-1.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:text-red-500 hover:border-red-500/40 dark:hover:border-red-500/40 hover:shadow-xs transition-colors cursor-pointer" title="Delete Flight">
+              <button onClick={() => handleDeleteFlight({ flight, trip })} className="p-1.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:text-red-500 hover:border-red-500/40 dark:hover:border-red-500/40 hover:shadow-xs transition-colors cursor-pointer" title="Delete Flight" aria-label="Delete Flight">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -2296,24 +2302,27 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
   };
 
   return (
-    <div className="space-y-8 pb-12">
-      {/* Dynamic Header */}
-      <div className="flex flex-col md:flex-row items-center md:items-center justify-between text-center md:text-left gap-4 sm:gap-6 relative">
-        <div className="space-y-1 flex flex-col items-center md:items-start">
-          <h1 className="text-2xl sm:text-3xl md:text-5xl font-black text-zinc-900 dark:text-white tracking-tight flex items-center justify-center md:justify-start gap-2.5 sm:gap-3 mt-1.5">
-            <span className="p-2 sm:p-2.5 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white shadow-lg shadow-blue-500/20 inline-flex items-center justify-center">
-              <Plane className="w-6 h-6 sm:w-8 sm:h-8 rotate-45 shrink-0" />
-            </span>
+    <div className="w-full max-w-[1680px] mx-auto pt-2 sm:pt-4 px-1 sm:px-4 md:px-6 lg:px-8 flex flex-col gap-5 sm:gap-6 animate-fadeIn pb-16">
+      {/* ========================================================================= */}
+      {/* HERO HEADER: Title Aligned Left, Button Aligned Right on Mobile & Desktop */}
+      {/* ========================================================================= */}
+      <div className="flex flex-row items-center justify-between gap-2.5 sm:gap-4 w-full pt-1 pb-1">
+        {/* Left: Pure Icon + Responsive Page Name (Aligned Left) */}
+        <div className="flex items-center justify-start gap-2 sm:gap-3 md:gap-4 min-w-0">
+          <AirplaneTilt 
+            className="w-7 h-7 sm:w-9 sm:h-9 md:w-12 md:h-12 text-blue-500 dark:text-blue-400 shrink-0" 
+            weight="duotone" 
+          />
+          <h1 className="text-xl sm:text-3xl md:text-5xl font-black text-light-text dark:text-white tracking-tight leading-tight sm:leading-none truncate sm:overflow-visible">
             Flight Center
           </h1>
-          <p className="text-xs sm:text-sm font-medium text-zinc-500 dark:text-zinc-400">
-            Add, track, schedule, and view the global timeline of your family expeditions.
-          </p>
         </div>
-        <div className="flex flex-wrap items-center justify-center md:justify-end gap-3 w-full md:w-auto shrink-0">
+
+        {/* Right: Primary Action Button (Aligned Right on Mobile & Desktop) */}
+        <div className="flex items-center justify-end shrink-0 gap-2 sm:gap-3">
           <Button 
             variant="primary" 
-            className="w-full sm:w-auto shrink-0"
+            className="shrink-0"
             onClick={() => openFlightForm()}
             icon={<Plus className="w-4 h-4" />}
           >
@@ -2321,8 +2330,61 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           </Button>
         </div>
       </div>
-          {/* Search & Filters Board */}
-      <div className="bg-white/60 dark:bg-zinc-900/30 border border-zinc-200/50 dark:border-white/5 shadow-xl rounded-3xl p-6 backdrop-blur-xl relative overflow-hidden group">
+
+      {/* ========================================================================= */}
+      {/* FLOATING MAP-STYLE TAB SELECTOR                                           */}
+      {/* ========================================================================= */}
+      <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3 w-full">
+        <div className="flex items-center justify-center sm:justify-start overflow-x-auto sm:overflow-visible no-scrollbar p-3 -m-3 shrink-0 w-full sm:w-auto">
+          <GlassPanel
+            className="wg-glass-pill shadow-lg shadow-black/5 dark:shadow-black/25 shrink-0"
+            padding="4px 6px"
+            overrides={{ borderRadius: 9999 }}
+          >
+            <div className="flex gap-1 relative items-center">
+              {[
+                { id: 'all' as const, label: 'All Flights', count: flights.length },
+                { id: 'upcoming' as const, label: 'Upcoming', count: flights.filter(f => getFlightDepartureUtcDate(f.flight) >= new Date()).length },
+                { id: 'past' as const, label: 'Past', count: flights.filter(f => getFlightDepartureUtcDate(f.flight) < new Date()).length }
+              ].map((tab) => {
+                const isSelected = timeFilter === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setTimeFilter(tab.id)}
+                    title={tab.label}
+                    className={`relative rounded-full text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none active:scale-95 ${
+                      isSelected
+                        ? 'text-blue-700 dark:text-blue-300 px-4 sm:px-5 py-2.5'
+                        : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text px-3 sm:px-5 py-2.5'
+                    }`}
+                  >
+                    {isSelected && (
+                      <motion.div
+                        layoutId="flightTimelineIndicator"
+                        className="absolute inset-0 rounded-full bg-blue-500/20 dark:bg-blue-500/30 backdrop-blur-md border border-blue-500/40 dark:border-blue-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(59,130,246,0.3)] z-0"
+                        style={{ WebkitBackdropFilter: 'blur(12px)' }}
+                        transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                      />
+                    )}
+                    <span className="relative z-10 flex items-center gap-2">
+                      <Clock className="w-4 h-4 shrink-0 text-blue-500" weight="duotone" />
+                      <span className={`tracking-tight ${isSelected ? 'inline' : 'hidden sm:inline'}`}>{tab.label}</span>
+                      <span className="text-2xs font-mono opacity-70">({tab.count})</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </GlassPanel>
+        </div>
+      </div>
+
+      {/* Search & Filters Board inside GlassPanel */}
+      <GlassPanel
+        className="wg-glass-card rounded-[28px] overflow-hidden p-6 relative group"
+        overrides={{ borderRadius: 28 }}
+      >
         <div className="absolute top-0 left-0 w-48 h-48 bg-blue-500/5 rounded-full blur-3xl pointer-events-none group-hover:scale-125 transition-transform duration-700" />
         <div className="absolute bottom-0 right-0 w-48 h-48 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none group-hover:scale-125 transition-transform duration-700" />
         
@@ -2334,37 +2396,17 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
               <input 
                 type="text"
                 placeholder="Search by airline, code, city, booking locator..."
-                className="w-full pl-12 pr-5 py-3 rounded-2xl bg-white/45 border border-zinc-200/60 focus:border-blue-500/50 focus:bg-white outline-none font-bold text-xs text-zinc-805 dark:bg-black/20 dark:border-white/5 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:bg-black/30 shadow-xs focus:ring-4 focus:ring-blue-500/5 transition-all placeholder:text-zinc-400"
+                className="w-full pl-12 pr-5 py-3 rounded-2xl bg-white/45 border border-zinc-200/60 focus:border-blue-500/50 focus:bg-white outline-none font-bold text-xs text-zinc-800 dark:bg-black/20 dark:border-white/5 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:bg-black/30 shadow-xs focus:ring-4 focus:ring-blue-500/5 transition-all placeholder:text-zinc-400"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
               />
             </div>
             
             <div className="flex flex-wrap items-center gap-3">
-              {/* Travel Timeline Indicator */}
-              <div className="flex items-center bg-zinc-100 dark:bg-black/20 p-1 rounded-2xl border border-zinc-200/40 dark:border-white/5 shadow-xs">
-                {[
-                  { id: 'all' as const, label: 'All' },
-                  { id: 'upcoming' as const, label: 'Upcoming' },
-                  { id: 'past' as const, label: 'Past' }
-                ].map(opt => (
-                  <button 
-                    key={opt.id}
-                    onClick={() => setTimeFilter(opt.id)}
-                    className={`px-5 py-2 text-xs rounded-xl font-black uppercase tracking-wider transition-all cursor-pointer ${
-                      timeFilter === opt.id 
-                        ? 'bg-blue-500 text-white shadow-sm border border-transparent' 
-                        : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-100'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-
               {/* Cabin Class Select filter */}
               <div className="relative">
                 <select
+                  aria-label="Filter by cabin class"
                   className="px-5 py-2 text-xs rounded-xl font-black uppercase tracking-wider bg-white/40 text-zinc-700 dark:text-zinc-350 border border-zinc-200 dark:border-white/5 hover:bg-white/60 shadow-xs dark:bg-black/20 dark:hover:bg-black/40 outline-none cursor-pointer transition-all appearance-none pr-8"
                   value={classFilter}
                   onChange={e => setClassFilter(e.target.value)}
@@ -2389,6 +2431,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                 colFilterSeat !== 'all') && (
                 <button
                   onClick={handleResetFilters}
+                  aria-label="Reset all filters"
                   className="px-4 py-2 text-xs rounded-xl font-black uppercase tracking-widest bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-500 flex items-center gap-1.5 cursor-pointer transition-all shadow-xs"
                 >
                   <RefreshCw className="w-3 h-3 animate-spin-slow" />
@@ -2406,6 +2449,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
             <div className="flex overflow-x-auto gap-2 pb-1 custom-scrollbar items-center flex-1">
               <button
                 onClick={() => setYearFilter('all')}
+                aria-label="Show all time eras"
                 className={`shrink-0 px-4 py-2 text-xs rounded-xl font-black uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer border ${
                   yearFilter === 'all' 
                     ? 'bg-blue-500 text-white border-transparent shadow-lg shadow-blue-500/15' 
@@ -2421,6 +2465,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                 <button
                   key={yr}
                   onClick={() => setYearFilter(yr)}
+                  aria-label={`Filter year ${yr}`}
                   className={`shrink-0 px-4 py-2 text-xs rounded-xl font-black uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer border ${
                     yearFilter === yr 
                       ? 'bg-blue-500 text-white border-transparent shadow-lg shadow-blue-500/15' 
@@ -2433,7 +2478,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
             </div>
           </div>
         </div>
-      </div>
+      </GlassPanel>
 
       {/* Unequal Multi-Column Dashboard Section: Integrated Bento Grid (Passport, map, boarding pass, stamps & analytics) */}
       <div className="grid grid-cols-12 gap-6 items-stretch">
@@ -2679,7 +2724,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
 
       </div>
 
-      <div className="flex justify-between items-center bg-white/80 dark:bg-zinc-900/80 border border-zinc-200/50 dark:border-white/5 shadow-md rounded-3xl p-4 backdrop-blur-2xl sticky top-0 z-45">
+      <div className="flex justify-between items-center bg-white/80 dark:bg-zinc-900/80 border border-zinc-200/50 dark:border-white/5 shadow-md rounded-3xl p-4 sticky top-0 z-30">
         <h3 className="text-xl font-bold flex items-center gap-2 text-zinc-900 dark:text-zinc-100 pl-4">
           <Plane className="w-5 h-5 text-blue-500" />
           Flight Board ({filteredFlights.length})
@@ -2694,6 +2739,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
               setSelectedFlightIds(new Set());
             }}
             title={isMultiEditing ? "Done Editing" : "Edit Flights"}
+            aria-label={isMultiEditing ? "Done Editing" : "Edit Flights"}
             className={`p-2 rounded-xl transition-all border cursor-pointer ${
               isMultiEditing 
                 ? 'bg-amber-500/10 text-amber-500 border-amber-500/30' 
@@ -2709,6 +2755,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
               onClick={() => setViewMode('table')}
               className={`p-2 rounded-lg transition-all cursor-pointer ${viewMode === 'table' ? 'bg-blue-500 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
               title="List View"
+              aria-label="Table view"
             >
               <List className="w-4 h-4" />
             </button>
@@ -2716,6 +2763,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
               onClick={() => setViewMode('grid')}
               className={`p-2 rounded-lg transition-all cursor-pointer ${viewMode === 'grid' ? 'bg-blue-500 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
               title="Grid View"
+              aria-label="Grid view"
             >
               <Grid className="w-4 h-4" />
             </button>
@@ -2752,83 +2800,85 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                   {groups.map(({ trip, outbound, returnLegs }) => {
                     const isIndependent = trip.id.startsWith('unassigned');
                     return (
-                      <motion.div
-                        layout
-                        initial={{ opacity: 0, y: 12 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        key={trip.id}
-                        className={`p-6 backdrop-blur-xl animate-fade-in rounded-3xl shadow-lg transition-all duration-300
-                          ${isIndependent 
-                            ? "bg-white/40 dark:bg-zinc-900/40 border border-zinc-200/50 dark:border-white/5 shadow-md" 
-                            : "bg-gradient-to-br from-blue-50/40 via-white/50 to-blue-50/10 dark:from-blue-950/10 dark:via-zinc-900/40 dark:to-blue-950/5 border-2 border-blue-500/15 dark:border-blue-400/10 shadow-blue-500/5"
-                          }`}
-                      >
-                        {!isIndependent && (
-                          <>
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4 border-b border-zinc-200/40 dark:border-white/5 ml-2">
-                              <div className="flex items-center gap-3">
-                                <div className="p-2.5 bg-blue-500/10 text-blue-500 rounded-2xl border border-blue-500/15">
-                                  <Compass className="w-5 h-5 shadow-sm" />
-                                </div>
-                                <div>
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <h4 className="text-base font-black text-zinc-800 dark:text-zinc-200 uppercase tracking-widest leading-none">{trip.name}</h4>
-                                    {trip.originalName && trip.originalName !== trip.name && (
-                                      <Badge className="text-xs bg-blue-500/10 hover:bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/15 select-none font-bold rounded-lg py-0.5 px-2 leading-none uppercase tracking-wide">
-                                        {trip.originalName}
-                                      </Badge>
-                                    )}
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setEditingBundleId(trip.id);
-                                        setFormBundleName(trip.originalName || trip.name || '');
-                                        setFormBundleLocation(trip.location || '');
-                                        setFormBundleStartDate(trip.startDate || '');
-                                        setFormBundleEndDate(trip.endDate || '');
-                                        setIsEditingBundle(true);
-                                      }}
-                                      className="p-1 px-2 rounded-lg bg-white dark:bg-zinc-800 text-zinc-500 hover:text-blue-500 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-all cursor-pointer flex items-center gap-1 border border-zinc-200 dark:border-white/10 shadow-xs text-2xs font-black uppercase tracking-wider ml-1"
-                                      title="Edit Bundle Settings"
-                                    >
-                                      <Edit2 className="w-2.5 h-2.5 text-blue-500" />
-                                      <span>Edit</span>
-                                    </button>
+                      <VirtualListItem key={trip.id} estimatedHeight={280}>
+                        <motion.div
+                          layout
+                          initial={{ opacity: 0, y: 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          className={`p-6 animate-fade-in rounded-3xl shadow-lg transition-all duration-300
+                            ${isIndependent 
+                              ? "bg-white/40 dark:bg-zinc-900/40 border border-zinc-200/50 dark:border-white/5 shadow-md" 
+                              : "bg-gradient-to-br from-blue-50/40 via-white/50 to-blue-50/10 dark:from-blue-950/10 dark:via-zinc-900/40 dark:to-blue-950/5 border-2 border-blue-500/15 dark:border-blue-400/10 shadow-blue-500/5"
+                            }`}
+                        >
+                          {!isIndependent && (
+                            <>
+                              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4 border-b border-zinc-200/40 dark:border-white/5 ml-2">
+                                <div className="flex items-center gap-3">
+                                  <div className="p-2.5 bg-blue-500/10 text-blue-500 rounded-2xl border border-blue-500/15">
+                                    <Compass className="w-5 h-5 shadow-sm" />
                                   </div>
-                                  {trip.location && (
-                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 font-bold mt-1 flex items-center gap-1">
-                                      <MapPin className="w-3.5 h-3.5 text-zinc-400" />
-                                      {trip.location}
-                                    </p>
-                                  )}
+                                  <div>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <h4 className="text-base font-black text-zinc-800 dark:text-zinc-200 uppercase tracking-widest leading-none">{trip.name}</h4>
+                                      {trip.originalName && trip.originalName !== trip.name && (
+                                        <Badge className="text-xs bg-blue-500/10 hover:bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/15 select-none font-bold rounded-lg py-0.5 px-2 leading-none uppercase tracking-wide">
+                                          {trip.originalName}
+                                        </Badge>
+                                      )}
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setEditingBundleId(trip.id);
+                                          setFormBundleName(trip.originalName || trip.name || '');
+                                          setFormBundleLocation(trip.location || '');
+                                          setFormBundleStartDate(trip.startDate || '');
+                                          setFormBundleEndDate(trip.endDate || '');
+                                          setIsEditingBundle(true);
+                                        }}
+                                        className="p-1 px-2 rounded-lg bg-white dark:bg-zinc-800 text-zinc-500 hover:text-blue-500 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-all cursor-pointer flex items-center gap-1 border border-zinc-200 dark:border-white/10 shadow-xs text-2xs font-black uppercase tracking-wider ml-1"
+                                        title="Edit Bundle Settings"
+                                        aria-label="Edit Bundle Settings"
+                                      >
+                                        <Edit2 className="w-2.5 h-2.5 text-blue-500" />
+                                        <span>Edit</span>
+                                      </button>
+                                    </div>
+                                    {trip.location && (
+                                      <p className="text-xs text-zinc-500 dark:text-zinc-400 font-bold mt-1 flex items-center gap-1">
+                                        <MapPin className="w-3.5 h-3.5 text-zinc-400" />
+                                        {trip.location}
+                                      </p>
+                                    )}
+                                  </div>
                                 </div>
+                                {(trip.startDate || trip.endDate) && (
+                                  <div className="flex items-center gap-2 px-3 py-1.5 bg-white/60 dark:bg-white/5 rounded-2xl text-xs font-mono font-bold text-zinc-500 dark:text-zinc-400 w-fit shadow-sm border border-zinc-200/40 dark:border-transparent">
+                                    <Calendar className="w-3.5 h-3.5 text-zinc-400" />
+                                    {trip.startDate} {trip.endDate && trip.endDate !== trip.startDate ? `→ ${trip.endDate}` : ''}
+                                  </div>
+                                )}
                               </div>
-                              {(trip.startDate || trip.endDate) && (
-                                <div className="flex items-center gap-2 px-3 py-1.5 bg-white/60 dark:bg-white/5 rounded-2xl text-xs font-mono font-bold text-zinc-500 dark:text-zinc-400 w-fit shadow-sm border border-zinc-200/40 dark:border-transparent">
-                                  <Calendar className="w-3.5 h-3.5 text-zinc-400" />
-                                  {trip.startDate} {trip.endDate && trip.endDate !== trip.startDate ? `→ ${trip.endDate}` : ''}
-                                </div>
-                              )}
-                            </div>
-                            <BundleJourneyTimeline flights={[...outbound, ...returnLegs]} />
-                          </>
-                        )}
-
-                        <div className="space-y-6">
-                          {outbound && outbound.length > 0 && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              {outbound.map((flight, idx) => renderGridFlight(flight, idx, outbound, trip))}
-                            </div>
+                              <BundleJourneyTimeline flights={[...outbound, ...returnLegs]} />
+                            </>
                           )}
 
-                          {returnLegs && returnLegs.length > 0 && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-                              {returnLegs.map((flight, idx) => renderGridFlight(flight, idx, returnLegs, trip))}
-                            </div>
-                          )}
-                        </div>
-                      </motion.div>
+                          <div className="space-y-6">
+                            {outbound && outbound.length > 0 && (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {outbound.map((flight, idx) => renderGridFlight(flight, idx, outbound, trip))}
+                              </div>
+                            )}
+
+                            {returnLegs && returnLegs.length > 0 && (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                                {returnLegs.map((flight, idx) => renderGridFlight(flight, idx, returnLegs, trip))}
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
+                      </VirtualListItem>
                     );
                   })}
                 </div>
@@ -2865,11 +2915,11 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
             <thead>
               <tr className="border-b border-zinc-200/50 dark:border-zinc-850/50 font-mono text-zinc-400 dark:text-zinc-500">
                 {isMultiEditing && (
-                  <th className="sticky top-20 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4 text-xs font-black uppercase tracking-widest pl-4 w-[4%] text-center border-b border-zinc-200/50 dark:border-white/10">
+                  <th className="sticky top-20 bg-white/90 dark:bg-zinc-900/90 z-30 py-4 text-xs font-black uppercase tracking-widest pl-4 w-[4%] text-center border-b border-zinc-200/50 dark:border-white/10">
                     <CheckSquare className="w-4 h-4 text-zinc-400 inline" />
                   </th>
                 )}
-                <th className="sticky top-20 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4 text-xs font-black uppercase tracking-widest pl-4 w-[18%] text-left border-b border-zinc-200/50 dark:border-white/10">
+                <th className="sticky top-20 bg-white/90 dark:bg-zinc-900/90 z-30 py-4 text-xs font-black uppercase tracking-widest pl-4 w-[18%] text-left border-b border-zinc-200/50 dark:border-white/10">
                   <div className="flex items-center gap-1.5 relative">
                     {renderSortableHeader('Flight', 'flight')}
                     <button
@@ -2879,6 +2929,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                       }}
                       className={`p-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer ${colFilterFlight ? 'text-blue-500 font-bold' : 'text-zinc-400 dark:text-zinc-500'}`}
                       title="Filter flights"
+                      aria-label="Filter flights"
                     >
                       <Filter className="w-3.5 h-3.5" />
                     </button>
@@ -2940,7 +2991,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     )}
                   </div>
                 </th>
-                <th className="sticky top-20 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4 text-xs font-black uppercase tracking-widest w-[24%] text-left border-b border-zinc-200/50 dark:border-white/10">
+                <th className="sticky top-20 bg-white/90 dark:bg-zinc-900/90 z-30 py-4 text-xs font-black uppercase tracking-widest w-[24%] text-left border-b border-zinc-200/50 dark:border-white/10">
                   <div className="flex items-center gap-1.5 relative">
                     {renderSortableHeader('Sector / Route', 'sector')}
                     <button
@@ -2949,7 +3000,8 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                         setActiveFilterPopup(activeFilterPopup === 'sector' ? null : 'sector');
                       }}
                       className={`p-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer ${colFilterSector ? 'text-blue-500 font-bold' : 'text-zinc-400 dark:text-zinc-500'}`}
-                      title="Filter sectors"
+                      title="Filter sector"
+                      aria-label="Filter sector"
                     >
                       <Filter className="w-3.5 h-3.5" />
                     </button>
@@ -2961,7 +3013,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                           <div className="flex justify-between items-center mb-2 pb-1.5 border-b border-zinc-150 dark:border-white/5 font-sans">
                             <span className="text-xs font-black text-zinc-900 dark:text-white flex items-center gap-1.5">
                               <Filter className="w-3.5 h-3.5 text-blue-500" />
-                              Filter by Route
+                              Filter by Sector
                             </span>
                             {colFilterSector && (
                               <button 
@@ -2972,24 +3024,24 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                               </button>
                             )}
                           </div>
+                          
                           <input 
                             type="text"
                             value={colFilterSector}
                             onChange={(e) => setColFilterSector(e.target.value)}
-                            placeholder="e.g. JFK, SFO, Paris..."
+                            placeholder="e.g. JFK, LHR, Tokyo, Beirut..."
                             className="w-full text-xs bg-zinc-50 dark:bg-black/30 border border-zinc-200 dark:border-white/5 rounded-xl px-2.5 py-2 focus:outline-none focus:border-blue-500/50 transition-colors placeholder-zinc-400 text-zinc-850 dark:text-zinc-100 font-sans mb-3"
                             autoFocus
                             onClick={(e) => e.stopPropagation()}
                           />
 
                           <div className="border-t border-zinc-100 dark:border-white/5 pt-2.5">
-                            <span className="text-2xs font-black uppercase tracking-widest text-zinc-400 block mb-1.5 font-mono">Sort Route Column By</span>
+                            <span className="text-2xs font-black uppercase tracking-widest text-zinc-400 block mb-1.5 font-mono">Sort Sector Column By</span>
                             <div className="space-y-1">
                               {[
-                                { key: 'route', label: 'Full Route Code' },
-                                { key: 'origin', label: 'Origin Code Only' },
-                                { key: 'destination', label: 'Destination Code' },
-                                { key: 'duration', label: 'Flight Duration' }
+                                { key: 'route', label: 'Route (Origin Airport)' },
+                                { key: 'destination', label: 'Destination Airport' },
+                                { key: 'distance', label: 'Flight Distance' }
                               ].map(opt => (
                                 <button
                                   key={opt.key}
@@ -3011,7 +3063,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     )}
                   </div>
                 </th>
-                <th className="sticky top-20 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4 text-xs font-black uppercase tracking-widest w-[20%] text-left border-b border-zinc-200/50 dark:border-white/10">
+                <th className="sticky top-20 bg-white/90 dark:bg-zinc-900/90 z-30 py-4 text-xs font-black uppercase tracking-widest w-[20%] text-left border-b border-zinc-200/50 dark:border-white/10">
                   <div className="flex items-center gap-1.5 relative">
                     {renderSortableHeader('Status', 'status')}
                     <button
@@ -3021,6 +3073,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                       }}
                       className={`p-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer ${colFilterStatus !== 'all' ? 'text-blue-500 font-bold' : 'text-zinc-400 dark:text-zinc-500'}`}
                       title="Filter status"
+                      aria-label="Filter status"
                     >
                       <Filter className="w-3.5 h-3.5" />
                     </button>
@@ -3085,7 +3138,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     )}
                   </div>
                 </th>
-                <th className="sticky top-20 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4 text-xs font-black uppercase tracking-widest w-[24%] text-left border-b border-zinc-200/50 dark:border-white/10">
+                <th className="sticky top-20 bg-white/90 dark:bg-zinc-900/90 z-30 py-4 text-xs font-black uppercase tracking-widest w-[24%] text-left border-b border-zinc-200/50 dark:border-white/10">
                   <div className="flex items-center gap-1.5 relative">
                     {renderSortableHeader('Schedules & Timing', 'timing')}
                     <button
@@ -3095,6 +3148,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                       }}
                       className={`p-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer ${colFilterTimingDay !== 'all' ? 'text-blue-500 font-bold' : 'text-zinc-400 dark:text-zinc-500'}`}
                       title="Filter schedule days"
+                      aria-label="Filter schedule days"
                     >
                       <Filter className="w-3.5 h-3.5" />
                     </button>
@@ -3163,7 +3217,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     )}
                   </div>
                 </th>
-                <th className="sticky top-20 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4 text-xs font-black uppercase tracking-widest w-[14%] text-left border-b border-zinc-200/50 dark:border-white/10">
+                <th className="sticky top-20 bg-white/90 dark:bg-zinc-900/90 z-30 py-4 text-xs font-black uppercase tracking-widest w-[14%] text-left border-b border-zinc-200/50 dark:border-white/10">
                   <div className="flex items-center gap-1.5 relative">
                     {renderSortableHeader('Seat & Class', 'seat')}
                     <button
@@ -3173,6 +3227,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                       }}
                       className={`p-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer ${colFilterSeat !== 'all' ? 'text-blue-500 font-bold' : 'text-zinc-400 dark:text-zinc-500'}`}
                       title="Filter seats"
+                      aria-label="Filter seats"
                     >
                       <Filter className="w-3.5 h-3.5" />
                     </button>
@@ -3238,7 +3293,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                     )}
                   </div>
                 </th>
-                <th className="sticky top-20 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl z-30 py-4 text-right pr-4 w-[2%] border-b border-zinc-200/50 dark:border-white/10"></th>
+                <th className="sticky top-20 bg-white/90 dark:bg-zinc-900/90 z-30 py-4 text-right pr-4 w-[2%] border-b border-zinc-200/50 dark:border-white/10"></th>
               </tr>
             </thead>
           </table>
@@ -3257,100 +3312,102 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                 {groups.map(({ trip, outbound, returnLegs }) => {
                   const isIndependent = trip.id.startsWith('unassigned');
                   return (
-                    <div
-                      key={trip.id}
-                      className="p-3.5 md:p-6 transition-all duration-300 rounded-3xl bg-gradient-to-br from-blue-50/45 via-white/50 to-blue-50/10 dark:from-blue-950/10 dark:via-zinc-900/40 dark:to-blue-950/5 border border-zinc-200/50 dark:border-white/5 shadow-md min-w-0 md:min-w-[950px] w-full"
-                    >
-                      {/* Sub-header block for trip groups inside container (Only for actual bundles) */}
-                      {!isIndependent ? (
-                        <>
-                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5 pb-4 border-b border-zinc-200/40 dark:border-white/5 ml-1">
-                            <div className="flex items-center gap-3">
-                              <div className="p-2.5 rounded-2xl border bg-blue-500/10 text-blue-500 border-blue-500/15 animate-none">
-                                <Compass className="w-5 h-5 animate-spin-slow" />
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-base font-black text-zinc-850 dark:text-zinc-200 uppercase tracking-widest leading-none">
-                                    {trip.name}
-                                  </span>
-                                  {trip.originalName && trip.originalName !== trip.name && (
-                                    <Badge className="text-xs font-bold bg-blue-500/10 hover:bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/15 select-none rounded-lg py-0.5 px-2 leading-none uppercase tracking-wide">
-                                      {trip.originalName}
-                                    </Badge>
-                                  )}
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setEditingBundleId(trip.id);
-                                      setFormBundleName(trip.originalName || trip.name || '');
-                                      setFormBundleLocation(trip.location || '');
-                                      setFormBundleStartDate(trip.startDate || '');
-                                      setFormBundleEndDate(trip.endDate || '');
-                                      setIsEditingBundle(true);
-                                    }}
-                                    className="p-1 px-2 rounded-lg bg-white dark:bg-zinc-850 text-zinc-500 hover:text-blue-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all cursor-pointer flex items-center gap-1 border border-zinc-200 dark:border-white/10 shadow-xs text-2xs font-black uppercase tracking-wider ml-1"
-                                    title="Edit Bundle Settings"
-                                  >
-                                    <Edit2 className="w-2.5 h-2.5 text-blue-500" />
-                                    <span>Edit</span>
-                                  </button>
+                    <VirtualListItem key={trip.id} estimatedHeight={120}>
+                      <div
+                        className="p-3.5 md:p-6 transition-all duration-300 rounded-3xl bg-gradient-to-br from-blue-50/45 via-white/50 to-blue-50/10 dark:from-blue-950/10 dark:via-zinc-900/40 dark:to-blue-950/5 border border-zinc-200/50 dark:border-white/5 shadow-md min-w-0 md:min-w-[950px] w-full"
+                      >
+                        {/* Sub-header block for trip groups inside container (Only for actual bundles) */}
+                        {!isIndependent ? (
+                          <>
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5 pb-4 border-b border-zinc-200/40 dark:border-white/5 ml-1">
+                              <div className="flex items-center gap-3">
+                                <div className="p-2.5 rounded-2xl border bg-blue-500/10 text-blue-500 border-blue-500/15 animate-none">
+                                  <Compass className="w-5 h-5 animate-spin-slow" />
                                 </div>
-                                {trip.location && (
-                                  <p className="text-xs text-zinc-500 dark:text-zinc-400 font-bold mt-1 flex items-center gap-1">
-                                    <MapPin className="w-3.5 h-3.5 text-zinc-400" />
-                                    {trip.location}
-                                  </p>
-                                )}
+                                <div>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-base font-black text-zinc-850 dark:text-zinc-200 uppercase tracking-widest leading-none">
+                                      {trip.name}
+                                    </span>
+                                    {trip.originalName && trip.originalName !== trip.name && (
+                                      <Badge className="text-xs font-bold bg-blue-500/10 hover:bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/15 select-none rounded-lg py-0.5 px-2 leading-none uppercase tracking-wide">
+                                        {trip.originalName}
+                                      </Badge>
+                                    )}
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setEditingBundleId(trip.id);
+                                        setFormBundleName(trip.originalName || trip.name || '');
+                                        setFormBundleLocation(trip.location || '');
+                                        setFormBundleStartDate(trip.startDate || '');
+                                        setFormBundleEndDate(trip.endDate || '');
+                                        setIsEditingBundle(true);
+                                      }}
+                                      className="p-1 px-2 rounded-lg bg-white dark:bg-zinc-850 text-zinc-500 hover:text-blue-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all cursor-pointer flex items-center gap-1 border border-zinc-200 dark:border-white/10 shadow-xs text-2xs font-black uppercase tracking-wider ml-1"
+                                      title="Edit Bundle Settings"
+                                      aria-label="Edit Bundle Settings"
+                                    >
+                                      <Edit2 className="w-2.5 h-2.5 text-blue-500" />
+                                      <span>Edit</span>
+                                    </button>
+                                  </div>
+                                  {trip.location && (
+                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 font-bold mt-1 flex items-center gap-1">
+                                      <MapPin className="w-3.5 h-3.5 text-zinc-400" />
+                                      {trip.location}
+                                    </p>
+                                  )}
+                                </div>
                               </div>
+                              {(trip.startDate || trip.endDate) && (
+                                <div className="flex items-center gap-2 px-3 py-1.5 bg-white/60 dark:bg-white/5 rounded-2xl text-xs font-mono font-bold text-zinc-500 dark:text-zinc-400 border border-zinc-200/40 dark:border-transparent">
+                                  <Calendar className="w-3.5 h-3.5 text-zinc-400" />
+                                  {trip.startDate} {trip.endDate && trip.endDate !== trip.startDate ? `→ ${trip.endDate}` : ''}
+                                </div>
+                              )}
                             </div>
-                            {(trip.startDate || trip.endDate) && (
-                              <div className="flex items-center gap-2 px-3 py-1.5 bg-white/60 dark:bg-white/5 rounded-2xl text-xs font-mono font-bold text-zinc-500 dark:text-zinc-400 border border-zinc-200/40 dark:border-transparent">
-                                <Calendar className="w-3.5 h-3.5 text-zinc-400" />
-                                {trip.startDate} {trip.endDate && trip.endDate !== trip.startDate ? `→ ${trip.endDate}` : ''}
-                              </div>
+                            <BundleJourneyTimeline flights={[...outbound, ...returnLegs]} />
+                          </>
+                        ) : null}
+
+                        {/* Flights Table representation */}
+                        <table className="hidden md:table w-full text-left border-collapse table-fixed">
+                          <colgroup>
+                            {isMultiEditing ? (
+                              <>
+                                <col style={{ width: '4%' }} />
+                                <col style={{ width: '16%' }} />
+                                <col style={{ width: '21%' }} />
+                                <col style={{ width: '17%' }} />
+                                <col style={{ width: '22%' }} />
+                                <col style={{ width: '14%' }} />
+                                <col style={{ width: '6%' }} />
+                              </>
+                            ) : (
+                              <>
+                                <col style={{ width: '18%' }} />
+                                <col style={{ width: '23%' }} />
+                                <col style={{ width: '18%' }} />
+                                <col style={{ width: '23%' }} />
+                                <col style={{ width: '14%' }} />
+                                <col style={{ width: '4%' }} />
+                              </>
                             )}
-                          </div>
-                          <BundleJourneyTimeline flights={[...outbound, ...returnLegs]} />
-                        </>
-                      ) : null}
+                          </colgroup>
+                          <tbody>
+                            {outbound && outbound.length > 0 && outbound.map((flight, idx) => renderTableRow(flight, idx, outbound, trip))}
+                            {returnLegs && returnLegs.length > 0 && returnLegs.map((flight, idx) => renderTableRow(flight, idx, returnLegs, trip))}
+                          </tbody>
+                        </table>
 
-                      {/* Desktop Flight leg rows */}
-                      <table className="hidden md:table w-full text-left border-separate border-spacing-y-2.5 min-w-[905px] table-fixed">
-                        <colgroup>
-                          {isMultiEditing ? (
-                            <>
-                              <col style={{ width: '4%' }} />
-                              <col style={{ width: '16%' }} />
-                              <col style={{ width: '21%' }} />
-                              <col style={{ width: '17%' }} />
-                              <col style={{ width: '22%' }} />
-                              <col style={{ width: '14%' }} />
-                              <col style={{ width: '6%' }} />
-                            </>
-                          ) : (
-                            <>
-                              <col style={{ width: '18%' }} />
-                              <col style={{ width: '23%' }} />
-                              <col style={{ width: '18%' }} />
-                              <col style={{ width: '23%' }} />
-                              <col style={{ width: '14%' }} />
-                              <col style={{ width: '4%' }} />
-                            </>
-                          )}
-                        </colgroup>
-                        <tbody>
-                          {outbound && outbound.length > 0 && outbound.map((flight, idx) => renderTableRow(flight, idx, outbound, trip))}
-                          {returnLegs && returnLegs.length > 0 && returnLegs.map((flight, idx) => renderTableRow(flight, idx, returnLegs, trip))}
-                        </tbody>
-                      </table>
-
-                      {/* Mobile Flight cards stack */}
-                      <div className="flex flex-col gap-4 md:hidden">
-                        {outbound && outbound.length > 0 && renderMobileTripContainer(outbound, 'Outbound', trip)}
-                        {returnLegs && returnLegs.length > 0 && renderMobileTripContainer(returnLegs, 'Return', trip)}
+                        {/* Mobile Flight cards stack */}
+                        <div className="flex flex-col gap-4 md:hidden">
+                          {outbound && outbound.length > 0 && renderMobileTripContainer(outbound, 'Outbound', trip)}
+                          {returnLegs && returnLegs.length > 0 && renderMobileTripContainer(returnLegs, 'Return', trip)}
+                        </div>
                       </div>
-                    </div>
+                    </VirtualListItem>
                   );
                 })}
               </div>

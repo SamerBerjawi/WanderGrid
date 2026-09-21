@@ -21,6 +21,8 @@ import {
   ArrowRight
 } from '@phosphor-icons/react';
 import { Button, Badge, Card, Modal, Select } from '../components/ui';
+import { GlassPanel } from '../components/glass/GlassPanel';
+import { INPUT_BASE_STYLE } from '../constants';
 import { dataService } from '../services/mockDb';
 import { useWanderSync } from '../hooks/useWanderSync';
 import { Trip, User, EntitlementType, SavedConfig, CustomEvent as TripCustomEvent, PublicHoliday } from '../types';
@@ -693,57 +695,62 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
   }
 
   return (
-    <div className="space-y-8 max-w-[1450px] mx-auto pb-24 relative select-none animate-fade-in text-gray-900 dark:text-gray-100">
+    <div className="w-full max-w-[1680px] mx-auto pt-2 sm:pt-4 px-1 sm:px-4 md:px-6 lg:px-8 flex flex-col gap-5 sm:gap-6 animate-fadeIn pb-16 text-light-text dark:text-dark-text select-none">
       
-      {/* Header Banner - Premium Glassmorphic */}
-      <header className="relative overflow-hidden bg-white/40 dark:bg-zinc-900/40 p-6 md:p-8 rounded-3xl backdrop-blur-2xl border border-white/50 dark:border-white/5 shadow-xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-500/5 dark:bg-indigo-500/10 rounded-full blur-[140px] pointer-events-none translate-x-[20%] -translate-y-[20%]" />
-        
-        <div className="space-y-2 relative z-10 w-full lg:w-auto">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-indigo-505 animate-pulse" />
-            <span className="text-xs font-bold uppercase text-indigo-550 dark:text-indigo-400 tracking-[0.2em]">Schedules & Leaves Sync</span>
+      {/* Universal Page Blueprint Header */}
+      <div className="flex flex-row items-center justify-between gap-4 pb-2 border-b border-black/5 dark:border-white/5 shrink-0">
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl sm:rounded-3xl bg-primary-500/10 dark:bg-primary-500/20 text-primary-600 dark:text-primary-400 flex items-center justify-center shrink-0 shadow-sm border border-primary-500/20">
+            <CalendarIcon className="w-6 h-6 sm:w-8 sm:h-8" weight="duotone" />
           </div>
-          <h2 className="text-4xl lg:text-5xl font-black text-gray-900 dark:text-white tracking-tight">Vacation Calendar</h2>
-          <p className="text-sm font-medium text-gray-500 dark:text-zinc-400 max-w-xl">
-            Aggregate co-travelers, lock team out-of-office slots, optimize weekend bridges, and synchronize flight dates on a single continuous timeline.
-          </p>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl sm:text-3xl md:text-5xl font-black text-light-text dark:text-dark-text tracking-tight truncate">
+                Vacation Calendar
+              </h1>
+              <span className="hidden sm:inline-flex px-2.5 py-0.5 rounded-full text-2xs font-mono font-bold uppercase tracking-wider bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
+                Timeline Sync
+              </span>
+            </div>
+            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium truncate mt-0.5">
+              Aggregate co-travelers, leaves, and flight sync
+            </p>
+          </div>
         </div>
-        
+
         {/* Navigation / Month-Selection Controls */}
-        <div className="flex flex-wrap items-center gap-3 relative z-10 w-full lg:w-auto">
-          <div className="flex items-center gap-1.5 bg-gray-100/80 dark:bg-zinc-950/45 p-1.5 rounded-2xl border border-zinc-200/50 dark:border-white/10 shadow-inner">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="p-1 rounded-xl h-8 w-8 text-gray-600 dark:text-gray-300" 
+        <div className="flex items-center gap-2 shrink-0">
+          <GlassPanel className="wg-glass-pill p-1 rounded-full flex items-center gap-1 border border-black/5 dark:border-white/10 shadow-glass-card">
+            <button 
+              className="w-8 h-8 rounded-full flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer" 
               onClick={handlePrevMonth}
+              aria-label="Previous month"
             >
               <ChevronLeft className="w-4 h-4" />
-            </Button>
-            <span className="text-xs font-black min-w-[120px] text-center text-gray-800 dark:text-white uppercase tracking-wider">
+            </button>
+            <span className="text-xs font-black min-w-[90px] sm:min-w-[120px] text-center text-light-text dark:text-dark-text uppercase tracking-wider font-mono">
               {monthName}
             </span>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="p-1 rounded-xl h-8 w-8 text-gray-600 dark:text-gray-300" 
+            <button 
+              className="w-8 h-8 rounded-full flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer" 
               onClick={handleNextMonth}
+              aria-label="Next month"
             >
               <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
+            </button>
+          </GlassPanel>
           
           <Button 
             variant="secondary" 
-            size="md" 
-            className="rounded-2xl border-zinc-200 dark:border-zinc-800 text-xs font-black uppercase text-zinc-700 dark:text-zinc-200"
+            size="sm" 
+            className="rounded-full text-xs font-bold uppercase"
             onClick={handleJumpToToday}
+            aria-label="Jump to current date"
           >
             Today
           </Button>
         </div>
-      </header>
+      </div>
 
       {/* Grid of filtering rails */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -752,15 +759,15 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
         <div className="lg:col-span-1 space-y-6">
           
           {/* User Multi-select Filter Panel */}
-          <div className="bg-white/60 dark:bg-zinc-900/60 rounded-3xl border border-zinc-100 dark:border-white/5 p-6 space-y-4">
+          <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden p-5 space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="text-xs font-black uppercase tracking-wider text-gray-500 dark:text-gray-400 flex items-center gap-2">
-                <Users className="w-4 h-4 text-indigo-500" />
+              <h3 className="text-xs font-black uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-2">
+                <Users className="w-4 h-4 text-primary-500" />
                 <span>Travelers</span>
               </h3>
               <button 
                 onClick={toggleSelectAllUsers}
-                className="text-xs font-bold uppercase text-indigo-500 dark:text-indigo-400 hover:underline"
+                className="text-xs font-bold uppercase text-primary-500 dark:text-primary-400 hover:underline cursor-pointer"
               >
                 {users && selectedUsers.size === users.length ? 'Filter None' : 'Unify All'}
               </button>
@@ -773,10 +780,10 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
                   <button
                     key={user.id}
                     onClick={() => toggleUserFilter(user.id)}
-                    className={`w-full flex items-center justify-between p-2.5 rounded-xl border text-left transition-all ${
+                    className={`w-full flex items-center justify-between p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                       isSelected 
-                        ? 'bg-indigo-50/50 dark:bg-indigo-950/15 border-indigo-200 dark:border-indigo-900/30' 
-                        : 'border-zinc-100 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
+                        ? 'bg-primary-500/15 border-primary-500/30' 
+                        : 'border-black/5 dark:border-white/5 hover:bg-black/5 dark:hover:bg-white/5'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -786,12 +793,12 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
                         {user.name.charAt(0)}
                       </div>
                       <div className="truncate min-w-0">
-                        <p className="text-xs font-black text-gray-900 dark:text-white truncate">{user.name}</p>
-                        <p className="text-xs font-medium text-gray-400 dark:text-zinc-500 capitalize">{user.role}</p>
+                        <p className="text-xs font-black text-light-text dark:text-dark-text truncate">{user.name}</p>
+                        <p className="text-xs font-medium text-light-text-secondary dark:text-dark-text-secondary capitalize">{user.role}</p>
                       </div>
                     </div>
                     {isSelected && (
-                      <div className="w-5 h-5 bg-indigo-500 dark:bg-indigo-600 rounded-full flex items-center justify-center text-white shrink-0">
+                      <div className="w-5 h-5 bg-primary-500 rounded-full flex items-center justify-center text-white shrink-0">
                         <Check className="w-3 h-3 stroke-[3]" />
                       </div>
                     )}
@@ -799,25 +806,25 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
                 );
               })}
             </div>
-          </div>
+          </GlassPanel>
 
           {/* Entitlement Categories filter */}
-          <div className="bg-white/60 dark:bg-zinc-900/60 rounded-3xl border border-zinc-100 dark:border-white/5 p-6 space-y-4">
-            <h3 className="text-xs font-black uppercase tracking-wider text-gray-500 dark:text-gray-400 flex items-center gap-2">
-              <Layers className="w-4 h-4 text-indigo-500" />
+          <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden p-5 space-y-4">
+            <h3 className="text-xs font-black uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-2">
+              <Layers className="w-4 h-4 text-primary-500" />
               <span>Leave Types</span>
             </h3>
 
             <div className="space-y-1.5">
               <button
                 onClick={() => setSelectedEntitlementFilter('all')}
-                className={`w-full text-left px-3 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 ${
+                className={`w-full text-left px-3 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer ${
                   selectedEntitlementFilter === 'all' 
-                    ? 'bg-zinc-100 text-gray-950 dark:bg-zinc-800 dark:text-white font-extrabold' 
-                    : 'text-gray-500 dark:text-gray-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/40'
+                    ? 'bg-black/10 dark:bg-white/10 text-light-text dark:text-dark-text font-extrabold' 
+                    : 'text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5'
                 }`}
               >
-                <div className="w-2.5 h-2.5 rounded-full bg-indigo-505" />
+                <div className="w-2.5 h-2.5 rounded-full bg-primary-500" />
                 <span>All Calendar Items</span>
               </button>
 
@@ -828,10 +835,10 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
                   <button
                     key={ent.id}
                     onClick={() => setSelectedEntitlementFilter(ent.id)}
-                    className={`w-full text-left px-3 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 ${
+                    className={`w-full text-left px-3 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer ${
                       isSelected 
-                        ? 'bg-zinc-100 text-gray-950 dark:bg-zinc-800 dark:text-white font-extrabold' 
-                        : 'text-gray-500 dark:text-gray-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/40'
+                        ? 'bg-black/10 dark:bg-white/10 text-light-text dark:text-dark-text font-extrabold' 
+                        : 'text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5'
                     }`}
                   >
                     <div className={`w-2.5 h-2.5 rounded-full ${colMeta.dot}`} />
@@ -842,10 +849,10 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
 
               <button
                 onClick={() => setSelectedEntitlementFilter('holiday')}
-                className={`w-full text-left px-3 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 ${
+                className={`w-full text-left px-3 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer ${
                   selectedEntitlementFilter === 'holiday' 
-                    ? 'bg-zinc-100 text-gray-950 dark:bg-zinc-800 dark:text-white font-extrabold' 
-                    : 'text-gray-500 dark:text-gray-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/40'
+                    ? 'bg-black/10 dark:bg-white/10 text-light-text dark:text-dark-text font-extrabold' 
+                    : 'text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5'
                 }`}
               >
                 <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
@@ -854,31 +861,31 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
 
               <button
                 onClick={() => setSelectedEntitlementFilter('event')}
-                className={`w-full text-left px-3 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 ${
+                className={`w-full text-left px-3 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer ${
                   selectedEntitlementFilter === 'event' 
-                    ? 'bg-zinc-100 text-gray-950 dark:bg-zinc-800 dark:text-white font-extrabold' 
-                    : 'text-gray-500 dark:text-gray-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/40'
+                    ? 'bg-black/10 dark:bg-white/10 text-light-text dark:text-dark-text font-extrabold' 
+                    : 'text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5'
                 }`}
               >
                 <div className="w-2.5 h-2.5 rounded-full bg-indigo-400" />
                 <span>Custom Events Only</span>
               </button>
             </div>
-          </div>
+          </GlassPanel>
 
           {/* Quick Search Widget */}
-          <div className="bg-white/60 dark:bg-zinc-900/60 rounded-2xl border border-zinc-100 dark:border-white/5 p-4">
+          <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden p-4">
             <div className="relative">
-              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-light-text-secondary dark:text-dark-text-secondary absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Search vacations, destinations..."
-                className="w-full pl-9 pr-3 py-2 text-xs font-bold rounded-xl bg-gray-50/50 dark:bg-zinc-950/30 border border-zinc-200/50 dark:border-white/5 focus:outline-none focus:border-indigo-500"
+                className={`${INPUT_BASE_STYLE} pl-9 text-xs font-bold`}
               />
             </div>
-          </div>
+          </GlassPanel>
 
         </div>
 
@@ -886,64 +893,92 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
         <div className="lg:col-span-3 space-y-6">
           
           {/* Calendar Layout Navigation Header Tabs */}
-          <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center bg-white/40 dark:bg-zinc-900/30 p-2 border border-zinc-100 dark:border-white/5 rounded-2xl gap-2">
-            <div className="flex p-1 bg-gray-100/80 dark:bg-zinc-950/45 rounded-2xl gap-1 border border-zinc-200/20 dark:border-white/5">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
+            <GlassPanel className="wg-glass-pill p-1.5 rounded-full flex gap-1 border border-black/5 dark:border-white/10 shrink-0 overflow-x-auto no-scrollbar shadow-glass-card">
               <button
+                type="button"
                 onClick={() => setActiveTab('timeline')}
-                className={`flex items-center gap-1.5 px-4 py-2 text-xs font-black uppercase rounded-xl tracking-wider transition-all duration-300 ${
+                className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-10 ${
                   activeTab === 'timeline' 
-                    ? 'bg-white text-gray-950 shadow-md dark:bg-zinc-800 dark:text-white' 
-                    : 'text-gray-500 dark:text-gray-450 hover:text-gray-800 dark:hover:text-gray-200'
+                    ? 'text-primary-600 dark:text-primary-400 font-extrabold' 
+                    : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
                 }`}
               >
-                <Clock className="w-3.5 h-3.5" />
-                <span>Timeline Schedule</span>
+                {activeTab === 'timeline' && (
+                  <motion.div
+                    layoutId="calendarActiveTab"
+                    className="absolute inset-0 bg-white dark:bg-dark-card rounded-full shadow-sm -z-10"
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  />
+                )}
+                <Clock className="w-3.5 h-3.5" weight={activeTab === 'timeline' ? 'duotone' : 'regular'} />
+                <span>Timeline</span>
               </button>
               
               <button
+                type="button"
                 onClick={() => setActiveTab('grid')}
-                className={`flex items-center gap-1.5 px-4 py-2 text-xs font-black uppercase rounded-xl tracking-wider transition-all duration-300 ${
+                className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-10 ${
                   activeTab === 'grid' 
-                    ? 'bg-white text-gray-950 shadow-md dark:bg-zinc-800 dark:text-white' 
-                    : 'text-gray-500 dark:text-gray-450 hover:text-gray-800 dark:hover:text-gray-200'
+                    ? 'text-primary-600 dark:text-primary-400 font-extrabold' 
+                    : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
                 }`}
               >
-                <Grid className="w-3.5 h-3.5" />
-                <span>Grid Calendar</span>
+                {activeTab === 'grid' && (
+                  <motion.div
+                    layoutId="calendarActiveTab"
+                    className="absolute inset-0 bg-white dark:bg-dark-card rounded-full shadow-sm -z-10"
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  />
+                )}
+                <Grid className="w-3.5 h-3.5" weight={activeTab === 'grid' ? 'duotone' : 'regular'} />
+                <span>Grid</span>
               </button>
 
               <button
+                type="button"
                 onClick={() => setActiveTab('agenda')}
-                className={`flex items-center gap-1.5 px-4 py-2 text-xs font-black uppercase rounded-xl tracking-wider transition-all duration-300 ${
+                className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-10 ${
                   activeTab === 'agenda' 
-                    ? 'bg-white text-gray-950 shadow-md dark:bg-zinc-800 dark:text-white' 
-                    : 'text-gray-500 dark:text-gray-450 hover:text-gray-800 dark:hover:text-gray-200'
+                    ? 'text-primary-600 dark:text-primary-400 font-extrabold' 
+                    : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
                 }`}
               >
-                <List className="w-3.5 h-3.5" />
-                <span>Agenda stream</span>
+                {activeTab === 'agenda' && (
+                  <motion.div
+                    layoutId="calendarActiveTab"
+                    className="absolute inset-0 bg-white dark:bg-dark-card rounded-full shadow-sm -z-10"
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  />
+                )}
+                <List className="w-3.5 h-3.5" weight={activeTab === 'agenda' ? 'duotone' : 'regular'} />
+                <span>Agenda</span>
               </button>
 
               <button
+                type="button"
                 onClick={() => setActiveTab('optimizer')}
-                className={`flex items-center gap-1.5 px-4 py-2 text-xs font-black uppercase rounded-xl tracking-wider transition-all duration-300 relative ${
+                className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer z-10 ${
                   activeTab === 'optimizer' 
-                    ? 'bg-white text-gray-150 shadow-md dark:bg-zinc-800 dark:text-white' 
-                    : 'text-gray-500 dark:text-gray-450 hover:text-gray-800 dark:hover:text-gray-200'
+                    ? 'text-primary-600 dark:text-primary-400 font-extrabold' 
+                    : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
                 }`}
               >
-                <Sparkles className="w-3.5 h-3.5 text-[#fa9a1d]" />
-                <span>Bridge Optimizer</span>
-                <span className="absolute -top-1.5 -right-1 flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-                </span>
+                {activeTab === 'optimizer' && (
+                  <motion.div
+                    layoutId="calendarActiveTab"
+                    className="absolute inset-0 bg-white dark:bg-dark-card rounded-full shadow-sm -z-10"
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  />
+                )}
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" weight={activeTab === 'optimizer' ? 'duotone' : 'regular'} />
+                <span>Optimizer</span>
               </button>
-            </div>
+            </GlassPanel>
             
             <div className="px-3 text-right">
-              <span className="text-xs font-black uppercase tracking-widest text-[#fa9a1d]">
-                Active Filter / {filteredTrips.length} Trips Plotted
+              <span className="px-2.5 py-1 rounded-full text-2xs font-mono font-bold uppercase tracking-wider bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
+                {filteredTrips.length} Trips Plotted
               </span>
             </div>
           </div>
@@ -957,13 +992,13 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -15 }}
-                className="bg-white/40 dark:bg-zinc-900/45 rounded-3xl border border-zinc-150/40 dark:border-white/5 shadow-lg overflow-hidden flex flex-col"
               >
-                <div className="p-5 border-b border-zinc-100 dark:border-white/5 bg-white/30 dark:bg-[#fa9a1d]/5 flex items-center justify-between">
-                  <h3 className="text-sm font-black uppercase tracking-wider text-gray-800 dark:text-white flex items-center gap-2">
-                    <Clock className="w-4.5 h-4.5 text-indigo-550" />
-                    <span>Active month Timeline tape</span>
-                  </h3>
+                <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden shadow-glass-card flex flex-col">
+                  <div className="p-5 border-b border-black/5 dark:border-white/5 flex items-center justify-between">
+                    <h3 className="text-sm font-black uppercase tracking-wider text-light-text dark:text-dark-text flex items-center gap-2">
+                      <Clock className="w-4.5 h-4.5 text-primary-500" />
+                      <span>Active Month Timeline</span>
+                    </h3>
                   <div className="text-xs text-gray-400 font-bold flex items-center gap-3">
                     <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-zinc-100 dark:bg-zinc-800 border dark:border-transparent inline-block" /> Workday</span>
                     <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-[#fa9a1d]/10 inline-block" /> Weekend</span>
@@ -1105,21 +1140,22 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
                 <div className="p-4 bg-zinc-50/50 dark:bg-zinc-950/20 border-t border-zinc-100 dark:border-white/5 text-xs font-bold text-gray-400 tracking-wide">
                   💡 Drag horizontally or hover cells to track overlapping vacation slots. Click populated segments for detail parameters.
                 </div>
-              </motion.div>
-            )}
+              </GlassPanel>
+            </motion.div>
+          )}
 
-            {/* View Render Option 2: Classic Grid Calendars */}
-            {activeTab === 'grid' && (
-              <motion.div
-                key="grid"
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -15 }}
-                className="space-y-4"
-              >
-                
-                {/* 7-column Calendar structure card */}
-                <div className="bg-white/40 dark:bg-zinc-900/40 rounded-3xl p-6 border border-zinc-100 dark:border-white/5 shadow-xl">
+          {/* View Render Option 2: Classic Grid Calendars */}
+          {activeTab === 'grid' && (
+            <motion.div
+              key="grid"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              className="space-y-4"
+            >
+              
+              {/* 7-column Calendar structure card */}
+              <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden p-6 shadow-glass-card">
                   
                   {/* Days of week titles header */}
                   <div className="grid grid-cols-7 gap-3 mb-4 text-center">
@@ -1197,8 +1233,7 @@ export const VacationCalendar: React.FC<VacationCalendarProps> = ({ onTripClick 
                     })}
 
                   </div>
-
-                </div>
+                </GlassPanel>
 
               </motion.div>
             )}

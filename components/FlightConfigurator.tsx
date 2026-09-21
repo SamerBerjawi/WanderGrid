@@ -1,6 +1,30 @@
 
 import React, { useState, useEffect } from 'react';
-import { Airplane as Plane, WarningCircle as AlertCircle, MagnifyingGlass as Search } from '@phosphor-icons/react';
+import { 
+    Airplane as Plane, 
+    AirplaneLanding,
+    AirplaneTilt,
+    WarningCircle as AlertCircle, 
+    MagnifyingGlass, 
+    MagnifyingGlass as Search,
+    Speedometer,
+    Trash,
+    Train,
+    Bus,
+    Boat,
+    Key,
+    Car,
+    Path,
+    PlusCircle,
+    MinusCircle,
+    X,
+    ArrowRight,
+    Clock,
+    Lightning,
+    Check,
+    Plus,
+    Receipt
+} from '@phosphor-icons/react';
 import { Button, Input, Select, Autocomplete, Badge, TimeInput } from './ui';
 import { Transport, TransportMode, FlightStatusResponse } from '../types';
 import { dataService } from '../services/mockDb';
@@ -129,13 +153,13 @@ const getCurrencySymbol = (code: string) => {
     return symbols[code] || code || '$';
 };
 
-const TRANSPORT_MODES: { mode: TransportMode; label: string; icon: string }[] = [
-    { mode: 'Flight', label: 'Flight', icon: 'flight' },
-    { mode: 'Train', label: 'Train', icon: 'train' },
-    { mode: 'Bus', label: 'Bus', icon: 'directions_bus' },
-    { mode: 'Cruise', label: 'Cruise', icon: 'directions_boat' },
-    { mode: 'Car Rental', label: 'Rental', icon: 'key' },
-    { mode: 'Personal Car', label: 'My Car', icon: 'directions_car' },
+const TRANSPORT_MODES: { mode: TransportMode; label: string; icon: React.ElementType }[] = [
+    { mode: 'Flight', label: 'Flight', icon: AirplaneTilt },
+    { mode: 'Train', label: 'Train', icon: Train },
+    { mode: 'Bus', label: 'Bus', icon: Bus },
+    { mode: 'Cruise', label: 'Cruise', icon: Boat },
+    { mode: 'Car Rental', label: 'Rental', icon: Key },
+    { mode: 'Personal Car', label: 'My Car', icon: Car },
 ];
 
 const DurationInput: React.FC<{ minutes: number; onChange: (m: number) => void; onAutoCalc?: () => void; canAutoCalc?: boolean }> = ({ minutes, onChange, onAutoCalc, canAutoCalc }) => {
@@ -151,8 +175,9 @@ const DurationInput: React.FC<{ minutes: number; onChange: (m: number) => void; 
                         onClick={onAutoCalc} 
                         className="text-xs font-bold text-blue-500 hover:text-blue-600 flex items-center gap-1 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded transition-colors"
                         title="Estimate duration based on distance and mode speed"
+                        aria-label="Estimate duration"
                     >
-                        <span className="material-icons-outlined text-xs">speed</span> Auto
+                        <Speedometer className="w-3.5 h-3.5" /> Auto
                     </button>
                 )}
             </div>
@@ -1080,20 +1105,11 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
         return 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-900/30';
     };
 
-    const getSeatTypeIcon = (type?: string) => {
-        switch(type) {
-            case 'Window': return 'crop_portrait'; 
-            case 'Aisle': return 'chair_alt'; 
-            case 'Middle': return 'event_seat'; 
-            default: return 'airline_seat_recline_normal';
-        }
-    };
-
     if (showDeleteConfirm) {
         return (
             <div className="text-center space-y-6 animate-fade-in py-8">
-                <div className="w-20 h-20 bg-rose-100 rounded-full flex items-center justify-center mx-auto text-rose-600 animate-pulse">
-                    <span className="material-icons-outlined text-4xl">delete_forever</span>
+                <div className="w-20 h-20 bg-rose-100 dark:bg-rose-950/40 rounded-full flex items-center justify-center mx-auto text-rose-600 dark:text-rose-400 animate-pulse">
+                    <Trash className="w-10 h-10" />
                 </div>
                 <div>
                     <h4 className="text-xl font-bold text-gray-900 dark:text-white">Delete Booking?</h4>
@@ -1113,20 +1129,23 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
         <div className="space-y-6 animate-fade-in max-h-[80vh] overflow-y-auto custom-scrollbar p-1">
             
             <div className="bg-gray-100 dark:bg-black/30 p-1.5 rounded-2xl flex gap-1 overflow-x-auto">
-                {TRANSPORT_MODES.map(m => (
-                    <button
-                        key={m.mode}
-                        onClick={() => handleModeChange(m.mode)}
-                        className={`flex-1 flex flex-col items-center justify-center py-3 rounded-xl transition-all min-w-[70px] ${
-                            mode === m.mode
-                            ? 'bg-white shadow-md text-blue-600 dark:bg-gray-800 dark:text-white'
-                            : 'text-gray-500 hover:bg-gray-200/50 dark:hover:bg-white/5 dark:text-gray-400'
-                        }`}
-                    >
-                        <span className="material-icons-outlined text-xl mb-1">{m.icon}</span>
-                        <span className="text-xs font-bold uppercase tracking-wide">{m.label}</span>
-                    </button>
-                ))}
+                {TRANSPORT_MODES.map(m => {
+                    const ModeIcon = m.icon;
+                    return (
+                        <button
+                            key={m.mode}
+                            onClick={() => handleModeChange(m.mode)}
+                            className={`flex-1 flex flex-col items-center justify-center py-3 rounded-xl transition-all min-w-[70px] ${
+                                mode === m.mode
+                                ? 'bg-white shadow-md text-blue-600 dark:bg-gray-800 dark:text-white'
+                                : 'text-gray-500 hover:bg-gray-200/50 dark:hover:bg-white/5 dark:text-gray-400'
+                            }`}
+                        >
+                            <ModeIcon className="w-5 h-5 mb-1" />
+                            <span className="text-xs font-bold uppercase tracking-wide">{m.label}</span>
+                        </button>
+                    );
+                })}
             </div>
 
             {isCar ? (
@@ -1179,9 +1198,10 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                 onClick={estimateRoadTripDistance} 
                                 className="absolute right-2 top-8 text-blue-500 hover:text-blue-600 disabled:opacity-50" 
                                 title="Auto-Estimate Route Distance" 
+                                aria-label="Auto-Estimate Route Distance"
                                 disabled={isEstimatingDistance === 'car' || !carForm.pickupLocation || !carForm.dropoffLocation}
                             >
-                                {isEstimatingDistance === 'car' ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <span className="material-icons-outlined text-lg">timeline</span>}
+                                {isEstimatingDistance === 'car' ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Path className="w-4 h-4" />}
                             </button>
                         </div>
                     </div>
@@ -1193,8 +1213,8 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                     <Input 
                                         label="Agency" placeholder="Hertz, Avis..." value={carForm.agency} onChange={e => updateCar('agency', e.target.value)} 
                                         rightElement={brandfetchKey && (
-                                            <button onClick={handleFetchBrandForCar} disabled={isFetchingBrand === 'car' || !carForm.agency} className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-blue-500 disabled:opacity-50 transition-colors" title="Fetch Brand Logo">
-                                                {isFetchingBrand === 'car' ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin block" /> : <span className="material-icons-outlined text-lg">image_search</span>}
+                                            <button onClick={handleFetchBrandForCar} disabled={isFetchingBrand === 'car' || !carForm.agency} className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-blue-500 disabled:opacity-50 transition-colors" title="Fetch Brand Logo" aria-label="Fetch Brand Logo">
+                                                {isFetchingBrand === 'car' ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin block" /> : <MagnifyingGlass className="w-4 h-4" />}
                                             </button>
                                         )} className="pr-10"
                                     />
@@ -1264,13 +1284,14 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                             onClick={() => addLayover(index)}
                                             className="text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 dark:text-blue-400 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 px-2 py-1.5 rounded-lg transition-colors flex items-center gap-1"
                                             title="Add Connecting Flight"
+                                            aria-label="Add Connecting Flight Layover"
                                         >
-                                            <span className="material-icons-outlined text-xs">add_circle_outline</span> Layover
+                                            <PlusCircle className="w-3.5 h-3.5" /> Layover
                                         </button>
 
                                         {(tripType === 'Multi-City' || segments.length > (tripType === 'Round Trip' ? 2 : 1)) && (
-                                            <button onClick={() => removeSegment(index)} className="text-gray-300 hover:text-rose-500 transition-colors">
-                                                <span className="material-icons-outlined text-sm">close</span>
+                                            <button onClick={() => removeSegment(index)} className="text-gray-300 hover:text-rose-500 transition-colors" aria-label="Remove segment">
+                                                <X className="w-4 h-4" />
                                             </button>
                                         )}
                                     </div>
@@ -1293,7 +1314,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                         />
                                     </div>
                                     <div className="md:col-span-2 flex items-center justify-center pt-4">
-                                        <span className="material-icons-outlined text-gray-300">arrow_right_alt</span>
+                                        <ArrowRight className="w-4 h-4 text-gray-300" />
                                     </div>
                                     <div className="md:col-span-5">
                                         <Autocomplete 
@@ -1362,9 +1383,10 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                             onClick={() => estimateDistance(segment.origin, segment.destination, mode, (val) => updateSegment(index, 'distance', val), segment.id)}
                                             className="absolute right-2 top-8 text-blue-500 hover:text-blue-600 disabled:opacity-50"
                                             title="Auto-Estimate Distance"
+                                            aria-label="Auto-Estimate Distance"
                                             disabled={isEstimatingDistance === segment.id || !segment.origin || !segment.destination}
                                         >
-                                            {isEstimatingDistance === segment.id ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <span className="material-icons-outlined text-lg">timeline</span>}
+                                            {isEstimatingDistance === segment.id ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Path className="w-4 h-4" />}
                                         </button>
                                     </div>
 
@@ -1467,7 +1489,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                                                             </div>
                                                                             <div className="flex items-center gap-1.5 mt-0.5 text-xs text-slate-500 dark:text-slate-400 font-mono">
                                                                                 <span>{flight.departure?.airport || flight.departure?.iata}</span>
-                                                                                <span className="material-icons-outlined text-xs text-slate-400">east</span>
+                                                                                <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
                                                                                 <span>{flight.arrival?.airport || flight.arrival?.iata}</span>
                                                                             </div>
                                                                         </div>
@@ -1481,7 +1503,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                                                                 <span className="font-sans">{arrSched}</span>
                                                                             </div>
                                                                             <div className="text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1 mt-0.5 justify-end">
-                                                                                <span className="material-icons text-slate-400 text-xs mr-0.5">schedule</span>
+                                                                                <Clock className="w-3 h-3 text-slate-400 mr-0.5" />
                                                                                 <span>
                                                                                     {flight.departure?.terminal ? `Terminal ${flight.departure.terminal}` : ''}
                                                                                     {flight.departure?.gate ? ` • Gate ${flight.departure.gate}` : ''}
@@ -1520,8 +1542,9 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                                             disabled={isFetchingBrand === segment.id || !segment.provider}
                                                             className="absolute right-2 top-8 text-gray-400 hover:text-blue-500 disabled:opacity-50 transition-colors z-10"
                                                             title="Fetch Brand Logo"
+                                                            aria-label="Fetch Brand Logo"
                                                         >
-                                                            {isFetchingBrand === segment.id ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin block" /> : <span className="material-icons-outlined text-lg">image_search</span>}
+                                                            {isFetchingBrand === segment.id ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin block" /> : <MagnifyingGlass className="w-4 h-4" />}
                                                         </button>
                                                     )}
                                                 </div>
@@ -1547,9 +1570,10 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                                         onClick={() => handleAutoFill(index)}
                                                         className="absolute right-2 top-8 text-blue-500 hover:text-blue-600 disabled:opacity-50"
                                                         title="Auto-fill from AviationStack"
+                                                        aria-label="Auto-fill from AviationStack"
                                                         disabled={isAutoFilling === segment.id || !segment.identifier}
                                                     >
-                                                        {isAutoFilling === segment.id ? <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <span className="material-icons-outlined text-lg">bolt</span>}
+                                                        {isAutoFilling === segment.id ? <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Lightning className="w-4 h-4" />}
                                                     </button>
                                                 )}
                                             </div>
@@ -1570,8 +1594,9 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                                         disabled={isFetchingBrand === segment.id || !segment.provider}
                                                         className="absolute right-2 top-8 text-gray-400 hover:text-blue-500 disabled:opacity-50 transition-colors z-10"
                                                         title="Fetch Brand Logo"
+                                                        aria-label="Fetch Brand Logo"
                                                     >
-                                                        {isFetchingBrand === segment.id ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin block" /> : <span className="material-icons-outlined text-lg">image_search</span>}
+                                                        {isFetchingBrand === segment.id ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin block" /> : <MagnifyingGlass className="w-4 h-4" />}
                                                     </button>
                                                 )}
                                             </div>
@@ -1597,7 +1622,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                             <div className="flex items-center h-full pt-6">
                                                 <label className="flex items-center gap-2 cursor-pointer">
                                                     <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${segment.isExitRow ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-gray-300 dark:border-gray-600 dark:bg-gray-800'}`}>
-                                                        {segment.isExitRow && <span className="material-icons-outlined text-white text-xs">check</span>}
+                                                        {segment.isExitRow && <Check className="text-white text-xs font-bold" />}
                                                     </div>
                                                     <input type="checkbox" className="hidden" checked={segment.isExitRow} onChange={e => updateSegment(index, 'isExitRow', e.target.checked)} />
                                                     <span className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase">Exit Row</span>
@@ -1610,7 +1635,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                         <div className="md:col-span-12 space-y-4 p-4 mt-2 bg-blue-50/20 dark:bg-blue-900/10 rounded-2xl border border-blue-100/30 dark:border-blue-900/20">
                                             <div className="flex justify-between items-center pb-2 border-b border-blue-100/30 dark:border-blue-900/20">
                                                 <h5 className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest flex items-center gap-1.5">
-                                                    <span className="material-icons-outlined text-sm">flight_land</span> AirTrail Flight Details (Terminal, Gate, Tail, Custom)
+                                                    <AirplaneLanding className="w-4 h-4" /> AirTrail Flight Details (Terminal, Gate, Tail, Custom)
                                                 </h5>
                                                 
                                                 {/* Year only approximate toggle */}
@@ -1684,7 +1709,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                                         }}
                                                         className="text-xs font-bold text-blue-500 hover:text-blue-600 flex items-center gap-1 bg-white dark:bg-gray-800 px-2.5 py-1 rounded-lg border border-gray-200 dark:border-white/10 shadow-sm"
                                                     >
-                                                        <span className="material-icons-outlined text-xs">add</span> Add Custom Metadata Field
+                                                        <Plus className="w-3.5 h-3.5" /> Add Custom Metadata Field
                                                     </button>
                                                 </div>
                                                 {segment.customFields && segment.customFields.length > 0 && (
@@ -1717,8 +1742,9 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                                                         updateSegment(index, 'customFields', updated);
                                                                     }}
                                                                     className="text-gray-400 hover:text-red-500 transition-colors"
+                                                                    aria-label="Remove custom field"
                                                                 >
-                                                                    <span className="material-icons-outlined text-sm">remove_circle</span>
+                                                                    <MinusCircle className="w-4 h-4" />
                                                                 </button>
                                                             </div>
                                                         ))}
@@ -1732,14 +1758,14 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                         ))}
 
                         {tripType === 'Multi-City' && (
-                            <Button variant="secondary" onClick={addSegment} className="w-full border-dashed" icon={<span className="material-icons-outlined">add</span>}>
+                            <Button variant="secondary" onClick={addSegment} className="w-full border-dashed" icon={<Plus className="w-4 h-4" />}>
                                 Add Segment
                             </Button>
                         )}
                         
                         <div className="bg-gray-50 dark:bg-white/5 p-5 rounded-2xl border border-gray-100 dark:border-white/5 space-y-4">
                             <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
-                                <span className="material-icons-outlined text-sm">receipt_long</span> Booking Summary
+                                <Receipt className="w-4 h-4" /> Booking Summary
                             </h4>
                             <div className="grid grid-cols-2 gap-6">
                                 <Input 
@@ -1768,7 +1794,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
 
             <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-white/5 sticky bottom-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur p-2 justify-between z-20 rounded-b-2xl">
                 {initialData && onDelete && (
-                    <Button variant="danger" onClick={() => setShowDeleteConfirm(true)} icon={<span className="material-icons-outlined">delete</span>}>
+                    <Button variant="danger" onClick={() => setShowDeleteConfirm(true)} icon={<Trash className="w-4 h-4" />}>
                         Delete
                     </Button>
                 )}

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Button, Input } from '../components/ui';
+import { Button, Input } from '../components/ui';
+import GlassPanel from '../components/glass/GlassPanel';
+import { RocketLaunch } from '@phosphor-icons/react';
 import { dataService } from '../services/mockDb';
 import { User } from '../types';
 
@@ -125,7 +127,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/3 rounded-full blur-3xl pointer-events-none animate-pulse"></div>
             <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/3 rounded-full blur-3xl pointer-events-none animate-pulse" style={{ animationDelay: '1s' }}></div>
 
-            <Card className="w-full max-w-md z-10 !bg-white/80 dark:!bg-gray-900/80 backdrop-blur-xl shadow-2xl border border-white/50 dark:border-white/10" noPadding>
+            <GlassPanel className="w-full max-w-md z-10 wg-glass-card rounded-[28px] overflow-hidden shadow-2xl">
                 <div className="p-8 text-center">
                     <img 
                         src="/app-icon.png" 
@@ -224,10 +226,11 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
 
                     <Button 
                         variant="secondary" 
-                        className="w-full py-3 text-xs uppercase tracking-widest font-black border-dashed border-2" 
+                        className="w-full py-3 text-xs uppercase tracking-widest font-black border-dashed border-2 min-h-[44px]" 
                         onClick={handleDemoLogin}
                         type="button"
-                        icon={<span className="material-icons-outlined text-sm">rocket_launch</span>}
+                        icon={<RocketLaunch className="w-4 h-4" />}
+                        aria-label="Auto-Setup & Demo Run"
                     >
                         Auto-Setup & Demo Run
                     </Button>
@@ -239,7 +242,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                                 <button 
                                     type="button"
                                     onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(''); }}
-                                    className="font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                                    className="font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
                                 >
                                     {mode === 'signin' ? 'Sign Up' : 'Sign In'}
                                 </button>
@@ -247,7 +250,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                         </div>
                     )}
                 </div>
-            </Card>
+            </GlassPanel>
             
             <div className="absolute bottom-6 text-center w-full">
                 <p className="text-2xs font-bold text-gray-400 uppercase tracking-[0.2em] opacity-50">WanderGrid Systems v2.2</p>
