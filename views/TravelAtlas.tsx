@@ -1098,12 +1098,12 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                           </div>
 
                           {item.notes && (
-                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary bg-black/5 dark:bg-white/5 p-3 rounded-2xl mb-4 italic">
+                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary bg-black/5 dark:bg-white/5 border border-black/8 dark:border-white/5 p-3 rounded-2xl mb-4 italic">
                               "{item.notes}"
                             </p>
                           )}
 
-                          <div className="grid grid-cols-2 gap-2 text-xs border-t border-black/5 dark:border-white/5 pt-4">
+                          <div className="grid grid-cols-2 gap-2 text-xs border-t border-black/10 dark:border-white/5 pt-4">
                             <div>
                               <span className="text-light-text-secondary dark:text-dark-text-secondary block text-2xs font-bold uppercase tracking-wider">Visited Date</span>
                               <span className="font-semibold">{item.visitDate || 'Not specified'}</span>
@@ -1211,12 +1211,12 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                           </div>
 
                           {item.notes && (
-                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary bg-black/5 dark:bg-white/5 p-3 rounded-2xl mb-4 italic">
+                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary bg-black/5 dark:bg-white/5 border border-black/8 dark:border-white/5 p-3 rounded-2xl mb-4 italic">
                               "{item.notes}"
                             </p>
                           )}
 
-                          <div className="grid grid-cols-2 gap-2 text-xs border-t border-black/5 dark:border-white/5 pt-4">
+                          <div className="grid grid-cols-2 gap-2 text-xs border-t border-black/10 dark:border-white/5 pt-4">
                             <div>
                               <span className="text-light-text-secondary dark:text-dark-text-secondary block text-2xs font-bold uppercase tracking-wider">Transit Date</span>
                               <span className="font-semibold">{item.visitDate || 'Transit connection'}</span>

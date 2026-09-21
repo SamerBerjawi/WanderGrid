@@ -455,7 +455,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
               >
                 <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px]">
                   {/* Card Header Banner */}
-                  <div className="p-5 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-primary-500/10 via-primary-500/5 to-transparent shrink-0">
+                  <div className="p-5 border-b border-black/10 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-primary-500/10 via-primary-500/5 to-transparent shrink-0">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-primary-500 to-indigo-600 shadow-md shadow-primary-500/20 shrink-0">
                         <Gear className="w-5 h-5" weight="duotone" />
@@ -540,7 +540,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
               >
                 <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px]">
                   {/* Card Header Banner */}
-                  <div className="p-5 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-sky-500/10 via-sky-500/5 to-transparent shrink-0">
+                  <div className="p-5 border-b border-black/10 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-sky-500/10 via-sky-500/5 to-transparent shrink-0">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-sky-500 to-blue-600 shadow-md shadow-sky-500/20 shrink-0">
                         <Globe className="w-5 h-5" weight="duotone" />
@@ -585,14 +585,14 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                               onClick={() => setConfig({ ...config, defaultBasemapLight: b.id as any })}
                               className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                                 isSelected
-                                  ? 'bg-primary-500/10 border-primary-500 ring-2 ring-primary-500/20 text-primary-600 dark:text-primary-400'
-                                  : 'bg-black/5 dark:bg-white/5 border-black/5 dark:border-white/5 hover:border-black/15 dark:hover:border-white/15'
+                                  ? 'bg-primary-500/10 border-primary-500 ring-2 ring-primary-500/20 text-primary-600 dark:text-primary-400 shadow-xs'
+                                  : 'bg-black/5 dark:bg-white/5 border-black/10 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20'
                               }`}
                             >
                               <div className="flex items-center justify-between w-full">
                                 <span className="text-xs font-bold uppercase tracking-wider">{b.label}</span>
                                 <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
-                                  isSelected ? 'border-primary-500 bg-primary-500' : 'border-black/30 dark:border-white/30'
+                                  isSelected ? 'border-primary-500 bg-primary-500' : 'border-black/40 dark:border-white/30'
                                 }`}>
                                   {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                                 </div>
@@ -628,14 +628,14 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                               onClick={() => setConfig({ ...config, defaultBasemapDark: b.id as any })}
                               className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                                 isSelected
-                                  ? 'bg-primary-500/10 border-primary-500 ring-2 ring-primary-500/20 text-primary-600 dark:text-primary-400'
-                                  : 'bg-black/5 dark:bg-white/5 border-black/5 dark:border-white/5 hover:border-black/15 dark:hover:border-white/15'
+                                  ? 'bg-primary-500/10 border-primary-500 ring-2 ring-primary-500/20 text-primary-600 dark:text-primary-400 shadow-xs'
+                                  : 'bg-black/5 dark:bg-white/5 border-black/10 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20'
                               }`}
                             >
                               <div className="flex items-center justify-between w-full">
                                 <span className="text-xs font-bold uppercase tracking-wider">{b.label}</span>
                                 <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
-                                  isSelected ? 'border-primary-500 bg-primary-500' : 'border-black/30 dark:border-white/30'
+                                  isSelected ? 'border-primary-500 bg-primary-500' : 'border-black/40 dark:border-white/30'
                                 }`}>
                                   {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                                 </div>
@@ -667,7 +667,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
               >
                 <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px]">
                   {/* Card Header Banner */}
-                  <div className="p-5 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent shrink-0">
+                  <div className="p-5 border-b border-black/10 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent shrink-0">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-emerald-500 to-teal-600 shadow-md shadow-emerald-500/20 shrink-0">
                         <Airplane className="w-5 h-5" weight="duotone" />
@@ -737,7 +737,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
               >
                 <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px]">
                   {/* Card Header Banner */}
-                  <div className="p-5 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent shrink-0">
+                  <div className="p-5 border-b border-black/10 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent shrink-0">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-amber-500 to-orange-500 shadow-md shadow-amber-500/20 shrink-0">
                         <Clock className="w-5 h-5" weight="duotone" />
@@ -943,7 +943,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
               padding="0px"
             >
               <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px]">
-                <div className="p-5 border-b border-black/5 dark:border-white/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gradient-to-r from-purple-500/10 via-purple-500/5 to-transparent shrink-0">
+                <div className="p-5 border-b border-black/10 dark:border-white/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gradient-to-r from-purple-500/10 via-purple-500/5 to-transparent shrink-0">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-md shadow-purple-500/20 flex items-center justify-center shrink-0">
                       <Sparkle className="w-5 h-5" weight="duotone" />
@@ -999,7 +999,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
               padding="0px"
             >
               <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px]">
-                <div className="p-5 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-blue-500/10 via-blue-500/5 to-transparent shrink-0">
+                <div className="p-5 border-b border-black/10 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-blue-500/10 via-blue-500/5 to-transparent shrink-0">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-500/20 flex items-center justify-center shrink-0">
                       <Airplane className="w-5 h-5" weight="duotone" />
@@ -1056,7 +1056,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
               padding="0px"
             >
               <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px]">
-                <div className="p-5 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-pink-500/10 via-pink-500/5 to-transparent shrink-0">
+                <div className="p-5 border-b border-black/10 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-pink-500/10 via-pink-500/5 to-transparent shrink-0">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-pink-500 to-rose-600 text-white shadow-md shadow-pink-500/20 flex items-center justify-center shrink-0">
                       <Globe className="w-5 h-5" weight="duotone" />
@@ -1113,7 +1113,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
               padding="0px"
             >
               <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px]">
-                <div className="p-5 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-cyan-500/10 via-cyan-500/5 to-transparent shrink-0">
+                <div className="p-5 border-b border-black/10 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-cyan-500/10 via-cyan-500/5 to-transparent shrink-0">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/20 flex items-center justify-center shrink-0">
                       <MapPin className="w-5 h-5" weight="duotone" />
@@ -1210,7 +1210,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                 padding="0px"
               >
                 <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px]">
-                  <div className="p-5 border-b border-black/5 dark:border-white/5 flex items-center gap-3 bg-gradient-to-r from-blue-500/10 via-blue-500/5 to-transparent shrink-0">
+                  <div className="p-5 border-b border-black/10 dark:border-white/5 flex items-center gap-3 bg-gradient-to-r from-blue-500/10 via-blue-500/5 to-transparent shrink-0">
                     <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-500/20 flex items-center justify-center shrink-0">
                       <Database className="w-5 h-5" weight="duotone" />
                     </div>
@@ -1256,7 +1256,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                 padding="0px"
               >
                 <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px]">
-                  <div className="p-5 border-b border-black/5 dark:border-white/5 flex items-center gap-3 bg-gradient-to-r from-indigo-500/10 via-indigo-500/5 to-transparent shrink-0">
+                  <div className="p-5 border-b border-black/10 dark:border-white/5 flex items-center gap-3 bg-gradient-to-r from-indigo-500/10 via-indigo-500/5 to-transparent shrink-0">
                     <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-md shadow-indigo-500/20 flex items-center justify-center shrink-0">
                       <Airplane className="w-5 h-5" weight="duotone" />
                     </div>
@@ -1297,7 +1297,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                 padding="0px"
               >
                 <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px]">
-                  <div className="p-5 border-b border-black/5 dark:border-white/5 flex items-center gap-3 bg-gradient-to-r from-teal-500/10 via-teal-500/5 to-transparent shrink-0">
+                  <div className="p-5 border-b border-black/10 dark:border-white/5 flex items-center gap-3 bg-gradient-to-r from-teal-500/10 via-teal-500/5 to-transparent shrink-0">
                     <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 text-white shadow-md shadow-teal-500/20 flex items-center justify-center shrink-0">
                       <CalendarBlank className="w-5 h-5" weight="duotone" />
                     </div>

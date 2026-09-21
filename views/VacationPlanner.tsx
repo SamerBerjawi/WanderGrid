@@ -684,7 +684,7 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                         {/* Card Header Frame */}
                         <div className="p-6 pb-3 flex items-start justify-between gap-4">
                             <div className="flex items-center gap-3.5 min-w-0">
-                                <div className="w-13 h-13 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/10 text-2xl flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+                                <div className="w-13 h-13 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/10 dark:border-white/10 text-2xl flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
                                     {trip.icon || loc.flag}
                                 </div>
                                 <div className="min-w-0">
@@ -716,7 +716,7 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
 
                         {/* Dates & Duration Banner */}
                         <div className="px-6 py-2">
-                            <div className="p-3 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 flex items-center justify-between text-xs">
+                            <div className="p-3 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/10 dark:border-white/10 flex items-center justify-between text-xs">
                                 <div className="flex items-center gap-2 min-w-0">
                                     <CalendarIcon className="w-4 h-4 text-primary-500 shrink-0" />
                                     <span className="font-mono font-bold text-xs text-light-text dark:text-dark-text truncate">
@@ -810,7 +810,7 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                         </div>
 
                         {/* Footer Logistics & Action Strip */}
-                        <div className="mt-auto bg-light-fill/80 dark:bg-dark-fill/50 border-t border-black/5 dark:border-white/5 p-4 space-y-3">
+                        <div className="mt-auto bg-light-fill/80 dark:bg-dark-fill/50 border-t border-black/10 dark:border-white/5 p-4 space-y-3">
                             {/* Live Counts & Budget Strip */}
                             <div className="flex items-center justify-between text-xs">
                                 <div className="flex items-center gap-2 text-light-text-secondary dark:text-dark-text-secondary font-semibold">
@@ -1488,7 +1488,7 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                         initial={{ opacity: 0, y: 15 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -15 }}
-                        className="py-20 text-center bg-white/40 dark:bg-dark-card/40 border border-dashed border-black/10 dark:border-white/10 rounded-3xl p-8"
+                        className="py-20 text-center bg-white/40 dark:bg-dark-card/40 border border-dashed border-black/20 dark:border-white/15 rounded-3xl p-8"
                     >
                         <Compass className="w-12 h-12 mx-auto text-primary-500 opacity-60 mb-3" />
                         <h3 className="text-lg font-bold text-light-text dark:text-dark-text">No Expeditions Match Current View</h3>
@@ -1498,10 +1498,10 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                         <button
                             type="button"
                             onClick={() => { setEditingTrip(null); setIsCreateTripOpen(true); }}
-                            className={`${BTN_PRIMARY_STYLE} mt-5 px-6 py-2.5 text-xs font-bold uppercase tracking-wider inline-flex items-center gap-2`}
+                            className="mt-6 px-6 py-2.5 rounded-full bg-primary-500 hover:bg-primary-600 text-white text-xs font-bold uppercase tracking-wider transition-all shadow-md shadow-primary-500/20 active:scale-95 inline-flex items-center gap-2 cursor-pointer"
                         >
                             <Plus className="w-4 h-4" />
-                            <span>Draft First Expedition</span>
+                            <span>Draft Expedition</span>
                         </button>
                     </motion.div>
                 ) : viewMode === 'table' ? (
@@ -1587,7 +1587,7 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                             whileHover={{ scale: 1.01 }}
                             whileTap={{ scale: 0.99 }}
                             onClick={() => { setEditingTrip(null); setIsCreateTripOpen(true); }}
-                            className="min-h-[360px] rounded-3xl border-2 border-dashed border-black/10 dark:border-white/10 hover:border-primary-500/50 dark:hover:border-primary-500/50 p-8 flex flex-col items-center justify-center gap-4 group transition-all duration-200 bg-white/40 dark:bg-dark-card/40 cursor-pointer text-center"
+                            className="min-h-[360px] rounded-3xl border-2 border-dashed border-black/20 dark:border-white/15 hover:border-primary-500/50 dark:hover:border-primary-500/50 p-8 flex flex-col items-center justify-center gap-4 group transition-all duration-200 bg-white/40 dark:bg-dark-card/40 cursor-pointer text-center"
                         >
                             <div className="w-14 h-14 rounded-2xl bg-black/5 dark:bg-white/5 group-hover:bg-primary-500 text-light-text-secondary dark:text-dark-text-secondary group-hover:text-white flex items-center justify-center transition-all duration-200 shadow-sm">
                                 <Plus className="w-6 h-6" />

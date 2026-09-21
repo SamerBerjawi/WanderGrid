@@ -46,7 +46,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(({ className, title, a
   >
     <div className="flex flex-col h-full w-full" {...props}>
       {(title || action) && (
-        <div className="px-6 py-5 border-b border-black/5 dark:border-white/5 flex justify-between items-center bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">
+        <div className="px-6 py-5 border-b border-black/10 dark:border-white/5 flex justify-between items-center bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">
           <div className="text-base font-bold text-light-text dark:text-dark-text tracking-tight">{title}</div>
           {action && <div>{action}</div>}
         </div>
@@ -161,7 +161,7 @@ export const TimeInput: React.FC<TimeInputProps> = ({ label, value, onChange, cl
                       type="number"
                       min="1"
                       max="12"
-                      className="w-full h-full px-2 rounded-2xl bg-white dark:bg-dark-card border border-black/5 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 text-center text-xs font-bold text-light-text dark:text-dark-text"
+                      className="w-full h-full px-2 rounded-2xl bg-white dark:bg-dark-card border border-black/10 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 text-center text-xs font-bold text-light-text dark:text-dark-text"
                       value={displayHour}
                       onChange={handleHourChange}
                   />
@@ -172,7 +172,7 @@ export const TimeInput: React.FC<TimeInputProps> = ({ label, value, onChange, cl
                       type="number"
                       min="0"
                       max="59"
-                      className="w-full h-full px-2 rounded-2xl bg-white dark:bg-dark-card border border-black/5 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 text-center text-xs font-bold text-light-text dark:text-dark-text"
+                      className="w-full h-full px-2 rounded-2xl bg-white dark:bg-dark-card border border-black/10 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 text-center text-xs font-bold text-light-text dark:text-dark-text"
                       value={minuteStr || '00'}
                       onChange={handleMinuteChange}
                   />
@@ -367,7 +367,7 @@ export const Modal: React.FC<ModalProps> = ({
         overrides={{ borderRadius: 28 }}
       >
         {/* Header */}
-        <div className="p-6 border-b border-black/5 dark:border-white/10 flex items-center justify-between bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">
+        <div className="p-6 border-b border-black/10 dark:border-white/10 flex items-center justify-between bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             {icon && (
               <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white bg-primary-500 shrink-0 shadow-md transition-transform hover:scale-105">
@@ -408,7 +408,7 @@ export const Modal: React.FC<ModalProps> = ({
         {/* Sticky Frosted Footer (optional) */}
         {footerActions && (
           <div 
-            className="p-6 border-t border-black/5 dark:border-white/10 bg-white/80 dark:bg-dark-card/80 backdrop-blur-md flex items-center justify-between gap-3 shrink-0"
+            className="p-6 border-t border-black/10 dark:border-white/10 bg-white/80 dark:bg-dark-card/80 backdrop-blur-md flex items-center justify-between gap-3 shrink-0"
           >
             {footerActions}
           </div>
@@ -486,7 +486,7 @@ export const Badge: React.FC<BadgeProps> = ({ children, color = 'primary', class
     amber: 'bg-semantic-yellow/15 text-amber-600 dark:text-semantic-yellow border-semantic-yellow/30',
     red: 'bg-semantic-red/10 text-semantic-red border-semantic-red/20',
     purple: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20',
-    gray: 'bg-black/5 text-light-text-secondary dark:bg-white/5 dark:text-dark-text-secondary border-black/5 dark:border-white/5',
+    gray: 'bg-black/5 text-light-text-secondary dark:bg-white/5 dark:text-dark-text-secondary border-black/10 dark:border-white/5',
     indigo: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20',
     pink: 'bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/20',
     teal: 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20',

@@ -152,25 +152,62 @@
    and ensures specular highlights, refraction, and content align pixel-perfectly.
    ========================================================================== */
 
-/* Outer GlassPanel wrapper - purely an invisible layout anchor to prevent double-container shells */
+/* Outer GlassPanel wrapper - physical bounding box and elevation anchor */
 .wg-glass-wrapper {
   position: relative;
   display: inline-block;
-  border: none !important;
   outline: none !important;
-  box-shadow: none !important;
   background: transparent !important;
   padding: 0 !important;
+  transition: box-shadow 200ms ease, border-color 200ms ease, transform 200ms ease;
 }
 
+/* Card variant: full-width surface with tactile contour border and ambient drop shadow */
 .wg-glass-wrapper.wg-glass-card {
   display: flex !important;
   flex-direction: column !important;
   width: 100% !important;
 }
 
+:root:not(.dark) .wg-glass-wrapper.wg-glass-card {
+  border: 1px solid rgba(0, 0, 0, 0.09) !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04), 0 10px 24px -4px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+}
+
+:root:not(.dark) .wg-glass-wrapper.wg-glass-card:hover {
+  border-color: rgba(0, 0, 0, 0.14) !important;
+}
+
+.dark .wg-glass-wrapper.wg-glass-card {
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  box-shadow: 0 10px 30px -4px rgba(0, 0, 0, 0.6), inset 0 1px 0 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+.dark .wg-glass-wrapper.wg-glass-card:hover {
+  border-color: rgba(255, 255, 255, 0.18) !important;
+}
+
+/* Pill variant: compact capsules for tabs, buttons, and HUD chips */
 .wg-glass-wrapper.wg-glass-pill {
   display: inline-flex !important;
+}
+
+:root:not(.dark) .wg-glass-wrapper.wg-glass-pill {
+  border: 1px solid rgba(0, 0, 0, 0.09) !important;
+  box-shadow: 0 2px 8px -1px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+}
+
+:root:not(.dark) .wg-glass-wrapper.wg-glass-pill:hover {
+  border-color: rgba(0, 0, 0, 0.14) !important;
+}
+
+.dark .wg-glass-wrapper.wg-glass-pill {
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark .wg-glass-wrapper.wg-glass-pill:hover {
+  border-color: rgba(255, 255, 255, 0.20) !important;
 }
 
 /* LiquidGlass Root Div & GlassContainer Shells */

@@ -266,9 +266,11 @@ Every component and view must pass this mobile checklist:
 
 | Token | Light Mode | Dark Mode | Purpose |
 | :--- | :--- | :--- | :--- |
-| **Glass Card** | `bg-white/90 backdrop-blur-sm` | `bg-dark-card/90 backdrop-blur-sm` | All primary cards & dialogs |
-| **Glass Pill** | `bg-white/80 backdrop-blur-md` | `bg-dark-card/80 backdrop-blur-md` | Tabs, filters, buttons |
-| **Hairline Border** | `border-black/5` | `border-white/10` | Inner dividers & card shells |
+| **Glass Card** | `bg-white/90 backdrop-blur-sm border border-black/10 shadow-lg` | `bg-dark-card/90 backdrop-blur-sm border border-white/10 shadow-glass-card` | All primary cards & dialogs |
+| **Glass Pill** | `bg-white/80 backdrop-blur-md border border-black/10 shadow-sm` | `bg-dark-card/80 backdrop-blur-md border border-white/12 shadow-sm` | Tabs, filters, buttons |
+| **Hairline Border** | `border-black/10` | `border-white/10` | Inner dividers & component boundaries |
+| **Structural Shell** | `border-black/15` | `border-white/10` | Outer cards & structural contours |
+| **Dashed Dropzone** | `border-black/20` | `border-white/15` | Empty card slots & upload dropzones |
 | **Primary Accent** | `primary-500` / `indigo-600` | `primary-400` / `indigo-500` | Active tabs, primary buttons |
 | **Confirmed / Sky** | `sky-500` / `sky-600` | `sky-400` / `sky-300` | Confirmed trips, flights |
 | **Past / Emerald** | `emerald-500` / `teal-600` | `emerald-400` / `teal-400` | Past trips, log history |

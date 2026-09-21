@@ -510,7 +510,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick }) => {
                                 <div 
                                     onClick={() => toggleBucket('past')}
                                     className={`p-5 flex items-center justify-between bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent shrink-0 cursor-pointer select-none transition-colors hover:from-emerald-500/15 ${
-                                        collapsedBuckets.past ? '' : 'border-b border-black/5 dark:border-white/5'
+                                        collapsedBuckets.past ? '' : 'border-b border-black/10 dark:border-white/5'
                                     }`}
                                 >
                                     <div className="flex items-center gap-3 min-w-0">
@@ -619,7 +619,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick }) => {
                                 <div 
                                     onClick={() => toggleBucket('confirmed')}
                                     className={`p-5 flex items-center justify-between bg-gradient-to-r from-sky-500/10 via-sky-500/5 to-transparent shrink-0 cursor-pointer select-none transition-colors hover:from-sky-500/15 ${
-                                        collapsedBuckets.confirmed ? '' : 'border-b border-black/5 dark:border-white/5'
+                                        collapsedBuckets.confirmed ? '' : 'border-b border-black/10 dark:border-white/5'
                                     }`}
                                 >
                                     <div className="flex items-center gap-3 min-w-0">
@@ -728,7 +728,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick }) => {
                                 <div 
                                     onClick={() => toggleBucket('planned')}
                                     className={`p-5 flex items-center justify-between bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent shrink-0 cursor-pointer select-none transition-colors hover:from-amber-500/15 ${
-                                        collapsedBuckets.planned ? '' : 'border-b border-black/5 dark:border-white/5'
+                                        collapsedBuckets.planned ? '' : 'border-b border-black/10 dark:border-white/5'
                                     }`}
                                 >
                                     <div className="flex items-center gap-3 min-w-0">
@@ -971,7 +971,7 @@ const TripCard: React.FC<TripCardProps> = ({ trip, stage, onClick }) => {
                 </div>
 
                 {/* Bottom Row: Destination Chips & Transport Icons */}
-                <div className="flex items-center justify-between gap-2 pt-3 border-t border-black/5 dark:border-white/5 flex-wrap">
+                <div className="flex items-center justify-between gap-2 pt-3 border-t border-black/10 dark:border-white/5 flex-wrap">
                     {/* Destination Chips - Colored not neutral */}
                     <div className="flex flex-wrap items-center gap-1.5 min-w-0 flex-1">
                         {destinationsList.length > 0 ? (
@@ -1049,7 +1049,7 @@ const TripCard: React.FC<TripCardProps> = ({ trip, stage, onClick }) => {
 };
 
 interface EmptyBucketPlaceholderProps {
-    stage: string;
+    stage: 'past' | 'confirmed' | 'planned';
     label: string;
     actionLabel: string;
     onAction: () => void;
@@ -1057,7 +1057,7 @@ interface EmptyBucketPlaceholderProps {
 
 const EmptyBucketPlaceholder: React.FC<EmptyBucketPlaceholderProps> = ({ stage, label, actionLabel, onAction }) => {
     return (
-        <div className="p-8 rounded-2xl border border-dashed border-black/10 dark:border-white/10 flex flex-col items-center justify-center text-center gap-3 bg-black/[0.01] dark:bg-white/[0.01]">
+        <div className="p-8 rounded-2xl border border-dashed border-black/20 dark:border-white/15 flex flex-col items-center justify-center text-center gap-3 bg-black/[0.01] dark:bg-white/[0.01]">
             <div className="w-10 h-10 rounded-2xl bg-black/5 dark:bg-white/5 flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary">
                 <SuitcaseSimple className="w-5 h-5 opacity-60" weight="duotone" />
             </div>

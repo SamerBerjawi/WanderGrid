@@ -70,9 +70,9 @@ All modal overlays, slide-out drawer components, form surfaces, and dialogs acro
 ### 7.1 Core Visual Tokens & Surfaces
 
 * **Container Backgrounds & Glassmorphism:** Theme tokens with opacity channels `bg-white/90 dark:bg-dark-card/90 backdrop-blur-sm` with `-webkit-backdrop-filter: blur(4px)` for slide-out drawers and elevated dialogs.
-* **Secondary / Fill Cards:** `bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 rounded-3xl p-5`.
-* **Elevated / Floating Cards:** `bg-white/80 dark:bg-dark-card/80 backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-glass-card rounded-2xl`.
-* **Hairline Dividers & Borders:** Ultra-low opacity borders across both themes: `border-black/5 dark:border-white/5` (inner items) and `border-black/10 dark:border-white/15` (structural shells).
+* **Secondary / Fill Cards:** `bg-light-fill dark:bg-dark-fill/50 border border-black/10 dark:border-white/5 rounded-3xl p-5`.
+* **Elevated / Floating Cards:** `bg-white/90 dark:bg-dark-card/80 backdrop-blur-xl border border-black/10 dark:border-white/10 shadow-glass-light-card dark:shadow-glass-card rounded-2xl`.
+* **Hairline Dividers & Borders:** Crisp, tactile borders across both themes: `border-black/10 dark:border-white/5` (inner items/dividers) and `border-black/15 dark:border-white/10` (structural shells).
 * **Glassmorphic Elements:** Frosted glass (`backdrop-blur` with `-webkit-backdrop-filter`):
   1. Backdrop overlay (`bg-gray-900/50 dark:bg-black/80 backdrop-blur-md` with `-webkit-backdrop-filter: blur(12px)`).
   2. Slide-out drawer & dialog shells (`bg-white/90 dark:bg-dark-card/90 backdrop-blur-sm` with `-webkit-backdrop-filter: blur(4px)`).
@@ -97,7 +97,7 @@ All modal overlays, slide-out drawer components, form surfaces, and dialogs acro
 * **Category / Status Pills:**
   `px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20`
 * **Segmented Switcher / Tab Bar:**
-  * Wrapper: `bg-black/5 dark:bg-white/5 p-1 rounded-2xl flex border border-black/5 dark:border-white/5`
+  * Wrapper: `bg-black/5 dark:bg-white/5 p-1 rounded-2xl flex border border-black/10 dark:border-white/5`
   * Active Option: `bg-white dark:bg-dark-card text-primary-500 shadow-sm py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all`
   * Inactive Option: `text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all`
 * **Color Palette Swatches:**
@@ -105,7 +105,7 @@ All modal overlays, slide-out drawer components, form surfaces, and dialogs acro
   * Active Selection Ring: `ring-2 ring-offset-2 ring-offset-light-card dark:ring-offset-dark-card ring-primary-500 scale-110 shadow-sm`
   * Custom Color Input Trigger: `relative w-7 h-7 rounded-full overflow-hidden cursor-pointer hover:scale-110 transition-transform bg-gradient-to-br from-pink-500 via-red-500 to-yellow-500 flex items-center justify-center` with an embedded invisible native color input (`absolute inset-0 opacity-0 cursor-pointer`).
 * **Live Preview / Readout Strip:**
-  `p-4 rounded-2xl bg-white/70 dark:bg-dark-card/70 backdrop-blur-md border border-black/5 dark:border-white/10 shadow-sm flex items-center justify-between` featuring a monospace metric pill: `px-2.5 py-1 rounded-full bg-black/5 dark:bg-white/5 text-xs font-mono font-bold text-light-text dark:text-dark-text`.
+  `p-4 rounded-2xl bg-white/70 dark:bg-dark-card/70 backdrop-blur-md border border-black/10 dark:border-white/10 shadow-sm flex items-center justify-between` featuring a monospace metric pill: `px-2.5 py-1 rounded-full bg-black/5 dark:bg-white/5 text-xs font-mono font-bold text-light-text dark:text-dark-text`.
 
 ### 7.4 Standard Slide-Out Drawer Template
 
