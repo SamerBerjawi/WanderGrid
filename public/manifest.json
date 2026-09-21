@@ -1,7 +1,29 @@
 {
+  "id": "/?source=pwa",
   "short_name": "WanderGrid",
   "name": "WanderGrid Travel Planner",
   "description": "Premium multi-partner travel, flight path, and allowance coordinate engine.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone",
+    "minimal-ui",
+    "browser"
+  ],
+  "orientation": "any",
+  "background_color": "#050505",
+  "theme_color": "#050505",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": [
+    "travel",
+    "navigation",
+    "productivity",
+    "lifestyle"
+  ],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/app-icon-192.png",
@@ -22,18 +44,54 @@
       "purpose": "maskable"
     },
     {
+      "src": "/apple-touch-icon.png",
+      "type": "image/png",
+      "sizes": "180x180",
+      "purpose": "any"
+    },
+    {
       "src": "/icon.svg",
       "type": "image/svg+xml",
       "sizes": "any",
       "purpose": "any"
     }
   ],
-  "start_url": "/",
-  "scope": "/",
-  "background_color": "#050505",
-  "theme_color": "#fa9a1d",
-  "display": "standalone",
-  "orientation": "portrait",
-  "categories": ["travel", "productivity"],
-  "id": "wandergrid-travel-pwa"
+  "shortcuts": [
+    {
+      "name": "Planner",
+      "short_name": "Planner",
+      "description": "Open Trip Planner and Itineraries",
+      "url": "/planner?source=pwa",
+      "icons": [{ "src": "/app-icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Flights Tracker",
+      "short_name": "Flights",
+      "description": "View Flights and Airline Coordinates",
+      "url": "/flights?source=pwa",
+      "icons": [{ "src": "/app-icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Travel Atlas",
+      "short_name": "Atlas",
+      "description": "Explore Global Travel Atlas & Visited Lands",
+      "url": "/atlas?source=pwa",
+      "icons": [{ "src": "/app-icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Vacation Calendar",
+      "short_name": "Calendar",
+      "description": "View Annual Leave & Vacation Calendar",
+      "url": "/calendar?source=pwa",
+      "icons": [{ "src": "/app-icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Expedition Map",
+      "short_name": "Map",
+      "description": "View Interactive 3D World Expedition Map",
+      "url": "/map?source=pwa",
+      "icons": [{ "src": "/app-icon-192.png", "sizes": "192x192" }]
+    }
+  ]
 }
+

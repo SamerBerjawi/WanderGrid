@@ -14,10 +14,22 @@ export default defineConfig(({ mode }) => {
         react(),
         VitePWA({
           registerType: 'autoUpdate',
-          includeAssets: ['icon.svg'],
-          manifest: false, // We maintain our own manifest.json in /public
+          includeAssets: [
+            'icon.svg', 
+            'apple-touch-icon.png', 
+            'favicon.ico', 
+            'favicon-32x32.png', 
+            'favicon-16x16.png', 
+            'app-icon-192.png', 
+            'app-icon-512.png',
+            'manifest.json'
+          ],
+          manifest: false, // Maintained in /public/manifest.json
           workbox: {
-            globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+            globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2,json}'],
+            maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB limit for large chunks like deck.gl
+            navigateFallback: '/index.html',
+            navigateFallbackDenylist: [/^\/api\//],
             skipWaiting: true,
             clientsClaim: true,
             cleanupOutdatedCaches: true,
@@ -34,7 +46,59 @@ export default defineConfig(({ mode }) => {
                 handler: 'CacheFirst',
                 options: {
                   cacheName: 'google-fonts-webfonts',
-                  expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 },
+                  expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 },
+                },
+              },
+              {
+                urlPattern: /^https:\/\/(unpkg\.com|cdn\.tailwindcss\.com)\//,
+                handler: 'StaleWhileRevalidate',
+                options: {
+                  cacheName: 'cdn-assets',
+                  expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 30 },
+                },
+              },
+              {
+                urlPattern: /^https:\/\/[a-c]\.basemaps\.cartocdn\.com\//,
+                handler: 'CacheFirst',
+                options: {
+                  cacheName: 'carto-basemap-tiles',
+                  expiration: { maxEntries: 600, maxAgeSeconds: 60 * 60 * 24 * 30 },
+                  cacheableResponse: {
+                    statuses: [0, 200],
+                  },
+                },
+              },
+              {
+                urlPattern: /^https:\/\/.*\.tile\.openstreetmap\.org\//,
+                handler: 'CacheFirst',
+                options: {
+                  cacheName: 'osm-tiles',
+                  expiration: { maxEntries: 400, maxAgeSeconds: 60 * 60 * 24 * 30 },
+                  cacheableResponse: {
+                    statuses: [0, 200],
+                  },
+                },
+              },
+              {
+                urlPattern: /^https:\/\/images\.unsplash\.com\//,
+                handler: 'StaleWhileRevalidate',
+                options: {
+                  cacheName: 'unsplash-images',
+                  expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 30 },
+                  cacheableResponse: {
+                    statuses: [0, 200],
+                  },
+                },
+              },
+              {
+                urlPattern: /^https:\/\/flagcdn\.com\//,
+                handler: 'CacheFirst',
+                options: {
+                  cacheName: 'flag-icons',
+                  expiration: { maxEntries: 250, maxAgeSeconds: 60 * 60 * 24 * 60 },
+                  cacheableResponse: {
+                    statuses: [0, 200],
+                  },
                 },
               },
             ],

@@ -762,20 +762,20 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                         <div className="px-6 py-2">
                             <div className="flex items-center justify-between text-2xs font-mono font-bold text-light-text-secondary dark:text-dark-text-secondary mb-1.5 uppercase">
                                 <span>Itinerary Completeness</span>
-                                <span className={completeness.percent === 100 ? 'text-emerald-500 font-bold' : 'text-primary-500'}>
-                                    {completeness.percent}%
+                                <span className={completeness === 100 ? 'text-emerald-500 font-bold' : 'text-primary-500'}>
+                                    {completeness}%
                                 </span>
                             </div>
                             <div className="h-1.5 w-full bg-black/5 dark:bg-white/5 rounded-full overflow-hidden">
                                 <div 
                                     className={`h-full rounded-full transition-all duration-500 ${
-                                        completeness.percent === 100 
+                                        completeness === 100 
                                             ? 'bg-emerald-500' 
-                                            : completeness.percent >= 50 
+                                            : completeness >= 50 
                                             ? 'bg-primary-500' 
                                             : 'bg-amber-500'
                                     }`} 
-                                    style={{ width: `${completeness.percent}%` }} 
+                                    style={{ width: `${completeness}%` }} 
                                 />
                             </div>
                         </div>

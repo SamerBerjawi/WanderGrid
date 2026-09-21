@@ -21,18 +21,23 @@ const TravelAtlas = lazy(() => import('./views/TravelAtlas').then(m => ({ defaul
 const VacationCalendar = lazy(() => import('./views/VacationCalendar').then(m => ({ default: m.VacationCalendar })));
 const Auth = lazy(() => import('./views/Auth').then(m => ({ default: m.Auth })));
 
+import { PWAInstallBanner } from './components/PWAInstallBanner';
+
 const getUrlState = () => {
     try {
         const path = window.location.pathname;
-        if (path === '/settings') return { view: ViewState.SETTINGS };
-        if (path === '/planner') return { view: ViewState.PLANNER };
-        if (path === '/planner-2' || path === '/planner2') return { view: ViewState.PLANNER_2 };
-        if (path === '/map') return { view: ViewState.MAP };
-        if (path === '/gamification') return { view: ViewState.DASHBOARD };
-        if (path === '/flights') return { view: ViewState.FLIGHTS };
-        if (path === '/roadtrips') return { view: ViewState.ROADTRIPS };
-        if (path === '/atlas' || path === '/travel-atlas') return { view: ViewState.TRAVEL_ATLAS };
-        if (path === '/calendar' || path === '/vacation-calendar') return { view: ViewState.VACATION_CALENDAR };
+        const search = new URLSearchParams(window.location.search);
+        const queryView = search.get('view');
+
+        if (path === '/settings' || queryView === 'settings') return { view: ViewState.SETTINGS };
+        if (path === '/planner' || queryView === 'planner') return { view: ViewState.PLANNER };
+        if (path === '/planner-2' || path === '/planner2' || queryView === 'planner-2') return { view: ViewState.PLANNER_2 };
+        if (path === '/map' || queryView === 'map') return { view: ViewState.MAP };
+        if (path === '/gamification' || queryView === 'gamification') return { view: ViewState.DASHBOARD };
+        if (path === '/flights' || queryView === 'flights') return { view: ViewState.FLIGHTS };
+        if (path === '/roadtrips' || queryView === 'roadtrips') return { view: ViewState.ROADTRIPS };
+        if (path === '/atlas' || path === '/travel-atlas' || queryView === 'atlas') return { view: ViewState.TRAVEL_ATLAS };
+        if (path === '/calendar' || path === '/vacation-calendar' || queryView === 'calendar') return { view: ViewState.VACATION_CALENDAR };
         
         const userMatch = path.match(/^\/user\/([^/]+)$/);
         if (userMatch) return { view: ViewState.USER_DETAIL, userId: userMatch[1] };
@@ -347,6 +352,7 @@ export default function App() {
             </motion.div>
           </AnimatePresence>
         </main>
+        <PWAInstallBanner />
       </div>
     </IconContext.Provider>
   );

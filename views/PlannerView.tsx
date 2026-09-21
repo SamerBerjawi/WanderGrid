@@ -1050,7 +1050,7 @@ const TripCard: React.FC<TripCardProps> = ({ trip, stage, onClick }) => {
 };
 
 interface EmptyBucketPlaceholderProps {
-    stage: 'past' | 'confirmed' | 'planned';
+    stage: 'past' | 'confirmed' | 'planned' | 'Past' | 'Confirmed' | 'Planned';
     label: string;
     actionLabel: string;
     onAction: () => void;

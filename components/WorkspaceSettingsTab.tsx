@@ -17,12 +17,17 @@ import {
     Warning,
     CalendarBlank,
     Rss,
-    Wand,
-    ArrowsClockwise
+    MagicWand,
+    ArrowsClockwise,
+    DeviceMobile,
+    HardDrive,
+    WifiHigh,
+    WifiSlash
 } from '@phosphor-icons/react';
 import { Card, Button, Input, Select, Modal } from './ui';
 import { User, WorkspaceSettings, SavedConfig } from '../types';
 import { ImportState, dataService } from '../services/mockDb';
+import { usePWA, StorageEstimateInfo } from '../hooks/usePWA';
 
 interface WorkspaceSettingsTabProps {
     config: WorkspaceSettings;
@@ -58,6 +63,31 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
 }) => {
     const [isResetModalOpen, setIsResetModalOpen] = useState(false);
     const [resetConfirmText, setResetConfirmText] = useState('');
+    const [storageInfo, setStorageInfo] = useState<StorageEstimateInfo | null>(null);
+    const [isClearingCache, setIsClearingCache] = useState(false);
+
+    const { 
+        isInstalled, 
+        isInstallable, 
+        isOnline, 
+        isUpdateAvailable, 
+        platform, 
+        promptInstall, 
+        updateApp, 
+        getStorageEstimate, 
+        clearAppCache 
+    } = usePWA();
+
+    React.useEffect(() => {
+        getStorageEstimate().then(setStorageInfo);
+    }, [getStorageEstimate]);
+
+    const handleClearCache = async () => {
+        if (window.confirm("Are you sure you want to clear the offline cache and reload? Any unsaved changes may be lost.")) {
+            setIsClearingCache(true);
+            await clearAppCache();
+        }
+    };
 
     const handleWipeDatabase = async () => {
         if (resetConfirmText === 'DELETE') {
@@ -437,6 +467,83 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                             </div>
                         </div>
 
+                        {/* Progressive Web App & Offline Hub */}
+                        <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-white/5">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center">
+                                        <DeviceMobile weight="duotone" className="text-lg text-amber-600" />
+                                    </div>
+                                    <h4 className="text-sm font-black text-gray-800 dark:text-white uppercase tracking-widest">PWA & Offline Hub</h4>
+                                </div>
+                                <span className={`px-2.5 py-1 rounded-full text-2xs font-bold uppercase tracking-wider ${
+                                    isInstalled 
+                                        ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' 
+                                        : 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
+                                }`}>
+                                    {isInstalled ? 'Installed App' : 'Browser Mode'}
+                                </span>
+                            </div>
+
+                            <div className="p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-200/60 dark:border-white/5 space-y-3">
+                                <div className="flex items-center justify-between text-xs">
+                                    <span className="text-gray-500 dark:text-gray-400 font-medium">Connectivity:</span>
+                                    <span className={`font-bold flex items-center gap-1.5 ${isOnline ? 'text-emerald-500' : 'text-amber-500'}`}>
+                                        {isOnline ? <WifiHigh weight="bold" /> : <WifiSlash weight="bold" />}
+                                        {isOnline ? 'Connected Online' : 'Offline Mode (Cached)'}
+                                    </span>
+                                </div>
+
+                                {storageInfo && (
+                                    <div className="flex items-center justify-between text-xs">
+                                        <span className="text-gray-500 dark:text-gray-400 font-medium">Storage Cache:</span>
+                                        <span className="font-mono font-bold text-gray-700 dark:text-gray-300">
+                                            {storageInfo.usageMB} MB / {storageInfo.quotaMB.toLocaleString()} MB ({storageInfo.percentage}%)
+                                        </span>
+                                    </div>
+                                )}
+
+                                <div className="flex items-center justify-between text-xs">
+                                    <span className="text-gray-500 dark:text-gray-400 font-medium">Device Platform:</span>
+                                    <span className="font-bold text-gray-700 dark:text-gray-300 capitalize">
+                                        {platform}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-2">
+                                {!isInstalled && (
+                                    <Button 
+                                        onClick={() => promptInstall()} 
+                                        variant="primary" 
+                                        className="h-12 !rounded-xl text-xs font-bold uppercase tracking-wider"
+                                        icon={<DownloadSimple weight="bold" className="text-sm" />}
+                                    >
+                                        Install WanderGrid App
+                                    </Button>
+                                )}
+                                {isUpdateAvailable && (
+                                    <Button 
+                                        onClick={updateApp} 
+                                        variant="primary" 
+                                        className="h-12 !rounded-xl text-xs font-bold uppercase tracking-wider bg-sky-500 hover:bg-sky-600"
+                                        icon={<ArrowsClockwise weight="bold" className="text-sm" />}
+                                    >
+                                        Update Available &bull; Reload
+                                    </Button>
+                                )}
+                                <Button 
+                                    onClick={handleClearCache} 
+                                    variant="ghost" 
+                                    className="h-12 !rounded-xl text-xs font-bold uppercase tracking-wider text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20"
+                                    icon={<HardDrive weight="bold" className="text-sm" />}
+                                    isLoading={isClearingCache}
+                                >
+                                    Clear Offline Cache & Reload
+                                </Button>
+                            </div>
+                        </div>
+
                         {/* Flight Data Section */}
                         <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-white/5">
                             <div className="flex items-center justify-between">
@@ -459,7 +566,7 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                                     variant="primary" 
                                     className="w-full h-11 text-xs font-black uppercase tracking-wider !rounded-2xl shadow-lg shadow-blue-500/15 flex items-center justify-center gap-2"
                                 >
-                                    <Wand weight="duotone" className="text-sm" />
+                                    <MagicWand weight="duotone" className="text-sm" />
                                     Load Flight File & Map Fields
                                 </Button>
                             </div>
