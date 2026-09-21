@@ -1,30 +1,51 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
-import { Button, Input, Select, Autocomplete, Badge, TimeInput } from './ui';
-import { Trash, Bed, House, Buildings, PencilSimple, X, MapPin, MagnifyingGlass, Plus } from '@phosphor-icons/react';
+import { 
+    Bed, 
+    House, 
+    Buildings, 
+    Sparkle, 
+    PencilSimple, 
+    Trash, 
+    Plus, 
+    MapPin, 
+    MagnifyingGlass, 
+    X,
+    WarningCircle,
+    Check
+} from '@phosphor-icons/react';
+import { Input, Autocomplete, TimeInput, Badge } from './ui';
 import { Accommodation } from '../types';
 import { dataService } from '../services/mockDb';
-import { searchLocations } from '../services/geocoding';
 import { formatDateRange, formatCurrency, getCurrencySymbol } from '../utils/formatters';
+import { searchLocations } from '../services/geocoding';
+import { 
+    STATUS_DANGER_STYLE, 
+    BTN_PRIMARY_STYLE, 
+    BTN_SECONDARY_STYLE, 
+    BTN_DANGER_STYLE 
+} from '../constants';
 
-interface AccommodationConfiguratorProps {
+export interface AccommodationConfiguratorProps {
     initialData?: Accommodation[];
-    onSave: (items: Accommodation[]) => void;
+    onSave: (accommodations: Accommodation[]) => void;
     onDelete?: (ids: string[]) => void;
     onCancel: () => void;
     defaultStartDate?: string;
     defaultEndDate?: string;
 }
 
-const ACCOMMODATION_TYPES = [
-    { label: 'Hotel', value: 'Hotel' },
-    { label: 'Airbnb / Rental', value: 'Airbnb' },
-    { label: 'Resort', value: 'Resort' },
-    { label: 'Villa', value: 'Villa' },
-    { label: 'Apartment', value: 'Apartment' },
-    { label: 'Hostel', value: 'Hostel' },
-    { label: 'Campground', value: 'Campground' },
-    { label: 'Friends / Family', value: 'Friends/Family' },
+interface AccTypeOption {
+    label: string;
+    value: string;
+    icon: React.ElementType;
+}
+
+const ACCOMMODATION_TYPES: AccTypeOption[] = [
+    { label: 'Hotel', value: 'Hotel', icon: Bed },
+    { label: 'Apartment', value: 'Apartment', icon: Buildings },
+    { label: 'Villa / Rental', value: 'Villa', icon: House },
+    { label: 'Resort', value: 'Resort', icon: Sparkle },
+    { label: 'Hostel', value: 'Hostel', icon: Buildings },
 ];
 
 export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps> = ({
@@ -39,6 +60,7 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
     const [editingId, setEditingId] = useState<string | null>(null);
     const [form, setForm] = useState<Partial<Accommodation>>({});
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [draftError, setDraftError] = useState<string | null>(null);
     
     // Currency & Input State
     const [currencySymbol, setCurrencySymbol] = useState('$');
@@ -49,8 +71,10 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
 
     useEffect(() => {
         dataService.getWorkspaceSettings().then(s => {
-            setCurrencySymbol(getCurrencySymbol(s.currency));
-            if (s.brandfetchApiKey) setBrandfetchKey(s.brandfetchApiKey);
+            if (s) {
+                if (s.currency) setCurrencySymbol(getCurrencySymbol(s.currency));
+                if (s.brandfetchApiKey) setBrandfetchKey(s.brandfetchApiKey);
+            }
         });
 
         if (initialData && initialData.length > 0) {
@@ -74,11 +98,10 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
 
     // Sync Per Night Input when Total Cost changes (unless editing Per Night)
     useEffect(() => {
-        if (activeField === 'perNight') return; // Don't interrupt user typing
+        if (activeField === 'perNight') return;
         
         if (form.cost && nights > 0) {
             const val = form.cost / nights;
-            // Clean format: if integer, no decimals. If float, max 2.
             const formatted = Number.isInteger(val) ? val.toString() : val.toFixed(2);
             setPerNightInput(formatted);
         } else if (!form.cost) {
@@ -87,7 +110,8 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
     }, [form.cost, nights, activeField]);
 
     const prepareNewItem = () => {
-        const newItemId = Math.random().toString(36).substr(2, 9);
+        // Native crypto.randomUUID()
+        const newItemId = crypto.randomUUID();
         setForm({
             id: newItemId,
             name: '',
@@ -105,13 +129,17 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
         });
         setPerNightInput('');
         setEditingId(newItemId);
+        setDraftError(null);
     };
 
     const handleSaveItem = () => {
-        if (!form.name || !form.checkInDate || !form.checkOutDate) return;
+        setDraftError(null);
+        if (!form.name || !form.checkInDate || !form.checkOutDate) {
+            setDraftError("Please fill in Name, Check-in date, and Check-out date.");
+            return;
+        }
 
         const newItem = form as Accommodation;
-        
         setItems(prev => {
             const existingIndex = prev.findIndex(i => i.id === newItem.id);
             if (existingIndex >= 0) {
@@ -129,6 +157,7 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
     const handleEditItem = (item: Accommodation) => {
         setForm({ ...item });
         setEditingId(item.id);
+        setDraftError(null);
     };
 
     const handleDeleteItem = (id: string) => {
@@ -136,25 +165,35 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
         if (editingId === id) {
             setEditingId(null);
             setForm({});
+            setDraftError(null);
         }
     };
 
+    // Strict validation parity & prevent silent dropping
     const handleSaveAll = () => {
-        if (editingId && form.name && form.checkInDate) {
-             const newItem = form as Accommodation;
-             const updatedItems = [...items.filter(i => i.id !== newItem.id), newItem];
-             onSave(updatedItems);
-        } else {
-             onSave(items);
+        setDraftError(null);
+        if (editingId) {
+            const hasDraftContent = Boolean(form.name || form.address || form.cost);
+            if (hasDraftContent) {
+                // Must pass strict parity check (name, checkInDate, checkOutDate)
+                if (!form.name || !form.checkInDate || !form.checkOutDate) {
+                    setDraftError("You have an unsaved accommodation in progress — finish Name, Check-In, and Check-Out or discard it before saving.");
+                    return;
+                }
+                // Cleanly auto-commit the valid draft without dropping it!
+                const newItem = form as Accommodation;
+                const updatedItems = [...items.filter(i => i.id !== newItem.id), newItem];
+                onSave(updatedItems);
+                return;
+            }
         }
+        onSave(items);
     };
 
     const handlePerNightChange = (valStr: string) => {
-        setPerNightInput(valStr); // Always update local input state to allow "1." or "0"
+        setPerNightInput(valStr);
         const val = parseFloat(valStr);
-        
         if (!isNaN(val) && nights > 0) {
-            // Update total cost in background
             setForm(prev => ({ ...prev, cost: val * nights }));
         } else if (valStr === '') {
             setForm(prev => ({ ...prev, cost: undefined }));
@@ -169,7 +208,6 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
         if (!form.name || !brandfetchKey) return;
         setIsFetchingBrand(true);
         try {
-            // Using Brandfetch Search API to find icon
             const response = await fetch(`https://api.brandfetch.io/v2/search/${encodeURIComponent(form.name)}?c=${brandfetchKey}`);
             if (response.ok) {
                 const data = await response.json();
@@ -181,7 +219,7 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                 }
             }
         } catch (e) {
-            console.error("Brandfetch failed", e);
+            console.error("Brandfetch lookup error:", e);
         } finally {
             setIsFetchingBrand(false);
         }
@@ -190,18 +228,30 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
     if (showDeleteConfirm) {
         return (
             <div className="text-center space-y-6 animate-fade-in py-8">
-                <div className="w-20 h-20 bg-rose-100 dark:bg-rose-950/40 rounded-full flex items-center justify-center mx-auto text-rose-600 animate-pulse">
-                    <Trash className="w-10 h-10" />
+                <div className="w-20 h-20 bg-semantic-red/15 rounded-full flex items-center justify-center mx-auto text-semantic-red animate-pulse">
+                    <Trash className="w-10 h-10" weight="duotone" />
                 </div>
                 <div>
-                    <h4 className="text-xl font-bold text-gray-900 dark:text-white">Delete All Accommodations?</h4>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                    <h4 className="text-xl font-bold text-light-text dark:text-dark-text">Delete All Accommodations?</h4>
+                    <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary mt-2">
                         This will remove {items.length} stays from this trip.
                     </p>
                 </div>
                 <div className="flex gap-3 pt-2 max-w-xs mx-auto">
-                    <Button variant="ghost" className="flex-1" onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
-                    <Button variant="danger" className="flex-1" onClick={() => { if (onDelete && initialData) onDelete(initialData.map(i => i.id)); }}>Confirm</Button>
+                    <button 
+                        type="button" 
+                        className={`${BTN_SECONDARY_STYLE} flex-1 h-12`} 
+                        onClick={() => setShowDeleteConfirm(false)}
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        type="button" 
+                        className={`${BTN_DANGER_STYLE} flex-1 h-12`} 
+                        onClick={() => { if (onDelete && initialData) onDelete(initialData.map(i => i.id)); }}
+                    >
+                        Confirm Delete
+                    </button>
                 </div>
             </div>
         );
@@ -210,22 +260,35 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
     return (
         <div className="space-y-6 animate-fade-in max-h-[80vh] overflow-y-auto custom-scrollbar p-1">
             
-            {/* List of Accommodations */}
+            {/* Inline Draft Error */}
+            {draftError && (
+                <div className={`p-3.5 rounded-2xl flex items-center justify-between text-xs font-semibold ${STATUS_DANGER_STYLE}`}>
+                    <div className="flex items-center gap-2">
+                        <WarningCircle className="w-4 h-4 shrink-0" weight="bold" />
+                        <span>{draftError}</span>
+                    </div>
+                    <button type="button" onClick={() => setDraftError(null)} className="cursor-pointer">
+                        <X className="w-3.5 h-3.5" />
+                    </button>
+                </div>
+            )}
+
+            {/* List of Existing Accommodations */}
             <div className="space-y-3">
                 {items.filter(i => i.id !== editingId).map((item) => (
-                    <div key={item.id} className="relative p-4 bg-white dark:bg-dark-card rounded-2xl border border-black/5 dark:border-white/5 shadow-sm group flex justify-between items-center hover:shadow-md transition-all">
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20 flex items-center justify-center text-2xl shrink-0 shadow-sm overflow-hidden">
+                    <div key={item.id} className="relative p-4 bg-white/80 dark:bg-dark-card/80 backdrop-blur-md rounded-2xl border border-black/10 dark:border-white/10 shadow-sm flex justify-between items-center hover:shadow-md transition-all">
+                        <div className="flex items-center gap-4 min-w-0">
+                            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 flex items-center justify-center text-2xl shrink-0 shadow-sm overflow-hidden">
                                 {item.logoUrl ? (
                                     <img src={item.logoUrl} alt="Logo" className="w-full h-full object-cover" />
                                 ) : (
-                                    item.type === 'Hotel' ? <Bed className="w-6 h-6" /> : item.type === 'Airbnb' ? <House className="w-6 h-6" /> : <Buildings className="w-6 h-6" />
+                                    item.type === 'Hotel' ? <Bed className="w-6 h-6" weight="duotone" /> : item.type === 'Villa' ? <House className="w-6 h-6" weight="duotone" /> : <Buildings className="w-6 h-6" weight="duotone" />
                                 )}
                             </div>
-                            <div>
-                                <h4 className="font-bold text-sm text-light-text dark:text-dark-text">{item.name}</h4>
+                            <div className="min-w-0">
+                                <h4 className="font-bold text-sm text-light-text dark:text-dark-text truncate">{item.name}</h4>
                                 <div className="text-xs text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-2 mt-0.5 font-medium">
-                                    <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary border border-black/5 dark:border-white/5">
+                                    <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary">
                                         {formatDateRange(item.checkInDate, item.checkOutDate)}
                                     </span>
                                     
@@ -233,15 +296,27 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                                         <span className="text-semantic-green font-bold ml-1">{formatCurrency(item.cost)}</span>
                                     )}
                                 </div>
-                                <p className="text-2xs text-light-text-secondary/60 dark:text-dark-text-secondary/60 mt-0.5 truncate max-w-[220px] font-medium">{item.address}</p>
+                                <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5 truncate max-w-[240px] font-medium">{item.address}</p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-1.5">
-                            <button type="button" onClick={() => handleEditItem(item)} className="w-8 h-8 rounded-xl flex items-center justify-center text-primary-500 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer" title="Edit" aria-label="Edit accommodation">
+                        <div className="flex items-center gap-1.5 shrink-0">
+                            <button 
+                                type="button" 
+                                onClick={() => handleEditItem(item)} 
+                                className="w-9 h-9 rounded-xl flex items-center justify-center text-primary-500 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer" 
+                                title="Edit" 
+                                aria-label="Edit accommodation"
+                            >
                                 <PencilSimple className="w-4 h-4" />
                             </button>
-                            <button type="button" onClick={() => handleDeleteItem(item.id)} className="w-8 h-8 rounded-xl flex items-center justify-center text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer" title="Delete" aria-label="Delete accommodation">
-                                <X className="w-4 h-4" />
+                            <button 
+                                type="button" 
+                                onClick={() => handleDeleteItem(item.id)} 
+                                className="w-9 h-9 rounded-xl flex items-center justify-center text-semantic-red hover:bg-semantic-red/10 transition-colors cursor-pointer" 
+                                title="Delete" 
+                                aria-label="Delete accommodation"
+                            >
+                                <Trash className="w-4 h-4" />
                             </button>
                         </div>
                     </div>
@@ -250,127 +325,158 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
 
             {/* Editor Form */}
             {(editingId || items.length === 0) && (
-                <div className="p-6 rounded-3xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-4 animate-fade-in relative">
-                    <div className="flex justify-between items-center mb-2">
+                <div className="p-6 rounded-3xl bg-light-fill dark:bg-dark-fill/50 border border-black/10 dark:border-white/5 space-y-5 animate-fade-in relative">
+                    <div className="flex justify-between items-center">
                         <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1.5">
-                            <MapPin className="w-4 h-4 text-primary-500" />
+                            <MapPin className="w-4 h-4 text-amber-500" weight="duotone" />
                             {items.find(i => i.id === editingId) ? 'Edit Accommodation' : 'New Stay Details'}
                         </span>
                         {items.length > 0 && (
-                            <button type="button" onClick={() => setEditingId(null)} className="w-8 h-8 rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer" aria-label="Close form">
+                            <button 
+                                type="button" 
+                                onClick={() => { setEditingId(null); setDraftError(null); }} 
+                                className="w-8 h-8 rounded-xl flex items-center justify-center text-light-text-secondary hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer" 
+                                aria-label="Close form"
+                            >
                                 <X className="w-4 h-4" />
                             </button>
                         )}
                     </div>
 
-                    <div className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="relative">
-                                <Input 
-                                    label="Name of Place" 
-                                    placeholder="e.g. The Grand Hotel"
-                                    value={form.name || ''}
-                                    onChange={e => setForm({...form, name: e.target.value})}
-                                    className="!font-bold !text-lg pr-10"
-                                    rightElement={
-                                        brandfetchKey && (
-                                            <button 
-                                                type="button"
-                                                onClick={handleFetchBrand}
-                                                disabled={isFetchingBrand || !form.name}
-                                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-blue-500 disabled:opacity-50 transition-colors cursor-pointer"
-                                                title="Auto-fetch Brand Logo"
-                                                aria-label="Auto-fetch Brand Logo"
-                                            >
-                                                {isFetchingBrand ? (
-                                                    <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin block" />
-                                                ) : (
-                                                    <MagnifyingGlass className="w-4 h-4" />
-                                                )}
-                                            </button>
-                                        )
-                                    }
-                                />
-                                {form.logoUrl && (
-                                    <div className="absolute top-8 right-12 w-8 h-8 rounded-lg overflow-hidden border border-gray-200 shadow-sm bg-white">
-                                        <img src={form.logoUrl} alt="Brand" className="w-full h-full object-cover" />
-                                    </div>
-                                )}
-                            </div>
-                            <Select 
-                                label="Type"
-                                options={ACCOMMODATION_TYPES}
-                                value={form.type || 'Hotel'}
-                                onChange={e => setForm({...form, type: e.target.value as any})}
-                                className="!text-lg"
+                    {/* Visual Type Picker (Liquid Glass / Modern Cards) */}
+                    <div className="space-y-1.5">
+                        <label className="block text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                            Accommodation Type
+                        </label>
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                            {ACCOMMODATION_TYPES.map(t => {
+                                const IconComponent = t.icon;
+                                const isSelected = (form.type || 'Hotel') === t.value;
+                                return (
+                                    <button
+                                        type="button"
+                                        key={t.value}
+                                        onClick={() => setForm({ ...form, type: t.value as any })}
+                                        className={`p-3 rounded-2xl flex flex-col items-center justify-center gap-1.5 text-center transition-all border min-h-[64px] cursor-pointer ${
+                                            isSelected
+                                            ? 'bg-white dark:bg-dark-card border-amber-500/40 text-amber-600 dark:text-amber-400 shadow-sm ring-1 ring-amber-500/30'
+                                            : 'bg-black/5 dark:bg-white/5 border-transparent text-light-text-secondary hover:text-light-text hover:bg-black/10'
+                                        }`}
+                                    >
+                                        <IconComponent className="w-5 h-5" weight={isSelected ? "duotone" : "regular"} />
+                                        <span className="text-2xs font-bold uppercase tracking-wider">{t.label}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        {/* Name of Place with Brandfetch lookup */}
+                        <div className="relative">
+                            <Input 
+                                label="Property / Hotel Name" 
+                                placeholder="e.g. Canaves Oia Suites"
+                                value={form.name || ''}
+                                onChange={e => setForm({...form, name: e.target.value})}
+                                className="!font-bold !text-base pr-10"
+                                rightElement={
+                                    brandfetchKey && (
+                                        <button 
+                                            type="button"
+                                            onClick={handleFetchBrand}
+                                            disabled={isFetchingBrand || !form.name}
+                                            className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-light-text-secondary hover:text-amber-500 disabled:opacity-50 transition-colors cursor-pointer"
+                                            title="Auto-fetch Brand Logo"
+                                            aria-label="Auto-fetch Brand Logo"
+                                        >
+                                            {isFetchingBrand ? (
+                                                <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin block" />
+                                            ) : (
+                                                <MagnifyingGlass className="w-4 h-4" />
+                                            )}
+                                        </button>
+                                    )
+                                }
                             />
+                            {form.logoUrl && (
+                                <div className="absolute top-8 right-12 w-7 h-7 rounded-lg overflow-hidden border border-black/10 shadow-sm bg-white">
+                                    <img src={form.logoUrl} alt="Brand" className="w-full h-full object-cover" />
+                                </div>
+                            )}
                         </div>
 
+                        {/* Address */}
                         <Autocomplete 
                             label="Address / Location"
-                            placeholder="e.g. 123 Ocean Drive, Miami"
+                            placeholder="e.g. Oia 847 02, Santorini, Greece"
                             value={form.address || ''}
                             onChange={val => setForm({...form, address: val})}
                             fetchSuggestions={fetchPlaceSuggestions}
                         />
 
-                        <div className="grid grid-cols-2 gap-6 relative">
+                        {/* Check In / Out Dates */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 relative">
                             <Input 
-                                label="Check In" 
+                                label="Check-In Date" 
                                 type="date"
                                 value={form.checkInDate || ''}
                                 onChange={e => setForm({...form, checkInDate: e.target.value})}
                             />
                             <Input 
-                                label="Check Out" 
+                                label="Check-Out Date" 
                                 type="date"
                                 value={form.checkOutDate || ''}
                                 min={form.checkInDate}
                                 onChange={e => setForm({...form, checkOutDate: e.target.value})}
                             />
                             {nights > 0 && (
-                                <div className="absolute top-0 right-0 -mt-3 -mr-2">
-                                    <Badge color="blue" className="shadow-sm text-xs py-1 px-2">{nights} Nights</Badge>
+                                <div className="absolute top-0 right-0 -mt-2.5 mr-1">
+                                    <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                        {nights} {nights === 1 ? 'Night' : 'Nights'}
+                                    </span>
                                 </div>
                             )}
                         </div>
 
-                        <div className="grid grid-cols-3 gap-6">
+                        {/* Check In / Out Times & Conf Code */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <TimeInput 
-                                label="Check In Time" 
+                                label="Check-In Time" 
                                 value={form.checkInTime || '15:00'}
                                 onChange={val => setForm({...form, checkInTime: val})}
                             />
                             <TimeInput 
-                                label="Check Out Time" 
+                                label="Check-Out Time" 
                                 value={form.checkOutTime || '11:00'}
                                 onChange={val => setForm({...form, checkOutTime: val})}
                             />
                             <Input 
-                                label="Conf. Code" 
-                                placeholder="XYZ-123"
+                                label="Booking Reference" 
+                                placeholder="e.g. HTL-99824"
                                 value={form.confirmationCode || ''}
                                 onChange={e => setForm({...form, confirmationCode: e.target.value})}
                             />
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {/* Financials & Website */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div className="relative">
                                 <Input 
-                                    label="Total Cost" 
+                                    label="Total Stay Cost" 
                                     type="number"
                                     placeholder="0.00"
-                                    value={form.cost || ''}
-                                    onChange={e => setForm({...form, cost: parseFloat(e.target.value)})}
+                                    value={form.cost !== undefined ? String(form.cost) : ''}
+                                    onChange={e => setForm({...form, cost: parseFloat(e.target.value) || undefined})}
                                     onFocus={() => setActiveField('total')}
                                     onBlur={() => setActiveField(null)}
                                     className="pl-8 font-bold"
                                 />
-                                <span className="absolute left-3 top-9 text-gray-400 font-bold">{currencySymbol}</span>
+                                <span className="absolute left-3 top-9 text-light-text-secondary font-bold text-xs">{currencySymbol}</span>
                             </div>
                             <div className="relative">
                                 <Input 
-                                    label="Cost / Night" 
+                                    label="Nightly Rate" 
                                     type="number"
                                     placeholder="0.00"
                                     value={perNightInput}
@@ -380,64 +486,86 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                                     className="pl-8"
                                     disabled={nights <= 0}
                                 />
-                                <span className="absolute left-3 top-9 text-gray-400 font-bold">{currencySymbol}</span>
+                                <span className="absolute left-3 top-9 text-light-text-secondary font-bold text-xs">{currencySymbol}</span>
                             </div>
                             <Input 
                                 label="Booking Website" 
-                                placeholder="e.g. Booking.com"
+                                placeholder="e.g. booking.com"
                                 value={form.website || ''}
                                 onChange={e => setForm({...form, website: e.target.value})}
                             />
                         </div>
 
                         <Input 
-                            label="Notes" 
-                            placeholder="Door codes, wifi passwords, etc."
+                            label="Check-In Notes & Instructions" 
+                            placeholder="Keybox code, parking instructions, front desk hours..."
                             value={form.notes || ''}
                             onChange={e => setForm({...form, notes: e.target.value})}
                         />
 
-                        <div className="pt-6 flex justify-end">
-                            <Button 
-                                variant="primary" 
+                        {/* Save Item Action */}
+                        <div className="pt-2 flex justify-end">
+                            <button 
+                                type="button"
                                 onClick={handleSaveItem}
                                 disabled={!form.name || !form.checkInDate || !form.checkOutDate}
-                                className="shadow-lg shadow-amber-500/20 bg-amber-500 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 border-transparent px-8 py-3"
+                                className={`${BTN_PRIMARY_STYLE} px-7 h-11 text-xs font-bold uppercase tracking-wider flex items-center gap-2 cursor-pointer disabled:opacity-50`}
                             >
-                                {items.some(i => i.id === editingId) ? 'Update Stay' : 'Add Stay'}
-                            </Button>
+                                <span>{items.some(i => i.id === editingId) ? 'Update Stay' : 'Add Stay'}</span>
+                                <Check className="w-4 h-4" weight="bold" />
+                            </button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Add Button (only if not editing) */}
+            {/* Add Another Accommodation Button */}
             {!editingId && (
-                <Button 
-                    variant="secondary" 
-                    className="w-full border-dashed py-6 text-gray-500 hover:text-gray-700 hover:border-gray-400 transition-all min-h-[44px]" 
-                    icon={<Plus className="w-5 h-5" />}
+                <button 
+                    type="button"
                     onClick={prepareNewItem}
+                    className="w-full py-4 border-2 border-dashed border-black/10 dark:border-white/10 rounded-2xl text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider hover:border-amber-500 hover:text-amber-600 dark:hover:text-amber-400 transition-all flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
                     aria-label="Add Another Accommodation"
                 >
-                    Add Another Accommodation
-                </Button>
+                    <Plus className="w-4 h-4" />
+                    <span>Add Another Accommodation</span>
+                </button>
             )}
 
-            {/* Footer Actions */}
-            <div className="p-4 border-t border-black/5 dark:border-white/5 sticky bottom-0 bg-light-card/80 dark:bg-dark-card/80 backdrop-blur-md flex items-center justify-between gap-3 rounded-2xl z-20">
-                {initialData && initialData.length > 0 && onDelete && (
-                    <Button variant="danger" size="sm" onClick={() => setShowDeleteConfirm(true)} icon={<Trash className="w-4 h-4" />} aria-label="Delete All Accommodations">
-                        Delete All
-                    </Button>
-                )}
-                <div className="flex gap-3 flex-1 justify-end items-center">
-                    <Button variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>
-                    <Button variant="primary" size="sm" onClick={handleSaveAll}>
-                        Save Accommodations
-                    </Button>
+            {/* Sticky Action Footer */}
+            <div className="p-4 border-t border-black/10 dark:border-white/10 sticky bottom-0 bg-white/90 dark:bg-dark-card/90 backdrop-blur-md flex items-center justify-between gap-3 rounded-2xl z-20">
+                {initialData && initialData.length > 0 && onDelete ? (
+                    <button 
+                        type="button" 
+                        onClick={() => setShowDeleteConfirm(true)} 
+                        className="text-semantic-red hover:bg-semantic-red/10 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer min-h-[44px]"
+                        aria-label="Delete All Accommodations"
+                    >
+                        <Trash className="w-4 h-4" />
+                        <span>Delete All</span>
+                    </button>
+                ) : <div />}
+                
+                <div className="flex gap-3 items-center">
+                    <button 
+                        type="button" 
+                        onClick={onCancel}
+                        className={`${BTN_SECONDARY_STYLE} px-5 h-11 text-xs font-bold uppercase tracking-wider cursor-pointer`}
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        type="button" 
+                        onClick={handleSaveAll}
+                        className={`${BTN_PRIMARY_STYLE} px-7 h-11 text-xs font-bold uppercase tracking-wider flex items-center gap-2 cursor-pointer shadow-md`}
+                    >
+                        <span>Save Accommodations</span>
+                        <Check className="w-4 h-4" weight="bold" />
+                    </button>
                 </div>
             </div>
+
         </div>
     );
 };
+export default AccommodationConfigurator;

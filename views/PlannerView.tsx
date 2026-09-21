@@ -28,12 +28,14 @@ import { Button } from '../components/ui';
 import { LiquidGlassSelect } from '../components/LiquidGlassSelect';
 import { useWanderSync } from '../hooks/useWanderSync';
 import { dataService } from '../services/mockDb';
-import { Trip } from '../types';
+import { Trip, User } from '../types';
 import { formatDateRange } from '../utils/formatters';
 import { NewTripDrawer } from '../components/NewTripDrawer';
+import { TripSetupBoard } from '../components/TripSetupBoard';
 
 interface PlannerViewProps {
     onTripClick?: (tripId: string) => void;
+    users?: User[];
 }
 
 type TabKey = 'all' | 'planned' | 'confirmed' | 'past';
@@ -114,7 +116,7 @@ const MONTHS = [
 
 
 
-export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick }) => {
+export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: usersProp }) => {
     // 1. Reactive SWR Trips Synchronization
     const { data: tripsData } = useWanderSync<Trip[]>(
         'planner_trips',
@@ -122,6 +124,13 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick }) => {
     );
 
     const trips = useMemo(() => tripsData || [], [tripsData]);
+
+    const { data: usersData } = useWanderSync<User[]>(
+        'planner_users',
+        () => dataService.getUsers()
+    );
+
+    const users = useMemo(() => usersProp || usersData || [], [usersProp, usersData]);
 
     // 2. Active Tab State ('all' | 'planned' | 'confirmed' | 'past')
     const [activeTab, setActiveTab] = useState<TabKey>('all');
@@ -825,13 +834,17 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick }) => {
 
             </div>
 
-            {/* Slide-out Drawer for Quick Trip Creation */}
-            <NewTripDrawer 
+            {/* In-Page Guided Wizard Board for New Trip Creation */}
+            <TripSetupBoard 
                 isOpen={isNewTripOpen}
                 initialStatus={drawerStatus}
+                users={users}
                 onClose={() => setIsNewTripOpen(false)}
-                onTripCreated={() => {
+                onTripCreated={(savedTrip) => {
                     setIsNewTripOpen(false);
+                    if (onTripClick && savedTrip?.id) {
+                        onTripClick(savedTrip.id);
+                    }
                 }}
             />
 

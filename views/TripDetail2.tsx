@@ -54,7 +54,6 @@ import {
 } from '@phosphor-icons/react';
 import { Card, Button, Badge, Tabs, Modal, Input, Autocomplete, TimeInput, Select } from '../components/ui';
 import GlassPanel from '../components/glass/GlassPanel';
-import { CARD_ELEVATED_STYLE } from '../constants';
 import { VirtualListItem } from '../components/ui/VirtualListItem';
 import { TransportConfigurator } from '../components/FlightConfigurator';
 import { AccommodationConfigurator } from '../components/AccommodationConfigurator';
@@ -72,9 +71,6 @@ const FlightImportWizard = React.lazy(() => import('../components/FlightImportWi
 import { getMerchantLogoUrl } from '../utils/brandfetch';
 import { formatDate, formatDateRange, formatCurrency, getCurrencySymbol } from '../utils/formatters';
 import { EmptyState } from '../components/EmptyState';
-import { ExcursionConfigurator } from '../components/ExcursionConfigurator';
-import { DailyPlannerBoard } from '../components/DailyPlannerBoard';
-import { invalidateGlobalWanderCache } from '../hooks/useWanderSync';
 
 export const TripItemIcon: React.FC<{ name: string; className?: string }> = React.memo(({ name, className = "w-4 h-4" }) => {
     switch (name) {
@@ -497,7 +493,7 @@ const NomadGuide: React.FC<{ trip: Trip }> = ({ trip }) => {
     );
 };
 
-export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
+export const TripDetail2: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     const [trip, setTrip] = useState<Trip | null>(null);
     const [users, setUsers] = useState<User[]>([]);
     const [settings, setSettings] = useState<WorkspaceSettings | null>(null);
@@ -507,7 +503,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     
     // View State
     const [activeTab, setActiveTab] = useState('planner'); 
-    const [plannerView, setPlannerView] = useState<'board' | 'list' | 'table' | 'calendar'>('board'); 
+    const [plannerView, setPlannerView] = useState<'list' | 'table' | 'calendar'>('list'); 
     const [calendarDate, setCalendarDate] = useState(new Date());
     const [loading, setLoading] = useState(true);
 
@@ -532,7 +528,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     const importInputRef = useRef<HTMLInputElement>(null);
 
     // Editing State
-    const [selectedActivityForModal, setSelectedActivityForModal] = useState<Activity | null>(null);
+    const [activityForm, setActivityForm] = useState<Partial<Activity>>({});
     const [currentDayForActivity, setCurrentDayForActivity] = useState<string>('');
     const [selectedDateForModal, setSelectedDateForModal] = useState<string | null>(null);
     const [editingTransports, setEditingTransports] = useState<Transport[] | null>(null);
@@ -712,8 +708,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         updatedTransports = [...updatedTransports, ...newTransports];
         const updatedTrip = { ...trip, transports: updatedTransports };
         const savedTrip = await dataService.updateTrip(updatedTrip);
-        invalidateGlobalWanderCache();
-        window.dispatchEvent(new CustomEvent('wandergrid_db_updated'));
         setTrip(savedTrip);
         setIsTransportModalOpen(false);
         setEditingTransports(null);
@@ -820,8 +814,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         const updatedTransports = (trip.transports || []).filter(f => !ids.includes(f.id));
         const updatedTrip = { ...trip, transports: updatedTransports };
         await dataService.updateTrip(updatedTrip);
-        invalidateGlobalWanderCache();
-        window.dispatchEvent(new CustomEvent('wandergrid_db_updated'));
         setTrip(updatedTrip);
         setIsTransportModalOpen(false);
         setEditingTransports(null);
@@ -831,8 +823,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         if (!trip) return;
         const updatedTrip = { ...trip, accommodations: items };
         await dataService.updateTrip(updatedTrip);
-        invalidateGlobalWanderCache();
-        window.dispatchEvent(new CustomEvent('wandergrid_db_updated'));
         setTrip(updatedTrip);
         setIsAccommodationModalOpen(false);
     };
@@ -841,8 +831,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         if (!trip) return;
         const updatedTrip = { ...trip, accommodations: [] };
         await dataService.updateTrip(updatedTrip);
-        invalidateGlobalWanderCache();
-        window.dispatchEvent(new CustomEvent('wandergrid_db_updated'));
         setTrip(updatedTrip);
         setIsAccommodationModalOpen(false);
     };
@@ -857,42 +845,48 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         const originalTransports = trip.transports || [];
 
         const preservedTransports = originalTransports.filter(t => {
+            // If the route manager explicitly outputted a transport with this ID, we use the new version
             if (finalTransportIds.has(t.id)) {
                 return false;
             }
+            // If the transport is a route-managed transport (itineraryId is 'route-gen' or 'route-booked'), 
+            // but it is NOT in the new finalTransports, it means it was deleted by the user in the route manager!
             if (t.itineraryId === 'route-gen' || t.itineraryId === 'route-booked') {
                 return false;
             }
+            // Keep all other manually entered bookings, independent flights, cruises, etc.
             return true;
         });
 
         const mergedTransports = [...preservedTransports, ...finalTransports];
+        console.log("handleSaveRoute: preservedTransports count:", preservedTransports.length, "mergedTransports count:", mergedTransports.length);
+
         const updatedTrip = { ...trip, locations: items, transports: mergedTransports };
         const savedTrip = await dataService.updateTrip(updatedTrip);
-        invalidateGlobalWanderCache();
-        window.dispatchEvent(new CustomEvent('wandergrid_db_updated'));
+        console.log("handleSaveRoute: savedTrip returned with transports count:", savedTrip.transports?.length);
         setTrip(savedTrip);
     };
 
     const handleOpenActivityModal = (dateStr: string, existingActivity?: Activity) => {
         setCurrentDayForActivity(dateStr);
-        setSelectedActivityForModal(existingActivity || null);
+        if (existingActivity) setActivityForm({ ...existingActivity });
+        else setActivityForm({ id: Math.random().toString(36).substr(2, 9), date: dateStr, time: '12:00', cost: 0, location: '', description: '', type: 'Activity' });
         setIsActivityModalOpen(true);
     };
 
-    const handleSaveActivity = async (newActivity: Activity) => {
-        if (!trip || !newActivity.title || !newActivity.date) return;
+    const handleSaveActivity = async () => {
+        if (!trip || !activityForm.title || !activityForm.date) return;
+        const newActivity = activityForm as Activity;
+        if (!newActivity.type) newActivity.type = 'Activity';
         let updatedActivities = [...(trip.activities || [])];
         const existingIndex = updatedActivities.findIndex(a => a.id === newActivity.id);
         if (existingIndex >= 0) updatedActivities[existingIndex] = newActivity;
         else updatedActivities.push(newActivity);
         const updatedTrip = { ...trip, activities: updatedActivities };
         await dataService.updateTrip(updatedTrip);
-        invalidateGlobalWanderCache();
-        window.dispatchEvent(new CustomEvent('wandergrid_db_updated'));
         setTrip(updatedTrip);
         setIsActivityModalOpen(false);
-        setSelectedActivityForModal(null);
+        setActivityForm({});
     };
 
     const handleDeleteActivity = async (activityId: string) => {
@@ -900,11 +894,9 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         const updatedActivities = (trip.activities || []).filter(a => a.id !== activityId);
         const updatedTrip = { ...trip, activities: updatedActivities };
         await dataService.updateTrip(updatedTrip);
-        invalidateGlobalWanderCache();
-        window.dispatchEvent(new CustomEvent('wandergrid_db_updated'));
         setTrip(updatedTrip);
         setIsActivityModalOpen(false);
-        setSelectedActivityForModal(null);
+        setActivityForm({});
     };
 
 
@@ -1024,38 +1016,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     const duration = Math.ceil((new Date(trip.endDate).getTime() - new Date(trip.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1;
     const costPerPerson = (trip.participants || []).length > 0 ? totalCost / (trip.participants || []).length : 0;
     const costPerDay = duration > 0 ? totalCost / duration : 0;
-
-    const totalDistance = trip.transports?.reduce((sum, t) => sum + (t.distance || 0), 0) || 0;
-    const totalTransportLegs = trip.transports?.length || 0;
-    const totalNightsBooked = trip.accommodations?.reduce((sum, a) => {
-        if (a.checkInDate && a.checkOutDate) {
-            const inD = new Date(a.checkInDate).getTime();
-            const outD = new Date(a.checkOutDate).getTime();
-            const nights = Math.max(0, Math.round((outD - inD) / (1000 * 60 * 60 * 24)));
-            return sum + nights;
-        }
-        return sum;
-    }, 0) || 0;
-    const excursionsCount = trip.activities?.length || 0;
-
-    const destinationCoordinates: [number, number] | undefined = (() => {
-        if (trip?.location?.coordinates && trip.location.coordinates.length === 2) {
-            return [trip.location.coordinates[0], trip.location.coordinates[1]];
-        }
-        if (trip?.transports && trip.transports.length > 0) {
-            const lastT = trip.transports[trip.transports.length - 1];
-            if (lastT.destinationCoordinates && lastT.destinationCoordinates.length === 2) {
-                return [lastT.destinationCoordinates[0], lastT.destinationCoordinates[1]];
-            }
-        }
-        if (trip?.accommodations && trip.accommodations.length > 0) {
-            const firstA = trip.accommodations[0];
-            if (firstA.coordinates && firstA.coordinates.length === 2) {
-                return [firstA.coordinates[0], firstA.coordinates[1]];
-            }
-        }
-        return undefined;
-    })();
 
     const compareTransports = (a: Transport, b: Transport) => {
         const dateA = a.departureDate || '1970-01-01';
@@ -1425,26 +1385,27 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                 </div>
 
                                 {/* Stat Cards */}
-                                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mt-4">
-                                    <div className={`p-4 ${CARD_ELEVATED_STYLE} text-center flex flex-col justify-center`}>
-                                        <span className="text-xl md:text-2xl font-black text-emerald-600 dark:text-emerald-400">{formatCurrency(totalCost)}</span>
-                                        <span className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider mt-0.5">Total Cost</span>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+                                    <div className="p-3 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 rounded-2xl text-center flex flex-col justify-center">
+                                        <span className="text-lg md:text-xl font-black text-emerald-600 dark:text-emerald-450">{formatCurrency(totalCost)}</span>
+                                        <span className="text-2xs font-bold text-emerald-500/70 uppercase tracking-wider mt-0.5">Total Cost</span>
                                     </div>
-                                    <div className={`p-4 ${CARD_ELEVATED_STYLE} text-center flex flex-col justify-center`}>
-                                        <span className="text-xl md:text-2xl font-black text-semantic-blue">{totalTransportLegs}</span>
-                                        <span className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider mt-0.5">Transport Legs</span>
+                                    <div className="p-3 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 rounded-2xl text-center flex flex-col justify-center">
+                                        <span className="text-lg md:text-xl font-black text-blue-600 dark:text-blue-450">{duration}</span>
+                                        <span className="text-2xs font-bold text-blue-500/70 uppercase tracking-wider mt-0.5">Days Duration</span>
                                     </div>
-                                    <div className={`p-4 ${CARD_ELEVATED_STYLE} text-center flex flex-col justify-center`}>
-                                        <span className="text-xl md:text-2xl font-black text-amber-500">{totalNightsBooked}</span>
-                                        <span className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider mt-0.5">Nights Booked</span>
+                                    <div className="p-3 bg-purple-50/50 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/30 rounded-2xl text-center flex flex-col justify-center items-center">
+                                        <div className="flex -space-x-1.5 mb-0.5 justify-center">
+                                            {(trip.participants || []).map((pid) => {
+                                                const u = users.find(u => u.id === pid);
+                                                return u ? <div key={pid} className="w-5 h-5 rounded-full bg-purple-100 border-2 border-white flex items-center justify-center text-2xs font-bold text-purple-800" title={u.name}>{u.name.charAt(0)}</div> : null;
+                                            })}
+                                        </div>
+                                        <span className="text-2xs font-bold text-purple-500/70 uppercase tracking-wider">Travelers</span>
                                     </div>
-                                    <div className={`p-4 ${CARD_ELEVATED_STYLE} text-center flex flex-col justify-center`}>
-                                        <span className="text-xl md:text-2xl font-black text-purple-600 dark:text-purple-400">{excursionsCount}</span>
-                                        <span className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider mt-0.5">Excursions</span>
-                                    </div>
-                                    <div className={`p-4 ${CARD_ELEVATED_STYLE} text-center flex flex-col justify-center col-span-2 sm:col-span-1`}>
-                                        <span className="text-xl md:text-2xl font-black text-light-text dark:text-dark-text">{totalDistance > 0 ? `${Math.round(totalDistance).toLocaleString()} km` : '0 km'}</span>
-                                        <span className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider mt-0.5">Total Distance</span>
+                                    <div className="p-3 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-2xl text-center flex flex-col justify-center">
+                                        <span className="text-lg md:text-xl font-black text-light-text dark:text-dark-text">{(trip.transports?.length || 0) + (trip.accommodations?.length || 0) + (trip.activities?.length || 0)}</span>
+                                        <span className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider mt-0.5 font-sans">Active Items</span>
                                     </div>
                                 </div>
                             </div>
@@ -1467,7 +1428,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                         }>
                             <DeckFlightMap 
                                 trips={[trip]} 
-                                focusTransportCoordinates={destinationCoordinates}
                                 animateRoutes={true} 
                                 showFrequencyWeight={true}
                                 showCityMarkers={true}
@@ -1493,15 +1453,14 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                     onChange={setActiveTab} 
                 />
                 {activeTab === 'planner' && (
-                    <Tabs
+                    <Tabs 
                         tabs={[
-                            { id: 'board', label: 'Board', icon: <Sparkle className="w-4 h-4 text-amber-500" weight="duotone" />, color: 'amber' },
                             { id: 'list', label: 'List', icon: <List className="w-4 h-4 text-blue-500" weight="duotone" />, color: 'blue' },
                             { id: 'table', label: 'Table', icon: <Table className="w-4 h-4 text-emerald-500" weight="duotone" />, color: 'emerald' },
                             { id: 'calendar', label: 'Calendar', icon: <CalendarBlank className="w-4 h-4 text-purple-500" weight="duotone" />, color: 'purple' },
                         ]}
                         activeTab={plannerView}
-                        onChange={(id) => setPlannerView(id as 'board' | 'list' | 'table' | 'calendar')}
+                        onChange={(id) => setPlannerView(id as 'list' | 'table' | 'calendar')}
                     />
                 )}
             </div>
@@ -1535,17 +1494,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
 
             {activeTab === 'planner' && (
                 <>
-                    {plannerView === 'board' ? (
-                        <DailyPlannerBoard
-                            trip={trip}
-                            tripDates={tripDates}
-                            settings={settings}
-                            onEditTransport={(transports, date) => openTransportModal(transports, date)}
-                            onEditAccommodation={(accommodation, date) => openAccommodationModal()}
-                            onEditActivity={(dateStr, activity) => handleOpenActivityModal(dateStr, activity)}
-                            onDeleteActivity={handleDeleteActivity}
-                        />
-                    ) : plannerView === 'calendar' ? renderPlannerCalendar() : plannerView === 'list' ? (
+                    {plannerView === 'calendar' ? renderPlannerCalendar() : plannerView === 'list' ? (
                         <div className="space-y-6 relative">
                             {/* Unified Chronological Timeline per Day */}
                             <div className="absolute left-8 top-4 bottom-4 w-0.5 bg-gray-200 dark:bg-gray-800 hidden md:block" />
@@ -2253,18 +2202,69 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 initialData={trip}
             />
 
-            <ExcursionConfigurator 
+            <Modal 
                 isOpen={isActivityModalOpen} 
-                onClose={() => {
-                    setIsActivityModalOpen(false);
-                    setSelectedActivityForModal(null);
-                }} 
-                onSave={handleSaveActivity}
-                initialData={selectedActivityForModal}
-                defaultDate={currentDayForActivity}
-                tripStartDate={trip.startDate}
-                tripEndDate={trip.endDate}
-            />
+                onClose={() => setIsActivityModalOpen(false)} 
+                title={activityForm.id ? "Edit Activity Item" : "Add Activity Item"}
+                subtitle="Itinerary Schedule & Reservations"
+                icon="event_note"
+            >
+                <div className="space-y-6 font-sans">
+                    <div className="space-y-2">
+                        <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                            Activity Title <span className="text-rose-500">*</span>
+                        </label>
+                        <Input 
+                            placeholder="e.g. Louvre Museum" 
+                            value={activityForm.title || ''} 
+                            onChange={e => setActivityForm({...activityForm, title: e.target.value})} 
+                            className="h-14 !text-xl font-bold"
+                            autoFocus
+                        />
+                    </div>
+
+                    <div className="p-5 rounded-3xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-4">
+                        <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
+                            Schedule & Location
+                        </span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <Select 
+                                label="Type" 
+                                options={[{label: 'Activity', value: 'Activity'}, {label: 'Reservation', value: 'Reservation'}, {label: 'Tour', value: 'Tour'}]} 
+                                value={activityForm.type || 'Activity'} 
+                                onChange={e => setActivityForm({...activityForm, type: e.target.value as any})} 
+                            />
+                            <Autocomplete 
+                                label="Location" 
+                                placeholder="e.g. Rue de Rivoli, Paris" 
+                                value={activityForm.location || ''} 
+                                onChange={val => setActivityForm({...activityForm, location: val})} 
+                                fetchSuggestions={fetchLocationSuggestions} 
+                            />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <Input label="Date" type="date" value={activityForm.date || currentDayForActivity || ''} onChange={e => setActivityForm({...activityForm, date: e.target.value})} />
+                            <TimeInput label="Time" value={activityForm.time || '12:00'} onChange={val => setActivityForm({...activityForm, time: val})} />
+                        </div>
+                    </div>
+
+                    <div className="p-5 rounded-3xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-4">
+                        <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
+                            Details & Pricing
+                        </span>
+                        <div className="relative">
+                            <Input label="Cost" type="number" placeholder="0.00" value={activityForm.cost || ''} onChange={e => setActivityForm({...activityForm, cost: parseFloat(e.target.value)})} className="pl-8" />
+                            <span className="absolute left-3 top-9 text-light-text-secondary dark:text-dark-text-secondary font-bold text-xs">{getCurrencySymbol(settings?.currency || 'USD')}</span>
+                        </div>
+                        <Input label="Notes / Description" placeholder="Booking ref, instructions..." value={activityForm.description || ''} onChange={e => setActivityForm({...activityForm, description: e.target.value})} />
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-4 border-t border-black/5 dark:border-white/5">
+                        <Button variant="secondary" onClick={() => setIsActivityModalOpen(false)}>Cancel</Button>
+                        <Button variant="primary" onClick={handleSaveActivity} disabled={!activityForm.title || !activityForm.date}>Save Item</Button>
+                    </div>
+                </div>
+            </Modal>
 
             {/* Cinematic Modal */}
             {isCinematicOpen && (

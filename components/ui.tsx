@@ -422,17 +422,91 @@ export const Modal: React.FC<ModalProps> = ({
 };
 
 // --- Tabs (Segmented Switcher) ---
-interface Tab {
+export type TabColor = 'primary' | 'amber' | 'blue' | 'emerald' | 'purple' | 'teal' | 'rose' | 'indigo' | 'cyan' | 'orange' | 'violet';
+
+export interface Tab {
   id: string;
   label: string;
   icon?: ReactNode;
+  color?: TabColor;
 }
+
+const TAB_COLOR_STYLES: Record<string, { activeText: string; activeBg: string; activeBorder: string; activeShadow: string }> = {
+  primary: {
+    activeText: "text-primary-700 dark:text-primary-300",
+    activeBg: "bg-primary-500/20 dark:bg-primary-500/30",
+    activeBorder: "border-primary-500/40 dark:border-primary-400/50",
+    activeShadow: "shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(99,102,241,0.25)]",
+  },
+  amber: {
+    activeText: "text-amber-700 dark:text-amber-300",
+    activeBg: "bg-amber-500/20 dark:bg-amber-500/30",
+    activeBorder: "border-amber-500/40 dark:border-amber-400/50",
+    activeShadow: "shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(245,158,11,0.25)]",
+  },
+  blue: {
+    activeText: "text-blue-700 dark:text-blue-300",
+    activeBg: "bg-blue-500/20 dark:bg-blue-500/30",
+    activeBorder: "border-blue-500/40 dark:border-blue-400/50",
+    activeShadow: "shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(59,130,246,0.25)]",
+  },
+  emerald: {
+    activeText: "text-emerald-700 dark:text-emerald-300",
+    activeBg: "bg-emerald-500/20 dark:bg-emerald-500/30",
+    activeBorder: "border-emerald-500/40 dark:border-emerald-400/50",
+    activeShadow: "shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(16,185,129,0.25)]",
+  },
+  purple: {
+    activeText: "text-purple-700 dark:text-purple-300",
+    activeBg: "bg-purple-500/20 dark:bg-purple-500/30",
+    activeBorder: "border-purple-500/40 dark:border-purple-400/50",
+    activeShadow: "shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(168,85,247,0.25)]",
+  },
+  teal: {
+    activeText: "text-teal-700 dark:text-teal-300",
+    activeBg: "bg-teal-500/20 dark:bg-teal-500/30",
+    activeBorder: "border-teal-500/40 dark:border-teal-400/50",
+    activeShadow: "shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(20,184,166,0.25)]",
+  },
+  rose: {
+    activeText: "text-rose-700 dark:text-rose-300",
+    activeBg: "bg-rose-500/20 dark:bg-rose-500/30",
+    activeBorder: "border-rose-500/40 dark:border-rose-400/50",
+    activeShadow: "shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(244,63,94,0.25)]",
+  },
+  indigo: {
+    activeText: "text-indigo-700 dark:text-indigo-300",
+    activeBg: "bg-indigo-500/20 dark:bg-indigo-500/30",
+    activeBorder: "border-indigo-500/40 dark:border-indigo-400/50",
+    activeShadow: "shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(99,102,241,0.25)]",
+  },
+  cyan: {
+    activeText: "text-cyan-700 dark:text-cyan-300",
+    activeBg: "bg-cyan-500/20 dark:bg-cyan-500/30",
+    activeBorder: "border-cyan-500/40 dark:border-cyan-400/50",
+    activeShadow: "shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(6,182,212,0.25)]",
+  },
+  orange: {
+    activeText: "text-orange-700 dark:text-orange-300",
+    activeBg: "bg-orange-500/20 dark:bg-orange-500/30",
+    activeBorder: "border-orange-500/40 dark:border-orange-400/50",
+    activeShadow: "shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(249,115,22,0.25)]",
+  },
+  violet: {
+    activeText: "text-violet-700 dark:text-violet-300",
+    activeBg: "bg-violet-500/20 dark:bg-violet-500/30",
+    activeBorder: "border-violet-500/40 dark:border-violet-400/50",
+    activeShadow: "shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(139,92,246,0.25)]",
+  },
+};
+
 interface TabsProps {
   tabs: Tab[];
   activeTab: string;
   onChange: (id: string) => void;
   className?: string;
 }
+
 export const Tabs: React.FC<TabsProps> = ({ tabs, activeTab, onChange, className }) => (
   <div className={cn("flex items-center justify-center sm:justify-start overflow-x-auto sm:overflow-visible no-scrollbar p-3 -m-3 shrink-0", className)}>
     <GlassPanel
@@ -443,6 +517,8 @@ export const Tabs: React.FC<TabsProps> = ({ tabs, activeTab, onChange, className
       <div className="flex gap-1 relative items-center">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
+          const colorKey = tab.color || 'primary';
+          const colorStyle = TAB_COLOR_STYLES[colorKey] || TAB_COLOR_STYLES.primary;
           return (
             <button
               key={tab.id}
@@ -451,18 +527,23 @@ export const Tabs: React.FC<TabsProps> = ({ tabs, activeTab, onChange, className
               className={cn(
                 "relative rounded-full text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none active:scale-95 px-4 sm:px-5 py-2.5",
                 isActive 
-                  ? "text-primary-700 dark:text-primary-300" 
-                  : "text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text"
+                  ? colorStyle.activeText 
+                  : "text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
               )}
             >
               {isActive && (
                 <div
-                  className="absolute inset-0 rounded-full bg-primary-500/20 dark:bg-primary-500/30 backdrop-blur-md border border-primary-500/40 dark:border-primary-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(99,102,241,0.3)] z-0"
+                  className={cn(
+                    "absolute inset-0 rounded-full backdrop-blur-md border z-0",
+                    colorStyle.activeBg,
+                    colorStyle.activeBorder,
+                    colorStyle.activeShadow
+                  )}
                   style={{ WebkitBackdropFilter: 'blur(12px)' }}
                 />
               )}
               <span className="relative z-10 flex items-center gap-2">
-                {tab.icon && <span className="shrink-0">{tab.icon}</span>}
+                {tab.icon && <span className="shrink-0 transition-transform duration-200">{tab.icon}</span>}
                 <span className={cn("tracking-tight", isActive ? "inline" : "hidden sm:inline")}>{tab.label}</span>
               </span>
             </button>

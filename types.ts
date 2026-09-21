@@ -304,6 +304,7 @@ export enum ViewState {
   PLANNER = 'planner',
   PLANNER_2 = 'planner_2',
   TRIP_DETAIL = 'trip_detail',
+  TRIP_DETAIL_2 = 'trip_detail_2',
   MAP = 'map',
   GAMIFICATION = 'gamification',
   FLIGHTS = 'flights',

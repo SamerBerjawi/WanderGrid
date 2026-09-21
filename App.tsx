@@ -14,6 +14,7 @@ const UserDetail = lazy(() => import('./views/UserDetail').then(m => ({ default:
 const PlannerView = lazy(() => import('./views/PlannerView').then(m => ({ default: m.PlannerView })));
 const VacationPlanner = lazy(() => import('./views/VacationPlanner').then(m => ({ default: m.VacationPlanner })));
 const TripDetail = lazy(() => import('./views/TripDetail').then(m => ({ default: m.TripDetail })));
+const TripDetail2 = lazy(() => import('./views/TripDetail2').then(m => ({ default: m.TripDetail2 })));
 const ExpeditionMapView = lazy(() => import('./views/ExpeditionMapView').then(m => ({ default: m.ExpeditionMapView })));
 const Flights = lazy(() => import('./views/Flights').then(m => ({ default: m.Flights })));
 const RoadTrips = lazy(() => import('./views/RoadTrips').then(m => ({ default: m.RoadTrips })));
@@ -44,6 +45,9 @@ const getUrlState = () => {
 
         const tripMatch = path.match(/^\/trip\/([^/]+)$/);
         if (tripMatch) return { view: ViewState.TRIP_DETAIL, tripId: tripMatch[1] };
+
+        const trip2Match = path.match(/^\/trip-2\/([^/]+)$/);
+        if (trip2Match) return { view: ViewState.TRIP_DETAIL_2, tripId: trip2Match[1] };
     } catch (e) {
         console.warn("Failed to parse URL state", e);
     }
@@ -86,6 +90,7 @@ export default function App() {
           case ViewState.VACATION_CALENDAR: path = '/calendar'; break;
           case ViewState.USER_DETAIL: path = id ? `/user/${id}` : '/'; break;
           case ViewState.TRIP_DETAIL: path = id ? `/trip/${id}` : '/'; break;
+          case ViewState.TRIP_DETAIL_2: path = id ? `/trip-2/${id}` : '/'; break;
           case ViewState.DASHBOARD: 
           default: path = '/'; break;
       }
@@ -100,7 +105,7 @@ export default function App() {
       
       setView(newView);
       if (newView === ViewState.USER_DETAIL && id) setSelectedUserId(id);
-      if (newView === ViewState.TRIP_DETAIL && id) setSelectedTripId(id);
+      if ((newView === ViewState.TRIP_DETAIL || newView === ViewState.TRIP_DETAIL_2) && id) setSelectedTripId(id);
   };
 
   useEffect(() => {
@@ -241,6 +246,8 @@ export default function App() {
         return `view-user-${selectedUserId || 'none'}`;
       case ViewState.TRIP_DETAIL:
         return `view-trip-${selectedTripId || 'none'}`;
+      case ViewState.TRIP_DETAIL_2:
+        return `view-trip-2-${selectedTripId || 'none'}`;
       default:
         return `view-${view}`;
     }
@@ -262,6 +269,8 @@ export default function App() {
         return <VacationPlanner onTripClick={handleTripClick} />;
       case ViewState.TRIP_DETAIL:
         return <TripDetail tripId={selectedTripId!} onBack={() => navigate(ViewState.DASHBOARD)} />;
+      case ViewState.TRIP_DETAIL_2:
+        return <TripDetail2 tripId={selectedTripId!} onBack={() => navigate(ViewState.DASHBOARD)} />;
       case ViewState.MAP:
         return <ExpeditionMapView onTripClick={handleTripClick} isSidebarCollapsed={isSidebarCollapsed} />;
       case ViewState.GAMIFICATION:
