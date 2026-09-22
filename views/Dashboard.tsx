@@ -985,27 +985,30 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
             <GlassPanel className="xl:col-span-2 relative h-[36rem] rounded-[28px] overflow-hidden flex flex-col wg-glass-card">
                 <div className="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-white/35 dark:from-black/10 to-transparent pointer-events-none z-10" />
                 
-                <Suspense fallback={
-                    <div className="w-full h-full flex flex-col items-center justify-center bg-black/5 dark:bg-black/30 space-y-4">
-                        <div className="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" />
-                        <p className="text-2xs font-bold uppercase tracking-[0.2em] text-light-text-secondary dark:text-dark-text-secondary">Loading Expedition Coordinates...</p>
-                    </div>
-                }>
-                    <DeckFlightMap 
-                        trips={trips.filter(t => t.status !== 'Cancelled')} 
-                        animateRoutes={false} 
-                        showFrequencyWeight={true}
-                        onTripClick={onTripClick}
-                        showCountries={false}
-                        clusterMode={false}
-                        visitedCountries={visitedData.map(vd => vd.code)}
-                        showGradientRoutes={true}
-                        showFlightRoutes={true}
-                        showLandSeaRoutes={true}
-                        projection={mapViewMode === '3d' ? 'globe' : 'flat'}
-                        elevatedRoutes={mapViewMode === '3d'}
-                    />
-                </Suspense>
+                <div className="w-full h-full flex-1 relative min-h-[400px]">
+                    <Suspense fallback={
+                        <div className="w-full h-full flex flex-col items-center justify-center bg-black/5 dark:bg-black/30 space-y-4">
+                            <div className="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                            <p className="text-2xs font-bold uppercase tracking-[0.2em] text-light-text-secondary dark:text-dark-text-secondary">Loading Expedition Coordinates...</p>
+                        </div>
+                    }>
+                        <DeckFlightMap 
+                            trips={trips.filter(t => t.status !== 'Cancelled')} 
+                            animateRoutes={false} 
+                            showFrequencyWeight={true}
+                            onTripClick={onTripClick}
+                            showCountries={false}
+                            clusterMode={false}
+                            visitedCountries={visitedData.map(vd => vd.code)}
+                            showGradientRoutes={true}
+                            showFlightRoutes={true}
+                            showLandSeaRoutes={true}
+                            projection={mapViewMode === '3d' ? 'globe' : 'flat'}
+                            elevatedRoutes={mapViewMode === '3d'}
+                            embedded={true}
+                        />
+                    </Suspense>
+                </div>
                 
                 {/* Floating Tactile Map Controls */}
                 <div className="absolute top-5 right-5 z-20 flex items-center">

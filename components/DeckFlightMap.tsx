@@ -315,7 +315,20 @@ export const createMapLibreStyle = (
     };
 };
 
-export function getMapContentPadding(isSidebarCollapsed: boolean, width: number, height: number) {
+export function getMapContentPadding(
+    isSidebarCollapsed: boolean, 
+    width: number, 
+    height: number,
+    embedded: boolean = false
+) {
+    if (embedded || width < 700) {
+        return {
+            top: 16,
+            left: 16,
+            right: 16,
+            bottom: 16,
+        };
+    }
     const isMobile = width < 768;
     if (isMobile) {
         return {
@@ -337,9 +350,10 @@ export function calculateAdaptiveWorldCamera(
     containerWidth: number,
     containerHeight: number,
     isSidebarCollapsed: boolean,
-    isGlobe: boolean
+    isGlobe: boolean,
+    embedded: boolean = false
 ) {
-    const padding = getMapContentPadding(isSidebarCollapsed, containerWidth, containerHeight);
+    const padding = getMapContentPadding(isSidebarCollapsed, containerWidth, containerHeight, embedded);
     const availW = Math.max(100, containerWidth - padding.left - padding.right);
     const availH = Math.max(100, containerHeight - padding.top - padding.bottom);
 
@@ -404,6 +418,7 @@ export interface DeckFlightMapProps {
     appearanceSettings?: MapAppearanceSettings;
     onChangeAppearanceSettings?: (settings: MapAppearanceSettings) => void;
     isSidebarCollapsed?: boolean;
+    embedded?: boolean;
 }
 
 export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
@@ -434,8 +449,11 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     initialElevated = false,
     appearanceSettings: appearanceSettingsProp,
     onChangeAppearanceSettings,
-    isSidebarCollapsed = false
+    isSidebarCollapsed,
+    embedded
 }) => {
+    const isEmbedded = embedded !== undefined ? embedded : (isSidebarCollapsed === undefined);
+    const sidebarCollapsed = isSidebarCollapsed ?? false;
     const isDark = useDarkMode();
     const { data: workspaceSettings } = useWanderSync<WorkspaceSettings>(
         'settings',
@@ -733,8 +751,12 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 const rect = mapContainerRef.current?.getBoundingClientRect();
                 const width = rect?.width || window.innerWidth || 1200;
                 const height = rect?.height || window.innerHeight || 800;
-                const cam = calculateAdaptiveWorldCamera(width, height, isSidebarCollapsed, effectiveProjection === 'globe');
-                mapRef.current.setPadding(cam.padding);
+                const cam = calculateAdaptiveWorldCamera(width, height, sidebarCollapsed, effectiveProjection === 'globe', isEmbedded);
+                try {
+                    mapRef.current.setPadding(cam.padding);
+                } catch (e) {
+                    console.warn('[DeckFlightMap] reset setPadding error:', e);
+                }
                 mapRef.current.flyTo({
                     center: cam.center,
                     zoom: cam.zoom,
@@ -745,7 +767,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         }
         setSelectedCorridor(null);
         setSelectedCountry(null);
-    }, [effectiveProjection, isSidebarCollapsed]);
+    }, [effectiveProjection, sidebarCollapsed, isEmbedded]);
 
     // Multi-modal routes request (Rail & Highway)
     useEffect(() => {
@@ -1656,7 +1678,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         const rect = mapContainerRef.current.getBoundingClientRect();
         const width = rect.width || window.innerWidth || 1200;
         const height = rect.height || window.innerHeight || 800;
-        const initialCamera = calculateAdaptiveWorldCamera(width, height, isSidebarCollapsed, isGlobe);
+        const initialCamera = calculateAdaptiveWorldCamera(width, height, sidebarCollapsed, isGlobe, isEmbedded);
 
         const map = new maplibregl.Map({
             container: mapContainerRef.current,
@@ -1670,7 +1692,11 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             attributionControl: false
         });
 
-        map.setPadding(initialCamera.padding);
+        try {
+            map.setPadding(initialCamera.padding);
+        } catch (e) {
+            console.warn('[DeckFlightMap] initial setPadding error:', e);
+        }
         map.setMinZoom(0);
 
         const overlay = new MapboxOverlay({
@@ -1686,8 +1712,10 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 }
                 const curRect = mapContainerRef.current?.getBoundingClientRect();
                 if (curRect && curRect.width && curRect.height) {
-                    const freshCam = calculateAdaptiveWorldCamera(curRect.width, curRect.height, isSidebarCollapsed, isGlobe);
-                    map.setPadding(freshCam.padding);
+                    const freshCam = calculateAdaptiveWorldCamera(curRect.width, curRect.height, sidebarCollapsed, isGlobe, isEmbedded);
+                    try {
+                        map.setPadding(freshCam.padding);
+                    } catch (e) {}
                     map.setMinZoom(0);
                     map.jumpTo({
                         center: freshCam.center,
@@ -1851,8 +1879,10 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 const rect = mapContainerRef.current?.getBoundingClientRect();
                 const width = rect?.width || window.innerWidth || 1200;
                 const height = rect?.height || window.innerHeight || 800;
-                const cam = calculateAdaptiveWorldCamera(width, height, isSidebarCollapsed, isGlobe);
-                map.setPadding(cam.padding);
+                const cam = calculateAdaptiveWorldCamera(width, height, sidebarCollapsed, isGlobe, isEmbedded);
+                try {
+                    map.setPadding(cam.padding);
+                } catch (e) {}
                 map.setMinZoom(0);
                 map.easeTo({
                     center: cam.center,
@@ -1869,7 +1899,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         } else {
             map.once('load', applyProj);
         }
-    }, [effectiveProjection]);
+    }, [effectiveProjection, sidebarCollapsed, isEmbedded]);
 
     // Adaptive camera & padding synchronization on resize or sidebar collapse/expansion
     useEffect(() => {
@@ -1883,9 +1913,11 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             if (!rect.width || !rect.height) return;
 
             const isGlobe = effectiveProjection === 'globe';
-            const cam = calculateAdaptiveWorldCamera(rect.width, rect.height, isSidebarCollapsed, isGlobe);
+            const cam = calculateAdaptiveWorldCamera(rect.width, rect.height, sidebarCollapsed, isGlobe, isEmbedded);
 
-            mapRef.current.setPadding(cam.padding);
+            try {
+                mapRef.current.setPadding(cam.padding);
+            } catch (e) {}
             mapRef.current.setMinZoom(0);
 
             // Only adapt zoom/center if user is not currently inspecting a corridor or country
@@ -1905,13 +1937,13 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         });
         resizeObserver.observe(container);
 
-        // Immediate update when isSidebarCollapsed changes
+        // Immediate update when sidebar or embedded state changes
         updateAdaptiveCamera();
 
         return () => {
             resizeObserver.disconnect();
         };
-    }, [isSidebarCollapsed, effectiveProjection, selectedCorridor, selectedCountry]);
+    }, [sidebarCollapsed, isEmbedded, effectiveProjection, selectedCorridor, selectedCountry]);
 
     // Navigation Controls Handlers
     const handleZoomIn = () => {
@@ -1928,9 +1960,11 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         const width = rect.width || window.innerWidth || 1200;
         const height = rect.height || window.innerHeight || 800;
         const isGlobe = effectiveProjection === 'globe';
-        const cam = calculateAdaptiveWorldCamera(width, height, isSidebarCollapsed, isGlobe);
+        const cam = calculateAdaptiveWorldCamera(width, height, sidebarCollapsed, isGlobe, isEmbedded);
 
-        mapRef.current.setPadding(cam.padding);
+        try {
+            mapRef.current.setPadding(cam.padding);
+        } catch (e) {}
         mapRef.current.flyTo({
             center: cam.center,
             zoom: cam.zoom,
@@ -1969,7 +2003,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             const rect = mapContainerRef.current?.getBoundingClientRect();
             const width = rect?.width || window.innerWidth || 1200;
             const height = rect?.height || window.innerHeight || 800;
-            const padding = getMapContentPadding(isSidebarCollapsed, width, height);
+            const padding = getMapContentPadding(sidebarCollapsed, width, height, isEmbedded);
 
             if (effectiveProjection === 'globe') {
                 mapRef.current.flyTo({
@@ -2001,7 +2035,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             <div ref={mapContainerRef} className="w-full h-full" />
 
             {/* Zoom & View Navigation Controls with Liquid Glass (Bottom Left) */}
-            <div className={`absolute bottom-36 md:bottom-6 z-20 flex flex-col gap-2 pointer-events-auto transition-all duration-300 ${isSidebarCollapsed ? 'left-3 md:left-28' : 'left-3 md:left-80'}`}>
+            <div className={`absolute bottom-3 md:bottom-6 z-20 flex flex-col gap-2 pointer-events-auto transition-all duration-300 ${isEmbedded ? 'left-3' : (sidebarCollapsed ? 'left-3 md:left-28' : 'left-3 md:left-80')}`}>
                 <GlassPanel
                     padding="0px"
                     overrides={{ borderRadius: 20 }}
@@ -2062,7 +2096,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             {/* Left Scratch Map Country Inspector & Labeling Card */}
             {selectedCountry && (
                 <div 
-                    className={`absolute top-5 z-30 w-80 max-h-[calc(100%-2.5rem)] flex flex-col rounded-3xl bg-white/95 dark:bg-dark-card/95 backdrop-blur-sm border border-black/10 dark:border-white/15 shadow-glass-modal overflow-hidden text-light-text dark:text-dark-text animate-fade-in transition-all duration-300 ${isSidebarCollapsed ? 'left-5 md:left-28' : 'left-5 md:left-80'}`}
+                    className={`absolute top-5 z-30 w-80 max-h-[calc(100%-2.5rem)] flex flex-col rounded-3xl bg-white/95 dark:bg-dark-card/95 backdrop-blur-sm border border-black/10 dark:border-white/15 shadow-glass-modal overflow-hidden text-light-text dark:text-dark-text animate-fade-in transition-all duration-300 ${isEmbedded ? 'left-3 max-w-[calc(100%-1.5rem)]' : (sidebarCollapsed ? 'left-5 md:left-28' : 'left-5 md:left-80')}`}
                     style={{ WebkitBackdropFilter: 'blur(4px)' }}
                 >
                     {(() => {
@@ -2271,7 +2305,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             {/* AirTrail Style Route Corridor Inspector Card with Liquid Glass */}
             {selectedCorridor && (
                 <div 
-                    className={`absolute top-20 z-30 w-[360px] sm:w-[380px] max-h-[calc(100vh-6rem)] flex flex-col animate-airtrail-slide-in pointer-events-auto transition-all duration-300 ${isSidebarCollapsed ? 'left-5 md:left-28' : 'left-5 md:left-80'}`}
+                    className={`absolute top-20 z-30 w-[360px] sm:w-[380px] max-h-[calc(100vh-6rem)] flex flex-col animate-airtrail-slide-in pointer-events-auto transition-all duration-300 ${isEmbedded ? 'left-3 max-w-[calc(100%-1.5rem)]' : (sidebarCollapsed ? 'left-5 md:left-28' : 'left-5 md:left-80')}`}
                 >
                     <GlassPanel
                         className="wg-glass-card w-full max-h-[calc(100vh-6.5rem)] flex flex-col shadow-2xl relative"

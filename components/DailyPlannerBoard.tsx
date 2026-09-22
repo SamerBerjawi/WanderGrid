@@ -438,7 +438,7 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                                 }`}
                             >
                                 <span className="text-2xs font-bold uppercase tracking-widest opacity-80">
-                                    {formatDate(dateObj, 'short', settings).split(' ')[0]}
+                                    {formatDate(dateObj, 'month-short', settings)}
                                 </span>
                                 <span className="text-base font-black leading-none my-0.5">
                                     {dateObj.getUTCDate()}

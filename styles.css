@@ -363,8 +363,15 @@
   width: 100% !important;
 }
 
+.wg-glass-card .wg-glass-panel {
+  width: 100% !important;
+  height: 100% !important;
+}
+
 .wg-glass-card .wg-glass-panel > div:last-child {
   width: 100% !important;
+  height: 100% !important;
+  flex: 1 1 0% !important;
   display: flex !important;
   flex-direction: column !important;
   align-items: stretch !important;
@@ -373,6 +380,8 @@
 
 .wg-glass-card .wg-glass-panel > div:last-child > div:last-child {
   width: 100% !important;
+  height: 100% !important;
+  flex: 1 1 0% !important;
   display: flex !important;
   flex-direction: column !important;
   align-items: stretch !important;

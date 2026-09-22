@@ -124,14 +124,19 @@ if (typeof window !== 'undefined') {
 
 function getCachedStorage<T>(storageKey: string, defaultValue: T): T {
   if (storageKey in memoryCache) {
-    return memoryCache[storageKey] as T;
+    const cached = memoryCache[storageKey];
+    if (cached !== null && cached !== undefined) {
+      return cached as T;
+    }
   }
   const raw = safeStorage.getItem(storageKey);
   if (raw) {
     try {
       const parsed = JSON.parse(raw);
-      memoryCache[storageKey] = parsed;
-      return parsed as T;
+      if (parsed !== null && parsed !== undefined) {
+        memoryCache[storageKey] = parsed;
+        return parsed as T;
+      }
     } catch (e) {
       console.warn(`[STORAGE] Parse error for ${storageKey}, resetting:`, e);
     }
@@ -632,7 +637,7 @@ class DataService {
       if (endpoint === '/backup') {
           const backup: any = { workspaceSettings: {} };
           collections.forEach(c => backup[c.storage] = getCachedStorage<any[]>(key(c.storage), []));
-          const s = getCachedStorage<any>(key('settings'), null);
+          const s = getCachedStorage<any>(key('settings'), DEFAULT_WORKSPACE_SETTINGS);
           backup.workspaceSettings = s || DEFAULT_WORKSPACE_SETTINGS;
           const cleanBackup = removeSensitiveData(backup);
           return cleanBackup as T;
@@ -644,7 +649,7 @@ class DataService {
               if (data[c.storage] && Array.isArray(data[c.storage])) {
                   const keyName = key(c.storage);
                   const existingList = getCachedStorage<any[]>(keyName, []);
-                  const existingMap = new Map(existingList.map((item: any) => [item.id, item]));
+                  const existingMap = new Map((Array.isArray(existingList) ? existingList : []).map((item: any) => [item.id, item]));
 
                   const newList = data[c.storage].map((item: any) => {
                       if (c.storage === 'users') {
@@ -663,11 +668,11 @@ class DataService {
               }
           });
           if (data.workspaceSettings) {
-              const currentSettings = getCachedStorage<any>(key('settings'), {});
-              const restoredSettings = { ...DEFAULT_WORKSPACE_SETTINGS, ...data.workspaceSettings };
+              const currentSettings = (getCachedStorage<any>(key('settings'), {}) || {}) as any;
+              const restoredSettings = { ...DEFAULT_WORKSPACE_SETTINGS, ...(data.workspaceSettings || {}) };
               const keysToCheck = ['aviationStackApiKey', 'brandfetchApiKey', 'googleGeminiApiKey', 'cartoApiKey'];
               keysToCheck.forEach(k => {
-                  if (!restoredSettings[k] && currentSettings[k]) {
+                  if (!restoredSettings[k] && currentSettings && currentSettings[k]) {
                       restoredSettings[k] = currentSettings[k];
                   }
               });

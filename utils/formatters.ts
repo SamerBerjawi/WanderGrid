@@ -62,7 +62,8 @@ export type DateFormatterStyle =
   | 'long'           // e.g. September 2, 2026
   | 'weekday-short'  // e.g. Wed, Sep 2 or Wed, 2 Sep
   | 'weekday-long'   // e.g. Wednesday, Sep 2, 2026
-  | 'month-year';    // e.g. Sep 2026
+  | 'month-year'    // e.g. Sep 2026
+  | 'month-short';   // e.g. Sep
 
 /**
  * Safely parse date value into a valid Date object or null
@@ -157,6 +158,9 @@ export function formatDate(
     case 'month-year':
       if (isIso) return `${year}-${monthNum}`;
       return `${monthShort} ${year}`;
+
+    case 'month-short':
+      return monthShort;
 
     default:
       if (isIso) return `${year}-${monthNum}-${dayNum}`;

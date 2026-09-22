@@ -90,8 +90,9 @@ export const GlassPanel = forwardRef<HTMLDivElement, GlassPanelProps>(({
 
   const outerClassName = outerTokens.join(' ');
   const innerClassName = innerTokens.join(' ');
-  const isFullWidth = className.includes('w-full') || outerClassName.includes('w-full');
-  const isFullHeight = className.includes('h-full') || outerClassName.includes('h-full');
+  const hasExplicitHeight = /(?:^|\s)(?:h-\[|h-\d+|min-h-\[|min-h-\d+|h-screen)/.test(className) || /(?:^|\s)(?:h-\[|h-\d+|min-h-\[|min-h-\d+|h-screen)/.test(outerClassName);
+  const isFullHeight = className.includes('h-full') || outerClassName.includes('h-full') || hasExplicitHeight;
+  const isFullWidth = isCard || className.includes('w-full') || outerClassName.includes('w-full');
 
   return (
     <div
@@ -117,7 +118,11 @@ export const GlassPanel = forwardRef<HTMLDivElement, GlassPanelProps>(({
         mouseContainer={mouseContainer}
       >
         {innerClassName ? (
-          <div className={`w-full ${isFullHeight ? 'h-full' : ''} ${innerClassName}`.trim()}>
+          <div className={`w-full ${isFullHeight ? 'h-full flex-1' : ''} ${innerClassName}`.trim()}>
+            {children}
+          </div>
+        ) : isFullHeight ? (
+          <div className="w-full h-full flex-1 flex flex-col">
             {children}
           </div>
         ) : (

@@ -311,4 +311,10 @@ Every view (Planner, Settings, Dashboard, Flights, Travel Atlas, Vacation Calend
 - All interactive triggers enforce Apple HIG 44px touch targets.
 - Multi-column grids stack naturally on mobile viewports without horizontal clipping.
 
+---
+
+## 10. Autonomous Execution & Non-Blocking Workflow
+
+- **Autonomous File Inspection & Terminal Execution**: The agent is authorized to proactively inspect, read, edit, and create files, and execute development terminal commands (e.g. builds, linters, tests, inspections, git commands) without asking for confirmation to proceed.
+
 

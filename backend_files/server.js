@@ -2146,15 +2146,18 @@ app.post('/api/restore', async (req, res) => {
             let currentSettings = {};
             try {
                 const settingsRes = await client.query(`SELECT data FROM settings WHERE key = 'workspace'`);
-                if (settingsRes.rows.length > 0) {
+                if (settingsRes.rows.length > 0 && settingsRes.rows[0].data) {
                     currentSettings = settingsRes.rows[0].data;
                 }
             } catch (err) {}
+            if (!currentSettings || typeof currentSettings !== 'object') {
+                currentSettings = {};
+            }
 
-            const mergedSettings = { ...data.workspaceSettings };
+            const mergedSettings = { ...(data.workspaceSettings || {}) };
             const keysToCheck = ['aviationStackApiKey', 'brandfetchApiKey', 'googleGeminiApiKey', 'cartoApiKey'];
             keysToCheck.forEach(k => {
-                if (!mergedSettings[k] && currentSettings[k]) {
+                if (!mergedSettings[k] && currentSettings && currentSettings[k]) {
                     mergedSettings[k] = currentSettings[k];
                 }
             });

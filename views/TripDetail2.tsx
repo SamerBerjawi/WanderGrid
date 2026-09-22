@@ -1414,12 +1414,12 @@ export const TripDetail2: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 })()}
 
                 {/* Right Card: Beautiful interactive 2D Map Overview card of the configured routes */}
-                <GlassPanel className="lg:col-span-4 wg-glass-card rounded-[28px] overflow-hidden min-h-[300px] relative">
+                <GlassPanel className="lg:col-span-4 wg-glass-card rounded-[28px] overflow-hidden min-h-[300px] h-full relative flex flex-col">
                     <div className="absolute top-4 left-4 z-10 flex items-center gap-1.5 bg-black/40 text-white backdrop-blur px-3 py-1.5 rounded-full border border-white/10 shadow-sm pointer-events-none">
                         <Compass className="w-4 h-4 text-primary-500" weight="duotone" />
                         <span className="text-2xs font-bold uppercase tracking-wider">Route Map Overview 2D</span>
                     </div>
-                    <div className="absolute inset-0 bg-transparent">
+                    <div className="w-full h-full min-h-[300px] flex-1 relative">
                         <Suspense fallback={
                             <div className="w-full h-full flex flex-col items-center justify-center bg-transparent text-zinc-400 space-y-3">
                                 <span className="w-8 h-8 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin"></span>
@@ -1432,6 +1432,7 @@ export const TripDetail2: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                 showFrequencyWeight={true}
                                 showCityMarkers={true}
                                 viewMode="network"
+                                embedded={true}
                             />
                         </Suspense>
                     </div>
@@ -1495,46 +1496,98 @@ export const TripDetail2: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
             {activeTab === 'planner' && (
                 <>
                     {plannerView === 'calendar' ? renderPlannerCalendar() : plannerView === 'list' ? (
-                        <div className="space-y-6 relative">
-                            {/* Unified Chronological Timeline per Day */}
-                            <div className="absolute left-8 top-4 bottom-4 w-0.5 bg-gray-200 dark:bg-gray-800 hidden md:block" />
+                        <div className="space-y-6">
                             {tripDates.map((dateStr, index) => {
                                 const dateObj = new Date(dateStr); 
                                 const location = getLocationForDate(dateStr);
                                 const dayItems = getDayItems(dateStr);
+                                const isToday = new Date().toDateString() === dateObj.toDateString();
 
                                 return (
-                                    <VirtualListItem key={dateStr} minHeight={120}>
-                                        <div className="relative md:pl-20 group">
-                                            <div className="hidden md:flex absolute left-0 top-0 w-16 h-16 bg-light-card dark:bg-dark-card border border-black/10 dark:border-white/10 rounded-2xl items-center justify-center flex-col z-10 shadow-sm">
-                                                <span className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest">{formatDate(dateObj, 'short', settings).split(' ')[0]}</span>
-                                                <span className="text-xl font-black text-light-text dark:text-dark-text leading-none">{dateObj.getUTCDate()}</span>
-                                                <span className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-tighter mt-0.5">Day {index + 1}</span>
-                                            </div>
-                                            <div className="md:hidden mb-2 flex items-center gap-3">
-                                                <div className="bg-primary-500 text-white px-3 py-1 rounded-lg text-xs font-bold">Day {index + 1}</div>
-                                                <span className="text-lg font-black text-light-text dark:text-dark-text">{formatDate(dateObj, 'weekday-long', settings)}</span>
-                                            </div>
-                                            <div className="space-y-3 pb-8">
-                                                {location && (
-                                                    <div className="inline-flex items-center gap-1 px-3 py-1 bg-primary-500/10 text-primary-600 dark:text-primary-400 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
-                                                        <MapPin className="w-3.5 h-3.5" weight="duotone" /> {location.name}
+                                    <VirtualListItem key={dateStr} minHeight={140}>
+                                        <GlassPanel 
+                                            className={`wg-glass-card rounded-[28px] overflow-hidden ${
+                                                isToday ? 'ring-2 ring-primary-500/50 shadow-md shadow-primary-500/10' : ''
+                                            }`}
+                                            overrides={{ borderRadius: 28 }}
+                                            padding="0px"
+                                        >
+                                            {/* Day Header Banner */}
+                                            <div className={`px-5 sm:px-6 py-4 border-b border-black/5 dark:border-white/5 flex flex-wrap items-center justify-between gap-3 ${
+                                                isToday ? 'bg-gradient-to-r from-primary-500/10 via-transparent to-transparent' : 'bg-black/[0.015] dark:bg-white/[0.015]'
+                                            }`}>
+                                                <div className="flex items-center gap-3">
+                                                    <div className="flex flex-col items-center justify-center w-12 h-12 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 shrink-0">
+                                                        <span className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest leading-none">
+                                                            {formatDate(dateObj, 'month-short', settings)}
+                                                        </span>
+                                                        <span className="text-lg font-black text-light-text dark:text-dark-text leading-none mt-0.5">
+                                                            {dateObj.getUTCDate()}
+                                                        </span>
                                                     </div>
-                                                )}
+                                                    <div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className={`px-2.5 py-0.5 rounded-full text-2xs font-black uppercase tracking-wider ${
+                                                                isToday ? 'bg-primary-500 text-white shadow-xs' : 'bg-primary-500/10 text-primary-600 dark:text-primary-400'
+                                                            }`}>
+                                                                Day {index + 1}
+                                                            </span>
+                                                            <h3 className="text-sm sm:text-base font-bold text-light-text dark:text-dark-text tracking-tight">
+                                                                {formatDate(dateObj, 'weekday-long', settings)}
+                                                            </h3>
+                                                            {isToday && (
+                                                                <span className="text-2xs font-bold text-primary-500 uppercase tracking-widest flex items-center gap-1">
+                                                                    <span className="w-1.5 h-1.5 rounded-full bg-primary-500 animate-pulse" />
+                                                                    Today
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        {location && (
+                                                            <div className="inline-flex items-center gap-1 text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary mt-1">
+                                                                <MapPin className="w-3.5 h-3.5 text-primary-500 shrink-0" weight="duotone" />
+                                                                <span>{location.name}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
 
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-2xs font-mono font-bold px-2.5 py-1 rounded-full bg-black/5 dark:bg-white/5 text-light-text-secondary">
+                                                        {dayItems.length} {dayItems.length === 1 ? 'event' : 'events'}
+                                                    </span>
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => handleOpenActivityModal(dateStr)}
+                                                        className="min-h-[44px] px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-primary-600 dark:text-primary-400 bg-primary-500/10 hover:bg-primary-500/20 border border-primary-500/20 transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                                                        aria-label={`Add item to Day ${index + 1}`}
+                                                    >
+                                                        <Plus className="w-4 h-4" />
+                                                        <span>Add Item</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Day Schedule Content */}
+                                            <div className="p-4 sm:p-6 space-y-3">
                                                 {dayItems.length > 0 ? (
                                                     dayItems.map(item => {
                                                         if (item.type === 'Transport') {
                                                             const t = item.ref;
                                                             return (
-                                                                <div key={item.id} className="bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all">
-                                                                    <div className="w-10 h-10 rounded-xl bg-blue-500 text-white flex items-center justify-center shadow-lg shadow-blue-500/30">
+                                                                <GlassPanel 
+                                                                    key={item.id} 
+                                                                    className="wg-glass-card rounded-2xl p-4 flex items-center gap-4 hover:shadow-md transition-all cursor-pointer group"
+                                                                    overrides={{ borderRadius: 16 }}
+                                                                    padding="0px"
+                                                                    onClick={() => openTransportModal([t])}
+                                                                >
+                                                                    <div className="w-10 h-10 rounded-xl bg-blue-500 text-white flex items-center justify-center shadow-lg shadow-blue-500/30 shrink-0">
                                                                         <TripItemIcon name={item.icon} className="w-5 h-5 text-white" />
                                                                     </div>
-                                                                    <div className="flex-1">
+                                                                    <div className="flex-1 min-w-0">
                                                                         <div className="flex items-center gap-2">
                                                                             <span className="text-xs font-black text-blue-600 dark:text-blue-400 whitespace-nowrap">{formatTime(item.time)}</span>
-                                                                            <h4 className="font-bold text-light-text dark:text-dark-text text-sm">
+                                                                            <h4 className="font-bold text-light-text dark:text-dark-text text-sm truncate">
                                                                                 {item.title}
                                                                             </h4>
                                                                         </div>
@@ -1543,32 +1596,38 @@ export const TripDetail2: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                                                 {t.provider} {t.identifier}
                                                                             </p>
                                                                             {item.meta && (
-                                                                                <p className="text-2xs text-light-text-secondary font-bold uppercase tracking-wider">
+                                                                                <p className="text-2xs text-light-text-secondary font-bold uppercase tracking-wider truncate">
                                                                                     {item.meta}
                                                                                 </p>
                                                                             )}
                                                                         </div>
                                                                     </div>
-                                                                    <button onClick={() => openTransportModal([t])} aria-label="Edit transport booking" className="text-light-text-secondary hover:text-blue-500 min-w-[36px] min-h-[36px] flex items-center justify-center cursor-pointer">
+                                                                    <button onClick={(e) => { e.stopPropagation(); openTransportModal([t]); }} aria-label="Edit transport booking" className="text-light-text-secondary hover:text-blue-500 min-w-[44px] min-h-[44px] flex items-center justify-center cursor-pointer">
                                                                         <PencilSimple className="w-4 h-4" />
                                                                     </button>
-                                                                </div>
+                                                                </GlassPanel>
                                                             );
                                                         } else if (item.type === 'Accommodation') {
                                                             const a = item.ref;
                                                             const isCheckIn = !item.isCheckOut && !item.isOvernight;
                                                             const statusLabel = isCheckIn ? 'Check-In' : (item.isCheckOut ? 'Check-Out' : 'Overnight Stay');
                                                             return (
-                                                                <div key={item.id} className="bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all">
-                                                                    <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-lg shadow-amber-500/30">
+                                                                <GlassPanel 
+                                                                    key={item.id} 
+                                                                    className="wg-glass-card rounded-2xl p-4 flex items-center gap-4 hover:shadow-md transition-all cursor-pointer group"
+                                                                    overrides={{ borderRadius: 16 }}
+                                                                    padding="0px"
+                                                                    onClick={() => openAccommodationModal()}
+                                                                >
+                                                                    <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-lg shadow-amber-500/30 shrink-0">
                                                                         <TripItemIcon name={item.icon} className="w-5 h-5 text-white" />
                                                                     </div>
-                                                                    <div className="flex-1">
+                                                                    <div className="flex-1 min-w-0">
                                                                         <div className="flex items-center gap-2">
                                                                             {!item.isOvernight && (
                                                                                 <span className="text-xs font-black text-amber-600 dark:text-amber-400 whitespace-nowrap">{formatTime(item.time)}</span>
                                                                             )}
-                                                                            <h4 className="font-bold text-light-text dark:text-dark-text text-sm">
+                                                                            <h4 className="font-bold text-light-text dark:text-dark-text text-sm truncate">
                                                                                 {item.title}
                                                                             </h4>
                                                                         </div>
@@ -1577,22 +1636,28 @@ export const TripDetail2: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                                                 {statusLabel}
                                                                             </p>
                                                                             {item.meta && (
-                                                                                <p className="text-2xs text-light-text-secondary font-bold uppercase tracking-wider">
+                                                                                <p className="text-2xs text-light-text-secondary font-bold uppercase tracking-wider truncate">
                                                                                     {item.meta}
                                                                                 </p>
                                                                             )}
                                                                         </div>
                                                                     </div>
-                                                                    <button onClick={() => openAccommodationModal()} aria-label="Edit accommodation booking" className="text-light-text-secondary hover:text-amber-500 min-w-[36px] min-h-[36px] flex items-center justify-center cursor-pointer">
+                                                                    <button onClick={(e) => { e.stopPropagation(); openAccommodationModal(); }} aria-label="Edit accommodation booking" className="text-light-text-secondary hover:text-amber-500 min-w-[44px] min-h-[44px] flex items-center justify-center cursor-pointer">
                                                                         <PencilSimple className="w-4 h-4" />
                                                                     </button>
-                                                                </div>
+                                                                </GlassPanel>
                                                             );
                                                         } else {
                                                             const isRes = item.type === 'Reservation';
                                                             const act = item.ref;
                                                             return (
-                                                                <div key={item.id} className="p-4 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all group/act bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5">
+                                                                <GlassPanel 
+                                                                    key={item.id} 
+                                                                    className="wg-glass-card rounded-2xl p-4 flex items-center gap-4 hover:shadow-md transition-all group/act cursor-pointer"
+                                                                    overrides={{ borderRadius: 16 }}
+                                                                    padding="0px"
+                                                                    onClick={() => handleOpenActivityModal(dateStr, act)}
+                                                                >
                                                                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
                                                                         isRes 
                                                                         ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' 
@@ -1610,23 +1675,32 @@ export const TripDetail2: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                                     </div>
                                                                     {item.cost && <div className={`text-xs font-bold whitespace-nowrap ${isRes ? 'text-orange-600 dark:text-orange-400' : 'text-light-text dark:text-dark-text'}`}>{formatCurrency(item.cost)}</div>}
                                                                     
-                                                                    <div className="flex items-center gap-1 opacity-0 group-hover/act:opacity-100 transition-opacity">
-                                                                        <button onClick={() => handleOpenActivityModal(dateStr, act)} aria-label="Edit activity" className="p-1.5 text-light-text-secondary hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all min-w-[36px] min-h-[36px] flex items-center justify-center cursor-pointer"><PencilSimple className="w-4 h-4" /></button>
-                                                                        <button onClick={() => handleDeleteActivity(act.id)} aria-label="Delete activity" className="p-1.5 text-light-text-secondary hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all min-w-[36px] min-h-[36px] flex items-center justify-center cursor-pointer"><Trash className="w-4 h-4" /></button>
+                                                                    <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover/act:opacity-100 transition-opacity">
+                                                                        <button onClick={(e) => { e.stopPropagation(); handleOpenActivityModal(dateStr, act); }} aria-label="Edit activity" className="p-1.5 text-light-text-secondary hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all min-w-[44px] min-h-[44px] flex items-center justify-center cursor-pointer"><PencilSimple className="w-4 h-4" /></button>
+                                                                        <button onClick={(e) => { e.stopPropagation(); handleDeleteActivity(act.id); }} aria-label="Delete activity" className="p-1.5 text-light-text-secondary hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all min-w-[44px] min-h-[44px] flex items-center justify-center cursor-pointer"><Trash className="w-4 h-4" /></button>
                                                                     </div>
-                                                                </div>
+                                                                </GlassPanel>
                                                             );
                                                         }
                                                     })
                                                 ) : (
-                                                    <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary italic py-2 pl-4">No schedule items planned for today yet.</p>
+                                                    <div className="py-6 px-4 text-center rounded-2xl bg-black/[0.01] dark:bg-white/[0.01] border border-dashed border-black/10 dark:border-white/10 space-y-2">
+                                                        <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary italic">
+                                                            No schedule items planned for today yet.
+                                                        </p>
+                                                        <button 
+                                                            type="button"
+                                                            onClick={() => handleOpenActivityModal(dateStr)} 
+                                                            aria-label="Add schedule item" 
+                                                            className="min-h-[44px] inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-primary-600 dark:text-primary-400 hover:bg-primary-500/10 transition-all cursor-pointer"
+                                                        >
+                                                            <Plus className="w-4 h-4" />
+                                                            <span>Add Schedule Item</span>
+                                                        </button>
+                                                    </div>
                                                 )}
-
-                                                <button onClick={() => handleOpenActivityModal(dateStr)} aria-label="Add schedule item" className="w-full py-3 border-2 border-dashed border-black/10 dark:border-white/10 rounded-2xl text-xs font-bold text-light-text-secondary uppercase tracking-widest hover:border-primary-300 hover:text-primary-500 hover:bg-primary-500/5 transition-all flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-pointer">
-                                                    <Plus className="w-4 h-4" /> Add Schedule Item
-                                                </button>
                                             </div>
-                                        </div>
+                                        </GlassPanel>
                                     </VirtualListItem>
                                 );
                             })}
@@ -2290,6 +2364,7 @@ export const TripDetail2: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                             showFrequencyWeight={true}
                             initialProjection="globe"
                             initialElevated={true}
+                            embedded={true}
                         />
                     </Suspense>
                 </div>
