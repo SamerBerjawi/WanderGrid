@@ -683,9 +683,9 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
 
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 text-gray-900 dark:text-gray-100">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 text-gray-900 dark:text-gray-100">
             {/* Top Stats Dashboard Section */}
-            <div className="lg:col-span-12 flex flex-col md:flex-row md:items-center justify-between gap-6 p-8 bg-gradient-to-r from-slate-900 to-indigo-950 text-white rounded-3xl shadow-2xl relative overflow-hidden border border-white/5">
+            <div className="lg:col-span-12 flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 sm:p-8 bg-gradient-to-r from-slate-900 to-indigo-950 text-white rounded-3xl shadow-2xl relative overflow-hidden border border-white/5">
                 <div className="absolute top-[-20%] right-[-10%] w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
                 <div className="relative">
                     <div className="flex items-center gap-3">
@@ -710,7 +710,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
             </div>
 
             {/* Left Content Column - Legs & Rows Panel */}
-            <div className="lg:col-span-8 space-y-8">
+            <div className="lg:col-span-8 space-y-6">
                 <AnimatePresence initial={false}>
                     {legs.map((leg, legIdx) => {
                         const validation = legValidations[legIdx];
@@ -761,7 +761,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                                             <GripVertical className="w-4 h-4" />
                                         </div>
 
-                                        <Badge color={legIdx % 2 === 0 ? 'indigo' : 'purple'} className="py-1 px-3 rounded-xl">
+                                        <Badge color={legIdx % 2 === 0 ? 'indigo' : 'purple'} className="py-1 px-3 rounded-xl whitespace-nowrap shrink-0">
                                             Excursion {legIdx + 1}
                                         </Badge>
                                         <input
@@ -807,35 +807,35 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                                         return (
                                             <div 
                                                 key={seg.id} 
-                                                className="relative p-5 rounded-3xl bg-gray-50/50 dark:bg-gray-800/20 border border-gray-100 dark:border-white/[0.03] hover:border-gray-200 dark:hover:border-white/10 transition-all shadow-sm"
+                                                className="relative p-5 rounded-3xl bg-gray-50/60 dark:bg-gray-800/20 border border-gray-150 dark:border-white/[0.04] hover:border-gray-200 dark:hover:border-white/10 transition-all shadow-xs"
                                             >
-                                                {/* Spacious flexible grid layout to maximize date fields and prevent truncate */}
-                                                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                                                {/* Spacious flexible grid layout with perfectly aligned heights and headers */}
+                                                <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 sm:gap-4 items-start">
                                                     
                                                     {/* Start City Selection with Inline Lock Toggle */}
-                                                    <div className="md:col-span-3 space-y-1.5 relative">
-                                                        <div className="flex items-center justify-between">
-                                                            <label className="text-xs font-bold uppercase tracking-wider text-gray-400">Start City</label>
-                                                            {prevSegment && (
+                                                    <div className="md:col-span-3 space-y-1.5 min-w-0 relative">
+                                                        <div className="flex items-center justify-between h-5">
+                                                            <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Start City</label>
+                                                            {prevSegment ? (
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => toggleLinkStart(leg.id, seg.id, prevSegment.destination)}
-                                                                    className={`p-1 rounded-lg transition-colors ${
+                                                                    className={`p-1 rounded-lg transition-colors cursor-pointer ${
                                                                         seg.linkStartToPrevDest 
                                                                         ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30' 
                                                                         : 'text-gray-400 hover:text-gray-600 dark:hover:text-zinc-350 hover:bg-gray-150 dark:hover:bg-zinc-800/50'
                                                                     }`}
                                                                     title={seg.linkStartToPrevDest ? "Unlock start destination" : `Link start destination to previous stop (${prevSegment.destination})`}
                                                                 >
-                                                                    {seg.linkStartToPrevDest ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+                                                                    {seg.linkStartToPrevDest ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
                                                                 </button>
-                                                            )}
+                                                            ) : <span className="h-3.5 w-3.5" />}
                                                         </div>
                                                         
                                                         {seg.linkStartToPrevDest && prevSegment ? (
-                                                            <div className="w-full px-4 py-3 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/10 border border-indigo-100/50 dark:border-indigo-900/30 text-gray-700 dark:text-indigo-300 text-sm font-bold flex items-center justify-between h-[46px]">
+                                                            <div className="w-full px-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200/60 dark:border-indigo-800/40 text-gray-700 dark:text-indigo-300 text-xs font-bold flex items-center justify-between h-11 min-h-[44px]">
                                                                 <span className="truncate pr-1">{prevSegment.destination || "Pending destination..."}</span>
-                                                                <Badge color="indigo" className="text-2xs font-bold shrink-0">LINKED</Badge>
+                                                                <Badge color="indigo" className="text-2xs font-bold shrink-0 whitespace-nowrap">LINKED</Badge>
                                                             </div>
                                                         ) : (
                                                             <Autocomplete
@@ -848,8 +848,10 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                                                     </div>
 
                                                     {/* Destination Selector */}
-                                                    <div className="md:col-span-3 space-y-1.5">
-                                                        <label className="text-xs font-bold uppercase tracking-wider text-gray-400">Destination</label>
+                                                    <div className="md:col-span-3 space-y-1.5 min-w-0">
+                                                        <div className="flex items-center justify-between h-5">
+                                                            <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Destination</label>
+                                                        </div>
                                                         <Autocomplete
                                                             placeholder="Where to?"
                                                             value={seg.destination}
@@ -858,48 +860,48 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                                                         />
                                                     </div>
 
-                                                    {/* Journey Date Picker with Link Toggle (WIDENED & STYLIZED) */}
-                                                    <div className="md:col-span-3 space-y-1.5">
-                                                        <div className="flex items-center justify-between">
-                                                            <label className="text-xs font-bold uppercase tracking-wider text-gray-400">Departure</label>
-                                                            {prevSegment && (
+                                                    {/* Journey Date Picker with Link Toggle */}
+                                                    <div className="md:col-span-2 space-y-1.5 min-w-0">
+                                                        <div className="flex items-center justify-between h-5">
+                                                            <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Departure</label>
+                                                            {prevSegment ? (
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => toggleLinkDate(leg.id, seg.id, prevSegment.date)}
-                                                                    className={`p-1 rounded-lg transition-colors ${
+                                                                    className={`p-1 rounded-lg transition-colors cursor-pointer ${
                                                                         seg.linkDateToPrevDate 
                                                                         ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30' 
                                                                         : 'text-gray-400 hover:text-gray-600 dark:hover:text-zinc-350 hover:bg-gray-150 dark:hover:bg-zinc-800/50'
                                                                     }`}
                                                                     title={seg.linkDateToPrevDate ? "Unlock departure date" : `Link departure date to previous stop (${prevSegment.date})`}
                                                                 >
-                                                                    {seg.linkDateToPrevDate ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+                                                                    {seg.linkDateToPrevDate ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
                                                                 </button>
-                                                            )}
+                                                            ) : <span className="h-3.5 w-3.5" />}
                                                         </div>
 
                                                         {seg.linkDateToPrevDate && prevSegment ? (
-                                                            <div className="w-full px-4 py-3 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/10 border border-indigo-100/50 dark:border-indigo-900/30 text-gray-700 dark:text-indigo-300 text-sm font-bold flex items-center justify-between h-[46px]">
+                                                            <div className="w-full px-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200/60 dark:border-indigo-800/40 text-gray-700 dark:text-indigo-300 text-xs font-bold flex items-center justify-between h-11 min-h-[44px]">
                                                                 <span className="truncate pr-1">{prevSegment.date}</span>
-                                                                <Badge color="indigo" className="text-2xs font-bold shrink-0">LINKED</Badge>
+                                                                <Badge color="indigo" className="text-2xs font-bold shrink-0 whitespace-nowrap">LINKED</Badge>
                                                             </div>
                                                         ) : (
                                                             <Input
                                                                 type="date"
                                                                 value={seg.date}
                                                                 onChange={(e) => updateSegment(leg.id, seg.id, 'date', e.target.value)}
-                                                                className="h-[46px]"
                                                             />
                                                         )}
                                                     </div>
 
                                                     {/* Transport Mode Selection */}
-                                                    <div className="md:col-span-2 space-y-1.5">
+                                                    <div className="md:col-span-2 space-y-1.5 min-w-0">
+                                                        <div className="flex items-center justify-between h-5">
+                                                            <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Transport</label>
+                                                        </div>
                                                         <Select
-                                                            label="Transport"
                                                             value={seg.transportMode}
                                                             onChange={(e) => updateSegment(leg.id, seg.id, 'transportMode', e.target.value as TransportMode)}
-                                                            className="h-[46px]"
                                                             options={[
                                                                 { label: '✈️ Flight', value: 'Flight' },
                                                                 { label: '🚄 Train', value: 'Train' },
@@ -912,43 +914,51 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                                                     </div>
 
                                                     {/* Reorders & Deletion controls */}
-                                                    <div className="flex items-center gap-1.5 md:col-span-1 justify-end pb-1 shrink-0">
-                                                        <Button 
-                                                            variant="ghost" 
-                                                            size="sm" 
-                                                            onClick={() => moveSegment(leg.id, idx, 'up')}
-                                                            disabled={isFirst}
-                                                            className="h-9 w-9 p-0 rounded-xl hover:bg-gray-150 dark:hover:bg-zinc-800"
-                                                        >
-                                                            <ArrowUp className="w-3.5 h-3.5" />
-                                                        </Button>
-                                                        
-                                                        <Button 
-                                                            variant="ghost" 
-                                                            size="sm" 
-                                                            onClick={() => moveSegment(leg.id, idx, 'down')}
-                                                            disabled={isLast}
-                                                            className="h-9 w-9 p-0 rounded-xl hover:bg-gray-150 dark:hover:bg-zinc-800"
-                                                        >
-                                                            <ArrowDown className="w-3.5 h-3.5" />
-                                                        </Button>
-
-                                                        {leg.segments.length > 1 && (
+                                                    <div className="md:col-span-2 space-y-1.5 min-w-0">
+                                                        <div className="flex items-center justify-end h-5">
+                                                            <span className="text-2xs font-bold uppercase tracking-wider text-transparent select-none">Actions</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5 h-11 justify-end shrink-0">
                                                             <Button 
-                                                                variant="danger" 
+                                                                variant="ghost" 
                                                                 size="sm" 
-                                                                onClick={() => deleteSegment(leg.id, seg.id)}
-                                                                className="h-9 w-9 p-0 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 border-0"
+                                                                onClick={() => moveSegment(leg.id, idx, 'up')}
+                                                                disabled={isFirst}
+                                                                className={`h-9 w-9 p-0 rounded-xl ${isFirst ? 'opacity-30 cursor-not-allowed' : 'hover:bg-black/5 dark:hover:bg-white/10'}`}
+                                                                title={isFirst ? undefined : "Move segment up"}
                                                             >
-                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                                <ArrowUp className="w-3.5 h-3.5" />
                                                             </Button>
-                                                        )}
+                                                            
+                                                            <Button 
+                                                                variant="ghost" 
+                                                                size="sm" 
+                                                                onClick={() => moveSegment(leg.id, idx, 'down')}
+                                                                disabled={isLast}
+                                                                className={`h-9 w-9 p-0 rounded-xl ${isLast ? 'opacity-30 cursor-not-allowed' : 'hover:bg-black/5 dark:hover:bg-white/10'}`}
+                                                                title={isLast ? undefined : "Move segment down"}
+                                                            >
+                                                                <ArrowDown className="w-3.5 h-3.5" />
+                                                            </Button>
+
+                                                            {leg.segments.length > 1 && (
+                                                                <Button 
+                                                                    variant="danger" 
+                                                                    size="sm" 
+                                                                    onClick={() => deleteSegment(leg.id, seg.id)}
+                                                                    className="h-9 w-9 p-0 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 border-0 shrink-0"
+                                                                    title="Delete segment"
+                                                                >
+                                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                                </Button>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
 
                                                 {/* Micro-linking Interactive offerings below */}
                                                 {prevSegment && (
-                                                    <div className="flex flex-wrap gap-2.5 mt-3.5 border-t border-gray-150/50 dark:border-white/[0.02] pt-3.5 text-xs text-slate-405">
+                                                    <div className="flex flex-wrap gap-2.5 mt-3.5 border-t border-gray-150/50 dark:border-white/[0.04] pt-3.5 text-xs text-slate-405">
                                                         <span className="font-bold uppercase text-2xs tracking-wider text-slate-400 flex items-center gap-1 mt-1 shrink-0">
                                                             🤝 Connections:
                                                         </span>
@@ -965,7 +975,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                                                             {seg.linkStartToPrevDest ? (
                                                                 <>🚀 Lock to {prevSegment.destination || "stop"}</>
                                                             ) : (
-                                                                <>🔗 Link start to previous stop ({prevSegment.destination || "stop"}</>
+                                                                <>🔗 Link start to previous stop ({prevSegment.destination || "stop"})</>
                                                             )}
                                                         </button>
 

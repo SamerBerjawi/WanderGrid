@@ -692,7 +692,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
         <input
           className={cn(
             INPUT_BASE_STYLE,
-            "h-10 text-xs font-bold",
+            "min-h-[44px] h-11 !rounded-2xl text-xs font-bold",
             className
           )}
           value={value}
