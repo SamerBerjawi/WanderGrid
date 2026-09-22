@@ -23,7 +23,6 @@ import {
 import { FlightForm } from './transport/FlightForm';
 import { TrainForm } from './transport/TrainForm';
 import { BusForm } from './transport/BusForm';
-import { FerryForm } from './transport/FerryForm';
 import { CarRentalForm } from './transport/CarRentalForm';
 import { PersonalCarForm } from './transport/PersonalCarForm';
 import { CruiseForm } from './transport/CruiseForm';
@@ -390,7 +389,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
             <div className="bg-black/5 dark:bg-white/5 p-1.5 rounded-2xl flex gap-1 overflow-x-auto border border-black/5 dark:border-white/5">
                 {TRANSPORT_MODES.map(m => {
                     const ModeIcon = m.icon;
-                    const isActive = mode === m.mode;
+                    const isActive = mode === m.mode || (m.mode === 'Cruise' && mode === 'Ferry');
                     return (
                         <button
                             type="button"
@@ -499,23 +498,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                 </div>
             )}
 
-            {mode === 'Ferry' && (
-                <div className="space-y-4">
-                    {segments.map((seg, idx) => (
-                        <FerryForm 
-                            key={seg.id}
-                            segment={seg}
-                            index={idx}
-                            totalSegments={segments.length}
-                            tripType={tripType}
-                            onUpdate={updates => updateSegment(idx, updates)}
-                            onRemove={() => removeSegment(idx)}
-                        />
-                    ))}
-                </div>
-            )}
-
-            {mode === 'Cruise' && (
+            {(mode === 'Cruise' || mode === 'Ferry') && (
                 <div className="space-y-4">
                     {segments.map((seg, idx) => (
                         <CruiseForm 

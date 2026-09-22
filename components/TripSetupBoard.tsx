@@ -504,13 +504,13 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                             </div>
 
                             <div className="p-5 flex-1 space-y-4 overflow-y-auto custom-scrollbar">
-                                {/* Sub-step 2a: Method Picker (Big visual cards for Flight, Train, Ferry, Bus, Rental, Car, Cruise) */}
+                                {/* Sub-step 2a: Method Picker (Big visual cards for Flight, Train, Bus, Ferry / Cruise, Rental, My Car) */}
                                 <div className="space-y-1.5">
                                     <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary">Sub-step 2a: Method</label>
-                                    <div className="grid grid-cols-4 gap-1.5">
+                                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
                                         {TRANSPORT_MODES.map(m => {
                                             const IconM = m.icon;
-                                            const isSel = transportMode === m.mode;
+                                            const isSel = transportMode === m.mode || (m.mode === 'Cruise' && transportMode === 'Ferry');
                                             return (
                                                 <button
                                                     key={m.mode}

@@ -92,8 +92,7 @@ export const TRANSPORT_MODES: { mode: TransportMode; label: string; icon: React.
     { mode: 'Flight', label: 'Flight', icon: AirplaneTilt },
     { mode: 'Train', label: 'Train', icon: Train },
     { mode: 'Bus', label: 'Bus', icon: Bus },
-    { mode: 'Ferry', label: 'Ferry', icon: Anchor },
-    { mode: 'Cruise', label: 'Cruise', icon: Boat },
+    { mode: 'Cruise', label: 'Ferry / Cruise', icon: Boat },
     { mode: 'Car Rental', label: 'Rental', icon: Key },
     { mode: 'Personal Car', label: 'My Car', icon: Car },
 ];

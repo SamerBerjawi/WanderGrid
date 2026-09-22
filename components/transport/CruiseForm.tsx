@@ -26,7 +26,7 @@ export const CruiseForm: React.FC<CruiseFormProps> = ({
 
     const fetchPortSuggestions = async (query: string) => {
         if (!query || query.length < 2) return [];
-        return searchLocations(`${query} cruise port`);
+        return searchLocations(`${query} port`);
     };
 
     const handleAutoCalcDuration = async () => {
@@ -39,12 +39,12 @@ export const CruiseForm: React.FC<CruiseFormProps> = ({
             ]);
             if (c1 && c2) {
                 const dist = calculateDistance(c1.lat, c1.lng, c2.lat, c2.lng);
-                // Avg cruise speed ~30 km/h
-                const estMinutes = Math.round((dist / 30) * 60);
+                // Avg maritime speed ~35 km/h
+                const estMinutes = Math.round((dist / 35) * 60) + 20;
                 onUpdate({ distance: dist, duration: estMinutes });
             }
         } catch (e) {
-            console.warn("Could not calculate cruise distance:", e);
+            console.warn("Could not calculate maritime distance:", e);
         } finally {
             setIsAutoCalc(false);
         }
@@ -59,7 +59,7 @@ export const CruiseForm: React.FC<CruiseFormProps> = ({
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <span className={`px-2.5 py-1 rounded-full text-2xs font-bold uppercase tracking-wider ${sectionBadgeColor}`}>
-                        {tripType === 'Round Trip' ? (segment.section === 'return' ? 'Return Voyage' : 'Outbound Voyage') : `Cruise Voyage ${index + 1}`}
+                        {tripType === 'Round Trip' ? (segment.section === 'return' ? 'Return Voyage' : 'Outbound Voyage') : `Voyage ${index + 1}`}
                     </span>
                     {segment.distance ? (
                         <span className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary">
@@ -72,24 +72,24 @@ export const CruiseForm: React.FC<CruiseFormProps> = ({
                         type="button"
                         onClick={onRemove}
                         className="text-light-text-secondary hover:text-semantic-red p-1 rounded-lg transition-colors cursor-pointer"
-                        aria-label="Remove cruise leg"
+                        aria-label="Remove voyage leg"
                     >
                         <X className="w-4 h-4" />
                     </button>
                 )}
             </div>
 
-            {/* Cruise Line & Ship */}
+            {/* Line & Ship / Vessel Name */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input 
-                    label="Cruise Line" 
-                    placeholder="e.g. Royal Caribbean, MSC, Celebrity" 
+                    label="Ferry / Cruise Line" 
+                    placeholder="e.g. Royal Caribbean, Blue Star Ferries, DFDS, MSC" 
                     value={segment.provider} 
                     onChange={e => onUpdate({ provider: e.target.value })} 
                 />
                 <Input 
-                    label="Ship Name" 
-                    placeholder="e.g. Symphony of the Seas" 
+                    label="Vessel / Ship Name" 
+                    placeholder="e.g. Symphony of the Seas or Delos" 
                     value={segment.identifier} 
                     onChange={e => onUpdate({ identifier: e.target.value })} 
                 />
@@ -98,15 +98,15 @@ export const CruiseForm: React.FC<CruiseFormProps> = ({
             {/* Ports row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Autocomplete 
-                    label="Embarkation Port" 
-                    placeholder="e.g. PortMiami, Florida" 
+                    label="Departure Port / Terminal" 
+                    placeholder="e.g. PortMiami or Piraeus Port, Athens" 
                     value={segment.origin} 
                     onChange={val => onUpdate({ origin: val })} 
                     fetchSuggestions={fetchPortSuggestions} 
                 />
                 <Autocomplete 
-                    label="Disembarkation Port" 
-                    placeholder="e.g. Barcelona Cruise Port" 
+                    label="Arrival Port / Island" 
+                    placeholder="e.g. Barcelona or Thira Port, Santorini" 
                     value={segment.destination} 
                     onChange={val => onUpdate({ destination: val })} 
                     fetchSuggestions={fetchPortSuggestions} 
@@ -154,22 +154,22 @@ export const CruiseForm: React.FC<CruiseFormProps> = ({
                 </div>
             </div>
 
-            {/* Stateroom & Duration */}
+            {/* Stateroom / Cabin / Seat & Duration */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
                 <Select 
-                    label="Stateroom Category" 
+                    label="Booking Tier / Category" 
                     options={[
-                        { label: 'Interior', value: 'Economy' },
-                        { label: 'Ocean View', value: 'Premium Economy' },
-                        { label: 'Balcony', value: 'Business' },
-                        { label: 'Suite', value: 'First' }
+                        { label: 'Deck / Economy Seat', value: 'Economy' },
+                        { label: 'Club / Premium Seat', value: 'Premium Economy' },
+                        { label: 'Interior / Ocean View Cabin', value: 'Business' },
+                        { label: 'Balcony / Suite Cabin', value: 'First' }
                     ]} 
                     value={segment.travelClass} 
                     onChange={e => onUpdate({ travelClass: e.target.value })} 
                 />
                 <Input 
-                    label="Stateroom / Cabin #" 
-                    placeholder="e.g. Cabin 9214" 
+                    label="Cabin / Seat / Berth #" 
+                    placeholder="e.g. Cabin 9214, Seat 45, Berth 12" 
                     value={segment.seatNumber} 
                     onChange={e => onUpdate({ seatNumber: e.target.value })} 
                 />

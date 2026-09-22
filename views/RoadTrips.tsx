@@ -3,7 +3,7 @@ import {
   Plus, MagnifyingGlass as Search, Funnel as Filter, CalendarBlank as Calendar, MapPin, Trash as Trash2, PencilSimple as Edit2, 
   CaretDown as ChevronDown, CaretUp as ChevronUp, Clock, CurrencyDollar as DollarSign, Compass, 
   MapTrifold as Map, ArrowRight, HardDrives as Server, Sparkle as Sparkles, NavigationArrow as Navigation, Train, 
-  Bus, Question as HelpCircle, ArrowsClockwise as RefreshCw, Leaf, Anchor, SquaresFour as Grid, Info
+  Bus, Question as HelpCircle, ArrowsClockwise as RefreshCw, Leaf, Anchor, Boat, SquaresFour as Grid, Info
 } from '@phosphor-icons/react';
 import { Card, Button, Input, Select, Badge, TimeInput, Autocomplete, Modal, BentoGrid, BentoCard } from '../components/ui';
 import GlassPanel from '../components/glass/GlassPanel';
@@ -73,20 +73,20 @@ const MODE_META: Record<Extract<TransportMode, 'Train' | 'Bus' | 'Car Rental' | 
     ecoRating: 'Average carbon footprint (125g CO2/km)'
   },
   'Cruise': { 
-    label: 'Cruise Voyage', 
-    icon: Compass, 
+    label: 'Ferry / Cruise', 
+    icon: Boat, 
     colorClass: 'text-cyan-500 dark:text-cyan-400', 
     bgClass: 'bg-cyan-500/10 dark:bg-cyan-400/5',
     borderClass: 'border-cyan-500/20 dark:border-cyan-400/10',
-    ecoRating: 'High transport footprint (150g CO2/km)'
+    ecoRating: 'Moderate to high transport footprint (120g CO2/km)'
   },
   'Ferry': { 
-    label: 'Ferry Crossing', 
-    icon: Anchor, 
-    colorClass: 'text-teal-500 dark:text-teal-400', 
-    bgClass: 'bg-teal-500/10 dark:bg-teal-400/5',
-    borderClass: 'border-teal-500/20 dark:border-teal-400/10',
-    ecoRating: 'Moderate transport footprint (90g CO2/km)'
+    label: 'Ferry / Cruise', 
+    icon: Boat, 
+    colorClass: 'text-cyan-500 dark:text-cyan-400', 
+    bgClass: 'bg-cyan-500/10 dark:bg-cyan-400/5',
+    borderClass: 'border-cyan-500/20 dark:border-cyan-400/10',
+    ecoRating: 'Moderate to high transport footprint (120g CO2/km)'
   }
 };
 
@@ -144,8 +144,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
       'Train': { distance: 0, timeMinutes: 0, count: 0 },
       'Bus': { distance: 0, timeMinutes: 0, count: 0 },
       'Car': { distance: 0, timeMinutes: 0, count: 0 },
-      'Ferry': { distance: 0, timeMinutes: 0, count: 0 },
-      'Cruise': { distance: 0, timeMinutes: 0, count: 0 },
+      'Ferry / Cruise': { distance: 0, timeMinutes: 0, count: 0 },
     };
 
     roadTrips.forEach(tr => {
@@ -153,8 +152,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
       if (tr.mode === 'Train') modeKey = 'Train';
       else if (tr.mode === 'Bus') modeKey = 'Bus';
       else if (tr.mode === 'Car Rental' || tr.mode === 'Personal Car') modeKey = 'Car';
-      else if (tr.mode === 'Ferry') modeKey = 'Ferry';
-      else if (tr.mode === 'Cruise') modeKey = 'Cruise';
+      else if (tr.mode === 'Ferry' || tr.mode === 'Cruise') modeKey = 'Ferry / Cruise';
       else return;
 
       let distanceKm = tr.distance || 0;
@@ -452,7 +450,10 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
         (tr.notes || '').toLowerCase().includes(query);
 
       // 2. Mode category filter
-      const matchesMode = modeFilter === 'All' || tr.mode === modeFilter;
+      const matchesMode = modeFilter === 'All' || 
+        tr.mode === modeFilter || 
+        (modeFilter === 'Cruise' && tr.mode === 'Ferry') ||
+        (modeFilter === 'Ferry' && tr.mode === 'Cruise');
 
       // 3. Status filter
       const now = new Date();
@@ -1005,8 +1006,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                       <option value="Bus" className="dark:bg-zinc-900 dark:text-zinc-100">🚌 Bus / coach</option>
                       <option value="Car Rental" className="dark:bg-zinc-900 dark:text-zinc-100">🚙 Car rental</option>
                       <option value="Personal Car" className="dark:bg-zinc-900 dark:text-zinc-100">🚗 Personal car</option>
-                      <option value="Ferry" className="dark:bg-zinc-900 dark:text-zinc-100">Ferry crossing</option>
-                      <option value="Cruise" className="dark:bg-zinc-900 dark:text-zinc-100">Cruise voyage</option>
+                      <option value="Cruise" className="dark:bg-zinc-900 dark:text-zinc-100">🚢 Ferry / Cruise</option>
                     </select>
                   </div>
                 </div>
@@ -1065,8 +1065,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
               <option value="Bus">Bus</option>
               <option value="Car Rental">Car Rental</option>
               <option value="Personal Car">Personal Car</option>
-              <option value="Ferry">Ferry</option>
-              <option value="Cruise">Cruise</option>
+              <option value="Cruise">Ferry / Cruise</option>
             </select>
           </div>
 
@@ -1367,9 +1366,9 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
       >
         <form onSubmit={handleSaveTransport} className="space-y-6 font-sans text-left">
           {/* Type Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
-            {(Object.keys(MODE_META) as Array<keyof typeof MODE_META>).map(modeKey => {
-              const isActive = formMode === modeKey;
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+            {(['Train', 'Bus', 'Car Rental', 'Personal Car', 'Cruise'] as const).map(modeKey => {
+              const isActive = formMode === modeKey || (modeKey === 'Cruise' && formMode === 'Ferry');
               const item = MODE_META[modeKey];
               const Icon = item.icon;
               return (
@@ -1384,7 +1383,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                   }`}
                 >
                   <Icon className="w-5 h-5 mb-1" />
-                  <span className="text-2xs font-bold uppercase tracking-wider text-center leading-none">{modeKey}</span>
+                  <span className="text-2xs font-bold uppercase tracking-wider text-center leading-none">{item.label}</span>
                 </button>
               );
             })}
