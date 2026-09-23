@@ -93,7 +93,7 @@ export const GearSettingsTab: React.FC<GearSettingsTabProps> = ({ config, setCon
                                     variant="primary" 
                                     onClick={handleSaveOrgSettings}
                                     isLoading={isSavingOrg}
-                                    className="h-10 px-5 rounded-xl text-xs font-bold uppercase tracking-wider shadow-sm cursor-pointer self-stretch sm:self-auto justify-center"
+                                    className="shrink-0"
                                     icon={<FloppyDisk className="w-4 h-4" weight="duotone" />}
                                 >
                                     Save Master List

@@ -7,17 +7,17 @@ import { WorkspaceSettings, Carrier } from '../types';
 import { dataService } from '../services/mockDb';
 import { getMerchantLogoUrl } from '../utils/brandfetch';
 import { getCarrierName } from '../utils/flightData';
-import { 
-    Airplane, 
-    ArrowsClockwise, 
-    FloppyDisk, 
-    MagnifyingGlass, 
-    Trash, 
-    PencilSimple, 
-    CheckCircle, 
-    WarningCircle, 
-    Info, 
-    X, 
+import {
+    Airplane,
+    ArrowsClockwise,
+    FloppyDisk,
+    MagnifyingGlass,
+    Trash,
+    PencilSimple,
+    CheckCircle,
+    WarningCircle,
+    Info,
+    X,
     ArrowSquareOut,
     Plus,
     SquaresFour,
@@ -48,16 +48,16 @@ const CarrierImage: React.FC<CarrierImageProps> = ({ domain, alt, className = "w
     const getUrl = (d: string, att: number): string => {
         const cleanDomain = d.trim().toLowerCase();
         const steps: string[] = [];
-        
+
         if (apiKey) {
             const bfUrl = getMerchantLogoUrl(cleanDomain, apiKey, {}, { type: 'icon', fallback: '404' });
             if (bfUrl) steps.push(bfUrl);
         }
-        
+
         steps.push(`https://logo.clearbit.com/${cleanDomain}`);
         steps.push(`https://asset.brandfetch.io/${cleanDomain}/logo?theme=light`);
         steps.push(`https://www.google.com/s2/favicons?sz=128&domain=${cleanDomain}`);
-        
+
         return steps[att] || '';
     };
 
@@ -89,9 +89,9 @@ const CarrierImage: React.FC<CarrierImageProps> = ({ domain, alt, className = "w
 
     return (
         <div className={`${className} bg-white border border-black/5 rounded-2xl flex items-center justify-center ${fill ? 'p-0' : 'p-1.5'} dark:bg-dark-card dark:border-white/5 overflow-hidden shadow-xs shrink-0`}>
-            <img 
-                src={src || getUrl(domain, 0)} 
-                alt={alt} 
+            <img
+                src={src || getUrl(domain, 0)}
+                alt={alt}
                 className={`w-full h-full ${fill ? 'object-cover' : 'object-contain'}`}
                 referrerPolicy="no-referrer"
                 onError={handleError}
@@ -125,10 +125,10 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
 
     // Table / Cards View Mode
     const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
-    
+
     // Search & Filter
     const [searchQuery, setSearchQuery] = useState('');
-    
+
     // Status & Modals
     const [isScanning, setIsScanning] = useState(false);
     const [notification, setNotification] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
@@ -173,9 +173,9 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
         let updatedCarriers: Carrier[];
 
         if (editingId) {
-            updatedCarriers = carriers.map(c => 
-                c.id === editingId 
-                    ? { ...c, name: formName.trim(), code: codeUpper, domain: formDomain.trim().toLowerCase() } 
+            updatedCarriers = carriers.map(c =>
+                c.id === editingId
+                    ? { ...c, name: formName.trim(), code: codeUpper, domain: formDomain.trim().toLowerCase() }
                     : c
             );
             setNotification({ type: 'success', text: `Updated carrier: ${formName.trim()} (${codeUpper})` });
@@ -223,7 +223,7 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
             ]);
 
             const allFlights: any[] = [];
-            
+
             trips.forEach((t: any) => {
                 if (t.transports) {
                     t.transports.forEach((transport: any) => {
@@ -245,12 +245,12 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
             }
 
             const mappings: Record<string, string> = {
-              'deltaairlines': 'delta.com', 'delta': 'delta.com', 'americanairlines': 'aa.com', 'american': 'aa.com',
-              'unitedairlines': 'united.com', 'united': 'united.com', 'southwestairlines': 'southwest.com', 'southwest': 'southwest.com',
-              'britishairways': 'britishairways.com', 'emirates': 'emirates.com', 'qatarairways': 'qatarairways.com', 'qatar': 'qatarairways.com',
-              'lufthansa': 'lufthansa.com', 'airfrance': 'airfrance.com', 'klm': 'klm.com', 'singaporeairlines': 'singaporeair.com',
-              'cathaypacific': 'cathaypacific.com', 'ana': 'ana.co.jp', 'japanairlines': 'jal.com', 'jal': 'jal.com',
-              'ryanair': 'ryanair.com', 'easyjet': 'easyjet.com'
+                'deltaairlines': 'delta.com', 'delta': 'delta.com', 'americanairlines': 'aa.com', 'american': 'aa.com',
+                'unitedairlines': 'united.com', 'united': 'united.com', 'southwestairlines': 'southwest.com', 'southwest': 'southwest.com',
+                'britishairways': 'britishairways.com', 'emirates': 'emirates.com', 'qatarairways': 'qatarairways.com', 'qatar': 'qatarairways.com',
+                'lufthansa': 'lufthansa.com', 'airfrance': 'airfrance.com', 'klm': 'klm.com', 'singaporeairlines': 'singaporeair.com',
+                'cathaypacific': 'cathaypacific.com', 'ana': 'ana.co.jp', 'japanairlines': 'jal.com', 'jal': 'jal.com',
+                'ryanair': 'ryanair.com', 'easyjet': 'easyjet.com'
             };
 
             const extractedCarriers: Map<string, { name: string; code: string; domain: string }> = new Map();
@@ -258,14 +258,14 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
             allFlights.forEach(f => {
                 const rawName = f.carrierName || f.operator || f.airline || '';
                 const rawCode = f.carrierCode || f.flightNumber?.substring(0, 2) || '';
-                
+
                 if (rawCode && rawCode.length >= 2) {
                     const codeClean = rawCode.trim().toUpperCase();
                     if (!carriers.some(c => c.code === codeClean) && !extractedCarriers.has(codeClean)) {
                         const lookupName = rawName || getCarrierName(codeClean) || codeClean;
                         const simplified = lookupName.toLowerCase().replace(/[^a-z0-9]/g, '');
                         const mappedDomain = mappings[simplified] || `${simplified || 'airline'}.com`;
-                        
+
                         extractedCarriers.set(codeClean, {
                             name: lookupName,
                             code: codeClean,
@@ -298,7 +298,7 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
         setFormDomain(preset.domain);
     };
 
-    const filteredCarriers = carriers.filter(c => 
+    const filteredCarriers = carriers.filter(c =>
         c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         c.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
         c.domain.toLowerCase().includes(searchQuery.toLowerCase())
@@ -327,7 +327,7 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
                         {/* Header Banner */}
                         <div className="p-4 sm:p-6 border-b border-black/5 dark:border-white/5 bg-gradient-to-r from-blue-500/10 via-blue-500/5 to-transparent shrink-0">
                             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                                
+
                                 {/* Title & Badge */}
                                 <div className="flex items-center gap-3 min-w-0">
                                     <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20 shrink-0">
@@ -354,26 +354,26 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
                                         variant="secondary"
                                         onClick={handleAutoPopulate}
                                         isLoading={isScanning}
-                                        className="min-h-[44px] h-11 px-3 sm:px-4 rounded-xl text-xs font-bold uppercase tracking-wider cursor-pointer flex-1 sm:flex-initial justify-center"
+                                        className="shrink-0"
                                         icon={<ArrowsClockwise className="w-4 h-4" weight="duotone" />}
                                     >
                                         Auto-Fill
                                     </Button>
-                                    
-                                    <Button 
-                                        variant="primary" 
+
+                                    <Button
+                                        variant="primary"
                                         onClick={handleOpenAddDrawer}
-                                        className="min-h-[44px] h-11 px-4 sm:px-5 rounded-xl text-xs font-bold uppercase tracking-wider shadow-sm cursor-pointer flex-1 sm:flex-initial justify-center"
+                                        className="shrink-0"
                                         icon={<Plus className="w-4 h-4" />}
                                     >
                                         Add Carrier
                                     </Button>
 
-                                    <Button 
-                                        variant="secondary" 
+                                    <Button
+                                        variant="secondary"
                                         onClick={handleSaveOrgSettings}
                                         isLoading={isSavingOrg}
-                                        className="min-h-[44px] h-11 px-3 sm:px-4 rounded-xl text-xs font-bold uppercase tracking-wider shadow-sm cursor-pointer flex-1 sm:flex-initial justify-center"
+                                        className="shrink-0"
                                         icon={<FloppyDisk className="w-4 h-4" weight="duotone" />}
                                     >
                                         Save
@@ -384,13 +384,12 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
 
                         {/* Notification Toast */}
                         {notification && (
-                            <div className={`px-4 sm:px-6 py-3 shrink-0 flex items-center justify-between border-b text-xs font-bold font-sans ${
-                                notification.type === 'success' 
-                                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400' 
+                            <div className={`px-4 sm:px-6 py-3 shrink-0 flex items-center justify-between border-b text-xs font-bold font-sans ${notification.type === 'success'
+                                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
                                     : notification.type === 'error'
-                                    ? 'bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400'
-                                    : 'bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400'
-                            }`}>
+                                        ? 'bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400'
+                                        : 'bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400'
+                                }`}>
                                 <div className="flex items-center gap-2 min-w-0">
                                     {notification.type === 'success' ? (
                                         <CheckCircle className="w-4 h-4 shrink-0" weight="duotone" />
@@ -401,9 +400,9 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
                                     )}
                                     <span className="truncate">{notification.text}</span>
                                 </div>
-                                <button 
-                                    type="button" 
-                                    onClick={() => setNotification(null)} 
+                                <button
+                                    type="button"
+                                    onClick={() => setNotification(null)}
                                     className="min-w-[44px] min-h-[44px] flex items-center justify-center opacity-60 hover:opacity-100 cursor-pointer text-current"
                                     aria-label="Dismiss notification"
                                 >
@@ -423,7 +422,7 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
                                     leftElement={<MagnifyingGlass className="text-light-text-secondary dark:text-dark-text-secondary w-4 h-4" />}
                                     rightElement={
                                         searchQuery ? (
-                                            <button 
+                                            <button
                                                 type="button"
                                                 onClick={() => setSearchQuery('')}
                                                 className="min-w-[36px] min-h-[36px] flex items-center justify-center text-light-text-secondary hover:text-light-text dark:hover:text-dark-text cursor-pointer"
@@ -447,11 +446,10 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
                                     <button
                                         type="button"
                                         onClick={() => setViewMode('cards')}
-                                        className={`min-h-[36px] px-3 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                                            viewMode === 'cards' 
-                                                ? 'bg-white dark:bg-dark-card text-primary-500 shadow-xs' 
+                                        className={`min-h-[36px] px-3 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${viewMode === 'cards'
+                                                ? 'bg-white dark:bg-dark-card text-primary-500 shadow-xs'
                                                 : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text'
-                                        }`}
+                                            }`}
                                         aria-label="Grid view"
                                     >
                                         <SquaresFour className="w-4 h-4" />
@@ -460,11 +458,10 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
                                     <button
                                         type="button"
                                         onClick={() => setViewMode('table')}
-                                        className={`min-h-[36px] px-3 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                                            viewMode === 'table' 
-                                                ? 'bg-white dark:bg-dark-card text-primary-500 shadow-xs' 
+                                        className={`min-h-[36px] px-3 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${viewMode === 'table'
+                                                ? 'bg-white dark:bg-dark-card text-primary-500 shadow-xs'
                                                 : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text'
-                                        }`}
+                                            }`}
                                         aria-label="Table view"
                                     >
                                         <Table className="w-4 h-4" />
@@ -509,18 +506,18 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
                                     {filteredCarriers.map(c => {
                                         const displayName = getCleanName(c);
                                         return (
-                                            <div 
-                                                key={c.id} 
+                                            <div
+                                                key={c.id}
                                                 className="p-4 rounded-2xl bg-light-fill/40 dark:bg-dark-fill/30 border border-black/5 dark:border-white/5 hover:border-primary-500/20 hover:shadow-glass-card transition-all flex flex-col justify-between gap-4 group"
                                             >
                                                 {/* Card Header & Identity */}
                                                 <div className="flex items-start gap-3 min-w-0">
-                                                    <CarrierImage 
-                                                        domain={c.domain} 
-                                                        alt={displayName} 
-                                                        className="w-12 h-12 shrink-0" 
-                                                        apiKey={config.brandfetchApiKey} 
-                                                        fill 
+                                                    <CarrierImage
+                                                        domain={c.domain}
+                                                        alt={displayName}
+                                                        className="w-12 h-12 shrink-0"
+                                                        apiKey={config.brandfetchApiKey}
+                                                        fill
                                                     />
                                                     <div className="min-w-0 flex-1">
                                                         <h4 className="text-sm font-bold text-light-text dark:text-dark-text truncate leading-tight">
@@ -530,10 +527,10 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
                                                             <span className="text-2xs font-mono font-bold px-2 py-0.5 rounded-lg bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20 uppercase shrink-0">
                                                                 {c.code}
                                                             </span>
-                                                            <a 
-                                                                href={`https://${c.domain}`} 
-                                                                target="_blank" 
-                                                                rel="noopener noreferrer" 
+                                                            <a
+                                                                href={`https://${c.domain}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
                                                                 className="text-2xs font-mono text-light-text-secondary hover:text-primary-500 transition-colors inline-flex items-center gap-1 truncate max-w-[140px]"
                                                             >
                                                                 <span className="truncate">{c.domain}</span>
@@ -545,7 +542,7 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
 
                                                 {/* Card Footer Actions (Apple HIG 44px targets) */}
                                                 <div className="flex items-center justify-end gap-2 pt-3 border-t border-black/5 dark:border-white/5">
-                                                    <button 
+                                                    <button
                                                         type="button"
                                                         onClick={() => handleOpenEditDrawer(c)}
                                                         className="min-h-[44px] px-3.5 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-light-text dark:text-dark-text flex items-center gap-1.5 text-xs font-bold transition-all cursor-pointer"
@@ -554,7 +551,7 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
                                                         <PencilSimple className="w-4 h-4 text-primary-500" />
                                                         <span>Edit</span>
                                                     </button>
-                                                    <button 
+                                                    <button
                                                         type="button"
                                                         onClick={() => setDeletingCarrier(c)}
                                                         className="min-h-[44px] min-w-[44px] px-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 flex items-center justify-center gap-1 text-xs font-bold transition-all cursor-pointer"
@@ -598,10 +595,10 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
                                                             </span>
                                                         </td>
                                                         <td className="py-3 px-3 align-middle font-mono">
-                                                            <a 
-                                                                href={`https://${c.domain}`} 
-                                                                target="_blank" 
-                                                                rel="noopener noreferrer" 
+                                                            <a
+                                                                href={`https://${c.domain}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
                                                                 className="text-2xs text-light-text-secondary hover:text-primary-500 transition-colors inline-flex items-center gap-1"
                                                             >
                                                                 <span>{c.domain}</span>
@@ -610,7 +607,7 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
                                                         </td>
                                                         <td className="py-3 pr-4 align-middle text-right">
                                                             <div className="flex gap-1.5 justify-end">
-                                                                <button 
+                                                                <button
                                                                     type="button"
                                                                     onClick={() => handleOpenEditDrawer(c)}
                                                                     className="min-w-[44px] min-h-[44px] rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 flex items-center justify-center text-light-text-secondary hover:text-primary-500 transition-colors cursor-pointer"
@@ -618,7 +615,7 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
                                                                 >
                                                                     <PencilSimple className="w-4 h-4" />
                                                                 </button>
-                                                                <button 
+                                                                <button
                                                                     type="button"
                                                                     onClick={() => setDeletingCarrier(c)}
                                                                     className="min-w-[44px] min-h-[44px] rounded-xl bg-rose-500/10 hover:bg-rose-500/20 flex items-center justify-center text-rose-500 transition-colors cursor-pointer"
@@ -650,18 +647,18 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
                 icon="airplane"
                 footerActions={
                     <div className="flex items-center justify-between gap-3 w-full">
-                        <Button 
-                            variant="secondary" 
-                            onClick={() => setIsDrawerOpen(false)} 
-                            className="min-h-[44px] h-12 px-6 text-xs font-bold uppercase tracking-wider"
+                        <Button
+                            variant="secondary"
+                            onClick={() => setIsDrawerOpen(false)}
+                            className="shrink-0"
                         >
                             Cancel
                         </Button>
-                        <Button 
-                            variant="primary" 
+                        <Button
+                            variant="primary"
                             onClick={handleSaveCarrierFromDrawer}
                             disabled={!formName.trim() || !formCode.trim() || !formDomain.trim()}
-                            className="min-h-[44px] h-12 px-8 text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-primary-500/20"
+                            className="shrink-0"
                             icon={<Check className="w-4 h-4" />}
                         >
                             <span>{editingId ? 'Save Changes' : 'Register Carrier'}</span>
@@ -724,12 +721,12 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
                     {/* Live Identity Preview Card */}
                     {formDomain.trim() && (
                         <div className="p-4 rounded-2xl bg-white/70 dark:bg-dark-card/70 border border-black/5 dark:border-white/10 flex items-center gap-3.5 shadow-sm">
-                            <CarrierImage 
-                                domain={formDomain} 
-                                alt={formName || "Preview"} 
-                                className="w-12 h-12 shrink-0" 
-                                apiKey={config.brandfetchApiKey} 
-                                fill 
+                            <CarrierImage
+                                domain={formDomain}
+                                alt={formName || "Preview"}
+                                className="w-12 h-12 shrink-0"
+                                apiKey={config.brandfetchApiKey}
+                                fill
                             />
                             <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2">
@@ -777,8 +774,8 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
             {/* Remove Confirmation Modal */}
             {deletingCarrier && (
                 <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
-                    <div 
-                        className="fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md transition-opacity" 
+                    <div
+                        className="fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md transition-opacity"
                         style={{ WebkitBackdropFilter: 'blur(12px)' }}
                         onClick={() => setDeletingCarrier(null)}
                     />
@@ -795,14 +792,14 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
                                 <div className="flex items-center gap-3 mt-6 w-full">
                                     <Button
                                         variant="secondary"
-                                        className="flex-1 min-h-[44px] h-11 text-xs font-bold uppercase tracking-wider"
+                                        className="flex-1"
                                         onClick={() => setDeletingCarrier(null)}
                                     >
                                         Cancel
                                     </Button>
                                     <Button
                                         variant="danger"
-                                        className="flex-1 min-h-[44px] h-11 text-xs font-bold uppercase tracking-wider"
+                                        className="flex-1"
                                         onClick={handleConfirmDelete}
                                     >
                                         Remove
