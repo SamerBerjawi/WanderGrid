@@ -264,9 +264,13 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
     };
 
     const isCar = mode === 'Car Rental' || mode === 'Personal Car';
-    const isValid = isCar
+    const isDateRangeValid = isCar
+        ? (!carForm.dropoffDate || !carForm.pickupDate || carForm.dropoffDate >= carForm.pickupDate)
+        : segments.every(s => !s.arrivalDate || !s.date || s.arrivalDate >= s.date);
+
+    const isValid = isDateRangeValid && (isCar
         ? Boolean(carForm.pickupLocation && carForm.pickupDate)
-        : segments.every(s => s.origin && s.destination && (s.date || s.isApproximate));
+        : segments.every(s => s.origin && s.destination && (s.date || s.isApproximate)));
 
     const handleSave = () => {
         // Use crypto.randomUUID() instead of Math.random

@@ -85,7 +85,7 @@ export const FlightForm: React.FC<FlightFormProps> = ({
 
         setIsAutoFilling(true);
         try {
-            const res = await fetch(`http://api.aviationstack.com/v1/flights?access_key=${apiKey}&flight_iata=${fullFlightIata}`);
+            const res = await fetch(`https://api.aviationstack.com/v1/flights?access_key=${apiKey}&flight_iata=${fullFlightIata}`);
             const data = await res.json();
             if (data.data && data.data.length > 0) {
                 const flight = data.data[0];

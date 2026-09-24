@@ -31,9 +31,7 @@ import GlassPanel from '../components/glass/GlassPanel';
 import { dataService } from '../services/mockDb';
 import { Trip, CountryResidenceStatus, PredefinedMapMode, getResidenceStatuses } from '../types';
 import { Input, MultiSelect } from '../components/ui';
-import { LiquidGlassSelect, LiquidGlassMultiSelect } from '../components/LiquidGlassSelect';
-import { getCoordinates, getCoordinatesSync, STATIC_GEO_DATA } from '../services/geocoding';
-import { runAfterFirstPaint, mapWithConcurrency } from '../services/utils';
+import { getCoordinates, getCoordinatesSync, STATIC_GEO_DATA, calculateDistance } from '../services/geocoding';
 import {
     MapAppearanceSettings,
     DEFAULT_MAP_APPEARANCE,
@@ -82,18 +80,6 @@ const saveCoordCache = (cache: Map<string, { lat: number, lng: number }>) => {
     } catch (e) {
         console.warn("Failed to save coord cache", e);
     }
-};
-
-const getGreatCircleDistance = (lat1: number, lng1: number, lat2: number, lng2: number) => {
-    const R = 6371;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLng = (lng2 - lng1) * Math.PI / 180;
-    const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-        Math.sin(dLng / 2) * Math.sin(dLng / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
 };
 
 const MAP_MODE_THEMES: Record<PredefinedMapMode, {
@@ -795,7 +781,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
 
                 let dist = tr.distance || 0;
                 if (!dist && tr.originLat && tr.originLng && tr.destLat && tr.destLng) {
-                    dist = getGreatCircleDistance(tr.originLat, tr.originLng, tr.destLat, tr.destLng);
+                    dist = calculateDistance(tr.originLat, tr.originLng, tr.destLat, tr.destLng);
                 }
 
                 if (isFlight) {

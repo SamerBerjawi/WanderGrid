@@ -56,9 +56,9 @@ import {
 import { Card, Button, Badge, Tabs, Modal, Input, Autocomplete, TimeInput, Select } from '../components/ui';
 import GlassPanel from '../components/glass/GlassPanel';
 import { CARD_ELEVATED_STYLE } from '../constants';
-import { VirtualListItem } from '../components/ui/VirtualListItem';
-import { TransportConfigurator } from '../components/FlightConfigurator';
-import { AccommodationConfigurator } from '../components/AccommodationConfigurator';
+const TransportConfigurator = React.lazy(() => import('../components/FlightConfigurator').then(m => ({ default: m.TransportConfigurator })));
+const AccommodationConfigurator = React.lazy(() => import('../components/AccommodationConfigurator').then(m => ({ default: m.AccommodationConfigurator })));
+const ExcursionConfigurator = React.lazy(() => import('../components/ExcursionConfigurator').then(m => ({ default: m.ExcursionConfigurator })));
 import { LocationManager } from '../components/LocationManager';
 import { TripModal } from '../components/TripModal';
 import { PackingList } from '../components/PackingList';
@@ -71,9 +71,7 @@ import { GoogleGenAI } from "@google/genai";
 const DeckFlightMap = React.lazy(() => import('../components/DeckFlightMap').then(m => ({ default: m.DeckFlightMap || m.default })));
 const FlightImportWizard = React.lazy(() => import('../components/FlightImportWizard').then(m => ({ default: m.FlightImportWizard })));
 import { getMerchantLogoUrl } from '../utils/brandfetch';
-import { formatDate, formatDateRange, formatCurrency, getCurrencySymbol } from '../utils/formatters';
 import { EmptyState } from '../components/EmptyState';
-import { ExcursionConfigurator } from '../components/ExcursionConfigurator';
 import { DailyPlannerBoard } from '../components/DailyPlannerBoard';
 import { invalidateGlobalWanderCache } from '../hooks/useWanderSync';
 import { isCarRentalBooking, getTransportScheduleTitle, getTransportScheduleLocation, getTransportScheduleEventsForDate } from '../utils/transportSchedule';
@@ -2293,14 +2291,16 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 iconBg="bg-primary-500"
                 maxWidth="max-w-4xl"
             >
-                <TransportConfigurator 
-                    initialData={editingTransports || []}
-                    onSave={handleSaveTransports}
-                    onDelete={handleDeleteTransports}
-                    onCancel={() => setIsTransportModalOpen(false)}
-                    defaultStartDate={selectedDateForModal || trip.startDate}
-                    defaultEndDate={selectedDateForModal || trip.endDate}
-                />
+                <React.Suspense fallback={<div className="p-8 text-center"><div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto" /></div>}>
+                    <TransportConfigurator 
+                        initialData={editingTransports || []}
+                        onSave={handleSaveTransports}
+                        onDelete={handleDeleteTransports}
+                        onCancel={() => setIsTransportModalOpen(false)}
+                        defaultStartDate={selectedDateForModal || trip.startDate}
+                        defaultEndDate={selectedDateForModal || trip.endDate}
+                    />
+                </React.Suspense>
             </Modal>
             
             <Modal 
@@ -2312,14 +2312,16 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 iconBg="bg-amber-500"
                 maxWidth="max-w-3xl"
             >
-                <AccommodationConfigurator 
-                    initialData={editingAccommodations || []}
-                    onSave={handleSaveAccommodations}
-                    onDelete={handleDeleteAccommodations}
-                    onCancel={() => setIsAccommodationModalOpen(false)}
-                    defaultStartDate={selectedDateForModal || trip.startDate}
-                    defaultEndDate={selectedDateForModal || trip.endDate}
-                />
+                <React.Suspense fallback={<div className="p-8 text-center"><div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" /></div>}>
+                    <AccommodationConfigurator 
+                        initialData={editingAccommodations || []}
+                        onSave={handleSaveAccommodations}
+                        onDelete={handleDeleteAccommodations}
+                        onCancel={() => setIsAccommodationModalOpen(false)}
+                        defaultStartDate={selectedDateForModal || trip.startDate}
+                        defaultEndDate={selectedDateForModal || trip.endDate}
+                    />
+                </React.Suspense>
             </Modal>
 
             <TripModal 
@@ -2331,18 +2333,22 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 initialData={trip}
             />
 
-            <ExcursionConfigurator 
-                isOpen={isActivityModalOpen} 
-                onClose={() => {
-                    setIsActivityModalOpen(false);
-                    setSelectedActivityForModal(null);
-                }} 
-                onSave={handleSaveActivity}
-                initialData={selectedActivityForModal}
-                defaultDate={currentDayForActivity}
-                tripStartDate={trip.startDate}
-                tripEndDate={trip.endDate}
-            />
+            {isActivityModalOpen && (
+                <React.Suspense fallback={null}>
+                    <ExcursionConfigurator 
+                        isOpen={isActivityModalOpen} 
+                        onClose={() => {
+                            setIsActivityModalOpen(false);
+                            setSelectedActivityForModal(null);
+                        }} 
+                        onSave={handleSaveActivity}
+                        initialData={selectedActivityForModal}
+                        defaultDate={currentDayForActivity}
+                        tripStartDate={trip.startDate}
+                        tripEndDate={trip.endDate}
+                    />
+                </React.Suspense>
+            )}
 
             {/* Cinematic Modal */}
             {isCinematicOpen && (

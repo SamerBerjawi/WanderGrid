@@ -11,7 +11,6 @@ import { INPUT_BASE_STYLE } from '../constants';
 import { Trip, Transport, TransportMode, RoadTripWaypoint, ViewState } from '../types';
 import { dataService } from '../services/mockDb';
 import { motion, AnimatePresence } from 'motion/react';
-import L from 'leaflet';
 import { getCoordinates, getCoordinatesSync, searchLocations } from '../services/geocoding';
 import { formatDate } from '../utils/formatters';
 import { EmptyState } from '../components/EmptyState';

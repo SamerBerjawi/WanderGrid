@@ -13,9 +13,7 @@ import { getMerchantLogoUrl } from '../utils/brandfetch';
 import { formatDate, formatCurrency } from '../utils/formatters';
 import { CLOSE_BTN_STYLE, MODAL_BACKDROP_STYLE, MODAL_SHELL_STYLE } from '../constants';
 import { EmptyState } from '../components/EmptyState';
-import { dataService } from '../services/mockDb';
 import { PassportIdCard, PassportStampsPage, PassportTravelMap } from '../components/FlightyPassport';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { TooltipContent } from '../components/TooltipContent';
 import { motion, AnimatePresence } from 'motion/react';
 import { 

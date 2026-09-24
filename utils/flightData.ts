@@ -500,7 +500,7 @@ async function triggerBackgroundAirportFetch(code: string) {
         let extRes: Response;
         const isMockMode = localStorage.getItem('wandergrid_api_status') === 'unavailable';
         if (isMockMode) {
-          extRes = await fetch(`http://api.aviationstack.com/v1/airports?access_key=${apiKey}&iata_code=${code}`);
+          extRes = await fetch(`https://api.aviationstack.com/v1/airports?access_key=${apiKey}&iata_code=${code}`);
         } else {
           extRes = await fetchWithAuth(`/api/proxy/airports?access_key=${apiKey}&iata_code=${code}`);
         }
@@ -622,7 +622,7 @@ async function triggerBackgroundCarrierFetch(code: string) {
         let extRes: Response;
         const isMockMode = localStorage.getItem('wandergrid_api_status') === 'unavailable';
         if (isMockMode) {
-          extRes = await fetch(`http://api.aviationstack.com/v1/airlines?access_key=${apiKey}&iata_code=${code}`);
+          extRes = await fetch(`https://api.aviationstack.com/v1/airlines?access_key=${apiKey}&iata_code=${code}`);
         } else {
           extRes = await fetchWithAuth(`/api/proxy/airlines?access_key=${apiKey}&iata_code=${code}`);
         }

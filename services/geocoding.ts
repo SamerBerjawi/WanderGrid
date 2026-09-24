@@ -329,9 +329,12 @@ export function getCachedTimeZone(iata: string): string | undefined {
     return fromCache?.tz;
 }
 
-function getWallTimeAsUtc(dateStr: string, timeStr: string): number {
+function getWallTimeAsUtc(dateStr?: string | null, timeStr?: string | null): number {
+    if (!dateStr || !timeStr || typeof dateStr !== 'string' || typeof timeStr !== 'string') return NaN;
+    if (!dateStr.includes('-') || !timeStr.includes(':')) return NaN;
     const [y, m, d] = dateStr.split('-').map(Number);
     const [h, min] = timeStr.split(':').map(Number);
+    if (isNaN(y) || isNaN(m) || isNaN(d) || isNaN(h) || isNaN(min)) return NaN;
     return Date.UTC(y, m - 1, d, h, min, 0);
 }
 

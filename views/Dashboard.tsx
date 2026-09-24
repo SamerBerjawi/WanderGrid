@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Card, Button } from '../components/ui';
 const DeckFlightMap = lazy(() => import('../components/DeckFlightMap').then(m => ({ default: m.DeckFlightMap || m.default })));
-import { FlightTrackerModal } from '../components/FlightTrackerModal';
+const FlightTrackerModal = lazy(() => import('../components/FlightTrackerModal').then(m => ({ default: m.FlightTrackerModal })));
 import { dataService } from '../services/mockDb';
 import { User, Trip, EntitlementType, PublicHoliday, getResidenceStatuses } from '../types';
 import { resolvePlaceName, calculateDistance, getCoordinates, getCoordinatesSync, refineUKCountry, formatPlaceName } from '../services/geocoding';
@@ -1561,7 +1561,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
         </div>
 
         {/* Live Active Flights dialog modal */}
-        <FlightTrackerModal isOpen={isFlightTrackerOpen} onClose={() => setIsFlightTrackerOpen(false)} suggestedFlight={todaysFlight} />
+        <Suspense fallback={null}>
+          <FlightTrackerModal isOpen={isFlightTrackerOpen} onClose={() => setIsFlightTrackerOpen(false)} suggestedFlight={todaysFlight} />
+        </Suspense>
     </div>
   );
 };

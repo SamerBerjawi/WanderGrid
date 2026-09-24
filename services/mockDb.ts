@@ -112,6 +112,12 @@ export function clearMemoryCache() {
 
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeunload', flushPendingStorageWrites);
+  window.addEventListener('pagehide', flushPendingStorageWrites);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      flushPendingStorageWrites();
+    }
+  });
   window.addEventListener('storage', (e) => {
     if (e.key && e.key.startsWith('wandergrid_')) {
       delete memoryCache[e.key];
