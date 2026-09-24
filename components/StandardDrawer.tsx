@@ -59,29 +59,30 @@ export const StandardDrawer: React.FC<DrawerProps> = ({
 
   return createPortal(
     <div className="fixed inset-0 z-modal overflow-hidden font-sans">
-      {/* 1. Frosted Backdrop (Crystal TransactionModal level) */}
+      {/* 1. Luminous Frosted Backdrop */}
       <div 
-        className={`fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md transition-opacity duration-300 ${
+        className={`fixed inset-0 bg-black/25 dark:bg-black/50 backdrop-blur-xs transition-opacity duration-300 ${
           isVisible ? 'opacity-100' : 'opacity-0'
         }`}
-        style={{ WebkitBackdropFilter: 'blur(12px)' }}
+        style={{ WebkitBackdropFilter: 'blur(4px)' }}
         onClick={handleClose} 
       />
 
-      {/* 2. Slide-out Shell with Liquid Glass */}
-      <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
+      {/* 2. Slide-out Shell with Liquid Glass (Floating 28px standard) */}
+      <div className="fixed top-3 sm:top-4 right-3 sm:right-4 bottom-3 sm:bottom-4 z-modal flex max-w-full pl-0 sm:pl-10 pointer-events-none">
         <div 
-          className={`w-screen max-w-lg h-full flex flex-col transform transition-transform duration-300 ease-out ${
+          className={`w-screen max-w-lg h-full flex flex-col transform transition-transform duration-300 ease-out pointer-events-auto ${
             isVisible ? 'translate-x-0' : 'translate-x-full'
           }`}
         >
           <GlassPanel
             className="wg-glass-card w-full h-full flex flex-col shadow-2xl overflow-hidden"
             padding="0px"
-            overrides={{ borderRadius: 0 }}
+            overrides={{ borderRadius: 28 }}
           >
+            <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px]">
             {/* Header */}
-            <div className="p-6 border-b border-black/5 dark:border-white/10 flex items-center justify-between bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">
+            <div className="p-4 sm:p-6 border-b border-black/5 dark:border-white/10 flex items-center justify-between bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white bg-primary-500 shrink-0 shadow-md transition-transform hover:scale-105">
                 <Icon className="text-2xl" name={icon}/>
@@ -123,7 +124,7 @@ export const StandardDrawer: React.FC<DrawerProps> = ({
             }} 
             className="flex-1 flex flex-col overflow-hidden"
           >
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 custom-scrollbar">
               {children ? children : (
                 <>
                   {/* Primary Identifier / Hero Input */}
@@ -141,7 +142,7 @@ export const StandardDrawer: React.FC<DrawerProps> = ({
                   </div>
 
                   {/* Group Section Container */}
-                  <div className="p-5 rounded-3xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-4">
+                  <div className="p-5 rounded-2xl bg-white/50 dark:bg-white/[0.05] backdrop-blur-md border border-black/8 dark:border-white/10 space-y-4">
                     <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
                       Configuration Group
                     </span>
@@ -152,7 +153,7 @@ export const StandardDrawer: React.FC<DrawerProps> = ({
             </div>
 
             {/* Sticky Frosted Footer */}
-            <div className="p-6 border-t border-black/5 dark:border-white/5 bg-light-card/80 dark:bg-dark-card/80 backdrop-blur-md flex items-center justify-between gap-3 shrink-0">
+            <div className="p-4 sm:p-6 border-t border-black/5 dark:border-white/10 bg-white/30 dark:bg-white/[0.03] backdrop-blur-md flex items-center justify-between gap-3 shrink-0">
               {footerActions ? footerActions : (
                 <>
                   <button 
@@ -173,6 +174,7 @@ export const StandardDrawer: React.FC<DrawerProps> = ({
               )}
             </div>
           </form>
+          </div>
           </GlassPanel>
         </div>
       </div>

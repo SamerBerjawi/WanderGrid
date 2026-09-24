@@ -2,6 +2,7 @@ import React, { useRef, useState, useMemo, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { Trip, Transport, User } from '../types';
 import { Button, Input, Select } from './ui';
+import GlassPanel from './glass/GlassPanel';
 import { flightImporter } from '../services/flightImportExport';
 import { dataService } from '../services/mockDb';
 import { invalidateGlobalWanderCache } from '../hooks/useWanderSync';
@@ -876,10 +877,11 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
 
     return (
         <div 
-            className="fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md flex items-center justify-center z-modal p-4 text-light-text dark:text-dark-text animate-fade-in"
-            style={{ WebkitBackdropFilter: 'blur(12px)' }}
+            className="fixed inset-0 bg-black/25 dark:bg-black/50 backdrop-blur-xs flex items-center justify-center z-modal p-4 text-light-text dark:text-dark-text animate-fade-in"
+            style={{ WebkitBackdropFilter: 'blur(4px)' }}
         >
-            <div className="bg-white/95 dark:bg-dark-card/95 backdrop-blur-sm border border-black/10 dark:border-white/15 rounded-3xl shadow-glass-modal flex flex-col w-full max-w-6xl h-[85vh] overflow-hidden animate-scale-up" style={{ WebkitBackdropFilter: 'blur(4px)' }}>
+            <GlassPanel className="wg-glass-card shadow-2xl overflow-hidden flex flex-col w-full max-w-6xl h-[85vh] animate-scale-up" overrides={{ borderRadius: 28 }} padding="0px">
+                <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px]">
                 
                 {/* Header section with stepper */}
                 <div className="p-6 border-b border-slate-150/50 dark:border-white/5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gray-50 dark:bg-zinc-800/40">
@@ -1545,6 +1547,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                     })()}
                 </div>
             </div>
+            </GlassPanel>
         </div>
     );
 };

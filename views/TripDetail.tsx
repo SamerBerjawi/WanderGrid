@@ -2288,6 +2288,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 title="Manage Transport" 
                 subtitle="Voyage Logistics & Road Trips"
                 icon="directions_car"
+                iconBg="bg-primary-500"
                 maxWidth="max-w-4xl"
             >
                 <TransportConfigurator 
@@ -2306,6 +2307,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 title="Manage Accommodation" 
                 subtitle="Stays, Lodging & Overnights"
                 icon="hotel"
+                iconBg="bg-amber-500"
                 maxWidth="max-w-3xl"
             >
                 <AccommodationConfigurator 

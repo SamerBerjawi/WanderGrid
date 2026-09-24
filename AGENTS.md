@@ -69,14 +69,14 @@ All modal overlays, slide-out drawer components, form surfaces, and dialogs acro
 
 ### 7.1 Core Visual Tokens & Surfaces
 
-* **Container Backgrounds & Glassmorphism:** Theme tokens with opacity channels `bg-white/90 dark:bg-dark-card/90 backdrop-blur-sm` with `-webkit-backdrop-filter: blur(4px)` for slide-out drawers and elevated dialogs.
-* **Secondary / Fill Cards:** `bg-light-fill dark:bg-dark-fill/50 border border-black/10 dark:border-white/5 rounded-3xl p-5`.
-* **Elevated / Floating Cards:** `bg-white/90 dark:bg-dark-card/80 backdrop-blur-xl border border-black/10 dark:border-white/10 shadow-glass-light-card dark:shadow-glass-card rounded-2xl`.
-* **Hairline Dividers & Borders:** Crisp, tactile borders across both themes: `border-black/10 dark:border-white/5` (inner items/dividers) and `border-black/15 dark:border-white/10` (structural shells).
-* **Glassmorphic Elements:** Frosted glass (`backdrop-blur` with `-webkit-backdrop-filter`):
-  1. Backdrop overlay (`bg-gray-900/50 dark:bg-black/80 backdrop-blur-md` with `-webkit-backdrop-filter: blur(12px)`).
-  2. Slide-out drawer & dialog shells (`bg-white/90 dark:bg-dark-card/90 backdrop-blur-sm` with `-webkit-backdrop-filter: blur(4px)`).
-  3. Sticky bottom action footers (`bg-white/80 dark:bg-dark-card/80 backdrop-blur-md` with `-webkit-backdrop-filter: blur(12px)`).
+* **Container Backgrounds & Glassmorphism:** Liquid glass containers using `<GlassPanel className="wg-glass-card shadow-2xl overflow-hidden" overrides={{ borderRadius: 28 }} padding="0px">` with inner `rounded-[28px]`, mirroring the floating sidebar.
+* **Secondary / Fill Cards:** `bg-white/50 dark:bg-white/[0.05] backdrop-blur-md border border-black/8 dark:border-white/10 rounded-2xl p-5 shadow-xs`.
+* **Elevated / Floating Cards:** `bg-white/70 dark:bg-white/[0.08] backdrop-blur-xl border border-black/10 dark:border-white/10 shadow-glass-light-card dark:shadow-glass-card rounded-3xl`.
+* **Hairline Dividers & Borders:** Crisp, tactile borders across both themes: `border-black/5 dark:border-white/10` (inner items/dividers) and `border-black/10 dark:border-white/15` (structural shells).
+* **Glassmorphic Elements:** Frosted liquid glass:
+  1. Backdrop overlay (`bg-black/25 dark:bg-black/50 backdrop-blur-xs` with `-webkit-backdrop-filter: blur(4px)`).
+  2. Slide-out drawer & dialog shells: Floating `fixed top-3 sm:top-4 right-3 sm:right-4 bottom-3 sm:bottom-4 z-modal` inside `<GlassPanel className="wg-glass-card shadow-2xl" overrides={{ borderRadius: 28 }}>`.
+  3. Sticky bottom action footers (`bg-white/30 dark:bg-white/[0.03] backdrop-blur-md border-t border-black/5 dark:border-white/10`).
 
 ### 7.2 Typography & Label System
 

@@ -223,34 +223,33 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
         } finally {
             setIsFetchingBrand(false);
         }
-    };
-
-    if (showDeleteConfirm) {
+    };    if (showDeleteConfirm) {
         return (
-            <div className="text-center space-y-6 animate-fade-in py-8">
-                <div className="w-20 h-20 bg-semantic-red/15 rounded-full flex items-center justify-center mx-auto text-semantic-red animate-pulse">
+            <div className="p-6 sm:p-8 rounded-3xl bg-white/50 dark:bg-white/[0.05] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-xs text-center space-y-6 animate-fade-in my-4">
+                <div className="w-20 h-20 bg-rose-500/15 border border-rose-500/20 rounded-2xl flex items-center justify-center mx-auto text-rose-500 shadow-inner">
                     <Trash className="w-10 h-10" weight="duotone" />
                 </div>
                 <div>
-                    <h4 className="text-xl font-bold text-light-text dark:text-dark-text">Delete All Accommodations?</h4>
-                    <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary mt-2">
+                    <h4 className="text-xl font-bold text-light-text dark:text-dark-text tracking-tight">Delete All Accommodations?</h4>
+                    <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary mt-1.5">
                         This will remove {items.length} stays from this trip.
                     </p>
                 </div>
                 <div className="flex gap-3 pt-2 max-w-xs mx-auto">
                     <button 
                         type="button" 
-                        className={`${BTN_SECONDARY_STYLE} flex-1 h-12`} 
+                        className={`${BTN_SECONDARY_STYLE} flex-1 h-12 text-xs font-bold uppercase tracking-wider cursor-pointer`} 
                         onClick={() => setShowDeleteConfirm(false)}
                     >
                         Cancel
                     </button>
                     <button 
                         type="button" 
-                        className={`${BTN_DANGER_STYLE} flex-1 h-12`} 
+                        className={`${BTN_DANGER_STYLE} flex-1 h-12 text-xs font-bold uppercase tracking-wider cursor-pointer flex items-center justify-center gap-2`} 
                         onClick={() => { if (onDelete && initialData) onDelete(initialData.map(i => i.id)); }}
                     >
-                        Confirm Delete
+                        <Trash className="w-4 h-4" weight="duotone" />
+                        <span>Confirm</span>
                     </button>
                 </div>
             </div>
@@ -258,7 +257,7 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
     }
 
     return (
-        <div className="space-y-6 animate-fade-in max-h-[80vh] overflow-y-auto custom-scrollbar p-1">
+        <div className="space-y-6 animate-fade-in">
             
             {/* Inline Draft Error */}
             {draftError && (
@@ -276,9 +275,9 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
             {/* List of Existing Accommodations */}
             <div className="space-y-3">
                 {items.filter(i => i.id !== editingId).map((item) => (
-                    <div key={item.id} className="relative p-4 bg-white/80 dark:bg-dark-card/80 backdrop-blur-md rounded-2xl border border-black/10 dark:border-white/10 shadow-sm flex justify-between items-center hover:shadow-md transition-all">
+                    <div key={item.id} className="relative p-4 bg-white/50 dark:bg-white/[0.05] backdrop-blur-md rounded-2xl border border-black/8 dark:border-white/10 shadow-xs flex justify-between items-center hover:border-black/15 dark:hover:border-white/20 transition-all">
                         <div className="flex items-center gap-4 min-w-0">
-                            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 flex items-center justify-center text-2xl shrink-0 shadow-sm overflow-hidden">
+                            <div className="w-12 h-12 rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20 flex items-center justify-center text-2xl shrink-0 shadow-sm overflow-hidden">
                                 {item.logoUrl ? (
                                     <img src={item.logoUrl} alt="Logo" className="w-full h-full object-cover" />
                                 ) : (
@@ -293,7 +292,7 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                                     </span>
                                     
                                     {item.cost && (
-                                        <span className="text-semantic-green font-bold ml-1">{formatCurrency(item.cost)}</span>
+                                        <span className="text-emerald-500 font-bold ml-1">{formatCurrency(item.cost)}</span>
                                     )}
                                 </div>
                                 <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5 truncate max-w-[240px] font-medium">{item.address}</p>
@@ -303,7 +302,7 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                             <button 
                                 type="button" 
                                 onClick={() => handleEditItem(item)} 
-                                className="w-9 h-9 rounded-xl flex items-center justify-center text-primary-500 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer" 
+                                className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-xl flex items-center justify-center text-primary-500 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer" 
                                 title="Edit" 
                                 aria-label="Edit accommodation"
                             >
@@ -312,7 +311,7 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                             <button 
                                 type="button" 
                                 onClick={() => handleDeleteItem(item.id)} 
-                                className="w-9 h-9 rounded-xl flex items-center justify-center text-semantic-red hover:bg-semantic-red/10 transition-colors cursor-pointer" 
+                                className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-xl flex items-center justify-center text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer" 
                                 title="Delete" 
                                 aria-label="Delete accommodation"
                             >
@@ -325,7 +324,7 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
 
             {/* Editor Form */}
             {(editingId || items.length === 0) && (
-                <div className="p-6 rounded-3xl bg-light-fill dark:bg-dark-fill/50 border border-black/10 dark:border-white/5 space-y-5 animate-fade-in relative">
+                <div className="p-5 sm:p-6 rounded-3xl bg-white/50 dark:bg-white/[0.04] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-xs space-y-5 animate-fade-in relative">
                     <div className="flex justify-between items-center">
                         <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1.5">
                             <MapPin className="w-4 h-4 text-amber-500" weight="duotone" />
@@ -343,7 +342,7 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                         )}
                     </div>
 
-                    {/* Visual Type Picker (Liquid Glass / Modern Cards) */}
+                    {/* Visual Type Picker (Liquid Glass / Modern Segmented Cards) */}
                     <div className="space-y-1.5">
                         <label className="block text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
                             Accommodation Type
@@ -359,8 +358,8 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                                         onClick={() => setForm({ ...form, type: t.value as any })}
                                         className={`p-3 rounded-2xl flex flex-col items-center justify-center gap-1.5 text-center transition-all border min-h-[64px] cursor-pointer ${
                                             isSelected
-                                            ? 'bg-white dark:bg-dark-card border-amber-500/40 text-amber-600 dark:text-amber-400 shadow-sm ring-1 ring-amber-500/30'
-                                            : 'bg-black/5 dark:bg-white/5 border-transparent text-light-text-secondary hover:text-light-text hover:bg-black/10'
+                                            ? 'bg-amber-500/15 dark:bg-amber-500/25 border-amber-500/40 text-amber-700 dark:text-amber-300 shadow-sm backdrop-blur-md font-bold'
+                                            : 'bg-black/5 dark:bg-white/5 border-transparent text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/10'
                                         }`}
                                     >
                                         <IconComponent className="w-5 h-5" weight={isSelected ? "duotone" : "regular"} />
@@ -408,7 +407,7 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
 
                         {/* Address */}
                         <Autocomplete 
-                            label="Address / Location"
+                            label="Address / Location" 
                             placeholder="e.g. Oia 847 02, Santorini, Greece"
                             value={form.address || ''}
                             onChange={val => setForm({...form, address: val})}
@@ -524,7 +523,7 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                 <button 
                     type="button"
                     onClick={prepareNewItem}
-                    className="w-full py-4 border-2 border-dashed border-black/10 dark:border-white/10 rounded-2xl text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider hover:border-amber-500 hover:text-amber-600 dark:hover:text-amber-400 transition-all flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
+                    className="w-full py-4 border-2 border-dashed border-black/10 dark:border-white/10 rounded-2xl text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider hover:border-amber-500/50 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-500/5 transition-all flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
                     aria-label="Add Another Accommodation"
                 >
                     <Plus className="w-4 h-4" />
@@ -532,16 +531,16 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                 </button>
             )}
 
-            {/* Sticky Action Footer */}
-            <div className="p-4 border-t border-black/10 dark:border-white/10 sticky bottom-0 bg-white/90 dark:bg-dark-card/90 backdrop-blur-md flex items-center justify-between gap-3 rounded-2xl z-20">
+            {/* Sticky Frosted Footer */}
+            <div className="p-4 sm:p-5 -mx-4 sm:-mx-6 -mb-4 sm:-mb-6 mt-6 border-t border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] backdrop-blur-md flex items-center justify-between gap-3 sticky bottom-0 z-20 rounded-b-[28px]">
                 {initialData && initialData.length > 0 && onDelete ? (
                     <button 
                         type="button" 
                         onClick={() => setShowDeleteConfirm(true)} 
-                        className="text-semantic-red hover:bg-semantic-red/10 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer min-h-[44px]"
+                        className="text-rose-500 hover:bg-rose-500/10 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer min-h-[44px]"
                         aria-label="Delete All Accommodations"
                     >
-                        <Trash className="w-4 h-4" />
+                        <Trash className="w-4 h-4" weight="duotone" />
                         <span>Delete All</span>
                     </button>
                 ) : <div />}

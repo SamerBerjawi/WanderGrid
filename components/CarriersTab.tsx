@@ -775,12 +775,12 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
             {deletingCarrier && (
                 <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
                     <div
-                        className="fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md transition-opacity"
-                        style={{ WebkitBackdropFilter: 'blur(12px)' }}
+                        className="fixed inset-0 bg-black/25 dark:bg-black/50 backdrop-blur-xs transition-opacity"
+                        style={{ WebkitBackdropFilter: 'blur(4px)' }}
                         onClick={() => setDeletingCarrier(null)}
                     />
                     <div className="relative w-full max-w-sm">
-                        <GlassPanel className="wg-glass-card shadow-2xl p-6 rounded-3xl" overrides={{ borderRadius: 24 }} padding="0px">
+                        <GlassPanel className="wg-glass-card shadow-2xl p-6 rounded-[28px] overflow-hidden" overrides={{ borderRadius: 28 }} padding="0px">
                             <div className="p-6 flex flex-col items-center text-center">
                                 <div className="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-500 flex items-center justify-center mb-4">
                                     <Trash className="w-6 h-6" />

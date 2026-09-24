@@ -351,10 +351,10 @@ export const Modal: React.FC<ModalProps> = ({
 
   return createPortal(
     <div className={cn("fixed inset-0 z-modal flex items-center justify-center p-4 transition-all duration-300 font-sans", isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none')}>
-      {/* 1. Frosted Backdrop (Crystal TransactionModal level) */}
+      {/* 1. Luminous Frosted Backdrop */}
       <div 
-        className="fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md transition-opacity" 
-        style={{ WebkitBackdropFilter: 'blur(12px)' }}
+        className="fixed inset-0 bg-black/25 dark:bg-black/50 backdrop-blur-xs transition-opacity" 
+        style={{ WebkitBackdropFilter: 'blur(4px)' }}
         onClick={onClose} 
       />
       
@@ -369,7 +369,7 @@ export const Modal: React.FC<ModalProps> = ({
         overrides={{ borderRadius: 28 }}
       >
         {/* Header */}
-        <div className="p-6 border-b border-black/10 dark:border-white/10 flex items-center justify-between bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">
+        <div className="p-4 sm:p-6 border-b border-black/5 dark:border-white/10 flex items-center justify-between bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             {icon && (
               <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white bg-primary-500 shrink-0 shadow-md transition-transform hover:scale-105">
@@ -403,14 +403,14 @@ export const Modal: React.FC<ModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+        <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1">
           {children}
         </div>
 
         {/* Sticky Frosted Footer (optional) */}
         {footerActions && (
           <div 
-            className="p-6 border-t border-black/10 dark:border-white/10 bg-white/80 dark:bg-dark-card/80 backdrop-blur-md flex items-center justify-between gap-3 shrink-0"
+            className="p-4 sm:p-6 border-t border-black/5 dark:border-white/10 bg-white/30 dark:bg-white/[0.03] backdrop-blur-md flex items-center justify-between gap-3 shrink-0"
           >
             {footerActions}
           </div>

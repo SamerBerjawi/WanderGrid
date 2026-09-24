@@ -381,7 +381,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             {/* Dynamic More popup trigger */}
             {(() => {
-              const isMoreActive = (currentView === ViewState.PLANNER || currentView === ViewState.SETTINGS || currentView === ViewState.USER_DETAIL || currentView === ViewState.ROADTRIPS);
+              const isMoreActive = (currentView === ViewState.PLANNER || currentView === ViewState.PLANNER_2 || currentView === ViewState.VACATION_CALENDAR || currentView === ViewState.SETTINGS || currentView === ViewState.USER_DETAIL || currentView === ViewState.ROADTRIPS);
               const moreTheme = isMoreActive ? (PAGE_THEMES[currentView] || PAGE_THEMES[ViewState.PLANNER]) : null;
               return (
                 <button
@@ -421,7 +421,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="md:hidden fixed inset-0 bg-black/35 backdrop-blur-xs z-[55]"
+              className="md:hidden fixed inset-0 bg-black/25 dark:bg-black/50 backdrop-blur-xs z-[55]"
+              style={{ WebkitBackdropFilter: 'blur(4px)' }}
               onClick={() => setIsMoreOpen(false)}
             />
             {/* Elegant Minimalist Floating Menu Box with Liquid Glass */}
@@ -477,6 +478,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </div>
                     {currentView === ViewState.PLANNER_2 && (
                       <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: PAGE_THEMES[ViewState.PLANNER_2].accentHex }} />
+                    )}
+                  </button>
+
+                  {/* Vacation Calendar option */}
+                  <button
+                    onClick={() => {
+                      onNavigate(ViewState.VACATION_CALENDAR);
+                      setIsMoreOpen(false);
+                    }}
+                    className={`flex items-center justify-between w-full p-2.5 px-3 rounded-xl text-left text-xs font-bold font-sans transition-all duration-150 border cursor-pointer ${
+                      currentView === ViewState.VACATION_CALENDAR
+                        ? `${isDark ? PAGE_THEMES[ViewState.VACATION_CALENDAR].activeSidebarDark : PAGE_THEMES[ViewState.VACATION_CALENDAR].activeSidebarLight} ${PAGE_THEMES[ViewState.VACATION_CALENDAR].color}`
+                        : 'text-light-text dark:text-dark-text bg-transparent border-transparent hover:bg-black/5 dark:hover:bg-white/5'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Icon name="calendar_today" className={`text-lg ${PAGE_THEMES[ViewState.VACATION_CALENDAR].color}`} />
+                      <span>Vacation Calendar</span>
+                    </div>
+                    {currentView === ViewState.VACATION_CALENDAR && (
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: PAGE_THEMES[ViewState.VACATION_CALENDAR].accentHex }} />
                     )}
                   </button>
 

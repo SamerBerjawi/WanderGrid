@@ -406,50 +406,51 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
             id: 'Planning' as const,
             label: 'Planned',
             Icon: Compass,
-            activeStyle: 'bg-white dark:bg-dark-card text-amber-600 dark:text-amber-400 shadow-sm border border-amber-500/30'
+            activeStyle: 'bg-white/80 dark:bg-white/15 backdrop-blur-md text-amber-600 dark:text-amber-400 shadow-sm border border-amber-500/30'
         },
         {
             id: 'Upcoming' as const,
             label: 'Confirmed',
             Icon: CalendarCheck,
-            activeStyle: 'bg-white dark:bg-dark-card text-emerald-600 dark:text-emerald-400 shadow-sm border border-emerald-500/30'
+            activeStyle: 'bg-white/80 dark:bg-white/15 backdrop-blur-md text-emerald-600 dark:text-emerald-400 shadow-sm border border-emerald-500/30'
         },
         {
             id: 'Past' as const,
             label: 'Past',
             Icon: Hourglass,
-            activeStyle: 'bg-white dark:bg-dark-card text-violet-600 dark:text-violet-400 shadow-sm border border-violet-500/30'
+            activeStyle: 'bg-white/80 dark:bg-white/15 backdrop-blur-md text-violet-600 dark:text-violet-400 shadow-sm border border-violet-500/30'
         }
     ];
 
     return createPortal(
         <div className="fixed inset-0 z-modal overflow-hidden font-sans">
-            {/* 1. Frosted Backdrop */}
+            {/* 1. Luminous Frosted Backdrop */}
             <div 
-                className={`fixed inset-0 bg-gray-900/40 dark:bg-black/80 backdrop-blur-md transition-opacity duration-300 ${
+                className={`fixed inset-0 bg-black/25 dark:bg-black/50 backdrop-blur-xs transition-opacity duration-300 ${
                     isVisible ? 'opacity-100' : 'opacity-0'
                 }`}
-                style={{ WebkitBackdropFilter: 'blur(12px)' }}
+                style={{ WebkitBackdropFilter: 'blur(4px)' }}
                 onClick={handleClose}
             />
 
-            {/* 2. Slide-out Shell with Full Liquid Glass */}
-            <div className="fixed inset-y-0 right-0 max-w-full flex pl-0 sm:pl-10">
+            {/* 2. Slide-out Shell with Full Liquid Glass (Floating 28px standard) */}
+            <div className="fixed top-3 sm:top-4 right-3 sm:right-4 bottom-3 sm:bottom-4 z-modal flex max-w-full pl-0 sm:pl-10 pointer-events-none">
                 <div 
-                    className={`w-screen max-w-lg h-full border-l border-black/10 dark:border-white/15 flex flex-col transform transition-transform duration-300 ease-out ${
+                    className={`w-screen max-w-lg h-full flex flex-col transform transition-transform duration-300 ease-out pointer-events-auto ${
                         isVisible ? 'translate-x-0' : 'translate-x-full'
                     }`}
                 >
                     <GlassPanel
-                        className="wg-glass-card w-full h-full flex flex-col shadow-none sm:shadow-glass-modal overflow-hidden bg-white/90 dark:bg-dark-card/90"
+                        className="wg-glass-card w-full h-full flex flex-col shadow-2xl overflow-hidden"
                         padding="0px"
-                        overrides={{ borderRadius: 0 }}
+                        overrides={{ borderRadius: 28 }}
                     >
+                        <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px]">
                         {/* Header: Streamlined without tag or subtitle */}
                         <div className="p-4 sm:p-6 border-b border-black/5 dark:border-white/10 flex items-center justify-between bg-gradient-to-r from-primary-500/10 via-emerald-500/5 to-transparent shrink-0">
                             <div className="flex items-center gap-3.5 min-w-0">
-                                <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-primary-500 to-amber-500 shrink-0 shadow-none sm:shadow-xs transition-transform hover:scale-105 border border-white/25">
-                                    <MapTrifold weight="duotone" className="w-6 h-6" />
+                                <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-primary-500 to-amber-500 shrink-0 shadow-md transition-transform hover:scale-105 border border-white/25">
+                                    <MapTrifold weight="duotone" className="w-5 h-5" />
                                 </div>
                                 <div className="min-w-0">
                                     <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight truncate">
@@ -460,7 +461,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                             <button 
                                 type="button"
                                 onClick={handleClose}
-                                className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-2xl flex items-center justify-center text-slate-500 dark:text-zinc-400 hover:bg-black/5 dark:hover:bg-white/10 transition-colors shrink-0 cursor-pointer"
+                                className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-2xl flex items-center justify-center text-zinc-500 dark:text-zinc-400 hover:bg-black/5 dark:hover:bg-white/10 transition-colors shrink-0 cursor-pointer"
                                 aria-label="Close drawer"
                             >
                                 <X weight="bold" className="w-5 h-5" />
@@ -470,12 +471,12 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                         {/* Confirmation Dialog Overlay for Archive / Delete */}
                         {showDeleteConfirm ? (
                             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-6 animate-fade-in">
-                                <div className="w-20 h-20 rounded-3xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-500 shadow-none sm:shadow-xs">
-                                    <Trash weight="duotone" className="w-10 h-10" />
+                                <div className="w-16 h-16 rounded-3xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-500 shadow-sm">
+                                    <Trash weight="duotone" className="w-8 h-8" />
                                 </div>
                                 <div className="space-y-2 max-w-sm">
                                     <h3 className="text-xl font-bold text-slate-900 dark:text-white">Archive Journey?</h3>
-                                    <p className="text-xs text-slate-600 dark:text-zinc-300 leading-relaxed">
+                                    <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed">
                                         This will permanently remove <strong>{title || initialData?.name}</strong> and its registered stops, itineraries, and timeline bookings.
                                     </p>
                                 </div>
@@ -503,7 +504,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                         ) : (
                             /* Form Content */
                             <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
-                                <div className="flex-1 overflow-y-auto p-3.5 sm:p-6 space-y-4 sm:space-y-5 custom-scrollbar">
+                                <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-5 custom-scrollbar">
 
                                     {errorMsg && (
                                         <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-semibold flex items-center gap-2.5 animate-fade-in">
@@ -513,15 +514,15 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                     )}
 
                                     {/* 1. Trip Title */}
-                                    <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white dark:bg-dark-card border border-black/15 dark:border-white/10 shadow-none sm:shadow-xs focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-500/20 transition-all">
-                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-zinc-200 mb-1.5">
+                                    <div className="p-3.5 sm:p-4 rounded-2xl bg-white/50 dark:bg-white/[0.05] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-sm focus-within:border-primary-500/40 focus-within:ring-2 focus-within:ring-primary-500/20 transition-all">
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 mb-1.5">
                                             Trip Title <span className="text-rose-500">*</span>
                                         </label>
                                         <input
                                             type="text"
                                             value={title}
                                             onChange={(e) => setTitle(e.target.value)}
-                                            className="w-full bg-transparent text-lg font-bold text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 outline-none"
+                                            className="w-full bg-transparent text-lg font-bold text-slate-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 outline-none"
                                             placeholder="e.g. Summer in Tokyo"
                                             required
                                             autoFocus
@@ -529,8 +530,8 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                     </div>
 
                                     {/* 2. Badge & Emoji Selector */}
-                                    <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white dark:bg-dark-card border border-black/15 dark:border-white/10 shadow-none sm:shadow-xs flex items-center gap-3 sm:gap-4">
-                                        <div className="w-14 sm:w-16 h-14 sm:h-16 rounded-2xl bg-gradient-to-tr from-primary-500/25 to-primary-500/10 dark:from-primary-500/30 dark:to-dark-card border-2 border-primary-500/40 flex items-center justify-center text-2xl sm:text-3xl shadow-none sm:shadow-sm relative select-none transition-transform hover:scale-105 shrink-0">
+                                    <div className="p-3.5 sm:p-4 rounded-2xl bg-white/50 dark:bg-white/[0.05] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-sm flex items-center gap-3 sm:gap-4">
+                                        <div className="w-14 sm:w-16 h-14 sm:h-16 rounded-2xl bg-gradient-to-tr from-primary-500/20 to-primary-500/5 dark:from-primary-500/30 dark:to-white/5 border border-primary-500/30 flex items-center justify-center text-2xl sm:text-3xl shadow-sm relative select-none transition-transform hover:scale-105 shrink-0">
                                             <span>{icon}</span>
                                             <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-primary-500 text-white rounded-md flex items-center justify-center text-2xs shadow-sm">
                                                 <Sparkle weight="duotone" className="w-3 h-3" />
@@ -538,7 +539,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                         </div>
 
                                         <div className="flex-1 space-y-1.5 min-w-0">
-                                            <label className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-zinc-200 block">
+                                            <label className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
                                                 Badge & Icon
                                             </label>
                                             <div className="flex flex-wrap gap-1.5 items-center">
@@ -549,8 +550,8 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                                         onClick={() => setIcon(e.trim())}
                                                         className={`w-8 h-8 flex items-center justify-center rounded-xl text-base transition-all active:scale-95 cursor-pointer ${
                                                             icon === e.trim()
-                                                                ? 'bg-primary-500 text-white shadow-none sm:shadow-xs font-bold scale-105 border border-white/30'
-                                                                : 'bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 border border-black/12 dark:border-white/10 text-slate-900 dark:text-white shadow-none sm:shadow-2xs'
+                                                                ? 'bg-primary-500 text-white shadow-xs font-bold scale-105 border border-white/30'
+                                                                : 'bg-white/60 hover:bg-white/80 dark:bg-white/10 dark:hover:bg-white/20 border border-black/8 dark:border-white/10 text-slate-900 dark:text-white shadow-2xs'
                                                         }`}
                                                     >
                                                         {e.trim()}
@@ -562,8 +563,8 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                                     onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                                                     className={`h-8 px-2.5 flex items-center gap-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer active:scale-95 ${
                                                         showEmojiPicker
-                                                            ? 'border-primary-500 bg-primary-500/20 text-primary-600 dark:text-primary-400 shadow-none sm:shadow-sm'
-                                                            : 'bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 border-black/12 dark:border-white/10 text-slate-800 dark:text-zinc-200 shadow-none sm:shadow-2xs'
+                                                            ? 'border-primary-500 bg-primary-500/20 text-primary-600 dark:text-primary-400 shadow-sm'
+                                                            : 'bg-white/60 hover:bg-white/80 dark:bg-white/10 dark:hover:bg-white/20 border border-black/8 dark:border-white/10 text-zinc-700 dark:text-zinc-300 shadow-2xs'
                                                     }`}
                                                     title="Explore all emojis"
                                                 >
@@ -576,10 +577,10 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
 
                                     {/* 3. Trip Stage (Segmented Controls) */}
                                     <div className="space-y-2">
-                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-zinc-200 ml-0.5">
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 ml-0.5">
                                             Stage
                                         </label>
-                                        <div className="bg-slate-100/90 dark:bg-white/5 p-1 rounded-xl sm:p-1.5 sm:rounded-2xl flex gap-1 sm:gap-1.5 border border-black/12 dark:border-white/10">
+                                        <div className="bg-black/5 dark:bg-white/5 p-1 rounded-2xl flex gap-1 border border-black/8 dark:border-white/10">
                                             {STAGE_CONFIGS.map(s => {
                                                 const isSelected = status === s.id;
                                                 const IconComponent = s.Icon;
@@ -588,10 +589,10 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                                         key={s.id}
                                                         type="button"
                                                         onClick={() => setStatus(s.id)}
-                                                        className={`flex-1 py-2 sm:py-2.5 px-2 sm:px-3 rounded-lg sm:rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer select-none active:scale-95 ${
+                                                        className={`flex-1 py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-1 sm:gap-1.5 cursor-pointer select-none active:scale-95 ${
                                                             isSelected
-                                                                ? `${s.activeStyle} shadow-none sm:shadow-xs`
-                                                                : 'text-slate-700 dark:text-zinc-300 font-bold hover:text-slate-900 dark:hover:text-white hover:bg-white/80 dark:hover:bg-white/10'
+                                                                ? `${s.activeStyle} shadow-sm`
+                                                                : 'text-zinc-600 dark:text-zinc-300 font-bold hover:text-zinc-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/10'
                                                         }`}
                                                     >
                                                         <IconComponent weight="duotone" className="w-4 h-4 shrink-0" />
@@ -604,14 +605,14 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
 
                                     {/* 4. Timeline Dates */}
                                     <div className="space-y-2">
-                                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-zinc-200 ml-0.5">
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 ml-0.5">
                                             Timeline <span className="text-rose-500">*</span>
                                         </label>
                                         <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                                            <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-white dark:bg-dark-card border border-black/15 dark:border-white/10 shadow-none sm:shadow-xs focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-500/20 transition-all">
+                                            <div className="p-3 sm:p-3.5 rounded-2xl bg-white/50 dark:bg-white/[0.05] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-sm focus-within:border-primary-500/40 focus-within:ring-2 focus-within:ring-primary-500/20 transition-all">
                                                 <div className="flex items-center gap-2 mb-1.5">
                                                     <CalendarBlank weight="duotone" className="w-4 h-4 text-primary-500 shrink-0" />
-                                                    <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-zinc-300">
+                                                    <span className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
                                                         Departure
                                                     </span>
                                                 </div>
@@ -625,10 +626,10 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                                 />
                                             </div>
 
-                                            <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-white dark:bg-dark-card border border-black/15 dark:border-white/10 shadow-none sm:shadow-xs focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-500/20 transition-all">
+                                            <div className="p-3 sm:p-3.5 rounded-2xl bg-white/50 dark:bg-white/[0.05] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-sm focus-within:border-primary-500/40 focus-within:ring-2 focus-within:ring-primary-500/20 transition-all">
                                                 <div className="flex items-center gap-2 mb-1.5">
                                                     <CalendarBlank weight="duotone" className="w-4 h-4 text-primary-500 shrink-0" />
-                                                    <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-zinc-300">
+                                                    <span className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
                                                         Conclusion
                                                     </span>
                                                 </div>
@@ -648,10 +649,10 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                     {/* 5. Destinations */}
                                     <div ref={destWrapperRef} className="space-y-2">
                                         <div className="flex items-center justify-between ml-0.5">
-                                            <label className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-zinc-200 block">
+                                            <label className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
                                                 Destinations
                                             </label>
-                                            <span className="text-xs text-slate-600 dark:text-zinc-400 font-medium">
+                                            <span className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
                                                 City name or Google Maps link
                                             </span>
                                         </div>
@@ -662,14 +663,14 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                                 {destinations.map((dest, idx) => (
                                                     <div
                                                         key={idx}
-                                                        className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl bg-white dark:bg-dark-card border border-black/15 dark:border-white/10 shadow-none sm:shadow-xs inline-flex items-center gap-1.5 text-xs font-bold text-slate-900 dark:text-white"
+                                                        className="px-3 py-1.5 rounded-xl bg-white/70 dark:bg-white/10 backdrop-blur-sm border border-black/8 dark:border-white/10 shadow-xs inline-flex items-center gap-1.5 text-xs font-bold text-slate-900 dark:text-white"
                                                     >
                                                         <span>{dest.flag || '📍'}</span>
                                                         <span>{dest.name}</span>
                                                         <button
                                                             type="button"
                                                             onClick={() => handleRemoveDestination(idx)}
-                                                            className="p-0.5 hover:text-rose-500 rounded-md transition-colors cursor-pointer ml-0.5 text-slate-400 hover:text-rose-500"
+                                                            className="p-0.5 hover:text-rose-500 rounded-md transition-colors cursor-pointer ml-0.5 text-zinc-400 hover:text-rose-500"
                                                             aria-label={`Remove ${dest.name}`}
                                                         >
                                                             <XCircle weight="duotone" className="w-3.5 h-3.5" />
@@ -681,7 +682,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
 
                                         {/* Destination Input */}
                                         <div className="relative">
-                                            <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-white dark:bg-dark-card border border-black/15 dark:border-white/10 shadow-none sm:shadow-xs focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all flex items-center gap-2.5">
+                                            <div className="p-3 sm:p-3.5 rounded-2xl bg-white/50 dark:bg-white/[0.05] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-sm focus-within:border-emerald-500/40 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all flex items-center gap-2.5">
                                                 <MapPin weight="duotone" className="w-4 h-4 text-emerald-500 shrink-0" />
                                                 <input
                                                     type="text"
@@ -691,7 +692,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                                     onFocus={() => {
                                                         if (suggestions.length > 0) setShowSuggestions(true);
                                                     }}
-                                                    className="w-full bg-transparent text-xs font-bold text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 outline-none"
+                                                    className="w-full bg-transparent text-xs font-bold text-slate-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 outline-none"
                                                     placeholder="Add destination (e.g. Rome, Tokyo)..."
                                                     autoComplete="off"
                                                 />
@@ -705,7 +706,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                                             setDestinationInput('');
                                                             setShowSuggestions(false);
                                                         }}
-                                                        className="p-0.5 text-slate-400 hover:text-slate-700 dark:hover:text-zinc-200 cursor-pointer shrink-0"
+                                                        className="p-0.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer shrink-0"
                                                     >
                                                         <XCircle weight="duotone" className="w-4 h-4" />
                                                     </button>
@@ -714,19 +715,19 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
 
                                             {/* Suggestions Flyout */}
                                             {showSuggestions && suggestions.length > 0 && (
-                                                <div className="absolute top-full left-0 mt-2 w-full z-[70] bg-white dark:bg-dark-card border border-black/10 dark:border-white/10 rounded-2xl shadow-glass-card overflow-hidden max-h-52 overflow-y-auto custom-scrollbar p-1.5">
+                                                <div className="absolute top-full left-0 mt-2 w-full z-[70] bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden max-h-52 overflow-y-auto custom-scrollbar p-1.5">
                                                     {suggestions.map((item, idx) => (
                                                         <button
                                                             key={idx}
                                                             type="button"
                                                             onClick={() => handleAddDestination(item)}
-                                                            className="w-full text-left px-3.5 py-2.5 text-xs hover:bg-slate-100 dark:hover:bg-white/10 text-slate-800 dark:text-dark-text border-b border-black/5 dark:border-white/5 last:border-0 font-medium flex items-center justify-between gap-2 transition-colors cursor-pointer rounded-xl"
+                                                            className="w-full text-left px-3.5 py-2.5 text-xs hover:bg-black/5 dark:hover:bg-white/10 text-zinc-800 dark:text-zinc-200 border-b border-black/5 dark:border-white/5 last:border-0 font-medium flex items-center justify-between gap-2 transition-colors cursor-pointer rounded-xl"
                                                         >
                                                             <div className="flex items-center gap-2 truncate">
                                                                 <span>{item.flag || '📍'}</span>
                                                                 <span className="font-bold text-slate-900 dark:text-white truncate">{item.name}</span>
                                                                 {item.country && (
-                                                                    <span className="text-slate-600 dark:text-zinc-400 truncate text-xs">
+                                                                    <span className="text-zinc-500 dark:text-zinc-400 truncate text-xs">
                                                                         · {item.country}
                                                                     </span>
                                                                 )}
@@ -744,7 +745,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                 </div>
 
                                 {/* Sticky Frosted Footer with Liquid Glass Actions */}
-                                <div className="p-4 sm:p-6 border-t border-black/5 dark:border-white/10 bg-white/80 dark:bg-dark-card/80 backdrop-blur-md flex items-center justify-between gap-3 shrink-0">
+                                <div className="p-4 sm:p-6 border-t border-black/5 dark:border-white/10 bg-white/30 dark:bg-white/[0.03] backdrop-blur-md flex items-center justify-between gap-3 shrink-0">
                                     {initialData && (onDelete || initialData.id) ? (
                                         <GlassButton 
                                             type="button" 
@@ -791,6 +792,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                 </div>
                             </form>
                         )}
+                        </div>
                     </GlassPanel>
                 </div>
             </div>
@@ -803,7 +805,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                     style={{ top: pickerPosition.top, left: pickerPosition.left }}
                 >
                     <GlassPanel
-                        className="wg-glass-card bg-white/95 dark:bg-dark-card/95 w-80 shadow-glass-modal overflow-hidden p-4"
+                        className="wg-glass-card w-80 shadow-2xl overflow-hidden p-4"
                         padding="16px"
                         overrides={{ borderRadius: 24 }}
                     >
@@ -813,7 +815,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                 autoFocus 
                                 value={emojiSearch} 
                                 onChange={e => setEmojiSearch(e.target.value)} 
-                                className="w-full py-2 px-3 text-xs rounded-xl bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/10 outline-none focus:border-primary-500 font-medium text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500" 
+                                className="w-full py-2 px-3 text-xs rounded-xl bg-black/5 dark:bg-white/10 border border-black/8 dark:border-white/10 outline-none focus:border-primary-500 font-medium text-slate-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500" 
                             />
                         </div>
                         

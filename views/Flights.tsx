@@ -3501,15 +3501,16 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
       )}
 
       {/* Unbundle Confirmation Modal */}
+      {/* Unbundle Confirmation Modal */}
       {unbundleConfirmTarget !== null && createPortal(
         <div className="fixed inset-0 z-modal flex items-center justify-center p-4 transition-all duration-300 font-sans animate-fade-in">
           <div 
-            className="fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md transition-opacity"
-            style={{ WebkitBackdropFilter: 'blur(12px)' }}
+            className="fixed inset-0 bg-black/25 dark:bg-black/50 backdrop-blur-xs transition-opacity"
+            style={{ WebkitBackdropFilter: 'blur(4px)' }}
             onClick={() => setUnbundleConfirmTarget(null)}
           />
-          <div className="relative bg-white/90 dark:bg-dark-card/90 backdrop-blur-sm rounded-3xl p-6 max-w-md w-full shadow-glass-modal border border-black/10 dark:border-white/15 animate-scale-up z-10" style={{ WebkitBackdropFilter: 'blur(4px)' }}>
-            <div className="flex flex-col items-center text-center">
+          <GlassPanel className="wg-glass-card shadow-2xl overflow-hidden max-w-md w-full z-10" overrides={{ borderRadius: 28 }} padding="0px">
+            <div className="p-6 flex flex-col items-center text-center">
               <div className="w-12 h-12 bg-amber-500/10 dark:bg-amber-500/20 rounded-2xl flex items-center justify-center text-amber-500 mb-4 border border-amber-500/20">
                 <FolderMinus className="w-6 h-6" />
               </div>
@@ -3540,7 +3541,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                 </button>
               </div>
             </div>
-          </div>
+          </GlassPanel>
         </div>,
         document.body
       )}
@@ -3549,12 +3550,12 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
       {deleteConfirmTarget && createPortal(
         <div className="fixed inset-0 z-modal flex items-center justify-center p-4 transition-all duration-300 font-sans animate-fade-in">
           <div 
-            className="fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md transition-opacity"
-            style={{ WebkitBackdropFilter: 'blur(12px)' }}
+            className="fixed inset-0 bg-black/25 dark:bg-black/50 backdrop-blur-xs transition-opacity"
+            style={{ WebkitBackdropFilter: 'blur(4px)' }}
             onClick={() => setDeleteConfirmTarget(null)}
           />
-          <div className="relative bg-white/90 dark:bg-dark-card/90 backdrop-blur-sm rounded-3xl p-6 max-w-md w-full shadow-glass-modal border border-black/10 dark:border-white/15 animate-scale-up z-10" style={{ WebkitBackdropFilter: 'blur(4px)' }}>
-            <div className="flex flex-col items-center text-center">
+          <GlassPanel className="wg-glass-card shadow-2xl overflow-hidden max-w-md w-full z-10" overrides={{ borderRadius: 28 }} padding="0px">
+            <div className="p-6 flex flex-col items-center text-center">
               <div className="w-12 h-12 bg-semantic-red/10 dark:bg-semantic-red/20 rounded-2xl flex items-center justify-center text-semantic-red mb-4 border border-semantic-red/20">
                 <Trash2 className="w-6 h-6" />
               </div>
@@ -3607,7 +3608,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                 </button>
               </div>
             </div>
-          </div>
+          </GlassPanel>
         </div>,
         document.body
       )}
@@ -3616,12 +3617,12 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
       {isBundling && createPortal(
         <div className="fixed inset-0 z-modal flex items-center justify-center p-4 transition-all duration-300 font-sans animate-fade-in">
           <div 
-            className="fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md transition-opacity"
-            style={{ WebkitBackdropFilter: 'blur(12px)' }}
+            className="fixed inset-0 bg-black/25 dark:bg-black/50 backdrop-blur-xs transition-opacity"
+            style={{ WebkitBackdropFilter: 'blur(4px)' }}
             onClick={() => setIsBundling(false)}
           />
-          <div className="relative bg-white/90 dark:bg-dark-card/90 backdrop-blur-sm rounded-3xl p-6 max-w-md w-full shadow-glass-modal border border-black/10 dark:border-white/15 animate-scale-up z-10" style={{ WebkitBackdropFilter: 'blur(4px)' }}>
-            <div className="flex flex-col">
+          <GlassPanel className="wg-glass-card shadow-2xl overflow-hidden max-w-md w-full z-10" overrides={{ borderRadius: 28 }} padding="0px">
+            <div className="p-6 flex flex-col">
               <div className="flex items-center gap-3 mb-5">
                 <div className="w-11 h-11 bg-primary-500/10 text-primary-600 dark:text-primary-400 rounded-2xl flex items-center justify-center border border-primary-500/20">
                   <FolderPlus className="w-5 h-5" />
@@ -3664,7 +3665,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                   />
                 </div>
 
-                <div className="flex items-start gap-3 mt-4 p-4 bg-light-fill dark:bg-dark-fill/50 rounded-2xl border border-black/5 dark:border-white/5">
+                <div className="flex items-start gap-3 mt-4 p-4 bg-white/50 dark:bg-white/[0.05] rounded-2xl border border-black/5 dark:border-white/5">
                   <input
                     type="checkbox"
                     id="createTripInPlanner"
@@ -3697,7 +3698,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                 </button>
               </div>
             </div>
-          </div>
+          </GlassPanel>
         </div>,
         document.body
       )}
@@ -3706,15 +3707,15 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
       {isEditingBundle && createPortal(
         <div className="fixed inset-0 z-modal flex items-center justify-center p-4 transition-all duration-300 font-sans animate-fade-in">
           <div 
-            className="fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md transition-opacity"
-            style={{ WebkitBackdropFilter: 'blur(12px)' }}
+            className="fixed inset-0 bg-black/25 dark:bg-black/50 backdrop-blur-xs transition-opacity"
+            style={{ WebkitBackdropFilter: 'blur(4px)' }}
             onClick={() => {
               setIsEditingBundle(false);
               setEditingBundleId('');
             }}
           />
-          <div className="relative bg-white/90 dark:bg-dark-card/90 backdrop-blur-sm rounded-3xl p-6 max-w-md w-full shadow-glass-modal border border-black/10 dark:border-white/15 animate-scale-up z-10" style={{ WebkitBackdropFilter: 'blur(4px)' }}>
-            <div className="flex flex-col">
+          <GlassPanel className="wg-glass-card shadow-2xl overflow-hidden max-w-md w-full z-10" overrides={{ borderRadius: 28 }} padding="0px">
+            <div className="p-6 flex flex-col">
               <div className="flex items-center gap-3 mb-5">
                 <div className="w-11 h-11 bg-primary-500/10 text-primary-600 dark:text-primary-400 rounded-2xl flex items-center justify-center border border-primary-500/20">
                   <Compass className="w-5 h-5" />
@@ -3799,7 +3800,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                 </button>
               </div>
             </div>
-          </div>
+          </GlassPanel>
         </div>,
         document.body
       )}
@@ -3823,11 +3824,12 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           }}
         >
           <div 
-            className="fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md transition-opacity"
-            style={{ WebkitBackdropFilter: 'blur(12px)' }}
+            className="fixed inset-0 bg-black/25 dark:bg-black/50 backdrop-blur-xs transition-opacity"
+            style={{ WebkitBackdropFilter: 'blur(4px)' }}
             onClick={() => setIsEditing(false)}
           />
-          <div className="relative bg-white/90 dark:bg-dark-card/90 backdrop-blur-sm rounded-3xl p-6 max-w-lg w-full shadow-glass-modal border border-black/10 dark:border-white/15 animate-scale-up max-h-[90vh] overflow-y-auto custom-scrollbar z-10" style={{ WebkitBackdropFilter: 'blur(4px)' }}>
+          <GlassPanel className="wg-glass-card shadow-2xl overflow-hidden max-w-lg w-full z-10 max-h-[90vh] flex flex-col" overrides={{ borderRadius: 28 }} padding="0px">
+            <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
             
             <div className="flex items-center justify-between border-b border-black/5 dark:border-white/5 pb-4 mb-6">
               <div className="flex items-center gap-3">
@@ -4225,7 +4227,8 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
               </div>
 
             </form>
-          </div>
+            </div>
+          </GlassPanel>
         </div>,
         document.body
       )}

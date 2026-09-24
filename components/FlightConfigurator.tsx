@@ -352,30 +352,31 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
 
     if (showDeleteConfirm) {
         return (
-            <div className="text-center space-y-6 animate-fade-in py-8">
-                <div className="w-20 h-20 bg-semantic-red/15 rounded-full flex items-center justify-center mx-auto text-semantic-red animate-pulse">
+            <div className="p-6 sm:p-8 rounded-3xl bg-white/50 dark:bg-white/[0.05] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-xs text-center space-y-6 animate-fade-in my-4">
+                <div className="w-20 h-20 bg-rose-500/15 border border-rose-500/20 rounded-2xl flex items-center justify-center mx-auto text-rose-500 shadow-inner">
                     <Trash className="w-10 h-10" weight="duotone" />
                 </div>
                 <div>
-                    <h4 className="text-xl font-bold text-light-text dark:text-dark-text">Delete Transport Booking?</h4>
-                    <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary mt-2">
+                    <h4 className="text-xl font-bold text-light-text dark:text-dark-text tracking-tight">Delete Transport Booking?</h4>
+                    <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary mt-1.5">
                         This will remove the current booking and all associated legs.
                     </p>
                 </div>
                 <div className="flex gap-3 pt-2 max-w-xs mx-auto">
                     <button 
                         type="button" 
-                        className={`${BTN_SECONDARY_STYLE} flex-1 h-12`} 
+                        className={`${BTN_SECONDARY_STYLE} flex-1 h-12 text-xs font-bold uppercase tracking-wider cursor-pointer`} 
                         onClick={() => setShowDeleteConfirm(false)}
                     >
                         Cancel
                     </button>
                     <button 
                         type="button" 
-                        className={`${BTN_DANGER_STYLE} flex-1 h-12`} 
+                        className={`${BTN_DANGER_STYLE} flex-1 h-12 text-xs font-bold uppercase tracking-wider cursor-pointer flex items-center justify-center gap-2`} 
                         onClick={() => { if (onDelete && initialData) onDelete(initialData.map(f => f.id)); }}
                     >
-                        Confirm Delete
+                        <Trash className="w-4 h-4" weight="duotone" />
+                        <span>Confirm</span>
                     </button>
                 </div>
             </div>
@@ -383,10 +384,10 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
     }
 
     return (
-        <div className="space-y-6 animate-fade-in max-h-[80vh] overflow-y-auto custom-scrollbar p-1">
+        <div className="space-y-6 animate-fade-in">
             
             {/* Mode Selector Pill Bar - Derived from single source of truth TRANSPORT_MODES */}
-            <div className="bg-black/5 dark:bg-white/5 p-1.5 rounded-2xl flex gap-1 overflow-x-auto border border-black/5 dark:border-white/5">
+            <div className="bg-black/5 dark:bg-white/5 p-1.5 rounded-2xl flex gap-1 overflow-x-auto border border-black/5 dark:border-white/5 custom-scrollbar">
                 {TRANSPORT_MODES.map(m => {
                     const ModeIcon = m.icon;
                     const isActive = mode === m.mode || (m.mode === 'Cruise' && mode === 'Ferry');
@@ -395,10 +396,10 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                             type="button"
                             key={m.mode}
                             onClick={() => handleModeChange(m.mode)}
-                            className={`flex-1 flex flex-col items-center justify-center py-2.5 px-3 rounded-xl transition-all min-w-[72px] min-h-[44px] cursor-pointer ${
+                            className={`flex-1 flex flex-col items-center justify-center py-2.5 px-3 rounded-xl transition-all min-w-[72px] min-h-[48px] cursor-pointer ${
                                 isActive
-                                ? 'bg-white dark:bg-dark-card shadow-sm text-primary-600 dark:text-primary-400 font-bold'
-                                : 'text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5'
+                                ? 'bg-white/80 dark:bg-white/15 backdrop-blur-md shadow-sm text-primary-600 dark:text-primary-300 font-bold border border-black/5 dark:border-white/10'
+                                : 'text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/10'
                             }`}
                         >
                             <ModeIcon className="w-5 h-5 mb-1" weight={isActive ? "duotone" : "regular"} />
@@ -411,7 +412,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
             {/* Trip Type Selector (Round Trip, One-Way, Multi-City) for multi-segment modes */}
             {!isCar && (
                 <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 p-1 rounded-xl border border-black/5 dark:border-white/5">
+                    <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 p-1 rounded-2xl border border-black/5 dark:border-white/5">
                         {(['Round Trip', 'One-Way', 'Multi-City'] as TripType[]).map(type => {
                             if (mode !== 'Flight' && type === 'Multi-City') return null;
                             const isActive = tripType === type;
@@ -420,10 +421,10 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                     type="button"
                                     key={type}
                                     onClick={() => handleTripTypeChange(type)}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer min-h-[36px] ${
                                         isActive
-                                        ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm'
-                                        : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text'
+                                        ? 'bg-white/80 dark:bg-white/15 backdrop-blur-md text-primary-600 dark:text-primary-300 shadow-sm border border-black/5 dark:border-white/10'
+                                        : 'text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/10'
                                     }`}
                                 >
                                     {type}
@@ -436,7 +437,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                         <button 
                             type="button"
                             onClick={addSegment}
-                            className="px-3 py-1.5 rounded-xl bg-primary-500/10 hover:bg-primary-500/20 text-primary-600 dark:text-primary-400 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+                            className="px-3.5 py-1.5 rounded-xl bg-primary-500/10 hover:bg-primary-500/20 text-primary-600 dark:text-primary-400 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer border border-primary-500/20 min-h-[36px]"
                         >
                             <Plus className="w-3.5 h-3.5" weight="bold" />
                             <span>Add Leg</span>
@@ -532,7 +533,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
 
             {/* Booking Reference & Cost Bar for non-car transports */}
             {!isCar && (
-                <div className="p-5 rounded-3xl bg-light-fill dark:bg-dark-fill/50 border border-black/10 dark:border-white/5 space-y-3">
+                <div className="p-5 rounded-3xl bg-white/50 dark:bg-white/[0.04] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-xs space-y-3">
                     <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
                         Booking Reference & Financials
                     </span>
@@ -559,15 +560,15 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                 </div>
             )}
 
-            {/* Sticky Action Footer */}
-            <div className="p-4 border-t border-black/10 dark:border-white/10 sticky bottom-0 bg-white/90 dark:bg-dark-card/90 backdrop-blur-md flex items-center justify-between gap-3 z-20 rounded-2xl">
+            {/* Sticky Frosted Action Footer */}
+            <div className="p-4 sm:p-5 -mx-4 sm:-mx-6 -mb-4 sm:-mb-6 mt-6 border-t border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] backdrop-blur-md flex items-center justify-between gap-3 sticky bottom-0 z-20 rounded-b-[28px]">
                 {initialData && onDelete ? (
                     <button 
                         type="button"
                         onClick={() => setShowDeleteConfirm(true)}
-                        className="px-4 py-2.5 rounded-xl text-semantic-red hover:bg-semantic-red/10 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer min-h-[44px]"
+                        className="px-4 py-2 rounded-xl text-rose-500 hover:bg-rose-500/10 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer min-h-[44px]"
                     >
-                        <Trash className="w-4 h-4" />
+                        <Trash className="w-4 h-4" weight="duotone" />
                         <span>Delete Booking</span>
                     </button>
                 ) : <div />}

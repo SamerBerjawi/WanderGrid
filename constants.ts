@@ -31,19 +31,19 @@ export const STATUS_INFO_STYLE =
 
 // --- Surfaces & Containers ---
 export const CARD_FILL_STYLE = 
-  'bg-light-fill dark:bg-dark-fill/50 border border-black/10 dark:border-white/5 rounded-3xl p-5';
+  'bg-white/50 dark:bg-white/[0.05] backdrop-blur-md border border-black/8 dark:border-white/10 rounded-2xl p-5 shadow-xs';
 
 export const CARD_ELEVATED_STYLE = 
-  'bg-white/90 dark:bg-dark-card/80 backdrop-blur-xl border border-black/10 dark:border-white/10 shadow-glass-light-card dark:shadow-glass-card rounded-3xl';
+  'bg-white/70 dark:bg-white/[0.08] backdrop-blur-xl border border-black/10 dark:border-white/10 shadow-glass-light-card dark:shadow-glass-card rounded-3xl';
 
 export const HEADER_BANNER_STYLE =
   'relative overflow-hidden bg-white/70 dark:bg-zinc-900/70 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-3xl p-6 sm:p-8 shadow-sm';
 
 export const MODAL_SHELL_STYLE =
-  'bg-white/95 dark:bg-dark-card/90 backdrop-blur-sm border border-black/12 dark:border-white/15 rounded-3xl shadow-glass-modal';
+  'wg-glass-card shadow-2xl rounded-[28px] overflow-hidden';
 
 export const MODAL_BACKDROP_STYLE =
-  'fixed inset-0 z-modal-backdrop bg-gray-900/50 dark:bg-black/80 backdrop-blur-md transition-opacity duration-300';
+  'fixed inset-0 z-modal-backdrop bg-black/25 dark:bg-black/50 backdrop-blur-xs transition-opacity duration-300';
 
 export const DIVIDER_INNER_STYLE = 
   'border-black/10 dark:border-white/5';
@@ -52,7 +52,7 @@ export const DIVIDER_SHELL_STYLE =
   'border-black/15 dark:border-white/10';
 
 export const FROSTED_FOOTER_STYLE = 
-  'p-6 border-t border-black/10 dark:border-white/10 bg-white/80 dark:bg-dark-card/80 backdrop-blur-md flex items-center justify-between gap-3 shrink-0';
+  'p-4 sm:p-6 border-t border-black/5 dark:border-white/10 bg-white/30 dark:bg-white/[0.03] backdrop-blur-md flex items-center justify-between gap-3 shrink-0';
 
 // --- Typography Tokens (Apple HIG Scale) ---
 export const TYPOGRAPHY_H1 = 
@@ -103,13 +103,13 @@ export const STATUS_PILL_STYLE =
   'px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20';
 
 export const SEGMENTED_TAB_WRAPPER = 
-  'bg-black/5 dark:bg-white/5 p-1 rounded-2xl flex border border-black/10 dark:border-white/5';
+  'bg-black/5 dark:bg-white/5 p-1 rounded-2xl flex border border-black/8 dark:border-white/10';
 
 export const SEGMENTED_TAB_ACTIVE = 
-  'bg-white dark:bg-dark-card text-primary-500 shadow-sm py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all';
+  'bg-white/80 dark:bg-white/15 backdrop-blur-md text-primary-600 dark:text-primary-300 shadow-sm py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border border-black/5 dark:border-white/10';
 
 export const SEGMENTED_TAB_INACTIVE = 
-  'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all';
+  'text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/10 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all';
 
 export const READOUT_STRIP_STYLE = 
   'p-4 rounded-2xl bg-white/70 dark:bg-dark-card/70 backdrop-blur-md border border-black/10 dark:border-white/10 shadow-sm flex items-center justify-between';

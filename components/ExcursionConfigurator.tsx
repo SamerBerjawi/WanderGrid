@@ -13,6 +13,7 @@ import {
     WarningCircle
 } from '@phosphor-icons/react';
 import { Input, Autocomplete, TimeInput } from './ui';
+import GlassPanel from './glass/GlassPanel';
 import { Activity, GeoCoordinates } from '../types';
 import { searchLocations, getCoordinates } from '../services/geocoding';
 import { getCurrencySymbol } from '../utils/formatters';
@@ -167,13 +168,14 @@ export const ExcursionConfigurator: React.FC<ExcursionConfiguratorProps> = ({
         <div className="fixed inset-0 z-modal overflow-y-auto flex items-center justify-center p-4 sm:p-6 font-sans">
             {/* Backdrop */}
             <div 
-                className="fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md transition-opacity duration-300"
-                style={{ WebkitBackdropFilter: 'blur(12px)' }}
+                className="fixed inset-0 bg-black/25 dark:bg-black/50 backdrop-blur-xs transition-opacity duration-300"
+                style={{ WebkitBackdropFilter: 'blur(4px)' }}
                 onClick={onClose}
             />
 
-            {/* Modal Shell */}
-            <div className={`relative w-full max-w-2xl ${MODAL_SHELL_STYLE} p-6 sm:p-8 space-y-6 z-20 animate-fade-in`}>
+            {/* Modal Shell with Liquid Glass */}
+            <GlassPanel className="wg-glass-card w-full max-w-2xl shadow-2xl overflow-hidden z-20 animate-fade-in" overrides={{ borderRadius: 28 }} padding="0px">
+                <div className="p-6 sm:p-8 space-y-6">
                 
                 {/* Header */}
                 <div className="flex items-center justify-between pb-4 border-b border-black/10 dark:border-white/10">
@@ -377,7 +379,8 @@ export const ExcursionConfigurator: React.FC<ExcursionConfiguratorProps> = ({
                     </div>
                 </div>
 
-            </div>
+                </div>
+            </GlassPanel>
         </div>,
         document.body
     );

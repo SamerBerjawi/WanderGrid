@@ -190,8 +190,8 @@ export const PWAInstallBanner: React.FC = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowIosInstructions(false)}
-              className="fixed inset-0 bg-gray-900/60 dark:bg-black/80 backdrop-blur-md"
-              style={{ WebkitBackdropFilter: 'blur(12px)' }}
+              className="fixed inset-0 bg-black/25 dark:bg-black/50 backdrop-blur-xs"
+              style={{ WebkitBackdropFilter: 'blur(4px)' }}
             />
 
             {/* Modal Sheet */}
@@ -200,7 +200,7 @@ export const PWAInstallBanner: React.FC = () => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 50 }}
               transition={{ duration: 0.25, ease: 'easeOut' }}
-              className="relative w-full max-w-md p-6 bg-white/95 dark:bg-dark-card/95 backdrop-blur-xl border-t sm:border border-black/10 dark:border-white/10 rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col gap-5 m-0 sm:m-4"
+              className="relative w-full max-w-md p-6 bg-white/80 dark:bg-dark-card/80 backdrop-blur-xl border-t sm:border border-black/10 dark:border-white/10 rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col gap-5 m-0 sm:m-4"
               style={{ WebkitBackdropFilter: 'blur(24px)' }}
             >
               <div className="flex items-center justify-between">

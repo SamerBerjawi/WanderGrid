@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, ArrowCounterClockwise as RotateCcw, MapTrifold as MapIcon, Airplane as Plane, Stack as Layers, Compass, Sparkle as Sparkles, Globe } from '@phosphor-icons/react';
 import { MapAppearanceSettings, DEFAULT_MAP_APPEARANCE, getEffectiveBasemap } from '../types/mapAppearance';
+import GlassPanel from './glass/GlassPanel';
 
 const useDarkMode = () => {
     const [isDark, setIsDark] = useState(document.documentElement.classList.contains('dark'));
@@ -84,19 +85,23 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
 
     return createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 font-sans select-none">
-            {/* Frosted Backdrop (Crystal TransactionModal level) */}
+            {/* Frosted Backdrop */}
             <div 
-                className="fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md transition-opacity" 
-                style={{ WebkitBackdropFilter: 'blur(12px)' }}
+                className="fixed inset-0 bg-black/25 dark:bg-black/50 backdrop-blur-xs transition-opacity" 
+                style={{ WebkitBackdropFilter: 'blur(4px)' }}
                 onClick={onClose} 
             />
 
-            {/* Modal Dialog */}
-            <div 
-                className="relative w-full max-w-lg bg-white/90 dark:bg-dark-card/90 backdrop-blur-sm border border-black/10 dark:border-white/15 shadow-glass-modal rounded-3xl overflow-hidden flex flex-col max-h-[88vh] z-10"
-                style={{ WebkitBackdropFilter: 'blur(4px)' }}
-                onClick={(e) => e.stopPropagation()}
+            {/* Modal Dialog with Liquid Glass */}
+            <GlassPanel
+                className="wg-glass-card w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[88vh] z-10"
+                padding="0px"
+                overrides={{ borderRadius: 28 }}
             >
+                <div 
+                    className="flex flex-col h-full w-full overflow-hidden rounded-[28px]"
+                    onClick={(e) => e.stopPropagation()}
+                >
                 {/* Header with WanderGrid Studio Brand */}
                 <div className="p-6 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">
                     <div className="flex items-center gap-3">
@@ -729,7 +734,8 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                         </div>
                     )}
                 </div>
-            </div>
+                </div>
+            </GlassPanel>
         </div>,
         document.body
     );

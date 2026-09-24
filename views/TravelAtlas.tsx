@@ -1656,18 +1656,23 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md"
-              style={{ WebkitBackdropFilter: 'blur(12px)' }}
+              className="fixed inset-0 bg-black/25 dark:bg-black/50 backdrop-blur-xs"
+              style={{ WebkitBackdropFilter: 'blur(4px)' }}
               onClick={() => setIsModalOpen(false)}
             />
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white/90 dark:bg-dark-card/90 backdrop-blur-sm border border-black/10 dark:border-white/15 w-full max-w-lg rounded-3xl shadow-glass-modal relative overflow-hidden text-light-text dark:text-dark-text z-10"
-              style={{ WebkitBackdropFilter: 'blur(4px)' }}
+              className="w-full max-w-lg z-10"
             >
-              <div className="p-6 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-primary-500/5 to-transparent">
+              <GlassPanel
+                className="wg-glass-card w-full shadow-2xl overflow-hidden"
+                overrides={{ borderRadius: 28 }}
+                padding="0px"
+              >
+                <div className="flex flex-col w-full overflow-hidden rounded-[28px] text-light-text dark:text-dark-text">
+                  <div className="p-6 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-primary-500/5 to-transparent">
                 <div>
                   <span className="text-xs font-bold uppercase tracking-wider bg-primary-500/10 text-primary-600 dark:text-primary-400 px-2 py-0.5 rounded-full border border-primary-500/20">
                     {editingItem ? 'Edit footprint record' : 'Add custom footprint'}
@@ -1938,6 +1943,8 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
                 </div>
 
               </form>
+                </div>
+              </GlassPanel>
             </motion.div>
           </div>,
           document.body
