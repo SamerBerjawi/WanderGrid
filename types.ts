@@ -96,6 +96,7 @@ export interface Transport {
   waypoints?: RoadTripWaypoint[]; // New: For road trips
   
   isLayover?: boolean; // True if this transport leg was a transit/layover
+  isExcursion?: boolean; // True if this transport is an excursion or route journey
   website?: string;
   reason?: string; // Business/Personal
   

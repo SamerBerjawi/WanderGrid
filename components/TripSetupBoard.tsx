@@ -815,6 +815,8 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
         if (item.travelClass) setTravelClass(item.travelClass as any);
         setSeatInfo(item.seatNumber || '');
         if (item.mode === 'Car Rental' || item.mode === 'Personal Car') {
+            setReturnDate(item.arrivalDate || '');
+            setReturnTime(item.arrivalTime || '14:00');
             setVehicleModel(item.identifier || '');
         }
     };
@@ -846,6 +848,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
             const existing = transportsList[editingTransportIndex];
             const cleanOrigin = transportMode === 'Flight' ? (cleanAirportCode(originVal) || originVal) : originVal;
             const cleanDest = transportMode === 'Flight' ? (cleanAirportCode(destVal) || destVal) : destVal;
+            const isCar = transportMode === 'Car Rental' || transportMode === 'Personal Car';
 
             const updated: Partial<Transport> = {
                 ...existing,
@@ -855,10 +858,12 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                 destination: cleanDest || destination,
                 departureDate: outboundDate || startDate,
                 departureTime: outboundTime || '10:00',
-                arrivalDate: outboundArrivalDate || outboundDate || startDate,
-                arrivalTime: outboundArrivalTime || '14:00',
+                arrivalDate: isCar ? (returnDate || endDate || outboundDate || startDate) : (outboundArrivalDate || outboundDate || startDate),
+                arrivalTime: isCar ? (returnTime || '14:00') : (outboundArrivalTime || '14:00'),
+                pickupLocation: isCar ? cleanOrigin : existing.pickupLocation,
+                dropoffLocation: isCar ? cleanDest : existing.dropoffLocation,
                 provider: outboundCarrier.trim(),
-                identifier: (transportMode === 'Car Rental' || transportMode === 'Personal Car') ? (vehicleModel || outboundNumber) : outboundNumber.trim(),
+                identifier: isCar ? (vehicleModel || outboundNumber) : outboundNumber.trim(),
                 confirmationCode: outboundConfCode.trim().toUpperCase(),
                 travelClass: transportMode === 'Flight' ? travelClass : undefined,
                 seatNumber: seatInfo || undefined,
@@ -938,8 +943,10 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                 destination: cleanDest || destination,
                 departureDate: outboundDate || startDate,
                 departureTime: outboundTime || '10:00',
-                arrivalDate: outboundArrivalDate || outboundDate || startDate,
-                arrivalTime: outboundArrivalTime || '14:00',
+                arrivalDate: (transportMode === 'Car Rental' || transportMode === 'Personal Car') ? (returnDate || endDate || outboundDate || startDate) : (outboundArrivalDate || outboundDate || startDate),
+                arrivalTime: (transportMode === 'Car Rental' || transportMode === 'Personal Car') ? (returnTime || '14:00') : (outboundArrivalTime || '14:00'),
+                pickupLocation: (transportMode === 'Car Rental' || transportMode === 'Personal Car') ? cleanOrigin : undefined,
+                dropoffLocation: (transportMode === 'Car Rental' || transportMode === 'Personal Car') ? cleanDest : undefined,
                 provider: outboundCarrier.trim(),
                 identifier: (transportMode === 'Car Rental' || transportMode === 'Personal Car') ? (vehicleModel || outboundNumber) : outboundNumber.trim(),
                 confirmationCode: outboundConfCode.trim().toUpperCase(),

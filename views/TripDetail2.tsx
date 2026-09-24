@@ -50,7 +50,8 @@ import {
     Plus,
     Check,
     X,
-    PaperPlaneTilt
+    PaperPlaneTilt,
+    SquaresFour
 } from '@phosphor-icons/react';
 import { Card, Button, Badge, Tabs, Modal, Input, Autocomplete, TimeInput, Select } from '../components/ui';
 import GlassPanel from '../components/glass/GlassPanel';
@@ -60,6 +61,7 @@ import { AccommodationConfigurator } from '../components/AccommodationConfigurat
 import { LocationManager } from '../components/LocationManager';
 import { TripModal } from '../components/TripModal';
 import { PackingList } from '../components/PackingList';
+import { DailyPlannerBoard } from '../components/DailyPlannerBoard';
 import { dataService } from '../services/mockDb';
 import { flightImporter } from '../services/flightImportExport';
 import { calendarService } from '../services/calendarExport';
@@ -71,6 +73,7 @@ const FlightImportWizard = React.lazy(() => import('../components/FlightImportWi
 import { getMerchantLogoUrl } from '../utils/brandfetch';
 import { formatDate, formatDateRange, formatCurrency, getCurrencySymbol } from '../utils/formatters';
 import { EmptyState } from '../components/EmptyState';
+import { isCarRentalBooking, getTransportScheduleTitle, getTransportScheduleLocation, getTransportScheduleEventsForDate } from '../utils/transportSchedule';
 
 export const TripItemIcon: React.FC<{ name: string; className?: string }> = React.memo(({ name, className = "w-4 h-4" }) => {
     switch (name) {
@@ -503,7 +506,7 @@ export const TripDetail2: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     
     // View State
     const [activeTab, setActiveTab] = useState('planner'); 
-    const [plannerView, setPlannerView] = useState<'list' | 'table' | 'calendar'>('list'); 
+    const [plannerView, setPlannerView] = useState<'board' | 'list' | 'table' | 'calendar'>('board'); 
     const [calendarDate, setCalendarDate] = useState(new Date());
     const [loading, setLoading] = useState(true);
 
@@ -998,13 +1001,7 @@ export const TripDetail2: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         return searchLocations(query);
     };
     const getDayEvents = (dateStr: string) => {
-        if (!trip?.transports) return [];
-        const events: (Transport & { isDropoff?: boolean })[] = [];
-        trip.transports.forEach(t => {
-            if (t.departureDate === dateStr) events.push(t);
-            if (t.arrivalDate === dateStr && t.departureDate !== dateStr && (t.mode === 'Car Rental' || t.mode === 'Personal Car')) events.push({ ...t, isDropoff: true });
-        });
-        return events;
+        return getTransportScheduleEventsForDate(trip?.transports, dateStr);
     };
 
     if (loading || !trip) return <div className="p-8 text-gray-400 animate-pulse">Loading Trip Data...</div>;
@@ -1064,12 +1061,12 @@ export const TripDetail2: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
             const dur = !t.isDropoff ? calculateDuration(t) : '';
             const dist = t.distance ? `${t.distance} km` : '';
             items.push({
-                id: t.id,
+                id: t.id + (t.isDropoff ? '_drop' : ''),
                 type: 'Transport',
                 subType: t.mode,
-                time: t.isDropoff ? t.arrivalTime : t.departureTime,
-                name: t.provider + (t.identifier ? ` ${t.identifier}` : ''),
-                location: formatProperLocationName(t.isDropoff ? t.dropoffLocation || t.destination : t.pickupLocation || t.origin),
+                time: t.isDropoff ? t.arrivalTime || '00:00' : t.departureTime || '00:00',
+                name: getTransportScheduleTitle(t, t.isDropoff),
+                location: getTransportScheduleLocation(t, t.isDropoff),
                 cost: (t.cost || 0) > 0 ? t.cost : null,
                 icon: getTransportIcon(t.mode),
                 ref: t,
@@ -1110,7 +1107,12 @@ export const TripDetail2: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 });
             }
         });
-        return items.sort((a,b) => (a.time || '23:59').localeCompare(b.time || '23:59'));
+        return items.sort((a,b) => {
+            const timeDiff = (a.time || '23:59').localeCompare(b.time || '23:59');
+            if (timeDiff !== 0) return timeDiff;
+            if (a.isDropoff !== b.isDropoff) return a.isDropoff ? 1 : -1;
+            return 0;
+        });
     };
 
     interface UnifiedDayItem {
@@ -1142,8 +1144,8 @@ export const TripDetail2: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 type: 'Transport',
                 subType: t.mode,
                 time: t.isDropoff ? t.arrivalTime || '00:00' : t.departureTime || '00:00',
-                title: t.isDropoff ? `Dropoff ${t.mode}` : (t.mode === 'Car Rental' || t.mode === 'Personal Car' ? `Pickup ${t.mode}` : `${t.mode} to ${formatProperLocationName(t.destination)}`),
-                location: formatProperLocationName(t.isDropoff ? t.dropoffLocation || t.destination : t.pickupLocation || t.origin),
+                title: getTransportScheduleTitle(t, t.isDropoff),
+                location: getTransportScheduleLocation(t, t.isDropoff),
                 cost: (t.cost || 0) > 0 ? t.cost : undefined,
                 icon: getTransportIcon(t.mode),
                 ref: t,
@@ -1220,9 +1222,10 @@ export const TripDetail2: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
 
         // Sort by time starting from earliest to latest
         return items.sort((a, b) => {
-            const timeA = a.time || '23:59';
-            const timeB = b.time || '23:59';
-            return timeA.localeCompare(timeB);
+            const timeDiff = (a.time || '23:59').localeCompare(b.time || '23:59');
+            if (timeDiff !== 0) return timeDiff;
+            if (a.isDropoff !== b.isDropoff) return a.isDropoff ? 1 : -1;
+            return 0;
         });
     };
 
@@ -1456,12 +1459,13 @@ export const TripDetail2: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 {activeTab === 'planner' && (
                     <Tabs 
                         tabs={[
+                            { id: 'board', label: 'Canvas', icon: <SquaresFour className="w-4 h-4 text-amber-500" weight="duotone" />, color: 'amber' },
                             { id: 'list', label: 'List', icon: <List className="w-4 h-4 text-blue-500" weight="duotone" />, color: 'blue' },
                             { id: 'table', label: 'Table', icon: <Table className="w-4 h-4 text-emerald-500" weight="duotone" />, color: 'emerald' },
                             { id: 'calendar', label: 'Calendar', icon: <CalendarBlank className="w-4 h-4 text-purple-500" weight="duotone" />, color: 'purple' },
                         ]}
                         activeTab={plannerView}
-                        onChange={(id) => setPlannerView(id as 'list' | 'table' | 'calendar')}
+                        onChange={(id) => setPlannerView(id as 'board' | 'list' | 'table' | 'calendar')}
                     />
                 )}
             </div>
@@ -1495,7 +1499,17 @@ export const TripDetail2: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
 
             {activeTab === 'planner' && (
                 <>
-                    {plannerView === 'calendar' ? renderPlannerCalendar() : plannerView === 'list' ? (
+                    {plannerView === 'board' ? (
+                        <DailyPlannerBoard
+                            trip={trip}
+                            tripDates={tripDates}
+                            settings={settings}
+                            onEditTransport={(transports, date) => openTransportModal(transports, date)}
+                            onEditAccommodation={(accommodation, date) => openAccommodationModal()}
+                            onEditActivity={(dateStr, activity) => handleOpenActivityModal(dateStr, activity)}
+                            onDeleteActivity={handleDeleteActivity}
+                        />
+                    ) : plannerView === 'calendar' ? renderPlannerCalendar() : plannerView === 'list' ? (
                         <div className="space-y-6">
                             {tripDates.map((dateStr, index) => {
                                 const dateObj = new Date(dateStr); 

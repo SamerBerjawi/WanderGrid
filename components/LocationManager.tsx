@@ -594,9 +594,11 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                         originLng: startCoords?.lng,
                         destLat: destCoords?.lat,
                         destLng: destCoords?.lng,
+                        isExcursion: true,
                         customFields: [
                             { key: 'legId', value: leg.id },
-                            { key: 'legTitle', value: leg.title }
+                            { key: 'legTitle', value: leg.title },
+                            { key: 'isExcursion', value: 'true' }
                         ]
                     });
                 }
