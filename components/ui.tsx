@@ -22,8 +22,9 @@ import GlassPanel from './glass/GlassPanel';
 import GlassButton from './glass/GlassButton';
 import GlassInput from './glass/GlassInput';
 import GlassSelect from './glass/GlassSelect';
+import { InlineSkeleton } from './skeletons/InlineSkeleton';
 
-export { GlassPanel, GlassButton, GlassInput, GlassSelect };
+export { GlassPanel, GlassButton, GlassInput, GlassSelect, InlineSkeleton };
 
 // --- Utils ---
 const cn = (...classes: (string | undefined | null | false)[]) => classes.filter(Boolean).join(' ');
@@ -326,6 +327,9 @@ export const Modal: React.FC<ModalProps> = ({
 }) => {
   const [visible, setVisible] = useState(false);
 
+  const modalRef = useRef<HTMLDivElement>(null);
+  const previouslyFocused = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
     if (isOpen) {
       setVisible(true);
@@ -335,6 +339,52 @@ export const Modal: React.FC<ModalProps> = ({
       document.body.style.overflow = 'unset';
       return () => clearTimeout(timer);
     }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // Remember what had focus so we can restore it on close
+    previouslyFocused.current = document.activeElement as HTMLElement;
+
+    const container = modalRef.current;
+    if (!container) return;
+
+    const getFocusable = () =>
+      Array.from(
+        container.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter(el => el.offsetParent !== null); // exclude hidden elements
+
+    // Move initial focus into the modal if nothing inside already has it
+    const focusables = getFocusable();
+    if (focusables.length && !container.contains(document.activeElement)) {
+      focusables[0].focus();
+    }
+
+    const handleTab = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      const els = getFocusable();
+      if (!els.length) return;
+      const first = els[0];
+      const last = els[els.length - 1];
+
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+
+    window.addEventListener('keydown', handleTab);
+    return () => {
+      window.removeEventListener('keydown', handleTab);
+      // Return focus to whatever triggered the modal
+      previouslyFocused.current?.focus?.();
+    };
   }, [isOpen]);
 
   useEffect(() => {
@@ -359,6 +409,7 @@ export const Modal: React.FC<ModalProps> = ({
 
       {/* 2. Elevated Liquid Glass Modal Container */}
       <GlassPanel
+        ref={modalRef}
         className={cn(
           "wg-glass-card w-full shadow-2xl overflow-hidden transform transition-all duration-300 max-h-[90vh] flex flex-col z-10",
           maxWidth,

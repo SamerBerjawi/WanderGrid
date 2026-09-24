@@ -5,16 +5,16 @@
 
 // --- Base Input & Button Styles ---
 export const INPUT_BASE_STYLE =
-  'w-full px-4 py-2.5 min-h-[44px] rounded-xl bg-white/80 dark:bg-dark-card/70 backdrop-blur-md border border-black/12 dark:border-white/10 text-light-text dark:text-dark-text placeholder-light-text-secondary/50 dark:placeholder-dark-text-secondary/50 shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] dark:shadow-none focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 transition-all duration-150 text-sm';
+  'w-full px-4 py-2.5 min-h-[44px] rounded-xl bg-white/80 dark:bg-dark-card/70 backdrop-blur-md border border-black/12 dark:border-white/10 text-light-text dark:text-dark-text placeholder-light-text-secondary/50 dark:placeholder-dark-text-secondary/50 shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] dark:shadow-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/30 focus-visible:border-primary-500 transition-all duration-180 ease-glass text-sm';
 
 export const BTN_PRIMARY_STYLE =
-  'bg-primary-500/85 hover:bg-primary-500 text-white font-medium rounded-xl backdrop-blur-md border border-white/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_8px_rgba(0,0,0,0.15)] transition-all duration-150 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed';
+  'bg-primary-500/85 hover:bg-primary-500 text-white font-medium rounded-xl backdrop-blur-md border border-white/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_8px_rgba(0,0,0,0.15)] transition-all duration-180 ease-glass active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
 
 export const BTN_SECONDARY_STYLE =
-  'bg-white/60 hover:bg-white/80 dark:bg-white/10 dark:hover:bg-white/20 text-light-text dark:text-dark-text font-medium rounded-xl backdrop-blur-md border border-black/12 dark:border-white/15 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)] transition-all duration-150 active:scale-[0.98]';
+  'bg-white/60 hover:bg-white/80 dark:bg-white/10 dark:hover:bg-white/20 text-light-text dark:text-dark-text font-medium rounded-xl backdrop-blur-md border border-black/12 dark:border-white/15 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)] transition-all duration-180 ease-glass active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2';
 
 export const BTN_DANGER_STYLE =
-  'bg-semantic-red/85 hover:bg-semantic-red text-white font-medium rounded-xl backdrop-blur-md border border-white/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_8px_rgba(0,0,0,0.15)] transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]';
+  'bg-semantic-red/85 hover:bg-semantic-red text-white font-medium rounded-xl backdrop-blur-md border border-white/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_8px_rgba(0,0,0,0.15)] transition-all duration-180 ease-glass active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/40 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
 
 // --- Semantic Status Surface Tokens ---
 export const STATUS_DANGER_STYLE =
@@ -97,7 +97,7 @@ export const SECTION_LABEL_STYLE =
 
 // --- Micro-Components ---
 export const CLOSE_BTN_STYLE =
-  'w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5 transition-colors shrink-0';
+  'w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5 transition-colors duration-180 ease-glass focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 shrink-0';
 
 export const STATUS_PILL_STYLE =
   'px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20';

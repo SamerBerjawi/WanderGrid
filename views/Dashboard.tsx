@@ -1409,7 +1409,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                     <div 
                                         key={item.category}
                                         onClick={() => setSelectedStickerCategory(item.category)}
-                                        className={`p-4 rounded-2xl border transition-all cursor-pointer hover:-translate-y-0.5 active:scale-98 ${
+                                        className={`p-4 rounded-2xl border transition-transform duration-180 ease-glass cursor-pointer hover:-translate-y-0.5 active:scale-[0.98] ${
                                             item.isCompleted 
                                                 ? 'bg-emerald-500/[0.03] dark:bg-emerald-500/10 border-emerald-500/20 hover:bg-emerald-500/[0.05]'
                                                 : 'bg-black/[0.02] dark:bg-white/[0.02] border-black/5 dark:border-white/5 hover:bg-black/5 dark:hover:bg-white/5'

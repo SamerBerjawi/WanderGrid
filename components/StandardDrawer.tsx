@@ -1,4 +1,4 @@
-import React, { useState, useEffect, ReactNode } from 'react';
+import React, { useState, useEffect, useRef, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { INPUT_BASE_STYLE, BTN_PRIMARY_STYLE, BTN_SECONDARY_STYLE, CLOSE_BTN_STYLE } from '../constants';
 import Icon from './ui/Icon';
@@ -30,6 +30,8 @@ export const StandardDrawer: React.FC<DrawerProps> = ({
   saveLabel = 'Save Changes',
 }) => {
   const [isVisible, setIsVisible] = useState(false);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const previouslyFocused = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -38,6 +40,52 @@ export const StandardDrawer: React.FC<DrawerProps> = ({
     } else {
       setIsVisible(false);
     }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // Remember what had focus so we can restore it on close
+    previouslyFocused.current = document.activeElement as HTMLElement;
+
+    const container = modalRef.current;
+    if (!container) return;
+
+    const getFocusable = () =>
+      Array.from(
+        container.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter(el => el.offsetParent !== null); // exclude hidden elements
+
+    // Move initial focus into the drawer if nothing inside already has it
+    const focusables = getFocusable();
+    if (focusables.length && !container.contains(document.activeElement)) {
+      focusables[0].focus();
+    }
+
+    const handleTab = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      const els = getFocusable();
+      if (!els.length) return;
+      const first = els[0];
+      const last = els[els.length - 1];
+
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+
+    window.addEventListener('keydown', handleTab);
+    return () => {
+      window.removeEventListener('keydown', handleTab);
+      // Return focus to whatever triggered the drawer
+      previouslyFocused.current?.focus?.();
+    };
   }, [isOpen]);
 
   useEffect(() => {
@@ -75,6 +123,7 @@ export const StandardDrawer: React.FC<DrawerProps> = ({
           }`}
         >
           <GlassPanel
+            ref={modalRef}
             className="wg-glass-card w-full h-full flex flex-col shadow-2xl overflow-hidden"
             padding="0px"
             overrides={{ borderRadius: 28 }}

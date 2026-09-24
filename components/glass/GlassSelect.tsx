@@ -36,7 +36,7 @@ export const GlassSelect = forwardRef<HTMLSelectElement, GlassSelectProps>(({
       )}
       <div className="relative group w-full">
         <GlassPanel
-          className={`wg-glass-pill w-full transition-all duration-200 ${
+          className={`wg-glass-pill w-full transition-all duration-180 ease-glass ${
             error 
               ? '!border-rose-500 ring-2 ring-rose-500/20' 
               : 'border-black/10 dark:border-white/10 group-focus-within:border-primary-500 group-focus-within:ring-2 group-focus-within:ring-primary-500/25'

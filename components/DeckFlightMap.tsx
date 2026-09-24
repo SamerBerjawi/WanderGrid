@@ -2322,7 +2322,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                             </div>
                             <button
                                 onClick={handleResetCorridor}
-                                className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-700 hover:text-gray-950 dark:text-gray-200 dark:hover:text-white bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/20 border border-black/10 dark:border-white/15 transition-all cursor-pointer shrink-0 shadow-xs active:scale-95"
+                                className="w-8 h-8 wg-touch-target rounded-xl flex items-center justify-center text-gray-700 hover:text-gray-950 dark:text-gray-200 dark:hover:text-white bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/20 border border-black/10 dark:border-white/15 transition-all cursor-pointer shrink-0 shadow-xs active:scale-95"
                                 aria-label="Close route details"
                                 title="Close route details"
                             >

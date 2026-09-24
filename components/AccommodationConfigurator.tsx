@@ -306,7 +306,7 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                             <button
                                 type="button"
                                 onClick={() => handleEditItem(item)}
-                                className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-primary-500 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                                className="w-11 h-11 wg-touch-target rounded-xl flex items-center justify-center text-primary-500 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
                                 title="Edit"
                                 aria-label="Edit accommodation"
                             >
@@ -315,7 +315,7 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                             <button
                                 type="button"
                                 onClick={() => handleDeleteItem(item.id)}
-                                className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                                className="w-11 h-11 wg-touch-target rounded-xl flex items-center justify-center text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
                                 title="Delete"
                                 aria-label="Delete accommodation"
                             >

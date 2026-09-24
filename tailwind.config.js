@@ -88,12 +88,26 @@ export default {
       backgroundSize: {
         '200%': '200% 100%',
       },
+      transitionTimingFunction: {
+        'glass': 'cubic-bezier(0.16, 1, 0.3, 1)',
+      },
+      transitionDuration: {
+        '180': '180ms',
+      },
+      spacing: {
+        '4.5': '1.125rem',
+      },
       animation: {
         celebrate: 'celebrate 1s ease-in-out',
         'fade-in-up': 'fadeInUp 0.2s ease-out',
         'bg-pan': 'bg-pan 3s linear infinite',
+        shimmer: 'shimmer 1.6s ease-in-out infinite',
       },
       keyframes: {
+        shimmer: {
+          '0%': { backgroundPosition: '-200% 0' },
+          '100%': { backgroundPosition: '200% 0' },
+        },
         celebrate: {
           '0%, 100%': { transform: 'scale(1)' },
           '25%': {
