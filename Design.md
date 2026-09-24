@@ -39,8 +39,8 @@ The hero header must be clean, horizontal, and unboxed—no heavy rectangular ba
 <div className="flex flex-row items-center justify-between gap-2.5 sm:gap-4 w-full pt-1 pb-1 text-left">
   {/* Left: Pure Icon + Responsive Scaled Title (Aligned Left) */}
   <div className="flex items-center justify-start gap-2 sm:gap-3 md:gap-4 min-w-0">
-    <Compass 
-      className="w-6 h-6 sm:w-9 sm:h-9 md:w-12 md:h-12 text-primary-500 shrink-0" 
+    <MapTrifold 
+      className="w-6 h-6 sm:w-9 sm:h-9 md:w-12 md:h-12 text-emerald-500 dark:text-emerald-400 shrink-0" 
       weight="duotone" 
     />
     <h1 className="text-xl sm:text-3xl md:text-5xl font-black text-light-text dark:text-dark-text tracking-tight leading-tight sm:leading-none truncate sm:overflow-visible">

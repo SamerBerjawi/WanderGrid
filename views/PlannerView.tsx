@@ -13,7 +13,7 @@ import {
     Boat, 
     Globe,
     ArrowRight,
-    Compass,
+    MapTrifold,
     SuitcaseSimple,
     Clock,
     CalendarCheck,
@@ -328,7 +328,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
             <div className="flex flex-row items-center justify-between gap-2.5 sm:gap-4 w-full pt-1 pb-1">
                 {/* Left: Pure Icon + Responsive Page Name (Aligned Left) */}
                 <div className="flex items-center justify-start gap-2 sm:gap-3 md:gap-4 min-w-0">
-                    <Compass 
+                    <MapTrifold 
                         className="w-7 h-7 sm:w-9 sm:h-9 md:w-12 md:h-12 text-emerald-500 dark:text-emerald-400 shrink-0" 
                         weight="duotone" 
                     />

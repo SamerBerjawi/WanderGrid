@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   MagnifyingGlass as Search, Funnel as Filter, Plus, CalendarBlank as Calendar, MapPin, Trash as Trash2, PencilSimple as Edit2, Check, Square, CheckSquare, PencilSimpleLine as Edit3, CaretRight as ChevronRight, CaretDown as ChevronDown, CaretUp as ChevronUp, WarningCircle as AlertCircle,
-  ArrowRight, Airplane as Plane, AirplaneTilt, Bank as Landmark, Trophy as Award, Clock, CurrencyDollar as DollarSign, ChartBar as BarChart2, SuitcaseSimple as Briefcase, FileText, Compass, Heart, Question as HelpCircle, ArrowsClockwise as RefreshCw, UploadSimple as Upload, DownloadSimple as Download, Tag, UserCheck, Star, Sparkle as Sparkles, SquaresFour as Grid, List,
+  ArrowRight, Airplane as Plane, AirplaneTakeoff, AirplaneTilt, Bank as Landmark, Trophy as Award, Clock, CurrencyDollar as DollarSign, ChartBar as BarChart2, SuitcaseSimple as Briefcase, FileText, Compass, Heart, Question as HelpCircle, ArrowsClockwise as RefreshCw, UploadSimple as Upload, DownloadSimple as Download, Tag, UserCheck, Star, Sparkle as Sparkles, SquaresFour as Grid, List,
   ArrowUpRight, ArrowDownLeft, FolderPlus, FolderMinus, X
 } from '@phosphor-icons/react';
 import { Card, Button, Input, Select, Badge, TimeInput, Autocomplete } from '../components/ui';
@@ -2309,8 +2309,8 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
       <div className="flex flex-row items-center justify-between gap-2.5 sm:gap-4 w-full pt-1 pb-1">
         {/* Left: Pure Icon + Responsive Page Name (Aligned Left) */}
         <div className="flex items-center justify-start gap-2 sm:gap-3 md:gap-4 min-w-0">
-          <AirplaneTilt 
-            className="w-7 h-7 sm:w-9 sm:h-9 md:w-12 md:h-12 text-blue-500 dark:text-blue-400 shrink-0" 
+          <AirplaneTakeoff 
+            className="w-7 h-7 sm:w-9 sm:h-9 md:w-12 md:h-12 text-cyan-500 dark:text-cyan-400 shrink-0" 
             weight="duotone" 
           />
           <h1 className="text-xl sm:text-3xl md:text-5xl font-black text-light-text dark:text-white tracking-tight leading-tight sm:leading-none truncate sm:overflow-visible">

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { 
   Plus, MagnifyingGlass as Search, Funnel as Filter, CalendarBlank as Calendar, MapPin, Trash as Trash2, PencilSimple as Edit2, 
-  CaretDown as ChevronDown, CaretUp as ChevronUp, Clock, CurrencyDollar as DollarSign, Compass, 
+  CaretDown as ChevronDown, CaretUp as ChevronUp, Clock, CurrencyDollar as DollarSign, Compass, Car, 
   MapTrifold as Map, ArrowRight, HardDrives as Server, Sparkle as Sparkles, NavigationArrow as Navigation, Train, 
   Bus, Question as HelpCircle, ArrowsClockwise as RefreshCw, Leaf, Anchor, Boat, SquaresFour as Grid, Info
 } from '@phosphor-icons/react';
@@ -736,7 +736,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
       <div className="flex flex-row items-center justify-between gap-2.5 sm:gap-4 w-full pt-1 pb-1">
         {/* Left: Pure Icon + Responsive Scaled Title (Aligned Left) */}
         <div className="flex items-center justify-start gap-2 sm:gap-3 md:gap-4 min-w-0">
-          <Compass weight="duotone" className="w-6 h-6 sm:w-9 sm:h-9 md:w-12 md:h-12 text-emerald-500 shrink-0" />
+          <Car weight="duotone" className="w-6 h-6 sm:w-9 sm:h-9 md:w-12 md:h-12 text-violet-500 dark:text-violet-400 shrink-0" />
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h1 className="text-xl sm:text-3xl md:text-5xl font-black text-light-text dark:text-dark-text tracking-tight leading-tight sm:leading-none truncate sm:overflow-visible">

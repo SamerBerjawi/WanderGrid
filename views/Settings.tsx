@@ -352,7 +352,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
         {/* Left: Pure Icon + Responsive Page Name (Aligned Left) */}
         <div className="flex items-center justify-start gap-2 sm:gap-3 md:gap-4 min-w-0">
           <Gear 
-            className="w-6 h-6 sm:w-9 sm:h-9 md:w-12 md:h-12 text-primary-500 shrink-0" 
+            className="w-6 h-6 sm:w-9 sm:h-9 md:w-12 md:h-12 text-slate-500 dark:text-slate-400 shrink-0" 
             weight="duotone" 
           />
           <h1 className="text-xl sm:text-3xl md:text-5xl font-black text-light-text dark:text-white tracking-tight leading-tight sm:leading-none truncate sm:overflow-visible">

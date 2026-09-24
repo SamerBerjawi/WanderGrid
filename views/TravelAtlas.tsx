@@ -696,7 +696,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
       <div className="flex flex-row items-center justify-between gap-2.5 sm:gap-4 w-full pt-1 pb-1">
         {/* Left: Pure Icon + Responsive Scaled Title (Aligned Left) */}
         <div className="flex items-center justify-start gap-2 sm:gap-3 md:gap-4 min-w-0">
-          <Compass className="w-6 h-6 sm:w-9 sm:h-9 md:w-12 md:h-12 text-primary-500 shrink-0" weight="duotone" />
+          <Compass className="w-6 h-6 sm:w-9 sm:h-9 md:w-12 md:h-12 text-rose-500 dark:text-rose-400 shrink-0" weight="duotone" />
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h1 className="text-xl sm:text-3xl md:text-5xl font-black text-light-text dark:text-dark-text tracking-tight leading-tight sm:leading-none truncate sm:overflow-visible">
