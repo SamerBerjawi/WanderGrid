@@ -302,6 +302,23 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
         setIsNewTripOpen(true);
     };
 
+    if (isNewTripOpen) {
+        return (
+            <TripSetupBoard 
+                isOpen={isNewTripOpen}
+                initialStatus={drawerStatus}
+                users={users}
+                onClose={() => setIsNewTripOpen(false)}
+                onTripCreated={(savedTrip) => {
+                    setIsNewTripOpen(false);
+                    if (onTripClick && savedTrip?.id) {
+                        onTripClick(savedTrip.id);
+                    }
+                }}
+            />
+        );
+    }
+
     return (
         <div className="w-full max-w-[1680px] mx-auto pt-2 sm:pt-4 px-1 sm:px-4 md:px-6 lg:px-8 flex flex-col gap-5 sm:gap-6 animate-fadeIn pb-16">
             
@@ -833,20 +850,6 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                 )}
 
             </div>
-
-            {/* In-Page Guided Wizard Board for New Trip Creation */}
-            <TripSetupBoard 
-                isOpen={isNewTripOpen}
-                initialStatus={drawerStatus}
-                users={users}
-                onClose={() => setIsNewTripOpen(false)}
-                onTripCreated={(savedTrip) => {
-                    setIsNewTripOpen(false);
-                    if (onTripClick && savedTrip?.id) {
-                        onTripClick(savedTrip.id);
-                    }
-                }}
-            />
 
         </div>
     );

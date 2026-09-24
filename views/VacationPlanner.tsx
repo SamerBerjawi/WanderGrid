@@ -48,6 +48,7 @@ import { Button, Badge, Modal, BentoGrid, BentoCard } from '../components/ui';
 import { GlassPanel } from '../components/glass/GlassPanel';
 import { VirtualListItem } from '../components/ui/VirtualListItem';
 import { TripModal } from '../components/TripModal';
+import { TripSetupBoard } from '../components/TripSetupBoard';
 import { dataService } from '../services/mockDb';
 import { useWanderSync } from '../hooks/useWanderSync';
 import { Trip, User, WorkspaceSettings, EntitlementType, PublicHoliday, Transport } from '../types';
@@ -1035,6 +1036,20 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
             </GlassPanel>
         );
     };
+
+    if (isCreateTripOpen && !editingTrip) {
+        return (
+            <TripSetupBoard
+                isOpen={isCreateTripOpen}
+                users={users}
+                onClose={() => setIsCreateTripOpen(false)}
+                onTripCreated={(savedTrip) => {
+                    handleSaveTrip(savedTrip);
+                    setIsCreateTripOpen(false);
+                }}
+            />
+        );
+    }
 
     return (
         <div className="w-full max-w-[1680px] mx-auto pt-2 sm:pt-4 px-1 sm:px-4 md:px-6 lg:px-8 flex flex-col gap-5 sm:gap-6 animate-fadeIn pb-16">

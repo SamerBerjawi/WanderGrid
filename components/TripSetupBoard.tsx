@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
     Compass, 
@@ -67,13 +66,12 @@ export interface TripSetupBoardProps {
     users?: User[];
 }
 
-type StageKey = 'basics' | 'transport' | 'accommodation' | 'review';
+type StageKey = 'basics' | 'transport' | 'accommodation';
 
 const STAGES: { key: StageKey; label: string; icon: React.ElementType }[] = [
     { key: 'basics', label: '1. Trip Basics', icon: Compass },
     { key: 'transport', label: '2. Transport', icon: AirplaneTilt },
     { key: 'accommodation', label: '3. Stays', icon: Bed },
-    { key: 'review', label: '4. Finalize', icon: CheckCircle },
 ];
 
 const ACCOMMODATION_TYPES: Array<Accommodation['type']> = [
@@ -370,23 +368,45 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
     // Submission State
     const [isSaving, setIsSaving] = useState(false);
 
-    useEffect(() => {
-        if (isOpen) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = 'unset';
-        }
-        return () => {
-            document.body.style.overflow = 'unset';
-        };
-    }, [isOpen]);
-
     // Destination change handler
     const handleDestinationChange = (val: string) => {
         setDestination(val);
         getCoordinates(val).then(c => {
             if (c) setDestinationCoords(c);
         }).catch(() => {});
+    };
+
+    // Date change handlers with automatic default date propagation
+    const handleStartDateChange = (val: string) => {
+        setStartDate(val);
+        // Propagate to outbound transport if unset or previously matching start date
+        if (!outboundDate || outboundDate === startDate) {
+            setOutboundDate(val);
+            setOutboundArrivalDate(val);
+            setConnectingLegs(prev => prev.map((l, i) => i === 0 && (!l.departureDate || l.departureDate === startDate) ? { ...l, departureDate: val } : l));
+        }
+        // Propagate to accommodation check-in if unset or previously matching start date
+        if (!accCheckIn || accCheckIn === startDate) {
+            setAccCheckIn(val);
+        }
+        // If end date is now earlier than start date, automatically align end date
+        if (endDate && new Date(endDate) < new Date(val)) {
+            setEndDate(val);
+            setReturnDate(val);
+            setAccCheckOut(val);
+        }
+    };
+
+    const handleEndDateChange = (val: string) => {
+        setEndDate(val);
+        // Propagate to return transport if unset or previously matching end date
+        if (!returnDate || returnDate === endDate) {
+            setReturnDate(val);
+        }
+        // Propagate to accommodation check-out if unset or previously matching end date
+        if (!accCheckOut || accCheckOut === endDate) {
+            setAccCheckOut(val);
+        }
     };
 
     // Calculate nights for the active accommodation form
@@ -397,6 +417,19 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
         const diff = new Date(outDate).getTime() - new Date(inDate).getTime();
         return Math.max(0, Math.round(diff / (1000 * 60 * 60 * 24)));
     }, [accCheckIn, accCheckOut, startDate, endDate]);
+
+    // Total Expedition Costs Calculations
+    const totalTransportCost = useMemo(() => {
+        return transportsList.reduce((sum, t) => sum + (t.cost || 0), 0);
+    }, [transportsList]);
+
+    const totalAccommodationCost = useMemo(() => {
+        return accommodationsList.reduce((sum, a) => sum + (a.cost || 0), 0);
+    }, [accommodationsList]);
+
+    const totalEstimatedCost = useMemo(() => {
+        return totalTransportCost + totalAccommodationCost;
+    }, [totalTransportCost, totalAccommodationCost]);
 
     // Transition from Basics to Transport
     const handleCompleteBasics = async () => {
@@ -855,12 +888,13 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
 
         setAccommodationsList(prev => [...prev, newAcc]);
 
-        // Smart reset for next accommodation leg
+        // Smart reset for next accommodation leg with default date propagation
         setAccName('');
         setAccAddress('');
         setAccCoords(undefined);
-        setAccCheckIn(accCheckOut || startDate);
-        setAccCheckOut(endDate);
+        const nextCheckIn = accCheckOut || startDate;
+        setAccCheckIn(nextCheckIn);
+        setAccCheckOut(endDate && new Date(endDate) > new Date(nextCheckIn) ? endDate : nextCheckIn);
         setAccCost('');
         setAccRef('');
     };
@@ -1089,7 +1123,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                         ) : (
                             /* Connecting Flight Legs */
                             <div className="space-y-3">
-                                <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary block">
+                                <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
                                     Connecting Flight Legs ({connectingLegs.length})
                                 </span>
 
@@ -1101,7 +1135,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
 
                                     return (
                                         <React.Fragment key={leg.id || legIdx}>
-                                            <div className="p-3.5 rounded-2xl bg-white/90 dark:bg-dark-card/90 border border-black/10 dark:border-white/10 shadow-xs space-y-3">
+                                            <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-white/90 dark:bg-dark-card/90 border border-black/10 dark:border-white/10 shadow-none sm:shadow-xs space-y-3">
                                                 <div className="flex items-center justify-between border-b border-black/5 dark:border-white/5 pb-2">
                                                     <div className="flex items-center gap-2">
                                                         <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
@@ -1163,7 +1197,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                             </div>
 
                                             {legIdx < connectingLegs.length - 1 && (
-                                                <div className="flex items-center justify-center gap-2 py-1 text-2xs font-bold text-light-text-secondary uppercase tracking-wider">
+                                                <div className="flex items-center justify-center gap-2 py-1 text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider">
                                                     <div className="h-px bg-black/10 dark:bg-white/10 flex-1" />
                                                     <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5">
                                                         <Clock className="w-3.5 h-3.5 text-amber-500" />
@@ -1457,7 +1491,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
         if (transportsList.length === 0) return null;
         return (
             <div className="space-y-2 pt-2 border-t border-black/5 dark:border-white/5">
-                <div className="flex items-center justify-between text-2xs font-bold uppercase tracking-wider text-light-text-secondary">
+                <div className="flex items-center justify-between text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
                     <span>Configured Legs ({transportsList.length})</span>
                     <span>Total: {formatCurrency(transportsList.reduce((sum, t) => sum + (t.cost || 0), 0))}</span>
                 </div>
@@ -1471,7 +1505,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                         return (
                             <div 
                                 key={t.id || idx} 
-                                className="p-3 rounded-2xl bg-white/90 dark:bg-dark-card/90 border border-black/5 dark:border-white/5 flex items-center justify-between shadow-xs gap-3 group"
+                                className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-white/90 dark:bg-dark-card/90 border border-black/5 dark:border-white/5 flex items-center justify-between shadow-none sm:shadow-xs gap-3 group"
                             >
                                 <div className="flex items-center gap-2.5 min-w-0">
                                     {isFlight && t.provider ? (
@@ -1486,7 +1520,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                             <span className="font-bold text-xs text-light-text dark:text-dark-text truncate">
                                                 {t.origin} &rarr; {t.destination}
                                             </span>
-                                            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-black/5 dark:bg-white/5 text-light-text-secondary">
+                                            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary">
                                                 {t.mode}
                                             </span>
                                             {isConnecting && (
@@ -1495,7 +1529,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                                 </span>
                                             )}
                                         </div>
-                                        <p className="text-2xs text-light-text-secondary truncate">
+                                        <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary truncate">
                                             {t.provider || 'Unspecified'} {t.identifier ? `• ${t.identifier}` : ''} • {formatDate(t.departureDate || '')}
                                         </p>
                                     </div>
@@ -1509,7 +1543,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                     <button
                                         type="button"
                                         onClick={() => handleRemoveTransport(idx)}
-                                        className="w-7 h-7 rounded-lg flex items-center justify-center text-light-text-secondary hover:text-semantic-red hover:bg-semantic-red/10 transition-colors cursor-pointer"
+                                        className="w-7 h-7 rounded-lg flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-semantic-red hover:bg-semantic-red/10 transition-colors cursor-pointer"
                                         aria-label="Remove transport leg"
                                     >
                                         <Trash className="w-3.5 h-3.5" />
@@ -1530,7 +1564,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
         if (accommodationsList.length === 0) return null;
         return (
             <div className="space-y-2 pt-2 border-t border-black/5 dark:border-white/5">
-                <div className="flex items-center justify-between text-2xs font-bold uppercase tracking-wider text-light-text-secondary">
+                <div className="flex items-center justify-between text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
                     <span>Configured Stays ({accommodationsList.length})</span>
                     <span>Total: {formatCurrency(accommodationsList.reduce((sum, a) => sum + (a.cost || 0), 0))}</span>
                 </div>
@@ -1538,7 +1572,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                     {accommodationsList.map((a, idx) => (
                         <div 
                             key={a.id || idx} 
-                            className="p-3 rounded-2xl bg-white/90 dark:bg-dark-card/90 border border-black/5 dark:border-white/5 flex items-center justify-between shadow-xs gap-3 group"
+                            className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-white/90 dark:bg-dark-card/90 border border-black/5 dark:border-white/5 flex items-center justify-between shadow-none sm:shadow-xs gap-3 group"
                         >
                             <div className="flex items-center gap-2.5 min-w-0">
                                 <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
@@ -1553,21 +1587,23 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                             {a.type}
                                         </span>
                                     </div>
-                                    <p className="text-2xs text-light-text-secondary truncate">
+                                    <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary truncate">
                                         {formatDateRange(a.checkInDate, a.checkOutDate)} • {a.address}
                                     </p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
-                                {a.cost !== undefined && a.cost > 0 && (
-                                    <span className="font-mono font-bold text-xs text-light-text dark:text-dark-text">
-                                        {formatCurrency(a.cost)}
-                                    </span>
-                                )}
+                                <div className="text-right">
+                                    {a.cost !== undefined && a.cost > 0 && (
+                                        <span className="font-mono font-bold text-xs text-light-text dark:text-dark-text block">
+                                            {formatCurrency(a.cost)}
+                                        </span>
+                                    )}
+                                </div>
                                 <button
                                     type="button"
                                     onClick={() => handleRemoveAccommodation(idx)}
-                                    className="w-7 h-7 rounded-lg flex items-center justify-center text-light-text-secondary hover:text-semantic-red hover:bg-semantic-red/10 transition-colors cursor-pointer"
+                                    className="w-7 h-7 rounded-lg flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-semantic-red hover:bg-semantic-red/10 transition-colors cursor-pointer"
                                     aria-label="Remove accommodation"
                                 >
                                     <Trash className="w-3.5 h-3.5" />
@@ -1582,130 +1618,144 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
 
     if (!isOpen) return null;
 
-    return createPortal(
-        <div className="fixed inset-0 z-modal overflow-hidden font-sans">
-            {/* Backdrop */}
-            <div 
-                className="fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md transition-opacity duration-300"
-                style={{ WebkitBackdropFilter: 'blur(12px)' }}
-                onClick={onClose}
-            />
-
-            {/* In-Page Setup Board Container */}
-            <div className="fixed inset-0 flex flex-col justify-between overflow-hidden bg-white/95 dark:bg-dark-card/95 backdrop-blur-md z-10">
-                
-                {/* Board Top Header */}
-                <GlassPanel 
-                    className="wg-glass-card rounded-none border-x-0 border-t-0 border-b border-black/10 dark:border-white/10 px-4 sm:px-8 py-4 flex items-center justify-between shrink-0 z-30"
-                    overrides={{ borderRadius: 0 }}
-                    padding="0px"
-                >
-                    <div className="flex items-center gap-3">
-                        <div className="w-11 h-11 rounded-2xl bg-primary-500/10 text-primary-600 dark:text-primary-400 flex items-center justify-center shadow-sm">
-                            <Compass className="w-6 h-6" weight="duotone" />
-                        </div>
-                        <div>
-                            <h2 className="text-lg font-bold text-light-text dark:text-dark-text tracking-tight flex items-center gap-2">
-                                <span>Expedition Setup Board</span>
-                                <span className={STATUS_PILL_STYLE}>Onboarding</span>
-                            </h2>
-                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium">
-                                Staged itinerary builder with progressive sub-steps
+    return (
+        <div className="w-full max-w-[1680px] mx-auto pt-2 sm:pt-4 px-1 sm:px-4 md:px-6 lg:px-8 flex flex-col gap-5 sm:gap-6 animate-fadeIn pb-16">
+            
+            {/* ========================================================================= */}
+            {/* HERO HEADER: Title Aligned Left, 4. Finalize Aligned Right               */}
+            {/* ========================================================================= */}
+            <div className="flex flex-row items-center justify-between gap-2.5 sm:gap-4 w-full pt-1 pb-1">
+                {/* Left: Pure Icon + Responsive Page Name (Aligned Left) */}
+                <div className="flex items-center justify-start gap-2 sm:gap-3 md:gap-4 min-w-0">
+                    <Compass 
+                        className="w-7 h-7 sm:w-9 sm:h-9 md:w-12 md:h-12 text-emerald-500 dark:text-emerald-400 shrink-0" 
+                        weight="duotone" 
+                    />
+                    <div className="min-w-0">
+                        <h1 className="text-xl sm:text-3xl md:text-5xl font-black text-light-text dark:text-white tracking-tight leading-tight sm:leading-none truncate sm:overflow-visible">
+                            New Expedition
+                        </h1>
+                        {(destination || startDate) && (
+                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium truncate mt-1 flex items-center gap-1.5">
+                                {destination && <span className="font-semibold text-light-text dark:text-dark-text">{destination}</span>}
+                                {destination && startDate && <span>•</span>}
+                                {startDate && <span>{formatDateRange(startDate, endDate)}</span>}
                             </p>
-                        </div>
+                        )}
                     </div>
-
-                    <button 
-                        type="button"
-                        onClick={onClose}
-                        className={CLOSE_BTN_STYLE}
-                        aria-label="Close setup board"
-                    >
-                        <X className="w-5 h-5" />
-                    </button>
-                </GlassPanel>
-
-                {/* Mobile Floating Glass Stage Switcher (< 1024px) */}
-                <div className="lg:hidden px-3 py-2.5 shrink-0 flex items-center justify-center bg-white/40 dark:bg-dark-card/40 backdrop-blur-md border-b border-black/5 dark:border-white/5">
-                    <GlassPanel
-                        className="wg-glass-pill shadow-glass-card max-w-full"
-                        padding="4px"
-                        overrides={{ borderRadius: 9999 }}
-                    >
-                        <div className="flex items-center gap-1">
-                            {STAGES.map((s, idx) => {
-                                const IconC = s.icon;
-                                const isActive = currentStage === s.key;
-                                const isDone = idx < stageIndex;
-                                const labelText = s.label.replace(/^\d+\.\s*/, '');
-
-                                return (
-                                    <button
-                                        key={s.key}
-                                        type="button"
-                                        onClick={() => setCurrentStage(s.key)}
-                                        title={s.label}
-                                        className={`relative rounded-full text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none min-h-[44px] px-3.5 py-2.5 active:scale-95 ${
-                                            isActive
-                                                ? 'text-primary-600 dark:text-primary-400 font-extrabold'
-                                                : (isDone ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100')
-                                        }`}
-                                    >
-                                        {isActive && (
-                                            <motion.div
-                                                layoutId="tripSetupTabActiveIndicator"
-                                                className="absolute inset-0 rounded-full bg-white dark:bg-dark-card shadow-sm border border-black/5 dark:border-white/10 z-0"
-                                                transition={{ type: "spring", stiffness: 450, damping: 32 }}
-                                            />
-                                        )}
-                                        <span className="relative z-10 flex items-center gap-1.5">
-                                            <IconC 
-                                                className="w-4 h-4 shrink-0" 
-                                                weight={isActive ? "duotone" : "regular"} 
-                                            />
-                                            {/* Selected tab shows icon and name; other tabs show icon only */}
-                                            <span className={`tracking-tight text-2xs uppercase tracking-wider ${isActive ? 'inline' : 'hidden sm:inline'}`}>
-                                                {labelText}
-                                            </span>
-                                            {isDone && !isActive && (
-                                                <Check className="w-3 h-3 text-emerald-500 shrink-0" weight="bold" />
-                                            )}
-                                        </span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </GlassPanel>
                 </div>
 
-                {/* Main Content Area: Responsive Bento Grid on Desktop, Single Active Panel on Mobile */}
-                <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 custom-scrollbar">
-                    
-                    {/* Desktop: Bento Grid Board */}
-                    <div className="hidden lg:grid lg:grid-cols-2 xl:grid-cols-4 gap-6 items-start">
-                        
-                        {/* ============================================================== */}
-                        {/* COLUMN 1: TRIP BASICS */}
-                        {/* ============================================================== */}
-                        <GlassPanel 
-                            className={`rounded-[28px] overflow-hidden flex flex-col transition-all duration-300 ${
+                {/* Right: 4. Finalize in Header */}
+                <div className="flex items-center justify-end gap-2 sm:gap-3 shrink-0">
+                    {/* Live Estimated Cost Pill */}
+                    <div className="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white/70 dark:bg-dark-card/70 border border-black/5 dark:border-white/10 shadow-xs">
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                            Est. Total
+                        </span>
+                        <span className="text-xs font-mono font-black text-primary-600 dark:text-primary-400">
+                            {formatCurrency(totalEstimatedCost)}
+                        </span>
+                        {(transportsList.length > 0 || accommodationsList.length > 0) && (
+                            <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary">
+                                ({transportsList.length}L • {accommodationsList.length}S)
+                            </span>
+                        )}
+                    </div>
+
+                    {/* Cancel Button */}
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className={`${BTN_SECONDARY_STYLE} min-h-[44px] px-3.5 sm:px-4 text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text cursor-pointer`}
+                    >
+                        Cancel
+                    </button>
+
+                    {/* Launch Expedition Button */}
+                    <button
+                        type="button"
+                        onClick={handleFinalizeTrip}
+                        disabled={isSaving || !title || !startDate || !endDate}
+                        className={`${BTN_PRIMARY_STYLE} min-h-[44px] px-4 sm:px-5 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer`}
+                    >
+                        <span>{isSaving ? 'Creating...' : 'Launch Expedition'}</span>
+                        <Check className="w-4 h-4" weight="bold" />
+                    </button>
+                </div>
+            </div>
+
+            {/* Map-Style Floating Stage Tabs */}
+            <div className="flex items-center justify-center sm:justify-start overflow-x-auto sm:overflow-visible no-scrollbar p-3 -m-3 shrink-0 w-full sm:w-auto">
+                <GlassPanel
+                    className="wg-glass-pill shadow-lg shadow-black/5 dark:shadow-black/25 shrink-0"
+                    padding="4px 6px"
+                    overrides={{ borderRadius: 9999 }}
+                >
+                    <div className="flex gap-1 relative items-center">
+                        {STAGES.map((s, idx) => {
+                            const IconC = s.icon;
+                            const isActive = currentStage === s.key;
+                            const isDone = (s.key === 'basics' && title && startDate && endDate) ||
+                                           (s.key === 'transport' && transportsList.length > 0) ||
+                                           (s.key === 'accommodation' && accommodationsList.length > 0);
+
+                            return (
+                                <button
+                                    key={s.key}
+                                    type="button"
+                                    onClick={() => setCurrentStage(s.key)}
+                                    className={`relative rounded-full text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none min-h-[40px] px-4 py-2 active:scale-95 ${
+                                        isActive
+                                            ? 'text-primary-600 dark:text-primary-400 font-extrabold'
+                                            : (isDone ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100')
+                                    }`}
+                                >
+                                    {isActive && (
+                                        <motion.div
+                                            layoutId="tripSetupTabActiveIndicator"
+                                            className="absolute inset-0 rounded-full bg-white dark:bg-dark-card border border-black/5 dark:border-white/10 z-0 shadow-sm"
+                                            transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                                        />
+                                    )}
+                                    <span className="relative z-10 flex items-center gap-1.5 sm:gap-2">
+                                        <IconC className="w-4 h-4 shrink-0" weight={isActive ? "duotone" : "regular"} />
+                                        <span className="tracking-tight text-xs uppercase tracking-wider">{s.label}</span>
+                                        {isDone && !isActive && <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" weight="bold" />}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </GlassPanel>
+            </div>
+
+            {/* Desktop 3-Column Bento Grid */}
+            <div className="hidden lg:grid lg:grid-cols-3 gap-6 items-start">
+                
+                {/* ============================================================== */}
+                {/* COLUMN 1: TRIP BASICS */}
+                {/* ============================================================== */}
+                <GlassPanel 
+                            className={`rounded-[28px] overflow-hidden flex flex-col ${
                                 currentStage === 'basics' 
-                                ? 'wg-glass-card ring-2 ring-primary-500/40 shadow-xl shadow-primary-500/10' 
-                                : 'wg-glass-card opacity-90 hover:opacity-100 shadow-xs'
+                                ? 'wg-glass-card ring-2 ring-emerald-500/40 border border-emerald-500/30' 
+                                : 'wg-glass-card border border-black/5 dark:border-white/10'
                             }`}
                             overrides={{ borderRadius: 28 }}
                             padding="0px"
                         >
-                            <div className="p-5 border-b border-black/5 dark:border-white/5 flex items-center justify-between">
-                                <div className="flex items-center gap-2.5">
-                                    <Compass className="w-5 h-5 text-primary-500" weight="duotone" />
-                                    <span className="text-xs font-bold uppercase tracking-wider text-light-text dark:text-dark-text">1. Trip Basics</span>
+                            <div className="p-5 bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border-b border-black/10 dark:border-white/5 flex items-center justify-between shrink-0">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white bg-gradient-to-br from-emerald-500 to-teal-600 shadow-xs shrink-0">
+                                        <Compass className="w-5 h-5" weight="duotone" />
+                                    </div>
+                                    <h3 className="text-sm font-bold text-light-text dark:text-dark-text tracking-tight">1. Trip Basics</h3>
                                 </div>
                                 {stageIndex > 0 && (
                                     <button 
                                         type="button" 
                                         onClick={() => setCurrentStage('basics')} 
-                                        className="text-primary-500 hover:underline text-2xs font-bold uppercase flex items-center gap-1 cursor-pointer"
+                                        className="text-emerald-600 dark:text-emerald-400 hover:underline text-2xs font-bold uppercase flex items-center gap-1 cursor-pointer"
                                     >
                                         <PencilSimple className="w-3.5 h-3.5" /> Edit
                                     </button>
@@ -1717,8 +1767,8 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                     <div className="space-y-3">
                                         <div className="p-4 rounded-2xl bg-white/80 dark:bg-dark-card/80 border border-black/5 dark:border-white/5 space-y-2">
                                             <h4 className="font-black text-base text-light-text dark:text-dark-text">{title}</h4>
-                                            <p className="text-xs text-light-text-secondary flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {destination}</p>
-                                            <p className="text-xs text-light-text-secondary flex items-center gap-1"><CalendarBlank className="w-3.5 h-3.5" /> {formatDateRange(startDate, endDate)}</p>
+                                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {destination}</p>
+                                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1"><CalendarBlank className="w-3.5 h-3.5" /> {formatDateRange(startDate, endDate)}</p>
                                             <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 inline-block">
                                                 Configured
                                             </span>
@@ -1730,7 +1780,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                             <p className="text-xs font-semibold text-semantic-red p-2 bg-semantic-red/10 rounded-xl">{basicsError}</p>
                                         )}
                                         <div className="space-y-1">
-                                            <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary">Expedition Title *</label>
+                                            <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Expedition Title *</label>
                                             <Input 
                                                 placeholder="e.g. Greek Island Odyssey" 
                                                 value={title} 
@@ -1740,7 +1790,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                             />
                                         </div>
                                         <div className="space-y-1">
-                                            <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary">Destination City *</label>
+                                            <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Destination City *</label>
                                             <Autocomplete 
                                                 placeholder="e.g. Santorini, Greece" 
                                                 value={destination} 
@@ -1749,14 +1799,14 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                             />
                                         </div>
                                         <div className="grid grid-cols-2 gap-2">
-                                            <Input label="Start Date *" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
-                                            <Input label="End Date *" type="date" value={endDate} min={startDate} onChange={e => setEndDate(e.target.value)} />
+                                            <Input label="Start Date *" type="date" value={startDate} onChange={e => handleStartDateChange(e.target.value)} />
+                                            <Input label="End Date *" type="date" value={endDate} min={startDate} onChange={e => handleEndDateChange(e.target.value)} />
                                         </div>
                                         <div className="pt-2">
                                             <button 
                                                 type="button" 
-                                                onClick={handleCompleteBasics}
-                                                className={`${BTN_PRIMARY_STYLE} w-full h-11 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-md cursor-pointer`}
+                                                onClick={handleCompleteBasics} 
+                                                className={`${BTN_PRIMARY_STYLE} w-full h-11 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-none sm:shadow-xs cursor-pointer`}
                                             >
                                                 <span>Confirm Basics</span>
                                                 <ArrowRight className="w-4 h-4" />
@@ -1771,26 +1821,30 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                         {/* COLUMN 2: TRANSPORT LOGISTICS */}
                         {/* ============================================================== */}
                         <GlassPanel 
-                            className={`rounded-[28px] overflow-hidden flex flex-col transition-all duration-300 ${
+                            className={`rounded-[28px] overflow-hidden flex flex-col ${
                                 currentStage === 'transport' 
-                                ? 'wg-glass-card ring-2 ring-primary-500/40 shadow-xl shadow-primary-500/10' 
-                                : 'wg-glass-card opacity-90 hover:opacity-100 shadow-xs'
+                                ? 'wg-glass-card ring-2 ring-sky-500/40 border border-sky-500/30' 
+                                : 'wg-glass-card border border-black/5 dark:border-white/10'
                             }`}
                             overrides={{ borderRadius: 28 }}
                             padding="0px"
                         >
-                            <div className="p-5 border-b border-black/5 dark:border-white/5 flex items-center justify-between">
-                                <div className="flex items-center gap-2.5">
-                                    <AirplaneTilt className="w-5 h-5 text-blue-500" weight="duotone" />
-                                    <span className="text-xs font-bold uppercase tracking-wider text-light-text dark:text-dark-text">2. Transport</span>
+                            <div className="p-5 bg-gradient-to-r from-sky-500/10 via-sky-500/5 to-transparent border-b border-black/10 dark:border-white/5 flex items-center justify-between shrink-0">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white bg-gradient-to-br from-sky-500 to-blue-600 shadow-xs shrink-0">
+                                        <AirplaneTilt className="w-5 h-5" weight="duotone" />
+                                    </div>
+                                    <h3 className="text-sm font-bold text-light-text dark:text-dark-text tracking-tight">2. Transport</h3>
                                 </div>
-                                <span className="text-2xs font-bold text-light-text-secondary">{transportsList.length} Legs</span>
+                                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-700 dark:text-sky-300 border border-sky-500/25">
+                                    {transportsList.length} Legs
+                                </span>
                             </div>
 
                             <div className="p-5 flex-1 space-y-4 overflow-y-auto custom-scrollbar">
                                 {/* Sub-step 2a: Method Picker */}
                                 <div className="space-y-1.5">
-                                    <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary">Sub-step 2a: Method</label>
+                                    <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Sub-step 2a: Method</label>
                                     <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
                                         {TRANSPORT_MODES.map(m => {
                                             const IconM = m.icon;
@@ -1803,7 +1857,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                                     className={`p-2 rounded-xl flex flex-col items-center justify-center text-center transition-all min-h-[50px] cursor-pointer ${
                                                         isSel 
                                                         ? 'bg-white dark:bg-dark-card text-primary-600 dark:text-primary-400 shadow-sm border border-primary-500/30 font-bold' 
-                                                        : 'bg-black/5 dark:bg-white/5 text-light-text-secondary hover:text-light-text'
+                                                        : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
                                                     }`}
                                                 >
                                                     <IconM className="w-4 h-4 mb-0.5" weight={isSel ? "duotone" : "regular"} />
@@ -1817,7 +1871,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 {/* Sub-step 2b: Routing Structure */}
                                 {transportMode !== 'Car Rental' && transportMode !== 'Personal Car' && (
                                     <div className="space-y-1.5">
-                                        <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary">Routing Structure</label>
+                                        <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Routing Structure</label>
                                         <div className="flex gap-1.5">
                                             {(['Round Trip', 'One-Way'] as const).map(struct => (
                                                 <button
@@ -1827,7 +1881,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                                     className={`flex-1 py-1.5 rounded-xl text-2xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
                                                         transportStructure === struct 
                                                         ? 'bg-white dark:bg-dark-card text-primary-600 dark:text-primary-400 shadow-sm border border-primary-500/30' 
-                                                        : 'bg-black/5 dark:bg-white/5 text-light-text-secondary'
+                                                        : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'
                                                     }`}
                                                 >
                                                     {struct}
@@ -1839,7 +1893,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
 
                                 {/* Sub-step 2c: Mode-Specific Input Fields */}
                                 <div className="space-y-2 p-3 rounded-2xl bg-white/70 dark:bg-dark-card/70 border border-black/5 dark:border-white/5">
-                                    <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary block">
+                                    <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
                                         {transportMode} Logistics
                                     </span>
                                     {renderTransportFields()}
@@ -1861,14 +1915,14 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
 
                                     <div className="flex gap-2 pt-2">
                                         <button 
-                                            type="button"
+                                            type="button" 
                                             onClick={() => setCurrentStage('accommodation')}
-                                            className="px-3 h-11 text-2xs text-light-text-secondary hover:text-light-text font-bold uppercase transition-colors cursor-pointer"
+                                            className="px-3 h-11 text-2xs text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text font-bold uppercase transition-colors cursor-pointer"
                                         >
                                             Skip
                                         </button>
                                         <button 
-                                            type="button"
+                                            type="button" 
                                             onClick={() => {
                                                 if (outboundOrigin && transportsList.length === 0) {
                                                     handleCommitTransport();
@@ -1889,26 +1943,30 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                         {/* COLUMN 3: ACCOMMODATIONS & STAYS */}
                         {/* ============================================================== */}
                         <GlassPanel 
-                            className={`rounded-[28px] overflow-hidden flex flex-col transition-all duration-300 ${
+                            className={`rounded-[28px] overflow-hidden flex flex-col ${
                                 currentStage === 'accommodation' 
-                                ? 'wg-glass-card ring-2 ring-primary-500/40 shadow-xl shadow-primary-500/10' 
-                                : 'wg-glass-card opacity-90 hover:opacity-100 shadow-xs'
+                                ? 'wg-glass-card ring-2 ring-amber-500/40 border border-amber-500/30' 
+                                : 'wg-glass-card border border-black/5 dark:border-white/10'
                             }`}
                             overrides={{ borderRadius: 28 }}
                             padding="0px"
                         >
-                            <div className="p-5 border-b border-black/5 dark:border-white/5 flex items-center justify-between">
-                                <div className="flex items-center gap-2.5">
-                                    <Bed className="w-5 h-5 text-amber-500" weight="duotone" />
-                                    <span className="text-xs font-bold uppercase tracking-wider text-light-text dark:text-dark-text">3. Accommodations</span>
+                            <div className="p-5 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border-b border-black/10 dark:border-white/5 flex items-center justify-between shrink-0">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white bg-gradient-to-br from-amber-500 to-orange-600 shadow-xs shrink-0">
+                                        <Bed className="w-5 h-5" weight="duotone" />
+                                    </div>
+                                    <h3 className="text-sm font-bold text-light-text dark:text-dark-text tracking-tight">3. Stays</h3>
                                 </div>
-                                <span className="text-2xs font-bold text-light-text-secondary">{accommodationsList.length} Stays</span>
+                                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/25">
+                                    {accommodationsList.length} Stays
+                                </span>
                             </div>
 
                             <div className="p-5 flex-1 space-y-4 overflow-y-auto custom-scrollbar">
                                 {/* Sub-step 3a: Type Selection */}
                                 <div className="space-y-1.5">
-                                    <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary">Stay Type</label>
+                                    <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Stay Type</label>
                                     <div className="grid grid-cols-4 gap-1.5">
                                         {ACCOMMODATION_TYPES.map(t => (
                                             <button
@@ -1918,7 +1976,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                                 className={`py-1.5 px-1 rounded-xl text-center text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer truncate ${
                                                     accType === t
                                                     ? 'bg-white dark:bg-dark-card text-amber-600 dark:text-amber-400 shadow-sm border border-amber-500/30'
-                                                    : 'bg-black/5 dark:bg-white/5 text-light-text-secondary'
+                                                    : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'
                                                 }`}
                                                 title={t}
                                             >
@@ -1939,7 +1997,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                     
                                     <div className="space-y-1">
                                         <div className="flex items-center justify-between">
-                                            <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary flex items-center gap-1">
+                                            <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1">
                                                 <MapPin className="w-3.5 h-3.5 text-primary-500" />
                                                 <span>Address / Google Maps Location</span>
                                             </label>
@@ -1956,7 +2014,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                     {/* Check-In / Check-Out with Nights Badge */}
                                     <div className="space-y-1.5">
                                         <div className="flex items-center justify-between">
-                                            <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary">Dates & Duration</label>
+                                            <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Dates & Duration</label>
                                             {activeAccNights > 0 && (
                                                 <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
                                                     {activeAccNights} {activeAccNights === 1 ? 'Night' : 'Nights'}
@@ -1989,156 +2047,87 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                     {/* Render multiple added accommodations */}
                                     {renderAccommodationStackList()}
 
-                                    <div className="flex gap-2 pt-2">
+                                    {/* Column 3 Bottom Launch Strip */}
+                                    <div className="pt-3 border-t border-black/5 dark:border-white/5 space-y-2.5">
+                                        <div className="p-3 rounded-2xl bg-white/60 dark:bg-dark-card/60 border border-black/5 dark:border-white/5 flex items-center justify-between">
+                                            <div>
+                                                <span className="text-[10px] font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
+                                                    Expedition Est. Total
+                                                </span>
+                                                <span className="font-mono font-black text-sm text-primary-600 dark:text-primary-400">
+                                                    {formatCurrency(totalEstimatedCost)}
+                                                </span>
+                                            </div>
+                                            <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary">
+                                                {transportsList.length} Legs • {accommodationsList.length} Stays
+                                            </span>
+                                        </div>
+
                                         <button 
-                                            type="button"
-                                            onClick={() => setCurrentStage('review')}
-                                            className="px-3 h-11 text-2xs text-light-text-secondary hover:text-light-text font-bold uppercase transition-colors cursor-pointer"
+                                            type="button" 
+                                            onClick={handleFinalizeTrip}
+                                            disabled={isSaving || !title || !startDate || !endDate}
+                                            className={`${BTN_PRIMARY_STYLE} w-full h-11 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-xs active:scale-95 disabled:opacity-50 cursor-pointer`}
                                         >
-                                            Skip
-                                        </button>
-                                        <button 
-                                            type="button"
-                                            onClick={() => {
-                                                if (accName && accommodationsList.length === 0) {
-                                                    handleCommitAccommodation();
-                                                }
-                                                setCurrentStage('review');
-                                            }}
-                                            className={`${BTN_PRIMARY_STYLE} flex-1 h-11 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1 cursor-pointer`}
-                                        >
-                                            <span>Proceed to Review</span>
-                                            <ArrowRight className="w-4 h-4" />
+                                            <span>{isSaving ? 'Creating...' : 'Launch Expedition'}</span>
+                                            <Check className="w-4 h-4" weight="bold" />
                                         </button>
                                     </div>
                                 </div>
                             </div>
                         </GlassPanel>
 
-                        {/* ============================================================== */}
-                        {/* COLUMN 4: REVIEW & FINALIZE */}
-                        {/* ============================================================== */}
-                        <GlassPanel 
-                            className={`rounded-[28px] overflow-hidden flex flex-col transition-all duration-300 ${
-                                currentStage === 'review' 
-                                ? 'wg-glass-card ring-2 ring-primary-500/40 shadow-xl shadow-primary-500/10' 
-                                : 'wg-glass-card opacity-90 hover:opacity-100 shadow-xs'
-                            }`}
-                            overrides={{ borderRadius: 28 }}
-                            padding="0px"
-                        >
-                            <div className="p-5 border-b border-black/5 dark:border-white/5 flex items-center justify-between">
-                                <div className="flex items-center gap-2.5">
-                                    <CheckCircle className="w-5 h-5 text-primary-500" weight="duotone" />
-                                    <span className="text-xs font-bold uppercase tracking-wider text-light-text dark:text-dark-text">4. Finalize</span>
-                                </div>
-                                <span className={STATUS_PILL_STYLE}>Ready</span>
-                            </div>
 
-                            <div className="p-5 flex-1 space-y-4 overflow-y-auto custom-scrollbar flex flex-col justify-between">
-                                <div className="space-y-3">
-                                    <div className="p-4 rounded-2xl bg-white/80 dark:bg-dark-card/80 border border-black/5 dark:border-white/5 space-y-2">
-                                        <h4 className="font-black text-lg text-light-text dark:text-dark-text">{title || 'Untitled Trip'}</h4>
-                                        <p className="text-xs text-light-text-secondary flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-primary-500" /> {destination || 'Destination'}</p>
-                                        <p className="text-xs text-light-text-secondary flex items-center gap-1"><CalendarBlank className="w-3.5 h-3.5 text-primary-500" /> {formatDateRange(startDate, endDate)}</p>
-                                    </div>
 
-                                    <div className="p-4 rounded-2xl bg-white/60 dark:bg-dark-card/60 border border-black/5 dark:border-white/5 space-y-2 text-xs">
-                                        <div className="flex justify-between items-center py-1 border-b border-black/5 dark:border-white/5">
-                                            <span className="text-light-text-secondary font-medium">Transport Legs</span>
-                                            <span className="font-bold">{transportsList.length}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center py-1">
-                                            <span className="text-light-text-secondary font-medium">Stays Booked</span>
-                                            <span className="font-bold">{accommodationsList.length}</span>
-                                        </div>
-                                    </div>
 
-                                    {/* Mini summary lists */}
-                                    {transportsList.length > 0 && (
-                                        <div className="space-y-1">
-                                            <span className="text-[10px] font-bold uppercase tracking-wider text-light-text-secondary block">Transports</span>
-                                            {transportsList.map((t, i) => (
-                                                <div key={i} className="text-2xs text-light-text-secondary flex items-center justify-between py-1 border-b border-black/5 dark:border-white/5 last:border-0">
-                                                    <div className="flex items-center gap-1.5 min-w-0">
-                                                        {t.mode === 'Flight' && t.provider ? (
-                                                            <AirlineLogoBadge carrier={t.provider} className="w-5 h-5 shrink-0" />
-                                                        ) : (
-                                                            <span className="w-1.5 h-1.5 rounded-full bg-primary-500 shrink-0" />
-                                                        )}
-                                                        <span className="truncate font-medium">{t.origin} &rarr; {t.destination} {t.identifier ? `(${t.identifier})` : ''}</span>
-                                                    </div>
-                                                    {t.cost && <span className="font-mono font-bold shrink-0">{formatCurrency(t.cost)}</span>}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    {accommodationsList.length > 0 && (
-                                        <div className="space-y-1">
-                                            <span className="text-[10px] font-bold uppercase tracking-wider text-light-text-secondary block">Accommodations</span>
-                                            {accommodationsList.map((a, i) => (
-                                                <div key={i} className="text-2xs text-light-text-secondary flex justify-between py-0.5">
-                                                    <span className="truncate">{a.name} ({a.type})</span>
-                                                    {a.cost && <span className="font-mono font-bold">{formatCurrency(a.cost)}</span>}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="pt-4">
-                                    <button 
-                                        type="button" 
-                                        onClick={handleFinalizeTrip}
-                                        disabled={isSaving || !title || !startDate || !endDate}
-                                        className={`${BTN_PRIMARY_STYLE} w-full h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-primary-500/20 active:scale-95 disabled:opacity-50 cursor-pointer`}
-                                    >
-                                        <span>{isSaving ? 'Creating Expedition...' : 'Launch Expedition Planner'}</span>
-                                        <Check className="w-4 h-4" weight="bold" />
-                                    </button>
-                                </div>
-                            </div>
-                        </GlassPanel>
 
                     </div>
 
                     {/* Mobile (< 1024px): Single-Column Active Stage View */}
-                    <div className="lg:hidden w-full max-w-lg mx-auto space-y-6">
+                    <div className="lg:hidden w-full max-w-lg mx-auto space-y-5">
                         {currentStage === 'basics' && (
-                            <GlassPanel 
-                                className="wg-glass-card rounded-[28px] overflow-hidden p-6 space-y-4"
-                                overrides={{ borderRadius: 28 }}
-                                padding="0px"
-                            >
-                                <h3 className="text-base font-bold text-light-text dark:text-dark-text flex items-center gap-2">
-                                    <Compass className="w-5 h-5 text-primary-500" weight="duotone" />
-                                    <span>Step 1: Trip Basics & Destination</span>
-                                </h3>
+                            <div className="space-y-4 animate-fadeIn">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-none sm:shadow-xs shrink-0">
+                                        <Compass className="w-4 h-4" weight="duotone" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-sm font-bold text-light-text dark:text-dark-text tracking-tight">Step 1: Trip Basics & Destination</h3>
+                                        <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary font-medium">Destination and dates</p>
+                                    </div>
+                                </div>
                                 {basicsError && <p className="text-xs font-semibold text-semantic-red p-2 bg-semantic-red/10 rounded-xl">{basicsError}</p>}
                                 <Input label="Expedition Title *" placeholder="e.g. Italian Lakes & Alps" value={title} onChange={e => setTitle(e.target.value)} />
                                 <Autocomplete label="Destination *" placeholder="e.g. Lake Como, Italy" value={destination} onChange={handleDestinationChange} fetchSuggestions={fetchLocationSuggestions} />
                                 <div className="grid grid-cols-2 gap-3">
-                                    <Input label="Start Date *" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
-                                    <Input label="End Date *" type="date" value={endDate} min={startDate} onChange={e => setEndDate(e.target.value)} />
+                                    <Input label="Start Date *" type="date" value={startDate} onChange={e => handleStartDateChange(e.target.value)} />
+                                    <Input label="End Date *" type="date" value={endDate} min={startDate} onChange={e => handleEndDateChange(e.target.value)} />
                                 </div>
-                                <button type="button" onClick={handleCompleteBasics} className={`${BTN_PRIMARY_STYLE} w-full h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer`}>
+                                <button type="button" onClick={handleCompleteBasics} className={`${BTN_PRIMARY_STYLE} w-full h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-none sm:shadow-xs`}>
                                     <span>Next: Configure Transport</span>
                                     <ArrowRight className="w-4 h-4" />
                                 </button>
-                            </GlassPanel>
+                            </div>
                         )}
 
                         {currentStage === 'transport' && (
-                            <GlassPanel 
-                                className="wg-glass-card rounded-[28px] overflow-hidden p-6 space-y-4"
-                                overrides={{ borderRadius: 28 }}
-                                padding="0px"
-                            >
-                                <h3 className="text-base font-bold text-light-text dark:text-dark-text flex items-center gap-2">
-                                    <AirplaneTilt className="w-5 h-5 text-blue-500" weight="duotone" />
-                                    <span>Step 2: Transport Logistics</span>
-                                </h3>
+                            <div className="space-y-4 animate-fadeIn">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center text-white shadow-none sm:shadow-xs shrink-0">
+                                            <AirplaneTilt className="w-4 h-4" weight="duotone" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-sm font-bold text-light-text dark:text-dark-text tracking-tight">Step 2: Transport Logistics</h3>
+                                            <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary font-medium">Flights, trains, car rental, or drives</p>
+                                        </div>
+                                    </div>
+                                    {transportsList.length > 0 && (
+                                        <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
+                                            {transportsList.length} {transportsList.length === 1 ? 'Leg' : 'Legs'}
+                                        </span>
+                                    )}
+                                </div>
                                 
                                 {/* Method Selector */}
                                 <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
@@ -2151,7 +2140,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                                 type="button"
                                                 onClick={() => setTransportMode(m.mode)}
                                                 className={`p-2 rounded-xl flex flex-col items-center justify-center text-center transition-all cursor-pointer ${
-                                                    isSel ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm border border-primary-500/30 font-bold' : 'bg-black/5 dark:bg-white/5 text-light-text-secondary'
+                                                    isSel ? 'bg-white dark:bg-dark-card text-primary-500 border border-primary-500/30 font-bold' : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'
                                                 }`}
                                             >
                                                 <IconM className="w-5 h-5 mb-1" />
@@ -2170,8 +2159,8 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                                 onClick={() => setTransportStructure(struct)}
                                                 className={`flex-1 py-1.5 rounded-xl text-2xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
                                                     transportStructure === struct 
-                                                    ? 'bg-white dark:bg-dark-card text-primary-600 dark:text-primary-400 shadow-sm border border-primary-500/30' 
-                                                    : 'bg-black/5 dark:bg-white/5 text-light-text-secondary'
+                                                    ? 'bg-white dark:bg-dark-card text-primary-600 dark:text-primary-400 border border-primary-500/30' 
+                                                    : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'
                                                 }`}
                                             >
                                                 {struct}
@@ -2181,7 +2170,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 )}
 
                                 {/* Mode-Specific Fields */}
-                                <div className="p-3 rounded-2xl bg-white/70 dark:bg-dark-card/70 border border-black/5 dark:border-white/5">
+                                <div className="space-y-3 pt-1">
                                     {renderTransportFields()}
                                 </div>
 
@@ -2189,7 +2178,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 <button 
                                     type="button" 
                                     onClick={handleCommitTransport}
-                                    className={`${BTN_SECONDARY_STYLE} w-full h-11 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer`}
+                                    className={`${BTN_SECONDARY_STYLE} w-full h-11 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-none sm:shadow-xs`}
                                 >
                                     <Plus className="w-4 h-4" />
                                     <span>+ Add This Transport Leg</span>
@@ -2199,7 +2188,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 {renderTransportStackList()}
 
                                 <div className="flex gap-2 pt-2">
-                                    <button type="button" onClick={() => setCurrentStage('accommodation')} className="px-4 h-12 text-xs font-bold uppercase text-light-text-secondary cursor-pointer">Skip</button>
+                                    <button type="button" onClick={() => setCurrentStage('accommodation')} className="px-4 h-12 text-xs font-bold uppercase text-light-text-secondary dark:text-dark-text-secondary cursor-pointer">Skip</button>
                                     <button 
                                         type="button" 
                                         onClick={() => { 
@@ -2208,25 +2197,33 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                             }
                                             setCurrentStage('accommodation'); 
                                         }} 
-                                        className={`${BTN_PRIMARY_STYLE} flex-1 h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1 cursor-pointer`}
+                                        className={`${BTN_PRIMARY_STYLE} flex-1 h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1 cursor-pointer shadow-none sm:shadow-xs`}
                                     >
                                         <span>Next: Stays</span>
                                         <ArrowRight className="w-4 h-4" />
                                     </button>
                                 </div>
-                            </GlassPanel>
+                            </div>
                         )}
 
                         {currentStage === 'accommodation' && (
-                            <GlassPanel 
-                                className="wg-glass-card rounded-[28px] overflow-hidden p-6 space-y-4"
-                                overrides={{ borderRadius: 28 }}
-                                padding="0px"
-                            >
-                                <h3 className="text-base font-bold text-light-text dark:text-dark-text flex items-center gap-2">
-                                    <Bed className="w-5 h-5 text-amber-500" weight="duotone" />
-                                    <span>Step 3: Accommodations</span>
-                                </h3>
+                            <div className="space-y-4 animate-fadeIn">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-none sm:shadow-xs shrink-0">
+                                            <Bed className="w-4 h-4" weight="duotone" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-sm font-bold text-light-text dark:text-dark-text tracking-tight">Step 3: Accommodations</h3>
+                                            <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary font-medium">Hotels, resorts, airbnbs</p>
+                                        </div>
+                                    </div>
+                                    {accommodationsList.length > 0 && (
+                                        <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                            {accommodationsList.length} {accommodationsList.length === 1 ? 'Stay' : 'Stays'}
+                                        </span>
+                                    )}
+                                </div>
                                 
                                 {/* Stay Type */}
                                 <div className="grid grid-cols-4 gap-1.5">
@@ -2236,7 +2233,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                             type="button" 
                                             onClick={() => setAccType(t)} 
                                             className={`py-2 px-1 rounded-xl text-center text-2xs font-bold uppercase truncate cursor-pointer ${
-                                                accType === t ? 'bg-white dark:bg-dark-card text-amber-600 dark:text-amber-400 shadow-sm border border-amber-500/30' : 'bg-black/5 dark:bg-white/5 text-light-text-secondary'
+                                                accType === t ? 'bg-white dark:bg-dark-card text-amber-600 dark:text-amber-400 border border-amber-500/30' : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'
                                             }`}
                                         >
                                             {t}
@@ -2248,7 +2245,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 
                                 <div className="space-y-1">
                                     <div className="flex items-center justify-between">
-                                        <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary flex items-center gap-1">
+                                        <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1">
                                             <MapPin className="w-3.5 h-3.5 text-primary-500" />
                                             <span>Address / Google Maps Location</span>
                                         </label>
@@ -2264,7 +2261,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
 
                                 <div className="space-y-1">
                                     <div className="flex items-center justify-between">
-                                        <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary">Dates & Duration</label>
+                                        <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Dates & Duration</label>
                                         {activeAccNights > 0 && (
                                             <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
                                                 {activeAccNights} {activeAccNights === 1 ? 'Night' : 'Nights'}
@@ -2286,7 +2283,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 <button 
                                     type="button" 
                                     onClick={handleCommitAccommodation}
-                                    className={`${BTN_SECONDARY_STYLE} w-full h-11 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer`}
+                                    className={`${BTN_SECONDARY_STYLE} w-full h-11 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-none sm:shadow-xs`}
                                 >
                                     <Plus className="w-4 h-4" />
                                     <span>+ Add This Stay</span>
@@ -2295,94 +2292,46 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 {/* Multiple Added Stays Stack */}
                                 {renderAccommodationStackList()}
 
-                                <div className="flex gap-2 pt-2">
-                                    <button type="button" onClick={() => setCurrentStage('review')} className="px-4 h-12 text-xs font-bold uppercase text-light-text-secondary cursor-pointer">Skip</button>
+                                {/* Mobile Accommodation Finalize & Cost Breakdown */}
+                                <div className="p-3.5 rounded-2xl bg-white/70 dark:bg-dark-card/70 space-y-3 border border-black/5 dark:border-white/5 mt-4">
+                                    <div className="p-3 rounded-xl bg-black/5 dark:bg-white/5 space-y-1.5 text-xs">
+                                        <div className="flex justify-between items-center text-2xs text-light-text-secondary dark:text-dark-text-secondary">
+                                            <span>Transports ({transportsList.length})</span>
+                                            <span className="font-mono font-bold text-light-text dark:text-dark-text">{formatCurrency(totalTransportCost)}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center text-2xs text-light-text-secondary dark:text-dark-text-secondary">
+                                            <span>Accommodations ({accommodationsList.length})</span>
+                                            <span className="font-mono font-bold text-light-text dark:text-dark-text">{formatCurrency(totalAccommodationCost)}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center pt-1.5 border-t border-black/10 dark:border-white/10">
+                                            <span className="font-bold uppercase tracking-wider text-2xs text-light-text dark:text-dark-text">Total Expedition Cost</span>
+                                            <span className="font-mono font-black text-sm text-primary-600 dark:text-primary-400">
+                                                {formatCurrency(totalEstimatedCost)}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="pt-2">
                                     <button 
                                         type="button" 
                                         onClick={() => { 
                                             if (accName && accommodationsList.length === 0) {
                                                 handleCommitAccommodation();
                                             }
-                                            setCurrentStage('review'); 
+                                            handleFinalizeTrip(); 
                                         }} 
-                                        className={`${BTN_PRIMARY_STYLE} flex-1 h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1 cursor-pointer`}
+                                        disabled={isSaving || !title || !startDate || !endDate}
+                                        className={`${BTN_PRIMARY_STYLE} w-full h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-none sm:shadow-xs disabled:opacity-50`}
                                     >
-                                        <span>Next: Review</span>
-                                        <ArrowRight className="w-4 h-4" />
+                                        <span>{isSaving ? 'Creating Expedition...' : 'Launch Expedition'}</span>
+                                        <Check className="w-4 h-4" weight="bold" />
                                     </button>
                                 </div>
-                            </GlassPanel>
-                        )}
-
-                        {currentStage === 'review' && (
-                            <GlassPanel 
-                                className="wg-glass-card rounded-[28px] overflow-hidden p-6 space-y-4"
-                                overrides={{ borderRadius: 28 }}
-                                padding="0px"
-                            >
-                                <h3 className="text-base font-bold text-light-text dark:text-dark-text flex items-center gap-2">
-                                    <CheckCircle className="w-5 h-5 text-primary-500" weight="duotone" />
-                                    <span>Step 4: Review & Launch</span>
-                                </h3>
-                                <div className="p-4 rounded-2xl bg-white/70 dark:bg-dark-card/70 space-y-3 border border-black/5 dark:border-white/5">
-                                    <div>
-                                        <h4 className="font-bold text-lg text-light-text dark:text-dark-text">{title || 'Untitled Trip'}</h4>
-                                        <p className="text-xs text-light-text-secondary flex items-center gap-1 mt-0.5">
-                                            <MapPin className="w-3.5 h-3.5 text-primary-500" />
-                                            <span>{destination || 'Destination'}</span>
-                                            <span>•</span>
-                                            <span>{formatDateRange(startDate, endDate)}</span>
-                                        </p>
-                                    </div>
-
-                                    {transportsList.length > 0 && (
-                                        <div className="space-y-1.5 pt-2 border-t border-black/5 dark:border-white/5">
-                                            <span className="text-[10px] font-bold uppercase tracking-wider text-light-text-secondary block">
-                                                Transports ({transportsList.length})
-                                            </span>
-                                            {transportsList.map((t, i) => (
-                                                <div key={i} className="text-2xs text-light-text-secondary flex items-center justify-between py-0.5">
-                                                    <div className="flex items-center gap-1.5 min-w-0">
-                                                        {t.mode === 'Flight' && t.provider ? (
-                                                            <AirlineLogoBadge carrier={t.provider} className="w-5 h-5 shrink-0" />
-                                                        ) : (
-                                                            <span className="w-1.5 h-1.5 rounded-full bg-primary-500 shrink-0" />
-                                                        )}
-                                                        <span className="truncate">{t.origin} &rarr; {t.destination} {t.identifier ? `(${t.identifier})` : ''}</span>
-                                                    </div>
-                                                    {t.cost && <span className="font-mono font-bold shrink-0">{formatCurrency(t.cost)}</span>}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    {accommodationsList.length > 0 && (
-                                        <div className="space-y-1.5 pt-2 border-t border-black/5 dark:border-white/5">
-                                            <span className="text-[10px] font-bold uppercase tracking-wider text-light-text-secondary block">
-                                                Accommodations ({accommodationsList.length})
-                                            </span>
-                                            {accommodationsList.map((a, i) => (
-                                                <div key={i} className="text-2xs text-light-text-secondary flex justify-between py-0.5">
-                                                    <span className="truncate">{a.name} ({a.type})</span>
-                                                    {a.cost && <span className="font-mono font-bold">{formatCurrency(a.cost)}</span>}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                                <button type="button" onClick={handleFinalizeTrip} disabled={isSaving} className={`${BTN_PRIMARY_STYLE} w-full h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-primary-500/20 cursor-pointer`}>
-                                    <span>{isSaving ? 'Creating Expedition...' : 'Launch Expedition'}</span>
-                                    <Check className="w-4 h-4" weight="bold" />
-                                </button>
-                            </GlassPanel>
+                            </div>
                         )}
                     </div>
-
-                </div>
-
-            </div>
-        </div>,
-        document.body
+        </div>
     );
 };
 
