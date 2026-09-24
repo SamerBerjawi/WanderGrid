@@ -55,6 +55,7 @@ import {
 } from '@phosphor-icons/react';
 import { Card, Button, Badge, Tabs, Modal, Input, Autocomplete, TimeInput, Select } from '../components/ui';
 import GlassPanel from '../components/glass/GlassPanel';
+import { CARD_ELEVATED_STYLE } from '../constants';
 import { VirtualListItem } from '../components/ui/VirtualListItem';
 import { TransportConfigurator } from '../components/FlightConfigurator';
 import { AccommodationConfigurator } from '../components/AccommodationConfigurator';
