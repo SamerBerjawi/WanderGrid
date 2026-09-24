@@ -36,9 +36,10 @@ import {
 } from '@phosphor-icons/react';
 import { Input, Autocomplete, TimeInput, Select } from './ui';
 import GlassPanel from './glass/GlassPanel';
-import { Trip, Transport, Accommodation, TransportMode, User, GeoCoordinates } from '../types';
+import GlassButton from './glass/GlassButton';
+import { Trip, Transport, Accommodation, TransportMode, User, GeoCoordinates, WorkspaceSettings } from '../types';
 import { dataService } from '../services/mockDb';
-import { invalidateGlobalWanderCache } from '../hooks/useWanderSync';
+import { invalidateGlobalWanderCache, useWanderSync } from '../hooks/useWanderSync';
 import { searchLocations, searchStations, getCoordinates } from '../services/geocoding';
 import { parseGoogleMapsUrl } from '../services/locationParser';
 import { getAirportsByQueryLocally, getCarriersByQueryLocally, AIRLINE_CODES, formatCommercialAirlineName } from '../utils/flightData';
@@ -75,6 +76,48 @@ const STAGES: { key: StageKey; label: string; icon: React.ElementType }[] = [
     { key: 'accommodation', label: '3. Stays', icon: Bed },
 ];
 
+const STAGE_THEMES: Record<StageKey, {
+    label: string;
+    icon: React.ElementType;
+    color: string;
+    activeText: string;
+    activeBg: string;
+    activeBorder: string;
+    activeShadow: string;
+    badgeStyle: string;
+}> = {
+    basics: {
+        label: 'Trip Basics',
+        icon: Compass,
+        color: 'text-emerald-500 dark:text-emerald-400',
+        activeText: 'text-emerald-700 dark:text-emerald-300',
+        activeBg: 'bg-emerald-500/15 dark:bg-emerald-500/25',
+        activeBorder: 'border-emerald-500/35 dark:border-emerald-400/45',
+        activeShadow: 'shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(16,185,129,0.15)]',
+        badgeStyle: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+    },
+    transport: {
+        label: 'Transports',
+        icon: AirplaneTilt,
+        color: 'text-sky-500 dark:text-sky-400',
+        activeText: 'text-sky-700 dark:text-sky-300',
+        activeBg: 'bg-sky-500/15 dark:bg-sky-500/25',
+        activeBorder: 'border-sky-500/35 dark:border-sky-400/45',
+        activeShadow: 'shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(14,165,233,0.15)]',
+        badgeStyle: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20'
+    },
+    accommodation: {
+        label: 'Stays',
+        icon: Bed,
+        color: 'text-amber-500 dark:text-amber-400',
+        activeText: 'text-amber-700 dark:text-amber-300',
+        activeBg: 'bg-amber-500/15 dark:bg-amber-500/25',
+        activeBorder: 'border-amber-500/35 dark:border-amber-400/45',
+        activeShadow: 'shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(245,158,11,0.15)]',
+        badgeStyle: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+    }
+};
+
 const ACCOMMODATION_TYPES: Array<Accommodation['type']> = [
     'Hotel',
     'Airbnb',
@@ -90,7 +133,7 @@ const CABIN_OPTIONS = [
     { label: 'Economy', value: 'Economy' },
     { label: 'Premium Economy', value: 'Premium Economy' },
     { label: 'Business', value: 'Business' },
-    { label: 'First Class', value: 'First' }
+    { label: 'First Class', value: 'First Class' }
 ];
 
 export const AIRLINE_DOMAINS: Record<string, string> = {
@@ -214,8 +257,16 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
     initialStatus = 'Planning',
     users = []
 }) => {
+    // Workspace settings & active currency
+    const { data: settings } = useWanderSync<WorkspaceSettings>('settings', () => dataService.getWorkspaceSettings());
+    const activeCurrency = settings?.currency || 'USD';
+
     // Current Active Stage
     const [currentStage, setCurrentStage] = useState<StageKey>('basics');
+
+    // Editing State for Configured Legs and Stays
+    const [editingTransportIndex, setEditingTransportIndex] = useState<number | null>(null);
+    const [editingAccommodationIndex, setEditingAccommodationIndex] = useState<number | null>(null);
 
     // Stage 1: Trip Basics State
     const [title, setTitle] = useState('');
@@ -291,6 +342,8 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
     const [returnDate, setReturnDate] = useState('');
     const [returnTime, setReturnTime] = useState('14:00');
     const [returnNumber, setReturnNumber] = useState('');
+    const [returnTravelClass, setReturnTravelClass] = useState<string>('Economy');
+    const [returnSeatInfo, setReturnSeatInfo] = useState<string>('');
 
     // Handlers for Flight Carrier detection and layovers
     const handleFlightNumberChange = (val: string) => {
@@ -419,14 +472,38 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
         return Math.max(0, Math.round(diff / (1000 * 60 * 60 * 24)));
     }, [accCheckIn, accCheckOut, startDate, endDate]);
 
-    // Total Expedition Costs Calculations
+    // Total Expedition Costs Calculations (including live uncommitted drafts and editing legs/stays)
+    const draftTransportCost = useMemo(() => {
+        const val = parseFloat(outboundCost);
+        return isNaN(val) ? 0 : val;
+    }, [outboundCost]);
+
+    const draftAccCost = useMemo(() => {
+        const val = parseFloat(accCost);
+        return isNaN(val) ? 0 : val;
+    }, [accCost]);
+
     const totalTransportCost = useMemo(() => {
-        return transportsList.reduce((sum, t) => sum + (t.cost || 0), 0);
-    }, [transportsList]);
+        if (editingTransportIndex !== null) {
+            return transportsList.reduce((sum, t, idx) => {
+                if (idx === editingTransportIndex) return sum + draftTransportCost;
+                return sum + (t.cost || 0);
+            }, 0);
+        }
+        const committed = transportsList.reduce((sum, t) => sum + (t.cost || 0), 0);
+        return committed + draftTransportCost;
+    }, [transportsList, draftTransportCost, editingTransportIndex]);
 
     const totalAccommodationCost = useMemo(() => {
-        return accommodationsList.reduce((sum, a) => sum + (a.cost || 0), 0);
-    }, [accommodationsList]);
+        if (editingAccommodationIndex !== null) {
+            return accommodationsList.reduce((sum, a, idx) => {
+                if (idx === editingAccommodationIndex) return sum + draftAccCost;
+                return sum + (a.cost || 0);
+            }, 0);
+        }
+        const committed = accommodationsList.reduce((sum, a) => sum + (a.cost || 0), 0);
+        return committed + draftAccCost;
+    }, [accommodationsList, draftAccCost, editingAccommodationIndex]);
 
     const totalEstimatedCost = useMemo(() => {
         return totalTransportCost + totalAccommodationCost;
@@ -714,16 +791,85 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
     };
 
     // -------------------------------------------------------------
-    // STACKING / MULTIPLE ENTRIES HANDLERS
+    // STACKING / MULTIPLE ENTRIES & EDITING HANDLERS
     // -------------------------------------------------------------
 
-    // Commit current transport to list
+    // Edit configured transport leg
+    const handleEditTransport = (index: number) => {
+        const item = transportsList[index];
+        if (!item) return;
+
+        setEditingTransportIndex(index);
+        if (item.mode) setTransportMode(item.mode);
+        if (item.type) setTransportStructure(item.type === 'One-Way' ? 'One-Way' : 'Round Trip');
+        setOutboundOrigin(item.origin || '');
+        setOutboundDest(item.destination || '');
+        setOutboundCarrier(item.provider || '');
+        setOutboundNumber(item.identifier || '');
+        setOutboundDate(item.departureDate || '');
+        setOutboundTime(item.departureTime || '10:00');
+        setOutboundArrivalDate(item.arrivalDate || item.departureDate || '');
+        setOutboundArrivalTime(item.arrivalTime || '14:00');
+        setOutboundCost(item.cost !== undefined ? String(item.cost) : '');
+        setOutboundConfCode(item.confirmationCode || '');
+        if (item.travelClass) setTravelClass(item.travelClass as any);
+        setSeatInfo(item.seatNumber || '');
+        if (item.mode === 'Car Rental' || item.mode === 'Personal Car') {
+            setVehicleModel(item.identifier || '');
+        }
+    };
+
+    const handleCancelEditTransport = () => {
+        setEditingTransportIndex(null);
+        setOutboundOrigin('');
+        setOutboundDest('');
+        setOutboundCarrier('');
+        setOutboundNumber('');
+        setOutboundCost('');
+        setOutboundConfCode('');
+        setSeatInfo('');
+        setReturnNumber('');
+        setReturnSeatInfo('');
+        setVehicleModel('');
+    };
+
+    // Commit current transport to list (creates new or saves edits)
     const handleCommitTransport = () => {
         const originVal = outboundOrigin.trim();
         const destVal = (outboundDest || destination).trim();
         if (!originVal && !destVal && !outboundCarrier.trim()) return;
 
         const costNum = parseFloat(outboundCost) || undefined;
+
+        // If editing an existing configured leg
+        if (editingTransportIndex !== null) {
+            const existing = transportsList[editingTransportIndex];
+            const cleanOrigin = transportMode === 'Flight' ? (cleanAirportCode(originVal) || originVal) : originVal;
+            const cleanDest = transportMode === 'Flight' ? (cleanAirportCode(destVal) || destVal) : destVal;
+
+            const updated: Partial<Transport> = {
+                ...existing,
+                mode: transportMode,
+                type: transportStructure,
+                origin: cleanOrigin || 'Origin',
+                destination: cleanDest || destination,
+                departureDate: outboundDate || startDate,
+                departureTime: outboundTime || '10:00',
+                arrivalDate: outboundArrivalDate || outboundDate || startDate,
+                arrivalTime: outboundArrivalTime || '14:00',
+                provider: outboundCarrier.trim(),
+                identifier: (transportMode === 'Car Rental' || transportMode === 'Personal Car') ? (vehicleModel || outboundNumber) : outboundNumber.trim(),
+                confirmationCode: outboundConfCode.trim().toUpperCase(),
+                travelClass: transportMode === 'Flight' ? travelClass : undefined,
+                seatNumber: seatInfo || undefined,
+                cost: costNum
+            };
+
+            setTransportsList(prev => prev.map((item, i) => i === editingTransportIndex ? updated : item));
+            handleCancelEditTransport();
+            return;
+        }
+
         const newTransports: Partial<Transport>[] = [];
         const itineraryId = crypto.randomUUID();
 
@@ -773,8 +919,8 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                     provider: outboundCarrier.trim(),
                     identifier: (returnNumber || outboundNumber).trim(),
                     confirmationCode: outboundConfCode.trim().toUpperCase(),
-                    travelClass: travelClass,
-                    seatNumber: seatInfo || undefined,
+                    travelClass: (returnTravelClass as any) || travelClass,
+                    seatNumber: returnSeatInfo || seatInfo || undefined,
                     notes: 'Return Flight'
                 });
             }
@@ -817,8 +963,8 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                     provider: outboundCarrier.trim(),
                     identifier: (returnNumber || outboundNumber).trim(),
                     confirmationCode: outboundConfCode.trim().toUpperCase(),
-                    travelClass: transportMode === 'Flight' ? travelClass : undefined,
-                    seatNumber: seatInfo || undefined,
+                    travelClass: transportMode === 'Flight' ? ((returnTravelClass as any) || travelClass) : undefined,
+                    seatNumber: returnSeatInfo || seatInfo || undefined,
                     cost: costNum ? costNum / 2 : undefined
                 });
             }
@@ -834,6 +980,9 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
         setOutboundConfCode('');
         setVehicleModel('');
         setSeatInfo('');
+        setReturnNumber('');
+        setReturnTravelClass('Economy');
+        setReturnSeatInfo('');
         setOutboundDate(returnDate || outboundDate || startDate);
         setOutboundArrivalDate(returnDate || outboundDate || startDate);
         setConnectingLegs([
@@ -864,14 +1013,69 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
     };
 
     const handleRemoveTransport = (index: number) => {
+        if (editingTransportIndex === index) {
+            handleCancelEditTransport();
+        } else if (editingTransportIndex !== null && editingTransportIndex > index) {
+            setEditingTransportIndex(editingTransportIndex - 1);
+        }
         setTransportsList(prev => prev.filter((_, i) => i !== index));
     };
 
-    // Commit current accommodation to list
+    // Edit configured accommodation
+    const handleEditAccommodation = (index: number) => {
+        const item = accommodationsList[index];
+        if (!item) return;
+
+        setEditingAccommodationIndex(index);
+        if (item.type) setAccType(item.type);
+        setAccName(item.name || '');
+        setAccAddress(item.address || '');
+        setAccCoords(item.coordinates);
+        setAccCheckIn(item.checkInDate || '');
+        setAccCheckInTime(item.checkInTime || '15:00');
+        setAccCheckOut(item.checkOutDate || '');
+        setAccCheckOutTime(item.checkOutTime || '11:00');
+        setAccCost(item.cost !== undefined ? String(item.cost) : '');
+        setAccRef(item.confirmationCode || '');
+    };
+
+    const handleCancelEditAccommodation = () => {
+        setEditingAccommodationIndex(null);
+        setAccName('');
+        setAccAddress('');
+        setAccCoords(undefined);
+        setAccCost('');
+        setAccRef('');
+    };
+
+    // Commit current accommodation to list (creates new or saves edits)
     const handleCommitAccommodation = () => {
         const nameVal = accName.trim();
         const addressVal = accAddress.trim();
         if (!nameVal && !addressVal) return;
+
+        const costNum = parseFloat(accCost) || undefined;
+
+        if (editingAccommodationIndex !== null) {
+            const existing = accommodationsList[editingAccommodationIndex];
+            const updated: Partial<Accommodation> = {
+                ...existing,
+                name: nameVal || `${accType} in ${destination}`,
+                type: accType,
+                address: addressVal || destination,
+                checkInDate: accCheckIn || startDate,
+                checkInTime: accCheckInTime || '15:00',
+                checkOutDate: accCheckOut || endDate,
+                checkOutTime: accCheckOutTime || '11:00',
+                cost: costNum,
+                confirmationCode: accRef.trim() || undefined,
+                coordinates: accCoords
+            };
+
+            setAccommodationsList(prev => prev.map((item, i) => i === editingAccommodationIndex ? updated : item));
+            handleCancelEditAccommodation();
+            return;
+        }
 
         const newAcc: Partial<Accommodation> = {
             id: crypto.randomUUID(),
@@ -882,7 +1086,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
             checkInTime: accCheckInTime || '15:00',
             checkOutDate: accCheckOut || endDate,
             checkOutTime: accCheckOutTime || '11:00',
-            cost: parseFloat(accCost) || undefined,
+            cost: costNum,
             confirmationCode: accRef.trim() || undefined,
             coordinates: accCoords
         };
@@ -901,6 +1105,11 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
     };
 
     const handleRemoveAccommodation = (index: number) => {
+        if (editingAccommodationIndex === index) {
+            handleCancelEditAccommodation();
+        } else if (editingAccommodationIndex !== null && editingAccommodationIndex > index) {
+            setEditingAccommodationIndex(editingAccommodationIndex - 1);
+        }
         setAccommodationsList(prev => prev.filter((_, i) => i !== index));
     };
 
@@ -1223,13 +1432,17 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                     <Input label="Return Date" type="date" value={returnDate || endDate} min={outboundDate || startDate} onChange={e => setReturnDate(e.target.value)} />
                                     <TimeInput label="Return Time" value={returnTime} onChange={setReturnTime} />
                                 </div>
-                                <Input label="Return Flight #" placeholder="e.g. AF 023" value={returnNumber} onChange={e => setReturnNumber(e.target.value)} />
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                    <Input label="Return Flight #" placeholder="e.g. AF 023" value={returnNumber} onChange={e => setReturnNumber(e.target.value)} />
+                                    <Select label="Return Cabin Class" options={CABIN_OPTIONS} value={returnTravelClass} onChange={e => setReturnTravelClass(e.target.value as any)} />
+                                    <Input label="Return Seat #" placeholder="e.g. 14A" value={returnSeatInfo} onChange={e => setReturnSeatInfo(e.target.value)} />
+                                </div>
                             </div>
                         )}
 
                         {/* 6. Shared Booking Code & Cost */}
                         <div className="grid grid-cols-2 gap-2">
-                            <Input label="Total Ticket Cost" type="number" placeholder="0.00" value={outboundCost} onChange={e => setOutboundCost(e.target.value)} />
+                            <Input label={`Total Ticket Cost (${getCurrencySymbol(activeCurrency)})`} type="number" placeholder="0.00" value={outboundCost} onChange={e => setOutboundCost(e.target.value)} />
                             <Input label="Booking Code (PNR)" placeholder="e.g. DL7XYZ" value={outboundConfCode} onChange={e => setOutboundConfCode(e.target.value)} />
                         </div>
                     </div>
@@ -1281,11 +1494,15 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                     <Input label="Return Date" type="date" value={returnDate || endDate} min={outboundDate || startDate} onChange={e => setReturnDate(e.target.value)} />
                                     <TimeInput label="Return Time" value={returnTime} onChange={setReturnTime} />
                                 </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <Input label="Return Train / Service #" placeholder="e.g. TGV 6174" value={returnNumber} onChange={e => setReturnNumber(e.target.value)} />
+                                    <Input label="Return Coach & Seat" placeholder="e.g. Coach 2, Seat 15" value={returnSeatInfo} onChange={e => setReturnSeatInfo(e.target.value)} />
+                                </div>
                             </div>
                         )}
                         <div className="grid grid-cols-2 gap-2">
                             <Input label="Coach & Seat" placeholder="e.g. Coach 4, Seat 21" value={seatInfo} onChange={e => setSeatInfo(e.target.value)} />
-                            <Input label="Total Cost" type="number" placeholder="0.00" value={outboundCost} onChange={e => setOutboundCost(e.target.value)} />
+                            <Input label={`Total Cost (${getCurrencySymbol(activeCurrency)})`} type="number" placeholder="0.00" value={outboundCost} onChange={e => setOutboundCost(e.target.value)} />
                         </div>
                     </div>
                 );
@@ -1339,7 +1556,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                             </div>
                         )}
                         <div className="grid grid-cols-2 gap-2">
-                            <Input label="Total Cost" type="number" placeholder="0.00" value={outboundCost} onChange={e => setOutboundCost(e.target.value)} />
+                            <Input label={`Total Cost (${getCurrencySymbol(activeCurrency)})`} type="number" placeholder="0.00" value={outboundCost} onChange={e => setOutboundCost(e.target.value)} />
                             <Input label="Booking Ref" placeholder="FLX-992" value={outboundConfCode} onChange={e => setOutboundConfCode(e.target.value)} />
                         </div>
                     </div>
@@ -1387,7 +1604,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                             <TimeInput label="Drop-off Time" value={returnTime} onChange={setReturnTime} />
                         </div>
                         <div className="grid grid-cols-2 gap-2">
-                            <Input label="Total Rental Cost" type="number" placeholder="0.00" value={outboundCost} onChange={e => setOutboundCost(e.target.value)} />
+                            <Input label={`Total Rental Cost (${getCurrencySymbol(activeCurrency)})`} type="number" placeholder="0.00" value={outboundCost} onChange={e => setOutboundCost(e.target.value)} />
                             <Input label="Confirmation Code" placeholder="HTZ-881" value={outboundConfCode} onChange={e => setOutboundConfCode(e.target.value)} />
                         </div>
                     </div>
@@ -1422,7 +1639,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                             <Input label="Departure Date" type="date" value={outboundDate || startDate} onChange={e => setOutboundDate(e.target.value)} />
                             <TimeInput label="Departure Time" value={outboundTime} onChange={setOutboundTime} />
                         </div>
-                        <Input label="Estimated Fuel & Tolls Cost" type="number" placeholder="0.00" value={outboundCost} onChange={e => setOutboundCost(e.target.value)} />
+                        <Input label={`Estimated Fuel & Tolls Cost (${getCurrencySymbol(activeCurrency)})`} type="number" placeholder="0.00" value={outboundCost} onChange={e => setOutboundCost(e.target.value)} />
                     </div>
                 );
 
@@ -1478,7 +1695,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                         )}
                         <div className="grid grid-cols-2 gap-2">
                             <Input label="Cabin / Deck" placeholder="e.g. Suite 402" value={seatInfo} onChange={e => setSeatInfo(e.target.value)} />
-                            <Input label="Total Cost" type="number" placeholder="0.00" value={outboundCost} onChange={e => setOutboundCost(e.target.value)} />
+                            <Input label={`Total Cost (${getCurrencySymbol(activeCurrency)})`} type="number" placeholder="0.00" value={outboundCost} onChange={e => setOutboundCost(e.target.value)} />
                         </div>
                     </div>
                 );
@@ -1494,7 +1711,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
             <div className="space-y-2 pt-2 border-t border-black/5 dark:border-white/5">
                 <div className="flex items-center justify-between text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
                     <span>Configured Legs ({transportsList.length})</span>
-                    <span>Total: {formatCurrency(transportsList.reduce((sum, t) => sum + (t.cost || 0), 0))}</span>
+                    <span>Total: {formatCurrency(transportsList.reduce((sum, t) => sum + (t.cost || 0), 0), activeCurrency)}</span>
                 </div>
                 <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar">
                     {transportsList.map((t, idx) => {
@@ -1502,11 +1719,16 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                         const IconComponent = modeConfig ? modeConfig.icon : AirplaneTilt;
                         const isFlight = t.mode === 'Flight';
                         const isConnecting = t.notes && t.notes.includes('Connecting');
+                        const isBeingEdited = editingTransportIndex === idx;
 
                         return (
                             <div 
                                 key={t.id || idx} 
-                                className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-white/90 dark:bg-dark-card/90 border border-black/5 dark:border-white/5 flex items-center justify-between shadow-none sm:shadow-xs gap-3 group"
+                                className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border transition-all flex items-center justify-between shadow-none sm:shadow-xs gap-3 group ${
+                                    isBeingEdited 
+                                        ? 'bg-sky-500/10 border-sky-500/40 ring-1 ring-sky-500/30' 
+                                        : 'bg-white/90 dark:bg-dark-card/90 border-black/5 dark:border-white/5'
+                                }`}
                             >
                                 <div className="flex items-center gap-2.5 min-w-0">
                                     {isFlight && t.provider ? (
@@ -1529,23 +1751,38 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                                     Connecting
                                                 </span>
                                             )}
+                                            {isBeingEdited && (
+                                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-sky-500/20 text-sky-700 dark:text-sky-300 border border-sky-500/30">
+                                                    Editing
+                                                </span>
+                                            )}
                                         </div>
                                         <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary truncate">
                                             {t.provider || 'Unspecified'} {t.identifier ? `• ${t.identifier}` : ''} • {formatDate(t.departureDate || '')}
                                         </p>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2 shrink-0">
+                                <div className="flex items-center gap-1.5 shrink-0">
                                     {t.cost !== undefined && t.cost > 0 && (
-                                        <span className="font-mono font-bold text-xs text-light-text dark:text-dark-text">
-                                            {formatCurrency(t.cost)}
+                                        <span className="font-mono font-bold text-xs text-light-text dark:text-dark-text mr-1">
+                                            {formatCurrency(t.cost, activeCurrency)}
                                         </span>
                                     )}
+                                    <button
+                                        type="button"
+                                        onClick={() => handleEditTransport(idx)}
+                                        className="w-7 h-7 rounded-lg flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-sky-600 dark:hover:text-sky-400 hover:bg-sky-500/10 transition-colors cursor-pointer"
+                                        aria-label="Edit transport leg"
+                                        title="Edit this leg"
+                                    >
+                                        <PencilSimple className="w-3.5 h-3.5" />
+                                    </button>
                                     <button
                                         type="button"
                                         onClick={() => handleRemoveTransport(idx)}
                                         className="w-7 h-7 rounded-lg flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-semantic-red hover:bg-semantic-red/10 transition-colors cursor-pointer"
                                         aria-label="Remove transport leg"
+                                        title="Remove this leg"
                                     >
                                         <Trash className="w-3.5 h-3.5" />
                                     </button>
@@ -1567,51 +1804,71 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
             <div className="space-y-2 pt-2 border-t border-black/5 dark:border-white/5">
                 <div className="flex items-center justify-between text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
                     <span>Configured Stays ({accommodationsList.length})</span>
-                    <span>Total: {formatCurrency(accommodationsList.reduce((sum, a) => sum + (a.cost || 0), 0))}</span>
+                    <span>Total: {formatCurrency(accommodationsList.reduce((sum, a) => sum + (a.cost || 0), 0), activeCurrency)}</span>
                 </div>
                 <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar">
-                    {accommodationsList.map((a, idx) => (
-                        <div 
-                            key={a.id || idx} 
-                            className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-white/90 dark:bg-dark-card/90 border border-black/5 dark:border-white/5 flex items-center justify-between shadow-none sm:shadow-xs gap-3 group"
-                        >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                                <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                                    <Bed className="w-4 h-4" />
-                                </div>
-                                <div className="min-w-0">
-                                    <div className="flex items-center gap-1.5">
-                                        <span className="font-bold text-xs text-light-text dark:text-dark-text truncate">
-                                            {a.name}
-                                        </span>
-                                        <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                                            {a.type}
-                                        </span>
+                    {accommodationsList.map((a, idx) => {
+                        const isBeingEdited = editingAccommodationIndex === idx;
+                        return (
+                            <div 
+                                key={a.id || idx} 
+                                className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border transition-all flex items-center justify-between shadow-none sm:shadow-xs gap-3 group ${
+                                    isBeingEdited 
+                                        ? 'bg-amber-500/10 border-amber-500/40 ring-1 ring-amber-500/30' 
+                                        : 'bg-white/90 dark:bg-dark-card/90 border-black/5 dark:border-white/5'
+                                }`}
+                            >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                    <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                                        <Bed className="w-4 h-4" />
                                     </div>
-                                    <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary truncate">
-                                        {formatDateRange(a.checkInDate, a.checkOutDate)} • {a.address}
-                                    </p>
+                                    <div className="min-w-0">
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="font-bold text-xs text-light-text dark:text-dark-text truncate">
+                                                {a.name}
+                                            </span>
+                                            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                                                {a.type}
+                                            </span>
+                                            {isBeingEdited && (
+                                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                                                    Editing
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary truncate">
+                                            {formatDateRange(a.checkInDate, a.checkOutDate)} • {a.address}
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                                <div className="text-right">
+                                <div className="flex items-center gap-1.5 shrink-0">
                                     {a.cost !== undefined && a.cost > 0 && (
-                                        <span className="font-mono font-bold text-xs text-light-text dark:text-dark-text block">
-                                            {formatCurrency(a.cost)}
+                                        <span className="font-mono font-bold text-xs text-light-text dark:text-dark-text mr-1 block">
+                                            {formatCurrency(a.cost, activeCurrency)}
                                         </span>
                                     )}
+                                    <button
+                                        type="button"
+                                        onClick={() => handleEditAccommodation(idx)}
+                                        className="w-7 h-7 rounded-lg flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-500/10 transition-colors cursor-pointer"
+                                        aria-label="Edit accommodation"
+                                        title="Edit this stay"
+                                    >
+                                        <PencilSimple className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemoveAccommodation(idx)}
+                                        className="w-7 h-7 rounded-lg flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-semantic-red hover:bg-semantic-red/10 transition-colors cursor-pointer"
+                                        aria-label="Remove accommodation"
+                                        title="Remove this stay"
+                                    >
+                                        <Trash className="w-3.5 h-3.5" />
+                                    </button>
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={() => handleRemoveAccommodation(idx)}
-                                    className="w-7 h-7 rounded-lg flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-semantic-red hover:bg-semantic-red/10 transition-colors cursor-pointer"
-                                    aria-label="Remove accommodation"
-                                >
-                                    <Trash className="w-3.5 h-3.5" />
-                                </button>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
         );
@@ -1654,7 +1911,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                             Est. Total
                         </span>
                         <span className="text-xs font-mono font-black text-primary-600 dark:text-primary-400">
-                            {formatCurrency(totalEstimatedCost)}
+                            {formatCurrency(totalEstimatedCost, activeCurrency)}
                         </span>
                         {(transportsList.length > 0 || accommodationsList.length > 0) && (
                             <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary">
@@ -1664,28 +1921,30 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                     </div>
 
                     {/* Cancel Button */}
-                    <button
+                    <GlassButton
                         type="button"
+                        variant="ghost"
                         onClick={onClose}
-                        className={`${BTN_SECONDARY_STYLE} min-h-[44px] px-3.5 sm:px-4 text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text cursor-pointer`}
+                        className="min-h-[44px] px-3.5 sm:px-4 text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text cursor-pointer"
                     >
                         Cancel
-                    </button>
+                    </GlassButton>
 
                     {/* Launch Expedition Button */}
-                    <button
+                    <GlassButton
                         type="button"
+                        variant="primary"
                         onClick={handleFinalizeTrip}
                         disabled={isSaving || !title || !startDate || !endDate}
-                        className={`${BTN_PRIMARY_STYLE} min-h-[44px] px-4 sm:px-5 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer`}
+                        className="min-h-[44px] px-4 sm:px-5 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
                     >
                         <span>{isSaving ? 'Creating...' : 'Launch Expedition'}</span>
                         <Check className="w-4 h-4" weight="bold" />
-                    </button>
+                    </GlassButton>
                 </div>
             </div>
 
-            {/* Map-Style Floating Stage Tabs */}
+            {/* Map-Style Floating Stage Tabs (Planner Standard) */}
             <div className="flex items-center justify-center sm:justify-start overflow-x-auto sm:overflow-visible no-scrollbar p-3 -m-3 shrink-0 w-full sm:w-auto">
                 <GlassPanel
                     className="wg-glass-pill shadow-lg shadow-black/5 dark:shadow-black/25 shrink-0"
@@ -1693,35 +1952,52 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                     overrides={{ borderRadius: 9999 }}
                 >
                     <div className="flex gap-1 relative items-center">
-                        {STAGES.map((s, idx) => {
-                            const IconC = s.icon;
-                            const isActive = currentStage === s.key;
-                            const isDone = (s.key === 'basics' && title && startDate && endDate) ||
-                                           (s.key === 'transport' && transportsList.length > 0) ||
-                                           (s.key === 'accommodation' && accommodationsList.length > 0);
+                        {(['basics', 'transport', 'accommodation'] as StageKey[]).map((stageKey) => {
+                            const config = STAGE_THEMES[stageKey];
+                            const isSelected = currentStage === stageKey;
+                            const IconComponent = config.icon;
+                            
+                            const count = stageKey === 'basics' 
+                                ? (title && startDate && endDate ? '✓' : '1') 
+                                : stageKey === 'transport' 
+                                ? transportsList.length 
+                                : accommodationsList.length;
 
                             return (
                                 <button
-                                    key={s.key}
+                                    key={stageKey}
                                     type="button"
-                                    onClick={() => setCurrentStage(s.key)}
-                                    className={`relative rounded-full text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none min-h-[40px] px-4 py-2 active:scale-95 ${
-                                        isActive
-                                            ? 'text-primary-600 dark:text-primary-400 font-extrabold'
-                                            : (isDone ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100')
+                                    onClick={() => setCurrentStage(stageKey)}
+                                    title={config.label}
+                                    className={`relative rounded-full text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none active:scale-95 ${
+                                        isSelected
+                                            ? `${config.activeText} px-4 sm:px-5 py-2.5`
+                                            : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text px-3 sm:px-5 py-2.5'
                                     }`}
                                 >
-                                    {isActive && (
+                                    {isSelected && (
                                         <motion.div
                                             layoutId="tripSetupTabActiveIndicator"
-                                            className="absolute inset-0 rounded-full bg-white dark:bg-dark-card border border-black/5 dark:border-white/10 z-0 shadow-sm"
+                                            className={`absolute inset-0 rounded-full ${config.activeBg} backdrop-blur-md border ${config.activeBorder} ${config.activeShadow} z-0`}
+                                            style={{ WebkitBackdropFilter: 'blur(12px)' }}
                                             transition={{ type: "spring", stiffness: 450, damping: 32 }}
                                         />
                                     )}
-                                    <span className="relative z-10 flex items-center gap-1.5 sm:gap-2">
-                                        <IconC className="w-4 h-4 shrink-0" weight={isActive ? "duotone" : "regular"} />
-                                        <span className="tracking-tight text-xs uppercase tracking-wider">{s.label}</span>
-                                        {isDone && !isActive && <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" weight="bold" />}
+                                    <span className="relative z-10 flex items-center gap-2 sm:gap-2.5">
+                                        <IconComponent 
+                                            className={`w-5 h-5 shrink-0 transition-colors duration-200 ${config.color}`} 
+                                            weight="duotone" 
+                                        />
+                                        <span className={`tracking-tight ${isSelected ? 'inline' : 'hidden sm:inline'}`}>
+                                            {config.label}
+                                        </span>
+                                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold border transition-colors ${config.badgeStyle} ${
+                                            isSelected 
+                                                ? 'inline shadow-xs' 
+                                                : 'hidden sm:inline opacity-90 hover:opacity-100'
+                                        }`}>
+                                            {count}
+                                        </span>
                                     </span>
                                 </button>
                             );
@@ -1804,14 +2080,15 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                             <Input label="End Date *" type="date" value={endDate} min={startDate} onChange={e => handleEndDateChange(e.target.value)} />
                                         </div>
                                         <div className="pt-2">
-                                            <button 
+                                            <GlassButton 
                                                 type="button" 
+                                                variant="primary"
                                                 onClick={handleCompleteBasics} 
-                                                className={`${BTN_PRIMARY_STYLE} w-full h-11 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-none sm:shadow-xs cursor-pointer`}
+                                                className="w-full h-11 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-none sm:shadow-xs cursor-pointer"
                                             >
                                                 <span>Confirm Basics</span>
                                                 <ArrowRight className="w-4 h-4" />
-                                            </button>
+                                            </GlassButton>
                                         </div>
                                     </div>
                                 )}
@@ -1902,39 +2179,63 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
 
                                 {/* Sub-step 2d: Action to add transport & multiple legs stack */}
                                 <div className="space-y-2 pt-1">
-                                    <button 
-                                        type="button" 
-                                        onClick={handleCommitTransport}
-                                        className={`${BTN_SECONDARY_STYLE} w-full h-10 text-2xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer`}
-                                    >
-                                        <Plus className="w-3.5 h-3.5" />
-                                        <span>+ Add This Transport Leg</span>
-                                    </button>
+                                    <div className="flex gap-2">
+                                        <GlassButton 
+                                            type="button" 
+                                            variant={editingTransportIndex !== null ? "primary" : "secondary"}
+                                            onClick={handleCommitTransport}
+                                            className="flex-1 h-10 text-2xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer"
+                                        >
+                                            {editingTransportIndex !== null ? (
+                                                <>
+                                                    <Check className="w-3.5 h-3.5" weight="bold" />
+                                                    <span>Save Leg Changes</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Plus className="w-3.5 h-3.5" weight="bold" />
+                                                    <span>+ Add This Transport Leg</span>
+                                                </>
+                                            )}
+                                        </GlassButton>
+                                        {editingTransportIndex !== null && (
+                                            <GlassButton
+                                                type="button"
+                                                variant="ghost"
+                                                onClick={handleCancelEditTransport}
+                                                className="h-10 px-3 text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary cursor-pointer"
+                                            >
+                                                Cancel
+                                            </GlassButton>
+                                        )}
+                                    </div>
 
                                     {/* Render multiple added transports */}
                                     {renderTransportStackList()}
 
                                     <div className="flex gap-2 pt-2">
-                                        <button 
+                                        <GlassButton 
                                             type="button" 
+                                            variant="ghost"
                                             onClick={() => setCurrentStage('accommodation')}
                                             className="px-3 h-11 text-2xs text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text font-bold uppercase transition-colors cursor-pointer"
                                         >
                                             Skip
-                                        </button>
-                                        <button 
+                                        </GlassButton>
+                                        <GlassButton 
                                             type="button" 
+                                            variant="primary"
                                             onClick={() => {
                                                 if (outboundOrigin && transportsList.length === 0) {
                                                     handleCommitTransport();
                                                 }
                                                 setCurrentStage('accommodation');
                                             }}
-                                            className={`${BTN_PRIMARY_STYLE} flex-1 h-11 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1 cursor-pointer`}
+                                            className="flex-1 h-11 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1 cursor-pointer"
                                         >
                                             <span>Proceed to Stay</span>
                                             <ArrowRight className="w-4 h-4" />
-                                        </button>
+                                        </GlassButton>
                                     </div>
                                 </div>
                             </div>
@@ -2029,21 +2330,43 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-2">
-                                        <Input label="Total Cost" type="number" placeholder="0.00" value={accCost} onChange={e => setAccCost(e.target.value)} />
+                                        <Input label={`Total Cost (${getCurrencySymbol(activeCurrency)})`} type="number" placeholder="0.00" value={accCost} onChange={e => setAccCost(e.target.value)} />
                                         <Input label="Booking Ref / PNR" placeholder="HTL-882" value={accRef} onChange={e => setAccRef(e.target.value)} />
                                     </div>
                                 </div>
 
                                 {/* Sub-step 3c: Stacking & Multiple Stays list */}
                                 <div className="space-y-2 pt-1">
-                                    <button 
-                                        type="button" 
-                                        onClick={handleCommitAccommodation}
-                                        className={`${BTN_SECONDARY_STYLE} w-full h-10 text-2xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer`}
-                                    >
-                                        <Plus className="w-3.5 h-3.5" />
-                                        <span>+ Add This Stay</span>
-                                    </button>
+                                    <div className="flex gap-2">
+                                        <GlassButton 
+                                            type="button" 
+                                            variant={editingAccommodationIndex !== null ? "primary" : "secondary"}
+                                            onClick={handleCommitAccommodation}
+                                            className="flex-1 h-10 text-2xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer"
+                                        >
+                                            {editingAccommodationIndex !== null ? (
+                                                <>
+                                                    <Check className="w-3.5 h-3.5" weight="bold" />
+                                                    <span>Save Stay Changes</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Plus className="w-3.5 h-3.5" weight="bold" />
+                                                    <span>+ Add This Stay</span>
+                                                </>
+                                            )}
+                                        </GlassButton>
+                                        {editingAccommodationIndex !== null && (
+                                            <GlassButton
+                                                type="button"
+                                                variant="ghost"
+                                                onClick={handleCancelEditAccommodation}
+                                                className="h-10 px-3 text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary cursor-pointer"
+                                            >
+                                                Cancel
+                                            </GlassButton>
+                                        )}
+                                    </div>
 
                                     {/* Render multiple added accommodations */}
                                     {renderAccommodationStackList()}
@@ -2056,7 +2379,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                                     Expedition Est. Total
                                                 </span>
                                                 <span className="font-mono font-black text-sm text-primary-600 dark:text-primary-400">
-                                                    {formatCurrency(totalEstimatedCost)}
+                                                    {formatCurrency(totalEstimatedCost, activeCurrency)}
                                                 </span>
                                             </div>
                                             <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary">
@@ -2064,15 +2387,16 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                             </span>
                                         </div>
 
-                                        <button 
+                                        <GlassButton 
                                             type="button" 
+                                            variant="primary"
                                             onClick={handleFinalizeTrip}
                                             disabled={isSaving || !title || !startDate || !endDate}
-                                            className={`${BTN_PRIMARY_STYLE} w-full h-11 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-xs active:scale-95 disabled:opacity-50 cursor-pointer`}
+                                            className="w-full h-11 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-xs active:scale-95 disabled:opacity-50 cursor-pointer"
                                         >
                                             <span>{isSaving ? 'Creating...' : 'Launch Expedition'}</span>
                                             <Check className="w-4 h-4" weight="bold" />
-                                        </button>
+                                        </GlassButton>
                                     </div>
                                 </div>
                             </div>
@@ -2104,10 +2428,15 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                     <Input label="Start Date *" type="date" value={startDate} onChange={e => handleStartDateChange(e.target.value)} />
                                     <Input label="End Date *" type="date" value={endDate} min={startDate} onChange={e => handleEndDateChange(e.target.value)} />
                                 </div>
-                                <button type="button" onClick={handleCompleteBasics} className={`${BTN_PRIMARY_STYLE} w-full h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-none sm:shadow-xs`}>
+                                <GlassButton 
+                                    type="button" 
+                                    variant="primary"
+                                    onClick={handleCompleteBasics} 
+                                    className="w-full h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-none sm:shadow-xs"
+                                >
                                     <span>Next: Configure Transport</span>
                                     <ArrowRight className="w-4 h-4" />
-                                </button>
+                                </GlassButton>
                             </div>
                         )}
 
@@ -2176,33 +2505,63 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 </div>
 
                                 {/* Add Leg Button */}
-                                <button 
-                                    type="button" 
-                                    onClick={handleCommitTransport}
-                                    className={`${BTN_SECONDARY_STYLE} w-full h-11 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-none sm:shadow-xs`}
-                                >
-                                    <Plus className="w-4 h-4" />
-                                    <span>+ Add This Transport Leg</span>
-                                </button>
+                                <div className="flex gap-2">
+                                    <GlassButton 
+                                        type="button" 
+                                        variant={editingTransportIndex !== null ? "primary" : "secondary"}
+                                        onClick={handleCommitTransport}
+                                        className="flex-1 h-11 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-none sm:shadow-xs"
+                                    >
+                                        {editingTransportIndex !== null ? (
+                                            <>
+                                                <Check className="w-4 h-4" weight="bold" />
+                                                <span>Save Leg Changes</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Plus className="w-4 h-4" weight="bold" />
+                                                <span>+ Add This Transport Leg</span>
+                                            </>
+                                        )}
+                                    </GlassButton>
+                                    {editingTransportIndex !== null && (
+                                        <GlassButton
+                                            type="button"
+                                            variant="ghost"
+                                            onClick={handleCancelEditTransport}
+                                            className="h-11 px-3 text-xs font-bold uppercase tracking-wider cursor-pointer"
+                                        >
+                                            Cancel
+                                        </GlassButton>
+                                    )}
+                                </div>
 
                                 {/* Multiple Added Transports Stack */}
                                 {renderTransportStackList()}
 
                                 <div className="flex gap-2 pt-2">
-                                    <button type="button" onClick={() => setCurrentStage('accommodation')} className="px-4 h-12 text-xs font-bold uppercase text-light-text-secondary dark:text-dark-text-secondary cursor-pointer">Skip</button>
-                                    <button 
+                                    <GlassButton 
                                         type="button" 
+                                        variant="ghost"
+                                        onClick={() => setCurrentStage('accommodation')} 
+                                        className="px-4 h-12 text-xs font-bold uppercase text-light-text-secondary dark:text-dark-text-secondary cursor-pointer"
+                                    >
+                                        Skip
+                                    </GlassButton>
+                                    <GlassButton 
+                                        type="button" 
+                                        variant="primary"
                                         onClick={() => { 
                                             if (outboundOrigin && transportsList.length === 0) {
                                                 handleCommitTransport();
                                             }
                                             setCurrentStage('accommodation'); 
                                         }} 
-                                        className={`${BTN_PRIMARY_STYLE} flex-1 h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1 cursor-pointer shadow-none sm:shadow-xs`}
+                                        className="flex-1 h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1 cursor-pointer shadow-none sm:shadow-xs"
                                     >
                                         <span>Next: Stays</span>
                                         <ArrowRight className="w-4 h-4" />
-                                    </button>
+                                    </GlassButton>
                                 </div>
                             </div>
                         )}
@@ -2276,19 +2635,41 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3">
-                                    <Input label="Total Cost" type="number" placeholder="0.00" value={accCost} onChange={e => setAccCost(e.target.value)} />
+                                    <Input label={`Total Cost (${getCurrencySymbol(activeCurrency)})`} type="number" placeholder="0.00" value={accCost} onChange={e => setAccCost(e.target.value)} />
                                     <Input label="Booking Ref / PNR" placeholder="HTL-882" value={accRef} onChange={e => setAccRef(e.target.value)} />
                                 </div>
 
                                 {/* Add Stay Button */}
-                                <button 
-                                    type="button" 
-                                    onClick={handleCommitAccommodation}
-                                    className={`${BTN_SECONDARY_STYLE} w-full h-11 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-none sm:shadow-xs`}
-                                >
-                                    <Plus className="w-4 h-4" />
-                                    <span>+ Add This Stay</span>
-                                </button>
+                                <div className="flex gap-2">
+                                    <GlassButton 
+                                        type="button" 
+                                        variant={editingAccommodationIndex !== null ? "primary" : "secondary"}
+                                        onClick={handleCommitAccommodation}
+                                        className="flex-1 h-11 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-none sm:shadow-xs"
+                                    >
+                                        {editingAccommodationIndex !== null ? (
+                                            <>
+                                                <Check className="w-4 h-4" weight="bold" />
+                                                <span>Save Stay Changes</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Plus className="w-4 h-4" weight="bold" />
+                                                <span>+ Add This Stay</span>
+                                            </>
+                                        )}
+                                    </GlassButton>
+                                    {editingAccommodationIndex !== null && (
+                                        <GlassButton
+                                            type="button"
+                                            variant="ghost"
+                                            onClick={handleCancelEditAccommodation}
+                                            className="h-11 px-3 text-xs font-bold uppercase tracking-wider cursor-pointer"
+                                        >
+                                            Cancel
+                                        </GlassButton>
+                                    )}
+                                </div>
 
                                 {/* Multiple Added Stays Stack */}
                                 {renderAccommodationStackList()}
@@ -2298,24 +2679,25 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                     <div className="p-3 rounded-xl bg-black/5 dark:bg-white/5 space-y-1.5 text-xs">
                                         <div className="flex justify-between items-center text-2xs text-light-text-secondary dark:text-dark-text-secondary">
                                             <span>Transports ({transportsList.length})</span>
-                                            <span className="font-mono font-bold text-light-text dark:text-dark-text">{formatCurrency(totalTransportCost)}</span>
+                                            <span className="font-mono font-bold text-light-text dark:text-dark-text">{formatCurrency(totalTransportCost, activeCurrency)}</span>
                                         </div>
                                         <div className="flex justify-between items-center text-2xs text-light-text-secondary dark:text-dark-text-secondary">
                                             <span>Accommodations ({accommodationsList.length})</span>
-                                            <span className="font-mono font-bold text-light-text dark:text-dark-text">{formatCurrency(totalAccommodationCost)}</span>
+                                            <span className="font-mono font-bold text-light-text dark:text-dark-text">{formatCurrency(totalAccommodationCost, activeCurrency)}</span>
                                         </div>
                                         <div className="flex justify-between items-center pt-1.5 border-t border-black/10 dark:border-white/10">
                                             <span className="font-bold uppercase tracking-wider text-2xs text-light-text dark:text-dark-text">Total Expedition Cost</span>
                                             <span className="font-mono font-black text-sm text-primary-600 dark:text-primary-400">
-                                                {formatCurrency(totalEstimatedCost)}
+                                                {formatCurrency(totalEstimatedCost, activeCurrency)}
                                             </span>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div className="pt-2">
-                                    <button 
+                                    <GlassButton 
                                         type="button" 
+                                        variant="primary"
                                         onClick={() => { 
                                             if (accName && accommodationsList.length === 0) {
                                                 handleCommitAccommodation();
@@ -2323,11 +2705,11 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                             handleFinalizeTrip(); 
                                         }} 
                                         disabled={isSaving || !title || !startDate || !endDate}
-                                        className={`${BTN_PRIMARY_STYLE} w-full h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-none sm:shadow-xs disabled:opacity-50`}
+                                        className="w-full h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-none sm:shadow-xs disabled:opacity-50"
                                     >
                                         <span>{isSaving ? 'Creating Expedition...' : 'Launch Expedition'}</span>
                                         <Check className="w-4 h-4" weight="bold" />
-                                    </button>
+                                    </GlassButton>
                                 </div>
                             </div>
                         )}
