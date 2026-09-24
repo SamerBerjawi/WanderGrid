@@ -877,8 +877,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
 
     return (
         <div 
-            className="fixed inset-0 bg-black/25 dark:bg-black/50 backdrop-blur-xs flex items-center justify-center z-modal p-4 text-light-text dark:text-dark-text animate-fade-in"
-            style={{ WebkitBackdropFilter: 'blur(4px)' }}
+            className="fixed inset-0 bg-black/40 dark:bg-black/60 flex items-center justify-center z-modal p-4 text-light-text dark:text-dark-text animate-fade-in"
         >
             <GlassPanel className="wg-glass-card shadow-2xl overflow-hidden flex flex-col w-full max-w-6xl h-[85vh] animate-scale-up" overrides={{ borderRadius: 28 }} padding="0px">
                 <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px]">

@@ -1656,8 +1656,7 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/25 dark:bg-black/50 backdrop-blur-xs"
-              style={{ WebkitBackdropFilter: 'blur(4px)' }}
+              className="fixed inset-0 bg-black/40 dark:bg-black/60"
               onClick={() => setIsModalOpen(false)}
             />
             <motion.div 

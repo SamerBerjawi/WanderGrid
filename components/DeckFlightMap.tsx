@@ -32,7 +32,7 @@ import {
 } from '@phosphor-icons/react';
 import { Trip, CountryResidenceStatus, PredefinedMapMode, toggleCountryResidenceStatus, WorkspaceSettings } from '../types';
 import { useWanderSync } from '../hooks/useWanderSync';
-import { getCoordinatesSync, formatPlaceName } from '../services/geocoding';
+import { getCoordinatesSync, formatPlaceName, formatProperLocationName } from '../services/geocoding';
 import { 
     MapAppearanceSettings, 
     DEFAULT_MAP_APPEARANCE, 
@@ -2563,10 +2563,10 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-4">
                                                         <span className="font-bold text-sm text-gray-900 dark:text-white tracking-tight">
-                                                            {latestFlight.origin.toUpperCase()}
+                                                            {formatProperLocationName(latestFlight.origin)}
                                                         </span>
                                                         <span className="font-bold text-sm text-gray-900 dark:text-white tracking-tight">
-                                                            {latestFlight.destination.toUpperCase()}
+                                                            {formatProperLocationName(latestFlight.destination)}
                                                         </span>
                                                     </div>
                                                     {latestFlight.departureDate && (

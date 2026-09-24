@@ -775,8 +775,7 @@ export const CarriersTab: React.FC<CarriersTabProps> = ({ config, setConfig, han
             {deletingCarrier && (
                 <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
                     <div
-                        className="fixed inset-0 bg-black/25 dark:bg-black/50 backdrop-blur-xs transition-opacity"
-                        style={{ WebkitBackdropFilter: 'blur(4px)' }}
+                        className="fixed inset-0 bg-black/40 dark:bg-black/60 transition-opacity"
                         onClick={() => setDeletingCarrier(null)}
                     />
                     <div className="relative w-full max-w-sm">

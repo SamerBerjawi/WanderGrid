@@ -168,8 +168,7 @@ export const ExcursionConfigurator: React.FC<ExcursionConfiguratorProps> = ({
         <div className="fixed inset-0 z-modal overflow-y-auto flex items-center justify-center p-4 sm:p-6 font-sans">
             {/* Backdrop */}
             <div 
-                className="fixed inset-0 bg-black/25 dark:bg-black/50 backdrop-blur-xs transition-opacity duration-300"
-                style={{ WebkitBackdropFilter: 'blur(4px)' }}
+                className="fixed inset-0 bg-black/40 dark:bg-black/60 transition-opacity duration-300"
                 onClick={onClose}
             />
 

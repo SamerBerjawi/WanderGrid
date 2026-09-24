@@ -226,8 +226,7 @@ export const INPUT_BASE_STYLE =
 
 ---
 
-### 3.6 Modals & Drawers (`Modal`, `StandardDrawer`)
-- **Backdrop**: `bg-gray-900/50 dark:bg-black/80 backdrop-blur-md` (`-webkit-backdrop-filter: blur(12px)`).
+- **Backdrop**: Clean translucent darkening scrim `bg-black/40 dark:bg-black/60` (no page blur to prevent double-blur since the modal container already has liquid glass).
 - **Container**: `GlassPanel` (`wg-glass-card`, `overrides={{ borderRadius: 28 }}`).
 - **Footer**: Sticky frosted glass footer (`bg-white/80 dark:bg-dark-card/80 backdrop-blur-md`).
 - **Touch Target**: Close button strictly `min-w-[44px] min-h-[44px]`.

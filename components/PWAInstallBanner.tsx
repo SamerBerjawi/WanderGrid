@@ -190,8 +190,7 @@ export const PWAInstallBanner: React.FC = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowIosInstructions(false)}
-              className="fixed inset-0 bg-black/25 dark:bg-black/50 backdrop-blur-xs"
-              style={{ WebkitBackdropFilter: 'blur(4px)' }}
+              className="fixed inset-0 bg-black/40 dark:bg-black/60"
             />
 
             {/* Modal Sheet */}

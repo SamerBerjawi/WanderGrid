@@ -9,7 +9,7 @@
  * - Normalization & city cleaning via cleanCityName
  */
 
-import { cleanCityName } from './geocoding';
+import { cleanCityName, formatProperLocationName } from './geocoding';
 import { getFlagEmoji } from './geoData';
 
 export interface ParsedLocationItem {
@@ -62,9 +62,9 @@ export function parseGoogleMapsUrl(input: string): {
   if (placeMatch && placeMatch[1]) {
     try {
       const decoded = decodeURIComponent(placeMatch[1].replace(/\+/g, ' '));
-      placeName = decoded.trim();
+      placeName = formatProperLocationName(decoded.trim());
     } catch {
-      placeName = placeMatch[1].replace(/\+/g, ' ').trim();
+      placeName = formatProperLocationName(placeMatch[1].replace(/\+/g, ' ').trim());
     }
   }
 
@@ -73,9 +73,10 @@ export function parseGoogleMapsUrl(input: string): {
     const queryMatch = trimmed.match(/[?&](?:q|query)=([^&#]+)/);
     if (queryMatch && queryMatch[1]) {
       try {
-        placeName = decodeURIComponent(queryMatch[1].replace(/\+/g, ' ')).trim();
+        const decoded = decodeURIComponent(queryMatch[1].replace(/\+/g, ' '));
+        placeName = formatProperLocationName(decoded.trim());
       } catch {
-        placeName = queryMatch[1].replace(/\+/g, ' ').trim();
+        placeName = formatProperLocationName(queryMatch[1].replace(/\+/g, ' ').trim());
       }
     }
   }

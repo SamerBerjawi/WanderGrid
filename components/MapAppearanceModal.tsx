@@ -85,10 +85,9 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
 
     return createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 font-sans select-none">
-            {/* Frosted Backdrop */}
+            {/* Scrim Backdrop */}
             <div 
-                className="fixed inset-0 bg-black/25 dark:bg-black/50 backdrop-blur-xs transition-opacity" 
-                style={{ WebkitBackdropFilter: 'blur(4px)' }}
+                className="fixed inset-0 bg-black/40 dark:bg-black/60 transition-opacity" 
                 onClick={onClose} 
             />
 

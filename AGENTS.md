@@ -74,7 +74,7 @@ All modal overlays, slide-out drawer components, form surfaces, and dialogs acro
 * **Elevated / Floating Cards:** `bg-white/70 dark:bg-white/[0.08] backdrop-blur-xl border border-black/10 dark:border-white/10 shadow-glass-light-card dark:shadow-glass-card rounded-3xl`.
 * **Hairline Dividers & Borders:** Crisp, tactile borders across both themes: `border-black/5 dark:border-white/10` (inner items/dividers) and `border-black/10 dark:border-white/15` (structural shells).
 * **Glassmorphic Elements:** Frosted liquid glass:
-  1. Backdrop overlay (`bg-black/25 dark:bg-black/50 backdrop-blur-xs` with `-webkit-backdrop-filter: blur(4px)`).
+  1. Backdrop overlay: Clean translucent darkening scrim (`bg-black/40 dark:bg-black/60`). Modals and drawers already have liquid glass surfaces with blur, so the page backdrop must NOT blur page content behind them to prevent double-blur.
   2. Slide-out drawer & dialog shells: Floating `fixed top-3 sm:top-4 right-3 sm:right-4 bottom-3 sm:bottom-4 z-modal` inside `<GlassPanel className="wg-glass-card shadow-2xl" overrides={{ borderRadius: 28 }}>`.
   3. Sticky bottom action footers (`bg-white/30 dark:bg-white/[0.03] backdrop-blur-md border-t border-black/5 dark:border-white/10`).
 
@@ -164,12 +164,11 @@ export const StandardDrawer: React.FC<DrawerProps> = ({
 
   return createPortal(
     <div className="fixed inset-0 z-modal overflow-hidden font-sans">
-      {/* 1. Frosted Backdrop (Crystal TransactionModal level) */}
+      {/* 1. Translucent Scrim Backdrop (No blur to avoid double-blurring page content) */}
       <div 
-        className={`fixed inset-0 bg-gray-900/50 dark:bg-black/80 backdrop-blur-md transition-opacity duration-300 ${
+        className={`fixed inset-0 bg-black/40 dark:bg-black/60 transition-opacity duration-300 ${
           isVisible ? 'opacity-100' : 'opacity-0'
         }`}
-        style={{ WebkitBackdropFilter: 'blur(12px)' }}
         onClick={handleClose}
       />
 

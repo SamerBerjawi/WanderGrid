@@ -1,5 +1,5 @@
 // Route Corridor Intelligence & Airport Geodesy Service for WanderGrid
-import { STATIC_GEO_DATA } from './geocoding';
+import { STATIC_GEO_DATA, formatProperLocationName } from './geocoding';
 import { getPhysicalRunwaysSync } from './airportRunways';
 import { Trip } from '../types';
 
@@ -196,18 +196,20 @@ export function buildRouteCorridors(trips: Trip[]): Map<string, RouteCorridor> {
         trip.transports?.forEach(t => {
             if (!t.origin || !t.destination || !t.originLat || !t.originLng || !t.destLat || !t.destLng) return;
 
-            const oCode = t.origin.toUpperCase().trim();
-            const dCode = t.destination.toUpperCase().trim();
+            const oCode = t.origin.trim();
+            const dCode = t.destination.trim();
+            const oUpper = oCode.toUpperCase();
+            const dUpper = dCode.toUpperCase();
 
             // Bidirectional corridor key (lexicographically sorted)
-            const corridorId = oCode < dCode ? `${oCode}<->${dCode}` : `${dCode}<->${oCode}`;
+            const corridorId = oUpper < dUpper ? `${oUpper}<->${dUpper}` : `${dUpper}<->${oUpper}`;
 
             const leg: CorridorFlightLeg = {
                 id: `${trip.id}_${t.identifier || ''}_${t.departureDate || ''}`,
                 tripId: trip.id,
                 tripName: trip.name,
-                origin: oCode,
-                destination: dCode,
+                origin: formatProperLocationName(oCode),
+                destination: formatProperLocationName(dCode),
                 provider: t.provider || (t.mode === 'Flight' || !t.mode ? 'Flight' : t.mode),
                 identifier: t.identifier || '',
                 departureDate: t.departureDate,
@@ -221,8 +223,8 @@ export function buildRouteCorridors(trips: Trip[]): Map<string, RouteCorridor> {
 
                 corridors.set(corridorId, {
                     id: corridorId,
-                    originCode: oCode,
-                    destCode: dCode,
+                    originCode: formatProperLocationName(oCode),
+                    destCode: formatProperLocationName(dCode),
                     originName: meta1.name,
                     destName: meta2.name,
                     originCity: meta1.city,

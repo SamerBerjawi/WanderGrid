@@ -498,32 +498,146 @@ const PRESERVED_UPPERCASE_CODES = new Set([
     ...Object.values(AU_STATE_CODES)
 ]);
 
+const LOWERCASE_PARTICLES = new Set([
+    'da', 'de', 'do', 'dos', 'das', 'del', 'della', 'di', 'du', 'des', 
+    'la', 'le', 'les', 'en', 'und', 'y', 'e', 'von', 'van', 'and', 'of', 
+    'the', 'in', 'on', 'at'
+]);
+
+/**
+ * Formats a location, city name, or address in Proper Form (Title Case).
+ * - Preserves 3-letter IATA codes (e.g. "JFK", "LHR", "PDL") or prefix codes ("PDL - Ponta Delgada").
+ * - Preserves state & country codes (e.g. "US", "PT", "CA", "NY").
+ * - Keeps grammatical particles lowercase (e.g. "Reserva Natural da Lagoa do Fogo").
+ * - Handles parentheses properly (e.g. "(Conceição)").
+ * - Deduplicates redundant adjacent administrative elements from Google Maps addresses.
+ */
+export function formatProperLocationName(location: string | undefined | null): string {
+    if (!location) return '';
+    let text = location.trim();
+    if (!text) return '';
+
+    // If pure 3-letter IATA airport code, keep uppercase (e.g. "JFK", "PDL", "LIS")
+    if (/^[A-Za-z]{3}$/.test(text)) {
+        return text.toUpperCase();
+    }
+
+    // Handle IATA prefix format e.g. "PDL - Ponta Delgada Airport"
+    const iataPrefixMatch = text.match(/^([A-Za-z]{3})\s*-\s*(.+)$/);
+    if (iataPrefixMatch) {
+        const code = iataPrefixMatch[1].toUpperCase();
+        const rest = formatProperLocationName(iataPrefixMatch[2]);
+        return `${code} - ${rest}`;
+    }
+
+    // Split into comma-separated segments to normalize and deduplicate administrative noise
+    const rawSegments = text.split(',').map(s => s.trim()).filter(Boolean);
+    const cleanedSegments: string[] = [];
+    const seenSegmentBases = new Set<string>();
+
+    for (const segment of rawSegments) {
+        // Tokenize words while preserving punctuation like parens and hyphens
+        const words = segment.split(/\s+/).map((word, wordIdx) => {
+            if (!word) return '';
+
+            // Handle parenthetical words, e.g. "(CONCEIÇÃO)" -> "(Conceição)"
+            const parenMatch = word.match(/^(\(?)(.*?)(\)?)$/);
+            if (parenMatch && parenMatch[2]) {
+                const prefix = parenMatch[1];
+                const core = parenMatch[2];
+                const suffix = parenMatch[3];
+                const upperCore = core.toUpperCase();
+
+                // Preserve short codes e.g. (PDL) or (NY)
+                if (PRESERVED_UPPERCASE_CODES.has(upperCore) || /^[A-Z]{3}$/.test(upperCore)) {
+                    return `${prefix}${upperCore}${suffix}`;
+                }
+
+                const lowerCore = core.toLowerCase();
+                // Lowercase particles only if not first word of segment
+                if (wordIdx > 0 && LOWERCASE_PARTICLES.has(lowerCore)) {
+                    return `${prefix}${lowerCore}${suffix}`;
+                }
+
+                // Title case with proper diacritics support
+                const titled = core.charAt(0).toUpperCase() + core.slice(1).toLowerCase();
+                return `${prefix}${titled}${suffix}`;
+            }
+
+            const upper = word.toUpperCase();
+            if (PRESERVED_UPPERCASE_CODES.has(upper)) {
+                return upper;
+            }
+
+            const lower = word.toLowerCase();
+            if (wordIdx > 0 && LOWERCASE_PARTICLES.has(lower)) {
+                return lower;
+            }
+
+            return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+        }).join(' ');
+
+        // Deduplicate adjacent administrative noise (e.g. "Ribeira Grande (Conceição)" followed by "Ribeira Grande")
+        const baseKey = words.toLowerCase().replace(/\s*\([^)]*\)/g, '').trim();
+        if (baseKey && seenSegmentBases.has(baseKey)) {
+            continue;
+        }
+        if (baseKey) {
+            seenSegmentBases.add(baseKey);
+        }
+        cleanedSegments.push(words);
+    }
+
+    return cleanedSegments.join(', ');
+}
+
+/**
+ * Extracts and normalizes location name from Google Maps URLs, coordinate strings, or query inputs.
+ */
+export function normalizeGoogleMapsLocation(input: string): string {
+    if (!input) return '';
+    let val = input.trim();
+
+    // Check if input is a Google Maps link
+    const isGMapLink = 
+        val.includes('google.com/maps') || 
+        val.includes('maps.google.') || 
+        val.includes('maps.app.goo.gl') || 
+        val.includes('goo.gl/maps');
+
+    if (isGMapLink) {
+        // Check /place/Place+Name
+        const placeMatch = val.match(/\/place\/([^/@?#]+)/);
+        if (placeMatch && placeMatch[1]) {
+            try {
+                val = decodeURIComponent(placeMatch[1].replace(/\+/g, ' ')).trim();
+            } catch {
+                val = placeMatch[1].replace(/\+/g, ' ').trim();
+            }
+        } else {
+            // Check ?q=... or ?query=...
+            const queryMatch = val.match(/[?&](?:q|query)=([^&#]+)/);
+            if (queryMatch && queryMatch[1]) {
+                try {
+                    val = decodeURIComponent(queryMatch[1].replace(/\+/g, ' ')).trim();
+                } catch {
+                    val = queryMatch[1].replace(/\+/g, ' ').trim();
+                }
+            }
+        }
+    }
+
+    // Strip leading pin icon or trailing Google Maps tag if present
+    val = val.replace(/^📍\s*/, '').replace(/\s*\(Google Maps\)$/i, '').trim();
+
+    return formatProperLocationName(val);
+}
+
 /**
  * Formats a city, country, or location string with title casing, preserving known short codes (e.g. US, UK, CA, NY, NSW).
  */
 export function formatPlaceName(name: string): string {
-    if (!name) return '';
-    const trimmed = name.trim();
-    if (!trimmed) return '';
-
-    // If whole string is a preserved code (e.g. "US", "UK", "CA")
-    if (PRESERVED_UPPERCASE_CODES.has(trimmed.toUpperCase())) {
-        return trimmed.toUpperCase();
-    }
-
-    // Split on commas or spaces while preserving delimiters
-    return trimmed.split(/([,\s/]+)/).map(token => {
-        const cleanToken = token.trim();
-        if (!cleanToken) return token;
-
-        const upperToken = cleanToken.toUpperCase();
-        if (PRESERVED_UPPERCASE_CODES.has(upperToken)) {
-            return upperToken;
-        }
-
-        // Standard capitalization for normal words (e.g. "paris" -> "Paris", "UNITED STATES" -> "United States")
-        return cleanToken.charAt(0).toUpperCase() + cleanToken.slice(1).toLowerCase();
-    }).join('');
+    return formatProperLocationName(name);
 }
 
 /**

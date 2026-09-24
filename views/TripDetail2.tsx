@@ -64,7 +64,7 @@ import { dataService } from '../services/mockDb';
 import { flightImporter } from '../services/flightImportExport';
 import { calendarService } from '../services/calendarExport';
 import { Trip, User, Transport, Accommodation, WorkspaceSettings, Activity, TransportMode, LocationEntry, EntitlementType, PublicHoliday, SavedConfig, PackingItem, Carrier } from '../types';
-import { searchLocations, resolvePlaceName, getCoordinates } from '../services/geocoding';
+import { searchLocations, resolvePlaceName, getCoordinates, formatProperLocationName } from '../services/geocoding';
 import { GoogleGenAI } from "@google/genai";
 const DeckFlightMap = React.lazy(() => import('../components/DeckFlightMap').then(m => ({ default: m.DeckFlightMap || m.default })));
 const FlightImportWizard = React.lazy(() => import('../components/FlightImportWizard').then(m => ({ default: m.FlightImportWizard })));
@@ -1069,7 +1069,7 @@ export const TripDetail2: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 subType: t.mode,
                 time: t.isDropoff ? t.arrivalTime : t.departureTime,
                 name: t.provider + (t.identifier ? ` ${t.identifier}` : ''),
-                location: t.isDropoff ? t.dropoffLocation || t.destination : t.pickupLocation || t.origin,
+                location: formatProperLocationName(t.isDropoff ? t.dropoffLocation || t.destination : t.pickupLocation || t.origin),
                 cost: (t.cost || 0) > 0 ? t.cost : null,
                 icon: getTransportIcon(t.mode),
                 ref: t,
@@ -1142,8 +1142,8 @@ export const TripDetail2: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 type: 'Transport',
                 subType: t.mode,
                 time: t.isDropoff ? t.arrivalTime || '00:00' : t.departureTime || '00:00',
-                title: t.isDropoff ? `Dropoff ${t.mode}` : (t.mode === 'Car Rental' || t.mode === 'Personal Car' ? `Pickup ${t.mode}` : `${t.mode} to ${t.destination}`),
-                location: t.isDropoff ? t.dropoffLocation || t.destination : t.pickupLocation || t.origin,
+                title: t.isDropoff ? `Dropoff ${t.mode}` : (t.mode === 'Car Rental' || t.mode === 'Personal Car' ? `Pickup ${t.mode}` : `${t.mode} to ${formatProperLocationName(t.destination)}`),
+                location: formatProperLocationName(t.isDropoff ? t.dropoffLocation || t.destination : t.pickupLocation || t.origin),
                 cost: (t.cost || 0) > 0 ? t.cost : undefined,
                 icon: getTransportIcon(t.mode),
                 ref: t,
@@ -1899,7 +1899,7 @@ export const TripDetail2: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                                     <div>
                                                                         <p className="text-2xs uppercase font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider">Departure</p>
                                                                         <div className="flex items-baseline gap-2 mt-0.5">
-                                                                            <span className="text-xl font-black text-light-text dark:text-dark-text tracking-tight uppercase">{t.origin}</span>
+                                                                            <span className="text-xl font-black text-light-text dark:text-dark-text tracking-tight">{formatProperLocationName(t.origin)}</span>
                                                                             <span className="text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary font-mono">{formatTime(t.departureTime)}</span>
                                                                         </div>
                                                                         <p className="text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary mt-1">
@@ -1928,7 +1928,7 @@ export const TripDetail2: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                                     <div className="md:text-right">
                                                                         <p className="text-2xs uppercase font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider">Arrival</p>
                                                                         <div className="flex items-baseline md:justify-end gap-2 mt-0.5">
-                                                                            <span className="text-xl font-black text-light-text dark:text-dark-text tracking-tight uppercase">{t.destination}</span>
+                                                                            <span className="text-xl font-black text-light-text dark:text-dark-text tracking-tight">{formatProperLocationName(t.destination)}</span>
                                                                             <span className="text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary font-mono">{formatTime(t.arrivalTime)}</span>
                                                                         </div>
                                                                         <p className="text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary mt-1">
@@ -1968,7 +1968,7 @@ export const TripDetail2: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                                     {t.pickupLocation && (
                                                                         <div className="px-2.5 py-1 rounded-lg bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1">
                                                                             <MapPin className="w-3.5 h-3.5 text-zinc-400" />
-                                                                            Pickup: {t.pickupLocation}
+                                                                            Pickup: {formatProperLocationName(t.pickupLocation)}
                                                                         </div>
                                                                     )}
                                                                 </div>
@@ -2047,7 +2047,7 @@ export const TripDetail2: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                     </div>
                                                     <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium flex items-center gap-1 max-w-full">
                                                         <MapPin className="w-3.5 h-3.5 shrink-0" weight="duotone" />
-                                                        <span className="truncate select-all" title={stay.address}>{stay.address}</span>
+                                                        <span className="truncate select-all" title={stay.address}>{formatProperLocationName(stay.address)}</span>
                                                     </p>
                                                     
                                                     <div className="flex flex-wrap gap-2 pt-1.5">
@@ -2409,7 +2409,7 @@ export const TripDetail2: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                {t.transports.map((tr, idx) => (
                                                    <div key={tr.id || `${tr.identifier}-${tr.departureDate}-${idx}`} className="flex items-center gap-3 text-xs p-2 bg-light-card dark:bg-dark-card rounded-lg border border-black/5 dark:border-white/5">
                                                        <span className="font-mono font-bold text-primary-600 dark:text-primary-400">{tr.departureTime}</span>
-                                                       <span className="font-bold">{tr.origin} &rarr; {tr.destination}</span>
+                                                       <span className="font-bold">{formatProperLocationName(tr.origin)} &rarr; {formatProperLocationName(tr.destination)}</span>
                                                        <span className="text-light-text-secondary">{tr.provider} {tr.identifier}</span>
                                                    </div>
                                                ))}

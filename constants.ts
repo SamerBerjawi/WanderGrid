@@ -43,7 +43,7 @@ export const MODAL_SHELL_STYLE =
   'wg-glass-card shadow-2xl rounded-[28px] overflow-hidden';
 
 export const MODAL_BACKDROP_STYLE =
-  'fixed inset-0 z-modal-backdrop bg-black/25 dark:bg-black/50 backdrop-blur-xs transition-opacity duration-300';
+  'fixed inset-0 z-modal-backdrop bg-black/40 dark:bg-black/60 transition-opacity duration-300';
 
 export const DIVIDER_INNER_STYLE = 
   'border-black/10 dark:border-white/5';

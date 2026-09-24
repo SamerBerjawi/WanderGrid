@@ -59,12 +59,11 @@ export const StandardDrawer: React.FC<DrawerProps> = ({
 
   return createPortal(
     <div className="fixed inset-0 z-modal overflow-hidden font-sans">
-      {/* 1. Luminous Frosted Backdrop */}
+      {/* 1. Translucent Scrim Backdrop (No blur to avoid double-blurring page content) */}
       <div 
-        className={`fixed inset-0 bg-black/25 dark:bg-black/50 backdrop-blur-xs transition-opacity duration-300 ${
+        className={`fixed inset-0 bg-black/40 dark:bg-black/60 transition-opacity duration-300 ${
           isVisible ? 'opacity-100' : 'opacity-0'
         }`}
-        style={{ WebkitBackdropFilter: 'blur(4px)' }}
         onClick={handleClose} 
       />
 
