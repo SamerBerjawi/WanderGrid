@@ -13,13 +13,20 @@ console.warn = (...args) => {
 };
 
 // Automatically reload when a new service worker version is installed and takes control
-if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-  let refreshing = false;
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (!refreshing) {
-      refreshing = true;
-      window.location.reload();
-    }
+if (typeof window !== 'undefined') {
+  if ('serviceWorker' in navigator) {
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!refreshing) {
+        refreshing = true;
+        window.location.reload();
+      }
+    });
+  }
+
+  // Handle dynamic import failure when chunks change after a build
+  window.addEventListener('vite:preloadError', () => {
+    window.location.reload();
   });
 }
 
