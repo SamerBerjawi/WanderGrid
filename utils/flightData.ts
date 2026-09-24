@@ -1,178 +1,187 @@
 import { Transport } from '../types';
+import { STATIC_GEO_DATA } from '../services/geocoding';
+import {
+  TOP_100_AIRPORTS,
+  TOP_50_AIRLINES,
+  TOP_AIRPORTS_BY_IATA,
+  TOP_AIRLINES_BY_IATA,
+  AIRPORT_CODES as TOP_AIRPORT_CODES,
+  AIRLINE_CODES as TOP_AIRLINE_CODES,
+  DEFAULT_AIRPORT_TIMEZONES as TOP_DEFAULT_TIMEZONES,
+  TOP_AIRLINE_DOMAINS,
+  searchTopAirports,
+  searchTopAirlines,
+  TopAirport,
+  TopAirline
+} from './topAviationData';
 
-export const AIRPORT_CODES: Record<string, string> = {
-  "LHR": "London",
-  "DXB": "Dubai",
-  "JFK": "New York",
-  "LGA": "New York",
-  "EWR": "New York",
-  "STN": "London",
-  "LGW": "London",
-  "CDG": "Paris",
-  "ORY": "Paris",
-  "AMS": "Amsterdam",
-  "FRA": "Frankfurt",
-  "SIN": "Singapore",
-  "HKG": "Hong Kong",
-  "LAX": "Los Angeles",
-  "SYD": "Sydney",
-  "HND": "Tokyo",
-  "NRT": "Tokyo",
-  "PEK": "Beijing",
-  "YYZ": "Toronto",
-  "YVR": "Vancouver",
-  "MAD": "Madrid",
-  "BCN": "Barcelona",
-  "FCO": "Rome",
-  "MUC": "Munich",
-  "ZRH": "Zurich",
-  "CPH": "Copenhagen",
-  "OSL": "Oslo",
-  "ARN": "Stockholm",
-  "HEL": "Helsinki",
-  "VIE": "Vienna",
-  "SFO": "San Francisco",
-  "ORD": "Chicago",
-  "ATL": "Atlanta",
-  "DFW": "Dallas",
-  "DEN": "Denver",
-  "SEA": "Seattle",
-  "MIA": "Miami",
-  "BOS": "Boston",
-  "IAD": "Washington D.C.",
-  "DOH": "Doha",
-  "BKK": "Bangkok",
-  "ICN": "Seoul",
-  "KUL": "Kuala Lumpur",
-  "TPE": "Taipei",
-  "MEL": "Melbourne",
-  "BNE": "Brisbane",
-  "AKL": "Auckland",
-  "JNB": "Johannesburg",
-  "CPT": "Cape Town",
-  "CAI": "Cairo",
-  "IST": "Istanbul",
-  "ATH": "Athens",
-  "LIS": "Lisbon",
-  "BRU": "Brussels",
-  "GVA": "Geneva",
-  "MXP": "Milan",
-  "MXV": "Mexico City",
-  "GRU": "São Paulo",
-  "EZE": "Buenos Aires",
-  "BOG": "Bogotá",
-  "LIM": "Lima",
-  "SCL": "Santiago",
-  "DTW": "Detroit",
-  "PHL": "Philadelphia",
-  "CLT": "Charlotte",
-  "BEY": "Beirut",
-  "AUH": "Abu Dhabi",
-  "LAS": "Las Vegas",
-  "PVG": "Shanghai",
-  "KIX": "Osaka",
-  "DEL": "Delhi",
-  "BOM": "Mumbai"
+// Re-export top aviation datasets and lookup helpers
+export {
+  TOP_100_AIRPORTS,
+  TOP_50_AIRLINES,
+  TOP_AIRPORTS_BY_IATA,
+  TOP_AIRLINES_BY_IATA,
+  TOP_AIRLINE_DOMAINS,
+  searchTopAirports,
+  searchTopAirlines
 };
+export type { TopAirport, TopAirline };
 
-export const AIRLINE_CODES: Record<string, string> = {
-  "DL": "Delta Air Lines",
-  "AA": "American Airlines",
-  "UA": "United Airlines",
-  "WN": "Southwest Airlines",
-  "BA": "British Airways",
-  "AF": "Air France",
-  "LH": "Lufthansa",
-  "EK": "Emirates",
-  "QR": "Qatar Airways",
-  "SQ": "Singapore Airlines",
-  "CX": "Cathay Pacific",
-  "JL": "Japan Airlines",
-  "NH": "All Nippon Airways",
-  "KL": "KLM",
-  "QF": "Qantas",
-  "AC": "Air Canada",
-  "NZ": "Air New Zealand",
-  "TK": "Turkish Airlines",
-  "EY": "Etihad Airways",
-  "VS": "Virgin Atlantic",
-  "FR": "Ryanair",
-  "U2": "easyJet",
-  "B6": "JetBlue",
-  "AS": "Alaska Airlines",
-  "NK": "Spirit Airlines",
-  "F9": "Frontier Airlines"
-};
+/**
+ * Normalizes full legal corporate registrations (e.g. from GitHub datasets or external APIs)
+ * into clean, user-facing commercial airline brand names specifically for non-hardcoded entities.
+ *
+ * Examples:
+ *   "Middle East Airlines AirLiban Dba MEA" -> "Middle East Airlines"
+ *   "BA Euroflyer Limited dba British Airways" -> "British Airways"
+ *   "Star Up S.A. dba Star Peru" -> "Star Peru"
+ *   "Eastern Airlines, LLC" -> "Eastern Airlines"
+ *   "Delta Air Lines Inc" -> "Delta Air Lines"
+ */
+export function formatCommercialAirlineName(rawName: string, iataCode?: string): string {
+  if (!rawName) return '';
+  let name = rawName.trim();
 
-// Direct online datasets from GitHub to guarantee full offline/local and fast coverage
-export const onlineAirports = new Map<string, { city: string, name: string, country?: string }>();
-export const onlineCarriers = new Map<string, { name: string, country?: string }>();
+  // 1. Handle DBA / Doing Business As / Trading As patterns
+  const dbaMatch = name.match(/^(.*?)\s+(?:dba|d\/b\/a|d\.b\.a\.|doing business as|t\/a)\s+(.*?)$/i);
+  if (dbaMatch) {
+    const before = dbaMatch[1].trim();
+    const after = dbaMatch[2].trim();
+    const iata = (iataCode || '').toUpperCase();
+
+    // If 'after' is simply an acronym or IATA/ICAO code (<= 4 uppercase chars like 'MEA'),
+    // the genuine commercial brand is in 'before'.
+    const isAcronymOnly = /^[A-Z0-9]{2,4}$/.test(after) || (iata && after.toUpperCase() === iata);
+    if (isAcronymOnly) {
+      name = before;
+    } else {
+      // If 'after' is an actual trade/brand name (e.g. 'British Airways', 'Star Peru', 'Air Astra')
+      name = after;
+    }
+  }
+
+  // 2. Remove secondary legal mergers/regional additions (e.g., 'AirLiban', 'Air Liban', 'S.A.L.')
+  name = name.replace(/\s*[-/]?\s*(?:AirLiban|Air Liban)\b/i, '');
+
+  // 3. Remove parenthesized corporate descriptors like '(Pty) Ltd', '(Malta) Ltd', '(UK) Limited'
+  name = name.replace(/\s*\((?:pty|uk|usa|corp|ltd|plc|group|malta|cyprus|poland|europe|international)\)\s*/gi, ' ');
+
+  // 4. Iteratively strip corporate legal entity suffixes at end of string or before comma
+  const legalRegex = /(?:,\s*|\s+)(?:inc\.?|incorporated|corp\.?|corporation|llc\.?|l\.l\.c\.?|ltd\.?|limited|plc\.?|p\.l\.c\.?|s\.a\.?|s\.a\.s\.?|s\.p\.a\.?|gmbh|ag|s\.l\.?|co\.?,?\s*ltd\.?|co\.?,?\s*limited|company limited|pte\.?,?\s*ltd\.?|pvt\.?,?\s*ltd\.?|dac|oy|ab|b\.v\.?|n\.v\.?|k\.k\.?|jsc|s\.a\.l\.?)\.?$/i;
+  let prev = '';
+  while (prev !== name) {
+    prev = name;
+    name = name.replace(legalRegex, '').trim();
+  }
+
+  // 5. Clean trailing commas, hyphens, and whitespace
+  name = name.replace(/[\s,.-]+$/, '').trim();
+
+  // 6. Title case if the source was fully UPPERCASE (e.g., 'AVIANCA' -> 'Avianca')
+  if (name.length > 3 && name === name.toUpperCase()) {
+    name = name.toLowerCase().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  }
+
+  return name || rawName;
+}
+
+// Dynamic, backwards-compatible dictionaries seeded with Top 100/50 and enriched dynamically
+export const AIRPORT_CODES: Record<string, string> = { ...TOP_AIRPORT_CODES };
+export const AIRLINE_CODES: Record<string, string> = { ...TOP_AIRLINE_CODES };
+export const DEFAULT_AIRPORT_TIMEZONES: Record<string, string> = { ...TOP_DEFAULT_TIMEZONES };
+
+// Full online datasets loaded from GitHub to guarantee global worldwide coverage
+export const onlineAirports = new Map<string, { city: string; name: string; country?: string }>();
+export const onlineCarriers = new Map<string, { name: string; country?: string; domain?: string }>();
 export const onlineCarrierIcaoToIata = new Map<string, string>();
 
-export const DEFAULT_AIRPORT_TIMEZONES: Record<string, string> = {
-  "LHR": "Europe/London",
-  "LGW": "Europe/London",
-  "STN": "Europe/London",
-  "DXB": "Asia/Dubai",
-  "JFK": "America/New_York",
-  "LGA": "America/New_York",
-  "EWR": "America/New_York",
-  "CDG": "Europe/Paris",
-  "ORY": "Europe/Paris",
-  "AMS": "Europe/Amsterdam",
-  "FRA": "Europe/Frankfurt",
-  "SIN": "Asia/Singapore",
-  "HKG": "Asia/Hong_Kong",
-  "LAX": "America/Los_Angeles",
-  "SFO": "America/Los_Angeles",
-  "SYD": "Australia/Sydney",
-  "MEL": "Australia/Melbourne",
-  "BNE": "Australia/Brisbane",
-  "HND": "Asia/Tokyo",
-  "NRT": "Asia/Tokyo",
-  "PEK": "Asia/Shanghai",
-  "PVG": "Asia/Shanghai",
-  "YYZ": "America/Toronto",
-  "YVR": "America/Vancouver",
-  "MAD": "Europe/Madrid",
-  "BCN": "Europe/Madrid",
-  "FCO": "Europe/Rome",
-  "MXP": "Europe/Rome",
-  "MUC": "Europe/Berlin",
-  "ZRH": "Europe/Zurich",
-  "CPH": "Europe/Copenhagen",
-  "OSL": "Europe/Oslo",
-  "ARN": "Europe/Stockholm",
-  "HEL": "Europe/Helsinki",
-  "VIE": "Europe/Vienna",
-  "ORD": "America/Chicago",
-  "ATL": "America/New_York",
-  "DFW": "America/Chicago",
-  "DEN": "America/Denver",
-  "SEA": "America/Los_Angeles",
-  "MIA": "America/New_York",
-  "BOS": "America/New_York",
-  "IAD": "America/New_York",
-  "DOH": "Asia/Qatar",
-  "BKK": "Asia/Bangkok",
-  "ICN": "Asia/Seoul",
-  "KUL": "Asia/Kuala_Lumpur",
-  "TPE": "Asia/Taipei",
-  "AKL": "Pacific/Auckland",
-  "JNB": "Africa/Johannesburg",
-  "CPT": "Africa/Johannesburg",
-  "CAI": "Africa/Cairo",
-  "IST": "Europe/Istanbul",
-  "ATH": "Europe/Athens",
-  "LIS": "Europe/Lisbon",
-  "BRU": "Europe/Brussels",
-  "GVA": "Europe/Zurich",
-  "DEL": "Asia/Kolkata",
-  "BOM": "Asia/Kolkata",
-  "BEY": "Asia/Beirut",
-  "AUH": "Asia/Dubai",
-  "LAS": "America/Los_Angeles"
-};
+// -------------------------------------------------------------
+// STEP 1: PREPOPULATE IN-MEMORY DATASETS FROM TOP 100/50 (0ms)
+// -------------------------------------------------------------
+TOP_100_AIRPORTS.forEach(a => {
+  const upper = a.iata.toUpperCase();
+  onlineAirports.set(upper, {
+    city: a.city,
+    name: a.name,
+    country: a.country
+  });
+  AIRPORT_CODES[upper] = a.city;
+});
+
+TOP_50_AIRLINES.forEach(c => {
+  const upper = c.iata.toUpperCase();
+  onlineCarriers.set(upper, {
+    name: c.name,
+    country: c.country,
+    domain: c.domain
+  });
+  AIRLINE_CODES[upper] = c.name;
+});
+
+// Seed from STATIC_GEO_DATA if available
+try {
+  if (typeof STATIC_GEO_DATA === 'object' && STATIC_GEO_DATA !== null) {
+    Object.entries(STATIC_GEO_DATA).forEach(([code, data]) => {
+      const upper = (code || '').toUpperCase();
+      if (upper && upper.length === 3 && !onlineAirports.has(upper)) {
+        onlineAirports.set(upper, {
+          city: (data as any).city || '',
+          name: (data as any).name || '',
+          country: (data as any).country || ''
+        });
+        if (!AIRPORT_CODES[upper]) {
+          AIRPORT_CODES[upper] = (data as any).city || (data as any).name || '';
+        }
+      }
+    });
+  }
+} catch (e) {
+  console.warn("Failed to seed onlineAirports from STATIC_GEO_DATA", e);
+}
+
+// Seed from localStorage persistent client cache if in browser
+try {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    const cachedAirports = localStorage.getItem('wandergrid_airports_cache_v1');
+    if (cachedAirports) {
+      const parsed = JSON.parse(cachedAirports);
+      if (Array.isArray(parsed)) {
+        parsed.forEach((item: any) => {
+          const upper = (item.iata || '').toUpperCase();
+          if (upper && !onlineAirports.has(upper)) {
+            onlineAirports.set(upper, {
+              city: item.city || '',
+              name: item.name || '',
+              country: item.country || ''
+            });
+            if (!AIRPORT_CODES[upper]) {
+              AIRPORT_CODES[upper] = item.city || item.name || '';
+            }
+          }
+        });
+      }
+    }
+
+    const cachedAirlines = localStorage.getItem('wandergrid_airlines_cache_v1');
+    if (cachedAirlines) {
+      const parsed = JSON.parse(cachedAirlines);
+      if (Array.isArray(parsed)) {
+        parsed.forEach((item: any) => {
+          const code = (item.code || item.iata || item.id || '').toUpperCase();
+          if (code && !onlineCarriers.has(code)) {
+            onlineCarriers.set(code, {
+              name: item.name || '',
+              country: item.country || ''
+            });
+            if (!AIRLINE_CODES[code]) {
+              AIRLINE_CODES[code] = item.name || '';
+            }
+          }
+        });
+      }
+    }
+  }
+} catch (e) {}
 
 export const airportTimezones = new Map<string, string>(Object.entries(DEFAULT_AIRPORT_TIMEZONES));
 
@@ -260,10 +269,16 @@ export async function preloadStaticDatasets() {
             const item = JSON.parse(line);
             const iata = (item.iata || '').trim().toUpperCase();
             if (iata) {
+              const rawName = item.company_name || item.name || '';
+              // Format commercial airline brand name for non-hardcoded entities
+              const cleanName = formatCommercialAirlineName(rawName, iata);
               onlineCarriers.set(iata, {
-                name: item.company_name || item.name || '',
+                name: cleanName,
                 country: item.country_or_territory || ''
               });
+              if (!AIRLINE_CODES[iata] && cleanName) {
+                AIRLINE_CODES[iata] = cleanName;
+              }
             }
           } catch (e) {}
         }
@@ -271,7 +286,7 @@ export async function preloadStaticDatasets() {
       })
       .catch((err) => console.warn("Failed preloading carriers from GitHub:", err));
 
-    // 2. Fetch OpenFlights airlines for robust ICAO -> IATA mapping
+    // 2. Fetch OpenFlights airlines for robust ICAO -> IATA mapping & commercial brand names
     const openflightsPromise = fetch('https://raw.githubusercontent.com/jpatokal/openflights/master/data/airlines.dat')
       .then(async (res) => {
         if (!res.ok) throw new Error();
@@ -285,9 +300,12 @@ export async function preloadStaticDatasets() {
             const icao = parts[4].replace(/\"/g, '').trim().toUpperCase();
             const companyName = parts[1].replace(/\"/g, '').trim();
             if (iata && iata !== '\\N' && iata !== '-' && iata.length === 2 && icao && icao !== '\\N' && icao !== '-' && icao.length === 3) {
+              const cleanName = formatCommercialAirlineName(companyName, iata);
               onlineCarrierIcaoToIata.set(icao, iata);
-              if (!onlineCarriers.has(iata)) {
-                onlineCarriers.set(iata, { name: companyName });
+              // Prefer OpenFlights clean commercial name or shorter brand name
+              if (!onlineCarriers.has(iata) || (onlineCarriers.get(iata)?.name?.length || 999) > cleanName.length) {
+                onlineCarriers.set(iata, { name: cleanName });
+                AIRLINE_CODES[iata] = cleanName;
               }
             }
           }
@@ -308,11 +326,16 @@ export async function preloadStaticDatasets() {
             const item = JSON.parse(line);
             const iata = (item.iata || '').trim().toUpperCase();
             if (iata) {
+              const cityName = item.city_name || '';
+              const airportName = item.airport_name || '';
               onlineAirports.set(iata, {
-                city: item.city_name || '',
-                name: item.airport_name || '',
+                city: cityName,
+                name: airportName,
                 country: item.country_name || ''
               });
+              if (!AIRPORT_CODES[iata]) {
+                AIRPORT_CODES[iata] = cityName || airportName;
+              }
             }
           } catch (e) {}
         }
@@ -345,12 +368,21 @@ export async function preloadStaticDatasets() {
     isOnlineDataLoaded = true;
     
     // Dispatch master reload event to cause views to refresh
-    window.dispatchEvent(new CustomEvent('wandergrid_metadata_resolved', {
-      detail: { type: 'batch_refresh' }
-    }));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('wandergrid_metadata_resolved', {
+        detail: { type: 'batch_refresh' }
+      }));
+    }
   } catch (e) {
     console.error("Failed to preload full online datasets:", e);
   }
+}
+
+// Automatically initiate background preload in browser environment without blocking page interaction
+if (typeof window !== 'undefined') {
+  setTimeout(() => {
+    preloadStaticDatasets();
+  }, 1000);
 }
 
 // Background fetch handlers and tracking sets to avoid redundant API queries
@@ -436,46 +468,65 @@ async function triggerBackgroundAirportFetch(code: string) {
   pendingAirportFetches.add(code);
   
   try {
-    const res = await fetchWithAuth(`/api/airports/lookup/${code}`);
-    if (res.ok) {
-      const data = await res.json();
-      saveAirportToCache({
-         iata: code,
-         city: data.city_name || data.airport_name,
-         name: data.airport_name,
-         country: data.country_or_territory
-      });
-      return;
+    // 1. Try local backend proxy
+    try {
+      const res = await fetchWithAuth(`/api/airports/lookup/${code}`);
+      if (res.ok) {
+        const data = await res.json();
+        const item: CachedAirport = {
+          iata: code,
+          city: data.city_name || data.airport_name,
+          name: data.airport_name,
+          country: data.country_or_territory
+        };
+        saveAirportToCache(item);
+        onlineAirports.set(code, { city: item.city || '', name: item.name || '', country: item.country });
+        AIRPORT_CODES[code] = item.city || item.name || code;
+        return;
+      }
+    } catch (e) {
+      // Backend lookup failed, proceed to fallback
     }
-    
-    // Fallback back to AviationStack if apiKey exists
+
+    // 2. Ensure GitHub dataset preload is started in background
+    if (!isOnlineLoadingStarted) {
+      preloadStaticDatasets();
+    }
+
+    // 3. Fallback to AviationStack if apiKey exists
     const apiKey = getAviationStackApiKey();
     if (apiKey) {
-      let extRes: Response;
-      const isMockMode = localStorage.getItem('wandergrid_api_status') === 'unavailable';
-      if (isMockMode) {
-        extRes = await fetch(`http://api.aviationstack.com/v1/airports?access_key=${apiKey}&iata_code=${code}`);
-      } else {
-        extRes = await fetchWithAuth(`/api/proxy/airports?access_key=${apiKey}&iata_code=${code}`);
-      }
-      if (extRes.ok) {
-        const json = await extRes.json();
-        if (json && json.data && Array.isArray(json.data) && json.data.length > 0) {
-          const first = json.data[0];
-          const airportName = first.airport_name || first.name;
-          const cityName = first.city_name || first.municipality || first.timezone?.split('/').pop()?.replace(/_/g, ' ');
-          const countryName = first.country_name;
-          
-          saveAirportToCache({
-            iata: code,
-            city: cityName || airportName,
-            name: airportName,
-            country: countryName
-          });
-          return;
+      try {
+        let extRes: Response;
+        const isMockMode = localStorage.getItem('wandergrid_api_status') === 'unavailable';
+        if (isMockMode) {
+          extRes = await fetch(`http://api.aviationstack.com/v1/airports?access_key=${apiKey}&iata_code=${code}`);
+        } else {
+          extRes = await fetchWithAuth(`/api/proxy/airports?access_key=${apiKey}&iata_code=${code}`);
         }
-      }
+        if (extRes.ok) {
+          const json = await extRes.json();
+          if (json && json.data && Array.isArray(json.data) && json.data.length > 0) {
+            const first = json.data[0];
+            const airportName = first.airport_name || first.name;
+            const cityName = first.city_name || first.municipality || first.timezone?.split('/').pop()?.replace(/_/g, ' ');
+            const countryName = first.country_name;
+            
+            const item: CachedAirport = {
+              iata: code,
+              city: cityName || airportName,
+              name: airportName,
+              country: countryName
+            };
+            saveAirportToCache(item);
+            onlineAirports.set(code, { city: item.city || '', name: item.name || '', country: item.country });
+            AIRPORT_CODES[code] = item.city || item.name || code;
+            return;
+          }
+        }
+      } catch (e) {}
     }
+
     failedAirportFetches.add(code);
   } catch (e) {
     console.warn(`Failed background airport lookup for ${code}`, e);
@@ -514,6 +565,7 @@ function saveCarrierToCache(item: CachedCarrier) {
       } catch (e) {}
     }
     
+    const cleanName = formatCommercialAirlineName(item.name, item.iata);
     parsed = parsed.filter((x: any) => 
       (x.code || "").toUpperCase() !== item.iata.toUpperCase() && 
       (x.iata || "").toUpperCase() !== item.iata.toUpperCase()
@@ -521,14 +573,14 @@ function saveCarrierToCache(item: CachedCarrier) {
     parsed.push({
       iata: item.iata,
       code: item.iata,
-      name: item.name
+      name: cleanName
     });
     
     localStorage.setItem('wandergrid_airlines_cache_v1', JSON.stringify(parsed));
     
     // Notify application views to re-render
     window.dispatchEvent(new CustomEvent('wandergrid_metadata_resolved', {
-      detail: { type: 'carrier', code: item.iata, data: item }
+      detail: { type: 'carrier', code: item.iata, data: { ...item, name: cleanName } }
     }));
   } catch (e) {}
 }
@@ -538,41 +590,63 @@ async function triggerBackgroundCarrierFetch(code: string) {
   pendingCarrierFetches.add(code);
   
   try {
-    const res = await fetchWithAuth(`/api/carriers/lookup/${code}`);
-    if (res.ok) {
-      const data = await res.json();
-      saveCarrierToCache({
-        iata: code,
-        name: data.company_name
-      });
-      return;
+    // 1. Try local backend proxy
+    try {
+      const res = await fetchWithAuth(`/api/carriers/lookup/${code}`);
+      if (res.ok) {
+        const data = await res.json();
+        const rawName = data.company_name || data.name || '';
+        const cleanName = formatCommercialAirlineName(rawName, code);
+        const item: CachedCarrier = {
+          iata: code,
+          name: cleanName
+        };
+        saveCarrierToCache(item);
+        onlineCarriers.set(code, { name: cleanName });
+        AIRLINE_CODES[code] = cleanName;
+        return;
+      }
+    } catch (e) {
+      // Backend unavailable, fallback
     }
-    
-    // Fallback back to AviationStack if apiKey exists
+
+    // 2. Ensure GitHub dataset preload is started in background
+    if (!isOnlineLoadingStarted) {
+      preloadStaticDatasets();
+    }
+
+    // 3. Fallback to AviationStack if apiKey exists
     const apiKey = getAviationStackApiKey();
     if (apiKey) {
-      let extRes: Response;
-      const isMockMode = localStorage.getItem('wandergrid_api_status') === 'unavailable';
-      if (isMockMode) {
-        extRes = await fetch(`http://api.aviationstack.com/v1/airlines?access_key=${apiKey}&iata_code=${code}`);
-      } else {
-        extRes = await fetchWithAuth(`/api/proxy/airlines?access_key=${apiKey}&iata_code=${code}`);
-      }
-      if (extRes.ok) {
-        const json = await extRes.json();
-        if (json && json.data && Array.isArray(json.data) && json.data.length > 0) {
-          const first = json.data[0];
-          const airlineName = first.airline_name || first.name;
-          if (airlineName) {
-            saveCarrierToCache({
-              iata: code,
-              name: airlineName
-            });
-            return;
+      try {
+        let extRes: Response;
+        const isMockMode = localStorage.getItem('wandergrid_api_status') === 'unavailable';
+        if (isMockMode) {
+          extRes = await fetch(`http://api.aviationstack.com/v1/airlines?access_key=${apiKey}&iata_code=${code}`);
+        } else {
+          extRes = await fetchWithAuth(`/api/proxy/airlines?access_key=${apiKey}&iata_code=${code}`);
+        }
+        if (extRes.ok) {
+          const json = await extRes.json();
+          if (json && json.data && Array.isArray(json.data) && json.data.length > 0) {
+            const first = json.data[0];
+            const airlineName = first.airline_name || first.name;
+            if (airlineName) {
+              const cleanName = formatCommercialAirlineName(airlineName, code);
+              const item: CachedCarrier = {
+                iata: code,
+                name: cleanName
+              };
+              saveCarrierToCache(item);
+              onlineCarriers.set(code, { name: cleanName });
+              AIRLINE_CODES[code] = cleanName;
+              return;
+            }
           }
         }
-      }
+      } catch (e) {}
     }
+
     failedCarrierFetches.add(code);
   } catch (e) {
     console.warn(`Failed background carrier lookup for ${code}`, e);
@@ -582,106 +656,269 @@ async function triggerBackgroundCarrierFetch(code: string) {
   }
 }
 
+// -------------------------------------------------------------
+// TWO-TIER RETRIEVAL: Top Datasets (Tier 1) -> GitHub / Cache (Tier 2)
+// -------------------------------------------------------------
+
 export function getCityName(iataCode: string): string {
   const code = (iataCode || "").trim().toUpperCase();
   if (!code || code.length < 2) return code;
 
-  // 1. Try loading from direct preloaded dataset (GitHub cache) first
+  // 1. Tier 1: Check instant curated Top 100 Airports (0ms latency)
+  const topAirport = TOP_AIRPORTS_BY_IATA.get(code);
+  if (topAirport) {
+    return topAirport.city || topAirport.name || code;
+  }
+
+  // 2. Tier 2: Check full in-memory online dataset (preloaded from GitHub)
   const onlineItem = onlineAirports.get(code);
   if (onlineItem) {
     return onlineItem.city || onlineItem.name || code;
   }
 
-  // 2. Try loading from caches (populated from database)
+  // 3. Check persistent localStorage cache
   const cached = getAirportFromCache(code);
   if (cached) {
     return cached.city || cached.name || code;
   }
-  
-  // 3. Trigger dynamic background fetch
-  triggerBackgroundAirportFetch(code);
 
-  // 4. Fallback to static dictionary only as a temporary fallback while fetching
+  // 4. Check dynamic dictionary
   if (AIRPORT_CODES[code]) {
     return AIRPORT_CODES[code];
   }
   
+  // 5. Trigger non-blocking fallback fetch (Local DB -> GitHub fallback)
+  triggerBackgroundAirportFetch(code);
+
   return code;
+}
+
+export function getAirportName(iataCode: string): string {
+  const code = (iataCode || "").trim().toUpperCase();
+  if (!code || code.length < 2) return code;
+
+  // 1. Tier 1: Check instant curated Top 100 Airports (0ms latency)
+  const topAirport = TOP_AIRPORTS_BY_IATA.get(code);
+  if (topAirport) {
+    return topAirport.name;
+  }
+
+  // 2. Tier 2: Check in-memory online dataset
+  const onlineItem = onlineAirports.get(code);
+  if (onlineItem && onlineItem.name) {
+    return onlineItem.name;
+  }
+
+  // 3. Check cached data
+  const cached = getAirportFromCache(code);
+  if (cached && cached.name) {
+    return cached.name;
+  }
+
+  // 4. Trigger non-blocking fallback fetch
+  triggerBackgroundAirportFetch(code);
+
+  return getCityName(code);
 }
 
 export function getCarrierName(carrierCode: string): string {
   const code = (carrierCode || "").trim().toUpperCase();
   if (!code || code.length < 2) return code;
 
-  // 1. Try loading from direct preloaded dataset (GitHub cache) first
-  const onlineItem = onlineCarriers.get(code);
-  if (onlineItem) {
-    return onlineItem.name;
+  // 1. Tier 1: Check instant curated Top 50 Airlines (0ms latency, already verified commercial name)
+  const topAirline = TOP_AIRLINES_BY_IATA.get(code);
+  if (topAirline) {
+    return topAirline.name;
   }
 
-  // 2. Try loading from caches (populated from database)
+  // 2. Tier 2: Check in-memory online dataset (preloaded from GitHub, formatted for non-hardcoded)
+  const onlineItem = onlineCarriers.get(code);
+  if (onlineItem && onlineItem.name) {
+    return formatCommercialAirlineName(onlineItem.name, code);
+  }
+
+  // 3. Check persistent localStorage cache
   const cached = getCarrierFromCache(code);
-  if (cached) {
-    return cached.name;
+  if (cached && cached.name) {
+    return formatCommercialAirlineName(cached.name, code);
+  }
+
+  // 4. Check dynamic dictionary
+  if (AIRLINE_CODES[code]) {
+    return formatCommercialAirlineName(AIRLINE_CODES[code], code);
   }
   
-  // 3. Trigger dynamic background fetch
+  // 5. Trigger non-blocking fallback fetch (Local DB -> GitHub fallback)
   triggerBackgroundCarrierFetch(code);
 
-  // 4. Fallback to static dictionary only as a temporary fallback while fetching
-  if (AIRLINE_CODES[code]) {
-    return AIRLINE_CODES[code];
-  }
-  
   return carrierCode;
 }
 
-export function getAirportsByQueryLocally(query: string): Array<{iata: string, city_name: string, airport_name: string}> {
+export function getAirportsByQueryLocally(query: string, limit: number = 15): Array<{
+  iata: string;
+  city_name: string;
+  airport_name: string;
+  country?: string;
+  code?: string;
+  name?: string;
+  city?: string;
+}> {
   const q = query.trim().toLowerCase();
   if (!q) return [];
-  const results: Array<{iata: string, city_name: string, airport_name: string, score: number}> = [];
-  
-  for (const [iata, value] of onlineAirports.entries()) {
-    const isIataMatch = iata.toLowerCase() === q;
-    const isIataPartial = iata.toLowerCase().includes(q);
-    const isCityMatch = (value.city || '').toLowerCase().includes(q);
-    const isAirportMatch = (value.name || '').toLowerCase().includes(q);
-    
-    if (isIataMatch || isIataPartial || isCityMatch || isAirportMatch) {
-      results.push({
-        iata,
-        city_name: value.city,
-        airport_name: value.name,
-        score: isIataMatch ? 1 : isIataPartial ? 2 : isCityMatch ? 3 : 4
-      });
+
+  // Step 1: Instant search in Top 100 airports (Tier 1)
+  const topMatches = searchTopAirports(q, limit);
+  const seenIatas = new Set<string>();
+  const results: Array<{
+    iata: string;
+    city_name: string;
+    airport_name: string;
+    country?: string;
+    code?: string;
+    name?: string;
+    city?: string;
+  }> = [];
+
+  for (const a of topMatches) {
+    seenIatas.add(a.iata.toUpperCase());
+    results.push({
+      iata: a.iata,
+      code: a.iata,
+      city_name: a.city,
+      city: a.city,
+      airport_name: a.name,
+      name: a.name,
+      country: a.country
+    });
+  }
+
+  // Step 2: Fallback / search additional airports from full GitHub online dataset
+  if (results.length < limit) {
+    const additionalMatches: Array<{
+      iata: string;
+      city_name: string;
+      airport_name: string;
+      country?: string;
+      code?: string;
+      name?: string;
+      city?: string;
+      score: number;
+    }> = [];
+
+    for (const [iata, value] of onlineAirports.entries()) {
+      if (seenIatas.has(iata)) continue;
+
+      const isIataExact = iata.toLowerCase() === q;
+      const isIataPrefix = iata.toLowerCase().startsWith(q);
+      const isIataPartial = iata.toLowerCase().includes(q);
+      const isCityExact = (value.city || '').toLowerCase() === q;
+      const isCityPartial = (value.city || '').toLowerCase().includes(q);
+      const isAirportMatch = (value.name || '').toLowerCase().includes(q);
+      const isCountryMatch = (value.country || '').toLowerCase().includes(q);
+
+      if (isIataExact || isIataPrefix || isIataPartial || isCityExact || isCityPartial || isAirportMatch || isCountryMatch) {
+        additionalMatches.push({
+          iata,
+          code: iata,
+          city_name: value.city,
+          city: value.city,
+          airport_name: value.name,
+          name: value.name,
+          country: value.country,
+          score: isIataExact ? 1 : isIataPrefix ? 2 : isCityExact ? 3 : isIataPartial ? 4 : isCityPartial ? 5 : 6
+        });
+      }
+    }
+
+    additionalMatches.sort((a, b) => a.score - b.score);
+    for (const m of additionalMatches) {
+      if (results.length >= limit) break;
+      const { score, ...item } = m;
+      results.push(item);
     }
   }
-  
-  results.sort((a,b) => a.score - b.score);
-  return results.slice(0, 15).map(({score, ...rest}) => rest);
+
+  // If online data hasn't been preloaded yet, trigger it now in the background
+  if (!isOnlineLoadingStarted) {
+    preloadStaticDatasets();
+  }
+
+  return results.slice(0, limit);
 }
 
-export function getCarriersByQueryLocally(query: string): Array<{iata: string, company_name: string}> {
+export function getCarriersByQueryLocally(query: string, limit: number = 15): Array<{
+  iata: string;
+  company_name: string;
+  code?: string;
+  name?: string;
+}> {
   const q = query.trim().toLowerCase();
   if (!q) return [];
-  const results: Array<{iata: string, company_name: string, score: number}> = [];
-  
-  for (const [iata, value] of onlineCarriers.entries()) {
-    const isIataMatch = iata.toLowerCase() === q;
-    const isIataPartial = iata.toLowerCase().includes(q);
-    const isNameMatch = (value.name || '').toLowerCase().includes(q);
-    
-    if (isIataMatch || isIataPartial || isNameMatch) {
-      results.push({
-        iata,
-        company_name: value.name,
-        score: isIataMatch ? 1 : isNameMatch ? 2 : 3
-      });
+
+  // Step 1: Instant search in Top 50 airlines (Tier 1)
+  const topMatches = searchTopAirlines(q, limit);
+  const seenIatas = new Set<string>();
+  const results: Array<{
+    iata: string;
+    company_name: string;
+    code?: string;
+    name?: string;
+  }> = [];
+
+  for (const c of topMatches) {
+    seenIatas.add(c.iata.toUpperCase());
+    results.push({
+      iata: c.iata,
+      code: c.iata,
+      company_name: c.name,
+      name: c.name
+    });
+  }
+
+  // Step 2: Fallback / search additional carriers from full GitHub online dataset
+  if (results.length < limit) {
+    const additionalMatches: Array<{
+      iata: string;
+      company_name: string;
+      code?: string;
+      name?: string;
+      score: number;
+    }> = [];
+
+    for (const [iata, value] of onlineCarriers.entries()) {
+      if (seenIatas.has(iata)) continue;
+
+      const cleanName = formatCommercialAirlineName(value.name, iata);
+      const isIataExact = iata.toLowerCase() === q;
+      const isIataPrefix = iata.toLowerCase().startsWith(q);
+      const isNameExact = cleanName.toLowerCase() === q;
+      const isNamePartial = cleanName.toLowerCase().includes(q) || (value.name || '').toLowerCase().includes(q);
+
+      if (isIataExact || isIataPrefix || isNameExact || isNamePartial) {
+        additionalMatches.push({
+          iata,
+          code: iata,
+          company_name: cleanName,
+          name: cleanName,
+          score: isIataExact ? 1 : isIataPrefix ? 2 : isNameExact ? 3 : 4
+        });
+      }
+    }
+
+    additionalMatches.sort((a, b) => a.score - b.score);
+    for (const m of additionalMatches) {
+      if (results.length >= limit) break;
+      const { score, ...item } = m;
+      results.push(item);
     }
   }
-  
-  results.sort((a,b) => a.score - b.score);
-  return results.slice(0, 15).map(({score, ...rest}) => rest);
+
+  // If online data hasn't been preloaded yet, trigger it now in the background
+  if (!isOnlineLoadingStarted) {
+    preloadStaticDatasets();
+  }
+
+  return results.slice(0, limit);
 }
 
 function parseDateTimeStr(str: string, defaultDate: string = ''): { date: string, time: string, timestamp: number } {

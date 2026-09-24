@@ -31,7 +31,8 @@ import {
     Globe,
     Ticket,
     Armchair,
-    Tag
+    Tag,
+    Path
 } from '@phosphor-icons/react';
 import { Input, Autocomplete, TimeInput, Select } from './ui';
 import GlassPanel from './glass/GlassPanel';
@@ -40,7 +41,7 @@ import { dataService } from '../services/mockDb';
 import { invalidateGlobalWanderCache } from '../hooks/useWanderSync';
 import { searchLocations, searchStations, getCoordinates } from '../services/geocoding';
 import { parseGoogleMapsUrl } from '../services/locationParser';
-import { getAirportsByQueryLocally, getCarriersByQueryLocally } from '../utils/flightData';
+import { getAirportsByQueryLocally, getCarriersByQueryLocally, AIRLINE_CODES, formatCommercialAirlineName } from '../utils/flightData';
 import { formatDate, formatDateRange, formatCurrency, getCurrencySymbol } from '../utils/formatters';
 import { 
     MODAL_SHELL_STYLE, 
@@ -93,6 +94,120 @@ const CABIN_OPTIONS = [
     { label: 'First Class', value: 'First' }
 ];
 
+export const AIRLINE_DOMAINS: Record<string, string> = {
+    'delta': 'delta.com', 'delta air lines': 'delta.com', 'dl': 'delta.com',
+    'american': 'aa.com', 'american airlines': 'aa.com', 'aa': 'aa.com',
+    'united': 'united.com', 'united airlines': 'united.com', 'ua': 'united.com',
+    'southwest': 'southwest.com', 'southwest airlines': 'southwest.com', 'wn': 'southwest.com',
+    'british airways': 'britishairways.com', 'ba': 'britishairways.com',
+    'air france': 'airfrance.com', 'af': 'airfrance.com',
+    'lufthansa': 'lufthansa.com', 'lh': 'lufthansa.com',
+    'emirates': 'emirates.com', 'ek': 'emirates.com',
+    'qatar airways': 'qatarairways.com', 'qr': 'qatarairways.com',
+    'singapore airlines': 'singaporeair.com', 'sq': 'singaporeair.com',
+    'cathay pacific': 'cathaypacific.com', 'cx': 'cathaypacific.com',
+    'klm': 'klm.com', 'kl': 'klm.com',
+    'ryanair': 'ryanair.com', 'fr': 'ryanair.com',
+    'easyjet': 'easyjet.com', 'u2': 'easyjet.com',
+    'jetblue': 'jetblue.com', 'b6': 'jetblue.com',
+    'alaska airlines': 'alaskaair.com', 'as': 'alaskaair.com',
+    'spirit airlines': 'spirit.com', 'nk': 'spirit.com',
+    'frontier airlines': 'flyfrontier.com', 'f9': 'flyfrontier.com',
+    'turkish airlines': 'turkishairlines.com', 'tk': 'turkishairlines.com',
+    'etihad airways': 'etihad.com', 'ey': 'etihad.com',
+    'virgin atlantic': 'virginatlantic.com', 'vs': 'virginatlantic.com',
+    'air canada': 'aircanada.com', 'ac': 'aircanada.com',
+    'japan airlines': 'jal.com', 'jl': 'jal.com',
+    'all nippon airways': 'ana.co.jp', 'nh': 'ana.co.jp',
+    'qantas': 'qantas.com', 'qf': 'qantas.com',
+    'iberia': 'iberia.com', 'ib': 'iberia.com',
+    'ita airways': 'ita-airways.com', 'az': 'ita-airways.com',
+    'swiss': 'swiss.com', 'lx': 'swiss.com',
+    'austrian': 'austrian.com', 'os': 'austrian.com',
+    'sas': 'flysas.com', 'sk': 'flysas.com',
+    'tap air portugal': 'flytap.com', 'tp': 'flytap.com',
+    'wizz air': 'wizzair.com', 'w6': 'wizzair.com',
+    'norwegian': 'norwegian.com', 'd8': 'norwegian.com',
+    'finnair': 'finnair.com', 'ay': 'finnair.com',
+    'aer lingus': 'aerlingus.com', 'ei': 'aerlingus.com',
+    'icelandair': 'icelandair.com', 'fi': 'icelandair.com',
+    'saudi arabian airlines': 'saudia.com', 'saudia': 'saudia.com', 'sv': 'saudia.com',
+    'middle east airlines': 'mea.com.lb', 'mea': 'mea.com.lb', 'me': 'mea.com.lb'
+};
+
+export const resolveAirlineDomain = (carrier: string): string => {
+    if (!carrier) return '';
+    const clean = carrier.replace(/\s*\([A-Z0-9]+\)\s*$/, '').trim().toLowerCase();
+    if (AIRLINE_DOMAINS[clean]) return AIRLINE_DOMAINS[clean];
+    const noSpace = clean.replace(/[^a-z0-9]/g, '');
+    if (AIRLINE_DOMAINS[noSpace]) return AIRLINE_DOMAINS[noSpace];
+    return `${noSpace}.com`;
+};
+
+export const detectCarrierFromFlightNumber = (flightNum: string): { code: string; name: string } | null => {
+    if (!flightNum) return null;
+    const trimmed = flightNum.trim().toUpperCase();
+    const match = trimmed.match(/^([A-Z0-9]{2})\s*(\d+)/i);
+    if (!match) return null;
+    const code = match[1];
+    if (AIRLINE_CODES[code]) {
+        return { code, name: formatCommercialAirlineName(AIRLINE_CODES[code], code) };
+    }
+    const online = getCarriersByQueryLocally(code, 1);
+    if (online && online.length > 0 && (online[0].iata === code || online[0].code === code)) {
+        return { code, name: formatCommercialAirlineName(online[0].company_name || online[0].name || '', code) };
+    }
+    return null;
+};
+
+export const cleanAirportCode = (str: string): string => {
+    if (!str) return '';
+    const trimmed = str.trim();
+    if (trimmed.includes(' - ')) {
+        const part = trimmed.split(' - ')[0].trim().toUpperCase();
+        if (part.length === 3) return part;
+    }
+    const match = trimmed.match(/\b([A-Z]{3})\b/);
+    if (match) return match[1];
+    return trimmed;
+};
+
+export const AirlineLogoBadge: React.FC<{ carrier: string; className?: string }> = ({ carrier, className = "w-8 h-8" }) => {
+    const [imgFailed, setImgFailed] = useState(false);
+    const domain = useMemo(() => resolveAirlineDomain(carrier), [carrier]);
+
+    useEffect(() => {
+        setImgFailed(false);
+    }, [domain]);
+
+    if (!carrier) return null;
+
+    const logoSrc = `https://logo.clearbit.com/${domain}`;
+    const fallbackSrc = `https://www.google.com/s2/favicons?sz=64&domain=${domain}`;
+
+    return (
+        <div className={`relative rounded-xl overflow-hidden bg-white dark:bg-dark-card border border-black/10 dark:border-white/10 shrink-0 flex items-center justify-center p-1 shadow-xs transition-transform hover:scale-105 ${className}`}>
+            {!imgFailed ? (
+                <img 
+                    src={logoSrc} 
+                    alt={carrier}
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                        const target = e.currentTarget as HTMLImageElement;
+                        if (target.src !== fallbackSrc) {
+                            target.src = fallbackSrc;
+                        } else {
+                            setImgFailed(true);
+                        }
+                    }}
+                />
+            ) : (
+                <AirplaneTilt className="w-4 h-4 text-primary-500" weight="duotone" />
+            )}
+        </div>
+    );
+};
+
 export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
     isOpen,
     onClose,
@@ -132,10 +247,112 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
     const [seatInfo, setSeatInfo] = useState('');
     const [vehicleModel, setVehicleModel] = useState('');
 
+    // Flight Route Structure (Direct vs With Layovers)
+    const [flightRouteType, setFlightRouteType] = useState<'direct' | 'layovers'>('direct');
+    const [layoverAirports, setLayoverAirports] = useState<string[]>(['']);
+    
+    interface ConnectingLegForm {
+        id: string;
+        flightNumber: string;
+        carrier: string;
+        departureDate: string;
+        departureTime: string;
+        arrivalDate: string;
+        arrivalTime: string;
+        travelClass: 'Economy' | 'Premium Economy' | 'Business' | 'First';
+        seatNumber: string;
+    }
+
+    const [connectingLegs, setConnectingLegs] = useState<ConnectingLegForm[]>([
+        {
+            id: 'leg-0',
+            flightNumber: '',
+            carrier: '',
+            departureDate: '',
+            departureTime: '10:00',
+            arrivalDate: '',
+            arrivalTime: '13:00',
+            travelClass: 'Economy',
+            seatNumber: ''
+        },
+        {
+            id: 'leg-1',
+            flightNumber: '',
+            carrier: '',
+            departureDate: '',
+            departureTime: '15:00',
+            arrivalDate: '',
+            arrivalTime: '18:00',
+            travelClass: 'Economy',
+            seatNumber: ''
+        }
+    ]);
+
     // Return Leg fields (for Round Trip)
     const [returnDate, setReturnDate] = useState('');
     const [returnTime, setReturnTime] = useState('14:00');
     const [returnNumber, setReturnNumber] = useState('');
+
+    // Handlers for Flight Carrier detection and layovers
+    const handleFlightNumberChange = (val: string) => {
+        setOutboundNumber(val);
+        const detected = detectCarrierFromFlightNumber(val);
+        if (detected && (!outboundCarrier || outboundCarrier.trim() === '')) {
+            setOutboundCarrier(detected.name);
+        }
+    };
+
+    const handleCarrierChange = (val: string) => {
+        const cleaned = val.replace(/\s*\([A-Z0-9]+\)\s*$/, '').trim();
+        setOutboundCarrier(cleaned || val);
+    };
+
+    const handleAddLayover = () => {
+        setLayoverAirports(prev => [...prev, '']);
+        setConnectingLegs(prev => [
+            ...prev,
+            {
+                id: `leg-${prev.length}`,
+                flightNumber: '',
+                carrier: outboundCarrier || '',
+                departureDate: outboundDate || startDate,
+                departureTime: '19:00',
+                arrivalDate: outboundArrivalDate || outboundDate || startDate,
+                arrivalTime: '22:00',
+                travelClass: travelClass || 'Economy',
+                seatNumber: ''
+            }
+        ]);
+    };
+
+    const handleRemoveLayover = (index: number) => {
+        if (layoverAirports.length <= 1) return;
+        setLayoverAirports(prev => prev.filter((_, i) => i !== index));
+        setConnectingLegs(prev => prev.filter((_, i) => i !== (index + 1)));
+    };
+
+    const handleLayoverChange = (index: number, val: string) => {
+        setLayoverAirports(prev => {
+            const next = [...prev];
+            next[index] = val;
+            return next;
+        });
+    };
+
+    const handleConnectingLegChange = (index: number, field: keyof ConnectingLegForm, val: any) => {
+        setConnectingLegs(prev => {
+            const next = [...prev];
+            const updated = { ...next[index], [field]: val };
+            if (field === 'flightNumber') {
+                const detected = detectCarrierFromFlightNumber(val);
+                if (detected && !updated.carrier) {
+                    updated.carrier = detected.name;
+                }
+            }
+            next[index] = updated;
+            return next;
+        });
+    };
 
     // Stage 3: Accommodation Sub-Steps State
     const [accommodationsList, setAccommodationsList] = useState<Partial<Accommodation>[]>([]);
@@ -236,78 +453,117 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
 
     // Flight airports autocomplete (IATA, City, Airport Name)
     const fetchAirportSuggestions = async (query: string): Promise<string[]> => {
-        if (!query || query.trim().length < 2) return [];
-        let apiResults: any[] = [];
-        try {
-            const token = localStorage.getItem('wandergrid_session_token');
-            const headers: Record<string, string> = token ? { 'Authorization': `Bearer ${token}` } : {};
-            const res = await fetch(`/api/airports/search?q=${encodeURIComponent(query.trim())}`, { headers });
-            if (res.ok) {
-                apiResults = await res.json();
-            }
-        } catch (e) {
-            // Fall back to local airports
-        }
+        if (!query || query.trim().length < 1) return [];
+        const trimmed = query.trim();
 
-        const localResults = getAirportsByQueryLocally(query.trim());
+        // 1. Instant local search from preloaded airports & static geo data
+        const localMatches = getAirportsByQueryLocally(trimmed, 15);
         const seenIatas = new Set<string>();
-        const merged: any[] = [];
+        const results: Array<{ iata: string; city: string; name: string; country?: string }> = [];
 
-        if (Array.isArray(apiResults)) {
-            for (const item of apiResults) {
-                if (item.iata) {
-                    seenIatas.add(item.iata.toUpperCase());
-                    merged.push(item);
+        for (const m of localMatches) {
+            const iata = (m.iata || m.code || '').toUpperCase();
+            if (iata && !seenIatas.has(iata)) {
+                seenIatas.add(iata);
+                results.push({
+                    iata,
+                    city: m.city_name || m.city || '',
+                    name: m.airport_name || m.name || '',
+                    country: m.country || ''
+                });
+            }
+        }
+
+        // 2. Network API lookup if online and results can be augmented
+        if (trimmed.length >= 2 && results.length < 8) {
+            try {
+                const token = localStorage.getItem('wandergrid_session_token');
+                const headers: Record<string, string> = token ? { 'Authorization': `Bearer ${token}` } : {};
+                const res = await fetch(`/api/airports/search?q=${encodeURIComponent(trimmed)}`, { headers });
+                if (res.ok && res.headers.get('content-type')?.includes('application/json')) {
+                    const apiResults = await res.json();
+                    if (Array.isArray(apiResults)) {
+                        for (const item of apiResults) {
+                            const iata = (item.iata || '').toUpperCase();
+                            if (iata && !seenIatas.has(iata)) {
+                                seenIatas.add(iata);
+                                results.push({
+                                    iata,
+                                    city: item.city_name || item.city || '',
+                                    name: item.airport_name || item.name || '',
+                                    country: item.country_or_territory || item.country || ''
+                                });
+                            }
+                        }
+                    }
                 }
+            } catch (e) {
+                // Safe fallback
             }
         }
 
-        for (const item of localResults) {
-            if (item.iata && !seenIatas.has(item.iata.toUpperCase())) {
-                merged.push(item);
-            }
-        }
-
-        return merged.slice(0, 12).map((a: any) => `${a.iata} - ${a.city_name || a.city || ''} (${a.airport_name || a.name || ''})`);
+        return results.slice(0, 15).map(a => {
+            const parts = [a.city, a.name].filter(Boolean);
+            return `${a.iata} - ${parts.join(', ')}`;
+        });
     };
 
     // Airline autocomplete
     const fetchAirlineSuggestions = async (query: string): Promise<string[]> => {
         if (!query || query.trim().length < 1) return [];
-        let apiResults: any[] = [];
-        try {
-            const token = localStorage.getItem('wandergrid_session_token');
-            const headers: Record<string, string> = token ? { 'Authorization': `Bearer ${token}` } : {};
-            const res = await fetch(`/api/carriers/search?q=${encodeURIComponent(query.trim())}`, { headers });
-            if (res.ok) {
-                apiResults = await res.json();
-            }
-        } catch (e) {
-            // Fall back to local carriers
-        }
+        const trimmed = query.trim();
 
-        const localResults = getCarriersByQueryLocally(query.trim());
+        // 1. Local search from airline dataset
+        const localMatches = getCarriersByQueryLocally(trimmed, 15);
         const seenNames = new Set<string>();
-        const merged: string[] = [];
+        const results: Array<{ name: string; code: string }> = [];
 
-        if (Array.isArray(apiResults)) {
-            for (const item of apiResults) {
-                const name = item.company_name || item.name;
-                if (name && !seenNames.has(name.toLowerCase())) {
-                    seenNames.add(name.toLowerCase());
-                    merged.push(item.iata ? `${name} (${item.iata})` : name);
+        for (const m of localMatches) {
+            const name = m.company_name || m.name || '';
+            const code = (m.iata || m.code || '').toUpperCase();
+            if (name && !seenNames.has(name.toLowerCase())) {
+                seenNames.add(name.toLowerCase());
+                results.push({ name, code });
+            }
+        }
+
+        // 2. Also check AIRLINE_CODES
+        Object.entries(AIRLINE_CODES).forEach(([code, rawName]) => {
+            const name = formatCommercialAirlineName(rawName, code);
+            if (
+                (code.toLowerCase().includes(trimmed.toLowerCase()) || name.toLowerCase().includes(trimmed.toLowerCase())) &&
+                !seenNames.has(name.toLowerCase())
+            ) {
+                seenNames.add(name.toLowerCase());
+                results.push({ name, code });
+            }
+        });
+
+        // 3. Network API if online
+        if (trimmed.length >= 2 && results.length < 8) {
+            try {
+                const token = localStorage.getItem('wandergrid_session_token');
+                const headers: Record<string, string> = token ? { 'Authorization': `Bearer ${token}` } : {};
+                const res = await fetch(`/api/carriers/search?q=${encodeURIComponent(trimmed)}`, { headers });
+                if (res.ok && res.headers.get('content-type')?.includes('application/json')) {
+                    const apiResults = await res.json();
+                    if (Array.isArray(apiResults)) {
+                        for (const item of apiResults) {
+                            const name = item.company_name || item.name;
+                            const code = (item.iata || '').toUpperCase();
+                            if (name && !seenNames.has(name.toLowerCase())) {
+                                seenNames.add(name.toLowerCase());
+                                results.push({ name, code });
+                            }
+                        }
+                    }
                 }
+            } catch (e) {
+                // Fall back to local
             }
         }
 
-        for (const item of localResults) {
-            if (item.company_name && !seenNames.has(item.company_name.toLowerCase())) {
-                seenNames.add(item.company_name.toLowerCase());
-                merged.push(item.iata ? `${item.company_name} (${item.iata})` : item.company_name);
-            }
-        }
-
-        return merged.slice(0, 12);
+        return results.slice(0, 15).map(c => c.code ? `${c.name} (${c.code})` : c.name);
     };
 
     // Train Station suggestions (queries railway stations & city hubs)
@@ -437,46 +693,101 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
         const newTransports: Partial<Transport>[] = [];
         const itineraryId = crypto.randomUUID();
 
-        // Primary Outbound Leg
-        newTransports.push({
-            id: crypto.randomUUID(),
-            itineraryId,
-            mode: transportMode,
-            type: transportStructure,
-            origin: originVal || 'Origin',
-            destination: destVal || destination,
-            departureDate: outboundDate || startDate,
-            departureTime: outboundTime || '10:00',
-            arrivalDate: outboundArrivalDate || outboundDate || startDate,
-            arrivalTime: outboundArrivalTime || '14:00',
-            provider: outboundCarrier.trim(),
-            identifier: (transportMode === 'Car Rental' || transportMode === 'Personal Car') ? (vehicleModel || outboundNumber) : outboundNumber.trim(),
-            confirmationCode: outboundConfCode.trim().toUpperCase(),
-            travelClass: transportMode === 'Flight' ? travelClass : undefined,
-            seatNumber: seatInfo || undefined,
-            cost: costNum ? (transportStructure === 'Round Trip' ? costNum / 2 : costNum) : undefined
-        });
+        if (transportMode === 'Flight' && flightRouteType === 'layovers') {
+            // Multi-leg connecting flight itinerary
+            const totalLegs = connectingLegs.length;
+            connectingLegs.forEach((leg, idx) => {
+                const rawOrigin = idx === 0 ? originVal : (layoverAirports[idx - 1] || 'Layover');
+                const rawDest = idx === totalLegs - 1 ? destVal : (layoverAirports[idx] || 'Layover');
+                const legOrigCode = cleanAirportCode(rawOrigin) || rawOrigin || 'Origin';
+                const legDestCode = cleanAirportCode(rawDest) || rawDest || 'Destination';
 
-        // Return Leg if round-trip (applies to Flight, Train, Bus, Cruise)
-        if (transportStructure === 'Round Trip' && transportMode !== 'Car Rental' && transportMode !== 'Personal Car') {
+                newTransports.push({
+                    id: crypto.randomUUID(),
+                    itineraryId,
+                    mode: 'Flight',
+                    type: transportStructure,
+                    origin: legOrigCode,
+                    destination: legDestCode,
+                    departureDate: leg.departureDate || outboundDate || startDate,
+                    departureTime: leg.departureTime || '10:00',
+                    arrivalDate: leg.arrivalDate || outboundArrivalDate || outboundDate || startDate,
+                    arrivalTime: leg.arrivalTime || '14:00',
+                    provider: leg.carrier.trim() || outboundCarrier.trim(),
+                    identifier: leg.flightNumber.trim(),
+                    confirmationCode: outboundConfCode.trim().toUpperCase(),
+                    travelClass: leg.travelClass || travelClass,
+                    seatNumber: leg.seatNumber || undefined,
+                    cost: costNum && idx === 0 ? costNum : undefined,
+                    notes: `Connecting Flight (Leg ${idx + 1} of ${totalLegs})`
+                });
+            });
+
+            // Return leg for Round Trip with layovers
+            if (transportStructure === 'Round Trip') {
+                newTransports.push({
+                    id: crypto.randomUUID(),
+                    itineraryId,
+                    mode: 'Flight',
+                    type: 'Round Trip',
+                    origin: cleanAirportCode(destVal) || destVal || 'Destination',
+                    destination: cleanAirportCode(originVal) || originVal || 'Origin',
+                    departureDate: returnDate || endDate,
+                    departureTime: returnTime || '14:00',
+                    arrivalDate: returnDate || endDate,
+                    arrivalTime: '18:00',
+                    provider: outboundCarrier.trim(),
+                    identifier: (returnNumber || outboundNumber).trim(),
+                    confirmationCode: outboundConfCode.trim().toUpperCase(),
+                    travelClass: travelClass,
+                    seatNumber: seatInfo || undefined,
+                    notes: 'Return Flight'
+                });
+            }
+        } else {
+            // Direct flight or other transport modes (Train, Bus, Car, Cruise)
+            const cleanOrigin = transportMode === 'Flight' ? (cleanAirportCode(originVal) || originVal) : originVal;
+            const cleanDest = transportMode === 'Flight' ? (cleanAirportCode(destVal) || destVal) : destVal;
+
             newTransports.push({
                 id: crypto.randomUUID(),
                 itineraryId,
                 mode: transportMode,
-                type: 'Round Trip',
-                origin: destVal || destination,
-                destination: originVal || 'Origin',
-                departureDate: returnDate || endDate,
-                departureTime: returnTime || '14:00',
-                arrivalDate: returnDate || endDate,
-                arrivalTime: '18:00',
+                type: transportStructure,
+                origin: cleanOrigin || 'Origin',
+                destination: cleanDest || destination,
+                departureDate: outboundDate || startDate,
+                departureTime: outboundTime || '10:00',
+                arrivalDate: outboundArrivalDate || outboundDate || startDate,
+                arrivalTime: outboundArrivalTime || '14:00',
                 provider: outboundCarrier.trim(),
-                identifier: (returnNumber || outboundNumber).trim(),
+                identifier: (transportMode === 'Car Rental' || transportMode === 'Personal Car') ? (vehicleModel || outboundNumber) : outboundNumber.trim(),
                 confirmationCode: outboundConfCode.trim().toUpperCase(),
                 travelClass: transportMode === 'Flight' ? travelClass : undefined,
                 seatNumber: seatInfo || undefined,
-                cost: costNum ? costNum / 2 : undefined
+                cost: costNum ? (transportStructure === 'Round Trip' ? costNum / 2 : costNum) : undefined
             });
+
+            if (transportStructure === 'Round Trip' && transportMode !== 'Car Rental' && transportMode !== 'Personal Car') {
+                newTransports.push({
+                    id: crypto.randomUUID(),
+                    itineraryId,
+                    mode: transportMode,
+                    type: 'Round Trip',
+                    origin: cleanDest || destination,
+                    destination: cleanOrigin || 'Origin',
+                    departureDate: returnDate || endDate,
+                    departureTime: returnTime || '14:00',
+                    arrivalDate: returnDate || endDate,
+                    arrivalTime: '18:00',
+                    provider: outboundCarrier.trim(),
+                    identifier: (returnNumber || outboundNumber).trim(),
+                    confirmationCode: outboundConfCode.trim().toUpperCase(),
+                    travelClass: transportMode === 'Flight' ? travelClass : undefined,
+                    seatNumber: seatInfo || undefined,
+                    cost: costNum ? costNum / 2 : undefined
+                });
+            }
         }
 
         setTransportsList(prev => [...prev, ...newTransports]);
@@ -491,6 +802,31 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
         setSeatInfo('');
         setOutboundDate(returnDate || outboundDate || startDate);
         setOutboundArrivalDate(returnDate || outboundDate || startDate);
+        setConnectingLegs([
+            {
+                id: 'leg-0',
+                flightNumber: '',
+                carrier: '',
+                departureDate: '',
+                departureTime: '10:00',
+                arrivalDate: '',
+                arrivalTime: '13:00',
+                travelClass: 'Economy',
+                seatNumber: ''
+            },
+            {
+                id: 'leg-1',
+                flightNumber: '',
+                carrier: '',
+                departureDate: '',
+                departureTime: '15:00',
+                arrivalDate: '',
+                arrivalTime: '18:00',
+                travelClass: 'Economy',
+                seatNumber: ''
+            }
+        ]);
+        setLayoverAirports(['']);
     };
 
     const handleRemoveTransport = (index: number) => {
@@ -608,7 +944,8 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
         switch (transportMode) {
             case 'Flight':
                 return (
-                    <div className="space-y-3">
+                    <div className="space-y-3.5">
+                        {/* 1. Primary Route Anchors (ALWAYS visible and selected first) */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <Autocomplete 
                                 label="Departure Airport (Origin) *" 
@@ -625,43 +962,227 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 fetchSuggestions={fetchAirportSuggestions} 
                             />
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            <Autocomplete 
-                                label="Airline *" 
-                                placeholder="e.g. Air France or Delta" 
-                                value={outboundCarrier} 
-                                onChange={setOutboundCarrier} 
-                                fetchSuggestions={fetchAirlineSuggestions} 
-                            />
-                            <Input 
-                                label="Flight Number" 
-                                placeholder="e.g. AF 022" 
-                                value={outboundNumber} 
-                                onChange={e => setOutboundNumber(e.target.value)} 
-                            />
+
+                        {/* 2. Direct vs Layovers Toggle */}
+                        <div className="flex items-center justify-between p-1 bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5">
+                            <button
+                                type="button"
+                                onClick={() => setFlightRouteType('direct')}
+                                className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                    flightRouteType === 'direct'
+                                    ? 'bg-white dark:bg-dark-card text-primary-600 dark:text-primary-400 shadow-sm'
+                                    : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
+                                }`}
+                            >
+                                <AirplaneTilt className="w-4 h-4" weight={flightRouteType === 'direct' ? "fill" : "regular"} />
+                                <span>Direct Flight</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setFlightRouteType('layovers')}
+                                className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                    flightRouteType === 'layovers'
+                                    ? 'bg-white dark:bg-dark-card text-primary-600 dark:text-primary-400 shadow-sm'
+                                    : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
+                                }`}
+                            >
+                                <Path className="w-4 h-4" weight={flightRouteType === 'layovers' ? "fill" : "regular"} />
+                                <span>With Layovers</span>
+                            </button>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            <Select 
-                                label="Cabin / Travel Class" 
-                                value={travelClass} 
-                                onChange={e => setTravelClass(e.target.value as any)}
-                                options={CABIN_OPTIONS}
-                            />
-                            <Input 
-                                label="Seat Number" 
-                                placeholder="e.g. 14A" 
-                                value={seatInfo} 
-                                onChange={e => setSeatInfo(e.target.value)} 
-                            />
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                            <Input label="Departure Date" type="date" value={outboundDate || startDate} onChange={e => setOutboundDate(e.target.value)} />
-                            <TimeInput label="Departure Time" value={outboundTime} onChange={setOutboundTime} />
-                        </div>
+
+                        {/* 3. If Layovers: Layover Stopover Airport(s) Selector */}
+                        {flightRouteType === 'layovers' && (
+                            <div className="p-3.5 rounded-2xl bg-primary-500/5 border border-primary-500/15 space-y-2.5">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <span className="w-2 h-2 rounded-full bg-primary-500 animate-pulse" />
+                                        <span className="text-2xs font-bold uppercase tracking-wider text-primary-600 dark:text-primary-400">
+                                            Layover Stopover Airport(s)
+                                        </span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={handleAddLayover}
+                                        className="text-2xs font-bold text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1 cursor-pointer"
+                                    >
+                                        <Plus className="w-3.5 h-3.5" />
+                                        <span>Add Stopover</span>
+                                    </button>
+                                </div>
+
+                                <div className="space-y-2">
+                                    {layoverAirports.map((layover, lIdx) => (
+                                        <div key={lIdx} className="flex items-center gap-2">
+                                            <div className="flex-1">
+                                                <Autocomplete
+                                                    label={`Layover Airport ${lIdx + 1} *`}
+                                                    placeholder="e.g. LHR or London Heathrow"
+                                                    value={layover}
+                                                    onChange={(val) => handleLayoverChange(lIdx, val)}
+                                                    fetchSuggestions={fetchAirportSuggestions}
+                                                />
+                                            </div>
+                                            {layoverAirports.length > 1 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRemoveLayover(lIdx)}
+                                                    className="mt-5 p-2 rounded-xl text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer shrink-0"
+                                                    title="Remove layover airport"
+                                                >
+                                                    <Trash className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 4. Page Adapts: Render either Direct Leg or Connecting Legs */}
+                        {flightRouteType === 'direct' ? (
+                            /* Direct Flight Details */
+                            <div className="space-y-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <Input 
+                                        label="Flight Number" 
+                                        placeholder="e.g. AF 022 or DL 402" 
+                                        value={outboundNumber} 
+                                        onChange={e => handleFlightNumberChange(e.target.value)} 
+                                    />
+                                    <div className="flex items-end gap-2">
+                                        {outboundCarrier && (
+                                            <AirlineLogoBadge carrier={outboundCarrier} className="w-11 h-11 mb-0.5 shrink-0" />
+                                        )}
+                                        <div className="flex-1">
+                                            <Autocomplete 
+                                                label="Airline / Carrier *" 
+                                                placeholder="e.g. Air France or Delta" 
+                                                value={outboundCarrier} 
+                                                onChange={handleCarrierChange} 
+                                                fetchSuggestions={fetchAirlineSuggestions} 
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <Select 
+                                        label="Cabin / Travel Class" 
+                                        value={travelClass} 
+                                        onChange={e => setTravelClass(e.target.value as any)}
+                                        options={CABIN_OPTIONS}
+                                    />
+                                    <Input 
+                                        label="Seat Number" 
+                                        placeholder="e.g. 14A" 
+                                        value={seatInfo} 
+                                        onChange={e => setSeatInfo(e.target.value)} 
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Input label="Departure Date" type="date" value={outboundDate || startDate} onChange={e => setOutboundDate(e.target.value)} />
+                                    <TimeInput label="Departure Time" value={outboundTime} onChange={setOutboundTime} />
+                                </div>
+                            </div>
+                        ) : (
+                            /* Connecting Flight Legs */
+                            <div className="space-y-3">
+                                <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary block">
+                                    Connecting Flight Legs ({connectingLegs.length})
+                                </span>
+
+                                {connectingLegs.map((leg, legIdx) => {
+                                    const rawOrigin = legIdx === 0 ? outboundOrigin : (layoverAirports[legIdx - 1] || `Layover ${legIdx}`);
+                                    const rawDest = legIdx === connectingLegs.length - 1 ? (outboundDest || destination) : (layoverAirports[legIdx] || `Layover ${legIdx + 1}`);
+                                    const originCode = cleanAirportCode(rawOrigin) || 'Origin';
+                                    const destCode = cleanAirportCode(rawDest) || 'Destination';
+
+                                    return (
+                                        <React.Fragment key={leg.id || legIdx}>
+                                            <div className="p-3.5 rounded-2xl bg-white/90 dark:bg-dark-card/90 border border-black/10 dark:border-white/10 shadow-xs space-y-3">
+                                                <div className="flex items-center justify-between border-b border-black/5 dark:border-white/5 pb-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
+                                                            Leg {legIdx + 1} of {connectingLegs.length}
+                                                        </span>
+                                                        <span className="font-bold text-xs text-light-text dark:text-dark-text">
+                                                            {originCode} &rarr; {destCode}
+                                                        </span>
+                                                    </div>
+                                                    {leg.carrier && (
+                                                        <AirlineLogoBadge carrier={leg.carrier} className="w-7 h-7" />
+                                                    )}
+                                                </div>
+
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                    <Input 
+                                                        label="Flight Number" 
+                                                        placeholder="e.g. AF 022" 
+                                                        value={leg.flightNumber} 
+                                                        onChange={e => handleConnectingLegChange(legIdx, 'flightNumber', e.target.value)} 
+                                                    />
+                                                    <Autocomplete 
+                                                        label="Airline *" 
+                                                        placeholder="e.g. Air France" 
+                                                        value={leg.carrier} 
+                                                        onChange={val => handleConnectingLegChange(legIdx, 'carrier', val.replace(/\s*\([A-Z0-9]+\)\s*$/, '').trim())} 
+                                                        fetchSuggestions={fetchAirlineSuggestions} 
+                                                    />
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <Input 
+                                                        label="Departure Date" 
+                                                        type="date" 
+                                                        value={leg.departureDate || outboundDate || startDate} 
+                                                        onChange={e => handleConnectingLegChange(legIdx, 'departureDate', e.target.value)} 
+                                                    />
+                                                    <TimeInput 
+                                                        label="Departure Time" 
+                                                        value={leg.departureTime} 
+                                                        onChange={val => handleConnectingLegChange(legIdx, 'departureTime', val)} 
+                                                    />
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <Select 
+                                                        label="Cabin Class" 
+                                                        value={leg.travelClass} 
+                                                        onChange={e => handleConnectingLegChange(legIdx, 'travelClass', e.target.value as any)}
+                                                        options={CABIN_OPTIONS}
+                                                    />
+                                                    <Input 
+                                                        label="Seat" 
+                                                        placeholder="e.g. 14A" 
+                                                        value={leg.seatNumber} 
+                                                        onChange={e => handleConnectingLegChange(legIdx, 'seatNumber', e.target.value)} 
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {legIdx < connectingLegs.length - 1 && (
+                                                <div className="flex items-center justify-center gap-2 py-1 text-2xs font-bold text-light-text-secondary uppercase tracking-wider">
+                                                    <div className="h-px bg-black/10 dark:bg-white/10 flex-1" />
+                                                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5">
+                                                        <Clock className="w-3.5 h-3.5 text-amber-500" />
+                                                        <span>Transit at {cleanAirportCode(layoverAirports[legIdx]) || `Layover ${legIdx + 1}`}</span>
+                                                    </div>
+                                                    <div className="h-px bg-black/10 dark:bg-white/10 flex-1" />
+                                                </div>
+                                            )}
+                                        </React.Fragment>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        {/* 5. Return Leg (for Round Trip) */}
                         {transportStructure === 'Round Trip' && (
                             <div className="p-3 rounded-2xl bg-primary-500/5 border border-primary-500/15 space-y-2">
                                 <span className="text-2xs font-bold uppercase tracking-wider text-primary-600 dark:text-primary-400 block">
-                                    Return Leg (Mirrored: {outboundDest || destination} &rarr; {outboundOrigin || 'Origin'})
+                                    Return Leg ({cleanAirportCode(outboundDest || destination) || 'Destination'} &rarr; {cleanAirportCode(outboundOrigin) || 'Origin'})
                                 </span>
                                 <div className="grid grid-cols-2 gap-2">
                                     <Input label="Return Date" type="date" value={returnDate || endDate} min={outboundDate || startDate} onChange={e => setReturnDate(e.target.value)} />
@@ -670,8 +1191,10 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 <Input label="Return Flight #" placeholder="e.g. AF 023" value={returnNumber} onChange={e => setReturnNumber(e.target.value)} />
                             </div>
                         )}
+
+                        {/* 6. Shared Booking Code & Cost */}
                         <div className="grid grid-cols-2 gap-2">
-                            <Input label="Total Cost" type="number" placeholder="0.00" value={outboundCost} onChange={e => setOutboundCost(e.target.value)} />
+                            <Input label="Total Ticket Cost" type="number" placeholder="0.00" value={outboundCost} onChange={e => setOutboundCost(e.target.value)} />
                             <Input label="Booking Code (PNR)" placeholder="e.g. DL7XYZ" value={outboundConfCode} onChange={e => setOutboundConfCode(e.target.value)} />
                         </div>
                     </div>
@@ -942,23 +1465,35 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                     {transportsList.map((t, idx) => {
                         const modeConfig = TRANSPORT_MODES.find(m => m.mode === t.mode);
                         const IconComponent = modeConfig ? modeConfig.icon : AirplaneTilt;
+                        const isFlight = t.mode === 'Flight';
+                        const isConnecting = t.notes && t.notes.includes('Connecting');
+
                         return (
                             <div 
                                 key={t.id || idx} 
                                 className="p-3 rounded-2xl bg-white/90 dark:bg-dark-card/90 border border-black/5 dark:border-white/5 flex items-center justify-between shadow-xs gap-3 group"
                             >
                                 <div className="flex items-center gap-2.5 min-w-0">
-                                    <div className="w-8 h-8 rounded-xl bg-primary-500/10 text-primary-600 dark:text-primary-400 flex items-center justify-center shrink-0">
-                                        <IconComponent className="w-4 h-4" />
-                                    </div>
+                                    {isFlight && t.provider ? (
+                                        <AirlineLogoBadge carrier={t.provider} className="w-8 h-8 shrink-0" />
+                                    ) : (
+                                        <div className="w-8 h-8 rounded-xl bg-primary-500/10 text-primary-600 dark:text-primary-400 flex items-center justify-center shrink-0">
+                                            <IconComponent className="w-4 h-4" />
+                                        </div>
+                                    )}
                                     <div className="min-w-0">
-                                        <div className="flex items-center gap-1.5">
+                                        <div className="flex items-center gap-1.5 flex-wrap">
                                             <span className="font-bold text-xs text-light-text dark:text-dark-text truncate">
                                                 {t.origin} &rarr; {t.destination}
                                             </span>
                                             <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-black/5 dark:bg-white/5 text-light-text-secondary">
                                                 {t.mode}
                                             </span>
+                                            {isConnecting && (
+                                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
+                                                    Connecting
+                                                </span>
+                                            )}
                                         </div>
                                         <p className="text-2xs text-light-text-secondary truncate">
                                             {t.provider || 'Unspecified'} {t.identifier ? `• ${t.identifier}` : ''} • {formatDate(t.departureDate || '')}
@@ -1090,31 +1625,57 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                     </button>
                 </GlassPanel>
 
-                {/* Mobile Segmented Stage Switcher (< 1024px) */}
-                <div className="lg:hidden px-4 pt-3 pb-2 shrink-0 bg-white/50 dark:bg-dark-card/50 border-b border-black/5 dark:border-white/5">
-                    <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar p-1 bg-black/5 dark:bg-white/5 rounded-2xl">
-                        {STAGES.map((s, idx) => {
-                            const IconC = s.icon;
-                            const isActive = currentStage === s.key;
-                            const isDone = idx < stageIndex;
-                            return (
-                                <button
-                                    key={s.key}
-                                    type="button"
-                                    onClick={() => setCurrentStage(s.key)}
-                                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider shrink-0 transition-all ${
-                                        isActive
-                                        ? 'bg-white dark:bg-dark-card text-primary-600 dark:text-primary-400 shadow-sm'
-                                        : (isDone ? 'text-emerald-600 dark:text-emerald-400' : 'text-light-text-secondary opacity-60')
-                                    }`}
-                                >
-                                    <IconC className="w-4 h-4" weight={isActive ? "duotone" : "regular"} />
-                                    <span>{s.label.split('. ')[1]}</span>
-                                    {isDone && <Check className="w-3.5 h-3.5 text-emerald-500" weight="bold" />}
-                                </button>
-                            );
-                        })}
-                    </div>
+                {/* Mobile Floating Glass Stage Switcher (< 1024px) */}
+                <div className="lg:hidden px-3 py-2.5 shrink-0 flex items-center justify-center bg-white/40 dark:bg-dark-card/40 backdrop-blur-md border-b border-black/5 dark:border-white/5">
+                    <GlassPanel
+                        className="wg-glass-pill shadow-glass-card max-w-full"
+                        padding="4px"
+                        overrides={{ borderRadius: 9999 }}
+                    >
+                        <div className="flex items-center gap-1">
+                            {STAGES.map((s, idx) => {
+                                const IconC = s.icon;
+                                const isActive = currentStage === s.key;
+                                const isDone = idx < stageIndex;
+                                const labelText = s.label.replace(/^\d+\.\s*/, '');
+
+                                return (
+                                    <button
+                                        key={s.key}
+                                        type="button"
+                                        onClick={() => setCurrentStage(s.key)}
+                                        title={s.label}
+                                        className={`relative rounded-full text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none min-h-[44px] px-3.5 py-2.5 active:scale-95 ${
+                                            isActive
+                                                ? 'text-primary-600 dark:text-primary-400 font-extrabold'
+                                                : (isDone ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100')
+                                        }`}
+                                    >
+                                        {isActive && (
+                                            <motion.div
+                                                layoutId="tripSetupTabActiveIndicator"
+                                                className="absolute inset-0 rounded-full bg-white dark:bg-dark-card shadow-sm border border-black/5 dark:border-white/10 z-0"
+                                                transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                                            />
+                                        )}
+                                        <span className="relative z-10 flex items-center gap-1.5">
+                                            <IconC 
+                                                className="w-4 h-4 shrink-0" 
+                                                weight={isActive ? "duotone" : "regular"} 
+                                            />
+                                            {/* Selected tab shows icon and name; other tabs show icon only */}
+                                            <span className={`tracking-tight text-2xs uppercase tracking-wider ${isActive ? 'inline' : 'hidden sm:inline'}`}>
+                                                {labelText}
+                                            </span>
+                                            {isDone && !isActive && (
+                                                <Check className="w-3 h-3 text-emerald-500 shrink-0" weight="bold" />
+                                            )}
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </GlassPanel>
                 </div>
 
                 {/* Main Content Area: Responsive Bento Grid on Desktop, Single Active Panel on Mobile */}
@@ -1498,9 +2059,16 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                         <div className="space-y-1">
                                             <span className="text-[10px] font-bold uppercase tracking-wider text-light-text-secondary block">Transports</span>
                                             {transportsList.map((t, i) => (
-                                                <div key={i} className="text-2xs text-light-text-secondary flex justify-between py-0.5">
-                                                    <span className="truncate">{t.mode}: {t.origin} &rarr; {t.destination}</span>
-                                                    {t.cost && <span className="font-mono font-bold">{formatCurrency(t.cost)}</span>}
+                                                <div key={i} className="text-2xs text-light-text-secondary flex items-center justify-between py-1 border-b border-black/5 dark:border-white/5 last:border-0">
+                                                    <div className="flex items-center gap-1.5 min-w-0">
+                                                        {t.mode === 'Flight' && t.provider ? (
+                                                            <AirlineLogoBadge carrier={t.provider} className="w-5 h-5 shrink-0" />
+                                                        ) : (
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-primary-500 shrink-0" />
+                                                        )}
+                                                        <span className="truncate font-medium">{t.origin} &rarr; {t.destination} {t.identifier ? `(${t.identifier})` : ''}</span>
+                                                    </div>
+                                                    {t.cost && <span className="font-mono font-bold shrink-0">{formatCurrency(t.cost)}</span>}
                                                 </div>
                                             ))}
                                         </div>
@@ -1756,14 +2324,51 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                     <CheckCircle className="w-5 h-5 text-primary-500" weight="duotone" />
                                     <span>Step 4: Review & Launch</span>
                                 </h3>
-                                <div className="p-4 rounded-2xl bg-white dark:bg-dark-card space-y-2 border border-black/5">
-                                    <h4 className="font-bold text-lg">{title}</h4>
-                                    <p className="text-xs text-light-text-secondary">{destination} • {formatDateRange(startDate, endDate)}</p>
-                                    <div className="pt-2 text-xs text-light-text-secondary flex gap-3">
-                                        <span>{transportsList.length} Transports</span>
-                                        <span>•</span>
-                                        <span>{accommodationsList.length} Stays</span>
+                                <div className="p-4 rounded-2xl bg-white/70 dark:bg-dark-card/70 space-y-3 border border-black/5 dark:border-white/5">
+                                    <div>
+                                        <h4 className="font-bold text-lg text-light-text dark:text-dark-text">{title || 'Untitled Trip'}</h4>
+                                        <p className="text-xs text-light-text-secondary flex items-center gap-1 mt-0.5">
+                                            <MapPin className="w-3.5 h-3.5 text-primary-500" />
+                                            <span>{destination || 'Destination'}</span>
+                                            <span>•</span>
+                                            <span>{formatDateRange(startDate, endDate)}</span>
+                                        </p>
                                     </div>
+
+                                    {transportsList.length > 0 && (
+                                        <div className="space-y-1.5 pt-2 border-t border-black/5 dark:border-white/5">
+                                            <span className="text-[10px] font-bold uppercase tracking-wider text-light-text-secondary block">
+                                                Transports ({transportsList.length})
+                                            </span>
+                                            {transportsList.map((t, i) => (
+                                                <div key={i} className="text-2xs text-light-text-secondary flex items-center justify-between py-0.5">
+                                                    <div className="flex items-center gap-1.5 min-w-0">
+                                                        {t.mode === 'Flight' && t.provider ? (
+                                                            <AirlineLogoBadge carrier={t.provider} className="w-5 h-5 shrink-0" />
+                                                        ) : (
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-primary-500 shrink-0" />
+                                                        )}
+                                                        <span className="truncate">{t.origin} &rarr; {t.destination} {t.identifier ? `(${t.identifier})` : ''}</span>
+                                                    </div>
+                                                    {t.cost && <span className="font-mono font-bold shrink-0">{formatCurrency(t.cost)}</span>}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {accommodationsList.length > 0 && (
+                                        <div className="space-y-1.5 pt-2 border-t border-black/5 dark:border-white/5">
+                                            <span className="text-[10px] font-bold uppercase tracking-wider text-light-text-secondary block">
+                                                Accommodations ({accommodationsList.length})
+                                            </span>
+                                            {accommodationsList.map((a, i) => (
+                                                <div key={i} className="text-2xs text-light-text-secondary flex justify-between py-0.5">
+                                                    <span className="truncate">{a.name} ({a.type})</span>
+                                                    {a.cost && <span className="font-mono font-bold">{formatCurrency(a.cost)}</span>}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                                 <button type="button" onClick={handleFinalizeTrip} disabled={isSaving} className={`${BTN_PRIMARY_STYLE} w-full h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-primary-500/20 cursor-pointer`}>
                                     <span>{isSaving ? 'Creating Expedition...' : 'Launch Expedition'}</span>

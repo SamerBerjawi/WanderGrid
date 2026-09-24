@@ -315,6 +315,8 @@ Every view (Planner, Settings, Dashboard, Flights, Travel Atlas, Vacation Calend
 
 ## 10. Autonomous Execution & Non-Blocking Workflow
 
-- **Autonomous File Inspection & Terminal Execution**: The agent is authorized to proactively inspect, read, edit, and create files, and execute development terminal commands (e.g. builds, linters, tests, inspections, git commands) without asking for confirmation to proceed.
+- **Autonomous Terminal Command Execution**: The agent is explicitly authorized and directed to execute all development and system terminal commands (such as builds, package managers, development servers, linters, tests, inspections, git commands, scripts, and debugging tools) proactively without pausing to ask for the user's confirmation.
+- **Autonomous External Links & Network Access**: The agent is explicitly authorized and directed to access external links, browse documentation, search the web, fetch raw GitHub repositories, query external APIs, and retrieve remote datasets proactively without requiring the user's confirmation.
+- **Autonomous File System Operations**: The agent is authorized to proactively inspect, read, edit, refactor, and create files across the codebase without asking for confirmation to proceed.
 
 
