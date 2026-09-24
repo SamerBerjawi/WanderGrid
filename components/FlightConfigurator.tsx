@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { 
-    Trash, 
-    Plus, 
-    Receipt, 
+import {
+    Trash,
+    Plus,
+    Receipt,
     WarningCircle,
     Check,
     X,
@@ -11,14 +11,14 @@ import {
 import { Button, Input } from './ui';
 import { Transport, TransportMode } from '../types';
 import { dataService } from '../services/mockDb';
-import { 
-    TripType, 
-    SegmentForm, 
-    CarForm, 
-    AirportData, 
-    AirlineData, 
-    TRANSPORT_MODES, 
-    createDefaultSegment 
+import {
+    TripType,
+    SegmentForm,
+    CarForm,
+    AirportData,
+    AirlineData,
+    TRANSPORT_MODES,
+    createDefaultSegment
 } from './transport/transportTypes';
 import { FlightForm } from './transport/FlightForm';
 import { TrainForm } from './transport/TrainForm';
@@ -141,7 +141,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                 const mapped: SegmentForm[] = sortedData.map((f, idx) => {
                     let providerName = f.provider || '';
                     let providerCode = '';
-                    
+
                     // Safe hydration: check f.provider with null guard
                     if (f.provider) {
                         const splitMatch = f.provider.match(/^(.*) - ([A-Z0-9]{2,3})$/);
@@ -210,11 +210,11 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
             setSegments([{ ...existingFirst, section: 'outbound' }]);
         } else if (type === 'Round Trip') {
             const existingFirst = segments[0] || createDefaultSegment({ section: 'outbound', date: defaultStartDate || '' });
-            const existingSecond = segments[1] || createDefaultSegment({ 
-                section: 'return', 
-                origin: existingFirst.destination, 
-                destination: existingFirst.origin, 
-                date: defaultEndDate || existingFirst.date 
+            const existingSecond = segments[1] || createDefaultSegment({
+                section: 'return',
+                origin: existingFirst.destination,
+                destination: existingFirst.origin,
+                date: defaultEndDate || existingFirst.date
             });
             setSegments([
                 { ...existingFirst, section: 'outbound' },
@@ -264,14 +264,14 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
     };
 
     const isCar = mode === 'Car Rental' || mode === 'Personal Car';
-    const isValid = isCar 
+    const isValid = isCar
         ? Boolean(carForm.pickupLocation && carForm.pickupDate)
         : segments.every(s => s.origin && s.destination && (s.date || s.isApproximate));
 
     const handleSave = () => {
         // Use crypto.randomUUID() instead of Math.random
-        const itineraryId = (initialData && initialData.length > 0 && initialData[0].itineraryId) 
-            ? initialData[0].itineraryId 
+        const itineraryId = (initialData && initialData.length > 0 && initialData[0].itineraryId)
+            ? initialData[0].itineraryId
             : crypto.randomUUID();
 
         if (isCar) {
@@ -363,16 +363,16 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                     </p>
                 </div>
                 <div className="flex gap-3 pt-2 max-w-xs mx-auto">
-                    <button 
-                        type="button" 
-                        className={`${BTN_SECONDARY_STYLE} flex-1 h-12 text-xs font-bold uppercase tracking-wider cursor-pointer`} 
+                    <button
+                        type="button"
+                        className={`${BTN_SECONDARY_STYLE} flex-1 h-12 text-xs font-bold uppercase tracking-wider cursor-pointer`}
                         onClick={() => setShowDeleteConfirm(false)}
                     >
                         Cancel
                     </button>
-                    <button 
-                        type="button" 
-                        className={`${BTN_DANGER_STYLE} flex-1 h-12 text-xs font-bold uppercase tracking-wider cursor-pointer flex items-center justify-center gap-2`} 
+                    <button
+                        type="button"
+                        className={`${BTN_DANGER_STYLE} flex-1 h-12 text-xs font-bold uppercase tracking-wider cursor-pointer flex items-center justify-center gap-2`}
                         onClick={() => { if (onDelete && initialData) onDelete(initialData.map(f => f.id)); }}
                     >
                         <Trash className="w-4 h-4" weight="duotone" />
@@ -385,7 +385,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
 
     return (
         <div className="space-y-6 animate-fade-in">
-            
+
             {/* Mode Selector Pill Bar - Derived from single source of truth TRANSPORT_MODES */}
             <div className="bg-black/5 dark:bg-white/5 p-1.5 rounded-2xl flex gap-1 overflow-x-auto border border-black/5 dark:border-white/5 custom-scrollbar">
                 {TRANSPORT_MODES.map(m => {
@@ -396,11 +396,10 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                             type="button"
                             key={m.mode}
                             onClick={() => handleModeChange(m.mode)}
-                            className={`flex-1 flex flex-col items-center justify-center py-2.5 px-3 rounded-xl transition-all min-w-[72px] min-h-[48px] cursor-pointer ${
-                                isActive
-                                ? 'bg-white/80 dark:bg-white/15 backdrop-blur-md shadow-sm text-primary-600 dark:text-primary-300 font-bold border border-black/5 dark:border-white/10'
-                                : 'text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/10'
-                            }`}
+                            className={`flex-1 flex flex-col items-center justify-center py-2.5 px-3 rounded-xl transition-all min-w-[72px] min-h-[48px] cursor-pointer ${isActive
+                                    ? 'bg-white/80 dark:bg-white/15 backdrop-blur-md shadow-sm text-primary-600 dark:text-primary-300 font-bold border border-black/5 dark:border-white/10'
+                                    : 'text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/10'
+                                }`}
                         >
                             <ModeIcon className="w-5 h-5 mb-1" weight={isActive ? "duotone" : "regular"} />
                             <span className="text-2xs font-bold uppercase tracking-wider">{m.label}</span>
@@ -421,11 +420,10 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                     type="button"
                                     key={type}
                                     onClick={() => handleTripTypeChange(type)}
-                                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer min-h-[36px] ${
-                                        isActive
-                                        ? 'bg-white/80 dark:bg-white/15 backdrop-blur-md text-primary-600 dark:text-primary-300 shadow-sm border border-black/5 dark:border-white/10'
-                                        : 'text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/10'
-                                    }`}
+                                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer min-h-[36px] ${isActive
+                                            ? 'bg-white/80 dark:bg-white/15 backdrop-blur-md text-primary-600 dark:text-primary-300 shadow-sm border border-black/5 dark:border-white/10'
+                                            : 'text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/10'
+                                        }`}
                                 >
                                     {type}
                                 </button>
@@ -434,7 +432,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                     </div>
 
                     {tripType === 'Multi-City' && (
-                        <button 
+                        <button
                             type="button"
                             onClick={addSegment}
                             className="px-3.5 py-1.5 rounded-xl bg-primary-500/10 hover:bg-primary-500/20 text-primary-600 dark:text-primary-400 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer border border-primary-500/20 min-h-[36px]"
@@ -450,7 +448,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
             {mode === 'Flight' && (
                 <div className="space-y-4">
                     {segments.map((seg, idx) => (
-                        <FlightForm 
+                        <FlightForm
                             key={seg.id}
                             segment={seg}
                             index={idx}
@@ -470,7 +468,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
             {mode === 'Train' && (
                 <div className="space-y-4">
                     {segments.map((seg, idx) => (
-                        <TrainForm 
+                        <TrainForm
                             key={seg.id}
                             segment={seg}
                             index={idx}
@@ -486,7 +484,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
             {mode === 'Bus' && (
                 <div className="space-y-4">
                     {segments.map((seg, idx) => (
-                        <BusForm 
+                        <BusForm
                             key={seg.id}
                             segment={seg}
                             index={idx}
@@ -502,7 +500,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
             {(mode === 'Cruise' || mode === 'Ferry') && (
                 <div className="space-y-4">
                     {segments.map((seg, idx) => (
-                        <CruiseForm 
+                        <CruiseForm
                             key={seg.id}
                             segment={seg}
                             index={idx}
@@ -516,7 +514,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
             )}
 
             {mode === 'Car Rental' && (
-                <CarRentalForm 
+                <CarRentalForm
                     form={carForm}
                     currencySymbol={currencySymbol}
                     onUpdate={updates => setCarForm(prev => ({ ...prev, ...updates }))}
@@ -524,7 +522,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
             )}
 
             {mode === 'Personal Car' && (
-                <PersonalCarForm 
+                <PersonalCarForm
                     form={carForm}
                     currencySymbol={currencySymbol}
                     onUpdate={updates => setCarForm(prev => ({ ...prev, ...updates }))}
@@ -538,21 +536,21 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                         Booking Reference & Financials
                     </span>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Input 
-                            label="Confirmation Code" 
-                            placeholder="e.g. 6-letter PNR (e.g. W9Q7KL)" 
-                            value={bookingRef} 
-                            onChange={e => setBookingRef(e.target.value.toUpperCase())} 
+                        <Input
+                            label="Confirmation Code"
+                            placeholder="e.g. 6-letter PNR (e.g. W9Q7KL)"
+                            value={bookingRef}
+                            onChange={e => setBookingRef(e.target.value.toUpperCase())}
                             className="font-mono uppercase font-bold"
                         />
                         <div className="relative">
-                            <Input 
-                                label="Total Itinerary Cost" 
-                                type="number" 
-                                placeholder="0.00" 
-                                value={bookingCost} 
-                                onChange={e => setBookingCost(e.target.value)} 
-                                className="pl-8 font-bold text-lg" 
+                            <Input
+                                label="Total Itinerary Cost"
+                                type="number"
+                                placeholder="0.00"
+                                value={bookingCost}
+                                onChange={e => setBookingCost(e.target.value)}
+                                className="pl-8 font-bold text-lg"
                             />
                             <span className="absolute left-3 top-9 text-light-text-secondary font-bold text-xs">{currencySymbol}</span>
                         </div>
@@ -563,7 +561,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
             {/* Sticky Frosted Action Footer */}
             <div className="p-4 sm:p-5 -mx-4 sm:-mx-6 -mb-4 sm:-mb-6 mt-6 border-t border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] backdrop-blur-md flex items-center justify-between gap-3 sticky bottom-0 z-20 rounded-b-[28px]">
                 {initialData && onDelete ? (
-                    <button 
+                    <button
                         type="button"
                         onClick={() => setShowDeleteConfirm(true)}
                         className="px-4 py-2 rounded-xl text-rose-500 hover:bg-rose-500/10 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer min-h-[44px]"
@@ -574,15 +572,15 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                 ) : <div />}
 
                 <div className="flex gap-3">
-                    <button 
-                        type="button" 
+                    <button
+                        type="button"
                         onClick={onCancel}
                         className={`${BTN_SECONDARY_STYLE} px-6 h-11 text-xs font-bold uppercase tracking-wider cursor-pointer`}
                     >
                         Cancel
                     </button>
-                    <button 
-                        type="button" 
+                    <button
+                        type="button"
                         onClick={handleSave}
                         disabled={!isValid}
                         className={`${BTN_PRIMARY_STYLE} px-8 h-11 text-xs font-bold uppercase tracking-wider flex items-center gap-2 cursor-pointer disabled:opacity-50`}

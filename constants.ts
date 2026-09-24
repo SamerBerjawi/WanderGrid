@@ -4,36 +4,36 @@
  */
 
 // --- Base Input & Button Styles ---
-export const INPUT_BASE_STYLE = 
+export const INPUT_BASE_STYLE =
   'w-full px-4 py-2.5 min-h-[44px] rounded-xl bg-white/80 dark:bg-dark-card/70 backdrop-blur-md border border-black/12 dark:border-white/10 text-light-text dark:text-dark-text placeholder-light-text-secondary/50 dark:placeholder-dark-text-secondary/50 shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] dark:shadow-none focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 transition-all duration-150 text-sm';
 
-export const BTN_PRIMARY_STYLE = 
+export const BTN_PRIMARY_STYLE =
   'bg-primary-500/85 hover:bg-primary-500 text-white font-medium rounded-xl backdrop-blur-md border border-white/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_8px_rgba(0,0,0,0.15)] transition-all duration-150 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed';
 
-export const BTN_SECONDARY_STYLE = 
+export const BTN_SECONDARY_STYLE =
   'bg-white/60 hover:bg-white/80 dark:bg-white/10 dark:hover:bg-white/20 text-light-text dark:text-dark-text font-medium rounded-xl backdrop-blur-md border border-black/12 dark:border-white/15 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)] transition-all duration-150 active:scale-[0.98]';
 
-export const BTN_DANGER_STYLE = 
+export const BTN_DANGER_STYLE =
   'bg-semantic-red/85 hover:bg-semantic-red text-white font-medium rounded-xl backdrop-blur-md border border-white/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_8px_rgba(0,0,0,0.15)] transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]';
 
 // --- Semantic Status Surface Tokens ---
-export const STATUS_DANGER_STYLE = 
+export const STATUS_DANGER_STYLE =
   'bg-semantic-red/10 text-semantic-red border border-semantic-red/20';
 
-export const STATUS_SUCCESS_STYLE = 
+export const STATUS_SUCCESS_STYLE =
   'bg-semantic-green/10 text-semantic-green border border-semantic-green/20';
 
-export const STATUS_WARNING_STYLE = 
+export const STATUS_WARNING_STYLE =
   'bg-semantic-yellow/15 text-amber-600 dark:text-semantic-yellow border border-semantic-yellow/30';
 
-export const STATUS_INFO_STYLE = 
+export const STATUS_INFO_STYLE =
   'bg-semantic-blue/10 text-semantic-blue border border-semantic-blue/20';
 
 // --- Surfaces & Containers ---
-export const CARD_FILL_STYLE = 
+export const CARD_FILL_STYLE =
   'bg-white/50 dark:bg-white/[0.05] backdrop-blur-md border border-black/8 dark:border-white/10 rounded-2xl p-5 shadow-xs';
 
-export const CARD_ELEVATED_STYLE = 
+export const CARD_ELEVATED_STYLE =
   'bg-white/70 dark:bg-white/[0.08] backdrop-blur-xl border border-black/10 dark:border-white/10 shadow-glass-light-card dark:shadow-glass-card rounded-3xl';
 
 export const HEADER_BANNER_STYLE =
@@ -45,74 +45,74 @@ export const MODAL_SHELL_STYLE =
 export const MODAL_BACKDROP_STYLE =
   'fixed inset-0 z-modal-backdrop bg-black/40 dark:bg-black/60 transition-opacity duration-300';
 
-export const DIVIDER_INNER_STYLE = 
+export const DIVIDER_INNER_STYLE =
   'border-black/10 dark:border-white/5';
 
-export const DIVIDER_SHELL_STYLE = 
+export const DIVIDER_SHELL_STYLE =
   'border-black/15 dark:border-white/10';
 
-export const FROSTED_FOOTER_STYLE = 
+export const FROSTED_FOOTER_STYLE =
   'p-4 sm:p-6 border-t border-black/5 dark:border-white/10 bg-white/30 dark:bg-white/[0.03] backdrop-blur-md flex items-center justify-between gap-3 shrink-0';
 
 // --- Typography Tokens (Apple HIG Scale) ---
-export const TYPOGRAPHY_H1 = 
+export const TYPOGRAPHY_H1 =
   'text-2xl md:text-4xl font-bold tracking-tight leading-tight text-light-text dark:text-dark-text';
 
-export const TYPOGRAPHY_H2 = 
+export const TYPOGRAPHY_H2 =
   'text-xl md:text-2xl font-semibold tracking-tight leading-snug text-light-text dark:text-dark-text';
 
-export const TYPOGRAPHY_H3 = 
+export const TYPOGRAPHY_H3 =
   'text-lg font-semibold leading-snug text-light-text dark:text-dark-text';
 
-export const TYPOGRAPHY_H4 = 
+export const TYPOGRAPHY_H4 =
   'text-base font-semibold leading-snug text-light-text dark:text-dark-text';
 
-export const TYPOGRAPHY_SUBHEAD = 
+export const TYPOGRAPHY_SUBHEAD =
   'text-sm md:text-base font-normal text-light-text-secondary dark:text-dark-text-secondary leading-normal';
 
-export const TYPOGRAPHY_BODY = 
+export const TYPOGRAPHY_BODY =
   'text-base font-normal leading-relaxed text-light-text dark:text-dark-text';
 
-export const TYPOGRAPHY_BODY_COMPACT = 
+export const TYPOGRAPHY_BODY_COMPACT =
   'text-sm font-normal leading-normal text-light-text dark:text-dark-text';
 
-export const TYPOGRAPHY_CAPTION = 
+export const TYPOGRAPHY_CAPTION =
   'text-xs font-medium text-light-text-secondary dark:text-dark-text-secondary leading-tight';
 
-export const TYPOGRAPHY_LABEL = 
+export const TYPOGRAPHY_LABEL =
   'text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary';
 
-export const TYPOGRAPHY_KICKER = 
+export const TYPOGRAPHY_KICKER =
   'text-2xs font-bold uppercase tracking-wider';
 
 // --- Header & Label Legacy Compatibility Tokens ---
-export const HEADER_TITLE_STYLE = 
+export const HEADER_TITLE_STYLE =
   'text-lg font-bold text-light-text dark:text-dark-text tracking-tight truncate';
 
-export const HEADER_SUBTITLE_STYLE = 
+export const HEADER_SUBTITLE_STYLE =
   'text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium truncate mt-0.5';
 
-export const SECTION_LABEL_STYLE = 
+export const SECTION_LABEL_STYLE =
   'block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary';
 
 // --- Micro-Components ---
-export const CLOSE_BTN_STYLE = 
+export const CLOSE_BTN_STYLE =
   'w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5 transition-colors shrink-0';
 
-export const STATUS_PILL_STYLE = 
+export const STATUS_PILL_STYLE =
   'px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20';
 
-export const SEGMENTED_TAB_WRAPPER = 
+export const SEGMENTED_TAB_WRAPPER =
   'bg-black/5 dark:bg-white/5 p-1 rounded-2xl flex border border-black/8 dark:border-white/10';
 
-export const SEGMENTED_TAB_ACTIVE = 
+export const SEGMENTED_TAB_ACTIVE =
   'bg-white/80 dark:bg-white/15 backdrop-blur-md text-primary-600 dark:text-primary-300 shadow-sm py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border border-black/5 dark:border-white/10';
 
-export const SEGMENTED_TAB_INACTIVE = 
+export const SEGMENTED_TAB_INACTIVE =
   'text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/10 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all';
 
-export const READOUT_STRIP_STYLE = 
+export const READOUT_STRIP_STYLE =
   'p-4 rounded-2xl bg-white/70 dark:bg-dark-card/70 backdrop-blur-md border border-black/10 dark:border-white/10 shadow-sm flex items-center justify-between';
 
-export const MONO_PILL_STYLE = 
+export const MONO_PILL_STYLE =
   'px-2.5 py-1 rounded-full bg-black/5 dark:bg-white/5 text-xs font-mono font-bold text-light-text dark:text-dark-text';

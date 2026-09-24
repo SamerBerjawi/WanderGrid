@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-    Bed, 
-    House, 
-    Buildings, 
-    Sparkle, 
-    PencilSimple, 
-    Trash, 
-    Plus, 
-    MapPin, 
-    MagnifyingGlass, 
+import {
+    Bed,
+    House,
+    Buildings,
+    Sparkle,
+    PencilSimple,
+    Trash,
+    Plus,
+    MapPin,
+    MagnifyingGlass,
     X,
     WarningCircle,
     Check
@@ -18,11 +18,11 @@ import { Accommodation } from '../types';
 import { dataService } from '../services/mockDb';
 import { formatDateRange, formatCurrency, getCurrencySymbol } from '../utils/formatters';
 import { searchLocations } from '../services/geocoding';
-import { 
-    STATUS_DANGER_STYLE, 
-    BTN_PRIMARY_STYLE, 
-    BTN_SECONDARY_STYLE, 
-    BTN_DANGER_STYLE 
+import {
+    STATUS_DANGER_STYLE,
+    BTN_PRIMARY_STYLE,
+    BTN_SECONDARY_STYLE,
+    BTN_DANGER_STYLE
 } from '../constants';
 
 export interface AccommodationConfiguratorProps {
@@ -61,7 +61,7 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
     const [form, setForm] = useState<Partial<Accommodation>>({});
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [draftError, setDraftError] = useState<string | null>(null);
-    
+
     // Currency & Input State
     const [currencySymbol, setCurrencySymbol] = useState('$');
     const [brandfetchKey, setBrandfetchKey] = useState<string>('');
@@ -90,7 +90,7 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
         const start = new Date(form.checkInDate);
         const end = new Date(form.checkOutDate);
         if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
-        
+
         const diff = end.getTime() - start.getTime();
         const days = Math.ceil(diff / (1000 * 3600 * 24));
         return Math.max(0, days);
@@ -99,7 +99,7 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
     // Sync Per Night Input when Total Cost changes (unless editing Per Night)
     useEffect(() => {
         if (activeField === 'perNight') return;
-        
+
         if (form.cost && nights > 0) {
             const val = form.cost / nights;
             const formatted = Number.isInteger(val) ? val.toString() : val.toFixed(2);
@@ -223,7 +223,7 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
         } finally {
             setIsFetchingBrand(false);
         }
-    };    if (showDeleteConfirm) {
+    }; if (showDeleteConfirm) {
         return (
             <div className="p-6 sm:p-8 rounded-3xl bg-white/50 dark:bg-white/[0.05] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-xs text-center space-y-6 animate-fade-in my-4">
                 <div className="w-20 h-20 bg-rose-500/15 border border-rose-500/20 rounded-2xl flex items-center justify-center mx-auto text-rose-500 shadow-inner">
@@ -236,16 +236,16 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                     </p>
                 </div>
                 <div className="flex gap-3 pt-2 max-w-xs mx-auto">
-                    <button 
-                        type="button" 
-                        className={`${BTN_SECONDARY_STYLE} flex-1 h-12 text-xs font-bold uppercase tracking-wider cursor-pointer`} 
+                    <button
+                        type="button"
+                        className={`${BTN_SECONDARY_STYLE} flex-1 h-12 text-xs font-bold uppercase tracking-wider cursor-pointer`}
                         onClick={() => setShowDeleteConfirm(false)}
                     >
                         Cancel
                     </button>
-                    <button 
-                        type="button" 
-                        className={`${BTN_DANGER_STYLE} flex-1 h-12 text-xs font-bold uppercase tracking-wider cursor-pointer flex items-center justify-center gap-2`} 
+                    <button
+                        type="button"
+                        className={`${BTN_DANGER_STYLE} flex-1 h-12 text-xs font-bold uppercase tracking-wider cursor-pointer flex items-center justify-center gap-2`}
                         onClick={() => { if (onDelete && initialData) onDelete(initialData.map(i => i.id)); }}
                     >
                         <Trash className="w-4 h-4" weight="duotone" />
@@ -258,7 +258,7 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
 
     return (
         <div className="space-y-6 animate-fade-in">
-            
+
             {/* Inline Draft Error */}
             {draftError && (
                 <div className={`p-3.5 rounded-2xl flex items-center justify-between text-xs font-semibold ${STATUS_DANGER_STYLE}`}>
@@ -290,7 +290,7 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                                     <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary">
                                         {formatDateRange(item.checkInDate, item.checkOutDate)}
                                     </span>
-                                    
+
                                     {item.cost && (
                                         <span className="text-emerald-500 font-bold ml-1">{formatCurrency(item.cost)}</span>
                                     )}
@@ -299,20 +299,20 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                             </div>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
-                            <button 
-                                type="button" 
-                                onClick={() => handleEditItem(item)} 
-                                className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-xl flex items-center justify-center text-primary-500 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer" 
-                                title="Edit" 
+                            <button
+                                type="button"
+                                onClick={() => handleEditItem(item)}
+                                className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-xl flex items-center justify-center text-primary-500 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                                title="Edit"
                                 aria-label="Edit accommodation"
                             >
                                 <PencilSimple className="w-4 h-4" />
                             </button>
-                            <button 
-                                type="button" 
-                                onClick={() => handleDeleteItem(item.id)} 
-                                className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-xl flex items-center justify-center text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer" 
-                                title="Delete" 
+                            <button
+                                type="button"
+                                onClick={() => handleDeleteItem(item.id)}
+                                className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-xl flex items-center justify-center text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                                title="Delete"
                                 aria-label="Delete accommodation"
                             >
                                 <Trash className="w-4 h-4" />
@@ -331,10 +331,10 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                             {items.find(i => i.id === editingId) ? 'Edit Accommodation' : 'New Stay Details'}
                         </span>
                         {items.length > 0 && (
-                            <button 
-                                type="button" 
-                                onClick={() => { setEditingId(null); setDraftError(null); }} 
-                                className="w-8 h-8 rounded-xl flex items-center justify-center text-light-text-secondary hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer" 
+                            <button
+                                type="button"
+                                onClick={() => { setEditingId(null); setDraftError(null); }}
+                                className="w-8 h-8 rounded-xl flex items-center justify-center text-light-text-secondary hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
                                 aria-label="Close form"
                             >
                                 <X className="w-4 h-4" />
@@ -356,11 +356,10 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                                         type="button"
                                         key={t.value}
                                         onClick={() => setForm({ ...form, type: t.value as any })}
-                                        className={`p-3 rounded-2xl flex flex-col items-center justify-center gap-1.5 text-center transition-all border min-h-[64px] cursor-pointer ${
-                                            isSelected
-                                            ? 'bg-amber-500/15 dark:bg-amber-500/25 border-amber-500/40 text-amber-700 dark:text-amber-300 shadow-sm backdrop-blur-md font-bold'
-                                            : 'bg-black/5 dark:bg-white/5 border-transparent text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/10'
-                                        }`}
+                                        className={`p-3 rounded-2xl flex flex-col items-center justify-center gap-1.5 text-center transition-all border min-h-[64px] cursor-pointer ${isSelected
+                                                ? 'bg-amber-500/15 dark:bg-amber-500/25 border-amber-500/40 text-amber-700 dark:text-amber-300 shadow-sm backdrop-blur-md font-bold'
+                                                : 'bg-black/5 dark:bg-white/5 border-transparent text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/10'
+                                            }`}
                                     >
                                         <IconComponent className="w-5 h-5" weight={isSelected ? "duotone" : "regular"} />
                                         <span className="text-2xs font-bold uppercase tracking-wider">{t.label}</span>
@@ -373,15 +372,15 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                     <div className="space-y-4">
                         {/* Name of Place with Brandfetch lookup */}
                         <div className="relative">
-                            <Input 
-                                label="Property / Hotel Name" 
+                            <Input
+                                label="Property / Hotel Name"
                                 placeholder="e.g. Canaves Oia Suites"
                                 value={form.name || ''}
-                                onChange={e => setForm({...form, name: e.target.value})}
+                                onChange={e => setForm({ ...form, name: e.target.value })}
                                 className="!font-bold !text-base pr-10"
                                 rightElement={
                                     brandfetchKey && (
-                                        <button 
+                                        <button
                                             type="button"
                                             onClick={handleFetchBrand}
                                             disabled={isFetchingBrand || !form.name}
@@ -406,28 +405,28 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                         </div>
 
                         {/* Address */}
-                        <Autocomplete 
-                            label="Address / Location" 
+                        <Autocomplete
+                            label="Address / Location"
                             placeholder="e.g. Oia 847 02, Santorini, Greece"
                             value={form.address || ''}
-                            onChange={val => setForm({...form, address: val})}
+                            onChange={val => setForm({ ...form, address: val })}
                             fetchSuggestions={fetchPlaceSuggestions}
                         />
 
                         {/* Check In / Out Dates */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 relative">
-                            <Input 
-                                label="Check-In Date" 
+                            <Input
+                                label="Check-In Date"
                                 type="date"
                                 value={form.checkInDate || ''}
-                                onChange={e => setForm({...form, checkInDate: e.target.value})}
+                                onChange={e => setForm({ ...form, checkInDate: e.target.value })}
                             />
-                            <Input 
-                                label="Check-Out Date" 
+                            <Input
+                                label="Check-Out Date"
                                 type="date"
                                 value={form.checkOutDate || ''}
                                 min={form.checkInDate}
-                                onChange={e => setForm({...form, checkOutDate: e.target.value})}
+                                onChange={e => setForm({ ...form, checkOutDate: e.target.value })}
                             />
                             {nights > 0 && (
                                 <div className="absolute top-0 right-0 -mt-2.5 mr-1">
@@ -440,33 +439,33 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
 
                         {/* Check In / Out Times & Conf Code */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <TimeInput 
-                                label="Check-In Time" 
+                            <TimeInput
+                                label="Check-In Time"
                                 value={form.checkInTime || '15:00'}
-                                onChange={val => setForm({...form, checkInTime: val})}
+                                onChange={val => setForm({ ...form, checkInTime: val })}
                             />
-                            <TimeInput 
-                                label="Check-Out Time" 
+                            <TimeInput
+                                label="Check-Out Time"
                                 value={form.checkOutTime || '11:00'}
-                                onChange={val => setForm({...form, checkOutTime: val})}
+                                onChange={val => setForm({ ...form, checkOutTime: val })}
                             />
-                            <Input 
-                                label="Booking Reference" 
+                            <Input
+                                label="Booking Reference"
                                 placeholder="e.g. HTL-99824"
                                 value={form.confirmationCode || ''}
-                                onChange={e => setForm({...form, confirmationCode: e.target.value})}
+                                onChange={e => setForm({ ...form, confirmationCode: e.target.value })}
                             />
                         </div>
 
                         {/* Financials & Website */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div className="relative">
-                                <Input 
-                                    label="Total Stay Cost" 
+                                <Input
+                                    label="Total Stay Cost"
                                     type="number"
                                     placeholder="0.00"
                                     value={form.cost !== undefined ? String(form.cost) : ''}
-                                    onChange={e => setForm({...form, cost: parseFloat(e.target.value) || undefined})}
+                                    onChange={e => setForm({ ...form, cost: parseFloat(e.target.value) || undefined })}
                                     onFocus={() => setActiveField('total')}
                                     onBlur={() => setActiveField(null)}
                                     className="pl-8 font-bold"
@@ -474,8 +473,8 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                                 <span className="absolute left-3 top-9 text-light-text-secondary font-bold text-xs">{currencySymbol}</span>
                             </div>
                             <div className="relative">
-                                <Input 
-                                    label="Nightly Rate" 
+                                <Input
+                                    label="Nightly Rate"
                                     type="number"
                                     placeholder="0.00"
                                     value={perNightInput}
@@ -487,24 +486,24 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                                 />
                                 <span className="absolute left-3 top-9 text-light-text-secondary font-bold text-xs">{currencySymbol}</span>
                             </div>
-                            <Input 
-                                label="Booking Website" 
+                            <Input
+                                label="Booking Website"
                                 placeholder="e.g. booking.com"
                                 value={form.website || ''}
-                                onChange={e => setForm({...form, website: e.target.value})}
+                                onChange={e => setForm({ ...form, website: e.target.value })}
                             />
                         </div>
 
-                        <Input 
-                            label="Check-In Notes & Instructions" 
+                        <Input
+                            label="Check-In Notes & Instructions"
                             placeholder="Keybox code, parking instructions, front desk hours..."
                             value={form.notes || ''}
-                            onChange={e => setForm({...form, notes: e.target.value})}
+                            onChange={e => setForm({ ...form, notes: e.target.value })}
                         />
 
                         {/* Save Item Action */}
                         <div className="pt-2 flex justify-end">
-                            <button 
+                            <button
                                 type="button"
                                 onClick={handleSaveItem}
                                 disabled={!form.name || !form.checkInDate || !form.checkOutDate}
@@ -520,7 +519,7 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
 
             {/* Add Another Accommodation Button */}
             {!editingId && (
-                <button 
+                <button
                     type="button"
                     onClick={prepareNewItem}
                     className="w-full py-4 border-2 border-dashed border-black/10 dark:border-white/10 rounded-2xl text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider hover:border-amber-500/50 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-500/5 transition-all flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
@@ -534,9 +533,9 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
             {/* Sticky Frosted Footer */}
             <div className="p-4 sm:p-5 -mx-4 sm:-mx-6 -mb-4 sm:-mb-6 mt-6 border-t border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] backdrop-blur-md flex items-center justify-between gap-3 sticky bottom-0 z-20 rounded-b-[28px]">
                 {initialData && initialData.length > 0 && onDelete ? (
-                    <button 
-                        type="button" 
-                        onClick={() => setShowDeleteConfirm(true)} 
+                    <button
+                        type="button"
+                        onClick={() => setShowDeleteConfirm(true)}
                         className="text-rose-500 hover:bg-rose-500/10 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer min-h-[44px]"
                         aria-label="Delete All Accommodations"
                     >
@@ -544,17 +543,17 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                         <span>Delete All</span>
                     </button>
                 ) : <div />}
-                
+
                 <div className="flex gap-3 items-center">
-                    <button 
-                        type="button" 
+                    <button
+                        type="button"
                         onClick={onCancel}
                         className={`${BTN_SECONDARY_STYLE} px-5 h-11 text-xs font-bold uppercase tracking-wider cursor-pointer`}
                     >
                         Cancel
                     </button>
-                    <button 
-                        type="button" 
+                    <button
+                        type="button"
                         onClick={handleSaveAll}
                         className={`${BTN_PRIMARY_STYLE} px-7 h-11 text-xs font-bold uppercase tracking-wider flex items-center gap-2 cursor-pointer shadow-md`}
                     >

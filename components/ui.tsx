@@ -120,79 +120,79 @@ export const TimeInput: React.FC<TimeInputProps> = ({ label, value, onChange, cl
   const [hourStr, minuteStr] = (value || '12:00').split(':');
   let hour = parseInt(hourStr);
   if (isNaN(hour)) hour = 12;
-  
+
   const isPm = hour >= 12;
   const displayHour = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour);
-  
+
   const handlePeriodChange = (p: 'AM' | 'PM') => {
-      let newH = displayHour;
-      if (p === 'PM' && newH !== 12) newH += 12;
-      if (p === 'AM' && newH === 12) newH = 0;
-      if (p === 'PM' && newH === 12) newH = 12;
-      
-      onChange(`${String(newH).padStart(2, '0')}:${minuteStr || '00'}`);
+    let newH = displayHour;
+    if (p === 'PM' && newH !== 12) newH += 12;
+    if (p === 'AM' && newH === 12) newH = 0;
+    if (p === 'PM' && newH === 12) newH = 12;
+
+    onChange(`${String(newH).padStart(2, '0')}:${minuteStr || '00'}`);
   };
 
   const handleHourChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      let val = parseInt(e.target.value);
-      if (isNaN(val)) return;
-      if (val < 1) val = 1;
-      if (val > 12) val = 12;
-      
-      let newH = val;
-      if (isPm && newH !== 12) newH += 12;
-      if (!isPm && newH === 12) newH = 0;
-      
-      onChange(`${String(newH).padStart(2, '0')}:${minuteStr || '00'}`);
+    let val = parseInt(e.target.value);
+    if (isNaN(val)) return;
+    if (val < 1) val = 1;
+    if (val > 12) val = 12;
+
+    let newH = val;
+    if (isPm && newH !== 12) newH += 12;
+    if (!isPm && newH === 12) newH = 0;
+
+    onChange(`${String(newH).padStart(2, '0')}:${minuteStr || '00'}`);
   };
 
   const handleMinuteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      let val = parseInt(e.target.value);
-      if (isNaN(val)) return; 
-      if (val < 0) val = 0;
-      if (val > 59) val = 59;
-      onChange(`${hourStr || '12'}:${String(val).padStart(2, '0')}`);
+    let val = parseInt(e.target.value);
+    if (isNaN(val)) return;
+    if (val < 0) val = 0;
+    if (val > 59) val = 59;
+    onChange(`${hourStr || '12'}:${String(val).padStart(2, '0')}`);
   };
 
   return (
-      <div className={cn("flex flex-col gap-1.5 w-full", className)}>
-          {label && <label className={SECTION_LABEL_STYLE}>{label}</label>}
-          <div className="flex gap-2 h-10">
-              <div className="relative w-16 h-full">
-                  <input
-                      type="number"
-                      min="1"
-                      max="12"
-                      className="w-full h-full px-2 rounded-2xl bg-white dark:bg-dark-card border border-black/10 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 text-center text-xs font-bold text-light-text dark:text-dark-text"
-                      value={displayHour}
-                      onChange={handleHourChange}
-                  />
-                  <span className="absolute top-1/2 -right-2 -translate-y-1/2 font-bold text-light-text-secondary/40 dark:text-dark-text-secondary/40">:</span>
-              </div>
-              <div className="relative w-16 h-full">
-                  <input
-                      type="number"
-                      min="0"
-                      max="59"
-                      className="w-full h-full px-2 rounded-2xl bg-white dark:bg-dark-card border border-black/10 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 text-center text-xs font-bold text-light-text dark:text-dark-text"
-                      value={minuteStr || '00'}
-                      onChange={handleMinuteChange}
-                  />
-              </div>
-              <div className={cn(SEGMENTED_TAB_WRAPPER, "!p-0.5 flex-1 h-full")}>
-                  <button
-                      type="button"
-                      onClick={() => handlePeriodChange('AM')}
-                      className={cn("flex-1 rounded-xl text-2xs font-bold uppercase tracking-wider transition-all h-full flex items-center justify-center", !isPm ? "bg-white dark:bg-dark-card text-primary-500 shadow-sm" : "text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100")}
-                  >AM</button>
-                  <button
-                      type="button"
-                      onClick={() => handlePeriodChange('PM')}
-                      className={cn("flex-1 rounded-xl text-2xs font-bold uppercase tracking-wider transition-all h-full flex items-center justify-center", isPm ? "bg-white dark:bg-dark-card text-primary-500 shadow-sm" : "text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100")}
-                  >PM</button>
-              </div>
-          </div>
+    <div className={cn("flex flex-col gap-1.5 w-full", className)}>
+      {label && <label className={SECTION_LABEL_STYLE}>{label}</label>}
+      <div className="flex gap-2 h-10">
+        <div className="relative w-16 h-full">
+          <input
+            type="number"
+            min="1"
+            max="12"
+            className="w-full h-full px-2 rounded-2xl bg-white dark:bg-dark-card border border-black/10 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 text-center text-xs font-bold text-light-text dark:text-dark-text"
+            value={displayHour}
+            onChange={handleHourChange}
+          />
+          <span className="absolute top-1/2 -right-2 -translate-y-1/2 font-bold text-light-text-secondary/40 dark:text-dark-text-secondary/40">:</span>
+        </div>
+        <div className="relative w-16 h-full">
+          <input
+            type="number"
+            min="0"
+            max="59"
+            className="w-full h-full px-2 rounded-2xl bg-white dark:bg-dark-card border border-black/10 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 text-center text-xs font-bold text-light-text dark:text-dark-text"
+            value={minuteStr || '00'}
+            onChange={handleMinuteChange}
+          />
+        </div>
+        <div className={cn(SEGMENTED_TAB_WRAPPER, "!p-0.5 flex-1 h-full")}>
+          <button
+            type="button"
+            onClick={() => handlePeriodChange('AM')}
+            className={cn("flex-1 rounded-xl text-2xs font-bold uppercase tracking-wider transition-all h-full flex items-center justify-center", !isPm ? "bg-white dark:bg-dark-card text-primary-500 shadow-sm" : "text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100")}
+          >AM</button>
+          <button
+            type="button"
+            onClick={() => handlePeriodChange('PM')}
+            className={cn("flex-1 rounded-xl text-2xs font-bold uppercase tracking-wider transition-all h-full flex items-center justify-center", isPm ? "bg-white dark:bg-dark-card text-primary-500 shadow-sm" : "text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100")}
+          >PM</button>
+        </div>
       </div>
+    </div>
   );
 };
 
@@ -261,7 +261,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({ label, options, value,
   return (
     <div className={cn("flex flex-col gap-1.5 w-full relative", className)} ref={wrapperRef}>
       {label && <label className={SECTION_LABEL_STYLE}>{label}</label>}
-      <button 
+      <button
         type="button"
         className={cn(INPUT_BASE_STYLE, "h-10 text-xs font-bold text-left flex items-center justify-between cursor-pointer")}
         onClick={() => setIsOpen(!isOpen)}
@@ -272,9 +272,9 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({ label, options, value,
 
       {isOpen && (
         <div className="absolute top-full mt-2 w-full min-w-[220px] z-dropdown bg-white dark:bg-dark-card border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl p-2 animate-fade-in left-0">
-          <input 
-            type="text" 
-            placeholder="Search options..." 
+          <input
+            type="text"
+            placeholder="Search options..."
             autoFocus
             className={cn(INPUT_BASE_STYLE, "h-8 !text-xs mb-2")}
             value={search}
@@ -283,9 +283,9 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({ label, options, value,
           <div className="max-h-48 overflow-y-auto custom-scrollbar space-y-1">
             {filteredOptions.length > 0 ? filteredOptions.map(opt => (
               <label key={opt.value} className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition-colors">
-                <input 
-                  type="checkbox" 
-                  checked={value.includes(opt.value)} 
+                <input
+                  type="checkbox"
+                  checked={value.includes(opt.value)}
                   onChange={() => toggleOption(opt.value)}
                   className="rounded border-black/10 text-primary-500 focus:ring-primary-500 cursor-pointer"
                 />
@@ -313,16 +313,16 @@ interface ModalProps {
   maxWidth?: string;
   footerActions?: ReactNode;
 }
-export const Modal: React.FC<ModalProps> = ({ 
-  isOpen, 
-  onClose, 
-  title, 
+export const Modal: React.FC<ModalProps> = ({
+  isOpen,
+  onClose,
+  title,
   subtitle,
   tag,
   icon,
-  children, 
+  children,
   maxWidth = 'max-w-lg',
-  footerActions 
+  footerActions
 }) => {
   const [visible, setVisible] = useState(false);
 
@@ -352,13 +352,13 @@ export const Modal: React.FC<ModalProps> = ({
   return createPortal(
     <div className={cn("fixed inset-0 z-modal flex items-center justify-center p-4 transition-all duration-300 font-sans", isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none')}>
       {/* 1. Translucent Scrim Backdrop (No blur to avoid double-blurring page content) */}
-      <div 
-        className="fixed inset-0 bg-black/40 dark:bg-black/60 transition-opacity" 
-        onClick={onClose} 
+      <div
+        className="fixed inset-0 bg-black/40 dark:bg-black/60 transition-opacity"
+        onClick={onClose}
       />
-      
+
       {/* 2. Elevated Liquid Glass Modal Container */}
-      <GlassPanel 
+      <GlassPanel
         className={cn(
           "wg-glass-card w-full shadow-2xl overflow-hidden transform transition-all duration-300 max-h-[90vh] flex flex-col z-10",
           maxWidth,
@@ -372,7 +372,7 @@ export const Modal: React.FC<ModalProps> = ({
           <div className="flex items-center gap-3 min-w-0">
             {icon && (
               <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white bg-primary-500 shrink-0 shadow-md transition-transform hover:scale-105">
-                <Icon className="text-2xl" name={icon}/>
+                <Icon className="text-2xl" name={icon} />
               </div>
             )}
             <div className="min-w-0">
@@ -391,13 +391,13 @@ export const Modal: React.FC<ModalProps> = ({
               )}
             </div>
           </div>
-          <button 
+          <button
             type="button"
-            onClick={onClose} 
+            onClick={onClose}
             className={CLOSE_BTN_STYLE}
             aria-label="Close dialog"
           >
-            <Icon className="text-lg" name="close"/>
+            <Icon className="text-lg" name="close" />
           </button>
         </div>
 
@@ -408,7 +408,7 @@ export const Modal: React.FC<ModalProps> = ({
 
         {/* Sticky Frosted Footer (optional) */}
         {footerActions && (
-          <div 
+          <div
             className="p-4 sm:p-6 border-t border-black/5 dark:border-white/10 bg-white/30 dark:bg-white/[0.03] backdrop-blur-md flex items-center justify-between gap-3 shrink-0"
           >
             {footerActions}
@@ -525,8 +525,8 @@ export const Tabs: React.FC<TabsProps> = ({ tabs, activeTab, onChange, className
               onClick={() => onChange(tab.id)}
               className={cn(
                 "relative rounded-full text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none active:scale-95 px-4 sm:px-5 py-2.5",
-                isActive 
-                  ? colorStyle.activeText 
+                isActive
+                  ? colorStyle.activeText
                   : "text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
               )}
             >
@@ -554,8 +554,8 @@ export const Tabs: React.FC<TabsProps> = ({ tabs, activeTab, onChange, className
 );
 
 // --- Badge (Status Pills) ---
-interface BadgeProps { 
-  children: ReactNode; 
+interface BadgeProps {
+  children: ReactNode;
   color?: 'blue' | 'green' | 'amber' | 'gray' | 'purple' | 'red' | 'indigo' | 'pink' | 'teal' | 'cyan' | 'primary';
   variant?: 'primary' | 'secondary' | 'outline';
   className?: string;
@@ -623,32 +623,32 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
     const val = e.target.value;
     onChange(val);
     setActiveIndex(-1);
-    
+
     latestQueryRef.current = val;
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    
+
     if (val.length >= 2) {
       setIsLoading(true);
       timeoutRef.current = setTimeout(async () => {
         try {
-           const results = await fetchSuggestions(val);
-           if (latestQueryRef.current !== val) return;
+          const results = await fetchSuggestions(val);
+          if (latestQueryRef.current !== val) return;
 
-           if (results && results.length > 0) {
-             setSuggestions(results);
-             setIsOpen(true);
-           } else {
-             setIsOpen(false);
-             setSuggestions([]);
-           }
+          if (results && results.length > 0) {
+            setSuggestions(results);
+            setIsOpen(true);
+          } else {
+            setIsOpen(false);
+            setSuggestions([]);
+          }
         } catch (error) {
-           console.error("Autocomplete error", error);
+          console.error("Autocomplete error", error);
         } finally {
-           if (latestQueryRef.current === val) {
-             setIsLoading(false);
-           }
+          if (latestQueryRef.current === val) {
+            setIsLoading(false);
+          }
         }
-      }, 350); 
+      }, 350);
     } else {
       setIsOpen(false);
       setIsLoading(false);
@@ -706,20 +706,20 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
           </div>
         )}
       </div>
-      
+
       {isOpen && suggestions.length > 0 && (
         <ul className="absolute z-50 min-w-full w-max max-w-[90vw] mt-2 bg-white dark:bg-dark-card border border-black/10 dark:border-white/10 shadow-2xl rounded-2xl overflow-hidden max-h-60 overflow-y-auto animate-fade-in left-0 p-1">
           {suggestions.map((item, index) => {
             const isSelected = index === activeIndex;
             return (
-              <li 
-                key={index} 
+              <li
+                key={index}
                 onClick={() => handleSelect(item)}
                 onMouseEnter={() => setActiveIndex(index)}
                 className={cn(
                   "px-4 py-2.5 cursor-pointer text-xs font-bold rounded-xl transition-colors truncate max-w-[400px]",
-                  isSelected 
-                    ? "bg-primary-500 text-white" 
+                  isSelected
+                    ? "bg-primary-500 text-white"
                     : "text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/5"
                 )}
                 title={item}
