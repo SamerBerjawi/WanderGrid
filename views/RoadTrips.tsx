@@ -5,7 +5,7 @@ import {
   MapTrifold as Map, ArrowRight, HardDrives as Server, Sparkle as Sparkles, NavigationArrow as Navigation, Train, 
   Bus, Question as HelpCircle, ArrowsClockwise as RefreshCw, Leaf, Anchor, Boat, SquaresFour as Grid, Info
 } from '@phosphor-icons/react';
-import { Card, Button, Input, Select, Badge, TimeInput, Autocomplete, Modal, BentoGrid, BentoCard } from '../components/ui';
+import { Card, Button, Input, Select, GlassSelect, Badge, TimeInput, Autocomplete, Modal, BentoGrid, BentoCard } from '../components/ui';
 import GlassPanel from '../components/glass/GlassPanel';
 import { INPUT_BASE_STYLE } from '../constants';
 import { Trip, Transport, TransportMode, RoadTripWaypoint, ViewState } from '../types';
@@ -983,31 +983,31 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                 <div className="space-y-2 pt-2">
                   <div>
                     <span className="text-2xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest pl-1">Target Trip planner</span>
-                    <select
+                    <GlassSelect
                       value={importTripId}
                       onChange={e => setImportTripId(e.target.value)}
-                      className="w-full mt-1 px-3 py-2 rounded-xl bg-white border border-gray-200 outline-none text-xs text-zinc-800 dark:bg-zinc-900 dark:border-white/10 dark:text-zinc-100 cursor-pointer"
+                      aria-label="Target Trip planner"
                     >
-                      <option value="" className="dark:bg-zinc-900 dark:text-zinc-100">Select a Trip...</option>
+                      <option value="">Select a Trip...</option>
                       {trips.filter(t => t.locations && t.locations.length >= 2).map(t => (
-                        <option key={t.id} value={t.id} className="dark:bg-zinc-900 dark:text-zinc-100">{t.name} ({t.locations?.length} stops)</option>
+                        <option key={t.id} value={t.id}>{t.name} ({t.locations?.length} stops)</option>
                       ))}
-                    </select>
+                    </GlassSelect>
                   </div>
 
                   <div>
                     <span className="text-2xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest pl-1">Transit travel method</span>
-                    <select
+                    <GlassSelect
                       value={importMode}
                       onChange={e => setImportMode(e.target.value as any)}
-                      className="w-full mt-1 px-3 py-2 rounded-xl bg-white border border-gray-200 outline-none text-xs text-zinc-800 dark:bg-zinc-900 dark:border-white/10 dark:text-zinc-100 cursor-pointer"
+                      aria-label="Transit travel method"
                     >
-                      <option value="Train" className="dark:bg-zinc-900 dark:text-zinc-100">🚂 Train / Railway</option>
-                      <option value="Bus" className="dark:bg-zinc-900 dark:text-zinc-100">🚌 Bus / coach</option>
-                      <option value="Car Rental" className="dark:bg-zinc-900 dark:text-zinc-100">🚙 Car rental</option>
-                      <option value="Personal Car" className="dark:bg-zinc-900 dark:text-zinc-100">🚗 Personal car</option>
-                      <option value="Cruise" className="dark:bg-zinc-900 dark:text-zinc-100">🚢 Ferry / Cruise</option>
-                    </select>
+                      <option value="Train">🚂 Train / Railway</option>
+                      <option value="Bus">🚌 Bus / coach</option>
+                      <option value="Car Rental">🚙 Car rental</option>
+                      <option value="Personal Car">🚗 Personal car</option>
+                      <option value="Cruise">🚢 Ferry / Cruise</option>
+                    </GlassSelect>
                   </div>
                 </div>
               </div>
@@ -1054,10 +1054,9 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
         
         <div className="flex flex-wrap items-center gap-2">
           <div className="w-full sm:w-36">
-            <select
+            <GlassSelect
               value={modeFilter}
               onChange={e => setModeFilter(e.target.value)}
-              className={`${INPUT_BASE_STYLE} min-h-[44px] px-3 text-xs cursor-pointer`}
               aria-label="Filter by transport mode"
             >
               <option value="All">All Modes</option>
@@ -1066,34 +1065,32 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
               <option value="Car Rental">Car Rental</option>
               <option value="Personal Car">Personal Car</option>
               <option value="Cruise">Ferry / Cruise</option>
-            </select>
+            </GlassSelect>
           </div>
 
           <div className="w-full sm:w-36">
-            <select
+            <GlassSelect
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value as any)}
-              className={`${INPUT_BASE_STYLE} min-h-[44px] px-3 text-xs cursor-pointer`}
               aria-label="Filter by schedule"
             >
               <option value="All">All Schedules</option>
               <option value="Upcoming">Upcoming</option>
               <option value="Past">Past Journeys</option>
-            </select>
+            </GlassSelect>
           </div>
 
           <div className="w-full sm:w-44">
-            <select
+            <GlassSelect
               value={sortBy}
               onChange={e => setSortBy(e.target.value as any)}
-              className={`${INPUT_BASE_STYLE} min-h-[44px] px-3 text-xs cursor-pointer`}
               aria-label="Sort journeys by"
             >
               <option value="date-asc">Date (Oldest First)</option>
               <option value="date-desc">Date (Soonest First)</option>
               <option value="cost-desc">Cost (Expensive First)</option>
               <option value="duration-desc">Duration (Longest First)</option>
-            </select>
+            </GlassSelect>
           </div>
         </div>
       </GlassPanel>
@@ -1470,17 +1467,16 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
           {/* Associated Trip linking dropdown */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
             <div className="md:col-span-2">
-              <span className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary mb-2">Associate Trip Grouping</span>
-              <select
+              <GlassSelect
+                label="Associate Trip Grouping"
                 value={formTripId}
                 onChange={e => setFormTripId(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 outline-none text-xs font-bold text-light-text dark:text-dark-text cursor-pointer h-10"
               >
                 <option value="unassigned">Keep as Independent Travel</option>
                 {trips.map(t => (
                   <option key={t.id} value={t.id}>{t.name}</option>
                 ))}
-              </select>
+              </GlassSelect>
             </div>
             <Input 
               label="Total Expense ($)" 
@@ -1530,18 +1526,17 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                 />
               </div>
               <div className="md:col-span-3">
-                <span className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary mb-1">Stop type</span>
-                <select
+                <GlassSelect
+                  label="Stop type"
                   value={newWaypointType}
                   onChange={e => setNewWaypointType(e.target.value as any)}
-                  className="w-full px-3 py-2 rounded-xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 outline-none text-xs text-light-text dark:text-dark-text cursor-pointer h-10 font-bold"
                 >
                   <option value="Stop">Sightseeing Stop</option>
                   <option value="Food">Food / Pitstop</option>
                   <option value="Lodging">Lodging stop</option>
                   <option value="Sightseeing">Sightseeing Point</option>
                   <option value="Fuel">Gas / Fuel Station</option>
-                </select>
+                </GlassSelect>
               </div>
               <div className="md:col-span-3">
                 <Input 

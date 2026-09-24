@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Car, Clock, Speedometer } from '@phosphor-icons/react';
 import { Input, Autocomplete, TimeInput } from '../ui';
+import GlassPanel from '../glass/GlassPanel';
 import { CarForm } from './transportTypes';
 import { searchLocations, getCoordinates, calculateDistance } from '../../services/geocoding';
 
@@ -44,7 +45,8 @@ export const PersonalCarForm: React.FC<PersonalCarFormProps> = ({
     };
 
     return (
-        <div className="p-5 rounded-3xl bg-white/50 dark:bg-white/[0.04] backdrop-blur-md border border-black/8 dark:border-white/10 space-y-4 shadow-xs">
+        <GlassPanel className="wg-glass-card w-full shadow-2xl overflow-hidden relative" overrides={{ borderRadius: 28 }} padding="0px">
+            <div className="p-5 sm:p-6 space-y-4">
             <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
                 Personal Vehicle Road Trip
             </span>
@@ -109,7 +111,7 @@ export const PersonalCarForm: React.FC<PersonalCarFormProps> = ({
 
             {/* Schedule */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-3.5 rounded-2xl bg-white/60 dark:bg-white/[0.04] backdrop-blur-md border border-black/6 dark:border-white/10 space-y-2 shadow-xs">
+                <div className="p-3.5 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-2 shadow-xs">
                     <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1">
                         <Clock className="w-3 h-3" /> Departure Date & Time
                     </span>
@@ -128,7 +130,7 @@ export const PersonalCarForm: React.FC<PersonalCarFormProps> = ({
                     </div>
                 </div>
 
-                <div className="p-3.5 rounded-2xl bg-white/60 dark:bg-white/[0.04] backdrop-blur-md border border-black/6 dark:border-white/10 space-y-2 shadow-xs">
+                <div className="p-3.5 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-2 shadow-xs">
                     <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1">
                         <Clock className="w-3 h-3" /> Arrival Date & Time
                     </span>
@@ -154,6 +156,7 @@ export const PersonalCarForm: React.FC<PersonalCarFormProps> = ({
                 value={form.notes || ''} 
                 onChange={e => onUpdate({ notes: e.target.value })} 
             />
-        </div>
+            </div>
+        </GlassPanel>
     );
 };

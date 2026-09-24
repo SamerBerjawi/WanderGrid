@@ -47,6 +47,7 @@ import {
 } from '@phosphor-icons/react';
 import { Button, Badge, Modal, BentoGrid, BentoCard } from '../components/ui';
 import { GlassPanel } from '../components/glass/GlassPanel';
+import GlassSelect from '../components/glass/GlassSelect';
 import { VirtualListItem } from '../components/ui/VirtualListItem';
 import { TripModal } from '../components/TripModal';
 import { TripSetupBoard } from '../components/TripSetupBoard';
@@ -1408,88 +1409,63 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                             <div className="p-4 rounded-2xl bg-white/80 dark:bg-dark-card/80 backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-sm grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 text-xs">
                                 
                                 {/* Year Filter */}
-                                <div>
-                                    <label className="block text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary mb-1">
-                                        Departure Year
-                                    </label>
-                                    <select
-                                        value={filterYear}
-                                        onChange={e => setFilterYear(e.target.value)}
-                                        className="w-full p-2 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-light-text dark:text-dark-text font-semibold outline-none cursor-pointer"
-                                    >
-                                        <option value="all">All Years ({availableYears.length})</option>
-                                        {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
-                                    </select>
-                                </div>
+                                <GlassSelect
+                                    label="Departure Year"
+                                    value={filterYear}
+                                    onChange={e => setFilterYear(e.target.value)}
+                                >
+                                    <option value="all">All Years ({availableYears.length})</option>
+                                    {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+                                </GlassSelect>
 
                                 {/* Privacy Filter */}
-                                <div>
-                                    <label className="block text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary mb-1">
-                                        Privacy Tag
-                                    </label>
-                                    <select
-                                        value={filterPrivacy}
-                                        onChange={e => setFilterPrivacy(e.target.value)}
-                                        className="w-full p-2 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-light-text dark:text-dark-text font-semibold outline-none cursor-pointer"
-                                    >
-                                        <option value="all">All Privacy</option>
-                                        <option value="public">🌍 Public Expeditions</option>
-                                        <option value="private">🔒 Private Only</option>
-                                    </select>
-                                </div>
+                                <GlassSelect
+                                    label="Privacy Tag"
+                                    value={filterPrivacy}
+                                    onChange={e => setFilterPrivacy(e.target.value)}
+                                >
+                                    <option value="all">All Privacy</option>
+                                    <option value="public">🌍 Public Expeditions</option>
+                                    <option value="private">🔒 Private Only</option>
+                                </GlassSelect>
 
                                 {/* Co-traveler Filter */}
-                                <div>
-                                    <label className="block text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary mb-1">
-                                        Co-Traveler
-                                    </label>
-                                    <select
-                                        value={filterUser}
-                                        onChange={e => setFilterUser(e.target.value)}
-                                        className="w-full p-2 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-light-text dark:text-dark-text font-semibold outline-none cursor-pointer"
-                                    >
-                                        <option value="all">All Travelers</option>
-                                        {users.map(u => (
-                                            <option key={u.id} value={u.id}>{u.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
+                                <GlassSelect
+                                    label="Co-Traveler"
+                                    value={filterUser}
+                                    onChange={e => setFilterUser(e.target.value)}
+                                >
+                                    <option value="all">All Travelers</option>
+                                    {users.map(u => (
+                                        <option key={u.id} value={u.id}>{u.name}</option>
+                                    ))}
+                                </GlassSelect>
 
                                 {/* Transport Mode Filter */}
-                                <div>
-                                    <label className="block text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary mb-1">
-                                        Transit Mode
-                                    </label>
-                                    <select
-                                        value={filterTransportMode}
-                                        onChange={e => setFilterTransportMode(e.target.value)}
-                                        className="w-full p-2 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-light-text dark:text-dark-text font-semibold outline-none cursor-pointer"
-                                    >
-                                        <option value="all">All Transports</option>
-                                        <option value="flight">✈️ Flights Included</option>
-                                        <option value="train">🚆 Trains Included</option>
-                                        <option value="road">🚗 Road Trips</option>
-                                        <option value="ferry">⛴️ Ferries / Cruises</option>
-                                    </select>
-                                </div>
+                                <GlassSelect
+                                    label="Transit Mode"
+                                    value={filterTransportMode}
+                                    onChange={e => setFilterTransportMode(e.target.value)}
+                                >
+                                    <option value="all">All Transports</option>
+                                    <option value="flight">✈️ Flights Included</option>
+                                    <option value="train">🚆 Trains Included</option>
+                                    <option value="road">🚗 Road Trips</option>
+                                    <option value="ferry">⛴️ Ferries / Cruises</option>
+                                </GlassSelect>
 
                                 {/* Sort By */}
-                                <div>
-                                    <label className="block text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary mb-1">
-                                        Sort Sequence
-                                    </label>
-                                    <select
-                                        value={sortBy}
-                                        onChange={e => setSortBy(e.target.value as SortOption)}
-                                        className="w-full p-2 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-light-text dark:text-dark-text font-semibold outline-none cursor-pointer"
-                                    >
-                                        <option value="date_asc">📅 Date (Earliest First)</option>
-                                        <option value="date_desc">📅 Date (Latest First)</option>
-                                        <option value="duration_desc">⏳ Duration (Longest)</option>
-                                        <option value="budget_desc">💰 Budget (Highest)</option>
-                                        <option value="completeness_asc">🎯 Completeness (Needs Work)</option>
-                                    </select>
-                                </div>
+                                <GlassSelect
+                                    label="Sort Sequence"
+                                    value={sortBy}
+                                    onChange={e => setSortBy(e.target.value as SortOption)}
+                                >
+                                    <option value="date_asc">📅 Date (Earliest First)</option>
+                                    <option value="date_desc">📅 Date (Latest First)</option>
+                                    <option value="duration_desc">⏳ Duration (Longest)</option>
+                                    <option value="budget_desc">💰 Budget (Highest)</option>
+                                    <option value="completeness_asc">🎯 Completeness (Needs Work)</option>
+                                </GlassSelect>
 
                             </div>
                         </motion.div>

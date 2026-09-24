@@ -14,6 +14,7 @@ import {
     Check
 } from '@phosphor-icons/react';
 import { Input, Autocomplete, TimeInput, Badge } from './ui';
+import GlassPanel from './glass/GlassPanel';
 import { Accommodation } from '../types';
 import { dataService } from '../services/mockDb';
 import { formatDateRange, formatCurrency, getCurrencySymbol } from '../utils/formatters';
@@ -225,8 +226,9 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
         }
     }; if (showDeleteConfirm) {
         return (
-            <div className="p-6 sm:p-8 rounded-3xl bg-white/50 dark:bg-white/[0.05] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-xs text-center space-y-6 animate-fade-in my-4">
-                <div className="w-20 h-20 bg-rose-500/15 border border-rose-500/20 rounded-2xl flex items-center justify-center mx-auto text-rose-500 shadow-inner">
+            <GlassPanel className="wg-glass-card w-full shadow-2xl overflow-hidden animate-fade-in my-4" overrides={{ borderRadius: 28 }} padding="0px">
+                <div className="p-6 sm:p-8 rounded-3xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 text-center space-y-6">
+                    <div className="w-20 h-20 bg-rose-500/15 border border-rose-500/20 rounded-2xl flex items-center justify-center mx-auto text-rose-500 shadow-inner">
                     <Trash className="w-10 h-10" weight="duotone" />
                 </div>
                 <div>
@@ -235,29 +237,31 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                         This will remove {items.length} stays from this trip.
                     </p>
                 </div>
-                <div className="flex gap-3 pt-2 max-w-xs mx-auto">
-                    <button
-                        type="button"
-                        className={`${BTN_SECONDARY_STYLE} flex-1 h-12 text-xs font-bold uppercase tracking-wider cursor-pointer`}
-                        onClick={() => setShowDeleteConfirm(false)}
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        type="button"
-                        className={`${BTN_DANGER_STYLE} flex-1 h-12 text-xs font-bold uppercase tracking-wider cursor-pointer flex items-center justify-center gap-2`}
-                        onClick={() => { if (onDelete && initialData) onDelete(initialData.map(i => i.id)); }}
-                    >
-                        <Trash className="w-4 h-4" weight="duotone" />
-                        <span>Confirm</span>
-                    </button>
+                    <div className="flex gap-3 pt-2 max-w-xs mx-auto">
+                        <button
+                            type="button"
+                            className={`${BTN_SECONDARY_STYLE} flex-1 h-12 text-xs font-bold uppercase tracking-wider cursor-pointer`}
+                            onClick={() => setShowDeleteConfirm(false)}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            className={`${BTN_DANGER_STYLE} flex-1 h-12 text-xs font-bold uppercase tracking-wider cursor-pointer flex items-center justify-center gap-2`}
+                            onClick={() => { if (onDelete && initialData) onDelete(initialData.map(i => i.id)); }}
+                        >
+                            <Trash className="w-4 h-4" weight="duotone" />
+                            <span>Confirm</span>
+                        </button>
+                    </div>
                 </div>
-            </div>
+            </GlassPanel>
         );
     }
 
     return (
-        <div className="space-y-6 animate-fade-in">
+        <GlassPanel className="wg-glass-card w-full shadow-2xl overflow-hidden animate-fade-in" overrides={{ borderRadius: 28 }} padding="0px">
+            <div className="p-6 sm:p-8 space-y-6">
 
             {/* Inline Draft Error */}
             {draftError && (
@@ -275,7 +279,7 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
             {/* List of Existing Accommodations */}
             <div className="space-y-3">
                 {items.filter(i => i.id !== editingId).map((item) => (
-                    <div key={item.id} className="relative p-4 bg-white/50 dark:bg-white/[0.05] backdrop-blur-md rounded-2xl border border-black/8 dark:border-white/10 shadow-xs flex justify-between items-center hover:border-black/15 dark:hover:border-white/20 transition-all">
+                    <div key={item.id} className="relative p-4 bg-light-fill dark:bg-dark-fill/50 rounded-2xl border border-black/5 dark:border-white/5 shadow-xs flex justify-between items-center hover:border-black/15 dark:hover:border-white/20 transition-all">
                         <div className="flex items-center gap-4 min-w-0">
                             <div className="w-12 h-12 rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20 flex items-center justify-center text-2xl shrink-0 shadow-sm overflow-hidden">
                                 {item.logoUrl ? (
@@ -302,7 +306,7 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                             <button
                                 type="button"
                                 onClick={() => handleEditItem(item)}
-                                className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-xl flex items-center justify-center text-primary-500 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                                className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-primary-500 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
                                 title="Edit"
                                 aria-label="Edit accommodation"
                             >
@@ -311,7 +315,7 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                             <button
                                 type="button"
                                 onClick={() => handleDeleteItem(item.id)}
-                                className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-xl flex items-center justify-center text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                                className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
                                 title="Delete"
                                 aria-label="Delete accommodation"
                             >
@@ -324,7 +328,7 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
 
             {/* Editor Form */}
             {(editingId || items.length === 0) && (
-                <div className="p-5 sm:p-6 rounded-3xl bg-white/50 dark:bg-white/[0.04] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-xs space-y-5 animate-fade-in relative">
+                <div className="p-5 sm:p-6 rounded-3xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 shadow-xs space-y-5 animate-fade-in relative">
                     <div className="flex justify-between items-center">
                         <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1.5">
                             <MapPin className="w-4 h-4 text-amber-500" weight="duotone" />
@@ -563,7 +567,8 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                 </div>
             </div>
 
-        </div>
+            </div>
+        </GlassPanel>
     );
 };
 export default AccommodationConfigurator;

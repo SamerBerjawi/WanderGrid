@@ -38,7 +38,7 @@ export const DurationInput: React.FC<DurationInputProps> = ({
                     <input 
                         type="number" 
                         min="0"
-                        className="w-full px-3 py-2.5 rounded-xl bg-white/80 dark:bg-dark-card/70 backdrop-blur-md border border-black/12 dark:border-white/10 text-light-text dark:text-dark-text outline-none font-bold text-sm pr-8"
+                        className="w-full px-3 py-2.5 rounded-xl bg-white/80 dark:bg-dark-card/70 backdrop-blur-md border border-black/12 dark:border-white/10 text-light-text dark:text-dark-text outline-none font-bold text-sm pr-8 [&::-webkit-inner-spin-button]:cursor-pointer [&::-webkit-inner-spin-button]:opacity-40 hover:[&::-webkit-inner-spin-button]:opacity-80"
                         value={hours}
                         onChange={(e) => {
                             const val = Math.max(0, parseInt(e.target.value) || 0);
@@ -52,7 +52,7 @@ export const DurationInput: React.FC<DurationInputProps> = ({
                         type="number" 
                         min="0"
                         max="59"
-                        className="w-full px-3 py-2.5 rounded-xl bg-white/80 dark:bg-dark-card/70 backdrop-blur-md border border-black/12 dark:border-white/10 text-light-text dark:text-dark-text outline-none font-bold text-sm pr-8"
+                        className="w-full px-3 py-2.5 rounded-xl bg-white/80 dark:bg-dark-card/70 backdrop-blur-md border border-black/12 dark:border-white/10 text-light-text dark:text-dark-text outline-none font-bold text-sm pr-8 [&::-webkit-inner-spin-button]:cursor-pointer [&::-webkit-inner-spin-button]:opacity-40 hover:[&::-webkit-inner-spin-button]:opacity-80"
                         value={mins}
                         onChange={(e) => {
                             const val = Math.min(59, Math.max(0, parseInt(e.target.value) || 0));

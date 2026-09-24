@@ -5,7 +5,7 @@ import {
   ArrowRight, Airplane as Plane, AirplaneTakeoff, AirplaneTilt, Bank as Landmark, Trophy as Award, Clock, CurrencyDollar as DollarSign, ChartBar as BarChart2, SuitcaseSimple as Briefcase, FileText, Compass, Heart, Question as HelpCircle, ArrowsClockwise as RefreshCw, UploadSimple as Upload, DownloadSimple as Download, Tag, UserCheck, Star, Sparkle as Sparkles, SquaresFour as Grid, List,
   ArrowUpRight, ArrowDownLeft, FolderPlus, FolderMinus, X
 } from '@phosphor-icons/react';
-import { Card, Button, Input, Select, Badge, TimeInput, Autocomplete } from '../components/ui';
+import { Card, Button, Input, Select, GlassSelect, Badge, TimeInput, Autocomplete } from '../components/ui';
 import GlassPanel from '../components/glass/GlassPanel';
 import VirtualListItem from '../components/ui/VirtualListItem';
 import { Trip, Transport, User, Carrier, WorkspaceSettings, FlightStatusResponse } from '../types';
@@ -2405,20 +2405,18 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
             
             <div className="flex flex-wrap items-center gap-3">
               {/* Cabin Class Select filter */}
-              <div className="relative">
-                <select
+              <div className="min-w-[140px]">
+                <GlassSelect
                   aria-label="Filter by cabin class"
-                  className="px-5 py-2 text-xs rounded-xl font-black uppercase tracking-wider bg-white/40 text-zinc-700 dark:text-zinc-350 border border-zinc-200 dark:border-white/5 hover:bg-white/60 shadow-xs dark:bg-black/20 dark:hover:bg-black/40 outline-none cursor-pointer transition-all appearance-none pr-8"
                   value={classFilter}
                   onChange={e => setClassFilter(e.target.value)}
                 >
-                  <option value="all" className="text-black bg-white dark:bg-zinc-900 dark:text-white">Any Cabin</option>
-                  <option value="Economy" className="text-black bg-white dark:bg-zinc-900 dark:text-white">Economy</option>
-                  <option value="Premium Economy" className="text-black bg-white dark:bg-zinc-900 dark:text-white">Premium Economy</option>
-                  <option value="Business" className="text-black bg-white dark:bg-zinc-900 dark:text-white">Business</option>
-                  <option value="First" className="text-black bg-white dark:bg-zinc-900 dark:text-white">First Only</option>
-                </select>
-                <ChevronDown className="w-3.5 h-3.5 text-zinc-400 pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2" />
+                  <option value="all">Any Cabin</option>
+                  <option value="Economy">Economy</option>
+                  <option value="Premium Economy">Premium Economy</option>
+                  <option value="Business">Business</option>
+                  <option value="First">First Only</option>
+                </GlassSelect>
               </div>
 
               {/* Reset Filters button */}
@@ -3097,11 +3095,12 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                               </button>
                             )}
                           </div>
-                          <select
+                          <GlassSelect
                             value={colFilterStatus}
                             onChange={(e) => setColFilterStatus(e.target.value)}
-                            className="w-full text-xs bg-zinc-50 dark:bg-black/30 border border-zinc-200 dark:border-white/5 rounded-xl px-2.5 py-2 focus:outline-none focus:border-blue-500/50 transition-colors text-zinc-850 dark:text-zinc-100 font-sans cursor-pointer mb-3"
-                            onClick={(e) => e.stopPropagation()}
+                            onClick={(e) => e?.stopPropagation()}
+                            aria-label="Filter by status"
+                            containerClassName="mb-3"
                           >
                             <option value="all">All States</option>
                             <option value="scheduled">Scheduled</option>
@@ -3109,7 +3108,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                             <option value="boarded">Boarded</option>
                             <option value="canceled">Canceled</option>
                             <option value="on-time">On Time</option>
-                          </select>
+                          </GlassSelect>
 
                           <div className="border-t border-zinc-100 dark:border-white/5 pt-2.5">
                             <span className="text-2xs font-black uppercase tracking-widest text-zinc-400 block mb-1.5 font-mono">Sort Status Column By</span>
@@ -3173,11 +3172,12 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                             )}
                           </div>
                           
-                          <select
+                          <GlassSelect
                             value={colFilterTimingDay}
                             onChange={(e) => setColFilterTimingDay(e.target.value)}
-                            className="w-full text-xs bg-zinc-50 dark:bg-black/30 border border-zinc-200 dark:border-white/5 rounded-xl px-2.5 py-2 focus:outline-none focus:border-blue-500/50 transition-colors text-zinc-850 dark:text-zinc-100 font-sans cursor-pointer mb-3"
-                            onClick={(e) => e.stopPropagation()}
+                            onClick={(e) => e?.stopPropagation()}
+                            aria-label="Filter by day of week"
+                            containerClassName="mb-3"
                           >
                             <option value="all">All Days of Week</option>
                             <option value="mon">Monday</option>
@@ -3187,7 +3187,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                             <option value="fri">Friday</option>
                             <option value="sat">Saturday</option>
                             <option value="sun">Sunday</option>
-                          </select>
+                          </GlassSelect>
 
                           <div className="border-t border-zinc-100 dark:border-white/5 pt-2.5">
                             <span className="text-2xs font-black uppercase tracking-widest text-zinc-400 block mb-1.5 font-mono">Sort Schedules Column By</span>
@@ -3251,11 +3251,12 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                               </button>
                             )}
                           </div>
-                          <select
+                          <GlassSelect
                             value={colFilterSeat}
                             onChange={(e) => setColFilterSeat(e.target.value)}
-                            className="w-full text-xs bg-zinc-50 dark:bg-black/30 border border-zinc-200 dark:border-white/5 rounded-xl px-2.5 py-2 focus:outline-none focus:border-blue-500/50 transition-colors text-zinc-850 dark:text-zinc-100 font-sans cursor-pointer mb-3"
-                            onClick={(e) => e.stopPropagation()}
+                            onClick={(e) => e?.stopPropagation()}
+                            aria-label="Filter by seat and class"
+                            containerClassName="mb-3"
                           >
                             <option value="all">All Seats/Classes</option>
                             <option value="assigned">Assigned Seat Only</option>
@@ -3264,7 +3265,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                             <option value="class-premium">Premium Economy</option>
                             <option value="class-business">Business Class</option>
                             <option value="class-first">First Class</option>
-                          </select>
+                          </GlassSelect>
 
                           <div className="border-t border-zinc-100 dark:border-white/5 pt-2.5">
                             <span className="text-2xs font-black uppercase tracking-widest text-zinc-400 block mb-1.5 font-mono">Sort Seat Column By</span>

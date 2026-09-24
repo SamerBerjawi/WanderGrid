@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 import { Trip, Transport, User } from '../types';
 import { Button, Input, Select } from './ui';
 import GlassPanel from './glass/GlassPanel';
+import GlassSelect from './glass/GlassSelect';
 import { flightImporter } from '../services/flightImportExport';
 import { dataService } from '../services/mockDb';
 import { invalidateGlobalWanderCache } from '../hooks/useWanderSync';
@@ -1083,16 +1084,15 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                                     <p className="text-xs text-zinc-500 truncate">{tf.desc}</p>
                                                 </div>
                                                 <div className="w-1/2">
-                                                    <select
+                                                    <GlassSelect
                                                         value={columnMapping[tf.key] || ''}
                                                         onChange={(e) => setColumnMapping(prev => ({ ...prev, [tf.key]: e.target.value }))}
-                                                        className="w-full text-xs p-2 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 outline-none focus:border-blue-500 font-medium"
                                                     >
                                                         <option value="">-- Ignored / Not Set --</option>
                                                         {availableHeaders.map((header) => (
                                                             <option key={header} value={header}>{header}</option>
                                                         ))}
-                                                    </select>
+                                                    </GlassSelect>
                                                 </div>
                                             </div>
                                         ))}
@@ -1251,30 +1251,28 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                             />
                                         </div>
                                         <div>
-                                            <label className="text-2xs font-bold text-zinc-450 uppercase block mb-1">Filter by Carrier</label>
-                                            <select
+                                            <GlassSelect
+                                                label="Filter by Carrier"
                                                 value={importAirlineFilter}
                                                 onChange={e => setImportAirlineFilter(e.target.value)}
-                                                className="w-full text-xs p-2 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-blue-500 font-medium cursor-pointer"
                                             >
                                                 <option value="all">All Airlines</option>
                                                 {uniqueAirlines.map(airline => (
                                                     <option key={airline} value={airline}>{airline}</option>
-                                                 ))}
-                                            </select>
+                                                ))}
+                                            </GlassSelect>
                                         </div>
                                         <div>
-                                            <label className="text-2xs font-bold text-zinc-450 uppercase block mb-1">Filter by Cabin</label>
-                                            <select
+                                            <GlassSelect
+                                                label="Filter by Cabin"
                                                 value={importClassFilter}
                                                 onChange={e => setImportClassFilter(e.target.value)}
-                                                className="w-full text-xs p-2 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-blue-500 font-medium cursor-pointer"
                                             >
                                                 <option value="all">All Cabin Classes</option>
                                                 {uniqueClasses.map(cls => (
                                                     <option key={cls} value={cls}>{cls}</option>
                                                 ))}
-                                            </select>
+                                            </GlassSelect>
                                         </div>
                                         <div>
                                             <label className="text-2xs font-bold text-zinc-450 uppercase block mb-1">Start Date</label>
@@ -1305,15 +1303,14 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                             <p className="text-xs text-zinc-500 leading-none">Who will be the designated passenger traveler for this trip sequence?</p>
                                         </div>
                                         <div className="w-full md:w-1/3">
-                                            <select
+                                            <GlassSelect
                                                 value={selectedUserId}
                                                 onChange={(e) => setSelectedUserId(e.target.value)}
-                                                className="w-full p-2.5 rounded-xl border border-gray-200 dark:border-zinc-750 bg-white dark:bg-zinc-800 outline-none focus:border-blue-500 font-bold text-xs cursor-pointer"
                                             >
                                                 {users.map(u => (
                                                     <option key={u.id} value={u.id}>{u.name}</option>
                                                 ))}
-                                            </select>
+                                            </GlassSelect>
                                         </div>
                                     </div>
                                 )}

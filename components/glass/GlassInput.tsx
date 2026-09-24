@@ -41,7 +41,7 @@ export const GlassInput = forwardRef<HTMLInputElement, GlassInputProps>(({
             <input
               ref={ref}
               disabled={disabled}
-              className={`w-full bg-transparent text-xs font-bold text-light-text dark:text-dark-text placeholder-light-text-secondary/50 dark:placeholder-dark-text-secondary/50 focus:outline-none ${className}`}
+              className={`w-full bg-transparent text-xs font-bold text-light-text dark:text-dark-text placeholder-light-text-secondary/50 dark:placeholder-dark-text-secondary/50 focus:outline-none [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-60 hover:[&::-webkit-calendar-picker-indicator]:opacity-100 dark:[&::-webkit-calendar-picker-indicator]:invert [&::-webkit-inner-spin-button]:cursor-pointer [&::-webkit-inner-spin-button]:opacity-50 hover:[&::-webkit-inner-spin-button]:opacity-90 ${className}`}
               {...props}
             />
             {rightElement && <span className="shrink-0 flex items-center">{rightElement}</span>}

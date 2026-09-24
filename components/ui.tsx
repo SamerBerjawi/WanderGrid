@@ -163,7 +163,7 @@ export const TimeInput: React.FC<TimeInputProps> = ({ label, value, onChange, cl
             type="number"
             min="1"
             max="12"
-            className="w-full h-full px-2 rounded-2xl bg-white dark:bg-dark-card border border-black/10 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 text-center text-xs font-bold text-light-text dark:text-dark-text"
+            className="w-full h-full px-2 rounded-2xl bg-white dark:bg-dark-card border border-black/10 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 text-center text-xs font-bold text-light-text dark:text-dark-text [&::-webkit-inner-spin-button]:cursor-pointer [&::-webkit-inner-spin-button]:opacity-40 hover:[&::-webkit-inner-spin-button]:opacity-80"
             value={displayHour}
             onChange={handleHourChange}
           />
@@ -174,7 +174,7 @@ export const TimeInput: React.FC<TimeInputProps> = ({ label, value, onChange, cl
             type="number"
             min="0"
             max="59"
-            className="w-full h-full px-2 rounded-2xl bg-white dark:bg-dark-card border border-black/10 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 text-center text-xs font-bold text-light-text dark:text-dark-text"
+            className="w-full h-full px-2 rounded-2xl bg-white dark:bg-dark-card border border-black/10 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 text-center text-xs font-bold text-light-text dark:text-dark-text [&::-webkit-inner-spin-button]:cursor-pointer [&::-webkit-inner-spin-button]:opacity-40 hover:[&::-webkit-inner-spin-button]:opacity-80"
             value={minuteStr || '00'}
             onChange={handleMinuteChange}
           />

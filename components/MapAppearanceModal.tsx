@@ -194,7 +194,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                         <div className="p-1.5 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/30">
                                             <Compass className="w-4 h-4" />
                                         </div>
-                                        <h3 className="text-xs font-bold uppercase tracking-wider text-white">Projection Engine</h3>
+                                        <h3 className="text-xs font-bold uppercase tracking-wider text-light-text dark:text-dark-text">Projection Engine</h3>
                                     </div>
                                     <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400 border border-blue-500/30">
                                         {settings.projection === 'globe' ? '3D Orbital' : '2D Planar'}
@@ -206,7 +206,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                         onClick={() => updateField('projection', 'globe')}
                                         className={`p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer transition-all duration-150 active:scale-[0.98] ${
                                             settings.projection === 'globe'
-                                                ? 'bg-blue-600/20 border-blue-400 ring-1 ring-blue-500/30 text-white font-bold'
+                                                ? 'bg-blue-600/20 border-blue-400 ring-1 ring-blue-500/30 text-light-text dark:text-dark-text font-bold'
                                                 : 'bg-zinc-900/60 border-white/10 text-zinc-400 hover:border-white/20'
                                         }`}
                                     >
@@ -220,7 +220,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                         onClick={() => updateField('projection', 'flat')}
                                         className={`p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer transition-all duration-150 active:scale-[0.98] ${
                                             settings.projection === 'flat'
-                                                ? 'bg-blue-600/20 border-blue-400 ring-1 ring-blue-500/30 text-white font-bold'
+                                                ? 'bg-blue-600/20 border-blue-400 ring-1 ring-blue-500/30 text-light-text dark:text-dark-text font-bold'
                                                 : 'bg-zinc-900/60 border-white/10 text-zinc-400 hover:border-white/20'
                                         }`}
                                     >
@@ -249,7 +249,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                 <div className="w-full h-8 rounded-xl border border-white/15 flex items-center px-2.5 justify-between bg-gradient-to-r from-black via-zinc-950 to-zinc-900 relative overflow-hidden">
                                                     <div className="flex items-center gap-1.5 z-10">
                                                         <span className="text-xs">🌑</span>
-                                                        <span className="text-xs font-bold text-white drop-shadow">Onyx</span>
+                                                        <span className="text-xs font-bold text-light-text dark:text-dark-text drop-shadow">Onyx</span>
                                                     </div>
                                                     <div className="w-2 h-2 rounded-full border border-white/40 z-10" />
                                                 </div>
@@ -346,8 +346,8 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                             >
                                                 {b.renderSwatch()}
                                                 <div>
-                                                    <p className="text-xs font-bold text-white truncate">{b.label}</p>
-                                                    <p className="text-2xs text-zinc-400 line-clamp-1">{b.desc}</p>
+                                                    <p className="text-xs font-bold text-light-text dark:text-dark-text truncate">{b.label}</p>
+                                                    <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary line-clamp-1">{b.desc}</p>
                                                 </div>
                                             </button>
                                         );
@@ -359,8 +359,8 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                             <div className="p-4 rounded-3xl bg-gradient-to-b from-white/[0.07] to-white/[0.02] border border-white/10 shadow-xl space-y-3">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <h3 className="text-xs font-bold uppercase tracking-wider text-white">Scratch City Pins</h3>
-                                        <p className="text-xs text-zinc-400">Marker sizing & visibility on foil</p>
+                                        <h3 className="text-xs font-bold uppercase tracking-wider text-light-text dark:text-dark-text">Scratch City Pins</h3>
+                                        <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary">Marker sizing & visibility on foil</p>
                                     </div>
                                     <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400 border border-blue-500/30">
                                         {settings.scratchCitySize === 'off' ? 'Hidden' : settings.scratchCitySize || 'Normal'}
@@ -381,7 +381,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                             className={`py-2 rounded-xl text-xs font-bold text-center border transition-all cursor-pointer ${
                                                 (settings.scratchCitySize || 'medium') === sz.id
                                                     ? 'bg-blue-600 text-white border-blue-400'
-                                                    : 'bg-zinc-900/60 border-white/10 text-zinc-400 hover:text-white'
+                                                    : 'bg-zinc-900/60 border-white/10 text-zinc-400 hover:text-light-text dark:hover:text-white'
                                             }`}
                                         >
                                             {sz.label}
@@ -392,7 +392,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
 
                             {/* SCRATCH HIGHLIGHT TOGGLES (LIVED & WISHLIST) */}
                             <div className="p-4 rounded-3xl bg-gradient-to-b from-white/[0.07] to-white/[0.02] border border-white/10 shadow-xl space-y-3">
-                                <h3 className="text-xs font-bold uppercase tracking-wider text-white">Territory Highlights</h3>
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-light-text dark:text-dark-text">Territory Highlights</h3>
 
                                 {/* Lived Residences Toggle */}
                                 <div className="flex items-center justify-between pt-1">
@@ -401,8 +401,8 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                             🏠
                                         </div>
                                         <div>
-                                            <p className="text-xs font-bold text-white">Lived Residences</p>
-                                            <p className="text-xs text-zinc-400">Current & past homes on foil</p>
+                                            <p className="text-xs font-bold text-light-text dark:text-dark-text">Lived Residences</p>
+                                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary">Current & past homes on foil</p>
                                         </div>
                                     </div>
                                     <button
@@ -429,8 +429,8 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                             🛫
                                         </div>
                                         <div>
-                                            <p className="text-xs font-bold text-white">Layover Territories</p>
-                                            <p className="text-xs text-zinc-400">Airport transit & connections</p>
+                                            <p className="text-xs font-bold text-light-text dark:text-dark-text">Layover Territories</p>
+                                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary">Airport transit & connections</p>
                                         </div>
                                     </div>
                                     <button
@@ -457,8 +457,8 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                             🌟
                                         </div>
                                         <div>
-                                            <p className="text-xs font-bold text-white">Wishlist Destinations</p>
-                                            <p className="text-xs text-zinc-400">Dream expedition targets</p>
+                                            <p className="text-xs font-bold text-light-text dark:text-dark-text">Wishlist Destinations</p>
+                                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary">Dream expedition targets</p>
                                         </div>
                                     </div>
                                     <button
@@ -486,8 +486,8 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                             <div className="p-4 rounded-3xl bg-gradient-to-b from-white/[0.07] to-white/[0.02] border border-white/10 shadow-xl space-y-3">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <h3 className="text-xs font-bold uppercase tracking-wider text-white">Aerodrome Infrastructure</h3>
-                                        <p className="text-xs text-zinc-400">Physical runways & taxiways</p>
+                                        <h3 className="text-xs font-bold uppercase tracking-wider text-light-text dark:text-dark-text">Aerodrome Infrastructure</h3>
+                                        <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary">Physical runways & taxiways</p>
                                     </div>
                                     <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400 border border-blue-500/30">
                                         {settings.airportDetail === 'detailed' ? 'True Layout' : 'Beacon'}
@@ -499,24 +499,24 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                         onClick={() => updateField('airportDetail', 'standard')}
                                         className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
                                             settings.airportDetail === 'standard'
-                                                ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30 text-white'
+                                                ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30 text-light-text dark:text-dark-text'
                                                 : 'border-white/10 bg-zinc-900/60 text-zinc-400 hover:border-white/20'
                                         }`}
                                     >
-                                        <p className="text-xs font-bold text-white">Minimal Beacon</p>
-                                        <p className="text-2xs text-zinc-400 mt-0.5">Circular hub nodes</p>
+                                        <p className="text-xs font-bold text-light-text dark:text-dark-text">Minimal Beacon</p>
+                                        <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5">Circular hub nodes</p>
                                     </button>
 
                                     <button
                                         onClick={() => updateField('airportDetail', 'detailed')}
                                         className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
                                             settings.airportDetail === 'detailed'
-                                                ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30 text-white'
+                                                ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30 text-light-text dark:text-dark-text'
                                                 : 'border-white/10 bg-zinc-900/60 text-zinc-400 hover:border-white/20'
                                         }`}
                                     >
-                                        <p className="text-xs font-bold text-white">True Runways</p>
-                                        <p className="text-2xs text-zinc-400 mt-0.5">Meter-accurate strips</p>
+                                        <p className="text-xs font-bold text-light-text dark:text-dark-text">True Runways</p>
+                                        <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5">Meter-accurate strips</p>
                                     </button>
                                 </div>
                             </div>
@@ -541,7 +541,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                             className={`py-2 rounded-xl text-xs font-bold text-center border transition-all cursor-pointer ${
                                                 settings.airportSize === sz.id
                                                     ? 'bg-blue-600 text-white border-blue-400'
-                                                    : 'bg-zinc-900/60 border-white/10 text-zinc-400 hover:text-white'
+                                                    : 'bg-zinc-900/60 border-white/10 text-zinc-400 hover:text-light-text dark:hover:text-white'
                                             }`}
                                         >
                                             {sz.label}
@@ -555,7 +555,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                         className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
                                             settings.airportMode === 'frequency'
                                                 ? 'border-blue-500 bg-blue-500/10 text-blue-300'
-                                                : 'border-white/10 bg-zinc-900/60 text-zinc-400 hover:text-white'
+                                                : 'border-white/10 bg-zinc-900/60 text-zinc-400 hover:text-light-text dark:hover:text-white'
                                         }`}
                                     >
                                         Weighted by Traffic
@@ -565,7 +565,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                         className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
                                             settings.airportMode === 'uniform'
                                                 ? 'border-blue-500 bg-blue-500/10 text-blue-300'
-                                                : 'border-white/10 bg-zinc-900/60 text-zinc-400 hover:text-white'
+                                                : 'border-white/10 bg-zinc-900/60 text-zinc-400 hover:text-light-text dark:hover:text-white'
                                         }`}
                                     >
                                         Uniform Scale
@@ -595,8 +595,8 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                         : 'border-black/10 dark:border-white/10 bg-light-fill dark:bg-zinc-900/60 hover:border-black/20 dark:hover:border-white/20'
                                                 }`}
                                             >
-                                                <p className="text-xs font-bold text-light-text dark:text-white">{cl.label}</p>
-                                                <p className="text-2xs text-light-text-secondary dark:text-zinc-400">{cl.desc}</p>
+                                                <p className="text-xs font-bold text-light-text dark:text-dark-text">{cl.label}</p>
+                                                <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary">{cl.desc}</p>
                                             </button>
                                         ))}
                                     </div>
@@ -604,14 +604,14 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
 
                                 {/* MULTI-MODAL ROUTE INTELLIGENCE */}
                                 <div className="space-y-3 pt-3 border-t border-black/5 dark:border-white/5">
-                                    <h3 className="text-xs font-bold text-light-text-secondary dark:text-zinc-400 tracking-wider uppercase">
+                                    <h3 className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase">
                                         Multi-Modal Route Intelligence
                                     </h3>
 
                                     {/* Unified Route Tracing (Road, Rail & Sea) */}
                                     <div className="p-3.5 rounded-2xl bg-light-fill dark:bg-zinc-900/60 border border-black/5 dark:border-white/10 flex items-center justify-between">
                                         <div>
-                                            <h4 className="text-xs font-bold text-light-text dark:text-white flex items-center gap-1.5">
+                                            <h4 className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
                                                 <span>Realistic Route Tracing</span>
                                                 <span className="px-2 py-0.5 text-2xs font-bold uppercase tracking-wider rounded-full bg-primary-500/20 text-primary-600 dark:text-primary-400 border border-primary-500/30">
                                                     Road & Rail
@@ -652,7 +652,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                 <div className="p-4 rounded-3xl bg-zinc-900/60 border border-white/10 space-y-2">
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                                            <h4 className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
                                                 <span>Solar Twilight Shading</span>
                                                 {settings.timeOfDay && (
                                                     <span className="px-2 py-0.5 text-2xs font-bold uppercase tracking-wider rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
@@ -660,7 +660,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                     </span>
                                                 )}
                                             </h4>
-                                            <p className="text-xs text-zinc-400 mt-0.5">Atmospheric multi-band twilight gradient</p>
+                                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5">Atmospheric multi-band twilight gradient</p>
                                         </div>
                                         <button
                                             type="button"
@@ -682,7 +682,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                 <div className="p-4 rounded-3xl bg-zinc-900/60 border border-white/10 space-y-3">
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                                            <h4 className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
                                                 <span>Doppler Rain Radar</span>
                                                 {settings.rainRadar && (
                                                     <span className="flex items-center gap-1 px-2 py-0.5 text-2xs font-bold uppercase tracking-wider rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
