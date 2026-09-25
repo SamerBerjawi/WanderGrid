@@ -19,8 +19,10 @@ import GlassButton from './glass/GlassButton';
 import GlassPanel from './glass/GlassPanel';
 import { DateRangePicker } from './ui';
 import { dataService } from '../services/mockDb';
-import { Trip, User } from '../types';
+import { Trip, User, Transport, Accommodation } from '../types';
 import { searchLocationSuggestions, ParsedLocationItem, parseGoogleMapsUrl } from '../services/locationParser';
+import { useExistingTripSuggestions, DiscoveredFlightItem, DiscoveredRouteItem, DiscoveredStayItem } from '../hooks/useExistingTripSuggestions';
+import { ExistingBookingsSuggestions } from './ExistingBookingsSuggestions';
 
 export interface NewTripDrawerProps {
     isOpen: boolean;
@@ -63,6 +65,11 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
     const [status, setStatus] = useState<'Planning' | 'Upcoming' | 'Past'>(initialStatus);
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
+
+    // Transports & Accommodations state
+    const [drawerTransports, setDrawerTransports] = useState<Transport[]>(initialData?.transports || []);
+    const [drawerAccommodations, setDrawerAccommodations] = useState<Accommodation[]>(initialData?.accommodations || []);
+    const [unassignedFlightsToRemove, setUnassignedFlightsToRemove] = useState<string[]>([]);
     
     // Destinations state
     const [destinations, setDestinations] = useState<ParsedLocationItem[]>([]);
@@ -105,6 +112,9 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                 setStatus(resolvedStatus as 'Planning' | 'Upcoming' | 'Past');
                 setStartDate(initialData.startDate || '');
                 setEndDate(initialData.endDate || '');
+                setDrawerTransports(initialData.transports || []);
+                setDrawerAccommodations(initialData.accommodations || []);
+                setUnassignedFlightsToRemove([]);
                 
                 if (initialData.locations && initialData.locations.length > 0) {
                     setDestinations(initialData.locations.map(loc => ({
@@ -137,6 +147,9 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                 setStartDate('');
                 setEndDate('');
                 setDestinations([]);
+                setDrawerTransports([]);
+                setDrawerAccommodations([]);
+                setUnassignedFlightsToRemove([]);
             }
 
             setDestinationInput('');
@@ -318,6 +331,107 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
         }
     };
 
+    // Existing Bookings Suggestions Engine
+    const suggestionsResult = useExistingTripSuggestions({
+        startDate,
+        endDate,
+        excludeTripId: initialData?.id,
+        currentTransports: drawerTransports,
+        currentAccommodations: drawerAccommodations
+    });
+
+    const handleApplySuggestions = ({
+        flights,
+        routes,
+        stays,
+        suggestedDestination
+    }: {
+        flights: DiscoveredFlightItem[];
+        routes: DiscoveredRouteItem[];
+        stays: DiscoveredStayItem[];
+        suggestedDestination?: string;
+    }) => {
+        const newFlights: Transport[] = flights.map(f => ({
+            id: f.id,
+            itineraryId: crypto.randomUUID(),
+            mode: 'Flight',
+            type: 'One-Way',
+            origin: f.origin,
+            destination: f.destination,
+            departureDate: f.departureDate,
+            departureTime: f.departureTime || '10:00',
+            arrivalDate: f.arrivalDate || f.departureDate,
+            arrivalTime: f.arrivalTime || '14:00',
+            provider: f.provider,
+            identifier: f.identifier,
+            confirmationCode: f.confirmationCode || '',
+            cost: f.cost,
+            travelClass: f.travelClass as any || 'Economy',
+            seatNumber: f.seatNumber || '',
+            reason: 'Personal'
+        }));
+
+        const newRoutes: Transport[] = routes.map(r => ({
+            id: r.id,
+            itineraryId: crypto.randomUUID(),
+            mode: r.mode,
+            type: 'One-Way',
+            origin: r.origin,
+            destination: r.destination,
+            departureDate: r.departureDate,
+            departureTime: r.departureTime || '10:00',
+            arrivalDate: r.arrivalDate || r.departureDate,
+            arrivalTime: r.arrivalTime || '14:00',
+            provider: r.provider,
+            identifier: r.identifier,
+            confirmationCode: r.confirmationCode || '',
+            cost: r.cost,
+            travelClass: r.travelClass as any || 'Economy',
+            seatNumber: r.seatNumber || '',
+            waypoints: r.waypoints,
+            pickupLocation: r.pickupLocation,
+            dropoffLocation: r.dropoffLocation,
+            vehicleModel: r.vehicleModel,
+            reason: 'Personal'
+        }));
+
+        if (newFlights.length > 0 || newRoutes.length > 0) {
+            setDrawerTransports(prev => [...prev, ...newFlights, ...newRoutes]);
+        }
+
+        const unassignedIds = flights.filter(f => f.isIndependent).map(f => f.id);
+        if (unassignedIds.length > 0) {
+            setUnassignedFlightsToRemove(prev => Array.from(new Set([...prev, ...unassignedIds])));
+        }
+
+        const newStays: Accommodation[] = stays.map(s => ({
+            id: s.id,
+            name: s.name,
+            type: s.type || 'Hotel',
+            address: s.address,
+            checkInDate: s.checkInDate,
+            checkInTime: s.checkInTime || '15:00',
+            checkOutDate: s.checkOutDate,
+            checkOutTime: s.checkOutTime || '11:00',
+            confirmationCode: s.confirmationCode || '',
+            cost: s.cost,
+            coordinates: s.coordinates
+        }));
+
+        if (newStays.length > 0) {
+            setDrawerAccommodations(prev => [...prev, ...newStays]);
+        }
+
+        if (destinations.length === 0 && !destinationInput.trim() && suggestedDestination) {
+            setDestinations([{
+                id: `loc-${Date.now()}`,
+                name: suggestedDestination,
+                country: '',
+                displayName: suggestedDestination
+            }]);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!title.trim()) {
@@ -359,17 +473,27 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                     endDate,
                     coordinates: d.lat !== undefined && d.lng !== undefined ? { lat: d.lat, lng: d.lng } : undefined
                 })),
-                transports: initialData?.transports || [],
-                accommodations: initialData?.accommodations || [],
+                transports: drawerTransports,
+                accommodations: drawerAccommodations,
                 activities: initialData?.activities || []
             };
 
             if (onSubmit) {
-                await onSubmit(tripPayload);
+                await onSubmit(tripPayload, unassignedFlightsToRemove);
             } else if (initialData) {
                 await dataService.updateTrip(tripPayload);
+                if (unassignedFlightsToRemove.length > 0) {
+                    for (const fId of unassignedFlightsToRemove) {
+                        try { await dataService.deleteFlight(fId); } catch (e) {}
+                    }
+                }
             } else {
                 const saved = await dataService.addTrip(tripPayload);
+                if (unassignedFlightsToRemove.length > 0) {
+                    for (const fId of unassignedFlightsToRemove) {
+                        try { await dataService.deleteFlight(fId); } catch (e) {}
+                    }
+                }
                 if (onTripCreated) {
                     onTripCreated(saved);
                 }
@@ -616,6 +740,14 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                                 setStartDate(start);
                                                 if (end) setEndDate(end);
                                             }}
+                                        />
+
+                                        {/* Smart Existing Bookings Suggestions */}
+                                        <ExistingBookingsSuggestions
+                                            suggestionsResult={suggestionsResult}
+                                            onApplySuggestions={handleApplySuggestions}
+                                            currentDestination={destinationInput || destinations[0]?.name || ''}
+                                            mode="full"
                                         />
                                     </div>
 

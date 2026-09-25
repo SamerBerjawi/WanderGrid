@@ -44,6 +44,8 @@ import { searchLocations, searchStations, getCoordinates } from '../services/geo
 import { parseGoogleMapsUrl } from '../services/locationParser';
 import { getAirportsByQueryLocally, getCarriersByQueryLocally, AIRLINE_CODES, formatCommercialAirlineName } from '../utils/flightData';
 import { formatDate, formatDateRange, formatCurrency, getCurrencySymbol } from '../utils/formatters';
+import { useExistingTripSuggestions, DiscoveredFlightItem, DiscoveredRouteItem, DiscoveredStayItem } from '../hooks/useExistingTripSuggestions';
+import { ExistingBookingsSuggestions } from './ExistingBookingsSuggestions';
 import { 
     MODAL_SHELL_STYLE, 
     MODAL_BACKDROP_STYLE, 
@@ -281,9 +283,13 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
     const [selectedUserIds, setSelectedUserIds] = useState<string[]>(users.length > 0 ? [users[0].id] : []);
     const [basicsError, setBasicsError] = useState<string | null>(null);
 
+    // Reconciled independent flights state
+    const [reconciledFlightIds, setReconciledFlightIds] = useState<string[]>([]);
+
     useEffect(() => {
         if (isOpen) {
             setStatus(initialStatus);
+            setReconciledFlightIds([]);
             if (users.length > 0 && selectedUserIds.length === 0) {
                 setSelectedUserIds([users[0].id]);
             }
@@ -517,6 +523,101 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
         const committed = accommodationsList.reduce((sum, a) => sum + (a.cost || 0), 0);
         return committed + draftAccCost;
     }, [accommodationsList, draftAccCost, editingAccommodationIndex]);
+
+    // Intelligent Suggestion Engine for Existing Bookings & Overlapping Trips
+    const suggestionsResult = useExistingTripSuggestions({
+        startDate,
+        endDate,
+        currentTransports: transportsList,
+        currentAccommodations: accommodationsList
+    });
+
+    const handleApplySuggestions = ({
+        flights,
+        routes,
+        stays,
+        suggestedDestination
+    }: {
+        flights: DiscoveredFlightItem[];
+        routes: DiscoveredRouteItem[];
+        stays: DiscoveredStayItem[];
+        suggestedDestination?: string;
+    }) => {
+        const newFlights: Partial<Transport>[] = flights.map(f => ({
+            id: f.id,
+            itineraryId: crypto.randomUUID(),
+            mode: 'Flight',
+            type: 'One-Way',
+            origin: f.origin,
+            destination: f.destination,
+            departureDate: f.departureDate,
+            departureTime: f.departureTime || '10:00',
+            arrivalDate: f.arrivalDate || f.departureDate,
+            arrivalTime: f.arrivalTime || '14:00',
+            provider: f.provider,
+            identifier: f.identifier,
+            confirmationCode: f.confirmationCode || '',
+            cost: f.cost,
+            travelClass: f.travelClass as any || 'Economy',
+            seatNumber: f.seatNumber || '',
+            reason: 'Personal'
+        }));
+
+        const newRoutes: Partial<Transport>[] = routes.map(r => ({
+            id: r.id,
+            itineraryId: crypto.randomUUID(),
+            mode: r.mode,
+            type: 'One-Way',
+            origin: r.origin,
+            destination: r.destination,
+            departureDate: r.departureDate,
+            departureTime: r.departureTime || '10:00',
+            arrivalDate: r.arrivalDate || r.departureDate,
+            arrivalTime: r.arrivalTime || '14:00',
+            provider: r.provider,
+            identifier: r.identifier,
+            confirmationCode: r.confirmationCode || '',
+            cost: r.cost,
+            travelClass: r.travelClass as any || 'Economy',
+            seatNumber: r.seatNumber || '',
+            waypoints: r.waypoints,
+            pickupLocation: r.pickupLocation,
+            dropoffLocation: r.dropoffLocation,
+            vehicleModel: r.vehicleModel,
+            reason: 'Personal'
+        }));
+
+        if (newFlights.length > 0 || newRoutes.length > 0) {
+            setTransportsList(prev => [...prev, ...newFlights, ...newRoutes]);
+        }
+
+        const unassignedIds = flights.filter(f => f.isIndependent).map(f => f.id);
+        if (unassignedIds.length > 0) {
+            setReconciledFlightIds(prev => Array.from(new Set([...prev, ...unassignedIds])));
+        }
+
+        const newStays: Partial<Accommodation>[] = stays.map(s => ({
+            id: s.id,
+            name: s.name,
+            type: s.type || 'Hotel',
+            address: s.address,
+            checkInDate: s.checkInDate,
+            checkInTime: s.checkInTime || '15:00',
+            checkOutDate: s.checkOutDate,
+            checkOutTime: s.checkOutTime || '11:00',
+            confirmationCode: s.confirmationCode || '',
+            cost: s.cost,
+            coordinates: s.coordinates
+        }));
+
+        if (newStays.length > 0) {
+            setAccommodationsList(prev => [...prev, ...newStays]);
+        }
+
+        if (!destination.trim() && suggestedDestination) {
+            handleDestinationChange(suggestedDestination);
+        }
+    };
 
     const totalEstimatedCost = useMemo(() => {
         return totalTransportCost + totalAccommodationCost;
@@ -1189,6 +1290,18 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
             };
 
             const savedTrip = await dataService.addTrip(tripPayload);
+
+            // Reconcile and delete adopted independent unassigned flights
+            if (reconciledFlightIds.length > 0) {
+                for (const fId of reconciledFlightIds) {
+                    try {
+                        await dataService.deleteFlight(fId);
+                    } catch (delErr) {
+                        console.warn("Failed to reconcile independent flight:", fId, delErr);
+                    }
+                }
+            }
+
             invalidateGlobalWanderCache();
             window.dispatchEvent(new CustomEvent('wandergrid_db_updated'));
             onTripCreated(savedTrip);
@@ -2270,6 +2383,15 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                     }}
                                 />
 
+                                {/* Smart Existing Bookings & Trips Suggestions */}
+                                <ExistingBookingsSuggestions
+                                    suggestionsResult={suggestionsResult}
+                                    onApplySuggestions={handleApplySuggestions}
+                                    currentDestination={destination}
+                                    onNavigateStage={(stage) => setCurrentStage(stage)}
+                                    mode="full"
+                                />
+
                                 {/* Status Segmented Switcher */}
                                 <div className="space-y-1.5">
                                     <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
@@ -2383,6 +2505,14 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                     </div>
 
                     <div className="p-5 flex-1 space-y-4 overflow-y-auto custom-scrollbar">
+                        {/* Compact Suggestions for Transports */}
+                        <ExistingBookingsSuggestions
+                            suggestionsResult={suggestionsResult}
+                            onApplySuggestions={handleApplySuggestions}
+                            currentDestination={destination}
+                            mode="compact-transport"
+                        />
+
                         {/* Sub-step 2a: Method Picker */}
                         <div className="space-y-1.5">
                             <label className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
@@ -2538,6 +2668,14 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                     </div>
 
                     <div className="p-5 flex-1 space-y-4 overflow-y-auto custom-scrollbar">
+                        {/* Compact Suggestions for Stays */}
+                        <ExistingBookingsSuggestions
+                            suggestionsResult={suggestionsResult}
+                            onApplySuggestions={handleApplySuggestions}
+                            currentDestination={destination}
+                            mode="compact-stays"
+                        />
+
                         {/* Sub-step 3a: Type Selection */}
                         <div className="space-y-1.5">
                             <label className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
@@ -2770,6 +2908,15 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 }}
                             />
 
+                            {/* Smart Existing Bookings & Trips Suggestions */}
+                            <ExistingBookingsSuggestions
+                                suggestionsResult={suggestionsResult}
+                                onApplySuggestions={handleApplySuggestions}
+                                currentDestination={destination}
+                                onNavigateStage={(stage) => setCurrentStage(stage)}
+                                mode="full"
+                            />
+
                             {/* Status Switcher */}
                             <div className="space-y-1.5">
                                 <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
@@ -2876,6 +3023,14 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                         </div>
 
                         <div className="p-5 space-y-4">
+                            {/* Compact Suggestions for Transports */}
+                            <ExistingBookingsSuggestions
+                                suggestionsResult={suggestionsResult}
+                                onApplySuggestions={handleApplySuggestions}
+                                currentDestination={destination}
+                                mode="compact-transport"
+                            />
+
                             {/* Method Selector */}
                             <div className="space-y-1.5">
                                 <label className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
@@ -3022,6 +3177,14 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                         </div>
 
                         <div className="p-5 space-y-4">
+                            {/* Compact Suggestions for Stays */}
+                            <ExistingBookingsSuggestions
+                                suggestionsResult={suggestionsResult}
+                                onApplySuggestions={handleApplySuggestions}
+                                currentDestination={destination}
+                                mode="compact-stays"
+                            />
+
                             {/* Stay Type */}
                             <div className="space-y-1.5">
                                 <label className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
