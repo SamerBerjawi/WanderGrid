@@ -12,19 +12,19 @@ import { MapboxOverlay } from '@deck.gl/mapbox';
 import { ArcLayer, ScatterplotLayer, GeoJsonLayer, PathLayer, BitmapLayer, TextLayer } from '@deck.gl/layers';
 import { TileLayer, TripsLayer } from '@deck.gl/geo-layers';
 import { geoInterpolate } from 'd3';
-import { 
-    ArrowsOut as Maximize2, 
-    CornersOut as Scan, 
-    Globe, 
-    ArrowLeft, 
-    ArrowRight, 
-    X, 
-    Airplane as Plane, 
-    Clock, 
-    CalendarBlank as Calendar, 
-    CaretRight as ChevronRight, 
-    Train, 
-    Boat as Ship, 
+import {
+    ArrowsOut as Maximize2,
+    CornersOut as Scan,
+    Globe,
+    ArrowLeft,
+    ArrowRight,
+    X,
+    Airplane as Plane,
+    Clock,
+    CalendarBlank as Calendar,
+    CaretRight as ChevronRight,
+    Train,
+    Boat as Ship,
     Car,
     MagnifyingGlassPlus as ZoomIn,
     MagnifyingGlassMinus as ZoomOut,
@@ -34,10 +34,10 @@ import {
 import { Trip, CountryResidenceStatus, PredefinedMapMode, toggleCountryResidenceStatus, WorkspaceSettings } from '../types';
 import { useWanderSync } from '../hooks/useWanderSync';
 import { getCoordinatesSync, formatPlaceName, formatProperLocationName } from '../services/geocoding';
-import { 
-    MapAppearanceSettings, 
-    DEFAULT_MAP_APPEARANCE, 
-    loadMapAppearanceSettings, 
+import {
+    MapAppearanceSettings,
+    DEFAULT_MAP_APPEARANCE,
+    loadMapAppearanceSettings,
     saveMapAppearanceSettings,
     getEffectiveBasemap
 } from '../types/mapAppearance';
@@ -63,8 +63,8 @@ const isCountryVisited = (f: any, visitedList: string[]): boolean => {
 
     // If UK is in visitedList, match UK subunits
     const isUKSubunit = p.GU_A3 === 'ENG' || p.GU_A3 === 'SCT' || p.GU_A3 === 'WLS' || p.GU_A3 === 'NIR' ||
-                       p.ISO_A2 === 'GB-ENG' || p.ISO_A2 === 'GB-SCT' || p.ISO_A2 === 'GB-WLS' || p.ISO_A2 === 'GB-NIR' ||
-                       p.NAME === 'England' || p.NAME === 'Scotland' || p.NAME === 'Wales' || p.NAME === 'Northern Ireland';
+        p.ISO_A2 === 'GB-ENG' || p.ISO_A2 === 'GB-SCT' || p.ISO_A2 === 'GB-WLS' || p.ISO_A2 === 'GB-NIR' ||
+        p.NAME === 'England' || p.NAME === 'Scotland' || p.NAME === 'Wales' || p.NAME === 'Northern Ireland';
     if (isUKSubunit && (lookupSet.has('GB') || lookupSet.has('UK') || lookupSet.has('UNITED KINGDOM') || lookupSet.has('GREAT BRITAIN'))) {
         return true;
     }
@@ -330,8 +330,8 @@ export const createMapLibreStyle = (
 };
 
 export function getMapContentPadding(
-    isSidebarCollapsed: boolean, 
-    width: number, 
+    isSidebarCollapsed: boolean,
+    width: number,
     height: number,
     embedded: boolean = false
 ) {
@@ -489,8 +489,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     const activeAppearance = appearanceSettingsProp || localAppearance;
 
     // Projection & Layer Resolution
-    const effectiveProjection = projectionProp !== undefined 
-        ? projectionProp 
+    const effectiveProjection = projectionProp !== undefined
+        ? projectionProp
         : (activeAppearance.projection || initialProjection);
 
     const [localElevatedRoutes, setLocalElevatedRoutes] = useState<boolean>(
@@ -831,19 +831,19 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     }, [enrichedTrips, effectiveProjection]);
 
     // --- High-Performance Flight Arc Deduplication & Geometry Preparation (AirTrail Architecture) ---
-    const scaleMultiplier = activeAppearance.routeScale === 'thin' 
-        ? 0.65 
-        : activeAppearance.routeScale === 'thick' 
-            ? 1.75 
+    const scaleMultiplier = activeAppearance.routeScale === 'thin'
+        ? 0.65
+        : activeAppearance.routeScale === 'thick'
+            ? 1.75
             : 1.0;
     const isWidthByFreq = activeAppearance.routeWidthMode === 'frequency' || showFrequencyWeight;
 
-    const { 
-        flightArcs, 
-        overlandSegments, 
-        airportPoints, 
-        clusterNodes, 
-        detailedRunways 
+    const {
+        flightArcs,
+        overlandSegments,
+        airportPoints,
+        clusterNodes,
+        detailedRunways
     } = useMemo(() => {
         const flightCorridorsMap = new Map<string, any>();
         const overlandRoutes: any[] = [];
@@ -1173,8 +1173,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     const rgb = getGeoGradientRGB(lastPt[1], lastPt[0]);
                     modeColor = [rgb[0], rgb[1], rgb[2], 255];
                 } else {
-                    modeColor = seg.color 
-                        ? [seg.color[0], seg.color[1], seg.color[2], 255] 
+                    modeColor = seg.color
+                        ? [seg.color[0], seg.color[1], seg.color[2], 255]
                         : [245, 158, 11, 255];
                 }
 
@@ -1766,7 +1766,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     const freshCam = calculateAdaptiveWorldCamera(curRect.width, curRect.height, sidebarCollapsed, isGlobe, isEmbedded);
                     try {
                         map.setPadding(freshCam.padding);
-                    } catch (e) {}
+                    } catch (e) { }
                     map.setMinZoom(0);
                     map.jumpTo({
                         center: freshCam.center,
@@ -1953,7 +1953,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 const cam = calculateAdaptiveWorldCamera(width, height, sidebarCollapsed, isGlobe, isEmbedded);
                 try {
                     map.setPadding(cam.padding);
-                } catch (e) {}
+                } catch (e) { }
                 map.setMinZoom(0);
                 map.easeTo({
                     center: cam.center,
@@ -1988,7 +1988,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
             try {
                 mapRef.current.setPadding(cam.padding);
-            } catch (e) {}
+            } catch (e) { }
             mapRef.current.setMinZoom(0);
 
             // Only adapt zoom/center if user is not currently inspecting a corridor or country
@@ -2035,7 +2035,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
         try {
             mapRef.current.setPadding(cam.padding);
-        } catch (e) {}
+        } catch (e) { }
         mapRef.current.flyTo({
             center: cam.center,
             zoom: cam.zoom,
@@ -2166,11 +2166,10 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         {effectiveProjection === 'globe' && (
                             <button
                                 onClick={handleToggleAtmosphere}
-                                className={`w-10 h-10 flex items-center justify-center cursor-pointer transition-colors active:scale-95 ${
-                                    activeAppearance.atmosphere !== false
+                                className={`w-10 h-10 flex items-center justify-center cursor-pointer transition-colors active:scale-95 ${activeAppearance.atmosphere !== false
                                         ? 'text-sky-500 dark:text-sky-400 bg-sky-500/10 dark:bg-sky-400/10'
                                         : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-black/5 dark:hover:bg-white/10'
-                                }`}
+                                    }`}
                                 title={activeAppearance.atmosphere !== false ? 'Atmosphere & Stars: On (Click to turn off)' : 'Atmosphere & Stars: Off (Click to turn on)'}
                                 aria-label="Toggle celestial atmosphere"
                             >
@@ -2202,7 +2201,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
             {/* Left Scratch Map Country Inspector & Labeling Card */}
             {selectedCountry && (
-                <div 
+                <div
                     className={`absolute top-5 z-30 w-80 max-h-[calc(100%-2.5rem)] flex flex-col rounded-3xl bg-white/95 dark:bg-dark-card/95 backdrop-blur-sm border border-black/10 dark:border-white/15 shadow-glass-modal overflow-hidden text-light-text dark:text-dark-text animate-fade-in transition-all duration-300 ${isEmbedded ? 'left-3 max-w-[calc(100%-1.5rem)]' : (sidebarCollapsed ? 'left-5 md:left-28' : 'left-5 md:left-80')}`}
                     style={{ WebkitBackdropFilter: 'blur(4px)' }}
                 >
@@ -2212,13 +2211,13 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         const iso2 = (p.ISO_A2 && p.ISO_A2 !== '-99' ? p.ISO_A2 : (p.ISO_A2_EH || p.wb_a2 || '')).toUpperCase();
                         const isVisited = isCountryVisited(selectedCountry, visitedCountries);
                         const rawStatus = (iso2 && countryStatusMap?.[iso2]) || (name && countryStatusMap?.[name.toUpperCase()]);
-                        const currentStatuses: CountryResidenceStatus[] = Array.isArray(rawStatus) 
-                            ? rawStatus 
-                            : rawStatus 
-                            ? [rawStatus] 
-                            : isVisited 
-                            ? ['visited'] 
-                            : [];
+                        const currentStatuses: CountryResidenceStatus[] = Array.isArray(rawStatus)
+                            ? rawStatus
+                            : rawStatus
+                                ? [rawStatus]
+                                : isVisited
+                                    ? ['visited']
+                                    : [];
                         const flag = iso2 ? getFlagEmoji(iso2) : '🏳️';
                         const region = p.REGION_UN || p.SUBREGION || p.CONTINENT || (iso2 ? getRegion(iso2) : '');
 
@@ -2297,11 +2296,10 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                                     const next = toggleCountryResidenceStatus(currentStatuses, 'lived_current');
                                                     onUpdateCountryStatus?.(iso2, name, next.length > 0 ? next : 'none');
                                                 }}
-                                                className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between cursor-pointer transition-all duration-150 active:scale-[0.98] ${
-                                                    currentStatuses.includes('lived_current')
+                                                className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between cursor-pointer transition-all duration-150 active:scale-[0.98] ${currentStatuses.includes('lived_current')
                                                         ? 'bg-emerald-500/15 border-emerald-500 text-emerald-600 dark:text-emerald-400 font-bold shadow-sm'
                                                         : 'bg-white/60 dark:bg-dark-card/60 border-black/5 dark:border-white/10 hover:border-black/15 text-light-text dark:text-dark-text'
-                                                }`}
+                                                    }`}
                                             >
                                                 <div className="flex items-center gap-2.5">
                                                     <span className="text-lg">🏠</span>
@@ -2319,11 +2317,10 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                                     const next = toggleCountryResidenceStatus(currentStatuses, 'lived_past');
                                                     onUpdateCountryStatus?.(iso2, name, next.length > 0 ? next : 'none');
                                                 }}
-                                                className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between cursor-pointer transition-all duration-150 active:scale-[0.98] ${
-                                                    currentStatuses.includes('lived_past')
+                                                className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between cursor-pointer transition-all duration-150 active:scale-[0.98] ${currentStatuses.includes('lived_past')
                                                         ? 'bg-indigo-500/15 border-indigo-500 text-indigo-600 dark:text-indigo-400 font-bold shadow-sm'
                                                         : 'bg-white/60 dark:bg-dark-card/60 border-black/5 dark:border-white/10 hover:border-black/15 text-light-text dark:text-dark-text'
-                                                }`}
+                                                    }`}
                                             >
                                                 <div className="flex items-center gap-2.5">
                                                     <span className="text-lg">🏛️</span>
@@ -2341,11 +2338,10 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                                     const next = toggleCountryResidenceStatus(currentStatuses, 'visited');
                                                     onUpdateCountryStatus?.(iso2, name, next.length > 0 ? next : 'none');
                                                 }}
-                                                className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between cursor-pointer transition-all duration-150 active:scale-[0.98] ${
-                                                    currentStatuses.includes('visited')
+                                                className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between cursor-pointer transition-all duration-150 active:scale-[0.98] ${currentStatuses.includes('visited')
                                                         ? 'bg-primary-500/15 border-primary-500 text-primary-600 dark:text-primary-400 font-bold shadow-sm'
                                                         : 'bg-white/60 dark:bg-dark-card/60 border-black/5 dark:border-white/10 hover:border-black/15 text-light-text dark:text-dark-text'
-                                                }`}
+                                                    }`}
                                             >
                                                 <div className="flex items-center gap-2.5">
                                                     <span className="text-lg">✈️</span>
@@ -2363,11 +2359,10 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                                     const next = toggleCountryResidenceStatus(currentStatuses, 'layover');
                                                     onUpdateCountryStatus?.(iso2, name, next.length > 0 ? next : 'none');
                                                 }}
-                                                className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between cursor-pointer transition-all duration-150 active:scale-[0.98] ${
-                                                    currentStatuses.includes('layover')
+                                                className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between cursor-pointer transition-all duration-150 active:scale-[0.98] ${currentStatuses.includes('layover')
                                                         ? 'bg-amber-500/15 border-amber-500 text-amber-600 dark:text-amber-400 font-bold shadow-sm'
                                                         : 'bg-white/60 dark:bg-dark-card/60 border-black/5 dark:border-white/10 hover:border-black/15 text-light-text dark:text-dark-text'
-                                                }`}
+                                                    }`}
                                             >
                                                 <div className="flex items-center gap-2.5">
                                                     <span className="text-lg">🛫</span>
@@ -2385,11 +2380,10 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                                     const next = toggleCountryResidenceStatus(currentStatuses, 'wishlist');
                                                     onUpdateCountryStatus?.(iso2, name, next.length > 0 ? next : 'none');
                                                 }}
-                                                className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between cursor-pointer transition-all duration-150 active:scale-[0.98] ${
-                                                    currentStatuses.includes('wishlist')
+                                                className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between cursor-pointer transition-all duration-150 active:scale-[0.98] ${currentStatuses.includes('wishlist')
                                                         ? 'bg-rose-500/15 border-rose-500 text-rose-600 dark:text-rose-400 font-bold shadow-sm'
                                                         : 'bg-white/60 dark:bg-dark-card/60 border-black/5 dark:border-white/10 hover:border-black/15 text-light-text dark:text-dark-text'
-                                                }`}
+                                                    }`}
                                             >
                                                 <div className="flex items-center gap-2.5">
                                                     <span className="text-lg">🌟</span>
@@ -2411,7 +2405,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
             {/* AirTrail Style Route Corridor Inspector Card with Liquid Glass */}
             {selectedCorridor && (
-                <div 
+                <div
                     className={`absolute top-20 z-30 w-[360px] sm:w-[380px] max-h-[calc(100vh-6rem)] flex flex-col animate-airtrail-slide-in pointer-events-auto transition-all duration-300 ${isEmbedded ? 'left-3 max-w-[calc(100%-1.5rem)]' : (sidebarCollapsed ? 'left-5 md:left-28' : 'left-5 md:left-80')}`}
                 >
                     <GlassPanel
@@ -2590,7 +2584,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
             {/* Interactive Object Hover HUD Tooltip with Liquid Glass */}
             {hoverInfo?.object && !selectedCorridor && !selectedCountry && (
-                <div 
+                <div
                     className="absolute z-50 transition-all duration-75 pointer-events-auto cursor-pointer"
                     style={{ left: hoverInfo.x + 12, top: hoverInfo.y + 12 }}
                     onClick={() => {
@@ -2704,13 +2698,13 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         const iso2 = (p.ISO_A2 && p.ISO_A2 !== '-99' ? p.ISO_A2 : (p.ISO_A2_EH || p.wb_a2 || '')).toUpperCase();
                         const isVisited = isCountryVisited(hoverInfo.object, visitedCountries);
                         const rawStatus = (iso2 && countryStatusMap?.[iso2]) || (name && countryStatusMap?.[name.toUpperCase()]);
-                        const currentStatuses: CountryResidenceStatus[] = Array.isArray(rawStatus) 
-                            ? rawStatus 
-                            : rawStatus 
-                            ? [rawStatus] 
-                            : isVisited 
-                            ? ['visited'] 
-                            : [];
+                        const currentStatuses: CountryResidenceStatus[] = Array.isArray(rawStatus)
+                            ? rawStatus
+                            : rawStatus
+                                ? [rawStatus]
+                                : isVisited
+                                    ? ['visited']
+                                    : [];
                         const flag = iso2 ? getFlagEmoji(iso2) : '🏳️';
                         const region = p.REGION_UN || p.SUBREGION || p.CONTINENT || (iso2 ? getRegion(iso2) : '');
 
@@ -2780,10 +2774,10 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                             <div className="space-y-1">
                                 <div className="flex items-center justify-between gap-3 pb-1 border-b border-black/5 dark:border-white/10">
                                     <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
-                                        {hoverInfo.object.isAirport 
-                                            ? '✈️ Airport Hub' 
-                                            : hoverInfo.object.type === 'city' 
-                                                ? '📍 City / Destination' 
+                                        {hoverInfo.object.isAirport
+                                            ? '✈️ Airport Hub'
+                                            : hoverInfo.object.type === 'city'
+                                                ? '📍 City / Destination'
                                                 : (hoverInfo.object.count ? '🌐 Cluster' : 'Location')}
                                     </span>
                                     {hoverInfo.object.isAirport && (
@@ -2794,15 +2788,14 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                 </div>
                                 <div className="flex items-center justify-between gap-2 font-bold pt-0.5">
                                     <div className="flex items-center gap-2 min-w-0">
-                                        <span 
-                                            className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                                                hoverInfo.object.isAirport 
-                                                    ? 'bg-primary-500 shadow-[0_0_8px_rgba(250,154,29,0.8)]' 
+                                        <span
+                                            className={`w-2.5 h-2.5 rounded-full shrink-0 ${hoverInfo.object.isAirport
+                                                    ? 'bg-primary-500 shadow-[0_0_8px_rgba(250,154,29,0.8)]'
                                                     : 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]'
-                                            }`} 
+                                                }`}
                                         />
                                         <span className="text-sm tracking-tight text-light-text dark:text-dark-text truncate">
-                                            {hoverInfo.object.isAirport 
+                                            {hoverInfo.object.isAirport
                                                 ? formatAirportDisplayName(hoverInfo.object.name, hoverInfo.object.city)
                                                 : formatPlaceName(hoverInfo.object.name)}
                                         </span>
