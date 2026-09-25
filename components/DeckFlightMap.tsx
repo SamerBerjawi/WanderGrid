@@ -50,6 +50,7 @@ import { dataService } from '../services/mockDb';
 import { formatDate } from '../utils/formatters';
 import GlassPanel from './glass/GlassPanel';
 import { globeHorizonCullExtension } from './GlobeHorizonCullExtension';
+import { GlobeAtmosphericBackground } from './GlobeAtmosphericBackground';
 
 // --- Country Matching Helper for Scratch Map & Overlays ---
 let geoJsonMemoryCache: any = null;
@@ -307,16 +308,18 @@ export const createMapLibreStyle = (
             }
         },
         layers: [
-            {
-                id: 'background-base-layer',
-                type: 'background',
-                paint: {
-                    'background-color': isDark ? '#05070f' : '#f0f4f8'
+            ...(isGlobe ? [] : [
+                {
+                    id: 'background-base-layer',
+                    type: 'background' as const,
+                    paint: {
+                        'background-color': isDark ? '#05070f' : '#f0f4f8'
+                    }
                 }
-            },
+            ]),
             {
                 id: 'raster-basemap-layer',
-                type: 'raster',
+                type: 'raster' as const,
                 source: 'raster-basemap-source',
                 minzoom: 0,
                 maxzoom
@@ -541,6 +544,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     // MapLibre Container & Instance Refs
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<maplibregl.Map | null>(null);
+    const [mapInstance, setMapInstance] = useState<maplibregl.Map | null>(null);
     const overlayRef = useRef<MapboxOverlay | null>(null);
     const isMapLoadedRef = useRef<boolean>(false);
 
@@ -1818,6 +1822,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         });
 
         mapRef.current = map;
+        setMapInstance(map);
         overlayRef.current = overlay;
 
         return () => {
@@ -1828,6 +1833,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             } catch (e) {
                 // Ignore cleanup errors
             }
+            setMapInstance(null);
             mapRef.current = null;
             overlayRef.current = null;
         };
@@ -2094,9 +2100,16 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     };
 
     return (
-        <div className="relative w-full h-full overflow-hidden select-none bg-white dark:bg-black">
+        <div className={`relative w-full h-full overflow-hidden select-none ${effectiveProjection === 'globe' ? 'bg-[#010206]' : 'bg-white dark:bg-black'}`}>
+            {/* Atmospheric & Rotating Celestial Deep Space Canvas */}
+            <GlobeAtmosphericBackground
+                map={mapInstance || mapRef.current}
+                isGlobe={effectiveProjection === 'globe'}
+                isDark={isDark}
+            />
+
             {/* MapLibre GL 60 FPS Canvas with Interleaved Deck.gl Engine */}
-            <div ref={mapContainerRef} className="w-full h-full" />
+            <div ref={mapContainerRef} className="w-full h-full relative z-10" />
 
             {/* Zoom & View Navigation Controls with Liquid Glass (Bottom Left) */}
             <div className={`absolute bottom-3 md:bottom-6 z-20 flex flex-col gap-2 pointer-events-auto transition-all duration-300 ${isEmbedded ? 'left-3' : (sidebarCollapsed ? 'left-3 md:left-28' : 'left-3 md:left-80')}`}>
