@@ -12,7 +12,7 @@ export interface WanderGridGlassConfig {
 
 // Locked WanderGrid Liquid Glass spec — see liquid-glass-wandergrid-SKILL.md
 export const WANDERGRID_GLASS_CONFIG: WanderGridGlassConfig = {
-  displacementScale: 200,
+  displacementScale: 80,
   blurAmount: 0.3,
   saturation: 200,
   aberrationIntensity: 10,

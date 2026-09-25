@@ -30,7 +30,8 @@ import { motion } from 'motion/react';
 import GlassPanel from '../components/glass/GlassPanel';
 import { dataService } from '../services/mockDb';
 import { Trip, CountryResidenceStatus, PredefinedMapMode, getResidenceStatuses } from '../types';
-import { Input, MultiSelect } from '../components/ui';
+import { Input } from '../components/ui';
+import { LiquidGlassSelect, LiquidGlassMultiSelect } from '../components/LiquidGlassSelect';
 import { getCoordinates, getCoordinatesSync, STATIC_GEO_DATA, calculateDistance } from '../services/geocoding';
 import {
     MapAppearanceSettings,
