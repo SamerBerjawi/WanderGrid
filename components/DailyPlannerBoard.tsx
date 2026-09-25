@@ -841,9 +841,10 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                     
                     {/* Col 1 Header: Day */}
                     <GlassPanel 
-                        className="sticky top-2 z-20 wg-glass-card shadow-sm flex items-center justify-between" 
+                        className="sticky top-2 z-20 wg-glass-card shadow-sm flex items-center justify-between mb-3" 
                         overrides={{ borderRadius: 20 }}
                         padding="14px"
+                        style={{ gridColumn: 1, gridRow: 1, marginBottom: '12px' }}
                     >
                         <div className="flex items-center gap-2">
                             <CalendarBlank className="w-4 h-4 text-primary-500" weight="duotone" />
@@ -856,9 +857,10 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
 
                     {/* Col 2 Header: Transport */}
                     <GlassPanel 
-                        className="sticky top-2 z-20 wg-glass-card shadow-sm flex items-center justify-between" 
+                        className="sticky top-2 z-20 wg-glass-card shadow-sm flex items-center justify-between mb-3" 
                         overrides={{ borderRadius: 20 }}
                         padding="14px"
+                        style={{ gridColumn: 2, gridRow: 1, marginBottom: '12px' }}
                     >
                         <div className="flex items-center gap-2">
                             <AirplaneTilt className="w-4 h-4 text-blue-500" weight="duotone" />
@@ -871,9 +873,10 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
 
                     {/* Col 3 Header: Accommodation */}
                     <GlassPanel 
-                        className="sticky top-2 z-20 wg-glass-card shadow-sm flex items-center justify-between" 
+                        className="sticky top-2 z-20 wg-glass-card shadow-sm flex items-center justify-between mb-3" 
                         overrides={{ borderRadius: 20 }}
                         padding="14px"
+                        style={{ gridColumn: 3, gridRow: 1, marginBottom: '12px' }}
                     >
                         <div className="flex items-center gap-2">
                             <Bed className="w-4 h-4 text-sky-500" weight="duotone" />
@@ -886,9 +889,10 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
 
                     {/* Col 4 Header: Activities */}
                     <GlassPanel 
-                        className="sticky top-2 z-20 wg-glass-card shadow-sm flex items-center justify-between" 
+                        className="sticky top-2 z-20 wg-glass-card shadow-sm flex items-center justify-between mb-3" 
                         overrides={{ borderRadius: 20 }}
                         padding="14px"
+                        style={{ gridColumn: 4, gridRow: 1, marginBottom: '12px' }}
                     >
                         <div className="flex items-center gap-2">
                             <Ticket className="w-4 h-4 text-amber-500" weight="duotone" />
