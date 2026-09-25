@@ -13,7 +13,7 @@ import {
     WarningCircle,
     Check
 } from '@phosphor-icons/react';
-import { Input, Autocomplete, TimeInput, Badge } from './ui';
+import { Input, Autocomplete, TimeInput, Badge, DateRangePicker } from './ui';
 import GlassPanel from './glass/GlassPanel';
 import { Accommodation } from '../types';
 import { dataService } from '../services/mockDb';
@@ -418,22 +418,18 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                         />
 
                         {/* Check In / Out Dates */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 relative">
-                            <Input
-                                label="Check-In Date"
-                                type="date"
-                                value={form.checkInDate || ''}
-                                onChange={e => setForm({ ...form, checkInDate: e.target.value })}
-                            />
-                            <Input
-                                label="Check-Out Date"
-                                type="date"
-                                value={form.checkOutDate || ''}
-                                min={form.checkInDate}
-                                onChange={e => setForm({ ...form, checkOutDate: e.target.value })}
+                        <div className="relative">
+                            <DateRangePicker
+                                accentColor="amber"
+                                label="Stay Dates"
+                                startLabel="Check-In"
+                                endLabel="Check-Out"
+                                startDate={form.checkInDate || ''}
+                                endDate={form.checkOutDate || ''}
+                                onChange={(start, end) => setForm({ ...form, checkInDate: start, checkOutDate: end })}
                             />
                             {nights > 0 && (
-                                <div className="absolute top-0 right-0 -mt-2.5 mr-1">
+                                <div className="absolute top-0 right-0 -mt-2.5 mr-1 pointer-events-none">
                                     <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
                                         {nights} {nights === 1 ? 'Night' : 'Nights'}
                                     </span>

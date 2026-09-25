@@ -34,7 +34,7 @@ import {
     Tag,
     Path
 } from '@phosphor-icons/react';
-import { Input, Autocomplete, TimeInput, Select } from './ui';
+import { Input, Autocomplete, TimeInput, Select, DateRangePicker } from './ui';
 import GlassPanel from './glass/GlassPanel';
 import GlassButton from './glass/GlassButton';
 import { Trip, Transport, Accommodation, TransportMode, User, GeoCoordinates, WorkspaceSettings } from '../types';
@@ -1227,6 +1227,21 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                             />
                         </div>
 
+                        {/* Flight Dates (Google Flights Style) */}
+                        <DateRangePicker 
+                            accentColor="blue"
+                            label="Flight Dates"
+                            startLabel="Departure Date"
+                            endLabel="Return Date"
+                            startDate={outboundDate || startDate}
+                            endDate={returnDate || endDate}
+                            singleDate={transportStructure !== 'Round Trip'}
+                            onChange={(start, end) => {
+                                setOutboundDate(start);
+                                if (end) setReturnDate(end);
+                            }}
+                        />
+
                         {/* 2. Direct vs Layovers Toggle */}
                         <div className={SEGMENTED_TAB_WRAPPER}>
                             <button
@@ -1234,7 +1249,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 onClick={() => setFlightRouteType('direct')}
                                 className={`flex-1 ${
                                     flightRouteType === 'direct'
-                                    ? SEGMENTED_TAB_ACTIVE
+                                    ? `${SEGMENTED_TAB_ACTIVE} !text-sky-600 dark:!text-sky-400`
                                     : SEGMENTED_TAB_INACTIVE
                                 } flex items-center justify-center gap-1.5 cursor-pointer`}
                             >
@@ -1246,7 +1261,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 onClick={() => setFlightRouteType('layovers')}
                                 className={`flex-1 ${
                                     flightRouteType === 'layovers'
-                                    ? SEGMENTED_TAB_ACTIVE
+                                    ? `${SEGMENTED_TAB_ACTIVE} !text-sky-600 dark:!text-sky-400`
                                     : SEGMENTED_TAB_INACTIVE
                                 } flex items-center justify-center gap-1.5 cursor-pointer`}
                             >
@@ -1257,18 +1272,18 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
 
                         {/* 3. If Layovers: Layover Stopover Airport(s) Selector */}
                         {flightRouteType === 'layovers' && (
-                            <div className="p-3.5 rounded-2xl bg-primary-500/5 border border-primary-500/15 space-y-2.5">
+                            <div className="p-3.5 rounded-2xl bg-sky-500/5 border border-sky-500/15 space-y-2.5">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
-                                        <span className="w-2 h-2 rounded-full bg-primary-500 animate-pulse" />
-                                        <span className="text-2xs font-bold uppercase tracking-wider text-primary-600 dark:text-primary-400">
+                                        <span className="w-2 h-2 rounded-full bg-sky-500 animate-pulse" />
+                                        <span className="text-2xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">
                                             Layover Stopover Airport(s)
                                         </span>
                                     </div>
                                     <button
                                         type="button"
                                         onClick={handleAddLayover}
-                                        className="text-2xs font-bold text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1 cursor-pointer"
+                                        className="text-2xs font-bold text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-1 cursor-pointer"
                                     >
                                         <Plus className="w-3.5 h-3.5" />
                                         <span>Add Stopover</span>
@@ -1345,10 +1360,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                     />
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-2">
-                                    <Input label="Departure Date" type="date" value={outboundDate || startDate} onChange={e => setOutboundDate(e.target.value)} />
-                                    <TimeInput label="Departure Time" value={outboundTime} onChange={setOutboundTime} />
-                                </div>
+                                 <TimeInput label="Departure Time" value={outboundTime} onChange={setOutboundTime} />
                             </div>
                         ) : (
                             /* Connecting Flight Legs */
@@ -1444,14 +1456,11 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
 
                         {/* 5. Return Leg (for Round Trip) */}
                         {transportStructure === 'Round Trip' && (
-                            <div className="p-3 rounded-2xl bg-primary-500/5 border border-primary-500/15 space-y-2">
-                                <span className="text-2xs font-bold uppercase tracking-wider text-primary-600 dark:text-primary-400 block">
+                            <div className="p-3 rounded-2xl bg-sky-500/5 border border-sky-500/15 space-y-2">
+                                <span className="text-2xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400 block">
                                     Return Leg ({cleanAirportCode(outboundDest || destination) || 'Destination'} &rarr; {cleanAirportCode(outboundOrigin) || 'Origin'})
                                 </span>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <Input label="Date" type="date" value={returnDate || endDate} min={outboundDate || startDate} onChange={e => setReturnDate(e.target.value)} />
-                                    <TimeInput label="Time" value={returnTime} onChange={setReturnTime} />
-                                </div>
+                                <TimeInput label="Departure Time" value={returnTime} onChange={setReturnTime} />
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                                     <Input label="Flight #" placeholder="e.g. AF 023" value={returnNumber} onChange={e => setReturnNumber(e.target.value)} />
                                     <Select label="Cabin Class" options={CABIN_OPTIONS} value={returnTravelClass} onChange={e => setReturnTravelClass(e.target.value as any)} />
@@ -1501,19 +1510,26 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 onChange={e => setOutboundNumber(e.target.value)} 
                             />
                         </div>
-                        <div className="grid grid-cols-2 gap-2">
-                            <Input label="Departure Date" type="date" value={outboundDate || startDate} onChange={e => setOutboundDate(e.target.value)} />
-                            <TimeInput label="Departure Time" value={outboundTime} onChange={setOutboundTime} />
-                        </div>
+                        <DateRangePicker 
+                            accentColor="blue"
+                            label="Train Dates"
+                            startLabel="Departure Date"
+                            endLabel="Return Date"
+                            startDate={outboundDate || startDate}
+                            endDate={returnDate || endDate}
+                            singleDate={transportStructure !== 'Round Trip'}
+                            onChange={(start, end) => {
+                                setOutboundDate(start);
+                                if (end) setReturnDate(end);
+                            }}
+                        />
+                        <TimeInput label="Departure Time" value={outboundTime} onChange={setOutboundTime} />
                         {transportStructure === 'Round Trip' && (
-                            <div className="p-3 rounded-2xl bg-primary-500/5 border border-primary-500/15 space-y-2">
-                                <span className="text-2xs font-bold uppercase tracking-wider text-primary-600 dark:text-primary-400 block">
+                            <div className="p-3 rounded-2xl bg-sky-500/5 border border-sky-500/15 space-y-2">
+                                <span className="text-2xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400 block">
                                     Return Train Leg
                                 </span>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <Input label="Date" type="date" value={returnDate || endDate} min={outboundDate || startDate} onChange={e => setReturnDate(e.target.value)} />
-                                    <TimeInput label="Time" value={returnTime} onChange={setReturnTime} />
-                                </div>
+                                <TimeInput label="Departure Time" value={returnTime} onChange={setReturnTime} />
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                     <Input label="Train / Service #" placeholder="e.g. TGV 6174" value={returnNumber} onChange={e => setReturnNumber(e.target.value)} />
                                     <Input label="Coach & Seat" placeholder="e.g. Coach 2, Seat 15" value={returnSeatInfo} onChange={e => setReturnSeatInfo(e.target.value)} />
@@ -1560,19 +1576,26 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 onChange={e => setOutboundNumber(e.target.value)} 
                             />
                         </div>
-                        <div className="grid grid-cols-2 gap-2">
-                            <Input label="Departure Date" type="date" value={outboundDate || startDate} onChange={e => setOutboundDate(e.target.value)} />
-                            <TimeInput label="Departure Time" value={outboundTime} onChange={setOutboundTime} />
-                        </div>
+                        <DateRangePicker 
+                            accentColor="blue"
+                            label="Bus Dates"
+                            startLabel="Departure Date"
+                            endLabel="Return Date"
+                            startDate={outboundDate || startDate}
+                            endDate={returnDate || endDate}
+                            singleDate={transportStructure !== 'Round Trip'}
+                            onChange={(start, end) => {
+                                setOutboundDate(start);
+                                if (end) setReturnDate(end);
+                            }}
+                        />
+                        <TimeInput label="Departure Time" value={outboundTime} onChange={setOutboundTime} />
                         {transportStructure === 'Round Trip' && (
-                            <div className="p-3 rounded-2xl bg-primary-500/5 border border-primary-500/15 space-y-2">
-                                <span className="text-2xs font-bold uppercase tracking-wider text-primary-600 dark:text-primary-400 block">
+                            <div className="p-3 rounded-2xl bg-sky-500/5 border border-sky-500/15 space-y-2">
+                                <span className="text-2xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400 block">
                                     Return Bus Leg
                                 </span>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <Input label="Date" type="date" value={returnDate || endDate} min={outboundDate || startDate} onChange={e => setReturnDate(e.target.value)} />
-                                    <TimeInput label="Time" value={returnTime} onChange={setReturnTime} />
-                                </div>
+                                <TimeInput label="Departure Time" value={returnTime} onChange={setReturnTime} />
                             </div>
                         )}
                         <div className="grid grid-cols-2 gap-2">
@@ -1615,12 +1638,20 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 onChange={e => setVehicleModel(e.target.value)} 
                             />
                         </div>
+                        <DateRangePicker 
+                            accentColor="blue"
+                            label="Rental Period"
+                            startLabel="Pickup Date"
+                            endLabel="Drop-off Date"
+                            startDate={outboundDate || startDate}
+                            endDate={returnDate || endDate}
+                            onChange={(start, end) => {
+                                setOutboundDate(start);
+                                if (end) setReturnDate(end);
+                            }}
+                        />
                         <div className="grid grid-cols-2 gap-2">
-                            <Input label="Pickup Date" type="date" value={outboundDate || startDate} onChange={e => setOutboundDate(e.target.value)} />
                             <TimeInput label="Pickup Time" value={outboundTime} onChange={setOutboundTime} />
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                            <Input label="Drop-off Date" type="date" value={returnDate || endDate} min={outboundDate || startDate} onChange={e => setReturnDate(e.target.value)} />
                             <TimeInput label="Drop-off Time" value={returnTime} onChange={setReturnTime} />
                         </div>
                         <div className="grid grid-cols-2 gap-2">
@@ -1698,19 +1729,26 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 onChange={e => setOutboundNumber(e.target.value)} 
                             />
                         </div>
-                        <div className="grid grid-cols-2 gap-2">
-                            <Input label="Departure Date" type="date" value={outboundDate || startDate} onChange={e => setOutboundDate(e.target.value)} />
-                            <TimeInput label="Departure Time" value={outboundTime} onChange={setOutboundTime} />
-                        </div>
+                        <DateRangePicker 
+                            accentColor="blue"
+                            label="Ferry Dates"
+                            startLabel="Departure Date"
+                            endLabel="Return Date"
+                            startDate={outboundDate || startDate}
+                            endDate={returnDate || endDate}
+                            singleDate={transportStructure !== 'Round Trip'}
+                            onChange={(start, end) => {
+                                setOutboundDate(start);
+                                if (end) setReturnDate(end);
+                            }}
+                        />
+                        <TimeInput label="Departure Time" value={outboundTime} onChange={setOutboundTime} />
                         {transportStructure === 'Round Trip' && (
-                            <div className="p-3 rounded-2xl bg-primary-500/5 border border-primary-500/15 space-y-2">
-                                <span className="text-2xs font-bold uppercase tracking-wider text-primary-600 dark:text-primary-400 block">
+                            <div className="p-3 rounded-2xl bg-sky-500/5 border border-sky-500/15 space-y-2">
+                                <span className="text-2xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400 block">
                                     Return Voyage Leg
                                 </span>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <Input label="Date" type="date" value={returnDate || endDate} min={outboundDate || startDate} onChange={e => setReturnDate(e.target.value)} />
-                                    <TimeInput label="Time" value={returnTime} onChange={setReturnTime} />
-                                </div>
+                                <TimeInput label="Departure Time" value={returnTime} onChange={setReturnTime} />
                             </div>
                         )}
                         <div className="grid grid-cols-2 gap-2">
@@ -2042,7 +2080,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                     className={`rounded-[28px] overflow-hidden flex flex-col ${
                         currentStage === 'basics' 
                         ? 'wg-glass-card ring-2 ring-emerald-500/40 border border-emerald-500/30' 
-                        : 'wg-glass-card border border-black/5 dark:border-white/10'
+                        : 'wg-glass-card border border-emerald-500/20 dark:border-emerald-500/20'
                     }`}
                     overrides={{ borderRadius: 28 }}
                     padding="0px"
@@ -2105,7 +2143,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                         Trip Title <span className="text-rose-500">*</span>
                                     </label>
                                     <GlassPanel
-                                        className="wg-glass-pill w-full transition-all duration-180 ease-glass border-black/10 dark:border-white/10 group-focus-within:border-primary-500/60 h-14"
+                                        className="wg-glass-pill w-full transition-all duration-180 ease-glass border-black/10 dark:border-white/10 group-focus-within:border-emerald-500/60 h-14"
                                         padding="0px"
                                         overrides={{ borderRadius: 20 }}
                                     >
@@ -2137,10 +2175,18 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 </div>
 
                                 {/* Dates */}
-                                <div className="grid grid-cols-2 gap-2">
-                                    <Input label="Start Date *" type="date" value={startDate} onChange={e => handleStartDateChange(e.target.value)} />
-                                    <Input label="End Date *" type="date" value={endDate} min={startDate} onChange={e => handleEndDateChange(e.target.value)} />
-                                </div>
+                                <DateRangePicker 
+                                    accentColor="emerald"
+                                    label="Trip Dates *"
+                                    startLabel="Start Date"
+                                    endLabel="End Date"
+                                    startDate={startDate}
+                                    endDate={endDate}
+                                    onChange={(start, end) => {
+                                        handleStartDateChange(start);
+                                        if (end) handleEndDateChange(end);
+                                    }}
+                                />
 
                                 {/* Status Segmented Switcher */}
                                 <div className="space-y-1.5">
@@ -2156,7 +2202,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                                     key={s}
                                                     type="button"
                                                     onClick={() => setStatus(s)}
-                                                    className={`flex-1 ${isActive ? SEGMENTED_TAB_ACTIVE : SEGMENTED_TAB_INACTIVE} cursor-pointer`}
+                                                    className={`flex-1 ${isActive ? `${SEGMENTED_TAB_ACTIVE} !text-emerald-600 dark:!text-emerald-400` : SEGMENTED_TAB_INACTIVE} cursor-pointer`}
                                                 >
                                                     {label}
                                                 </button>
@@ -2186,19 +2232,19 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                                         }}
                                                         className={`flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] rounded-full text-xs font-semibold transition-all cursor-pointer ${
                                                             isSelected
-                                                                ? 'bg-primary-500/15 text-primary-600 dark:text-primary-300 border border-primary-500/30 shadow-xs'
+                                                                ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30 shadow-xs'
                                                                 : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary border border-transparent hover:bg-black/10 dark:hover:bg-white/10'
                                                         }`}
                                                     >
                                                         {u.profilePicture ? (
                                                             <img src={u.profilePicture} alt={u.name} className="w-4 h-4 rounded-full object-cover" />
                                                         ) : (
-                                                            <div className="w-4 h-4 rounded-full bg-primary-500/20 text-primary-600 dark:text-primary-400 flex items-center justify-center text-[9px] font-bold">
+                                                            <div className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-[9px] font-bold">
                                                                 {u.name.charAt(0)}
                                                             </div>
                                                         )}
                                                         <span>{u.name}</span>
-                                                        {isSelected && <Check className="w-3.5 h-3.5 text-primary-500" weight="bold" />}
+                                                        {isSelected && <Check className="w-3.5 h-3.5 text-emerald-500" weight="bold" />}
                                                     </button>
                                                 );
                                             })}
@@ -2210,6 +2256,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                     <GlassButton 
                                         type="button" 
                                         variant="primary"
+                                        color="emerald"
                                         onClick={handleCompleteBasics} 
                                         className="w-full h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-xs"
                                     >
@@ -2229,7 +2276,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                     className={`rounded-[28px] overflow-hidden flex flex-col ${
                         currentStage === 'transport' 
                         ? 'wg-glass-card ring-2 ring-sky-500/40 border border-sky-500/30' 
-                        : 'wg-glass-card border border-black/5 dark:border-white/10'
+                        : 'wg-glass-card border border-sky-500/20 dark:border-sky-500/20'
                     }`}
                     overrides={{ borderRadius: 28 }}
                     padding="0px"
@@ -2270,7 +2317,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                             onClick={() => setTransportMode(m.mode)}
                                             className={`p-2 rounded-xl flex flex-col items-center justify-center text-center transition-all min-h-[50px] cursor-pointer ${
                                                 isSel 
-                                                ? 'bg-white dark:bg-dark-card text-primary-600 dark:text-primary-400 shadow-sm border border-primary-500/30 font-bold' 
+                                                ? 'bg-white dark:bg-dark-card text-sky-600 dark:text-sky-400 shadow-sm border border-sky-500/30 font-bold' 
                                                 : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
                                             }`}
                                         >
@@ -2294,7 +2341,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                             key={struct}
                                             type="button"
                                             onClick={() => setTransportStructure(struct)}
-                                            className={`flex-1 ${transportStructure === struct ? SEGMENTED_TAB_ACTIVE : SEGMENTED_TAB_INACTIVE} cursor-pointer`}
+                                            className={`flex-1 ${transportStructure === struct ? `${SEGMENTED_TAB_ACTIVE} !text-sky-600 dark:!text-sky-400` : SEGMENTED_TAB_INACTIVE} cursor-pointer`}
                                         >
                                             {struct}
                                         </button>
@@ -2317,6 +2364,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 <GlassButton 
                                     type="button" 
                                     variant={editingTransportIndex !== null ? "primary" : "secondary"}
+                                    color={editingTransportIndex !== null ? "sky" : undefined}
                                     onClick={handleCommitTransport}
                                     className="flex-1 h-11 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                                 >
@@ -2359,6 +2407,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 <GlassButton 
                                     type="button" 
                                     variant="primary"
+                                    color="sky"
                                     onClick={() => {
                                         if (outboundOrigin && transportsList.length === 0) {
                                             handleCommitTransport();
@@ -2382,7 +2431,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                     className={`rounded-[28px] overflow-hidden flex flex-col ${
                         currentStage === 'accommodation' 
                         ? 'wg-glass-card ring-2 ring-amber-500/40 border border-amber-500/30' 
-                        : 'wg-glass-card border border-black/5 dark:border-white/10'
+                        : 'wg-glass-card border border-amber-500/20 dark:border-amber-500/20'
                     }`}
                     overrides={{ borderRadius: 28 }}
                     padding="0px"
@@ -2446,10 +2495,10 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                             <div className="space-y-1">
                                 <div className="flex items-center justify-between">
                                     <label className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1">
-                                        <MapPin className="w-3.5 h-3.5 text-primary-500" />
+                                        <MapPin className="w-3.5 h-3.5 text-amber-500" />
                                         <span>Address / Google Maps Location</span>
                                     </label>
-                                    <span className="text-[10px] text-primary-500 font-semibold">Live Lookup</span>
+                                    <span className="text-[10px] text-amber-500 font-semibold">Live Lookup</span>
                                 </div>
                                 <Autocomplete 
                                     placeholder="Street address, hotel name, or paste Google Maps link..." 
@@ -2471,10 +2520,19 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                         </span>
                                     )}
                                 </div>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <Input label="Check In" type="date" value={accCheckIn || startDate} onChange={e => setAccCheckIn(e.target.value)} />
-                                    <Input label="Check Out" type="date" value={accCheckOut || endDate} min={accCheckIn || startDate} onChange={e => setAccCheckOut(e.target.value)} />
-                                </div>
+                                <DateRangePicker 
+                                    accentColor="amber"
+                                    startLabel="Check In"
+                                    endLabel="Check Out"
+                                    startDate={accCheckIn || startDate}
+                                    endDate={accCheckOut || endDate}
+                                    minDate={startDate}
+                                    maxDate={endDate}
+                                    onChange={(start, end) => {
+                                        setAccCheckIn(start);
+                                        if (end) setAccCheckOut(end);
+                                    }}
+                                />
                             </div>
 
                             <div className="grid grid-cols-2 gap-2">
@@ -2489,6 +2547,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 <GlassButton 
                                     type="button" 
                                     variant={editingAccommodationIndex !== null ? "primary" : "secondary"}
+                                    color={editingAccommodationIndex !== null ? "amber" : undefined}
                                     onClick={handleCommitAccommodation}
                                     className="flex-1 h-11 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                                 >
@@ -2526,7 +2585,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                         <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
                                             Trip Est. Total
                                         </span>
-                                        <span className="font-mono font-black text-sm text-primary-600 dark:text-primary-400">
+                                        <span className="font-mono font-black text-sm text-amber-600 dark:text-amber-400">
                                             {formatCurrency(totalEstimatedCost, activeCurrency)}
                                         </span>
                                     </div>
@@ -2538,6 +2597,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 <GlassButton 
                                     type="button" 
                                     variant="primary"
+                                    color="amber"
                                     onClick={handleFinalizeTrip}
                                     disabled={isSaving || !title || !startDate || !endDate}
                                     className="w-full h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-xs active:scale-95 disabled:opacity-50 cursor-pointer"
@@ -2555,7 +2615,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
             <div className="lg:hidden w-full max-w-xl mx-auto space-y-5">
                 {currentStage === 'basics' && (
                     <GlassPanel
-                        className="wg-glass-card rounded-[28px] overflow-hidden shadow-2xl flex flex-col"
+                        className="wg-glass-card rounded-[28px] overflow-hidden shadow-2xl flex flex-col border border-emerald-500/25"
                         overrides={{ borderRadius: 28 }}
                         padding="0px"
                     >
@@ -2586,7 +2646,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                     Trip Title <span className="text-rose-500">*</span>
                                 </label>
                                 <GlassPanel
-                                    className="wg-glass-pill w-full transition-all duration-180 ease-glass border-black/10 dark:border-white/10 group-focus-within:border-primary-500/60 h-14"
+                                    className="wg-glass-pill w-full transition-all duration-180 ease-glass border-black/10 dark:border-white/10 group-focus-within:border-emerald-500/60 h-14"
                                     padding="0px"
                                     overrides={{ borderRadius: 20 }}
                                 >
@@ -2615,10 +2675,18 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3">
-                                <Input label="Start Date *" type="date" value={startDate} onChange={e => handleStartDateChange(e.target.value)} />
-                                <Input label="End Date *" type="date" value={endDate} min={startDate} onChange={e => handleEndDateChange(e.target.value)} />
-                            </div>
+                            <DateRangePicker 
+                                accentColor="emerald"
+                                label="Trip Dates *"
+                                startLabel="Start Date"
+                                endLabel="End Date"
+                                startDate={startDate}
+                                endDate={endDate}
+                                onChange={(start, end) => {
+                                    handleStartDateChange(start);
+                                    if (end) handleEndDateChange(end);
+                                }}
+                            />
 
                             {/* Status Switcher */}
                             <div className="space-y-1.5">
@@ -2634,7 +2702,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                                 key={s}
                                                 type="button"
                                                 onClick={() => setStatus(s)}
-                                                className={`flex-1 ${isActive ? SEGMENTED_TAB_ACTIVE : SEGMENTED_TAB_INACTIVE} cursor-pointer`}
+                                                className={`flex-1 ${isActive ? `${SEGMENTED_TAB_ACTIVE} !text-emerald-600 dark:!text-emerald-400` : SEGMENTED_TAB_INACTIVE} cursor-pointer`}
                                             >
                                                 {label}
                                             </button>
@@ -2664,19 +2732,19 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                                     }}
                                                     className={`flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] rounded-full text-xs font-semibold transition-all cursor-pointer ${
                                                         isSelected
-                                                            ? 'bg-primary-500/15 text-primary-600 dark:text-primary-300 border border-primary-500/30 shadow-xs'
+                                                            ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30 shadow-xs'
                                                             : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary border border-transparent hover:bg-black/10 dark:hover:bg-white/10'
                                                     }`}
                                                 >
                                                     {u.profilePicture ? (
                                                         <img src={u.profilePicture} alt={u.name} className="w-4 h-4 rounded-full object-cover" />
                                                     ) : (
-                                                        <div className="w-4 h-4 rounded-full bg-primary-500/20 text-primary-600 dark:text-primary-400 flex items-center justify-center text-[9px] font-bold">
+                                                        <div className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-[9px] font-bold">
                                                             {u.name.charAt(0)}
                                                         </div>
                                                     )}
                                                     <span>{u.name}</span>
-                                                    {isSelected && <Check className="w-3.5 h-3.5 text-primary-500" weight="bold" />}
+                                                    {isSelected && <Check className="w-3.5 h-3.5 text-emerald-500" weight="bold" />}
                                                 </button>
                                             );
                                         })}
@@ -2687,6 +2755,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                             <GlassButton 
                                 type="button" 
                                 variant="primary"
+                                color="emerald"
                                 onClick={handleCompleteBasics} 
                                 className="w-full h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-xs"
                             >
@@ -2699,7 +2768,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
 
                 {currentStage === 'transport' && (
                     <GlassPanel
-                        className="wg-glass-card rounded-[28px] overflow-hidden shadow-2xl flex flex-col"
+                        className="wg-glass-card rounded-[28px] overflow-hidden shadow-2xl flex flex-col border border-sky-500/25"
                         overrides={{ borderRadius: 28 }}
                         padding="0px"
                     >
@@ -2741,7 +2810,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                                 onClick={() => setTransportMode(m.mode)}
                                                 className={`p-2 rounded-xl flex flex-col items-center justify-center text-center transition-all cursor-pointer min-h-[50px] ${
                                                     isSel 
-                                                    ? 'bg-white dark:bg-dark-card text-primary-500 border border-primary-500/30 font-bold shadow-sm' 
+                                                    ? 'bg-white dark:bg-dark-card text-sky-600 dark:text-sky-400 border border-sky-500/30 font-bold shadow-sm' 
                                                     : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'
                                                 }`}
                                             >
@@ -2764,7 +2833,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                                 key={struct}
                                                 type="button"
                                                 onClick={() => setTransportStructure(struct)}
-                                                className={`flex-1 ${transportStructure === struct ? SEGMENTED_TAB_ACTIVE : SEGMENTED_TAB_INACTIVE} cursor-pointer`}
+                                                className={`flex-1 ${transportStructure === struct ? `${SEGMENTED_TAB_ACTIVE} !text-sky-600 dark:!text-sky-400` : SEGMENTED_TAB_INACTIVE} cursor-pointer`}
                                             >
                                                 {struct}
                                             </button>
@@ -2783,6 +2852,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 <GlassButton 
                                     type="button" 
                                     variant={editingTransportIndex !== null ? "primary" : "secondary"}
+                                    color={editingTransportIndex !== null ? "sky" : undefined}
                                     onClick={handleCommitTransport}
                                     className="flex-1 h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                                 >
@@ -2825,6 +2895,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 <GlassButton 
                                     type="button" 
                                     variant="primary"
+                                    color="sky"
                                     onClick={() => { 
                                         if (outboundOrigin && transportsList.length === 0) {
                                             handleCommitTransport();
@@ -2843,7 +2914,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
 
                 {currentStage === 'accommodation' && (
                     <GlassPanel
-                        className="wg-glass-card rounded-[28px] overflow-hidden shadow-2xl flex flex-col"
+                        className="wg-glass-card rounded-[28px] overflow-hidden shadow-2xl flex flex-col border border-amber-500/25"
                         overrides={{ borderRadius: 28 }}
                         padding="0px"
                     >
@@ -2902,10 +2973,10 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 <div className="space-y-1">
                                     <div className="flex items-center justify-between">
                                         <label className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1">
-                                            <MapPin className="w-3.5 h-3.5 text-primary-500" />
+                                            <MapPin className="w-3.5 h-3.5 text-amber-500" />
                                             <span>Address / Google Maps Location</span>
                                         </label>
-                                        <span className="text-[10px] text-primary-500 font-semibold">Live Lookup</span>
+                                        <span className="text-[10px] text-amber-500 font-semibold">Live Lookup</span>
                                     </div>
                                     <Autocomplete 
                                         placeholder="Street address, hotel name, or paste Google Maps link..." 
@@ -2926,10 +2997,19 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                             </span>
                                         )}
                                     </div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <Input label="Check In" type="date" value={accCheckIn || startDate} onChange={e => setAccCheckIn(e.target.value)} />
-                                        <Input label="Check Out" type="date" value={accCheckOut || endDate} min={accCheckIn || startDate} onChange={e => setAccCheckOut(e.target.value)} />
-                                    </div>
+                                    <DateRangePicker 
+                                        accentColor="amber"
+                                        startLabel="Check In"
+                                        endLabel="Check Out"
+                                        startDate={accCheckIn || startDate}
+                                        endDate={accCheckOut || endDate}
+                                        minDate={startDate}
+                                        maxDate={endDate}
+                                        onChange={(start, end) => {
+                                            setAccCheckIn(start);
+                                            if (end) setAccCheckOut(end);
+                                        }}
+                                    />
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3">
@@ -2943,6 +3023,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 <GlassButton 
                                     type="button" 
                                     variant={editingAccommodationIndex !== null ? "primary" : "secondary"}
+                                    color={editingAccommodationIndex !== null ? "amber" : undefined}
                                     onClick={handleCommitAccommodation}
                                     className="flex-1 h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                                 >
@@ -2986,7 +3067,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                     </div>
                                     <div className="flex justify-between items-center pt-2 border-t border-black/10 dark:border-white/10">
                                         <span className="font-bold uppercase tracking-wider text-2xs text-light-text dark:text-dark-text">Total Trip Cost</span>
-                                        <span className="font-mono font-black text-sm text-primary-600 dark:text-primary-400">
+                                        <span className="font-mono font-black text-sm text-amber-600 dark:text-amber-400">
                                             {formatCurrency(totalEstimatedCost, activeCurrency)}
                                         </span>
                                     </div>
@@ -2997,6 +3078,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 <GlassButton 
                                     type="button" 
                                     variant="primary"
+                                    color="amber"
                                     onClick={() => { 
                                         if (accName && accommodationsList.length === 0) {
                                             handleCommitAccommodation();

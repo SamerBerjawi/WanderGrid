@@ -1,6 +1,6 @@
 import React from 'react';
 import { Key, Clock } from '@phosphor-icons/react';
-import { Input, Autocomplete, TimeInput } from '../ui';
+import { Input, Autocomplete, TimeInput, DateRangePicker } from '../ui';
 import GlassPanel from '../glass/GlassPanel';
 import { CarForm } from './transportTypes';
 import { searchLocations } from '../../services/geocoding';
@@ -69,43 +69,27 @@ export const CarRentalForm: React.FC<CarRentalFormProps> = ({
             </div>
 
             {/* Pickup & Dropoff Schedule */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-3.5 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-2 shadow-xs">
-                    <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1">
-                        <Clock className="w-3 h-3" /> Pickup Date & Time
-                    </span>
-                    <div className="grid grid-cols-2 gap-2">
-                        <Input 
-                            label="Date" 
-                            type="date" 
-                            value={form.pickupDate} 
-                            onChange={e => onUpdate({ pickupDate: e.target.value })} 
-                        />
-                        <TimeInput 
-                            label="Time" 
-                            value={form.pickupTime} 
-                            onChange={val => onUpdate({ pickupTime: val })} 
-                        />
-                    </div>
-                </div>
-
-                <div className="p-3.5 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-2 shadow-xs">
-                    <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1">
-                        <Clock className="w-3 h-3" /> Dropoff Date & Time
-                    </span>
-                    <div className="grid grid-cols-2 gap-2">
-                        <Input 
-                            label="Date" 
-                            type="date" 
-                            value={form.dropoffDate} 
-                            onChange={e => onUpdate({ dropoffDate: e.target.value })} 
-                        />
-                        <TimeInput 
-                            label="Time" 
-                            value={form.dropoffTime} 
-                            onChange={val => onUpdate({ dropoffTime: val })} 
-                        />
-                    </div>
+            <div className="space-y-3">
+                <DateRangePicker 
+                    accentColor="blue"
+                    label="Rental Dates"
+                    startLabel="Pickup Date"
+                    endLabel="Dropoff Date"
+                    startDate={form.pickupDate}
+                    endDate={form.dropoffDate}
+                    onChange={(start, end) => onUpdate({ pickupDate: start, dropoffDate: end })}
+                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <TimeInput 
+                        label="Pickup Time" 
+                        value={form.pickupTime} 
+                        onChange={val => onUpdate({ pickupTime: val })} 
+                    />
+                    <TimeInput 
+                        label="Dropoff Time" 
+                        value={form.dropoffTime} 
+                        onChange={val => onUpdate({ dropoffTime: val })} 
+                    />
                 </div>
             </div>
 

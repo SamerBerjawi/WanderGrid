@@ -17,6 +17,7 @@ import {
 } from '@phosphor-icons/react';
 import GlassButton from './glass/GlassButton';
 import GlassPanel from './glass/GlassPanel';
+import { DateRangePicker } from './ui';
 import { dataService } from '../services/mockDb';
 import { Trip, User } from '../types';
 import { searchLocationSuggestions, ParsedLocationItem, parseGoogleMapsUrl } from '../services/locationParser';
@@ -604,45 +605,18 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
 
                                     {/* 4. Timeline Dates */}
                                     <div className="space-y-2">
-                                        <label className="block text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 ml-0.5">
-                                            Timeline <span className="text-rose-500">*</span>
-                                        </label>
-                                        <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                                            <div className="p-3 sm:p-3.5 rounded-2xl bg-white/50 dark:bg-white/[0.05] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-sm focus-within:border-primary-500/40 focus-within:ring-2 focus-within:ring-primary-500/20 transition-all">
-                                                <div className="flex items-center gap-2 mb-1.5">
-                                                    <CalendarBlank weight="duotone" className="w-4 h-4 text-primary-500 shrink-0" />
-                                                    <span className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
-                                                        Departure
-                                                    </span>
-                                                </div>
-                                                <input
-                                                    type="date"
-                                                    value={startDate}
-                                                    onChange={(e) => setStartDate(e.target.value)}
-                                                    className="w-full bg-transparent text-xs font-bold text-slate-900 dark:text-white outline-none cursor-pointer"
-                                                    style={{ colorScheme: 'light dark' }}
-                                                    required
-                                                />
-                                            </div>
-
-                                            <div className="p-3 sm:p-3.5 rounded-2xl bg-white/50 dark:bg-white/[0.05] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-sm focus-within:border-primary-500/40 focus-within:ring-2 focus-within:ring-primary-500/20 transition-all">
-                                                <div className="flex items-center gap-2 mb-1.5">
-                                                    <CalendarBlank weight="duotone" className="w-4 h-4 text-primary-500 shrink-0" />
-                                                    <span className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
-                                                        Conclusion
-                                                    </span>
-                                                </div>
-                                                <input
-                                                    type="date"
-                                                    value={endDate}
-                                                    min={startDate}
-                                                    onChange={(e) => setEndDate(e.target.value)}
-                                                    className="w-full bg-transparent text-xs font-bold text-slate-900 dark:text-white outline-none cursor-pointer"
-                                                    style={{ colorScheme: 'light dark' }}
-                                                    required
-                                                />
-                                            </div>
-                                        </div>
+                                        <DateRangePicker 
+                                            accentColor="emerald"
+                                            label="Timeline *"
+                                            startLabel="Departure"
+                                            endLabel="Conclusion"
+                                            startDate={startDate}
+                                            endDate={endDate}
+                                            onChange={(start, end) => {
+                                                setStartDate(start);
+                                                if (end) setEndDate(end);
+                                            }}
+                                        />
                                     </div>
 
                                     {/* 5. Destinations */}
