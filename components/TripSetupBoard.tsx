@@ -1965,7 +1965,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                         className="min-h-[44px] px-4 sm:px-5 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
                     >
                         <span>{isSaving ? 'Creating...' : 'Create Trip'}</span>
-                        <Check className="w-4 h-4" weight="bold" />
+                        <Check className="w-4 h-4 shrink-0" weight="bold" />
                     </GlassButton>
                 </div>
             </div>
@@ -2206,7 +2206,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                         className="w-full h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-xs"
                                     >
                                         <span>Confirm Basics</span>
-                                        <ArrowRight className="w-4 h-4" />
+                                        <ArrowRight className="w-4 h-4 shrink-0" />
                                     </GlassButton>
                                 </div>
                             </div>
@@ -2314,12 +2314,12 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 >
                                     {editingTransportIndex !== null ? (
                                         <>
-                                            <Check className="w-4 h-4" weight="bold" />
+                                            <Check className="w-4 h-4 shrink-0" weight="bold" />
                                             <span>Save Leg Changes</span>
                                         </>
                                     ) : (
                                         <>
-                                            <Plus className="w-4 h-4" weight="bold" />
+                                            <Plus className="w-4 h-4 shrink-0" weight="bold" />
                                             <span>Add Transport Leg</span>
                                         </>
                                     )}
@@ -2357,10 +2357,10 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                         }
                                         setCurrentStage('accommodation');
                                     }}
-                                    className="flex-1 h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1 cursor-pointer shadow-xs"
+                                    className="flex-1 h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                                 >
                                     <span>Proceed to Stays</span>
-                                    <ArrowRight className="w-4 h-4" />
+                                    <ArrowRight className="w-4 h-4 shrink-0" />
                                 </GlassButton>
                             </div>
                         </div>
@@ -2483,12 +2483,12 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 >
                                     {editingAccommodationIndex !== null ? (
                                         <>
-                                            <Check className="w-4 h-4" weight="bold" />
+                                            <Check className="w-4 h-4 shrink-0" weight="bold" />
                                             <span>Save Stay Changes</span>
                                         </>
                                     ) : (
                                         <>
-                                            <Plus className="w-4 h-4" weight="bold" />
+                                            <Plus className="w-4 h-4 shrink-0" weight="bold" />
                                             <span>Add Stay</span>
                                         </>
                                     )}
@@ -2532,7 +2532,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                     className="w-full h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-xs active:scale-95 disabled:opacity-50 cursor-pointer"
                                 >
                                     <span>{isSaving ? 'Creating Trip...' : 'Create Trip'}</span>
-                                    <Check className="w-4 h-4" weight="bold" />
+                                    <Check className="w-4 h-4 shrink-0" weight="bold" />
                                 </GlassButton>
                             </div>
                         </div>
@@ -2672,7 +2672,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 className="w-full h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-xs"
                             >
                                 <span>Next: Configure Transport</span>
-                                <ArrowRight className="w-4 h-4" />
+                                <ArrowRight className="w-4 h-4 shrink-0" />
                             </GlassButton>
                         </div>
                     </GlassPanel>
@@ -2769,12 +2769,12 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 >
                                     {editingTransportIndex !== null ? (
                                         <>
-                                            <Check className="w-4 h-4" weight="bold" />
+                                            <Check className="w-4 h-4 shrink-0" weight="bold" />
                                             <span>Save Leg Changes</span>
                                         </>
                                     ) : (
                                         <>
-                                            <Plus className="w-4 h-4" weight="bold" />
+                                            <Plus className="w-4 h-4 shrink-0" weight="bold" />
                                             <span>Add Transport Leg</span>
                                         </>
                                     )}
@@ -2812,10 +2812,10 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                         }
                                         setCurrentStage('accommodation'); 
                                     }} 
-                                    className="flex-1 h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1 cursor-pointer shadow-xs"
+                                    className="flex-1 h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                                 >
                                     <span>Next: Stays</span>
-                                    <ArrowRight className="w-4 h-4" />
+                                    <ArrowRight className="w-4 h-4 shrink-0" />
                                 </GlassButton>
                             </div>
                         </div>
@@ -2923,12 +2923,12 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 >
                                     {editingAccommodationIndex !== null ? (
                                         <>
-                                            <Check className="w-4 h-4" weight="bold" />
+                                            <Check className="w-4 h-4 shrink-0" weight="bold" />
                                             <span>Save Stay Changes</span>
                                         </>
                                     ) : (
                                         <>
-                                            <Plus className="w-4 h-4" weight="bold" />
+                                            <Plus className="w-4 h-4 shrink-0" weight="bold" />
                                             <span>Add Stay</span>
                                         </>
                                     )}
@@ -2982,7 +2982,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                     className="w-full h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-xs disabled:opacity-50"
                                 >
                                     <span>{isSaving ? 'Creating Trip...' : 'Create Trip'}</span>
-                                    <Check className="w-4 h-4" weight="bold" />
+                                    <Check className="w-4 h-4 shrink-0" weight="bold" />
                                 </GlassButton>
                             </div>
                         </div>

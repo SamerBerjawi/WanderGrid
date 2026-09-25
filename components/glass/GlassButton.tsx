@@ -75,20 +75,20 @@ export const GlassButton = React.forwardRef<HTMLButtonElement, GlassButtonProps>
       {...props}
     >
       <GlassPanel
-        className={`wg-glass-pill ${variantStyles}`}
+        className={`wg-glass-pill ${variantStyles} ${filteredClassName.includes('w-full') ? 'w-full' : ''} ${filteredClassName.includes('flex-1') ? 'flex-1' : ''}`}
         padding={sizePadding}
         overrides={{
           borderRadius: overrides?.borderRadius ?? 9999,
           ...overrides,
         }}
       >
-        <span className={`flex items-center gap-2 justify-center leading-none text-xs uppercase tracking-wider font-sans select-none ${variant === 'primary' || variant === 'danger' ? 'text-white' : ''}`}>
+        <span className={`inline-flex items-center gap-2 justify-center leading-none text-xs uppercase tracking-wider font-sans select-none whitespace-nowrap ${variant === 'primary' || variant === 'danger' ? 'text-white' : ''}`}>
           {isLoading ? (
-            <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
           ) : icon ? (
-            <span className="flex items-center text-sm leading-none shrink-0">{icon}</span>
+            <span className="inline-flex items-center justify-center text-sm leading-none shrink-0">{icon}</span>
           ) : null}
-          {children && <span>{children}</span>}
+          {children && <span className="inline-flex items-center justify-center gap-2 leading-none whitespace-nowrap">{children}</span>}
         </span>
       </GlassPanel>
     </button>
