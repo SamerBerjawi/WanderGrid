@@ -1,5 +1,6 @@
 import React, { forwardRef, ReactNode } from 'react';
 import GlassPanel from './GlassPanel';
+import { DatePicker, AccentColor } from '../ui/DatePicker';
 
 export interface GlassInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -7,6 +8,7 @@ export interface GlassInputProps extends React.InputHTMLAttributes<HTMLInputElem
   leftElement?: ReactNode;
   rightElement?: ReactNode;
   containerClassName?: string;
+  accentColor?: AccentColor;
 }
 
 export const GlassInput = forwardRef<HTMLInputElement, GlassInputProps>(({
@@ -17,8 +19,42 @@ export const GlassInput = forwardRef<HTMLInputElement, GlassInputProps>(({
   className = '',
   containerClassName = '',
   disabled,
+  accentColor,
   ...props
 }, ref) => {
+  // Gracefully upgrade native date inputs to WanderGrid Liquid-Glass DatePicker
+  if (props.type === 'date') {
+    const dateVal = typeof props.value === 'string' ? props.value : (props.defaultValue as string) || '';
+    return (
+      <DatePicker
+        label={label}
+        error={error}
+        value={dateVal}
+        onChange={(newDate) => {
+          if (props.onChange) {
+            const syntheticEvent = {
+              target: { value: newDate, name: props.name },
+              currentTarget: { value: newDate, name: props.name },
+              persist: () => {},
+              stopPropagation: () => {},
+              preventDefault: () => {},
+            } as unknown as React.ChangeEvent<HTMLInputElement>;
+            props.onChange(syntheticEvent);
+          }
+        }}
+        minDate={props.min as string}
+        maxDate={props.max as string}
+        disabled={disabled}
+        placeholder={props.placeholder}
+        className={className}
+        containerClassName={containerClassName}
+        accentColor={accentColor}
+        name={props.name}
+        id={props.id}
+      />
+    );
+  }
+
   return (
     <div className={`flex flex-col gap-1.5 w-full ${containerClassName}`}>
       {label && (

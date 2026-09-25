@@ -1412,6 +1412,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                                     <Input 
                                                         label="Departure Date" 
                                                         type="date" 
+                                                        accentColor="blue"
                                                         value={leg.departureDate || outboundDate || startDate} 
                                                         onChange={e => handleConnectingLegChange(legIdx, 'departureDate', e.target.value)} 
                                                     />
@@ -1687,7 +1688,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                             onChange={e => setVehicleModel(e.target.value)} 
                         />
                         <div className="grid grid-cols-2 gap-2">
-                            <Input label="Departure Date" type="date" value={outboundDate || startDate} onChange={e => setOutboundDate(e.target.value)} />
+                            <Input label="Departure Date" type="date" accentColor="blue" value={outboundDate || startDate} onChange={e => setOutboundDate(e.target.value)} />
                             <TimeInput label="Departure Time" value={outboundTime} onChange={setOutboundTime} />
                         </div>
                         <Input label={`Estimated Fuel & Tolls Cost (${getCurrencySymbol(activeCurrency)})`} type="number" placeholder="0.00" value={outboundCost} onChange={e => setOutboundCost(e.target.value)} />

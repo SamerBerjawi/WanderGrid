@@ -88,14 +88,16 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(({ children, va
 Button.displayName = "Button";
 
 // --- Input ---
+import { AccentColor } from './ui/DatePicker';
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
   leftElement?: ReactNode;
   rightElement?: ReactNode;
   containerClassName?: string;
+  accentColor?: AccentColor;
 }
-export const Input = forwardRef<HTMLInputElement, InputProps>(({ label, error, className, leftElement, rightElement, containerClassName, ...props }, ref) => (
+export const Input = forwardRef<HTMLInputElement, InputProps>(({ label, error, className, leftElement, rightElement, containerClassName, accentColor, ...props }, ref) => (
   <GlassInput
     ref={ref}
     label={label}
@@ -104,6 +106,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({ label, error, c
     rightElement={rightElement}
     className={className}
     containerClassName={containerClassName}
+    accentColor={accentColor}
     {...props}
   />
 ));
@@ -799,3 +802,4 @@ export { Icon } from './ui/Icon';
 export { StandardDrawer } from './StandardDrawer';
 export { BentoCard, BentoGrid } from './ui/bento-grid';
 export { DateRangePicker } from './ui/DateRangePicker';
+export { DatePicker } from './ui/DatePicker';

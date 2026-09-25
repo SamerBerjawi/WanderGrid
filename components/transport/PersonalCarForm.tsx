@@ -119,6 +119,7 @@ export const PersonalCarForm: React.FC<PersonalCarFormProps> = ({
                         <Input 
                             label="Date" 
                             type="date" 
+                            accentColor="blue"
                             value={form.pickupDate} 
                             onChange={e => onUpdate({ pickupDate: e.target.value })} 
                         />
@@ -138,6 +139,7 @@ export const PersonalCarForm: React.FC<PersonalCarFormProps> = ({
                         <Input 
                             label="Date" 
                             type="date" 
+                            accentColor="blue"
                             value={form.dropoffDate} 
                             onChange={e => onUpdate({ dropoffDate: e.target.value })} 
                         />

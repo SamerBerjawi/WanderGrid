@@ -125,6 +125,7 @@ export const TrainForm: React.FC<TrainFormProps> = ({
                         <Input 
                             label="Date" 
                             type="date" 
+                            accentColor="blue"
                             value={segment.date} 
                             onChange={e => onUpdate({ date: e.target.value })} 
                         />
@@ -144,6 +145,7 @@ export const TrainForm: React.FC<TrainFormProps> = ({
                         <Input 
                             label="Date" 
                             type="date" 
+                            accentColor="blue"
                             value={segment.arrivalDate || segment.date} 
                             onChange={e => onUpdate({ arrivalDate: e.target.value })} 
                         />
