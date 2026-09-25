@@ -1,10 +1,13 @@
 import { useEffect, useRef, type FC } from 'react';
 import type { Map } from 'maplibre-gl';
+import { getEffectiveBasemap } from '../types/mapAppearance';
 
 interface GlobeAtmosphericBackgroundProps {
     map: Map | null;
     isGlobe: boolean;
+    enabled?: boolean;
     isDark?: boolean;
+    basemap?: string;
 }
 
 interface CelestialObject {
@@ -12,7 +15,8 @@ interface CelestialObject {
     dec: number;  // Declination (radians)
     mag: number;  // Brightness (0.1 to 1.0)
     size: number; // Star radius (pixels)
-    color: string;
+    colorDark: string;
+    colorLight: string;
     twinkleSpeed: number;
     phase: number;
 }
@@ -21,7 +25,8 @@ interface DeepSkyObject {
     ra: number;
     dec: number;
     radius: number;
-    color: string;
+    colorDark: string;
+    colorLight: string;
     type: 'nebula' | 'galaxy';
     tilt?: number;
 }
@@ -36,10 +41,12 @@ function createPRNG(seed: number) {
     };
 }
 
-export const GlobeAtmosphericBackground: React.FC<GlobeAtmosphericBackgroundProps> = ({
+export const GlobeAtmosphericBackground: FC<GlobeAtmosphericBackgroundProps> = ({
     map,
     isGlobe,
-    isDark = true
+    enabled = true,
+    isDark = true,
+    basemap
 }) => {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const animFrameRef = useRef<number | null>(null);
@@ -54,8 +61,8 @@ export const GlobeAtmosphericBackground: React.FC<GlobeAtmosphericBackgroundProp
         const rand = createPRNG(4242);
         const stars: CelestialObject[] = [];
 
-        // Spectral color palettes
-        const colors = [
+        // Spectral color palettes for Dark vs Light modes
+        const colorsDark = [
             '#e0f2fe', // O/B: luminous blue-white
             '#f8fafc', // A: crisp pure white
             '#fef08a', // G: warm solar gold
@@ -63,37 +70,47 @@ export const GlobeAtmosphericBackground: React.FC<GlobeAtmosphericBackgroundProp
             '#fecdd3'  // M: soft rose/red dwarf
         ];
 
+        const colorsLight = [
+            '#475569', // Slate
+            '#334155', // Charcoal
+            '#64748b', // Steel
+            '#b45309', // Amber-bronze
+            '#0284c7'  // Cyan-sapphire
+        ];
+
         // 550 realistic stars distributed across celestial sphere
         for (let i = 0; i < 550; i++) {
             const ra = rand() * Math.PI * 2;
             const dec = Math.asin(rand() * 2 - 1); // Area-uniform spherical distribution
             const mag = Math.pow(rand(), 2.4) * 0.85 + 0.15; // Realistic stellar magnitude curve
-            const size = mag > 0.8 ? 1.6 + rand() * 0.9 : mag > 0.5 ? 1.1 + rand() * 0.4 : 0.6 + rand() * 0.4;
-            const color = colors[Math.floor(rand() * colors.length)];
+            const size = mag > 0.8 ? 1.5 + rand() * 0.8 : mag > 0.5 ? 1.0 + rand() * 0.4 : 0.6 + rand() * 0.3;
+            const colorIdx = Math.floor(rand() * colorsDark.length);
+            const colorDark = colorsDark[colorIdx];
+            const colorLight = colorsLight[colorIdx];
             const twinkleSpeed = 0.5 + rand() * 2.0;
             const phase = rand() * Math.PI * 2;
 
-            stars.push({ ra, dec, mag, size, color, twinkleSpeed, phase });
+            stars.push({ ra, dec, mag, size, colorDark, colorLight, twinkleSpeed, phase });
         }
 
         // Deep sky objects: Milky Way core wisps & distant galaxies
         const deepSky: DeepSkyObject[] = [
             // Milky way galactic dust lane nodes
-            { ra: 4.8, dec: -0.45, radius: 90, color: 'rgba(99, 102, 241, 0.05)', type: 'nebula' },
-            { ra: 5.1, dec: -0.35, radius: 120, color: 'rgba(168, 85, 247, 0.04)', type: 'nebula' },
-            { ra: 5.4, dec: -0.15, radius: 85, color: 'rgba(56, 189, 248, 0.04)', type: 'nebula' },
-            { ra: 5.8, dec: 0.15, radius: 100, color: 'rgba(139, 92, 246, 0.035)', type: 'nebula' },
-            { ra: 1.8, dec: 0.65, radius: 110, color: 'rgba(59, 130, 246, 0.03)', type: 'nebula' },
+            { ra: 4.8, dec: -0.45, radius: 90, colorDark: 'rgba(99, 102, 241, 0.04)', colorLight: 'rgba(99, 102, 241, 0.02)', type: 'nebula' },
+            { ra: 5.1, dec: -0.35, radius: 120, colorDark: 'rgba(168, 85, 247, 0.035)', colorLight: 'rgba(168, 85, 247, 0.02)', type: 'nebula' },
+            { ra: 5.4, dec: -0.15, radius: 85, colorDark: 'rgba(56, 189, 248, 0.035)', colorLight: 'rgba(56, 189, 248, 0.02)', type: 'nebula' },
+            { ra: 5.8, dec: 0.15, radius: 100, colorDark: 'rgba(139, 92, 246, 0.03)', colorLight: 'rgba(139, 92, 246, 0.015)', type: 'nebula' },
+            { ra: 1.8, dec: 0.65, radius: 110, colorDark: 'rgba(59, 130, 246, 0.025)', colorLight: 'rgba(59, 130, 246, 0.015)', type: 'nebula' },
             // Distant spiral galaxies
-            { ra: 0.72, dec: 0.71, radius: 16, color: 'rgba(254, 240, 138, 0.35)', type: 'galaxy', tilt: 0.65 },
-            { ra: 3.45, dec: -0.82, radius: 12, color: 'rgba(224, 231, 255, 0.3)', type: 'galaxy', tilt: -0.4 }
+            { ra: 0.72, dec: 0.71, radius: 15, colorDark: 'rgba(254, 240, 138, 0.25)', colorLight: 'rgba(217, 119, 6, 0.18)', type: 'galaxy', tilt: 0.65 },
+            { ra: 3.45, dec: -0.82, radius: 12, colorDark: 'rgba(224, 231, 255, 0.22)', colorLight: 'rgba(79, 70, 229, 0.15)', type: 'galaxy', tilt: -0.4 }
         ];
 
         celestialCatalogue.current = { stars, deepSky };
     }
 
     useEffect(() => {
-        if (!isGlobe) {
+        if (!isGlobe || !enabled) {
             if (animFrameRef.current) {
                 cancelAnimationFrame(animFrameRef.current);
                 animFrameRef.current = null;
@@ -107,6 +124,9 @@ export const GlobeAtmosphericBackground: React.FC<GlobeAtmosphericBackgroundProp
         if (!ctx) return;
 
         let isRunning = true;
+
+        // Resolve active basemap palette
+        const effectiveLayer = getEffectiveBasemap(basemap, isDark);
 
         const render = (time: number) => {
             if (!isRunning) return;
@@ -124,20 +144,77 @@ export const GlobeAtmosphericBackground: React.FC<GlobeAtmosphericBackgroundProp
             ctx.scale(dpr, dpr);
             ctx.clearRect(0, 0, width, height);
 
-            // 1. Deep Space Cosmic Background
+            // 1. Basemap-Aligned Space Background Gradient
             const bgGrad = ctx.createRadialGradient(
-                width * 0.5, height * 0.5, Math.min(width, height) * 0.2,
+                width * 0.5, height * 0.5, Math.min(width, height) * 0.15,
                 width * 0.5, height * 0.5, Math.max(width, height) * 0.85
             );
+
             if (isDark) {
-                bgGrad.addColorStop(0, '#040714');
-                bgGrad.addColorStop(0.5, '#02040b');
-                bgGrad.addColorStop(1, '#010206');
+                switch (effectiveLayer) {
+                    case 'satellite':
+                        // Deep true space vacuum for realistic satellite views
+                        bgGrad.addColorStop(0, '#020307');
+                        bgGrad.addColorStop(0.5, '#010204');
+                        bgGrad.addColorStop(1, '#000102');
+                        break;
+                    case 'citylights':
+                        // Deep nocturnal midnight navy / indigo
+                        bgGrad.addColorStop(0, '#04081c');
+                        bgGrad.addColorStop(0.5, '#020412');
+                        bgGrad.addColorStop(1, '#010209');
+                        break;
+                    case 'ocean':
+                        // Deep abyssal oceanic midnight
+                        bgGrad.addColorStop(0, '#020b18');
+                        bgGrad.addColorStop(0.5, '#010710');
+                        bgGrad.addColorStop(1, '#01040a');
+                        break;
+                    case 'snow':
+                        // Crisp glacial slate cosmos
+                        bgGrad.addColorStop(0, '#060a14');
+                        bgGrad.addColorStop(0.5, '#03050c');
+                        bgGrad.addColorStop(1, '#010206');
+                        break;
+                    case 'vibrant':
+                        // Warm cosmic bronze/carbon
+                        bgGrad.addColorStop(0, '#09080e');
+                        bgGrad.addColorStop(0.5, '#040307');
+                        bgGrad.addColorStop(1, '#020104');
+                        break;
+                    case 'onyx':
+                    default:
+                        // Sleek carbon onyx
+                        bgGrad.addColorStop(0, '#05070e');
+                        bgGrad.addColorStop(0.5, '#020409');
+                        bgGrad.addColorStop(1, '#010205');
+                        break;
+                }
             } else {
-                bgGrad.addColorStop(0, '#060a18');
-                bgGrad.addColorStop(0.5, '#03050e');
-                bgGrad.addColorStop(1, '#010207');
+                // Ethereal, high-end Light Mode celestial sky dome
+                switch (effectiveLayer) {
+                    case 'vibrant':
+                        // Warm alabaster / parchment sky
+                        bgGrad.addColorStop(0, '#fdfbf7');
+                        bgGrad.addColorStop(0.5, '#f4eee4');
+                        bgGrad.addColorStop(1, '#e7ded2');
+                        break;
+                    case 'ocean':
+                        // Maritime seafoam & pale ocean sky
+                        bgGrad.addColorStop(0, '#f0f9ff');
+                        bgGrad.addColorStop(0.5, '#e0f2fe');
+                        bgGrad.addColorStop(1, '#cfe5f9');
+                        break;
+                    case 'snow':
+                    default:
+                        // Pure arctic platinum / cloud-white
+                        bgGrad.addColorStop(0, '#f8fafc');
+                        bgGrad.addColorStop(0.5, '#edf2f7');
+                        bgGrad.addColorStop(1, '#dfe6ed');
+                        break;
+                }
             }
+
             ctx.fillStyle = bgGrad;
             ctx.fillRect(0, 0, width, height);
 
@@ -239,9 +316,11 @@ export const GlobeAtmosphericBackground: React.FC<GlobeAtmosphericBackgroundProp
                     const pt = projectCelestial(x0, y0, z0);
                     if (!pt) continue;
 
+                    const color = isDark ? dso.colorDark : dso.colorLight;
+
                     if (dso.type === 'nebula') {
                         const nebGrad = ctx.createRadialGradient(pt.sx, pt.sy, 0, pt.sx, pt.sy, dso.radius);
-                        nebGrad.addColorStop(0, dso.color);
+                        nebGrad.addColorStop(0, color);
                         nebGrad.addColorStop(1, 'rgba(0,0,0,0)');
                         ctx.fillStyle = nebGrad;
                         ctx.beginPath();
@@ -253,8 +332,8 @@ export const GlobeAtmosphericBackground: React.FC<GlobeAtmosphericBackgroundProp
                         ctx.rotate(dso.tilt || 0.4);
                         ctx.scale(2.2, 0.7);
                         const galGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, dso.radius);
-                        galGrad.addColorStop(0, dso.color);
-                        galGrad.addColorStop(0.3, 'rgba(199, 210, 254, 0.12)');
+                        galGrad.addColorStop(0, color);
+                        galGrad.addColorStop(0.35, isDark ? 'rgba(199, 210, 254, 0.08)' : 'rgba(99, 102, 241, 0.06)');
                         galGrad.addColorStop(1, 'rgba(0,0,0,0)');
                         ctx.fillStyle = galGrad;
                         ctx.beginPath();
@@ -277,34 +356,34 @@ export const GlobeAtmosphericBackground: React.FC<GlobeAtmosphericBackgroundProp
                     if (pt.sx < -10 || pt.sx > width + 10 || pt.sy < -10 || pt.sy > height + 10) continue;
 
                     // Subtle natural twinkle
-                    const twinkle = 0.8 + 0.2 * Math.sin(tSeconds * star.twinkleSpeed + star.phase);
-                    const currentAlpha = star.mag * twinkle;
+                    const twinkle = 0.85 + 0.15 * Math.sin(tSeconds * star.twinkleSpeed + star.phase);
+                    const baseAlpha = isDark ? star.mag * 0.9 : star.mag * 0.45;
+                    const currentAlpha = baseAlpha * twinkle;
 
-                    ctx.fillStyle = star.color;
-                    ctx.globalAlpha = Math.max(0.1, Math.min(1.0, currentAlpha));
+                    ctx.fillStyle = isDark ? star.colorDark : star.colorLight;
+                    ctx.globalAlpha = Math.max(0.08, Math.min(0.95, currentAlpha));
 
                     ctx.beginPath();
-                    ctx.arc(pt.sx, pt.sy, star.size, 0, Math.PI * 2);
+                    ctx.arc(pt.sx, pt.sy, isDark ? star.size : star.size * 0.9, 0, Math.PI * 2);
                     ctx.fill();
 
                     // Bright landmark stars receive subtle diffraction sparkle
-                    if (star.mag > 0.85 && star.size >= 1.8) {
-                        ctx.strokeStyle = star.color;
-                        ctx.globalAlpha = currentAlpha * 0.35;
-                        ctx.lineWidth = 0.6;
+                    if (star.mag > 0.88 && star.size >= 1.7) {
+                        ctx.strokeStyle = isDark ? star.colorDark : star.colorLight;
+                        ctx.globalAlpha = currentAlpha * 0.25;
+                        ctx.lineWidth = 0.5;
                         ctx.beginPath();
-                        ctx.moveTo(pt.sx - star.size * 2.8, pt.sy);
-                        ctx.lineTo(pt.sx + star.size * 2.8, pt.sy);
-                        ctx.moveTo(pt.sx, pt.sy - star.size * 2.8);
-                        ctx.lineTo(pt.sx, pt.sy + star.size * 2.8);
+                        ctx.moveTo(pt.sx - star.size * 2.5, pt.sy);
+                        ctx.lineTo(pt.sx + star.size * 2.5, pt.sy);
+                        ctx.moveTo(pt.sx, pt.sy - star.size * 2.5);
+                        ctx.lineTo(pt.sx, pt.sy + star.size * 2.5);
                         ctx.stroke();
                     }
                 }
                 ctx.globalAlpha = 1.0;
             }
 
-            // 4. Render The Sun (Distant celestial light source & corona)
-            // Sun coordinates: RA = 215°, Dec = 18°
+            // 4. Render The Sun (Distant celestial light source & subtle corona)
             const sunRa = (215 * Math.PI) / 180;
             const sunDec = (18 * Math.PI) / 180;
             const sunX0 = Math.cos(sunDec) * Math.sin(sunRa);
@@ -316,46 +395,51 @@ export const GlobeAtmosphericBackground: React.FC<GlobeAtmosphericBackgroundProp
                 const distToGlobe = Math.hypot(sunPt.sx - gx, sunPt.sy - gy);
                 const isBehindGlobe = distToGlobe < screenRadius * 0.96;
 
-                // Only draw Sun when not completely eclipsed by the Earth
                 if (!isBehindGlobe) {
-                    // Soft expansive outer solar corona
-                    const outerCorona = ctx.createRadialGradient(sunPt.sx, sunPt.sy, 6, sunPt.sx, sunPt.sy, 110);
-                    outerCorona.addColorStop(0, 'rgba(254, 240, 138, 0.45)');
-                    outerCorona.addColorStop(0.2, 'rgba(251, 146, 60, 0.18)');
-                    outerCorona.addColorStop(0.5, 'rgba(234, 88, 12, 0.06)');
-                    outerCorona.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                    // Soft, subtle outer solar corona
+                    const outerCorona = ctx.createRadialGradient(sunPt.sx, sunPt.sy, 5, sunPt.sx, sunPt.sy, 85);
+                    if (isDark) {
+                        outerCorona.addColorStop(0, 'rgba(254, 240, 138, 0.28)');
+                        outerCorona.addColorStop(0.25, 'rgba(251, 146, 60, 0.10)');
+                        outerCorona.addColorStop(0.6, 'rgba(234, 88, 12, 0.03)');
+                        outerCorona.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                    } else {
+                        outerCorona.addColorStop(0, 'rgba(251, 191, 36, 0.22)');
+                        outerCorona.addColorStop(0.3, 'rgba(245, 158, 11, 0.08)');
+                        outerCorona.addColorStop(0.7, 'rgba(217, 119, 6, 0.02)');
+                        outerCorona.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                    }
                     ctx.fillStyle = outerCorona;
                     ctx.beginPath();
-                    ctx.arc(sunPt.sx, sunPt.sy, 110, 0, Math.PI * 2);
+                    ctx.arc(sunPt.sx, sunPt.sy, 85, 0, Math.PI * 2);
                     ctx.fill();
 
-                    // Brilliant inner core
-                    const innerCore = ctx.createRadialGradient(sunPt.sx, sunPt.sy, 0, sunPt.sx, sunPt.sy, 14);
+                    // Refined solar core
+                    const innerCore = ctx.createRadialGradient(sunPt.sx, sunPt.sy, 0, sunPt.sx, sunPt.sy, 11);
                     innerCore.addColorStop(0, '#ffffff');
-                    innerCore.addColorStop(0.4, '#fef08a');
-                    innerCore.addColorStop(0.8, '#f59e0b');
+                    innerCore.addColorStop(0.4, isDark ? '#fef08a' : '#fde047');
+                    innerCore.addColorStop(0.85, isDark ? '#f59e0b' : '#d97706');
                     innerCore.addColorStop(1, 'rgba(245, 158, 11, 0)');
                     ctx.fillStyle = innerCore;
                     ctx.beginPath();
-                    ctx.arc(sunPt.sx, sunPt.sy, 14, 0, Math.PI * 2);
+                    ctx.arc(sunPt.sx, sunPt.sy, 11, 0, Math.PI * 2);
                     ctx.fill();
 
-                    // Subtle solar flare rays
-                    ctx.strokeStyle = 'rgba(254, 240, 138, 0.22)';
-                    ctx.lineWidth = 0.8;
+                    // Subtle solar rays
+                    ctx.strokeStyle = isDark ? 'rgba(254, 240, 138, 0.16)' : 'rgba(245, 158, 11, 0.14)';
+                    ctx.lineWidth = 0.7;
                     ctx.beginPath();
-                    ctx.moveTo(sunPt.sx - 35, sunPt.sy - 35);
-                    ctx.lineTo(sunPt.sx + 35, sunPt.sy + 35);
-                    ctx.moveTo(sunPt.sx - 35, sunPt.sy + 35);
-                    ctx.lineTo(sunPt.sx + 35, sunPt.sy - 35);
+                    ctx.moveTo(sunPt.sx - 26, sunPt.sy - 26);
+                    ctx.lineTo(sunPt.sx + 26, sunPt.sy + 26);
+                    ctx.moveTo(sunPt.sx - 26, sunPt.sy + 26);
+                    ctx.lineTo(sunPt.sx + 26, sunPt.sy - 26);
                     ctx.stroke();
                 }
             }
 
-            // 5. Atmospheric Rayleigh Scattering Limb Glow (Earth Halo)
-            // Rendered right at the globe's screen circle
+            // 5. Subtle Atmospheric Rayleigh Scattering Limb Glow (Earth Halo)
+            // Delicate, whisper-subtle and tightly bound to the globe silhouette
             if (screenRadius > 10 && screenRadius < Math.max(width, height) * 2.5) {
-                // Smooth atmospheric scale factor based on zoom (fades as user zooms deep into cities)
                 const atmosphereFade = Math.max(0, Math.min(1.0, 1.0 - (zoom - 3.2) / 2.2));
 
                 if (atmosphereFade > 0.01) {
@@ -367,42 +451,88 @@ export const GlobeAtmosphericBackground: React.FC<GlobeAtmosphericBackgroundProp
                     if (sunPt) {
                         lightAngle = Math.atan2(sunPt.sy - gy, sunPt.sx - gx);
                     }
-                    const lightOffsetX = Math.cos(lightAngle) * (screenRadius * 0.015);
-                    const lightOffsetY = Math.sin(lightAngle) * (screenRadius * 0.015);
+                    const lightOffsetX = Math.cos(lightAngle) * (screenRadius * 0.012);
+                    const lightOffsetY = Math.sin(lightAngle) * (screenRadius * 0.012);
 
-                    // Outer Atmospheric Glow
+                    // Outer Atmospheric Glow (Subtle & Tight)
                     const outerHalo = ctx.createRadialGradient(
-                        gx + lightOffsetX, gy + lightOffsetY, screenRadius * 0.98,
-                        gx, gy, screenRadius * 1.18
+                        gx + lightOffsetX, gy + lightOffsetY, screenRadius * 0.99,
+                        gx, gy, screenRadius * 1.10
                     );
-                    outerHalo.addColorStop(0, 'rgba(56, 189, 248, 0.42)');
-                    outerHalo.addColorStop(0.2, 'rgba(96, 165, 250, 0.22)');
-                    outerHalo.addColorStop(0.5, 'rgba(99, 102, 241, 0.08)');
-                    outerHalo.addColorStop(0.85, 'rgba(14, 165, 233, 0.02)');
-                    outerHalo.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+                    if (isDark) {
+                        // Basemap-tailored subtle glow
+                        if (effectiveLayer === 'ocean') {
+                            outerHalo.addColorStop(0, 'rgba(34, 211, 238, 0.18)');
+                            outerHalo.addColorStop(0.3, 'rgba(14, 165, 233, 0.08)');
+                            outerHalo.addColorStop(0.7, 'rgba(30, 58, 138, 0.02)');
+                        } else if (effectiveLayer === 'vibrant') {
+                            outerHalo.addColorStop(0, 'rgba(251, 191, 36, 0.16)');
+                            outerHalo.addColorStop(0.3, 'rgba(56, 189, 248, 0.08)');
+                            outerHalo.addColorStop(0.7, 'rgba(99, 102, 241, 0.02)');
+                        } else if (effectiveLayer === 'citylights') {
+                            outerHalo.addColorStop(0, 'rgba(96, 165, 250, 0.20)');
+                            outerHalo.addColorStop(0.35, 'rgba(139, 92, 246, 0.08)');
+                            outerHalo.addColorStop(0.7, 'rgba(30, 27, 75, 0.02)');
+                        } else {
+                            outerHalo.addColorStop(0, 'rgba(56, 189, 248, 0.20)');
+                            outerHalo.addColorStop(0.3, 'rgba(96, 165, 250, 0.09)');
+                            outerHalo.addColorStop(0.7, 'rgba(99, 102, 241, 0.02)');
+                        }
+                        outerHalo.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                    } else {
+                        // Light mode ethereal sky halo
+                        if (effectiveLayer === 'vibrant') {
+                            outerHalo.addColorStop(0, 'rgba(245, 158, 11, 0.15)');
+                            outerHalo.addColorStop(0.35, 'rgba(56, 189, 248, 0.07)');
+                        } else {
+                            outerHalo.addColorStop(0, 'rgba(56, 189, 248, 0.16)');
+                            outerHalo.addColorStop(0.35, 'rgba(96, 165, 250, 0.07)');
+                        }
+                        outerHalo.addColorStop(0.7, 'rgba(147, 197, 253, 0.02)');
+                        outerHalo.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                    }
 
                     ctx.fillStyle = outerHalo;
                     ctx.beginPath();
-                    ctx.arc(gx, gy, screenRadius * 1.18, 0, Math.PI * 2);
+                    ctx.arc(gx, gy, screenRadius * 1.10, 0, Math.PI * 2);
                     ctx.fill();
 
-                    // Sharp Stratospheric Luminous Blue Rim
+                    // Stratospheric Rim (Razor-thin luminous filament)
                     const rimGlow = ctx.createRadialGradient(
-                        gx + lightOffsetX * 0.5, gy + lightOffsetY * 0.5, screenRadius * 0.99,
-                        gx, gy, screenRadius * 1.05
+                        gx + lightOffsetX * 0.4, gy + lightOffsetY * 0.4, screenRadius * 0.995,
+                        gx, gy, screenRadius * 1.035
                     );
-                    rimGlow.addColorStop(0, 'rgba(186, 230, 253, 0.5)');
-                    rimGlow.addColorStop(0.35, 'rgba(56, 189, 248, 0.35)');
-                    rimGlow.addColorStop(0.8, 'rgba(37, 99, 235, 0.12)');
-                    rimGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                    if (isDark) {
+                        rimGlow.addColorStop(0, 'rgba(186, 230, 253, 0.26)');
+                        rimGlow.addColorStop(0.4, 'rgba(56, 189, 248, 0.16)');
+                        rimGlow.addColorStop(0.85, 'rgba(37, 99, 235, 0.04)');
+                        rimGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                    } else {
+                        rimGlow.addColorStop(0, 'rgba(125, 211, 252, 0.22)');
+                        rimGlow.addColorStop(0.4, 'rgba(56, 189, 248, 0.14)');
+                        rimGlow.addColorStop(0.85, 'rgba(2, 132, 199, 0.03)');
+                        rimGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                    }
 
                     ctx.fillStyle = rimGlow;
                     ctx.beginPath();
-                    ctx.arc(gx, gy, screenRadius * 1.05, 0, Math.PI * 2);
+                    ctx.arc(gx, gy, screenRadius * 1.035, 0, Math.PI * 2);
                     ctx.fill();
 
-                    // Solid ocean backing disk directly behind globe tiles to prevent see-through
-                    ctx.fillStyle = isDark ? '#040714' : '#0a1128';
+                    // Solid ocean backing disk directly behind globe tiles
+                    let oceanBacking = isDark ? '#040714' : '#edf2f7';
+                    if (isDark) {
+                        if (effectiveLayer === 'ocean') oceanBacking = '#020d1c';
+                        else if (effectiveLayer === 'satellite') oceanBacking = '#01040a';
+                        else if (effectiveLayer === 'citylights') oceanBacking = '#020617';
+                        else if (effectiveLayer === 'vibrant') oceanBacking = '#0a0910';
+                    } else {
+                        if (effectiveLayer === 'ocean') oceanBacking = '#bae6fd';
+                        else if (effectiveLayer === 'vibrant') oceanBacking = '#e8ded2';
+                    }
+
+                    ctx.fillStyle = oceanBacking;
                     ctx.beginPath();
                     ctx.arc(gx, gy, screenRadius * 0.995, 0, Math.PI * 2);
                     ctx.fill();
@@ -424,13 +554,15 @@ export const GlobeAtmosphericBackground: React.FC<GlobeAtmosphericBackgroundProp
                 animFrameRef.current = null;
             }
         };
-    }, [map, isGlobe, isDark]);
+    }, [map, isGlobe, enabled, isDark, basemap]);
+
+    const isVisible = isGlobe && enabled;
 
     return (
         <canvas
             ref={canvasRef}
-            className={`absolute inset-0 w-full h-full pointer-events-none transition-opacity duration-700 ${
-                isGlobe ? 'opacity-100 z-0' : 'opacity-0 -z-10'
+            className={`absolute inset-0 w-full h-full pointer-events-none transition-opacity duration-500 ${
+                isVisible ? 'opacity-100 z-0' : 'opacity-0 -z-10'
             }`}
             style={{ width: '100%', height: '100%' }}
         />

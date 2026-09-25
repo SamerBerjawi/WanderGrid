@@ -648,6 +648,36 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                             </h3>
 
                             <div className="space-y-3">
+                                {/* 3D Celestial Cosmos */}
+                                <div className="p-4 rounded-3xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <h4 className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
+                                                <span>3D Celestial Cosmos</span>
+                                                {settings.atmosphere !== false && (
+                                                    <span className="px-2 py-0.5 text-2xs font-bold uppercase tracking-wider rounded-full bg-sky-500/20 text-sky-400 border border-sky-500/30">
+                                                        Stars, Sun & Halo
+                                                    </span>
+                                                )}
+                                            </h4>
+                                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5">Rotating starfield, galaxies & subtle limb glow</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => updateField('atmosphere', settings.atmosphere === false ? true : false)}
+                                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                                                settings.atmosphere !== false ? 'bg-sky-600' : 'bg-black/10 dark:bg-white/10'
+                                            }`}
+                                        >
+                                            <span
+                                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                                                    settings.atmosphere !== false ? 'translate-x-5' : 'translate-x-0'
+                                                }`}
+                                            />
+                                        </button>
+                                    </div>
+                                </div>
+
                                 {/* Time of Day */}
                                 <div className="p-4 rounded-3xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 space-y-2">
                                     <div className="flex items-center justify-between">

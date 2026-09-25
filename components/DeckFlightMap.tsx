@@ -28,7 +28,8 @@ import {
     Car,
     MagnifyingGlassPlus as ZoomIn,
     MagnifyingGlassMinus as ZoomOut,
-    List
+    List,
+    Sparkle
 } from '@phosphor-icons/react';
 import { Trip, CountryResidenceStatus, PredefinedMapMode, toggleCountryResidenceStatus, WorkspaceSettings } from '../types';
 import { useWanderSync } from '../hooks/useWanderSync';
@@ -2099,13 +2100,28 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         }
     };
 
+    const handleToggleAtmosphere = () => {
+        const nextAtmosphere = activeAppearance.atmosphere === false ? true : false;
+        const nextAppearance: MapAppearanceSettings = {
+            ...activeAppearance,
+            atmosphere: nextAtmosphere
+        };
+        saveMapAppearanceSettings(nextAppearance);
+        setLocalAppearance(nextAppearance);
+        if (onChangeAppearanceSettings) {
+            onChangeAppearanceSettings(nextAppearance);
+        }
+    };
+
     return (
-        <div className={`relative w-full h-full overflow-hidden select-none ${effectiveProjection === 'globe' ? 'bg-[#010206]' : 'bg-white dark:bg-black'}`}>
+        <div className={`relative w-full h-full overflow-hidden select-none ${effectiveProjection === 'globe' ? (isDark ? 'bg-[#010206]' : 'bg-[#f8fafc]') : (isDark ? 'bg-black' : 'bg-white')}`}>
             {/* Atmospheric & Rotating Celestial Deep Space Canvas */}
             <GlobeAtmosphericBackground
                 map={mapInstance || mapRef.current}
                 isGlobe={effectiveProjection === 'globe'}
+                enabled={activeAppearance.atmosphere !== false}
                 isDark={isDark}
+                basemap={currentLayer}
             />
 
             {/* MapLibre GL 60 FPS Canvas with Interleaved Deck.gl Engine */}
@@ -2147,6 +2163,20 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         >
                             <Scan className="w-4 h-4" />
                         </button>
+                        {effectiveProjection === 'globe' && (
+                            <button
+                                onClick={handleToggleAtmosphere}
+                                className={`w-10 h-10 flex items-center justify-center cursor-pointer transition-colors active:scale-95 ${
+                                    activeAppearance.atmosphere !== false
+                                        ? 'text-sky-500 dark:text-sky-400 bg-sky-500/10 dark:bg-sky-400/10'
+                                        : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-black/5 dark:hover:bg-white/10'
+                                }`}
+                                title={activeAppearance.atmosphere !== false ? 'Atmosphere & Stars: On (Click to turn off)' : 'Atmosphere & Stars: Off (Click to turn on)'}
+                                aria-label="Toggle celestial atmosphere"
+                            >
+                                <Sparkle className="w-4 h-4" weight={activeAppearance.atmosphere !== false ? 'fill' : 'regular'} />
+                            </button>
+                        )}
                     </div>
                 </GlassPanel>
             </div>

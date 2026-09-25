@@ -1252,6 +1252,30 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                             <span className="text-xs font-bold leading-tight truncate">2D Flat Map</span>
                                         </button>
                                     </div>
+
+                                    {appearance.projection === 'globe' && (
+                                        <div className="pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between">
+                                            <div className="flex items-center gap-1.5">
+                                                <Sparkles className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400" />
+                                                <span className="text-xs font-semibold text-light-text dark:text-dark-text">Atmospheric Cosmos</span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleUpdateAppearance({ ...appearance, atmosphere: appearance.atmosphere === false ? true : false })}
+                                                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border border-black/10 dark:border-white/15 transition-all duration-200 ease-in-out backdrop-blur-md ${
+                                                    appearance.atmosphere !== false
+                                                        ? 'bg-sky-500/85 dark:bg-sky-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_8px_rgba(14,165,233,0.3)]'
+                                                        : 'bg-black/15 dark:bg-white/15'
+                                                }`}
+                                            >
+                                                <span
+                                                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
+                                                        appearance.atmosphere !== false ? 'translate-x-4' : 'translate-x-0'
+                                                    }`}
+                                                />
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* BASEMAP PALETTE */}
@@ -1747,6 +1771,35 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                     </h3>
 
                                     <div className="space-y-3">
+                                        {/* 3D Celestial Cosmos */}
+                                        <div className="p-4 rounded-2xl bg-white/40 dark:bg-white/[0.03] backdrop-blur-sm border border-black/5 dark:border-white/5 space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <h4 className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
+                                                        <span>Celestial Cosmos</span>
+                                                        {appearance.atmosphere !== false && (
+                                                            <span className="px-2 py-0.5 text-2xs font-bold rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
+                                                                Stars, Sun & Halo
+                                                            </span>
+                                                        )}
+                                                    </h4>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleUpdateAppearance({ ...appearance, atmosphere: appearance.atmosphere === false ? true : false })}
+                                                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-black/10 dark:border-white/15 transition-all duration-200 ease-in-out backdrop-blur-md ${appearance.atmosphere !== false
+                                                            ? 'bg-sky-500/85 dark:bg-sky-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_10px_rgba(14,165,233,0.3)]'
+                                                            : 'bg-black/15 dark:bg-white/15 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]'
+                                                        }`}
+                                                >
+                                                    <span
+                                                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-white/95 shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.8)] ring-0 transition duration-200 ease-in-out ${appearance.atmosphere !== false ? 'translate-x-5' : 'translate-x-0'
+                                                            }`}
+                                                    />
+                                                </button>
+                                            </div>
+                                        </div>
+
                                         {/* Time of Day */}
                                         <div className="p-4 rounded-2xl bg-white/40 dark:bg-white/[0.03] backdrop-blur-sm border border-black/5 dark:border-white/5 space-y-2">
                                             <div className="flex items-center justify-between">

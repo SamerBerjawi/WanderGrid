@@ -65,6 +65,7 @@ export interface MapAppearanceSettings {
 
     // Layers Tab
     timeOfDay: boolean; // Live solar day/night shading
+    atmosphere?: boolean; // Subtle 3D globe atmospheric glow, stars & solar cosmos
     rainRadar: boolean; // Latest RainViewer precipitation
     rainRadarOpacity?: number; // 0.2 to 1.0
     rainRadarColorScheme?: number; // 1 to 8
@@ -87,6 +88,7 @@ export const DEFAULT_MAP_APPEARANCE: MapAppearanceSettings = {
     routeColorMode: 'gradient',
     routeTracing: true,
     timeOfDay: false,
+    atmosphere: true,
     rainRadar: false,
     rainRadarOpacity: 0.85,
     rainRadarColorScheme: 2,
