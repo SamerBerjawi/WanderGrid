@@ -207,7 +207,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                         className={`p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer transition-all duration-150 active:scale-[0.98] ${
                                             settings.projection === 'globe'
                                                 ? 'bg-blue-600/20 border-blue-400 ring-1 ring-blue-500/30 text-light-text dark:text-dark-text font-bold'
-                                                : 'bg-zinc-900/60 border-white/10 text-zinc-400 hover:border-white/20'
+                                                : 'bg-black/5 dark:bg-white/5 border-black/10 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:border-black/20 dark:hover:border-white/20'
                                         }`}
                                     >
                                         <Globe className={`w-4 h-4 shrink-0 transition-colors duration-200 ${
@@ -221,7 +221,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                         className={`p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer transition-all duration-150 active:scale-[0.98] ${
                                             settings.projection === 'flat'
                                                 ? 'bg-blue-600/20 border-blue-400 ring-1 ring-blue-500/30 text-light-text dark:text-dark-text font-bold'
-                                                : 'bg-zinc-900/60 border-white/10 text-zinc-400 hover:border-white/20'
+                                                : 'bg-black/5 dark:bg-white/5 border-black/10 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:border-black/20 dark:hover:border-white/20'
                                         }`}
                                     >
                                         <MapIcon className={`w-4 h-4 shrink-0 transition-colors duration-200 ${
@@ -341,7 +341,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                 className={`p-2.5 rounded-2xl border transition-all text-left flex flex-col justify-between gap-2 cursor-pointer ${
                                                     isSelected
                                                         ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30'
-                                                        : 'border-white/10 bg-zinc-900/60 hover:border-white/20'
+                                                        : 'border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 hover:border-black/20 dark:hover:border-white/20'
                                                 }`}
                                             >
                                                 {b.renderSwatch()}
@@ -381,7 +381,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                             className={`py-2 rounded-xl text-xs font-bold text-center border transition-all cursor-pointer ${
                                                 (settings.scratchCitySize || 'medium') === sz.id
                                                     ? 'bg-blue-600 text-white border-blue-400'
-                                                    : 'bg-zinc-900/60 border-white/10 text-zinc-400 hover:text-light-text dark:hover:text-white'
+                                                    : 'bg-black/5 dark:bg-white/5 border-black/10 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-white hover:border-black/20 dark:hover:border-white/20'
                                             }`}
                                         >
                                             {sz.label}
@@ -500,7 +500,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                         className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
                                             settings.airportDetail === 'standard'
                                                 ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30 text-light-text dark:text-dark-text'
-                                                : 'border-white/10 bg-zinc-900/60 text-zinc-400 hover:border-white/20'
+                                                : 'border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:border-black/20 dark:hover:border-white/20'
                                         }`}
                                     >
                                         <p className="text-xs font-bold text-light-text dark:text-dark-text">Minimal Beacon</p>
@@ -512,7 +512,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                         className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
                                             settings.airportDetail === 'detailed'
                                                 ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30 text-light-text dark:text-dark-text'
-                                                : 'border-white/10 bg-zinc-900/60 text-zinc-400 hover:border-white/20'
+                                                : 'border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:border-black/20 dark:hover:border-white/20'
                                         }`}
                                     >
                                         <p className="text-xs font-bold text-light-text dark:text-dark-text">True Runways</p>
@@ -541,7 +541,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                             className={`py-2 rounded-xl text-xs font-bold text-center border transition-all cursor-pointer ${
                                                 settings.airportSize === sz.id
                                                     ? 'bg-blue-600 text-white border-blue-400'
-                                                    : 'bg-zinc-900/60 border-white/10 text-zinc-400 hover:text-light-text dark:hover:text-white'
+                                                    : 'bg-black/5 dark:bg-white/5 border-black/10 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-white hover:border-black/20 dark:hover:border-white/20'
                                             }`}
                                         >
                                             {sz.label}
@@ -554,8 +554,8 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                         onClick={() => updateField('airportMode', 'frequency')}
                                         className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
                                             settings.airportMode === 'frequency'
-                                                ? 'border-blue-500 bg-blue-500/10 text-blue-300'
-                                                : 'border-white/10 bg-zinc-900/60 text-zinc-400 hover:text-light-text dark:hover:text-white'
+                                                ? 'border-blue-500 bg-blue-500/10 text-blue-500 dark:text-blue-300 ring-2 ring-blue-500/20'
+                                                : 'border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-white hover:border-black/20 dark:hover:border-white/20'
                                         }`}
                                     >
                                         Weighted by Traffic
@@ -564,8 +564,8 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                         onClick={() => updateField('airportMode', 'uniform')}
                                         className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
                                             settings.airportMode === 'uniform'
-                                                ? 'border-blue-500 bg-blue-500/10 text-blue-300'
-                                                : 'border-white/10 bg-zinc-900/60 text-zinc-400 hover:text-light-text dark:hover:text-white'
+                                                ? 'border-blue-500 bg-blue-500/10 text-blue-500 dark:text-blue-300 ring-2 ring-blue-500/20'
+                                                : 'border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-white hover:border-black/20 dark:hover:border-white/20'
                                         }`}
                                     >
                                         Uniform Scale
@@ -592,7 +592,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                 className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer ${
                                                     settings.routeColorMode === cl.id
                                                         ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30'
-                                                        : 'border-black/10 dark:border-white/10 bg-light-fill dark:bg-zinc-900/60 hover:border-black/20 dark:hover:border-white/20'
+                                                        : 'border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 hover:border-black/20 dark:hover:border-white/20'
                                                 }`}
                                             >
                                                 <p className="text-xs font-bold text-light-text dark:text-dark-text">{cl.label}</p>
@@ -609,7 +609,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                     </h3>
 
                                     {/* Unified Route Tracing (Road, Rail & Sea) */}
-                                    <div className="p-3.5 rounded-2xl bg-light-fill dark:bg-zinc-900/60 border border-black/5 dark:border-white/10 flex items-center justify-between">
+                                    <div className="p-3.5 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 flex items-center justify-between">
                                         <div>
                                             <h4 className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
                                                 <span>Realistic Route Tracing</span>
@@ -649,7 +649,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
 
                             <div className="space-y-3">
                                 {/* Time of Day */}
-                                <div className="p-4 rounded-3xl bg-zinc-900/60 border border-white/10 space-y-2">
+                                <div className="p-4 rounded-3xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 space-y-2">
                                     <div className="flex items-center justify-between">
                                         <div>
                                             <h4 className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
@@ -666,7 +666,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                             type="button"
                                             onClick={() => updateField('timeOfDay', !settings.timeOfDay)}
                                             className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                                                settings.timeOfDay ? 'bg-blue-600' : 'bg-zinc-700'
+                                                settings.timeOfDay ? 'bg-blue-600' : 'bg-black/10 dark:bg-white/10'
                                             }`}
                                         >
                                             <span
@@ -679,7 +679,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                 </div>
 
                                 {/* Rain Radar */}
-                                <div className="p-4 rounded-3xl bg-zinc-900/60 border border-white/10 space-y-3">
+                                <div className="p-4 rounded-3xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 space-y-3">
                                     <div className="flex items-center justify-between">
                                         <div>
                                             <h4 className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">

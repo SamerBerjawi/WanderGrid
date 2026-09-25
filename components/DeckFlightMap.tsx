@@ -837,7 +837,27 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         const runwayGeometries: RunwayGeometry[] = [];
         const processedRunwayKeys = new Set<string>();
 
-        // 1. Calculate frequencies and deduplicate flight corridors
+        // 1. First pass: Compute frequency of every airport and location across all trips and transports
+        enrichedTrips.forEach(trip => {
+            trip.transports?.forEach(t => {
+                if (!t.originLat || !t.originLng || !t.destLat || !t.destLng) return;
+
+                const oCode = (t.origin || '').toUpperCase().trim();
+                const dCode = (t.destination || '').toUpperCase().trim();
+                const p1 = `${t.originLat.toFixed(3)},${t.originLng.toFixed(3)}`;
+                const p2 = `${t.destLat.toFixed(3)},${t.destLng.toFixed(3)}`;
+
+                airportFreqMap.set(p1, (airportFreqMap.get(p1) || 0) + 1);
+                airportFreqMap.set(p2, (airportFreqMap.get(p2) || 0) + 1);
+                if (oCode) airportFreqMap.set(oCode, (airportFreqMap.get(oCode) || 0) + 1);
+                if (dCode) airportFreqMap.set(dCode, (airportFreqMap.get(dCode) || 0) + 1);
+            });
+        });
+
+        // 2. Second pass: Build flight corridors, overland routes, and airport hub points with accurate traffic weights
+        const isFreqMode = activeAppearance.airportMode === 'frequency';
+        const baseOriginRadius = activeAppearance.airportSize === 'small' ? 3.0 : activeAppearance.airportSize === 'large' ? 8.0 : 5.0;
+
         enrichedTrips.forEach(trip => {
             trip.transports?.forEach(t => {
                 if (!t.originLat || !t.originLng || !t.destLat || !t.destLng) return;
@@ -853,10 +873,6 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
                 const p1 = `${t.originLat.toFixed(3)},${t.originLng.toFixed(3)}`;
                 const p2 = `${t.destLat.toFixed(3)},${t.destLng.toFixed(3)}`;
-                airportFreqMap.set(p1, (airportFreqMap.get(p1) || 0) + 1);
-                airportFreqMap.set(p2, (airportFreqMap.get(p2) || 0) + 1);
-                if (oCode) airportFreqMap.set(oCode, (airportFreqMap.get(oCode) || 0) + 1);
-                if (dCode) airportFreqMap.set(dCode, (airportFreqMap.get(dCode) || 0) + 1);
 
                 if (isFlight) {
                     if (!flightCorridorsMap.has(corridorId)) {
@@ -928,9 +944,10 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 const isDestAirport = dCode.length === 3 || dCode.length === 4;
                 const metaOrigin = isOriginAirport ? resolveLocationMetadata(oCode, t.originLat, t.originLng) : null;
                 const metaDest = isDestAirport ? resolveLocationMetadata(dCode, t.destLat, t.destLng) : null;
-                const baseOriginRadius = activeAppearance.airportSize === 'small' ? 2.5 : activeAppearance.airportSize === 'large' ? 7.5 : 5.0;
-                const origFreq = airportFreqMap.get(p1) || 1;
-                const destFreq = airportFreqMap.get(p2) || 1;
+
+                const origFreq = Math.max(airportFreqMap.get(p1) || 1, oCode ? (airportFreqMap.get(oCode) || 1) : 1);
+                const destFreq = Math.max(airportFreqMap.get(p2) || 1, dCode ? (airportFreqMap.get(dCode) || 1) : 1);
+                const scaleFactor = activeAppearance.airportSize === 'small' ? 1.5 : activeAppearance.airportSize === 'large' ? 3.5 : 2.5;
 
                 if (!pointsMap.has(p1)) {
                     pointsMap.set(p1, {
@@ -942,10 +959,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         tripId: trip.id,
                         color: isOriginAirport ? [250, 154, 29, 240] : [251, 191, 36, 240],
                         strokeColor: [255, 255, 255, 230],
-                        radius: activeAppearance.airportMode === 'frequency'
-                            ? (activeAppearance.airportSize === 'small'
-                                ? Math.min(7.0, baseOriginRadius + Math.log2(origFreq) * 0.75)
-                                : Math.min(16, baseOriginRadius + Math.log2(origFreq) * 1.6))
+                        frequency: origFreq,
+                        radius: isFreqMode
+                            ? Math.min(24.0, baseOriginRadius + Math.log2(Math.max(1, origFreq)) * scaleFactor)
                             : baseOriginRadius
                     });
                 }
@@ -959,10 +975,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         tripId: trip.id,
                         color: isDestAirport ? [250, 154, 29, 240] : [251, 191, 36, 240],
                         strokeColor: [255, 255, 255, 230],
-                        radius: activeAppearance.airportMode === 'frequency'
-                            ? (activeAppearance.airportSize === 'small'
-                                ? Math.min(7.0, baseOriginRadius + Math.log2(destFreq) * 0.75)
-                                : Math.min(16, baseOriginRadius + Math.log2(destFreq) * 1.6))
+                        frequency: destFreq,
+                        radius: isFreqMode
+                            ? Math.min(24.0, baseOriginRadius + Math.log2(Math.max(1, destFreq)) * scaleFactor)
                             : baseOriginRadius
                     });
                 }
@@ -1604,13 +1619,20 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                             return d.strokeColor;
                         },
                         getRadius: (d: any) => {
+                            const baseRadius = activeAppearance.airportSize === 'small' ? 3.0 : activeAppearance.airportSize === 'large' ? 8.0 : 5.0;
+                            let r = baseRadius;
+                            if (activeAppearance.airportMode === 'frequency') {
+                                const freq = d.frequency || 1;
+                                const scaleFactor = activeAppearance.airportSize === 'small' ? 1.5 : activeAppearance.airportSize === 'large' ? 3.5 : 2.5;
+                                r = Math.min(24, baseRadius + Math.log2(Math.max(1, freq)) * scaleFactor);
+                            }
                             if (selectedCorridor) {
                                 const code = (d.iata || d.name || '').toUpperCase().trim();
                                 if (code === selectedCorridor.originCode || code === selectedCorridor.destCode) {
-                                    return d.radius * 1.5;
+                                    return r * 1.6;
                                 }
                             }
-                            return d.radius;
+                            return r;
                         },
                         radiusUnits: 'pixels',
                         radiusMinPixels: activeAppearance.airportSize === 'small' ? 1.0 : 2,
@@ -1668,6 +1690,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         onTripClick
     ]);
 
+    const deckLayersRef = useRef(deckLayers);
+    deckLayersRef.current = deckLayers;
+
     // Initialize MapLibre GL Map & MapboxOverlay Bridge
     useEffect(() => {
         if (!mapContainerRef.current) return;
@@ -1701,7 +1726,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
         const overlay = new MapboxOverlay({
             interleaved: false,
-            layers: deckLayers
+            layers: deckLayersRef.current
         });
 
         map.on('load', () => {
@@ -1726,8 +1751,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 }
                 map.addControl(overlay as any);
                 overlay.setProps({
-                    layers: deckLayers
+                    layers: deckLayersRef.current
                 });
+                map.triggerRepaint();
             } catch (err) {
                 console.warn('[MapLibre] Load init warning:', err);
             }
@@ -1788,10 +1814,12 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
     // Update Deck.gl Layers efficiently without rebuilding the map
     useEffect(() => {
+        deckLayersRef.current = deckLayers;
         if (overlayRef.current) {
             overlayRef.current.setProps({
                 layers: deckLayers
             });
+            mapRef.current?.triggerRepaint();
         }
     }, [deckLayers]);
 
