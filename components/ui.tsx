@@ -125,11 +125,11 @@ export const TimeInput: React.FC<TimeInputProps> = ({ label, value, onChange, cl
   const isPm = hour >= 12;
   const displayHour = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour);
 
-  const handlePeriodChange = (p: 'AM' | 'PM') => {
+  const togglePeriod = () => {
     let newH = displayHour;
-    if (p === 'PM' && newH !== 12) newH += 12;
-    if (p === 'AM' && newH === 12) newH = 0;
-    if (p === 'PM' && newH === 12) newH = 12;
+    if (!isPm && newH !== 12) newH += 12;
+    if (isPm && newH === 12) newH = 0;
+    if (!isPm && newH === 12) newH = 12;
 
     onChange(`${String(newH).padStart(2, '0')}:${minuteStr || '00'}`);
   };
@@ -158,41 +158,44 @@ export const TimeInput: React.FC<TimeInputProps> = ({ label, value, onChange, cl
   return (
     <div className={cn("flex flex-col gap-1.5 w-full", className)}>
       {label && <label className={SECTION_LABEL_STYLE}>{label}</label>}
-      <div className="flex gap-2 h-10">
-        <div className="relative w-16 h-full">
-          <input
-            type="number"
-            min="1"
-            max="12"
-            className="w-full h-full px-2 rounded-2xl bg-white dark:bg-dark-card border border-black/10 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 text-center text-xs font-bold text-light-text dark:text-dark-text [&::-webkit-inner-spin-button]:cursor-pointer [&::-webkit-inner-spin-button]:opacity-40 hover:[&::-webkit-inner-spin-button]:opacity-80"
-            value={displayHour}
-            onChange={handleHourChange}
-          />
-          <span className="absolute top-1/2 -right-2 -translate-y-1/2 font-bold text-light-text-secondary/40 dark:text-dark-text-secondary/40">:</span>
-        </div>
-        <div className="relative w-16 h-full">
-          <input
-            type="number"
-            min="0"
-            max="59"
-            className="w-full h-full px-2 rounded-2xl bg-white dark:bg-dark-card border border-black/10 dark:border-white/5 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500 text-center text-xs font-bold text-light-text dark:text-dark-text [&::-webkit-inner-spin-button]:cursor-pointer [&::-webkit-inner-spin-button]:opacity-40 hover:[&::-webkit-inner-spin-button]:opacity-80"
-            value={minuteStr || '00'}
-            onChange={handleMinuteChange}
-          />
-        </div>
-        <div className={cn(SEGMENTED_TAB_WRAPPER, "!p-0.5 flex-1 h-full")}>
+      <GlassPanel
+        className="wg-glass-pill w-full transition-all duration-180 ease-glass border-black/10 dark:border-white/10 min-h-[44px] h-11"
+        padding="0px"
+        overrides={{ borderRadius: 20 }}
+      >
+        <div className="flex items-center justify-between min-h-[44px] h-11 px-3 w-full text-xs font-bold">
+          {/* Hours : Minutes */}
+          <div className="flex items-center gap-1">
+            <input
+              type="number"
+              min="1"
+              max="12"
+              className="w-8 bg-transparent text-center text-xs font-bold text-light-text dark:text-dark-text focus:outline-none [&::-webkit-inner-spin-button]:opacity-30 hover:[&::-webkit-inner-spin-button]:opacity-70 cursor-pointer"
+              value={displayHour}
+              onChange={handleHourChange}
+            />
+            <span className="font-bold text-light-text-secondary/50 dark:text-dark-text-secondary/50 select-none">:</span>
+            <input
+              type="number"
+              min="0"
+              max="59"
+              className="w-8 bg-transparent text-center text-xs font-bold text-light-text dark:text-dark-text focus:outline-none [&::-webkit-inner-spin-button]:opacity-30 hover:[&::-webkit-inner-spin-button]:opacity-70 cursor-pointer"
+              value={minuteStr || '00'}
+              onChange={handleMinuteChange}
+            />
+          </div>
+
+          {/* Simple AM/PM Toggle button inside the time selector */}
           <button
             type="button"
-            onClick={() => handlePeriodChange('AM')}
-            className={cn("flex-1 rounded-xl text-2xs font-bold uppercase tracking-wider transition-all h-full flex items-center justify-center", !isPm ? "bg-white dark:bg-dark-card text-primary-500 shadow-sm" : "text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100")}
-          >AM</button>
-          <button
-            type="button"
-            onClick={() => handlePeriodChange('PM')}
-            className={cn("flex-1 rounded-xl text-2xs font-bold uppercase tracking-wider transition-all h-full flex items-center justify-center", isPm ? "bg-white dark:bg-dark-card text-primary-500 shadow-sm" : "text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100")}
-          >PM</button>
+            onClick={togglePeriod}
+            className="px-2.5 py-1 rounded-xl text-2xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 text-primary-600 dark:text-primary-400 transition-colors cursor-pointer select-none"
+            title="Click to toggle AM/PM"
+          >
+            {isPm ? 'PM' : 'AM'}
+          </button>
         </div>
-      </div>
+      </GlassPanel>
     </div>
   );
 };
@@ -738,28 +741,35 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
   return (
     <div className="flex flex-col gap-1.5 w-full relative" ref={wrapperRef}>
       {label && <label className={SECTION_LABEL_STYLE}>{label}</label>}
-      <div className="relative group">
-        <input
-          className={cn(
-            INPUT_BASE_STYLE,
-            "min-h-[44px] h-11 !rounded-2xl text-xs font-bold",
-            className
-          )}
-          value={value}
-          onChange={handleInputChange}
-          onKeyDown={handleKeyDown}
-          placeholder={placeholder}
-          type="text"
-        />
-        {isLoading && (
-          <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
-            <div className="w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="relative group w-full">
+        <GlassPanel
+          className="wg-glass-pill w-full transition-all duration-180 ease-glass border-black/10 dark:border-white/10 group-focus-within:border-primary-500/60 min-h-[44px] h-11"
+          padding="0px"
+          overrides={{ borderRadius: 20 }}
+        >
+          <div className="flex items-center min-h-[44px] h-11 px-3.5 w-full relative">
+            <input
+              className={cn(
+                "w-full bg-transparent text-xs font-bold text-light-text dark:text-dark-text placeholder-light-text-secondary/50 dark:placeholder-dark-text-secondary/50 focus:outline-none pr-6",
+                className
+              )}
+              value={value}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              placeholder={placeholder}
+              type="text"
+            />
+            {isLoading && (
+              <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
+                <div className="w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            )}
           </div>
-        )}
+        </GlassPanel>
       </div>
 
       {isOpen && suggestions.length > 0 && (
-        <ul className="absolute z-50 min-w-full w-max max-w-[90vw] mt-2 bg-white dark:bg-dark-card border border-black/10 dark:border-white/10 shadow-2xl rounded-2xl overflow-hidden max-h-60 overflow-y-auto animate-fade-in left-0 p-1">
+        <ul className="absolute z-dropdown min-w-full w-max max-w-[90vw] mt-2 bg-white/95 dark:bg-dark-card/95 backdrop-blur-xl border border-black/10 dark:border-white/10 shadow-2xl rounded-2xl overflow-hidden max-h-60 overflow-y-auto animate-fade-in left-0 p-1 custom-scrollbar">
           {suggestions.map((item, index) => {
             const isSelected = index === activeIndex;
             return (
@@ -768,7 +778,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
                 onClick={() => handleSelect(item)}
                 onMouseEnter={() => setActiveIndex(index)}
                 className={cn(
-                  "px-4 py-2.5 cursor-pointer text-xs font-bold rounded-xl transition-colors truncate max-w-[400px]",
+                  "px-3.5 py-2.5 cursor-pointer text-xs font-bold rounded-xl transition-colors truncate max-w-[400px]",
                   isSelected
                     ? "bg-primary-500 text-white"
                     : "text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/5"

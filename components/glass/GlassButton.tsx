@@ -65,6 +65,8 @@ export const GlassButton = React.forwardRef<HTMLButtonElement, GlassButtonProps>
     .filter(token => !/^(?:[\w-]+:)*(?:border$|border-[0-9]|border-black|border-white|rounded|bg-|shadow|p-|px-|py-|pt-|pb-|pl-|pr-|backdrop-blur)[^\s]*/.test(token))
     .join(' ');
 
+  const isExplicitHeight = /(?:^|\s)(?:h-\d+|h-\[|min-h-\[|min-h-\d+)/.test(filteredClassName);
+
   return (
     <button
       ref={ref}
@@ -75,14 +77,14 @@ export const GlassButton = React.forwardRef<HTMLButtonElement, GlassButtonProps>
       {...props}
     >
       <GlassPanel
-        className={`wg-glass-pill ${variantStyles} ${filteredClassName.includes('w-full') ? 'w-full' : ''} ${filteredClassName.includes('flex-1') ? 'flex-1' : ''}`}
-        padding={sizePadding}
+        className={`wg-glass-pill ${variantStyles} ${filteredClassName.includes('w-full') ? 'w-full' : ''} ${filteredClassName.includes('flex-1') ? 'flex-1' : ''} ${isExplicitHeight ? 'h-full' : ''}`}
+        padding={isExplicitHeight ? '0px 16px' : sizePadding}
         overrides={{
           borderRadius: overrides?.borderRadius ?? 9999,
           ...overrides,
         }}
       >
-        <span className={`inline-flex items-center gap-2 justify-center leading-none text-xs uppercase tracking-wider font-sans select-none whitespace-nowrap ${variant === 'primary' || variant === 'danger' ? 'text-white' : ''}`}>
+        <span className={`inline-flex items-center gap-2 justify-center leading-none text-xs uppercase tracking-wider font-sans select-none whitespace-nowrap ${isExplicitHeight ? 'h-full' : ''} ${variant === 'primary' || variant === 'danger' ? 'text-white' : ''}`}>
           {isLoading ? (
             <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
           ) : icon ? (

@@ -39,10 +39,10 @@ export const GlassSelect = forwardRef<HTMLSelectElement, GlassSelectProps>(({
           className={`wg-glass-pill w-full transition-all duration-180 ease-glass ${
             error 
               ? '!border-rose-500 ring-2 ring-rose-500/20' 
-              : 'border-black/10 dark:border-white/10 group-focus-within:border-primary-500 group-focus-within:ring-2 group-focus-within:ring-primary-500/25'
+              : 'border-black/10 dark:border-white/10 group-focus-within:border-primary-500/60'
           } ${disabled ? 'opacity-50 pointer-events-none' : ''}`}
           padding="0px"
-          overrides={{ borderRadius: 16 }}
+          overrides={{ borderRadius: 20 }}
         >
           <div className="flex items-center min-h-[44px] h-11 px-3.5 w-full gap-2 relative">
             {leftElement && <span className="shrink-0 text-light-text-secondary dark:text-dark-text-secondary">{leftElement}</span>}

@@ -1449,13 +1449,13 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                     Return Leg ({cleanAirportCode(outboundDest || destination) || 'Destination'} &rarr; {cleanAirportCode(outboundOrigin) || 'Origin'})
                                 </span>
                                 <div className="grid grid-cols-2 gap-2">
-                                    <Input label="Return Date" type="date" value={returnDate || endDate} min={outboundDate || startDate} onChange={e => setReturnDate(e.target.value)} />
-                                    <TimeInput label="Return Time" value={returnTime} onChange={setReturnTime} />
+                                    <Input label="Date" type="date" value={returnDate || endDate} min={outboundDate || startDate} onChange={e => setReturnDate(e.target.value)} />
+                                    <TimeInput label="Time" value={returnTime} onChange={setReturnTime} />
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                    <Input label="Return Flight #" placeholder="e.g. AF 023" value={returnNumber} onChange={e => setReturnNumber(e.target.value)} />
-                                    <Select label="Return Cabin Class" options={CABIN_OPTIONS} value={returnTravelClass} onChange={e => setReturnTravelClass(e.target.value as any)} />
-                                    <Input label="Return Seat #" placeholder="e.g. 14A" value={returnSeatInfo} onChange={e => setReturnSeatInfo(e.target.value)} />
+                                    <Input label="Flight #" placeholder="e.g. AF 023" value={returnNumber} onChange={e => setReturnNumber(e.target.value)} />
+                                    <Select label="Cabin Class" options={CABIN_OPTIONS} value={returnTravelClass} onChange={e => setReturnTravelClass(e.target.value as any)} />
+                                    <Input label="Seat #" placeholder="e.g. 14A" value={returnSeatInfo} onChange={e => setReturnSeatInfo(e.target.value)} />
                                 </div>
                             </div>
                         )}
@@ -1511,12 +1511,12 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                     Return Train Leg
                                 </span>
                                 <div className="grid grid-cols-2 gap-2">
-                                    <Input label="Return Date" type="date" value={returnDate || endDate} min={outboundDate || startDate} onChange={e => setReturnDate(e.target.value)} />
-                                    <TimeInput label="Return Time" value={returnTime} onChange={setReturnTime} />
+                                    <Input label="Date" type="date" value={returnDate || endDate} min={outboundDate || startDate} onChange={e => setReturnDate(e.target.value)} />
+                                    <TimeInput label="Time" value={returnTime} onChange={setReturnTime} />
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                    <Input label="Return Train / Service #" placeholder="e.g. TGV 6174" value={returnNumber} onChange={e => setReturnNumber(e.target.value)} />
-                                    <Input label="Return Coach & Seat" placeholder="e.g. Coach 2, Seat 15" value={returnSeatInfo} onChange={e => setReturnSeatInfo(e.target.value)} />
+                                    <Input label="Train / Service #" placeholder="e.g. TGV 6174" value={returnNumber} onChange={e => setReturnNumber(e.target.value)} />
+                                    <Input label="Coach & Seat" placeholder="e.g. Coach 2, Seat 15" value={returnSeatInfo} onChange={e => setReturnSeatInfo(e.target.value)} />
                                 </div>
                             </div>
                         )}
@@ -1570,8 +1570,8 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                     Return Bus Leg
                                 </span>
                                 <div className="grid grid-cols-2 gap-2">
-                                    <Input label="Return Date" type="date" value={returnDate || endDate} min={outboundDate || startDate} onChange={e => setReturnDate(e.target.value)} />
-                                    <TimeInput label="Return Time" value={returnTime} onChange={setReturnTime} />
+                                    <Input label="Date" type="date" value={returnDate || endDate} min={outboundDate || startDate} onChange={e => setReturnDate(e.target.value)} />
+                                    <TimeInput label="Time" value={returnTime} onChange={setReturnTime} />
                                 </div>
                             </div>
                         )}
@@ -1708,8 +1708,8 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                     Return Voyage Leg
                                 </span>
                                 <div className="grid grid-cols-2 gap-2">
-                                    <Input label="Return Date" type="date" value={returnDate || endDate} min={outboundDate || startDate} onChange={e => setReturnDate(e.target.value)} />
-                                    <TimeInput label="Return Time" value={returnTime} onChange={setReturnTime} />
+                                    <Input label="Date" type="date" value={returnDate || endDate} min={outboundDate || startDate} onChange={e => setReturnDate(e.target.value)} />
+                                    <TimeInput label="Time" value={returnTime} onChange={setReturnTime} />
                                 </div>
                             </div>
                         )}
@@ -1927,11 +1927,11 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                 <div className="flex items-center justify-end gap-2 sm:gap-3 shrink-0">
                     {/* Live Estimated Cost Pill */}
                     <GlassPanel
-                        className="hidden sm:flex wg-glass-pill shadow-xs shrink-0"
-                        padding="6px 14px"
+                        className="hidden sm:inline-flex wg-glass-pill shadow-xs shrink-0 h-11 items-center justify-center"
+                        padding="0px 16px"
                         overrides={{ borderRadius: 9999 }}
                     >
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 h-11 leading-none">
                             <span className="text-[10px] uppercase font-bold tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
                                 Est. Total
                             </span>
@@ -1951,7 +1951,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                         type="button"
                         variant="ghost"
                         onClick={onClose}
-                        className="min-h-[44px] px-3.5 sm:px-4 text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text cursor-pointer"
+                        className="h-11 px-4 text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text cursor-pointer"
                     >
                         Cancel
                     </GlassButton>
@@ -1962,7 +1962,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                         variant="primary"
                         onClick={handleFinalizeTrip}
                         disabled={isSaving || !title || !startDate || !endDate}
-                        className="min-h-[44px] px-4 sm:px-5 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
+                        className="h-11 px-5 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
                     >
                         <span>{isSaving ? 'Creating...' : 'Create Trip'}</span>
                         <Check className="w-4 h-4 shrink-0" weight="bold" />
@@ -2104,15 +2104,23 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                     <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
                                         Trip Title <span className="text-rose-500">*</span>
                                     </label>
-                                    <input 
-                                        type="text"
-                                        className={`${INPUT_BASE_STYLE} h-14 !text-xl font-bold`}
-                                        placeholder="e.g. Greek Island Odyssey" 
-                                        value={title} 
-                                        onChange={e => setTitle(e.target.value)} 
-                                        autoFocus
-                                        required
-                                    />
+                                    <GlassPanel
+                                        className="wg-glass-pill w-full transition-all duration-180 ease-glass border-black/10 dark:border-white/10 group-focus-within:border-primary-500/60 h-14"
+                                        padding="0px"
+                                        overrides={{ borderRadius: 20 }}
+                                    >
+                                        <div className="flex items-center h-14 px-4 w-full">
+                                            <input 
+                                                type="text"
+                                                className="w-full bg-transparent text-xl font-bold text-light-text dark:text-dark-text placeholder-light-text-secondary/50 dark:placeholder-dark-text-secondary/50 focus:outline-none"
+                                                placeholder="e.g. Greek Island Odyssey" 
+                                                value={title} 
+                                                onChange={e => setTitle(e.target.value)} 
+                                                autoFocus
+                                                required
+                                            />
+                                        </div>
+                                    </GlassPanel>
                                 </div>
 
                                 {/* Destination City Autocomplete */}
@@ -2405,21 +2413,24 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 Stay Type
                             </label>
                             <div className="grid grid-cols-4 gap-1.5">
-                                {ACCOMMODATION_TYPES.map(t => (
-                                    <button
-                                        key={t}
-                                        type="button"
-                                        onClick={() => setAccType(t)}
-                                        className={`min-h-[36px] py-1.5 px-1 rounded-xl text-center text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer truncate ${
-                                            accType === t
-                                            ? 'bg-white dark:bg-dark-card text-amber-600 dark:text-amber-400 shadow-sm border border-amber-500/30'
-                                            : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/10 dark:hover:bg-white/10'
-                                        }`}
-                                        title={t}
-                                    >
-                                        {t}
-                                    </button>
-                                ))}
+                                {ACCOMMODATION_TYPES.map(t => {
+                                    const isSel = accType === t;
+                                    return (
+                                        <button
+                                            key={t}
+                                            type="button"
+                                            onClick={() => setAccType(t)}
+                                            className={`p-2 rounded-xl flex flex-col items-center justify-center text-center transition-all cursor-pointer min-h-[44px] ${
+                                                isSel 
+                                                ? 'bg-white dark:bg-dark-card text-amber-600 dark:text-amber-400 shadow-sm border border-amber-500/30 font-bold' 
+                                                : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
+                                            }`}
+                                            title={t}
+                                        >
+                                            <span className="text-[10px] font-semibold uppercase tracking-tight leading-tight truncate w-full">{t}</span>
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
 
@@ -2574,14 +2585,22 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
                                     Trip Title <span className="text-rose-500">*</span>
                                 </label>
-                                <input 
-                                    type="text"
-                                    className={`${INPUT_BASE_STYLE} h-14 !text-xl font-bold`}
-                                    placeholder="e.g. Greek Island Odyssey" 
-                                    value={title} 
-                                    onChange={e => setTitle(e.target.value)} 
-                                    required
-                                />
+                                <GlassPanel
+                                    className="wg-glass-pill w-full transition-all duration-180 ease-glass border-black/10 dark:border-white/10 group-focus-within:border-primary-500/60 h-14"
+                                    padding="0px"
+                                    overrides={{ borderRadius: 20 }}
+                                >
+                                    <div className="flex items-center h-14 px-4 w-full">
+                                        <input 
+                                            type="text"
+                                            className="w-full bg-transparent text-xl font-bold text-light-text dark:text-dark-text placeholder-light-text-secondary/50 dark:placeholder-dark-text-secondary/50 focus:outline-none"
+                                            placeholder="e.g. Greek Island Odyssey" 
+                                            value={title} 
+                                            onChange={e => setTitle(e.target.value)} 
+                                            required
+                                        />
+                                    </div>
+                                </GlassPanel>
                             </div>
 
                             <div className="space-y-1.5">
@@ -2856,18 +2875,24 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                     Stay Type
                                 </label>
                                 <div className="grid grid-cols-4 gap-1.5">
-                                    {ACCOMMODATION_TYPES.map(t => (
-                                        <button 
-                                            key={t} 
-                                            type="button" 
-                                            onClick={() => setAccType(t)} 
-                                            className={`min-h-[36px] py-2 px-1 rounded-xl text-center text-2xs font-bold uppercase truncate cursor-pointer ${
-                                                accType === t ? 'bg-white dark:bg-dark-card text-amber-600 dark:text-amber-400 border border-amber-500/30 shadow-sm' : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/10 dark:hover:bg-white/10'
-                                            }`}
-                                        >
-                                            {t}
-                                        </button>
-                                    ))}
+                                    {ACCOMMODATION_TYPES.map(t => {
+                                        const isSel = accType === t;
+                                        return (
+                                            <button 
+                                                key={t} 
+                                                type="button" 
+                                                onClick={() => setAccType(t)} 
+                                                className={`p-2 rounded-xl flex flex-col items-center justify-center text-center transition-all cursor-pointer min-h-[44px] ${
+                                                    isSel 
+                                                        ? 'bg-white dark:bg-dark-card text-amber-600 dark:text-amber-400 shadow-sm border border-amber-500/30 font-bold' 
+                                                        : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
+                                                }`}
+                                                title={t}
+                                            >
+                                                <span className="text-[10px] font-semibold uppercase tracking-tight leading-tight truncate w-full">{t}</span>
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
 

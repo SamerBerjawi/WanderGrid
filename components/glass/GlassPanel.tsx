@@ -106,10 +106,10 @@ export const GlassPanel = forwardRef<HTMLDivElement, GlassPanelProps>(({
       onClick={onClick}
     >
       <LiquidGlass
-        displacementScale={config.displacementScale}
+        displacementScale={overrides?.displacementScale ?? (isPill ? 80 : config.displacementScale)}
         blurAmount={config.blurAmount}
         saturation={config.saturation}
-        aberrationIntensity={config.aberrationIntensity}
+        aberrationIntensity={overrides?.aberrationIntensity ?? (isPill ? 2 : config.aberrationIntensity)}
         elasticity={config.elasticity}
         borderRadius={resolvedBorderRadius}
         className={`wg-glass-panel ${variantClass} ${isFullHeight ? 'h-full' : ''} ${isFullWidth ? 'w-full' : ''}`.trim()}
