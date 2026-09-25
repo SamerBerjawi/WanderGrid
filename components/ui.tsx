@@ -1,4 +1,4 @@
-import React, { ReactNode, useState, useEffect, useRef, forwardRef } from 'react';
+import React, { ReactNode, useState, useEffect, useRef, forwardRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { CaretDown as ChevronDown, X } from '@phosphor-icons/react';
 import {
@@ -417,7 +417,7 @@ export const Modal: React.FC<ModalProps> = ({
       <GlassPanel
         ref={modalRef}
         className={cn(
-          "wg-glass-card w-full shadow-2xl overflow-hidden transform transition-all duration-300 max-h-[90vh] flex flex-col z-10",
+          "wg-glass-card w-full shadow-2xl overflow-hidden transform transition-all duration-300 max-h-[90vh] flex flex-col min-h-0 z-10",
           maxWidth,
           isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'
         )}
@@ -459,7 +459,7 @@ export const Modal: React.FC<ModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1">
+        <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1 min-h-0">
           {children}
         </div>
 
@@ -660,18 +660,69 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState<number>(-1);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLUListElement>(null);
   const timeoutRef = useRef<any>(null);
   const latestQueryRef = useRef<string>('');
+  const [coords, setCoords] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  const updateCoords = useCallback(() => {
+    if (!wrapperRef.current) return;
+    const rect = wrapperRef.current.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) return;
+
+    const width = Math.max(rect.width, 240);
+    let left = rect.left;
+    left = Math.max(12, Math.min((typeof window !== 'undefined' ? window.innerWidth : 360) - width - 12, left));
+
+    const dropdownHeight = dropdownRef.current?.offsetHeight || 240;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+
+    let top: number;
+    if (spaceBelow < dropdownHeight && spaceAbove > spaceBelow) {
+      top = Math.max(12, rect.top - dropdownHeight - 6);
+    } else {
+      top = rect.bottom + 6;
+      if (top + dropdownHeight > window.innerHeight - 12) {
+        top = Math.max(12, window.innerHeight - dropdownHeight - 12);
+      }
+    }
+
+    setCoords({ top, left, width });
+  }, []);
 
   useEffect(() => {
+    if (!isOpen) return;
+
+    updateCoords();
+    const handleScrollOrResize = () => {
+      updateCoords();
+    };
+
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
+
     function handleClickOutside(event: MouseEvent) {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (
+        wrapperRef.current && !wrapperRef.current.contains(target) &&
+        dropdownRef.current && !dropdownRef.current.contains(target)
+      ) {
         setIsOpen(false);
       }
     }
+
     document.addEventListener("mousedown", handleClickOutside);
+
     return () => {
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
       document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen, updateCoords]);
+
+  useEffect(() => {
+    return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, []);
@@ -771,8 +822,18 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
         </GlassPanel>
       </div>
 
-      {isOpen && suggestions.length > 0 && (
-        <ul className="absolute z-dropdown min-w-full w-max max-w-[90vw] mt-2 bg-white/95 dark:bg-dark-card/95 backdrop-blur-xl border border-black/10 dark:border-white/10 shadow-2xl rounded-2xl overflow-hidden max-h-60 overflow-y-auto animate-fade-in left-0 p-1 custom-scrollbar">
+      {isOpen && suggestions.length > 0 && coords && createPortal(
+        <ul
+          ref={dropdownRef}
+          style={{
+            position: 'fixed',
+            top: coords.top,
+            left: coords.left,
+            width: coords.width,
+            zIndex: 70, // z-popover
+          }}
+          className="z-popover min-w-full w-max max-w-[90vw] bg-white/95 dark:bg-dark-card/95 backdrop-blur-xl border border-black/10 dark:border-white/10 shadow-2xl rounded-2xl overflow-hidden max-h-60 overflow-y-auto animate-fade-in p-1 custom-scrollbar"
+        >
           {suggestions.map((item, index) => {
             const isSelected = index === activeIndex;
             return (
@@ -792,7 +853,8 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
               </li>
             );
           })}
-        </ul>
+        </ul>,
+        document.body
       )}
     </div>
   );

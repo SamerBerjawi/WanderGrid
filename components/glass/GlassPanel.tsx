@@ -78,10 +78,17 @@ export const GlassPanel = forwardRef<HTMLDivElement, GlassPanelProps>(({
     }
     // Inner layout & padding tokens
     if (
-      /^(?:[\w-]+:)*(?:p-|px-|py-|pt-|pb-|pl-|pr-|space-y-|space-x-|gap-|items-|justify-|content-|text-|leading-|tracking-)[^\s]*/.test(token) ||
-      token === 'flex' || token === 'inline-flex' || token === 'flex-col' || token === 'flex-row' || token === 'flex-wrap'
+      /^(?:[\w-]+:)*(?:p-|px-|py-|pt-|pb-|pl-|pr-|space-y-|space-x-|gap-|items-|justify-|content-|text-|leading-|tracking-)[^\s]*/.test(token)
     ) {
       innerTokens.push(token);
+      continue;
+    }
+    // Flex and min-height layout tokens must apply to BOTH inner and outer containers for proper flex chain
+    if (
+      token === 'flex' || token === 'inline-flex' || token === 'flex-col' || token === 'flex-row' || token === 'flex-wrap' || token === 'min-h-0'
+    ) {
+      innerTokens.push(token);
+      outerTokens.push(token);
       continue;
     }
     // Outer positioning, sizing, and flow tokens
@@ -90,7 +97,7 @@ export const GlassPanel = forwardRef<HTMLDivElement, GlassPanelProps>(({
 
   const outerClassName = outerTokens.join(' ');
   const innerClassName = innerTokens.join(' ');
-  const hasExplicitHeight = /(?:^|\s)(?:h-\[|h-\d+|min-h-\[|min-h-\d+|h-screen)/.test(className) || /(?:^|\s)(?:h-\[|h-\d+|min-h-\[|min-h-\d+|h-screen)/.test(outerClassName);
+  const hasExplicitHeight = /(?:^|\s)(?:h-\[|h-\d+|min-h-\[|min-h-\d+|max-h-\[|max-h-\d+|max-h-|h-screen)/.test(className) || /(?:^|\s)(?:h-\[|h-\d+|min-h-\[|min-h-\d+|max-h-\[|max-h-\d+|max-h-|h-screen)/.test(outerClassName);
   const isFullHeight = className.includes('h-full') || outerClassName.includes('h-full') || hasExplicitHeight;
   const isFullWidth = isCard || className.includes('w-full') || outerClassName.includes('w-full');
 
@@ -118,11 +125,11 @@ export const GlassPanel = forwardRef<HTMLDivElement, GlassPanelProps>(({
         mouseContainer={mouseContainer}
       >
         {innerClassName ? (
-          <div className={`w-full ${isFullHeight ? 'h-full flex-1' : ''} ${innerClassName}`.trim()}>
+          <div className={`w-full ${isFullHeight ? 'h-full flex-1 min-h-0' : ''} ${innerClassName}`.trim()}>
             {children}
           </div>
         ) : isFullHeight ? (
-          <div className="w-full h-full flex-1 flex flex-col">
+          <div className="w-full h-full flex-1 min-h-0 flex flex-col">
             {children}
           </div>
         ) : (

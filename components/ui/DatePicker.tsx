@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   CalendarBlank, 
   CaretLeft, 
@@ -125,8 +126,46 @@ export const DatePicker: React.FC<DatePickerProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState<{ top: number; left: number; width: number } | null>(null);
 
   const theme = ACCENT_THEMES[accentColor] || ACCENT_THEMES.primary;
+
+  const updatePosition = useCallback(() => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) return;
+
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+    const popoverWidth = isMobile ? Math.min(window.innerWidth - 24, 320) : 320;
+
+    let left: number;
+    if (align === 'right') {
+      left = rect.right - popoverWidth;
+    } else {
+      left = rect.left;
+    }
+    // Clamp horizontally within viewport
+    left = Math.max(12, Math.min((typeof window !== 'undefined' ? window.innerWidth : 360) - popoverWidth - 12, left));
+
+    const popoverHeight = popoverRef.current?.offsetHeight || 340;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+
+    let top: number;
+    if (spaceBelow < popoverHeight && spaceAbove > spaceBelow) {
+      // Flip upwards if not enough room below and more room above
+      top = Math.max(12, rect.top - popoverHeight - 8);
+    } else {
+      top = rect.bottom + 8;
+      // Clamp to viewport if bottom goes past screen
+      if (top + popoverHeight > window.innerHeight - 12) {
+        top = Math.max(12, window.innerHeight - popoverHeight - 12);
+      }
+    }
+
+    setCoords({ top, left, width: popoverWidth });
+  }, [align]);
 
   // Calendar month/year navigation state
   const initialDate = parseIso(value) || parseIso(minDate) || new Date();
@@ -144,24 +183,42 @@ export const DatePicker: React.FC<DatePickerProps> = ({
     }
   }, [value]);
 
-  // Click outside listener to dismiss popover
+  // Reposition on scroll / resize & handle dismiss
   useEffect(() => {
     if (!isOpen) return;
+
+    updatePosition();
+    const handleScrollOrResize = () => {
+      updatePosition();
+    };
+
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
+
     const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        containerRef.current && !containerRef.current.contains(target) &&
+        popoverRef.current && !popoverRef.current.contains(target)
+      ) {
         setIsOpen(false);
       }
     };
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setIsOpen(false);
     };
+
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('keydown', handleKeyDown);
+
     return () => {
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen]);
+  }, [isOpen, updatePosition]);
 
   // Month navigation
   const prevMonth = (e: React.MouseEvent) => {
@@ -293,12 +350,18 @@ export const DatePicker: React.FC<DatePickerProps> = ({
 
       {error && <p className="text-2xs text-rose-500 font-bold ml-1">{error}</p>}
 
-      {/* Dropdown Calendar Popover: Crisp Opaque Surface with High Elevation */}
-      {isOpen && (
+      {/* Dropdown Calendar Popover: Rendered via Portal to eliminate overflow clipping */}
+      {isOpen && coords && createPortal(
         <div
-          className={`absolute top-full ${
-            align === 'right' ? 'right-0' : 'left-0'
-          } w-full sm:w-[320px] mt-2 z-popover animate-fadeIn bg-white dark:bg-[#121820] border border-black/10 dark:border-white/15 shadow-[0_24px_64px_-12px_rgba(0,0,0,0.8)] rounded-3xl p-4 select-none`}
+          ref={popoverRef}
+          style={{
+            position: 'fixed',
+            top: coords.top,
+            left: coords.left,
+            width: coords.width,
+            zIndex: 70, // z-popover
+          }}
+          className="z-popover animate-fadeIn bg-white dark:bg-[#121820] border border-black/10 dark:border-white/15 shadow-[0_24px_64px_-12px_rgba(0,0,0,0.8)] rounded-3xl p-4 select-none"
         >
           {/* Popover Header: Month Title & Arrows */}
           <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/5">
@@ -392,7 +455,8 @@ export const DatePicker: React.FC<DatePickerProps> = ({
               <Check className="w-3.5 h-3.5" weight="bold" />
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
