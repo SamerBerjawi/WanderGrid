@@ -13,6 +13,11 @@ import {
     Boat, 
     Globe,
     ArrowRight,
+    ArrowUpRight,
+    Bed,
+    Users,
+    Compass,
+    AirplaneTilt,
     MapTrifold,
     SuitcaseSimple,
     Clock,
@@ -893,80 +898,117 @@ const TripCard: React.FC<TripCardProps> = ({ trip, stage, onClick }) => {
         return diff > 0 ? diff : null;
     }, [trip.startDate, trip.endDate]);
 
-    // Stage border accent
-    const indicatorGlow = 
-        stage === 'sky'
-            ? 'bg-sky-500 shadow-[0_0_10px_rgba(14,165,233,0.7)]'
-            : stage === 'emerald'
-            ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.7)]'
-            : 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.7)]';
-
-    const stageColors = 
-        stage === 'sky'
-            ? {
-                titleHover: 'group-hover:text-sky-500 dark:group-hover:text-sky-400',
-                calendarIcon: 'text-sky-500 dark:text-sky-400',
-                pinIcon: 'text-sky-500',
-                arrowAction: 'hover:!bg-sky-500 hover:!text-white hover:!border-sky-400 hover:shadow-[0_0_12px_rgba(14,165,233,0.5)] active:!bg-sky-600 group-hover:bg-sky-500/15 group-hover:text-sky-600 dark:group-hover:text-sky-300 group-hover:border-sky-500/30'
-            }
-            : stage === 'emerald'
-            ? {
-                titleHover: 'group-hover:text-emerald-500 dark:group-hover:text-emerald-400',
-                calendarIcon: 'text-emerald-500 dark:text-emerald-400',
-                pinIcon: 'text-emerald-500',
-                arrowAction: 'hover:!bg-emerald-500 hover:!text-white hover:!border-emerald-400 hover:shadow-[0_0_12px_rgba(16,185,129,0.5)] active:!bg-emerald-600 group-hover:bg-emerald-500/15 group-hover:text-emerald-600 dark:group-hover:text-emerald-300 group-hover:border-emerald-500/30'
-            }
-            : {
-                titleHover: 'group-hover:text-amber-500 dark:group-hover:text-amber-400',
-                calendarIcon: 'text-amber-500 dark:text-amber-400',
-                pinIcon: 'text-amber-500',
-                arrowAction: 'hover:!bg-amber-500 hover:!text-white hover:!border-amber-400 hover:shadow-[0_0_12px_rgba(245,158,11,0.5)] active:!bg-amber-600 group-hover:bg-amber-500/15 group-hover:text-amber-600 dark:group-hover:text-amber-300 group-hover:border-amber-500/30'
+    // Stage theme configuration
+    const stageConfig = useMemo(() => {
+        if (stage === 'emerald') {
+            return {
+                railColor: 'bg-emerald-500',
+                railGlow: 'shadow-[0_0_12px_rgba(16,185,129,0.7)]',
+                auraColor: 'bg-emerald-500/15',
+                ambientWash: 'from-emerald-500/[0.08] via-teal-500/[0.02] to-transparent',
+                iconBadge: 'bg-emerald-500/10 border-emerald-500/25 text-emerald-600 dark:text-emerald-400',
+                defaultIcon: CheckCircle,
+                statusTag: 'COMPLETED',
+                statusBadge: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/25',
+                calendarColor: 'text-emerald-500 dark:text-emerald-400',
+                pinColor: 'text-emerald-500 dark:text-emerald-400',
+                durationBadge: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
+                stopsBadge: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
+                arrowHover: 'group-hover:!bg-emerald-500 group-hover:!text-white group-hover:!border-emerald-400 group-hover:shadow-[0_0_14px_rgba(16,185,129,0.5)]'
             };
+        }
+        if (stage === 'sky') {
+            return {
+                railColor: 'bg-sky-500',
+                railGlow: 'shadow-[0_0_12px_rgba(14,165,233,0.7)]',
+                auraColor: 'bg-sky-500/15',
+                ambientWash: 'from-sky-500/[0.08] via-indigo-500/[0.02] to-transparent',
+                iconBadge: 'bg-sky-500/10 border-sky-500/25 text-sky-600 dark:text-sky-400',
+                defaultIcon: AirplaneTilt,
+                statusTag: 'CONFIRMED',
+                statusBadge: 'bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/25',
+                calendarColor: 'text-sky-500 dark:text-sky-400',
+                pinColor: 'text-sky-500 dark:text-sky-400',
+                durationBadge: 'bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30',
+                stopsBadge: 'bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30',
+                arrowHover: 'group-hover:!bg-sky-500 group-hover:!text-white group-hover:!border-sky-400 group-hover:shadow-[0_0_14px_rgba(14,165,233,0.5)]'
+            };
+        }
+        return {
+            railColor: 'bg-amber-500',
+            railGlow: 'shadow-[0_0_12px_rgba(245,158,11,0.7)]',
+            auraColor: 'bg-amber-500/15',
+            ambientWash: 'from-amber-500/[0.08] via-orange-500/[0.02] to-transparent',
+            iconBadge: 'bg-amber-500/10 border-amber-500/25 text-amber-600 dark:text-amber-400',
+            defaultIcon: Compass,
+            statusTag: 'PLANNED',
+            statusBadge: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/25',
+            calendarColor: 'text-amber-500 dark:text-amber-400',
+            pinColor: 'text-amber-500 dark:text-amber-400',
+            durationBadge: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30',
+            stopsBadge: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30',
+            arrowHover: 'group-hover:!bg-amber-500 group-hover:!text-white group-hover:!border-amber-400 group-hover:shadow-[0_0_14px_rgba(245,158,11,0.5)]'
+        };
+    }, [stage]);
+
+    const DefaultStageIcon = stageConfig.defaultIcon;
 
     return (
         <GlassPanel
-            className="wg-glass-card shadow-glass-card w-full cursor-pointer overflow-hidden transition-all duration-200 active:scale-[0.99]"
+            className="wg-glass-card shadow-glass-card hover:shadow-2xl transition-all duration-300 w-full cursor-pointer overflow-hidden rounded-[26px] active:scale-[0.99]"
             padding="0px"
-            overrides={{ borderRadius: 24 }}
+            overrides={{ borderRadius: 26 }}
             onClick={onClick}
         >
             <div
-                className="group relative p-5 pl-6 bg-white/60 dark:bg-dark-card/65 backdrop-blur-xl border border-black/10 dark:border-white/15 hover:border-black/20 dark:hover:border-white/30 hover:shadow-xl transition-all duration-200 flex flex-col gap-3.5 overflow-hidden"
+                className={`group relative p-5 bg-white/70 dark:bg-dark-card/75 backdrop-blur-xl border border-black/8 dark:border-white/10 hover:border-black/20 dark:hover:border-white/25 transition-all duration-300 flex flex-col gap-3.5 overflow-hidden rounded-[26px] bg-gradient-to-br ${stageConfig.ambientWash}`}
             >
-                {/* Left Edge Indicator Glow Accent */}
-                <div className={`absolute left-0 top-3 bottom-3 w-1.5 rounded-r-full ${indicatorGlow}`} />
+                {/* Stage Ambient Light Glow (Top-Left) */}
+                <div 
+                    className={`w-36 h-36 rounded-full absolute -top-12 -left-12 ${stageConfig.auraColor} blur-2xl pointer-events-none opacity-40 group-hover:opacity-75 transition-opacity duration-500`} 
+                />
 
-                {/* Top Row: Title, Subtitle, & Hover Action Arrow */}
-                <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                        <h3 className={`text-base font-bold text-light-text dark:text-dark-text tracking-tight truncate ${stageColors.titleHover} transition-colors`}>
-                            {trip.name}
-                        </h3>
-                        {(trip.subtitle || trip.description) && (
-                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary truncate mt-0.5 font-medium">
-                                {trip.subtitle || trip.description}
-                            </p>
-                        )}
+                {/* Left Edge Tactile Indicator Rail */}
+                <div className={`absolute left-0 top-3.5 bottom-3.5 w-1.5 rounded-r-full ${stageConfig.railColor} ${stageConfig.railGlow} transition-all duration-300 group-hover:w-2 group-hover:opacity-100 opacity-90`} />
+
+                {/* Top Row: Identity Icon, Title & Micro-Action */}
+                <div className="flex items-start justify-between gap-3 relative z-10 pl-2">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                        {/* Micro-Icon / Emoji Surface */}
+                        <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 border shadow-xs transition-transform duration-300 group-hover:scale-105 backdrop-blur-md ${stageConfig.iconBadge}`}>
+                            {trip.icon ? (
+                                <span className="text-xl leading-none select-none">{trip.icon}</span>
+                            ) : (
+                                <DefaultStageIcon className="w-5 h-5" weight="duotone" />
+                            )}
+                        </div>
+
+                        {/* Title & Optional Subtitle */}
+                        <div className="min-w-0 flex-1">
+                            <h3 className="text-base sm:text-lg font-bold text-light-text dark:text-dark-text tracking-tight truncate group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                                {trip.name}
+                            </h3>
+                            {(trip.subtitle || trip.description) && (
+                                <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary truncate mt-0.5 font-medium">
+                                    {trip.subtitle || trip.description}
+                                </p>
+                            )}
+                        </div>
                     </div>
 
-                    {/* Right Arrow Micro-Action: Liquid-Glass Neutral by default, Accent on Hover/Click */}
-                    <GlassPanel
-                        className="wg-glass-pill shadow-xs transition-transform group-hover:scale-105 active:scale-95 shrink-0"
-                        padding="0px"
-                        overrides={{ borderRadius: 12 }}
+                    {/* Right Arrow Micro-Action Trigger */}
+                    <div 
+                        className={`w-10 h-10 min-w-[40px] min-h-[40px] rounded-2xl flex items-center justify-center bg-black/5 dark:bg-white/[0.06] backdrop-blur-md border border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary ${stageConfig.arrowHover} transition-all duration-300 shrink-0 shadow-xs active:scale-95 cursor-pointer`}
+                        aria-label="View trip details"
                     >
-                        <div 
-                            className={`w-8 h-8 rounded-xl flex items-center justify-center bg-white/50 dark:bg-white/[0.06] backdrop-blur-md border border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary ${stageColors.arrowAction} transition-all duration-200 cursor-pointer`}
-                        >
-                            <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" weight="duotone" />
-                        </div>
-                    </GlassPanel>
+                        <ArrowUpRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" weight="bold" />
+                    </div>
                 </div>
 
-                {/* Middle Row: Timeline Date Range Badge & Duration */}
-                <div className="flex items-center gap-2.5 text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium flex-wrap">
-                    <div className="flex items-center gap-1.5">
-                        <CalendarBlank className={`w-4 h-4 shrink-0 ${stageColors.calendarIcon} opacity-90`} weight="duotone" />
+                {/* Middle Row: Clean Timeline Date Range & Duration (No border, no background) */}
+                <div className="flex items-center gap-2.5 text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium flex-wrap relative z-10 pl-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                        <CalendarBlank className={`w-4 h-4 shrink-0 ${stageConfig.calendarColor} opacity-90`} weight="duotone" />
                         <span className="font-semibold text-light-text dark:text-dark-text">
                             {formatDateRange(trip.startDate, trip.endDate)}
                         </span>
@@ -974,67 +1016,95 @@ const TripCard: React.FC<TripCardProps> = ({ trip, stage, onClick }) => {
                     {durationDays && (
                         <span 
                             style={{ WebkitBackdropFilter: 'blur(8px)' }}
-                            className={`text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full border backdrop-blur-md shadow-xs ${
-                                stage === 'sky'
-                                    ? 'bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30'
-                                    : stage === 'emerald'
-                                    ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
-                                    : 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30'
-                            }`}
+                            className={`text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full border backdrop-blur-md shadow-xs ${stageConfig.durationBadge}`}
                         >
                             {durationDays} {durationDays === 1 ? 'day' : 'days'}
                         </span>
                     )}
                 </div>
 
-                {/* Bottom Row: Destination Chips & Transport Icons */}
-                <div className="flex items-center justify-between gap-2 pt-3 border-t border-black/10 dark:border-white/5 flex-wrap">
-                    {/* Destination Chips - Colored not neutral */}
-                    <div className="flex flex-wrap items-center gap-1.5 min-w-0 flex-1">
-                        {destinationsList.length > 0 ? (
-                            destinationsList.slice(0, 2).map((dest, i) => (
-                                <span 
-                                    key={i}
-                                    style={{ WebkitBackdropFilter: 'blur(8px)' }}
-                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold bg-cyan-500/15 dark:bg-cyan-500/20 text-cyan-800 dark:text-cyan-200 border border-cyan-500/30 shadow-xs backdrop-blur-md truncate max-w-[170px]"
-                                >
-                                    <MapPin className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400 shrink-0" weight="duotone" />
-                                    <span className="truncate">{dest}</span>
-                                </span>
-                            ))
-                        ) : (
-                            <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary font-medium italic">
-                                No destination specified
-                            </span>
-                        )}
-
-                        {destinationsList.length > 2 && (
+                {/* Route Row: Origin ➔ Destination Journey Itinerary with Liquid-Glass Styling */}
+                <div className="flex items-center gap-2 relative z-10 pl-2 flex-wrap">
+                    {destinationsList.length === 0 ? (
+                        <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary font-medium italic">
+                            No destinations specified
+                        </span>
+                    ) : destinationsList.length === 1 ? (
+                        <span 
+                            style={{ WebkitBackdropFilter: 'blur(8px)' }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-cyan-500/15 dark:bg-cyan-500/20 text-cyan-800 dark:text-cyan-200 border border-cyan-500/30 shadow-xs backdrop-blur-md truncate max-w-[240px]"
+                        >
+                            <MapPin className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400 shrink-0" weight="duotone" />
+                            <span className="truncate">{destinationsList[0]}</span>
+                        </span>
+                    ) : (
+                        <>
                             <span 
                                 style={{ WebkitBackdropFilter: 'blur(8px)' }}
-                                className="text-[10px] font-mono font-bold px-2 py-1 rounded-xl bg-cyan-500/20 text-cyan-800 dark:text-cyan-200 border border-cyan-500/30 backdrop-blur-md"
+                                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-cyan-500/15 dark:bg-cyan-500/20 text-cyan-800 dark:text-cyan-200 border border-cyan-500/30 shadow-xs backdrop-blur-md truncate max-w-[150px] sm:max-w-[170px]"
                             >
-                                +{destinationsList.length - 2}
+                                <MapPin className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400 shrink-0" weight="duotone" />
+                                <span className="truncate">{destinationsList[0]}</span>
+                            </span>
+
+                            <ArrowRight className="w-3.5 h-3.5 text-cyan-600/70 dark:text-cyan-400/70 shrink-0" />
+
+                            <span 
+                                style={{ WebkitBackdropFilter: 'blur(8px)' }}
+                                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-cyan-500/15 dark:bg-cyan-500/20 text-cyan-800 dark:text-cyan-200 border border-cyan-500/30 shadow-xs backdrop-blur-md truncate max-w-[150px] sm:max-w-[170px]"
+                            >
+                                <MapPin className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400 shrink-0" weight="duotone" />
+                                <span className="truncate">{destinationsList[1]}</span>
+                            </span>
+
+                            {destinationsList.length > 2 && (
+                                <span 
+                                    style={{ WebkitBackdropFilter: 'blur(8px)' }}
+                                    title={destinationsList.slice(2).join(', ')}
+                                    className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-cyan-500/20 text-cyan-800 dark:text-cyan-200 border border-cyan-500/30 backdrop-blur-md shadow-xs shrink-0 cursor-default"
+                                >
+                                    +{destinationsList.length - 2}
+                                </span>
+                            )}
+                        </>
+                    )}
+                </div>
+
+                {/* Bottom Row: Logistics (Stays / Travelers) & Transport Emblems */}
+                <div className="flex items-center justify-between gap-2 pt-3 border-t border-black/5 dark:border-white/5 relative z-10 pl-2 flex-wrap">
+                    {/* Left: Optional Logistics Badges */}
+                    <div className="flex items-center gap-3">
+                        {trip.accommodations && trip.accommodations.length > 0 && (
+                            <span className="inline-flex items-center gap-1 text-2xs font-semibold text-light-text-secondary dark:text-dark-text-secondary">
+                                <Bed className="w-3.5 h-3.5 text-primary-500" weight="duotone" />
+                                <span>{trip.accommodations.length} {trip.accommodations.length === 1 ? 'stay' : 'stays'}</span>
+                            </span>
+                        )}
+                        {trip.participants && trip.participants.length > 0 && (
+                            <span className="inline-flex items-center gap-1 text-2xs font-semibold text-light-text-secondary dark:text-dark-text-secondary">
+                                <Users className="w-3.5 h-3.5 text-indigo-500" weight="duotone" />
+                                <span>{trip.participants.length} {trip.participants.length === 1 ? 'traveler' : 'travelers'}</span>
                             </span>
                         )}
                     </div>
 
-                    {/* Transport Mode Badges - Individual colors for each transport method */}
+                    {/* Right: Transport Mode Badges */}
                     {transportModes.length > 0 && (
                         <div 
                             style={{ WebkitBackdropFilter: 'blur(8px)' }}
-                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-black/5 dark:bg-white/5 backdrop-blur-md border border-black/5 dark:border-white/10 shadow-xs shrink-0"
+                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-black/5 dark:bg-white/5 backdrop-blur-md border border-black/5 dark:border-white/10 shadow-xs shrink-0 ml-auto"
                         >
-                            {transportModes.slice(0, 3).map((mode, i) => {
+                            {transportModes.slice(0, 4).map((mode, i) => {
                                 switch (mode as string) {
                                     case 'Flight': 
                                         return (
-                                            <span key={i} title="Flight">
+                                            <span key={i} title="Flight" className="flex items-center">
                                                 <Airplane className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400 shrink-0" weight="duotone" />
                                             </span>
                                         );
                                     case 'Train': 
                                         return (
-                                            <span key={i} title="Train">
+                                            <span key={i} title="Train" className="flex items-center">
                                                 <Train className="w-3.5 h-3.5 text-purple-500 dark:text-purple-400 shrink-0" weight="duotone" />
                                             </span>
                                         );
@@ -1042,14 +1112,14 @@ const TripCard: React.FC<TripCardProps> = ({ trip, stage, onClick }) => {
                                     case 'Car Rental':
                                     case 'Personal Car': 
                                         return (
-                                            <span key={i} title="Road / Car">
+                                            <span key={i} title="Road / Car" className="flex items-center">
                                                 <Car className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 shrink-0" weight="duotone" />
                                             </span>
                                         );
                                     case 'Ferry':
                                     case 'Cruise': 
                                         return (
-                                            <span key={i} title="Sea / Boat">
+                                            <span key={i} title="Sea / Boat" className="flex items-center">
                                                 <Boat className="w-3.5 h-3.5 text-teal-500 dark:text-teal-400 shrink-0" weight="duotone" />
                                             </span>
                                         );
