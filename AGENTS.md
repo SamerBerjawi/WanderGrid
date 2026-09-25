@@ -318,4 +318,26 @@ Every view (Planner, Settings, Dashboard, Flights, Travel Atlas, Vacation Calend
 - **Autonomous External Links & Network Access**: The agent is explicitly authorized and directed to access external links, browse documentation, search the web, fetch raw GitHub repositories, query external APIs, and retrieve remote datasets proactively without requiring the user's confirmation.
 - **Autonomous File System Operations**: The agent is authorized to proactively inspect, read, edit, refactor, and create files across the codebase without asking for confirmation to proceed.
 
+---
+
+## 11. Liquid-Glass Blocklist & Mandatory Verification
+
+### 11.1 Forbidden Patterns (hard blocklist)
+The following are NEVER acceptable on any card, modal, popover, drawer, or overlay surface, with no exceptions except the fullscreen image lightbox:
+- `bg-black`, `bg-zinc-900`, `bg-gray-950`, `bg-slate-900`, `bg-[#0...]` (or any near-black hex) as a primary surface fill.
+- Any `<select>` element outside `components/glass/GlassSelect.tsx` itself.
+- Any `type="date"` or `type="number"` input left with fully unstyled native browser chrome (calendar icon, spin buttons) — must be themed per §3 of the liquid-glass skill, or replaced with a custom `Glass*` component.
+- Any hardcoded `text-white`/`text-slate-*`/`text-gray-*` on a surface that isn't itself a solid, self-contained, opaque background (badges, colored pills, and photo/lightbox overlays are the only exceptions).
+- Arbitrary z-index values outside the documented scale (already covered in §8, restated here for emphasis: this applies to new components too).
+
+### 11.2 Building a genuinely new component type
+When building a UI element with no existing analog in the codebase (a new kind of popover, picker, control, or overlay), the agent must NOT default to generic dark-dashboard styling. Instead:
+1. Identify the closest existing glass pattern (floating popover → mirror Sidebar's `wg-glass-pill`; full card/modal → mirror `wg-glass-card`).
+2. Extend, don't improvise — extrapolate the documented tokens (§7.1) to the new surface rather than inventing new colors/blur values.
+3. If truly no existing pattern fits, propose the new token addition to `design.md` explicitly rather than silently shipping something undocumented.
+
+### 11.3 Mandatory post-change self-check
+Before declaring any UI task complete, the agent must run the grep checks in §11.1 against every file it touched (and, for anything reachable from a navigation change, files it didn't touch but that render nearby) and confirm zero matches, or explicitly justify each remaining match. Report the result of this check in the final summary — do not silently skip it.
+
+
 

@@ -7,8 +7,9 @@ import {
 } from '@phosphor-icons/react';
 import { Sticker, StickerClaim, saveManualStickerClaim, deleteManualStickerClaim } from '../utils/stickersData';
 import { Trip } from '../types';
-import { Modal, Button, Input } from './ui';
+import { Modal, Button, Input, Select, DatePicker } from './ui';
 import { formatDate } from '../utils/formatters';
+import { INPUT_BASE_STYLE } from '../constants';
 
 interface StickerStampProps {
   sticker: Sticker;
@@ -402,39 +403,32 @@ export const StickerStamp: React.FC<StickerStampProps> = ({
                     Have you stood before this iconic landmark? Unlock this beautiful adhesive sticker for your booklet by logging your prior travel memories here.
                   </p>
 
-                  <Input 
-                    type="date" 
+                  <DatePicker 
                     label="Date of Visit"
                     value={claimDate}
-                    onChange={(e) => setClaimDate(e.target.value)}
-                    required
+                    onChange={(val) => setClaimDate(val)}
+                  />
+
+                  <Select
+                    label="Link with Database Trip (Optional)"
+                    value={matchedTripId}
+                    onChange={(e) => setMatchedTripId(e.target.value)}
+                    options={[
+                      { label: '-- No tied trip (Independent memory) --', value: '' },
+                      ...availableTrips.map(trip => ({
+                        label: `${trip.name} (${trip.location} - ${new Date(trip.startDate).getFullYear()})`,
+                        value: trip.id
+                      }))
+                    ]}
                   />
 
                   <div className="flex flex-col gap-1.5 w-full">
-                    <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide ml-1">
-                      Link with Database Trip (Optional)
-                    </label>
-                    <select
-                      className="w-full px-4 py-3 rounded-2xl bg-gray-50/50 border border-gray-200 focus:bg-white focus:border-blue-500 outline-none text-xs text-gray-800 dark:bg-gray-800/40 dark:border-white/10 dark:text-gray-100"
-                      value={matchedTripId}
-                      onChange={(e) => setMatchedTripId(e.target.value)}
-                    >
-                      <option value="">-- No tied trip (Independent memory) --</option>
-                      {availableTrips.map(trip => (
-                        <option key={trip.id} value={trip.id}>
-                          {trip.name} ({trip.location} - {new Date(trip.startDate).getFullYear()})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="flex flex-col gap-1.5 w-full">
-                    <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide ml-1">
+                    <label className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider">
                       Journal Entry Memories
                     </label>
                     <textarea
                       placeholder="e.g. The sunset was incredible and the altitude was breathtaking! Stood there feeling so tiny..."
-                      className="w-full h-24 px-4 py-3 text-xs rounded-2xl bg-gray-50/50 border border-gray-200 focus:bg-white focus:border-blue-500 outline-none text-gray-800 dark:bg-gray-800/40 dark:border-white/10 dark:text-gray-100"
+                      className={`${INPUT_BASE_STYLE} min-h-[96px] py-3 resize-none`}
                       value={memo}
                       onChange={(e) => setMemo(e.target.value)}
                       required

@@ -34,7 +34,7 @@ import {
     Tag,
     Path
 } from '@phosphor-icons/react';
-import { Input, Autocomplete, TimeInput, Select, DateRangePicker } from './ui';
+import { Input, Autocomplete, TimeInput, Select, DateRangePicker, DatePicker } from './ui';
 import GlassPanel from './glass/GlassPanel';
 import GlassButton from './glass/GlassButton';
 import { Trip, Transport, Accommodation, TransportMode, User, GeoCoordinates, WorkspaceSettings } from '../types';
@@ -1345,19 +1345,39 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                    <Select 
-                                        label="Cabin / Travel Class" 
-                                        value={travelClass} 
-                                        onChange={e => setTravelClass(e.target.value as any)}
-                                        options={CABIN_OPTIONS}
-                                    />
-                                    <Input 
-                                        label="Seat Number" 
-                                        placeholder="e.g. 14A" 
-                                        value={seatInfo} 
-                                        onChange={e => setSeatInfo(e.target.value)} 
-                                    />
+                                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                                    <div className="sm:col-span-8 space-y-1">
+                                        <label className="block text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                                            Cabin Class
+                                        </label>
+                                        <div className="bg-black/5 dark:bg-white/5 p-1 rounded-2xl flex border border-black/10 dark:border-white/5 gap-1 min-h-[44px] items-center">
+                                            {CABIN_OPTIONS.map(opt => {
+                                                const isSelected = (travelClass || 'Economy') === opt.value;
+                                                return (
+                                                    <button
+                                                        key={opt.value}
+                                                        type="button"
+                                                        onClick={() => setTravelClass(opt.value as any)}
+                                                        className={`flex-1 min-h-[36px] py-1.5 px-1 rounded-xl text-2xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center ${
+                                                            isSelected
+                                                                ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm'
+                                                                : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
+                                                        }`}
+                                                    >
+                                                        {opt.label.replace(' Class', '').replace('Premium Economy', 'Prem. Econ')}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                    <div className="sm:col-span-4">
+                                        <Input 
+                                            label="Seat Number" 
+                                            placeholder="e.g. 14A" 
+                                            value={seatInfo} 
+                                            onChange={e => setSeatInfo(e.target.value)} 
+                                        />
+                                    </div>
                                 </div>
 
                                  <TimeInput label="Departure Time" value={outboundTime} onChange={setOutboundTime} />
@@ -1377,67 +1397,91 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
 
                                     return (
                                         <React.Fragment key={leg.id || legIdx}>
-                                            <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-white/90 dark:bg-dark-card/90 border border-black/10 dark:border-white/10 shadow-none sm:shadow-xs space-y-3">
-                                                <div className="flex items-center justify-between border-b border-black/5 dark:border-white/5 pb-2">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
-                                                            Leg {legIdx + 1} of {connectingLegs.length}
-                                                        </span>
-                                                        <span className="font-bold text-xs text-light-text dark:text-dark-text">
-                                                            {originCode} &rarr; {destCode}
-                                                        </span>
+                                            <GlassPanel 
+                                                className="wg-glass-card shadow-glass-card w-full overflow-hidden border border-black/10 dark:border-white/10" 
+                                                overrides={{ borderRadius: 24 }} 
+                                                padding="0px"
+                                            >
+                                                <div className="p-3.5 sm:p-5 space-y-3.5">
+                                                    <div className="flex items-center justify-between border-b border-black/5 dark:border-white/5 pb-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
+                                                                Leg {legIdx + 1} of {connectingLegs.length}
+                                                            </span>
+                                                            <span className="font-bold text-xs text-light-text dark:text-dark-text">
+                                                                {originCode} &rarr; {destCode}
+                                                            </span>
+                                                        </div>
+                                                        {leg.carrier && (
+                                                            <AirlineLogoBadge carrier={leg.carrier} className="w-7 h-7" />
+                                                        )}
                                                     </div>
-                                                    {leg.carrier && (
-                                                        <AirlineLogoBadge carrier={leg.carrier} className="w-7 h-7" />
-                                                    )}
-                                                </div>
 
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                    <Input 
-                                                        label="Flight Number" 
-                                                        placeholder="e.g. AF 022" 
-                                                        value={leg.flightNumber} 
-                                                        onChange={e => handleConnectingLegChange(legIdx, 'flightNumber', e.target.value)} 
-                                                    />
-                                                    <Autocomplete 
-                                                        label="Airline *" 
-                                                        placeholder="e.g. Air France" 
-                                                        value={leg.carrier} 
-                                                        onChange={val => handleConnectingLegChange(legIdx, 'carrier', val.replace(/\s*\([A-Z0-9]+\)\s*$/, '').trim())} 
-                                                        fetchSuggestions={fetchAirlineSuggestions} 
-                                                    />
-                                                </div>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                        <Input 
+                                                            label="Flight Number" 
+                                                            placeholder="e.g. AF 022" 
+                                                            value={leg.flightNumber} 
+                                                            onChange={e => handleConnectingLegChange(legIdx, 'flightNumber', e.target.value)} 
+                                                        />
+                                                        <Autocomplete 
+                                                            label="Airline *" 
+                                                            placeholder="e.g. Air France" 
+                                                            value={leg.carrier} 
+                                                            onChange={val => handleConnectingLegChange(legIdx, 'carrier', val.replace(/\s*\([A-Z0-9]+\)\s*$/, '').trim())} 
+                                                            fetchSuggestions={fetchAirlineSuggestions} 
+                                                        />
+                                                    </div>
 
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    <Input 
-                                                        label="Departure Date" 
-                                                        type="date" 
-                                                        accentColor="blue"
-                                                        value={leg.departureDate || outboundDate || startDate} 
-                                                        onChange={e => handleConnectingLegChange(legIdx, 'departureDate', e.target.value)} 
-                                                    />
-                                                    <TimeInput 
-                                                        label="Departure Time" 
-                                                        value={leg.departureTime} 
-                                                        onChange={val => handleConnectingLegChange(legIdx, 'departureTime', val)} 
-                                                    />
-                                                </div>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                        <DatePicker 
+                                                            label="Departure Date" 
+                                                            value={leg.departureDate || outboundDate || startDate} 
+                                                            onChange={val => handleConnectingLegChange(legIdx, 'departureDate', val)} 
+                                                        />
+                                                        <TimeInput 
+                                                            label="Departure Time" 
+                                                            value={leg.departureTime} 
+                                                            onChange={val => handleConnectingLegChange(legIdx, 'departureTime', val)} 
+                                                        />
+                                                    </div>
 
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    <Select 
-                                                        label="Cabin Class" 
-                                                        value={leg.travelClass} 
-                                                        onChange={e => handleConnectingLegChange(legIdx, 'travelClass', e.target.value as any)}
-                                                        options={CABIN_OPTIONS}
-                                                    />
-                                                    <Input 
-                                                        label="Seat" 
-                                                        placeholder="e.g. 14A" 
-                                                        value={leg.seatNumber} 
-                                                        onChange={e => handleConnectingLegChange(legIdx, 'seatNumber', e.target.value)} 
-                                                    />
+                                                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                                                        <div className="sm:col-span-8 space-y-1">
+                                                            <label className="block text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                                                                Cabin Class
+                                                            </label>
+                                                            <div className="bg-black/5 dark:bg-white/5 p-1 rounded-2xl flex border border-black/10 dark:border-white/5 gap-1 min-h-[44px] items-center">
+                                                                {CABIN_OPTIONS.map(opt => {
+                                                                    const isSelected = (leg.travelClass || 'Economy') === opt.value;
+                                                                    return (
+                                                                        <button
+                                                                            key={opt.value}
+                                                                            type="button"
+                                                                            onClick={() => handleConnectingLegChange(legIdx, 'travelClass', opt.value as any)}
+                                                                            className={`flex-1 min-h-[36px] py-1.5 px-1 rounded-xl text-2xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center ${
+                                                                                isSelected
+                                                                                    ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm'
+                                                                                    : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
+                                                                            }`}
+                                                                        >
+                                                                            {opt.label.replace(' Class', '').replace('Premium Economy', 'Prem. Econ')}
+                                                                        </button>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                        <div className="sm:col-span-4">
+                                                            <Input 
+                                                                label="Seat" 
+                                                                placeholder="e.g. 14A" 
+                                                                value={leg.seatNumber} 
+                                                                onChange={e => handleConnectingLegChange(legIdx, 'seatNumber', e.target.value)} 
+                                                            />
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            </div>
+                                            </GlassPanel>
 
                                             {legIdx < connectingLegs.length - 1 && (
                                                 <div className="flex items-center justify-center gap-2 py-1 text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider">
@@ -1457,22 +1501,59 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
 
                         {/* 5. Return Leg (for Round Trip) */}
                         {transportStructure === 'Round Trip' && (
-                            <div className="p-3 rounded-2xl bg-sky-500/5 border border-sky-500/15 space-y-2">
-                                <span className="text-2xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400 block">
-                                    Return Leg ({cleanAirportCode(outboundDest || destination) || 'Destination'} &rarr; {cleanAirportCode(outboundOrigin) || 'Origin'})
-                                </span>
-                                <TimeInput label="Departure Time" value={returnTime} onChange={setReturnTime} />
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                    <Input label="Flight #" placeholder="e.g. AF 023" value={returnNumber} onChange={e => setReturnNumber(e.target.value)} />
-                                    <Select label="Cabin Class" options={CABIN_OPTIONS} value={returnTravelClass} onChange={e => setReturnTravelClass(e.target.value as any)} />
-                                    <Input label="Seat #" placeholder="e.g. 14A" value={returnSeatInfo} onChange={e => setReturnSeatInfo(e.target.value)} />
+                            <GlassPanel
+                                className="wg-glass-card shadow-glass-card w-full overflow-hidden border border-sky-500/20"
+                                overrides={{ borderRadius: 24 }}
+                                padding="0px"
+                            >
+                                <div className="p-3.5 sm:p-5 space-y-3.5 bg-sky-500/5">
+                                    <span className="text-2xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400 block">
+                                        Return Leg ({cleanAirportCode(outboundDest || destination) || 'Destination'} &rarr; {cleanAirportCode(outboundOrigin) || 'Origin'})
+                                    </span>
+                                    <TimeInput label="Departure Time" value={returnTime} onChange={setReturnTime} />
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                        <Input label="Flight #" placeholder="e.g. AF 023" value={returnNumber} onChange={e => setReturnNumber(e.target.value)} />
+                                        <Input label="Seat #" placeholder="e.g. 14A" value={returnSeatInfo} onChange={e => setReturnSeatInfo(e.target.value)} />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="block text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                                            Cabin Class
+                                        </label>
+                                        <div className="bg-black/5 dark:bg-white/5 p-1 rounded-2xl flex border border-black/10 dark:border-white/5 gap-1 min-h-[44px] items-center">
+                                            {CABIN_OPTIONS.map(opt => {
+                                                const isSelected = (returnTravelClass || 'Economy') === opt.value;
+                                                return (
+                                                    <button
+                                                        key={opt.value}
+                                                        type="button"
+                                                        onClick={() => setReturnTravelClass(opt.value as any)}
+                                                        className={`flex-1 min-h-[36px] py-1.5 px-1 rounded-xl text-2xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center ${
+                                                            isSelected
+                                                                ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm'
+                                                                : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
+                                                        }`}
+                                                    >
+                                                        {opt.label.replace(' Class', '').replace('Premium Economy', 'Prem. Econ')}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
+                            </GlassPanel>
                         )}
 
                         {/* 6. Shared Booking Code & Cost */}
                         <div className="grid grid-cols-2 gap-2">
-                            <Input label={`Total Ticket Cost (${getCurrencySymbol(activeCurrency)})`} type="number" placeholder="0.00" value={outboundCost} onChange={e => setOutboundCost(e.target.value)} />
+                            <Input 
+                                label={`Total Ticket Cost (${getCurrencySymbol(activeCurrency)})`} 
+                                type="number" 
+                                placeholder="0.00" 
+                                data-no-spinner="true"
+                                className="no-spinners font-bold"
+                                value={outboundCost} 
+                                onChange={e => setOutboundCost(e.target.value)} 
+                            />
                             <Input label="Booking Code (PNR)" placeholder="e.g. DL7XYZ" value={outboundConfCode} onChange={e => setOutboundConfCode(e.target.value)} />
                         </div>
                     </div>

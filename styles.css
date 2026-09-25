@@ -26,11 +26,35 @@
   input[type="number"]::-webkit-outer-spin-button {
     cursor: pointer;
     opacity: 0.5;
+    filter: var(--wg-spinner-filter, none);
     transition: opacity 0.2s ease;
+  }
+  .dark input[type="number"]::-webkit-inner-spin-button,
+  .dark input[type="number"]::-webkit-outer-spin-button,
+  :root.dark input[type="number"]::-webkit-inner-spin-button,
+  :root.dark input[type="number"]::-webkit-outer-spin-button {
+    filter: invert(1) opacity(0.6);
   }
   input[type="number"]:hover::-webkit-inner-spin-button,
   input[type="number"]:hover::-webkit-outer-spin-button {
     opacity: 0.9;
+  }
+  .dark input[type="number"]:hover::-webkit-inner-spin-button,
+  .dark input[type="number"]:hover::-webkit-outer-spin-button {
+    filter: invert(1) opacity(0.9);
+  }
+
+  /* Utility to suppress spin buttons completely for currency & code inputs */
+  .no-spinners::-webkit-inner-spin-button,
+  .no-spinners::-webkit-outer-spin-button,
+  input[data-no-spinner="true"]::-webkit-inner-spin-button,
+  input[data-no-spinner="true"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .no-spinners,
+  input[data-no-spinner="true"] {
+    -moz-appearance: textfield;
   }
 
   :root {

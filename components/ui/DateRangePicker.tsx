@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { CaretLeft, CaretRight, CalendarBlank, Check, X } from '@phosphor-icons/react';
 import GlassPanel from '../glass/GlassPanel';
+import GlassButton from '../glass/GlassButton';
 import { formatDate } from '../../utils/formatters';
 import { SECTION_LABEL_STYLE } from '../../constants';
 
@@ -432,7 +433,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         </div>
       </GlassPanel>
 
-      {/* Dropdown Calendar Popover: Rendered via Portal to eliminate overflow clipping */}
+      {/* Dropdown Calendar Popover: Rendered via Portal with true Liquid Glass */}
       {isOpen && coords && createPortal(
         <div
           ref={popoverRef}
@@ -443,10 +444,16 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
             width: coords.width,
             zIndex: 70, // z-popover
           }}
-          className="z-popover animate-fadeIn bg-white dark:bg-[#121820] border border-black/10 dark:border-white/15 shadow-[0_24px_64px_-12px_rgba(0,0,0,0.8)] rounded-3xl p-4 select-none"
+          className="z-popover animate-fadeIn select-none"
         >
-          {/* Popover Header: Month Title & Arrows */}
-          <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/5">
+          <GlassPanel
+            className="wg-glass-card shadow-2xl overflow-hidden border border-black/10 dark:border-white/15"
+            padding="16px"
+            overrides={{ borderRadius: 24 }}
+          >
+            <div className="flex flex-col w-full">
+              {/* Popover Header: Month Title & Arrows */}
+              <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/5">
             <button
               type="button"
               onClick={prevMonth}
@@ -568,25 +575,28 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
             })}
           </div>
 
-          {/* Popover Footer: Duration Badge and Action */}
-          <div className="flex items-center justify-between pt-3 mt-3 border-t border-black/5 dark:border-white/5">
-            <span className={`text-2xs font-bold ${theme.durationBadge}`}>
-              {singleDate
-                ? (startDate ? formatDate(startDate, 'weekday-short') : 'Select date')
-                : (nights > 0 ? `${nights} ${nights === 1 ? 'day' : 'days'}` : 'Select dates')}
-            </span>
-            <button
-              type="button"
-              onClick={() => setIsOpen(false)}
-              className={`px-3.5 py-1.5 rounded-xl text-2xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer ${theme.doneBtn}`}
-            >
-              <span>Done</span>
-              <Check className="w-3.5 h-3.5" weight="bold" />
-            </button>
+            {/* Popover Footer: Duration Badge and Action */}
+            <div className="flex items-center justify-between pt-3 mt-3 border-t border-black/5 dark:border-white/5">
+              <span className={`text-2xs font-bold ${theme.durationBadge}`}>
+                {singleDate
+                  ? (startDate ? formatDate(startDate, 'weekday-short') : 'Select date')
+                  : (nights > 0 ? `${nights} ${nights === 1 ? 'day' : 'days'}` : 'Select dates')}
+              </span>
+              <GlassButton
+                variant="primary"
+                color={accentColor}
+                size="sm"
+                onClick={() => setIsOpen(false)}
+                icon={<Check className="w-3.5 h-3.5" weight="bold" />}
+              >
+                Done
+              </GlassButton>
+            </div>
           </div>
-        </div>,
-        document.body
-      )}
+        </GlassPanel>
+      </div>,
+      document.body
+    )}
     </div>
   );
 };

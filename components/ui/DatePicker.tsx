@@ -8,6 +8,7 @@ import {
   Check 
 } from '@phosphor-icons/react';
 import GlassPanel from '../glass/GlassPanel';
+import GlassButton from '../glass/GlassButton';
 import { formatDate } from '../../utils/formatters';
 
 export type AccentColor = 
@@ -350,7 +351,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
 
       {error && <p className="text-2xs text-rose-500 font-bold ml-1">{error}</p>}
 
-      {/* Dropdown Calendar Popover: Rendered via Portal to eliminate overflow clipping */}
+      {/* Dropdown Calendar Popover: Rendered via Portal with true Liquid Glass */}
       {isOpen && coords && createPortal(
         <div
           ref={popoverRef}
@@ -361,100 +362,109 @@ export const DatePicker: React.FC<DatePickerProps> = ({
             width: coords.width,
             zIndex: 70, // z-popover
           }}
-          className="z-popover animate-fadeIn bg-white dark:bg-[#121820] border border-black/10 dark:border-white/15 shadow-[0_24px_64px_-12px_rgba(0,0,0,0.8)] rounded-3xl p-4 select-none"
+          className="z-popover animate-fadeIn select-none"
         >
-          {/* Popover Header: Month Title & Arrows */}
-          <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/5">
-            <button
-              type="button"
-              onClick={prevMonth}
-              className="w-8 h-8 rounded-xl flex items-center justify-center text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
-              title="Previous month"
-            >
-              <CaretLeft className="w-4 h-4" weight="bold" />
-            </button>
+          <GlassPanel
+            className="wg-glass-card shadow-2xl overflow-hidden border border-black/10 dark:border-white/15"
+            padding="16px"
+            overrides={{ borderRadius: 24 }}
+          >
+            <div className="flex flex-col w-full">
+              {/* Popover Header: Month Title & Arrows */}
+              <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/5">
+                <button
+                  type="button"
+                  onClick={prevMonth}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                  title="Previous month"
+                >
+                  <CaretLeft className="w-4 h-4" weight="bold" />
+                </button>
 
-            <h4 className="text-xs font-bold uppercase tracking-wider text-light-text dark:text-dark-text">
-              {monthTitle}
-            </h4>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-light-text dark:text-dark-text">
+                  {monthTitle}
+                </h4>
 
-            <button
-              type="button"
-              onClick={nextMonth}
-              className="w-8 h-8 rounded-xl flex items-center justify-center text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
-              title="Next month"
-            >
-              <CaretRight className="w-4 h-4" weight="bold" />
-            </button>
-          </div>
-
-          {/* Weekday Header Row */}
-          <div className="grid grid-cols-7 gap-1 text-center py-2">
-            {WEEKDAYS.map((w, idx) => (
-              <div key={idx} className="text-3xs font-extrabold text-light-text-secondary/60 dark:text-dark-text-secondary/60">
-                {w}
+                <button
+                  type="button"
+                  onClick={nextMonth}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                  title="Next month"
+                >
+                  <CaretRight className="w-4 h-4" weight="bold" />
+                </button>
               </div>
-            ))}
-          </div>
 
-          {/* Days Grid */}
-          <div className="grid grid-cols-7 gap-y-1 gap-x-0 pt-1">
-            {/* Empty leading slots */}
-            {Array.from({ length: firstDayOfWeek }).map((_, i) => (
-              <div key={`empty-${i}`} className="h-8" />
-            ))}
+              {/* Weekday Header Row */}
+              <div className="grid grid-cols-7 gap-1 text-center py-2">
+                {WEEKDAYS.map((w, idx) => (
+                  <div key={idx} className="text-3xs font-extrabold text-light-text-secondary dark:text-dark-text-secondary">
+                    {w}
+                  </div>
+                ))}
+              </div>
 
-            {/* Days in Month */}
-            {Array.from({ length: daysInMonth }).map((_, i) => {
-              const day = i + 1;
-              const d = new Date(viewYear, viewMonth, day);
-              const dateStr = toIsoDate(d);
-              const isSelected = value === dateStr;
+              {/* Days Grid */}
+              <div className="grid grid-cols-7 gap-y-1 gap-x-0 pt-1">
+                {/* Empty leading slots */}
+                {Array.from({ length: firstDayOfWeek }).map((_, i) => (
+                  <div key={`empty-${i}`} className="h-8" />
+                ))}
 
-              const isDisabled = Boolean(
-                (minDate && dateStr < minDate) ||
-                (maxDate && dateStr > maxDate)
-              );
+                {/* Days in Month */}
+                {Array.from({ length: daysInMonth }).map((_, i) => {
+                  const day = i + 1;
+                  const d = new Date(viewYear, viewMonth, day);
+                  const dateStr = toIsoDate(d);
+                  const isSelected = value === dateStr;
 
-              return (
-                <div key={dateStr} className="h-8 flex items-center justify-center">
-                  <button
-                    type="button"
-                    disabled={isDisabled}
-                    onClick={() => handleSelectDate(dateStr)}
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all relative z-10 cursor-pointer ${
-                      isSelected
-                        ? theme.selectedDay
-                        : isDisabled
-                        ? 'opacity-20 cursor-not-allowed text-light-text-secondary dark:text-dark-text-secondary'
-                        : 'text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10'
-                    }`}
-                  >
-                    {day}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
+                  const isDisabled = Boolean(
+                    (minDate && dateStr < minDate) ||
+                    (maxDate && dateStr > maxDate)
+                  );
 
-          {/* Popover Footer: Quick Today shortcut & Done button */}
-          <div className="flex items-center justify-between pt-3 mt-3 border-t border-black/5 dark:border-white/5">
-            <button
-              type="button"
-              onClick={handleSelectToday}
-              className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text underline underline-offset-2 cursor-pointer"
-            >
-              Today
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsOpen(false)}
-              className={`px-3.5 py-1.5 rounded-xl text-2xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer ${theme.doneBtn}`}
-            >
-              <span>Done</span>
-              <Check className="w-3.5 h-3.5" weight="bold" />
-            </button>
-          </div>
+                  return (
+                    <div key={dateStr} className="h-8 flex items-center justify-center">
+                      <button
+                        type="button"
+                        disabled={isDisabled}
+                        onClick={() => handleSelectDate(dateStr)}
+                        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all relative z-10 cursor-pointer ${
+                          isSelected
+                            ? theme.selectedDay
+                            : isDisabled
+                            ? 'opacity-20 cursor-not-allowed text-light-text-secondary dark:text-dark-text-secondary'
+                            : 'text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10'
+                        }`}
+                      >
+                        {day}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Popover Footer: Quick Today shortcut & Done button */}
+              <div className="flex items-center justify-between pt-3 mt-3 border-t border-black/5 dark:border-white/5">
+                <button
+                  type="button"
+                  onClick={handleSelectToday}
+                  className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text underline underline-offset-2 cursor-pointer"
+                >
+                  Today
+                </button>
+                <GlassButton
+                  variant="primary"
+                  color={accentColor}
+                  size="sm"
+                  onClick={() => setIsOpen(false)}
+                  icon={<Check className="w-3.5 h-3.5" weight="bold" />}
+                >
+                  Done
+                </GlassButton>
+              </div>
+            </div>
+          </GlassPanel>
         </div>,
         document.body
       )}

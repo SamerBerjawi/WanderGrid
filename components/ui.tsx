@@ -173,7 +173,8 @@ export const TimeInput: React.FC<TimeInputProps> = ({ label, value, onChange, cl
               type="number"
               min="1"
               max="12"
-              className="w-8 bg-transparent text-center text-xs font-bold text-light-text dark:text-dark-text focus:outline-none [&::-webkit-inner-spin-button]:opacity-30 hover:[&::-webkit-inner-spin-button]:opacity-70 cursor-pointer"
+              data-no-spinner="true"
+              className="w-7 bg-transparent text-center text-xs font-bold text-light-text dark:text-dark-text focus:outline-none no-spinners cursor-pointer"
               value={displayHour}
               onChange={handleHourChange}
             />
@@ -182,21 +183,38 @@ export const TimeInput: React.FC<TimeInputProps> = ({ label, value, onChange, cl
               type="number"
               min="0"
               max="59"
-              className="w-8 bg-transparent text-center text-xs font-bold text-light-text dark:text-dark-text focus:outline-none [&::-webkit-inner-spin-button]:opacity-30 hover:[&::-webkit-inner-spin-button]:opacity-70 cursor-pointer"
+              data-no-spinner="true"
+              className="w-7 bg-transparent text-center text-xs font-bold text-light-text dark:text-dark-text focus:outline-none no-spinners cursor-pointer"
               value={minuteStr || '00'}
               onChange={handleMinuteChange}
             />
           </div>
 
-          {/* Simple AM/PM Toggle button inside the time selector */}
-          <button
-            type="button"
-            onClick={togglePeriod}
-            className="px-2.5 py-1 rounded-xl text-2xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 text-primary-600 dark:text-primary-400 transition-colors cursor-pointer select-none"
-            title="Click to toggle AM/PM"
-          >
-            {isPm ? 'PM' : 'AM'}
-          </button>
+          {/* Segmented Switcher for AM/PM per AGENTS.md §7.3 */}
+          <div className="bg-black/5 dark:bg-white/5 p-0.5 rounded-xl flex border border-black/10 dark:border-white/5">
+            <button
+              type="button"
+              onClick={() => isPm && togglePeriod()}
+              className={`px-2 py-0.5 rounded-lg text-3xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                !isPm
+                  ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm'
+                  : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
+              }`}
+            >
+              AM
+            </button>
+            <button
+              type="button"
+              onClick={() => !isPm && togglePeriod()}
+              className={`px-2 py-0.5 rounded-lg text-3xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                isPm
+                  ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm'
+                  : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
+              }`}
+            >
+              PM
+            </button>
+          </div>
         </div>
       </GlassPanel>
     </div>
