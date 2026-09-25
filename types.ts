@@ -123,6 +123,7 @@ export interface Transport {
   isApproximate?: boolean;
   approximateYear?: number;
   customFields?: Array<{ key: string; value: string }>;
+  notes?: string;
   // Associated Trip (for flattened/query contexts)
   tripId?: string;
   tripName?: string;

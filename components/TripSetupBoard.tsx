@@ -52,9 +52,12 @@ import {
     CARD_FILL_STYLE,
     CARD_ELEVATED_STYLE,
     STATUS_PILL_STYLE,
+    STATUS_DANGER_STYLE,
     SEGMENTED_TAB_WRAPPER,
     SEGMENTED_TAB_ACTIVE,
     SEGMENTED_TAB_INACTIVE,
+    READOUT_STRIP_STYLE,
+    MONO_PILL_STYLE,
     CLOSE_BTN_STYLE,
     INPUT_BASE_STYLE
 } from '../constants';
@@ -274,8 +277,18 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
     const [destinationCoords, setDestinationCoords] = useState<{ lat: number; lng: number } | undefined>();
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
-    const [travelerCount, setTravelerCount] = useState(1);
+    const [status, setStatus] = useState<'Planning' | 'Upcoming' | 'Past'>(initialStatus);
+    const [selectedUserIds, setSelectedUserIds] = useState<string[]>(users.length > 0 ? [users[0].id] : []);
     const [basicsError, setBasicsError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (isOpen) {
+            setStatus(initialStatus);
+            if (users.length > 0 && selectedUserIds.length === 0) {
+                setSelectedUserIds([users[0].id]);
+            }
+        }
+    }, [isOpen, initialStatus, users]);
 
     // Stage 2: Transport Sub-Steps State
     const [transportMode, setTransportMode] = useState<TransportMode>('Flight');
@@ -513,7 +526,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
     const handleCompleteBasics = async () => {
         setBasicsError(null);
         if (!title.trim()) {
-            setBasicsError("Please provide an expedition or trip title.");
+            setBasicsError("Please provide a trip title.");
             return;
         }
         if (!destination.trim()) {
@@ -1131,8 +1144,8 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                 location: destination.trim(),
                 startDate,
                 endDate,
-                status: initialStatus,
-                participants: users.length > 0 ? [users[0].id] : [],
+                status: status,
+                participants: selectedUserIds,
                 locations: [{
                     id: crypto.randomUUID(),
                     name: destination.trim(),
@@ -1181,7 +1194,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
             onTripCreated(savedTrip);
             onClose();
         } catch (err: any) {
-            console.error("Failed to create expedition:", err);
+            console.error("Failed to create trip:", err);
             setIsSaving(false);
         }
     };
@@ -1215,15 +1228,15 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                         </div>
 
                         {/* 2. Direct vs Layovers Toggle */}
-                        <div className="flex items-center justify-between p-1 bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5">
+                        <div className={SEGMENTED_TAB_WRAPPER}>
                             <button
                                 type="button"
                                 onClick={() => setFlightRouteType('direct')}
-                                className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                className={`flex-1 ${
                                     flightRouteType === 'direct'
-                                    ? 'bg-white dark:bg-dark-card text-primary-600 dark:text-primary-400 shadow-sm'
-                                    : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
-                                }`}
+                                    ? SEGMENTED_TAB_ACTIVE
+                                    : SEGMENTED_TAB_INACTIVE
+                                } flex items-center justify-center gap-1.5 cursor-pointer`}
                             >
                                 <AirplaneTilt className="w-4 h-4" weight={flightRouteType === 'direct' ? "fill" : "regular"} />
                                 <span>Direct Flight</span>
@@ -1231,11 +1244,11 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                             <button
                                 type="button"
                                 onClick={() => setFlightRouteType('layovers')}
-                                className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                className={`flex-1 ${
                                     flightRouteType === 'layovers'
-                                    ? 'bg-white dark:bg-dark-card text-primary-600 dark:text-primary-400 shadow-sm'
-                                    : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
-                                }`}
+                                    ? SEGMENTED_TAB_ACTIVE
+                                    : SEGMENTED_TAB_INACTIVE
+                                } flex items-center justify-center gap-1.5 cursor-pointer`}
                             >
                                 <Path className="w-4 h-4" weight={flightRouteType === 'layovers' ? "fill" : "regular"} />
                                 <span>With Layovers</span>
@@ -1887,7 +1900,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
         <div className="w-full max-w-[1680px] mx-auto pt-2 sm:pt-4 px-1 sm:px-4 md:px-6 lg:px-8 flex flex-col gap-5 sm:gap-6 animate-fadeIn pb-16">
             
             {/* ========================================================================= */}
-            {/* HERO HEADER: Title Aligned Left, 4. Finalize Aligned Right               */}
+            {/* HERO HEADER: Title Aligned Left, Create Trip Aligned Right               */}
             {/* ========================================================================= */}
             <div className="flex flex-row items-center justify-between gap-2.5 sm:gap-4 w-full pt-1 pb-1">
                 {/* Left: Pure Icon + Responsive Page Name (Aligned Left) */}
@@ -1898,7 +1911,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                     />
                     <div className="min-w-0">
                         <h1 className="text-xl sm:text-3xl md:text-5xl font-black text-light-text dark:text-white tracking-tight leading-tight sm:leading-none truncate sm:overflow-visible">
-                            New Expedition
+                            New Trip
                         </h1>
                         {(destination || startDate) && (
                             <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium truncate mt-1 flex items-center gap-1.5">
@@ -1910,22 +1923,28 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                     </div>
                 </div>
 
-                {/* Right: 4. Finalize in Header */}
+                {/* Right: Actions in Header */}
                 <div className="flex items-center justify-end gap-2 sm:gap-3 shrink-0">
                     {/* Live Estimated Cost Pill */}
-                    <div className="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white/70 dark:bg-dark-card/70 border border-black/5 dark:border-white/10 shadow-xs">
-                        <span className="text-[10px] uppercase font-bold tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
-                            Est. Total
-                        </span>
-                        <span className="text-xs font-mono font-black text-primary-600 dark:text-primary-400">
-                            {formatCurrency(totalEstimatedCost, activeCurrency)}
-                        </span>
-                        {(transportsList.length > 0 || accommodationsList.length > 0) && (
-                            <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary">
-                                ({transportsList.length}L • {accommodationsList.length}S)
+                    <GlassPanel
+                        className="hidden sm:flex wg-glass-pill shadow-xs shrink-0"
+                        padding="6px 14px"
+                        overrides={{ borderRadius: 9999 }}
+                    >
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] uppercase font-bold tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                                Est. Total
                             </span>
-                        )}
-                    </div>
+                            <span className="text-xs font-mono font-black text-primary-600 dark:text-primary-400">
+                                {formatCurrency(totalEstimatedCost, activeCurrency)}
+                            </span>
+                            {(transportsList.length > 0 || accommodationsList.length > 0) && (
+                                <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary">
+                                    ({transportsList.length}L • {accommodationsList.length}S)
+                                </span>
+                            )}
+                        </div>
+                    </GlassPanel>
 
                     {/* Cancel Button */}
                     <GlassButton
@@ -1937,7 +1956,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                         Cancel
                     </GlassButton>
 
-                    {/* Launch Expedition Button */}
+                    {/* Create Trip Button */}
                     <GlassButton
                         type="button"
                         variant="primary"
@@ -1945,7 +1964,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                         disabled={isSaving || !title || !startDate || !endDate}
                         className="min-h-[44px] px-4 sm:px-5 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
                     >
-                        <span>{isSaving ? 'Creating...' : 'Launch Expedition'}</span>
+                        <span>{isSaving ? 'Creating...' : 'Create Trip'}</span>
                         <Check className="w-4 h-4" weight="bold" />
                     </GlassButton>
                 </div>
@@ -2020,453 +2039,678 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                 {/* COLUMN 1: TRIP BASICS */}
                 {/* ============================================================== */}
                 <GlassPanel 
-                            className={`rounded-[28px] overflow-hidden flex flex-col ${
-                                currentStage === 'basics' 
-                                ? 'wg-glass-card ring-2 ring-emerald-500/40 border border-emerald-500/30' 
-                                : 'wg-glass-card border border-black/5 dark:border-white/10'
-                            }`}
-                            overrides={{ borderRadius: 28 }}
-                            padding="0px"
-                        >
-                            <div className="p-5 bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border-b border-black/10 dark:border-white/5 flex items-center justify-between shrink-0">
-                                <div className="flex items-center gap-3 min-w-0">
-                                    <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white bg-gradient-to-br from-emerald-500 to-teal-600 shadow-xs shrink-0">
-                                        <Compass className="w-5 h-5" weight="duotone" />
-                                    </div>
-                                    <h3 className="text-sm font-bold text-light-text dark:text-dark-text tracking-tight">1. Trip Basics</h3>
-                                </div>
-                                {stageIndex > 0 && (
-                                    <button 
-                                        type="button" 
-                                        onClick={() => setCurrentStage('basics')} 
-                                        className="text-emerald-600 dark:text-emerald-400 hover:underline text-2xs font-bold uppercase flex items-center gap-1 cursor-pointer"
-                                    >
-                                        <PencilSimple className="w-3.5 h-3.5" /> Edit
-                                    </button>
-                                )}
+                    className={`rounded-[28px] overflow-hidden flex flex-col ${
+                        currentStage === 'basics' 
+                        ? 'wg-glass-card ring-2 ring-emerald-500/40 border border-emerald-500/30' 
+                        : 'wg-glass-card border border-black/5 dark:border-white/10'
+                    }`}
+                    overrides={{ borderRadius: 28 }}
+                    padding="0px"
+                >
+                    <div className="p-5 bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border-b border-black/10 dark:border-white/5 flex items-center justify-between shrink-0">
+                        <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-emerald-500 to-teal-600 shadow-md transition-transform hover:scale-105 shrink-0">
+                                <Compass className="w-6 h-6" weight="duotone" />
                             </div>
+                            <div className="min-w-0">
+                                <h2 className="text-base sm:text-lg font-bold text-light-text dark:text-dark-text tracking-tight truncate">
+                                    1. Trip Basics
+                                </h2>
+                                <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium truncate mt-0.5">
+                                    Destination and schedule
+                                </p>
+                            </div>
+                        </div>
+                        {stageIndex > 0 && (
+                            <button 
+                                type="button" 
+                                onClick={() => setCurrentStage('basics')} 
+                                className="text-emerald-600 dark:text-emerald-400 hover:underline text-2xs font-bold uppercase flex items-center gap-1 cursor-pointer shrink-0"
+                            >
+                                <PencilSimple className="w-3.5 h-3.5" /> Edit
+                            </button>
+                        )}
+                    </div>
 
-                            <div className="p-5 flex-1 space-y-4 overflow-y-auto custom-scrollbar">
-                                {stageIndex > 0 && currentStage !== 'basics' ? (
-                                    <div className="space-y-3">
-                                        <div className="p-4 rounded-2xl bg-white/80 dark:bg-dark-card/80 border border-black/5 dark:border-white/5 space-y-2">
-                                            <h4 className="font-black text-base text-light-text dark:text-dark-text">{title}</h4>
-                                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {destination}</p>
-                                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1"><CalendarBlank className="w-3.5 h-3.5" /> {formatDateRange(startDate, endDate)}</p>
-                                            <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 inline-block">
-                                                Configured
+                    <div className="p-5 flex-1 space-y-4 overflow-y-auto custom-scrollbar">
+                        {stageIndex > 0 && currentStage !== 'basics' ? (
+                            <div className="space-y-3">
+                                <div className={`${CARD_FILL_STYLE} space-y-2`}>
+                                    <h4 className="font-black text-base text-light-text dark:text-dark-text">{title}</h4>
+                                    <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {destination}</p>
+                                    <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1"><CalendarBlank className="w-3.5 h-3.5" /> {formatDateRange(startDate, endDate)}</p>
+                                    <div className="flex items-center gap-2 pt-1">
+                                        <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 inline-block">
+                                            {status === 'Planning' ? 'Planned' : status === 'Upcoming' ? 'Confirmed' : 'Past'}
+                                        </span>
+                                        {selectedUserIds.length > 0 && (
+                                            <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary font-medium">
+                                                {selectedUserIds.length} {selectedUserIds.length === 1 ? 'Traveler' : 'Travelers'}
                                             </span>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-4">
-                                        {basicsError && (
-                                            <p className="text-xs font-semibold text-semantic-red p-2 bg-semantic-red/10 rounded-xl">{basicsError}</p>
                                         )}
-                                        <div className="space-y-1">
-                                            <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Expedition Title *</label>
-                                            <Input 
-                                                placeholder="e.g. Greek Island Odyssey" 
-                                                value={title} 
-                                                onChange={e => setTitle(e.target.value)} 
-                                                className="!font-bold"
-                                                autoFocus
-                                            />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Destination City *</label>
-                                            <Autocomplete 
-                                                placeholder="e.g. Santorini, Greece" 
-                                                value={destination} 
-                                                onChange={handleDestinationChange} 
-                                                fetchSuggestions={fetchLocationSuggestions} 
-                                            />
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <Input label="Start Date *" type="date" value={startDate} onChange={e => handleStartDateChange(e.target.value)} />
-                                            <Input label="End Date *" type="date" value={endDate} min={startDate} onChange={e => handleEndDateChange(e.target.value)} />
-                                        </div>
-                                        <div className="pt-2">
-                                            <GlassButton 
-                                                type="button" 
-                                                variant="primary"
-                                                onClick={handleCompleteBasics} 
-                                                className="w-full h-11 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-none sm:shadow-xs cursor-pointer"
-                                            >
-                                                <span>Confirm Basics</span>
-                                                <ArrowRight className="w-4 h-4" />
-                                            </GlassButton>
-                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                {basicsError && (
+                                    <div className={`p-3 rounded-xl text-xs font-semibold ${STATUS_DANGER_STYLE} flex items-center gap-2`}>
+                                        <span>{basicsError}</span>
                                     </div>
                                 )}
-                            </div>
-                        </GlassPanel>
-
-                        {/* ============================================================== */}
-                        {/* COLUMN 2: TRANSPORT LOGISTICS */}
-                        {/* ============================================================== */}
-                        <GlassPanel 
-                            className={`rounded-[28px] overflow-hidden flex flex-col ${
-                                currentStage === 'transport' 
-                                ? 'wg-glass-card ring-2 ring-sky-500/40 border border-sky-500/30' 
-                                : 'wg-glass-card border border-black/5 dark:border-white/10'
-                            }`}
-                            overrides={{ borderRadius: 28 }}
-                            padding="0px"
-                        >
-                            <div className="p-5 bg-gradient-to-r from-sky-500/10 via-sky-500/5 to-transparent border-b border-black/10 dark:border-white/5 flex items-center justify-between shrink-0">
-                                <div className="flex items-center gap-3 min-w-0">
-                                    <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white bg-gradient-to-br from-sky-500 to-blue-600 shadow-xs shrink-0">
-                                        <AirplaneTilt className="w-5 h-5" weight="duotone" />
-                                    </div>
-                                    <h3 className="text-sm font-bold text-light-text dark:text-dark-text tracking-tight">2. Transport</h3>
-                                </div>
-                                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-700 dark:text-sky-300 border border-sky-500/25">
-                                    {transportsList.length} Legs
-                                </span>
-                            </div>
-
-                            <div className="p-5 flex-1 space-y-4 overflow-y-auto custom-scrollbar">
-                                {/* Sub-step 2a: Method Picker */}
+                                
+                                {/* Hero Input for Title */}
                                 <div className="space-y-1.5">
-                                    <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Sub-step 2a: Method</label>
-                                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
-                                        {TRANSPORT_MODES.map(m => {
-                                            const IconM = m.icon;
-                                            const isSel = transportMode === m.mode || (m.mode === 'Cruise' && transportMode === 'Ferry');
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                                        Trip Title <span className="text-rose-500">*</span>
+                                    </label>
+                                    <input 
+                                        type="text"
+                                        className={`${INPUT_BASE_STYLE} h-14 !text-xl font-bold`}
+                                        placeholder="e.g. Greek Island Odyssey" 
+                                        value={title} 
+                                        onChange={e => setTitle(e.target.value)} 
+                                        autoFocus
+                                        required
+                                    />
+                                </div>
+
+                                {/* Destination City Autocomplete */}
+                                <div className="space-y-1.5">
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                                        Destination City <span className="text-rose-500">*</span>
+                                    </label>
+                                    <Autocomplete 
+                                        placeholder="e.g. Santorini, Greece" 
+                                        value={destination} 
+                                        onChange={handleDestinationChange} 
+                                        fetchSuggestions={fetchLocationSuggestions} 
+                                    />
+                                </div>
+
+                                {/* Dates */}
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Input label="Start Date *" type="date" value={startDate} onChange={e => handleStartDateChange(e.target.value)} />
+                                    <Input label="End Date *" type="date" value={endDate} min={startDate} onChange={e => handleEndDateChange(e.target.value)} />
+                                </div>
+
+                                {/* Status Segmented Switcher */}
+                                <div className="space-y-1.5">
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                                        Trip Status
+                                    </label>
+                                    <div className={SEGMENTED_TAB_WRAPPER}>
+                                        {(['Planning', 'Upcoming', 'Past'] as const).map(s => {
+                                            const label = s === 'Planning' ? 'Planned' : s === 'Upcoming' ? 'Confirmed' : 'Past';
+                                            const isActive = status === s;
                                             return (
                                                 <button
-                                                    key={m.mode}
+                                                    key={s}
                                                     type="button"
-                                                    onClick={() => setTransportMode(m.mode)}
-                                                    className={`p-2 rounded-xl flex flex-col items-center justify-center text-center transition-all min-h-[50px] cursor-pointer ${
-                                                        isSel 
-                                                        ? 'bg-white dark:bg-dark-card text-primary-600 dark:text-primary-400 shadow-sm border border-primary-500/30 font-bold' 
-                                                        : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
-                                                    }`}
+                                                    onClick={() => setStatus(s)}
+                                                    className={`flex-1 ${isActive ? SEGMENTED_TAB_ACTIVE : SEGMENTED_TAB_INACTIVE} cursor-pointer`}
                                                 >
-                                                    <IconM className="w-4 h-4 mb-0.5" weight={isSel ? "duotone" : "regular"} />
-                                                    <span className="text-[10px] font-semibold uppercase tracking-tight leading-tight">{m.label}</span>
+                                                    {label}
                                                 </button>
                                             );
                                         })}
                                     </div>
                                 </div>
 
-                                {/* Sub-step 2b: Routing Structure */}
-                                {transportMode !== 'Car Rental' && transportMode !== 'Personal Car' && (
+                                {/* Travelers Selection */}
+                                {users.length > 0 && (
                                     <div className="space-y-1.5">
-                                        <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Routing Structure</label>
-                                        <div className="flex gap-1.5">
-                                            {(['Round Trip', 'One-Way'] as const).map(struct => (
-                                                <button
-                                                    key={struct}
-                                                    type="button"
-                                                    onClick={() => setTransportStructure(struct)}
-                                                    className={`flex-1 py-1.5 rounded-xl text-2xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                                                        transportStructure === struct 
-                                                        ? 'bg-white dark:bg-dark-card text-primary-600 dark:text-primary-400 shadow-sm border border-primary-500/30' 
-                                                        : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'
-                                                    }`}
-                                                >
-                                                    {struct}
-                                                </button>
-                                            ))}
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center justify-between">
+                                            <span>Travelers</span>
+                                            <span className="font-normal text-2xs text-light-text-secondary/70">{selectedUserIds.length} Selected</span>
+                                        </label>
+                                        <div className="flex flex-wrap gap-2 pt-0.5">
+                                            {users.map(u => {
+                                                const isSelected = selectedUserIds.includes(u.id);
+                                                return (
+                                                    <button
+                                                        key={u.id}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setSelectedUserIds(prev => 
+                                                                isSelected ? (prev.length > 1 ? prev.filter(id => id !== u.id) : prev) : [...prev, u.id]
+                                                            );
+                                                        }}
+                                                        className={`flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                                                            isSelected
+                                                                ? 'bg-primary-500/15 text-primary-600 dark:text-primary-300 border border-primary-500/30 shadow-xs'
+                                                                : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary border border-transparent hover:bg-black/10 dark:hover:bg-white/10'
+                                                        }`}
+                                                    >
+                                                        {u.profilePicture ? (
+                                                            <img src={u.profilePicture} alt={u.name} className="w-4 h-4 rounded-full object-cover" />
+                                                        ) : (
+                                                            <div className="w-4 h-4 rounded-full bg-primary-500/20 text-primary-600 dark:text-primary-400 flex items-center justify-center text-[9px] font-bold">
+                                                                {u.name.charAt(0)}
+                                                            </div>
+                                                        )}
+                                                        <span>{u.name}</span>
+                                                        {isSelected && <Check className="w-3.5 h-3.5 text-primary-500" weight="bold" />}
+                                                    </button>
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 )}
 
-                                {/* Sub-step 2c: Mode-Specific Input Fields */}
-                                <div className="space-y-2 p-3 rounded-2xl bg-white/70 dark:bg-dark-card/70 border border-black/5 dark:border-white/5">
-                                    <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
-                                        {transportMode} Logistics
-                                    </span>
-                                    {renderTransportFields()}
-                                </div>
-
-                                {/* Sub-step 2d: Action to add transport & multiple legs stack */}
-                                <div className="space-y-2 pt-1">
-                                    <div className="flex gap-2">
-                                        <GlassButton 
-                                            type="button" 
-                                            variant={editingTransportIndex !== null ? "primary" : "secondary"}
-                                            onClick={handleCommitTransport}
-                                            className="flex-1 h-10 text-2xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer"
-                                        >
-                                            {editingTransportIndex !== null ? (
-                                                <>
-                                                    <Check className="w-3.5 h-3.5" weight="bold" />
-                                                    <span>Save Leg Changes</span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Plus className="w-3.5 h-3.5" weight="bold" />
-                                                    <span>+ Add This Transport Leg</span>
-                                                </>
-                                            )}
-                                        </GlassButton>
-                                        {editingTransportIndex !== null && (
-                                            <GlassButton
-                                                type="button"
-                                                variant="ghost"
-                                                onClick={handleCancelEditTransport}
-                                                className="h-10 px-3 text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary cursor-pointer"
-                                            >
-                                                Cancel
-                                            </GlassButton>
-                                        )}
-                                    </div>
-
-                                    {/* Render multiple added transports */}
-                                    {renderTransportStackList()}
-
-                                    <div className="flex gap-2 pt-2">
-                                        <GlassButton 
-                                            type="button" 
-                                            variant="ghost"
-                                            onClick={() => setCurrentStage('accommodation')}
-                                            className="px-3 h-11 text-2xs text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text font-bold uppercase transition-colors cursor-pointer"
-                                        >
-                                            Skip
-                                        </GlassButton>
-                                        <GlassButton 
-                                            type="button" 
-                                            variant="primary"
-                                            onClick={() => {
-                                                if (outboundOrigin && transportsList.length === 0) {
-                                                    handleCommitTransport();
-                                                }
-                                                setCurrentStage('accommodation');
-                                            }}
-                                            className="flex-1 h-11 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1 cursor-pointer"
-                                        >
-                                            <span>Proceed to Stay</span>
-                                            <ArrowRight className="w-4 h-4" />
-                                        </GlassButton>
-                                    </div>
+                                <div className="pt-2">
+                                    <GlassButton 
+                                        type="button" 
+                                        variant="primary"
+                                        onClick={handleCompleteBasics} 
+                                        className="w-full h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                                    >
+                                        <span>Confirm Basics</span>
+                                        <ArrowRight className="w-4 h-4" />
+                                    </GlassButton>
                                 </div>
                             </div>
-                        </GlassPanel>
+                        )}
+                    </div>
+                </GlassPanel>
 
-                        {/* ============================================================== */}
-                        {/* COLUMN 3: ACCOMMODATIONS & STAYS */}
-                        {/* ============================================================== */}
-                        <GlassPanel 
-                            className={`rounded-[28px] overflow-hidden flex flex-col ${
-                                currentStage === 'accommodation' 
-                                ? 'wg-glass-card ring-2 ring-amber-500/40 border border-amber-500/30' 
-                                : 'wg-glass-card border border-black/5 dark:border-white/10'
-                            }`}
-                            overrides={{ borderRadius: 28 }}
-                            padding="0px"
-                        >
-                            <div className="p-5 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border-b border-black/10 dark:border-white/5 flex items-center justify-between shrink-0">
-                                <div className="flex items-center gap-3 min-w-0">
-                                    <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white bg-gradient-to-br from-amber-500 to-orange-600 shadow-xs shrink-0">
-                                        <Bed className="w-5 h-5" weight="duotone" />
-                                    </div>
-                                    <h3 className="text-sm font-bold text-light-text dark:text-dark-text tracking-tight">3. Stays</h3>
-                                </div>
-                                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/25">
-                                    {accommodationsList.length} Stays
-                                </span>
+                {/* ============================================================== */}
+                {/* COLUMN 2: TRANSPORT LOGISTICS */}
+                {/* ============================================================== */}
+                <GlassPanel 
+                    className={`rounded-[28px] overflow-hidden flex flex-col ${
+                        currentStage === 'transport' 
+                        ? 'wg-glass-card ring-2 ring-sky-500/40 border border-sky-500/30' 
+                        : 'wg-glass-card border border-black/5 dark:border-white/10'
+                    }`}
+                    overrides={{ borderRadius: 28 }}
+                    padding="0px"
+                >
+                    <div className="p-5 bg-gradient-to-r from-sky-500/10 via-sky-500/5 to-transparent border-b border-black/10 dark:border-white/5 flex items-center justify-between shrink-0">
+                        <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-sky-500 to-blue-600 shadow-md transition-transform hover:scale-105 shrink-0">
+                                <AirplaneTilt className="w-6 h-6" weight="duotone" />
                             </div>
-
-                            <div className="p-5 flex-1 space-y-4 overflow-y-auto custom-scrollbar">
-                                {/* Sub-step 3a: Type Selection */}
-                                <div className="space-y-1.5">
-                                    <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Stay Type</label>
-                                    <div className="grid grid-cols-4 gap-1.5">
-                                        {ACCOMMODATION_TYPES.map(t => (
-                                            <button
-                                                key={t}
-                                                type="button"
-                                                onClick={() => setAccType(t)}
-                                                className={`py-1.5 px-1 rounded-xl text-center text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer truncate ${
-                                                    accType === t
-                                                    ? 'bg-white dark:bg-dark-card text-amber-600 dark:text-amber-400 shadow-sm border border-amber-500/30'
-                                                    : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'
-                                                }`}
-                                                title={t}
-                                            >
-                                                {t}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Sub-step 3b: Property Name & Google Maps Address Lookup */}
-                                <div className="space-y-2.5 p-3 rounded-2xl bg-white/70 dark:bg-dark-card/70 border border-black/5 dark:border-white/5">
-                                    <Input 
-                                        label="Property Name *" 
-                                        placeholder="e.g. Grand Hotel Tremezzo or Villa Bellagio" 
-                                        value={accName} 
-                                        onChange={e => setAccName(e.target.value)} 
-                                    />
-                                    
-                                    <div className="space-y-1">
-                                        <div className="flex items-center justify-between">
-                                            <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1">
-                                                <MapPin className="w-3.5 h-3.5 text-primary-500" />
-                                                <span>Address / Google Maps Location</span>
-                                            </label>
-                                            <span className="text-[10px] text-primary-500 font-semibold">Live Lookup</span>
-                                        </div>
-                                        <Autocomplete 
-                                            placeholder="Street address, hotel name, or paste Google Maps link..." 
-                                            value={accAddress} 
-                                            onChange={handleAddressChange} 
-                                            fetchSuggestions={fetchAddressSuggestions} 
-                                        />
-                                    </div>
-
-                                    {/* Check-In / Check-Out with Nights Badge */}
-                                    <div className="space-y-1.5">
-                                        <div className="flex items-center justify-between">
-                                            <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Dates & Duration</label>
-                                            {activeAccNights > 0 && (
-                                                <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                                                    {activeAccNights} {activeAccNights === 1 ? 'Night' : 'Nights'}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <Input label="Check In" type="date" value={accCheckIn || startDate} onChange={e => setAccCheckIn(e.target.value)} />
-                                            <Input label="Check Out" type="date" value={accCheckOut || endDate} min={accCheckIn || startDate} onChange={e => setAccCheckOut(e.target.value)} />
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <Input label={`Total Cost (${getCurrencySymbol(activeCurrency)})`} type="number" placeholder="0.00" value={accCost} onChange={e => setAccCost(e.target.value)} />
-                                        <Input label="Booking Ref / PNR" placeholder="HTL-882" value={accRef} onChange={e => setAccRef(e.target.value)} />
-                                    </div>
-                                </div>
-
-                                {/* Sub-step 3c: Stacking & Multiple Stays list */}
-                                <div className="space-y-2 pt-1">
-                                    <div className="flex gap-2">
-                                        <GlassButton 
-                                            type="button" 
-                                            variant={editingAccommodationIndex !== null ? "primary" : "secondary"}
-                                            onClick={handleCommitAccommodation}
-                                            className="flex-1 h-10 text-2xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer"
-                                        >
-                                            {editingAccommodationIndex !== null ? (
-                                                <>
-                                                    <Check className="w-3.5 h-3.5" weight="bold" />
-                                                    <span>Save Stay Changes</span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Plus className="w-3.5 h-3.5" weight="bold" />
-                                                    <span>+ Add This Stay</span>
-                                                </>
-                                            )}
-                                        </GlassButton>
-                                        {editingAccommodationIndex !== null && (
-                                            <GlassButton
-                                                type="button"
-                                                variant="ghost"
-                                                onClick={handleCancelEditAccommodation}
-                                                className="h-10 px-3 text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary cursor-pointer"
-                                            >
-                                                Cancel
-                                            </GlassButton>
-                                        )}
-                                    </div>
-
-                                    {/* Render multiple added accommodations */}
-                                    {renderAccommodationStackList()}
-
-                                    {/* Column 3 Bottom Launch Strip */}
-                                    <div className="pt-3 border-t border-black/5 dark:border-white/5 space-y-2.5">
-                                        <div className="p-3 rounded-2xl bg-white/60 dark:bg-dark-card/60 border border-black/5 dark:border-white/5 flex items-center justify-between">
-                                            <div>
-                                                <span className="text-[10px] font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
-                                                    Expedition Est. Total
-                                                </span>
-                                                <span className="font-mono font-black text-sm text-primary-600 dark:text-primary-400">
-                                                    {formatCurrency(totalEstimatedCost, activeCurrency)}
-                                                </span>
-                                            </div>
-                                            <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary">
-                                                {transportsList.length} Legs • {accommodationsList.length} Stays
-                                            </span>
-                                        </div>
-
-                                        <GlassButton 
-                                            type="button" 
-                                            variant="primary"
-                                            onClick={handleFinalizeTrip}
-                                            disabled={isSaving || !title || !startDate || !endDate}
-                                            className="w-full h-11 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-xs active:scale-95 disabled:opacity-50 cursor-pointer"
-                                        >
-                                            <span>{isSaving ? 'Creating...' : 'Launch Expedition'}</span>
-                                            <Check className="w-4 h-4" weight="bold" />
-                                        </GlassButton>
-                                    </div>
-                                </div>
+                            <div className="min-w-0">
+                                <h2 className="text-base sm:text-lg font-bold text-light-text dark:text-dark-text tracking-tight truncate">
+                                    2. Transport
+                                </h2>
+                                <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium truncate mt-0.5">
+                                    Flights, trains, rentals & drives
+                                </p>
                             </div>
-                        </GlassPanel>
-
-
-
-
-
+                        </div>
+                        <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-full bg-sky-500/15 text-sky-700 dark:text-sky-300 border border-sky-500/25 shrink-0">
+                            {transportsList.length} {transportsList.length === 1 ? 'Leg' : 'Legs'}
+                        </span>
                     </div>
 
-                    {/* Mobile (< 1024px): Single-Column Active Stage View */}
-                    <div className="lg:hidden w-full max-w-lg mx-auto space-y-5">
-                        {currentStage === 'basics' && (
-                            <div className="space-y-4 animate-fadeIn">
-                                <div className="flex items-center gap-2.5">
-                                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-none sm:shadow-xs shrink-0">
-                                        <Compass className="w-4 h-4" weight="duotone" />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-sm font-bold text-light-text dark:text-dark-text tracking-tight">Step 1: Trip Basics & Destination</h3>
-                                        <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary font-medium">Destination and dates</p>
-                                    </div>
+                    <div className="p-5 flex-1 space-y-4 overflow-y-auto custom-scrollbar">
+                        {/* Sub-step 2a: Method Picker */}
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                                Sub-step 2a: Method
+                            </label>
+                            <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+                                {TRANSPORT_MODES.map(m => {
+                                    const IconM = m.icon;
+                                    const isSel = transportMode === m.mode || (m.mode === 'Cruise' && transportMode === 'Ferry');
+                                    return (
+                                        <button
+                                            key={m.mode}
+                                            type="button"
+                                            onClick={() => setTransportMode(m.mode)}
+                                            className={`p-2 rounded-xl flex flex-col items-center justify-center text-center transition-all min-h-[50px] cursor-pointer ${
+                                                isSel 
+                                                ? 'bg-white dark:bg-dark-card text-primary-600 dark:text-primary-400 shadow-sm border border-primary-500/30 font-bold' 
+                                                : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
+                                            }`}
+                                        >
+                                            <IconM className="w-4 h-4 mb-0.5" weight={isSel ? "duotone" : "regular"} />
+                                            <span className="text-[10px] font-semibold uppercase tracking-tight leading-tight">{m.label}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Sub-step 2b: Routing Structure */}
+                        {transportMode !== 'Car Rental' && transportMode !== 'Personal Car' && (
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                                    Routing Structure
+                                </label>
+                                <div className={SEGMENTED_TAB_WRAPPER}>
+                                    {(['Round Trip', 'One-Way'] as const).map(struct => (
+                                        <button
+                                            key={struct}
+                                            type="button"
+                                            onClick={() => setTransportStructure(struct)}
+                                            className={`flex-1 ${transportStructure === struct ? SEGMENTED_TAB_ACTIVE : SEGMENTED_TAB_INACTIVE} cursor-pointer`}
+                                        >
+                                            {struct}
+                                        </button>
+                                    ))}
                                 </div>
-                                {basicsError && <p className="text-xs font-semibold text-semantic-red p-2 bg-semantic-red/10 rounded-xl">{basicsError}</p>}
-                                <Input label="Expedition Title *" placeholder="e.g. Italian Lakes & Alps" value={title} onChange={e => setTitle(e.target.value)} />
-                                <Autocomplete label="Destination *" placeholder="e.g. Lake Como, Italy" value={destination} onChange={handleDestinationChange} fetchSuggestions={fetchLocationSuggestions} />
-                                <div className="grid grid-cols-2 gap-3">
-                                    <Input label="Start Date *" type="date" value={startDate} onChange={e => handleStartDateChange(e.target.value)} />
-                                    <Input label="End Date *" type="date" value={endDate} min={startDate} onChange={e => handleEndDateChange(e.target.value)} />
-                                </div>
-                                <GlassButton 
-                                    type="button" 
-                                    variant="primary"
-                                    onClick={handleCompleteBasics} 
-                                    className="w-full h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-none sm:shadow-xs"
-                                >
-                                    <span>Next: Configure Transport</span>
-                                    <ArrowRight className="w-4 h-4" />
-                                </GlassButton>
                             </div>
                         )}
 
-                        {currentStage === 'transport' && (
-                            <div className="space-y-4 animate-fadeIn">
+                        {/* Sub-step 2c: Mode-Specific Input Fields */}
+                        <div className={`space-y-3 ${CARD_FILL_STYLE}`}>
+                            <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
+                                {transportMode} Logistics
+                            </span>
+                            {renderTransportFields()}
+                        </div>
+
+                        {/* Sub-step 2d: Action to add transport & multiple legs stack */}
+                        <div className="space-y-2 pt-1">
+                            <div className="flex gap-2">
+                                <GlassButton 
+                                    type="button" 
+                                    variant={editingTransportIndex !== null ? "primary" : "secondary"}
+                                    onClick={handleCommitTransport}
+                                    className="flex-1 h-11 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                                >
+                                    {editingTransportIndex !== null ? (
+                                        <>
+                                            <Check className="w-4 h-4" weight="bold" />
+                                            <span>Save Leg Changes</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Plus className="w-4 h-4" weight="bold" />
+                                            <span>Add Transport Leg</span>
+                                        </>
+                                    )}
+                                </GlassButton>
+                                {editingTransportIndex !== null && (
+                                    <GlassButton
+                                        type="button"
+                                        variant="ghost"
+                                        onClick={handleCancelEditTransport}
+                                        className="h-11 px-4 text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary cursor-pointer"
+                                    >
+                                        Cancel
+                                    </GlassButton>
+                                )}
+                            </div>
+
+                            {/* Render multiple added transports */}
+                            {renderTransportStackList()}
+
+                            <div className="flex gap-2 pt-2">
+                                <GlassButton 
+                                    type="button" 
+                                    variant="ghost"
+                                    onClick={() => setCurrentStage('accommodation')}
+                                    className="px-4 h-12 text-xs text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text font-bold uppercase transition-colors cursor-pointer"
+                                >
+                                    Skip
+                                </GlassButton>
+                                <GlassButton 
+                                    type="button" 
+                                    variant="primary"
+                                    onClick={() => {
+                                        if (outboundOrigin && transportsList.length === 0) {
+                                            handleCommitTransport();
+                                        }
+                                        setCurrentStage('accommodation');
+                                    }}
+                                    className="flex-1 h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1 cursor-pointer shadow-xs"
+                                >
+                                    <span>Proceed to Stays</span>
+                                    <ArrowRight className="w-4 h-4" />
+                                </GlassButton>
+                            </div>
+                        </div>
+                    </div>
+                </GlassPanel>
+
+                {/* ============================================================== */}
+                {/* COLUMN 3: ACCOMMODATIONS & STAYS */}
+                {/* ============================================================== */}
+                <GlassPanel 
+                    className={`rounded-[28px] overflow-hidden flex flex-col ${
+                        currentStage === 'accommodation' 
+                        ? 'wg-glass-card ring-2 ring-amber-500/40 border border-amber-500/30' 
+                        : 'wg-glass-card border border-black/5 dark:border-white/10'
+                    }`}
+                    overrides={{ borderRadius: 28 }}
+                    padding="0px"
+                >
+                    <div className="p-5 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border-b border-black/10 dark:border-white/5 flex items-center justify-between shrink-0">
+                        <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-amber-500 to-orange-600 shadow-md transition-transform hover:scale-105 shrink-0">
+                                <Bed className="w-6 h-6" weight="duotone" />
+                            </div>
+                            <div className="min-w-0">
+                                <h2 className="text-base sm:text-lg font-bold text-light-text dark:text-dark-text tracking-tight truncate">
+                                    3. Stays
+                                </h2>
+                                <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium truncate mt-0.5">
+                                    Hotels, resorts, airbnbs & villas
+                                </p>
+                            </div>
+                        </div>
+                        <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/25 shrink-0">
+                            {accommodationsList.length} {accommodationsList.length === 1 ? 'Stay' : 'Stays'}
+                        </span>
+                    </div>
+
+                    <div className="p-5 flex-1 space-y-4 overflow-y-auto custom-scrollbar">
+                        {/* Sub-step 3a: Type Selection */}
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                                Stay Type
+                            </label>
+                            <div className="grid grid-cols-4 gap-1.5">
+                                {ACCOMMODATION_TYPES.map(t => (
+                                    <button
+                                        key={t}
+                                        type="button"
+                                        onClick={() => setAccType(t)}
+                                        className={`min-h-[36px] py-1.5 px-1 rounded-xl text-center text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer truncate ${
+                                            accType === t
+                                            ? 'bg-white dark:bg-dark-card text-amber-600 dark:text-amber-400 shadow-sm border border-amber-500/30'
+                                            : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/10 dark:hover:bg-white/10'
+                                        }`}
+                                        title={t}
+                                    >
+                                        {t}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Sub-step 3b: Property Name & Google Maps Address Lookup */}
+                        <div className={`space-y-3 ${CARD_FILL_STYLE}`}>
+                            <Input 
+                                label="Property Name *" 
+                                placeholder="e.g. Grand Hotel Tremezzo or Villa Bellagio" 
+                                value={accName} 
+                                onChange={e => setAccName(e.target.value)} 
+                            />
+                            
+                            <div className="space-y-1">
                                 <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2.5">
-                                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center text-white shadow-none sm:shadow-xs shrink-0">
-                                            <AirplaneTilt className="w-4 h-4" weight="duotone" />
-                                        </div>
-                                        <div>
-                                            <h3 className="text-sm font-bold text-light-text dark:text-dark-text tracking-tight">Step 2: Transport Logistics</h3>
-                                            <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary font-medium">Flights, trains, car rental, or drives</p>
-                                        </div>
-                                    </div>
-                                    {transportsList.length > 0 && (
-                                        <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
-                                            {transportsList.length} {transportsList.length === 1 ? 'Leg' : 'Legs'}
+                                    <label className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1">
+                                        <MapPin className="w-3.5 h-3.5 text-primary-500" />
+                                        <span>Address / Google Maps Location</span>
+                                    </label>
+                                    <span className="text-[10px] text-primary-500 font-semibold">Live Lookup</span>
+                                </div>
+                                <Autocomplete 
+                                    placeholder="Street address, hotel name, or paste Google Maps link..." 
+                                    value={accAddress} 
+                                    onChange={handleAddressChange} 
+                                    fetchSuggestions={fetchAddressSuggestions} 
+                                />
+                            </div>
+
+                            {/* Check-In / Check-Out with Nights Badge */}
+                            <div className="space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                                        Dates & Duration
+                                    </label>
+                                    {activeAccNights > 0 && (
+                                        <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                            {activeAccNights} {activeAccNights === 1 ? 'Night' : 'Nights'}
                                         </span>
                                     )}
                                 </div>
-                                
-                                {/* Method Selector */}
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Input label="Check In" type="date" value={accCheckIn || startDate} onChange={e => setAccCheckIn(e.target.value)} />
+                                    <Input label="Check Out" type="date" value={accCheckOut || endDate} min={accCheckIn || startDate} onChange={e => setAccCheckOut(e.target.value)} />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                                <Input label={`Total Cost (${getCurrencySymbol(activeCurrency)})`} type="number" placeholder="0.00" value={accCost} onChange={e => setAccCost(e.target.value)} />
+                                <Input label="Booking Ref / PNR" placeholder="HTL-882" value={accRef} onChange={e => setAccRef(e.target.value)} />
+                            </div>
+                        </div>
+
+                        {/* Sub-step 3c: Stacking & Multiple Stays list */}
+                        <div className="space-y-2 pt-1">
+                            <div className="flex gap-2">
+                                <GlassButton 
+                                    type="button" 
+                                    variant={editingAccommodationIndex !== null ? "primary" : "secondary"}
+                                    onClick={handleCommitAccommodation}
+                                    className="flex-1 h-11 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                                >
+                                    {editingAccommodationIndex !== null ? (
+                                        <>
+                                            <Check className="w-4 h-4" weight="bold" />
+                                            <span>Save Stay Changes</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Plus className="w-4 h-4" weight="bold" />
+                                            <span>Add Stay</span>
+                                        </>
+                                    )}
+                                </GlassButton>
+                                {editingAccommodationIndex !== null && (
+                                    <GlassButton
+                                        type="button"
+                                        variant="ghost"
+                                        onClick={handleCancelEditAccommodation}
+                                        className="h-11 px-4 text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary cursor-pointer"
+                                    >
+                                        Cancel
+                                    </GlassButton>
+                                )}
+                            </div>
+
+                            {/* Render multiple added accommodations */}
+                            {renderAccommodationStackList()}
+
+                            {/* Column 3 Bottom Launch Strip */}
+                            <div className="pt-3 border-t border-black/5 dark:border-white/5 space-y-3">
+                                <div className={READOUT_STRIP_STYLE}>
+                                    <div>
+                                        <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
+                                            Trip Est. Total
+                                        </span>
+                                        <span className="font-mono font-black text-sm text-primary-600 dark:text-primary-400">
+                                            {formatCurrency(totalEstimatedCost, activeCurrency)}
+                                        </span>
+                                    </div>
+                                    <span className={MONO_PILL_STYLE}>
+                                        {transportsList.length}L • {accommodationsList.length}S
+                                    </span>
+                                </div>
+
+                                <GlassButton 
+                                    type="button" 
+                                    variant="primary"
+                                    onClick={handleFinalizeTrip}
+                                    disabled={isSaving || !title || !startDate || !endDate}
+                                    className="w-full h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-xs active:scale-95 disabled:opacity-50 cursor-pointer"
+                                >
+                                    <span>{isSaving ? 'Creating Trip...' : 'Create Trip'}</span>
+                                    <Check className="w-4 h-4" weight="bold" />
+                                </GlassButton>
+                            </div>
+                        </div>
+                    </div>
+                </GlassPanel>
+            </div>
+
+            {/* Mobile (< 1024px): Single-Column Active Stage View */}
+            <div className="lg:hidden w-full max-w-xl mx-auto space-y-5">
+                {currentStage === 'basics' && (
+                    <GlassPanel
+                        className="wg-glass-card rounded-[28px] overflow-hidden shadow-2xl flex flex-col"
+                        overrides={{ borderRadius: 28 }}
+                        padding="0px"
+                    >
+                        <div className="p-5 bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border-b border-black/10 dark:border-white/5 flex items-center gap-3 shrink-0">
+                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-emerald-500 to-teal-600 shadow-md shrink-0">
+                                <Compass className="w-6 h-6" weight="duotone" />
+                            </div>
+                            <div className="min-w-0">
+                                <h2 className="text-base font-bold text-light-text dark:text-dark-text tracking-tight truncate">
+                                    1. Trip Basics
+                                </h2>
+                                <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium truncate mt-0.5">
+                                    Destination and schedule
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="p-5 space-y-4">
+                            {basicsError && (
+                                <div className={`p-3 rounded-xl text-xs font-semibold ${STATUS_DANGER_STYLE} flex items-center gap-2`}>
+                                    <span>{basicsError}</span>
+                                </div>
+                            )}
+                            
+                            {/* Hero Input */}
+                            <div className="space-y-1.5">
+                                <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                                    Trip Title <span className="text-rose-500">*</span>
+                                </label>
+                                <input 
+                                    type="text"
+                                    className={`${INPUT_BASE_STYLE} h-14 !text-xl font-bold`}
+                                    placeholder="e.g. Greek Island Odyssey" 
+                                    value={title} 
+                                    onChange={e => setTitle(e.target.value)} 
+                                    required
+                                />
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                                    Destination City <span className="text-rose-500">*</span>
+                                </label>
+                                <Autocomplete 
+                                    placeholder="e.g. Santorini, Greece" 
+                                    value={destination} 
+                                    onChange={handleDestinationChange} 
+                                    fetchSuggestions={fetchLocationSuggestions} 
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <Input label="Start Date *" type="date" value={startDate} onChange={e => handleStartDateChange(e.target.value)} />
+                                <Input label="End Date *" type="date" value={endDate} min={startDate} onChange={e => handleEndDateChange(e.target.value)} />
+                            </div>
+
+                            {/* Status Switcher */}
+                            <div className="space-y-1.5">
+                                <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                                    Trip Status
+                                </label>
+                                <div className={SEGMENTED_TAB_WRAPPER}>
+                                    {(['Planning', 'Upcoming', 'Past'] as const).map(s => {
+                                        const label = s === 'Planning' ? 'Planned' : s === 'Upcoming' ? 'Confirmed' : 'Past';
+                                        const isActive = status === s;
+                                        return (
+                                            <button
+                                                key={s}
+                                                type="button"
+                                                onClick={() => setStatus(s)}
+                                                className={`flex-1 ${isActive ? SEGMENTED_TAB_ACTIVE : SEGMENTED_TAB_INACTIVE} cursor-pointer`}
+                                            >
+                                                {label}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Travelers */}
+                            {users.length > 0 && (
+                                <div className="space-y-1.5">
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center justify-between">
+                                        <span>Travelers</span>
+                                        <span className="font-normal text-2xs text-light-text-secondary/70">{selectedUserIds.length} Selected</span>
+                                    </label>
+                                    <div className="flex flex-wrap gap-2 pt-0.5">
+                                        {users.map(u => {
+                                            const isSelected = selectedUserIds.includes(u.id);
+                                            return (
+                                                <button
+                                                    key={u.id}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setSelectedUserIds(prev => 
+                                                            isSelected ? (prev.length > 1 ? prev.filter(id => id !== u.id) : prev) : [...prev, u.id]
+                                                        );
+                                                    }}
+                                                    className={`flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                                                        isSelected
+                                                            ? 'bg-primary-500/15 text-primary-600 dark:text-primary-300 border border-primary-500/30 shadow-xs'
+                                                            : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary border border-transparent hover:bg-black/10 dark:hover:bg-white/10'
+                                                    }`}
+                                                >
+                                                    {u.profilePicture ? (
+                                                        <img src={u.profilePicture} alt={u.name} className="w-4 h-4 rounded-full object-cover" />
+                                                    ) : (
+                                                        <div className="w-4 h-4 rounded-full bg-primary-500/20 text-primary-600 dark:text-primary-400 flex items-center justify-center text-[9px] font-bold">
+                                                            {u.name.charAt(0)}
+                                                        </div>
+                                                    )}
+                                                    <span>{u.name}</span>
+                                                    {isSelected && <Check className="w-3.5 h-3.5 text-primary-500" weight="bold" />}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+
+                            <GlassButton 
+                                type="button" 
+                                variant="primary"
+                                onClick={handleCompleteBasics} 
+                                className="w-full h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                            >
+                                <span>Next: Configure Transport</span>
+                                <ArrowRight className="w-4 h-4" />
+                            </GlassButton>
+                        </div>
+                    </GlassPanel>
+                )}
+
+                {currentStage === 'transport' && (
+                    <GlassPanel
+                        className="wg-glass-card rounded-[28px] overflow-hidden shadow-2xl flex flex-col"
+                        overrides={{ borderRadius: 28 }}
+                        padding="0px"
+                    >
+                        <div className="p-5 bg-gradient-to-r from-sky-500/10 via-sky-500/5 to-transparent border-b border-black/10 dark:border-white/5 flex items-center justify-between shrink-0">
+                            <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-sky-500 to-blue-600 shadow-md shrink-0">
+                                    <AirplaneTilt className="w-6 h-6" weight="duotone" />
+                                </div>
+                                <div className="min-w-0">
+                                    <h2 className="text-base font-bold text-light-text dark:text-dark-text tracking-tight truncate">
+                                        2. Transport
+                                    </h2>
+                                    <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium truncate mt-0.5">
+                                        Flights, trains, rentals & drives
+                                    </p>
+                                </div>
+                            </div>
+                            {transportsList.length > 0 && (
+                                <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-full bg-sky-500/15 text-sky-700 dark:text-sky-300 border border-sky-500/25 shrink-0">
+                                    {transportsList.length} {transportsList.length === 1 ? 'Leg' : 'Legs'}
+                                </span>
+                            )}
+                        </div>
+
+                        <div className="p-5 space-y-4">
+                            {/* Method Selector */}
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                                    Method
+                                </label>
                                 <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
                                     {TRANSPORT_MODES.map(m => {
                                         const IconM = m.icon;
@@ -2476,8 +2720,10 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                                 key={m.mode}
                                                 type="button"
                                                 onClick={() => setTransportMode(m.mode)}
-                                                className={`p-2 rounded-xl flex flex-col items-center justify-center text-center transition-all cursor-pointer ${
-                                                    isSel ? 'bg-white dark:bg-dark-card text-primary-500 border border-primary-500/30 font-bold' : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'
+                                                className={`p-2 rounded-xl flex flex-col items-center justify-center text-center transition-all cursor-pointer min-h-[50px] ${
+                                                    isSel 
+                                                    ? 'bg-white dark:bg-dark-card text-primary-500 border border-primary-500/30 font-bold shadow-sm' 
+                                                    : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'
                                                 }`}
                                             >
                                                 <IconM className="w-5 h-5 mb-1" />
@@ -2486,133 +2732,151 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                         );
                                     })}
                                 </div>
+                            </div>
 
-                                {transportMode !== 'Car Rental' && transportMode !== 'Personal Car' && (
-                                    <div className="flex gap-1.5">
+                            {transportMode !== 'Car Rental' && transportMode !== 'Personal Car' && (
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                                        Routing Structure
+                                    </label>
+                                    <div className={SEGMENTED_TAB_WRAPPER}>
                                         {(['Round Trip', 'One-Way'] as const).map(struct => (
                                             <button
                                                 key={struct}
                                                 type="button"
                                                 onClick={() => setTransportStructure(struct)}
-                                                className={`flex-1 py-1.5 rounded-xl text-2xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                                                    transportStructure === struct 
-                                                    ? 'bg-white dark:bg-dark-card text-primary-600 dark:text-primary-400 border border-primary-500/30' 
-                                                    : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'
-                                                }`}
+                                                className={`flex-1 ${transportStructure === struct ? SEGMENTED_TAB_ACTIVE : SEGMENTED_TAB_INACTIVE} cursor-pointer`}
                                             >
                                                 {struct}
                                             </button>
                                         ))}
                                     </div>
-                                )}
-
-                                {/* Mode-Specific Fields */}
-                                <div className="space-y-3 pt-1">
-                                    {renderTransportFields()}
                                 </div>
+                            )}
 
-                                {/* Add Leg Button */}
-                                <div className="flex gap-2">
-                                    <GlassButton 
-                                        type="button" 
-                                        variant={editingTransportIndex !== null ? "primary" : "secondary"}
-                                        onClick={handleCommitTransport}
-                                        className="flex-1 h-11 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-none sm:shadow-xs"
-                                    >
-                                        {editingTransportIndex !== null ? (
-                                            <>
-                                                <Check className="w-4 h-4" weight="bold" />
-                                                <span>Save Leg Changes</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Plus className="w-4 h-4" weight="bold" />
-                                                <span>+ Add This Transport Leg</span>
-                                            </>
-                                        )}
-                                    </GlassButton>
-                                    {editingTransportIndex !== null && (
-                                        <GlassButton
-                                            type="button"
-                                            variant="ghost"
-                                            onClick={handleCancelEditTransport}
-                                            className="h-11 px-3 text-xs font-bold uppercase tracking-wider cursor-pointer"
-                                        >
-                                            Cancel
-                                        </GlassButton>
+                            {/* Mode-Specific Fields */}
+                            <div className={`space-y-3 ${CARD_FILL_STYLE}`}>
+                                {renderTransportFields()}
+                            </div>
+
+                            {/* Add Leg Button */}
+                            <div className="flex gap-2">
+                                <GlassButton 
+                                    type="button" 
+                                    variant={editingTransportIndex !== null ? "primary" : "secondary"}
+                                    onClick={handleCommitTransport}
+                                    className="flex-1 h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                                >
+                                    {editingTransportIndex !== null ? (
+                                        <>
+                                            <Check className="w-4 h-4" weight="bold" />
+                                            <span>Save Leg Changes</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Plus className="w-4 h-4" weight="bold" />
+                                            <span>Add Transport Leg</span>
+                                        </>
                                     )}
-                                </div>
-
-                                {/* Multiple Added Transports Stack */}
-                                {renderTransportStackList()}
-
-                                <div className="flex gap-2 pt-2">
-                                    <GlassButton 
-                                        type="button" 
+                                </GlassButton>
+                                {editingTransportIndex !== null && (
+                                    <GlassButton
+                                        type="button"
                                         variant="ghost"
-                                        onClick={() => setCurrentStage('accommodation')} 
-                                        className="px-4 h-12 text-xs font-bold uppercase text-light-text-secondary dark:text-dark-text-secondary cursor-pointer"
+                                        onClick={handleCancelEditTransport}
+                                        className="h-12 px-4 text-xs font-bold uppercase tracking-wider cursor-pointer"
                                     >
-                                        Skip
+                                        Cancel
                                     </GlassButton>
-                                    <GlassButton 
-                                        type="button" 
-                                        variant="primary"
-                                        onClick={() => { 
-                                            if (outboundOrigin && transportsList.length === 0) {
-                                                handleCommitTransport();
-                                            }
-                                            setCurrentStage('accommodation'); 
-                                        }} 
-                                        className="flex-1 h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1 cursor-pointer shadow-none sm:shadow-xs"
-                                    >
-                                        <span>Next: Stays</span>
-                                        <ArrowRight className="w-4 h-4" />
-                                    </GlassButton>
+                                )}
+                            </div>
+
+                            {/* Multiple Added Transports Stack */}
+                            {renderTransportStackList()}
+
+                            <div className="flex gap-2 pt-2">
+                                <GlassButton 
+                                    type="button" 
+                                    variant="ghost"
+                                    onClick={() => setCurrentStage('accommodation')} 
+                                    className="px-4 h-12 text-xs font-bold uppercase text-light-text-secondary dark:text-dark-text-secondary cursor-pointer"
+                                >
+                                    Skip
+                                </GlassButton>
+                                <GlassButton 
+                                    type="button" 
+                                    variant="primary"
+                                    onClick={() => { 
+                                        if (outboundOrigin && transportsList.length === 0) {
+                                            handleCommitTransport();
+                                        }
+                                        setCurrentStage('accommodation'); 
+                                    }} 
+                                    className="flex-1 h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1 cursor-pointer shadow-xs"
+                                >
+                                    <span>Next: Stays</span>
+                                    <ArrowRight className="w-4 h-4" />
+                                </GlassButton>
+                            </div>
+                        </div>
+                    </GlassPanel>
+                )}
+
+                {currentStage === 'accommodation' && (
+                    <GlassPanel
+                        className="wg-glass-card rounded-[28px] overflow-hidden shadow-2xl flex flex-col"
+                        overrides={{ borderRadius: 28 }}
+                        padding="0px"
+                    >
+                        <div className="p-5 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border-b border-black/10 dark:border-white/5 flex items-center justify-between shrink-0">
+                            <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-amber-500 to-orange-600 shadow-md shrink-0">
+                                    <Bed className="w-6 h-6" weight="duotone" />
+                                </div>
+                                <div className="min-w-0">
+                                    <h2 className="text-base font-bold text-light-text dark:text-dark-text tracking-tight truncate">
+                                        3. Stays
+                                    </h2>
+                                    <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium truncate mt-0.5">
+                                        Hotels, resorts, airbnbs & villas
+                                    </p>
                                 </div>
                             </div>
-                        )}
+                            {accommodationsList.length > 0 && (
+                                <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/25 shrink-0">
+                                    {accommodationsList.length} {accommodationsList.length === 1 ? 'Stay' : 'Stays'}
+                                </span>
+                            )}
+                        </div>
 
-                        {currentStage === 'accommodation' && (
-                            <div className="space-y-4 animate-fadeIn">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2.5">
-                                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-none sm:shadow-xs shrink-0">
-                                            <Bed className="w-4 h-4" weight="duotone" />
-                                        </div>
-                                        <div>
-                                            <h3 className="text-sm font-bold text-light-text dark:text-dark-text tracking-tight">Step 3: Accommodations</h3>
-                                            <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary font-medium">Hotels, resorts, airbnbs</p>
-                                        </div>
-                                    </div>
-                                    {accommodationsList.length > 0 && (
-                                        <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                                            {accommodationsList.length} {accommodationsList.length === 1 ? 'Stay' : 'Stays'}
-                                        </span>
-                                    )}
-                                </div>
-                                
-                                {/* Stay Type */}
+                        <div className="p-5 space-y-4">
+                            {/* Stay Type */}
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                                    Stay Type
+                                </label>
                                 <div className="grid grid-cols-4 gap-1.5">
                                     {ACCOMMODATION_TYPES.map(t => (
                                         <button 
                                             key={t} 
                                             type="button" 
                                             onClick={() => setAccType(t)} 
-                                            className={`py-2 px-1 rounded-xl text-center text-2xs font-bold uppercase truncate cursor-pointer ${
-                                                accType === t ? 'bg-white dark:bg-dark-card text-amber-600 dark:text-amber-400 border border-amber-500/30' : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'
+                                            className={`min-h-[36px] py-2 px-1 rounded-xl text-center text-2xs font-bold uppercase truncate cursor-pointer ${
+                                                accType === t ? 'bg-white dark:bg-dark-card text-amber-600 dark:text-amber-400 border border-amber-500/30 shadow-sm' : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/10 dark:hover:bg-white/10'
                                             }`}
                                         >
                                             {t}
                                         </button>
                                     ))}
                                 </div>
+                            </div>
 
+                            <div className={`space-y-3 ${CARD_FILL_STYLE}`}>
                                 <Input label="Property Name *" placeholder="e.g. Grand Hotel Tremezzo" value={accName} onChange={e => setAccName(e.target.value)} />
                                 
                                 <div className="space-y-1">
                                     <div className="flex items-center justify-between">
-                                        <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1">
+                                        <label className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1">
                                             <MapPin className="w-3.5 h-3.5 text-primary-500" />
                                             <span>Address / Google Maps Location</span>
                                         </label>
@@ -2628,7 +2892,9 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
 
                                 <div className="space-y-1">
                                     <div className="flex items-center justify-between">
-                                        <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Dates & Duration</label>
+                                        <label className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                                            Dates & Duration
+                                        </label>
                                         {activeAccNights > 0 && (
                                             <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
                                                 {activeAccNights} {activeAccNights === 1 ? 'Night' : 'Nights'}
@@ -2645,82 +2911,84 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                     <Input label={`Total Cost (${getCurrencySymbol(activeCurrency)})`} type="number" placeholder="0.00" value={accCost} onChange={e => setAccCost(e.target.value)} />
                                     <Input label="Booking Ref / PNR" placeholder="HTL-882" value={accRef} onChange={e => setAccRef(e.target.value)} />
                                 </div>
+                            </div>
 
-                                {/* Add Stay Button */}
-                                <div className="flex gap-2">
-                                    <GlassButton 
-                                        type="button" 
-                                        variant={editingAccommodationIndex !== null ? "primary" : "secondary"}
-                                        onClick={handleCommitAccommodation}
-                                        className="flex-1 h-11 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-none sm:shadow-xs"
-                                    >
-                                        {editingAccommodationIndex !== null ? (
-                                            <>
-                                                <Check className="w-4 h-4" weight="bold" />
-                                                <span>Save Stay Changes</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Plus className="w-4 h-4" weight="bold" />
-                                                <span>+ Add This Stay</span>
-                                            </>
-                                        )}
-                                    </GlassButton>
-                                    {editingAccommodationIndex !== null && (
-                                        <GlassButton
-                                            type="button"
-                                            variant="ghost"
-                                            onClick={handleCancelEditAccommodation}
-                                            className="h-11 px-3 text-xs font-bold uppercase tracking-wider cursor-pointer"
-                                        >
-                                            Cancel
-                                        </GlassButton>
+                            {/* Add Stay Button */}
+                            <div className="flex gap-2">
+                                <GlassButton 
+                                    type="button" 
+                                    variant={editingAccommodationIndex !== null ? "primary" : "secondary"}
+                                    onClick={handleCommitAccommodation}
+                                    className="flex-1 h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                                >
+                                    {editingAccommodationIndex !== null ? (
+                                        <>
+                                            <Check className="w-4 h-4" weight="bold" />
+                                            <span>Save Stay Changes</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Plus className="w-4 h-4" weight="bold" />
+                                            <span>Add Stay</span>
+                                        </>
                                     )}
-                                </div>
+                                </GlassButton>
+                                {editingAccommodationIndex !== null && (
+                                    <GlassButton
+                                        type="button"
+                                        variant="ghost"
+                                        onClick={handleCancelEditAccommodation}
+                                        className="h-12 px-4 text-xs font-bold uppercase tracking-wider cursor-pointer"
+                                    >
+                                        Cancel
+                                    </GlassButton>
+                                )}
+                            </div>
 
-                                {/* Multiple Added Stays Stack */}
-                                {renderAccommodationStackList()}
+                            {/* Multiple Added Stays Stack */}
+                            {renderAccommodationStackList()}
 
-                                {/* Mobile Accommodation Finalize & Cost Breakdown */}
-                                <div className="p-3.5 rounded-2xl bg-white/70 dark:bg-dark-card/70 space-y-3 border border-black/5 dark:border-white/5 mt-4">
-                                    <div className="p-3 rounded-xl bg-black/5 dark:bg-white/5 space-y-1.5 text-xs">
-                                        <div className="flex justify-between items-center text-2xs text-light-text-secondary dark:text-dark-text-secondary">
-                                            <span>Transports ({transportsList.length})</span>
-                                            <span className="font-mono font-bold text-light-text dark:text-dark-text">{formatCurrency(totalTransportCost, activeCurrency)}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center text-2xs text-light-text-secondary dark:text-dark-text-secondary">
-                                            <span>Accommodations ({accommodationsList.length})</span>
-                                            <span className="font-mono font-bold text-light-text dark:text-dark-text">{formatCurrency(totalAccommodationCost, activeCurrency)}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center pt-1.5 border-t border-black/10 dark:border-white/10">
-                                            <span className="font-bold uppercase tracking-wider text-2xs text-light-text dark:text-dark-text">Total Expedition Cost</span>
-                                            <span className="font-mono font-black text-sm text-primary-600 dark:text-primary-400">
-                                                {formatCurrency(totalEstimatedCost, activeCurrency)}
-                                            </span>
-                                        </div>
+                            {/* Mobile Accommodation Finalize & Cost Breakdown */}
+                            <div className={`space-y-3 ${CARD_FILL_STYLE} mt-4`}>
+                                <div className="p-3 rounded-xl bg-black/5 dark:bg-white/5 space-y-1.5 text-xs">
+                                    <div className="flex justify-between items-center text-2xs text-light-text-secondary dark:text-dark-text-secondary">
+                                        <span>Transports ({transportsList.length})</span>
+                                        <span className="font-mono font-bold text-light-text dark:text-dark-text">{formatCurrency(totalTransportCost, activeCurrency)}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-2xs text-light-text-secondary dark:text-dark-text-secondary">
+                                        <span>Accommodations ({accommodationsList.length})</span>
+                                        <span className="font-mono font-bold text-light-text dark:text-dark-text">{formatCurrency(totalAccommodationCost, activeCurrency)}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center pt-2 border-t border-black/10 dark:border-white/10">
+                                        <span className="font-bold uppercase tracking-wider text-2xs text-light-text dark:text-dark-text">Total Trip Cost</span>
+                                        <span className="font-mono font-black text-sm text-primary-600 dark:text-primary-400">
+                                            {formatCurrency(totalEstimatedCost, activeCurrency)}
+                                        </span>
                                     </div>
                                 </div>
-
-                                <div className="pt-2">
-                                    <GlassButton 
-                                        type="button" 
-                                        variant="primary"
-                                        onClick={() => { 
-                                            if (accName && accommodationsList.length === 0) {
-                                                handleCommitAccommodation();
-                                            }
-                                            handleFinalizeTrip(); 
-                                        }} 
-                                        disabled={isSaving || !title || !startDate || !endDate}
-                                        className="w-full h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-none sm:shadow-xs disabled:opacity-50"
-                                    >
-                                        <span>{isSaving ? 'Creating Expedition...' : 'Launch Expedition'}</span>
-                                        <Check className="w-4 h-4" weight="bold" />
-                                    </GlassButton>
-                                </div>
                             </div>
-                        )}
-                    </div>
+
+                            <div className="pt-2">
+                                <GlassButton 
+                                    type="button" 
+                                    variant="primary"
+                                    onClick={() => { 
+                                        if (accName && accommodationsList.length === 0) {
+                                            handleCommitAccommodation();
+                                        }
+                                        handleFinalizeTrip(); 
+                                    }} 
+                                    disabled={isSaving || !title || !startDate || !endDate}
+                                    className="w-full h-12 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-xs disabled:opacity-50"
+                                >
+                                    <span>{isSaving ? 'Creating Trip...' : 'Create Trip'}</span>
+                                    <Check className="w-4 h-4" weight="bold" />
+                                </GlassButton>
+                            </div>
+                        </div>
+                    </GlassPanel>
+                )}
+            </div>
         </div>
     );
 };
