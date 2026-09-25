@@ -248,7 +248,8 @@ const useDarkMode = () => {
 export const createMapLibreStyle = (
     layer: string,
     isDark: boolean,
-    cartoApiKey?: string
+    cartoApiKey?: string,
+    isGlobe: boolean = false
 ): maplibregl.StyleSpecification => {
     const keyParam = cartoApiKey ? `?key=${encodeURIComponent(cartoApiKey)}` : '';
     const getCartoTiles = (style: 'dark_all' | 'light_all' | 'voyager') => [
@@ -294,6 +295,7 @@ export const createMapLibreStyle = (
 
     return {
         version: 8,
+        ...(isGlobe ? { projection: { type: 'globe' } as any } : {}),
         sources: {
             'raster-basemap-source': {
                 type: 'raster',
