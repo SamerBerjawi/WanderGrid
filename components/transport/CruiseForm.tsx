@@ -121,7 +121,7 @@ export const CruiseForm: React.FC<CruiseFormProps> = ({
                     <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1">
                         <Clock className="w-3 h-3" /> Embarkation
                     </span>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
                         <Input 
                             label="Date" 
                             type="date" 
@@ -141,7 +141,7 @@ export const CruiseForm: React.FC<CruiseFormProps> = ({
                     <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1">
                         <Clock className="w-3 h-3" /> Disembarkation
                     </span>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
                         <Input 
                             label="Date" 
                             type="date" 

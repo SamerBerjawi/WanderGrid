@@ -1546,7 +1546,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                                         />
                                                     </div>
 
-                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                    <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
                                                         <DatePicker 
                                                             label="Departure Date" 
                                                             value={leg.departureDate || outboundDate || startDate} 

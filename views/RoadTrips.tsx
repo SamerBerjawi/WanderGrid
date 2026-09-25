@@ -1407,7 +1407,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-5 rounded-3xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5">
             <div className="space-y-3">
               <span className="text-xs font-bold uppercase tracking-wider text-primary-600 dark:text-primary-400 block">Departure Timeline</span>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
                 <Input 
                   type="date" 
                   label="Departure date"
@@ -1425,7 +1425,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
 
             <div className="space-y-3">
               <span className="text-xs font-bold uppercase tracking-wider text-primary-600 dark:text-primary-400 block">Arrival Timeline</span>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
                 <Input 
                   type="date" 
                   label="Arrival date"

@@ -4,7 +4,6 @@ import {
   CalendarBlank, 
   CaretLeft, 
   CaretRight, 
-  CaretDown,
   Check 
 } from '@phosphor-icons/react';
 import GlassPanel from '../glass/GlassPanel';
@@ -242,15 +241,6 @@ export const DatePicker: React.FC<DatePickerProps> = ({
     }
   };
 
-  // Day nudgers
-  const handleNudge = (e: React.MouseEvent, days: number) => {
-    e.stopPropagation();
-    if (!value) return;
-    const nextDate = shiftDays(value, days);
-    if (minDate && nextDate < minDate) return;
-    if (maxDate && nextDate > maxDate) return;
-    onChange?.(nextDate);
-  };
 
   // Date selection
   const handleSelectDate = (dateStr: string) => {
@@ -304,7 +294,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
         overrides={{ borderRadius: 20 }}
         onClick={() => !disabled && setIsOpen(!isOpen)}
       >
-        <div className="flex items-center min-h-[44px] h-11 px-3 w-full gap-2 select-none justify-between">
+        <div className="flex items-center min-h-[44px] h-11 px-3 w-full gap-2.5 select-none">
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
             {/* Calendar Icon */}
             <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${theme.iconBox}`}>
@@ -312,39 +302,13 @@ export const DatePicker: React.FC<DatePickerProps> = ({
             </div>
 
             {/* Date Display */}
-            <div className="min-w-0 flex-1 pr-1">
+            <div className="min-w-0 flex-1">
               <span className={`text-xs font-bold truncate block leading-tight ${
                 value ? 'text-light-text dark:text-dark-text' : 'text-light-text-secondary/60 dark:text-dark-text-secondary/60 font-medium'
               }`}>
                 {value ? formatDate(value, 'weekday-short') : placeholder}
               </span>
             </div>
-          </div>
-
-          <div className="flex items-center gap-1 shrink-0">
-            {/* Day Nudgers (when value exists) */}
-            {value && (
-              <div className="flex items-center gap-0.5 opacity-40 hover:opacity-100 transition-opacity">
-                <button
-                  type="button"
-                  onClick={(e) => handleNudge(e, -1)}
-                  className="w-5 h-5 flex items-center justify-center rounded-md hover:bg-black/10 dark:hover:bg-white/10 cursor-pointer"
-                  title="Previous day"
-                >
-                  <CaretLeft className="w-3 h-3" />
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => handleNudge(e, 1)}
-                  className="w-5 h-5 flex items-center justify-center rounded-md hover:bg-black/10 dark:hover:bg-white/10 cursor-pointer"
-                  title="Next day"
-                >
-                  <CaretRight className="w-3 h-3" />
-                </button>
-              </div>
-            )}
-
-            <CaretDown className={`w-3.5 h-3.5 text-light-text-secondary/60 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
           </div>
         </div>
       </GlassPanel>

@@ -250,27 +250,6 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     }
   };
 
-  // Stepper handlers for start date
-  const handleNudgeStart = (e: React.MouseEvent, days: number) => {
-    e.stopPropagation();
-    const nextStart = shiftDays(startDate, days);
-    if (minDate && nextStart < minDate) return;
-    if (singleDate) {
-      onChange(nextStart, nextStart);
-    } else if (endDate && nextStart > endDate) {
-      onChange(nextStart, nextStart);
-    } else {
-      onChange(nextStart, endDate || nextStart);
-    }
-  };
-
-  // Stepper handlers for end date
-  const handleNudgeEnd = (e: React.MouseEvent, days: number) => {
-    e.stopPropagation();
-    const nextEnd = shiftDays(endDate || startDate, days);
-    if (startDate && nextEnd < startDate) return;
-    onChange(startDate, nextEnd);
-  };
 
   // Handle click on a calendar date cell
   const handleSelectDate = (dateStr: string) => {
@@ -347,13 +326,13 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
               setActiveTab('start');
               setIsOpen(true);
             }}
-            className={`flex-1 flex items-center justify-between min-w-0 px-2 py-1 rounded-xl transition-all ${
+            className={`flex-1 flex items-center min-w-0 px-2 py-1 rounded-xl transition-all ${
               isOpen && activeTab === 'start'
                 ? theme.activeSegment
                 : 'hover:bg-black/5 dark:hover:bg-white/5'
             }`}
           >
-            <div className="min-w-0 pr-1">
+            <div className="min-w-0 flex-1">
               <span className="text-3xs uppercase font-extrabold tracking-wider text-light-text-secondary/60 dark:text-dark-text-secondary/60 block leading-tight">
                 {startLabel}
               </span>
@@ -361,26 +340,6 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                 {startDate ? formatDate(startDate, 'weekday-short') : 'Select date'}
               </span>
             </div>
-            {startDate && (
-              <div className="flex items-center gap-0.5 shrink-0 opacity-40 hover:opacity-100 transition-opacity">
-                <button
-                  type="button"
-                  onClick={(e) => handleNudgeStart(e, -1)}
-                  className="w-5 h-5 flex items-center justify-center rounded-md hover:bg-black/10 dark:hover:bg-white/10 cursor-pointer"
-                  title="Previous day"
-                >
-                  <CaretLeft className="w-3 h-3" />
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => handleNudgeStart(e, 1)}
-                  className="w-5 h-5 flex items-center justify-center rounded-md hover:bg-black/10 dark:hover:bg-white/10 cursor-pointer"
-                  title="Next day"
-                >
-                  <CaretRight className="w-3 h-3" />
-                </button>
-              </div>
-            )}
           </div>
 
           {/* Hairline Divider & End Date Section (Only for Range mode) */}
@@ -393,13 +352,13 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                   setActiveTab('end');
                   setIsOpen(true);
                 }}
-                className={`flex-1 flex items-center justify-between min-w-0 px-2 py-1 rounded-xl transition-all ${
+                className={`flex-1 flex items-center min-w-0 px-2 py-1 rounded-xl transition-all ${
                   isOpen && activeTab === 'end'
                     ? theme.activeSegment
                     : 'hover:bg-black/5 dark:hover:bg-white/5'
                 }`}
               >
-                <div className="min-w-0 pr-1">
+                <div className="min-w-0 flex-1">
                   <span className="text-3xs uppercase font-extrabold tracking-wider text-light-text-secondary/60 dark:text-dark-text-secondary/60 block leading-tight">
                     {endLabel}
                   </span>
@@ -407,26 +366,6 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                     {endDate ? formatDate(endDate, 'weekday-short') : 'Select return'}
                   </span>
                 </div>
-                {endDate && (
-                  <div className="flex items-center gap-0.5 shrink-0 opacity-40 hover:opacity-100 transition-opacity">
-                    <button
-                      type="button"
-                      onClick={(e) => handleNudgeEnd(e, -1)}
-                      className="w-5 h-5 flex items-center justify-center rounded-md hover:bg-black/10 dark:hover:bg-white/10 cursor-pointer"
-                      title="Previous day"
-                    >
-                      <CaretLeft className="w-3 h-3" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => handleNudgeEnd(e, 1)}
-                      className="w-5 h-5 flex items-center justify-center rounded-md hover:bg-black/10 dark:hover:bg-white/10 cursor-pointer"
-                      title="Next day"
-                    >
-                      <CaretRight className="w-3 h-3" />
-                    </button>
-                  </div>
-                )}
               </div>
             </>
           )}

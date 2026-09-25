@@ -280,7 +280,7 @@ export const ExcursionConfigurator: React.FC<ExcursionConfiguratorProps> = ({
                         <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
                             Schedule
                         </span>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-end">
                             <Input
                                 label="Date"
                                 type="date"

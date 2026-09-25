@@ -2332,7 +2332,7 @@ export const TripDetail2: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                 fetchSuggestions={fetchLocationSuggestions} 
                             />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-[1fr_auto] gap-4 items-end">
                             <Input label="Date" type="date" value={activityForm.date || currentDayForActivity || ''} onChange={e => setActivityForm({...activityForm, date: e.target.value})} />
                             <TimeInput label="Time" value={activityForm.time || '12:00'} onChange={val => setActivityForm({...activityForm, time: val})} />
                         </div>

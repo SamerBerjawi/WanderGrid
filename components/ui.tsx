@@ -159,23 +159,23 @@ export const TimeInput: React.FC<TimeInputProps> = ({ label, value, onChange, cl
   };
 
   return (
-    <div className={cn("flex flex-col gap-1.5 w-full", className)}>
+    <div className={cn("flex flex-col gap-1.5 w-fit shrink-0", className)}>
       {label && <label className={SECTION_LABEL_STYLE}>{label}</label>}
       <GlassPanel
-        className="wg-glass-pill w-full transition-all duration-180 ease-glass border-black/10 dark:border-white/10 min-h-[44px] h-11"
+        className="wg-glass-pill transition-all duration-180 ease-glass border-black/10 dark:border-white/10 min-h-[44px] h-11 w-[116px]"
         padding="0px"
         overrides={{ borderRadius: 20 }}
       >
-        <div className="flex items-center justify-between min-h-[44px] h-11 px-3 w-full text-xs font-bold">
+        <div className="flex items-center justify-between min-h-[44px] h-11 px-2.5 w-full text-xs font-bold select-none">
           {/* Hours : Minutes */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
             <input
               type="number"
               min="1"
               max="12"
               data-no-spinner="true"
-              className="w-7 bg-transparent text-center text-xs font-bold text-light-text dark:text-dark-text focus:outline-none no-spinners cursor-pointer"
-              value={displayHour}
+              className="w-6 bg-transparent text-center text-xs font-bold text-light-text dark:text-dark-text focus:outline-none no-spinners cursor-pointer p-0"
+              value={String(displayHour).padStart(2, '0')}
               onChange={handleHourChange}
             />
             <span className="font-bold text-light-text-secondary/50 dark:text-dark-text-secondary/50 select-none">:</span>
@@ -184,37 +184,22 @@ export const TimeInput: React.FC<TimeInputProps> = ({ label, value, onChange, cl
               min="0"
               max="59"
               data-no-spinner="true"
-              className="w-7 bg-transparent text-center text-xs font-bold text-light-text dark:text-dark-text focus:outline-none no-spinners cursor-pointer"
+              className="w-6 bg-transparent text-center text-xs font-bold text-light-text dark:text-dark-text focus:outline-none no-spinners cursor-pointer p-0"
               value={minuteStr || '00'}
               onChange={handleMinuteChange}
             />
           </div>
 
-          {/* Segmented Switcher for AM/PM per AGENTS.md §7.3 */}
-          <div className="bg-black/5 dark:bg-white/5 p-0.5 rounded-xl flex border border-black/10 dark:border-white/5">
-            <button
-              type="button"
-              onClick={() => isPm && togglePeriod()}
-              className={`px-2 py-0.5 rounded-lg text-3xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                !isPm
-                  ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm'
-                  : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
-              }`}
-            >
-              AM
-            </button>
-            <button
-              type="button"
-              onClick={() => !isPm && togglePeriod()}
-              className={`px-2 py-0.5 rounded-lg text-3xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                isPm
-                  ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm'
-                  : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
-              }`}
-            >
-              PM
-            </button>
-          </div>
+          {/* Single AM/PM Toggle Button showing only the selected period */}
+          <button
+            type="button"
+            onClick={togglePeriod}
+            className="px-2 py-1 rounded-xl text-3xs font-black uppercase tracking-wider transition-all cursor-pointer bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-primary-600 dark:text-primary-400 border border-primary-500/20 shadow-2xs hover:scale-105 active:scale-95 select-none"
+            title={`Click to switch to ${isPm ? 'AM' : 'PM'}`}
+            aria-label={`Toggle period, currently ${isPm ? 'PM' : 'AM'}`}
+          >
+            {isPm ? 'PM' : 'AM'}
+          </button>
         </div>
       </GlassPanel>
     </div>
