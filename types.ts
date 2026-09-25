@@ -146,6 +146,20 @@ export interface Accommodation {
   coordinates?: GeoCoordinates;
 }
 
+export type ActivityType = 
+  | 'Activity' 
+  | 'Reservation' 
+  | 'Dining' 
+  | 'Tour' 
+  | 'Sightseeing' 
+  | 'Museum' 
+  | 'Outdoor' 
+  | 'Entertainment' 
+  | 'Shopping' 
+  | 'Wellness' 
+  | 'Nightlife'
+  | string;
+
 export interface Activity {
   id: string;
   date: string;
@@ -154,7 +168,7 @@ export interface Activity {
   cost?: number;
   location?: string;
   description?: string;
-  type?: 'Reservation' | 'Activity' | 'Tour';
+  type?: ActivityType;
   coordinates?: GeoCoordinates;
 }
 

@@ -68,7 +68,7 @@ export const GlassPanel = forwardRef<HTMLDivElement, GlassPanelProps>(({
     if (token === 'wg-glass-card' || token === 'wg-glass-pill') {
       continue;
     }
-    if (token.startsWith('wg-glass-pill-')) {
+    if (token.startsWith('wg-glass-pill-') || token.startsWith('wg-glass-card-') || token.startsWith('wg-glass-tint-') || token.startsWith('border-dashed')) {
       outerTokens.push(token);
       continue;
     }

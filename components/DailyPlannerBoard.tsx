@@ -24,7 +24,13 @@ import {
     CaretRight,
     SquaresFour,
     Kanban,
-    Eye
+    Eye,
+    Camera,
+    Mountains,
+    FilmSlate,
+    ShoppingBag,
+    Sparkle,
+    Wine
 } from '@phosphor-icons/react';
 import GlassPanel from './glass/GlassPanel';
 import { EmptyState } from './EmptyState';
@@ -34,7 +40,8 @@ import {
     isCarRentalBooking, 
     getTransportScheduleTitle, 
     getTransportScheduleLocation, 
-    getTransportScheduleEventsForDate 
+    getTransportScheduleEventsForDate,
+    getTransportUtcTimestamp 
 } from '../utils/transportSchedule';
 
 export interface DailyPlannerBoardProps {
@@ -133,47 +140,144 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
         }
     };
 
-    // Helper: Transport Card Styling based on Mode
-    const getTransportCardStyle = (mode?: string) => {
+    // Helper: Transport Card Styling based on Mode (Liquid Glass Translucent)
+    const getTransportGlassStyle = (mode?: string) => {
         switch (mode) {
             case 'Flight':
-                return 'bg-emerald-700/90 hover:bg-emerald-700 text-white border-emerald-500/40 shadow-emerald-950/20';
+                return 'wg-glass-card-emerald text-light-text dark:text-dark-text hover:border-emerald-400';
             case 'Ferry':
             case 'Cruise':
-                return 'bg-sky-700/90 hover:bg-sky-700 text-white border-sky-500/40 shadow-sky-950/20';
+                return 'wg-glass-card-sky text-light-text dark:text-dark-text hover:border-sky-400';
             case 'Train':
-                return 'bg-amber-600/95 hover:bg-amber-600 text-white border-amber-400/40 shadow-amber-950/20';
+                return 'wg-glass-card-amber text-light-text dark:text-dark-text hover:border-amber-400';
             case 'Car Rental':
             case 'Personal Car':
-                return 'bg-indigo-700/90 hover:bg-indigo-700 text-white border-indigo-500/40 shadow-indigo-950/20';
+                return 'wg-glass-card-indigo text-light-text dark:text-dark-text hover:border-indigo-400';
             case 'Bus':
-                return 'bg-teal-700/90 hover:bg-teal-700 text-white border-teal-500/40 shadow-teal-950/20';
+                return 'wg-glass-card-teal text-light-text dark:text-dark-text hover:border-teal-400';
             default:
-                return 'bg-slate-700/90 hover:bg-slate-700 text-white border-slate-500/40 shadow-slate-950/20';
+                return 'wg-glass-card-slate text-light-text dark:text-dark-text hover:border-slate-400';
         }
     };
 
-    // Helper: Activity Card Styling based on Type
-    const getActivityCardStyle = (type?: string) => {
+    // Helper: Transport Icon Container Avatar Style
+    const getTransportIconContainerStyle = (mode?: string) => {
+        switch (mode) {
+            case 'Flight':
+                return 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border-emerald-500/30';
+            case 'Ferry':
+            case 'Cruise':
+                return 'bg-sky-500/20 text-sky-600 dark:text-sky-300 border-sky-500/30';
+            case 'Train':
+                return 'bg-amber-500/20 text-amber-600 dark:text-amber-300 border-amber-500/30';
+            case 'Car Rental':
+            case 'Personal Car':
+                return 'bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 border-indigo-500/30';
+            case 'Bus':
+                return 'bg-teal-500/20 text-teal-600 dark:text-teal-300 border-teal-500/30';
+            default:
+                return 'bg-slate-500/20 text-slate-600 dark:text-slate-300 border-slate-500/30';
+        }
+    };
+
+    // Helper: Transport Time Badge Style
+    const getTransportTimeBadgeStyle = (mode?: string) => {
+        switch (mode) {
+            case 'Flight':
+                return 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 border-emerald-500/30';
+            case 'Ferry':
+            case 'Cruise':
+                return 'bg-sky-500/20 text-sky-800 dark:text-sky-200 border-sky-500/30';
+            case 'Train':
+                return 'bg-amber-500/20 text-amber-800 dark:text-amber-200 border-amber-500/30';
+            case 'Car Rental':
+            case 'Personal Car':
+                return 'bg-indigo-500/20 text-indigo-800 dark:text-indigo-200 border-indigo-500/30';
+            case 'Bus':
+                return 'bg-teal-500/20 text-teal-800 dark:text-teal-200 border-teal-500/30';
+            default:
+                return 'bg-slate-500/20 text-slate-800 dark:text-slate-200 border-slate-500/30';
+        }
+    };
+
+    // Helper: Activity Card Styling based on Type (Liquid Glass Tinted)
+    const getActivityGlassStyle = (type?: string) => {
         switch (type) {
             case 'Reservation':
-                // Light mint / green for dining & reservations
-                return 'bg-emerald-50/90 dark:bg-emerald-950/40 border-emerald-300/60 dark:border-emerald-700/40 text-emerald-950 dark:text-emerald-100 hover:border-emerald-400';
+            case 'Dining':
+                return 'wg-glass-card-dining text-emerald-950 dark:text-emerald-100 hover:border-emerald-400';
             case 'Tour':
-                // Lilac / purple for tours & excursions
-                return 'bg-purple-50/90 dark:bg-purple-950/40 border-purple-300/60 dark:border-purple-700/40 text-purple-950 dark:text-purple-100 hover:border-purple-400';
+                return 'wg-glass-card-tour text-purple-950 dark:text-purple-100 hover:border-purple-400';
+            case 'Sightseeing':
+                return 'wg-glass-card-sightseeing text-sky-950 dark:text-sky-100 hover:border-sky-400';
+            case 'Museum':
+                return 'wg-glass-card-museum text-indigo-950 dark:text-indigo-100 hover:border-indigo-400';
+            case 'Outdoor':
+                return 'wg-glass-card-outdoor text-teal-950 dark:text-teal-100 hover:border-teal-400';
+            case 'Entertainment':
+                return 'wg-glass-card-entertainment text-pink-950 dark:text-pink-100 hover:border-pink-400';
+            case 'Shopping':
+                return 'wg-glass-card-shopping text-amber-950 dark:text-amber-100 hover:border-amber-400';
+            case 'Wellness':
+                return 'wg-glass-card-wellness text-cyan-950 dark:text-cyan-100 hover:border-cyan-400';
+            case 'Nightlife':
+                return 'wg-glass-card-nightlife text-violet-950 dark:text-violet-100 hover:border-violet-400';
             case 'Activity':
             default:
-                // Soft peach / warm coral for sightseeing & landmarks
-                return 'bg-rose-50/90 dark:bg-rose-950/40 border-rose-300/60 dark:border-rose-700/40 text-rose-950 dark:text-rose-100 hover:border-rose-400';
+                return 'wg-glass-card-activity text-rose-950 dark:text-rose-100 hover:border-rose-400';
+        }
+    };
+
+    // Helper: Activity Icon Container Avatar Style
+    const getActivityIconContainerStyle = (type?: string) => {
+        switch (type) {
+            case 'Reservation':
+            case 'Dining':
+                return 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30';
+            case 'Tour':
+                return 'bg-purple-500/20 text-purple-700 dark:text-purple-300 border-purple-500/30';
+            case 'Sightseeing':
+                return 'bg-sky-500/20 text-sky-700 dark:text-sky-300 border-sky-500/30';
+            case 'Museum':
+                return 'bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border-indigo-500/30';
+            case 'Outdoor':
+                return 'bg-teal-500/20 text-teal-700 dark:text-teal-300 border-teal-500/30';
+            case 'Entertainment':
+                return 'bg-pink-500/20 text-pink-700 dark:text-pink-300 border-pink-500/30';
+            case 'Shopping':
+                return 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30';
+            case 'Wellness':
+                return 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border-cyan-500/30';
+            case 'Nightlife':
+                return 'bg-violet-500/20 text-violet-700 dark:text-violet-300 border-violet-500/30';
+            case 'Activity':
+            default:
+                return 'bg-rose-500/20 text-rose-700 dark:text-rose-300 border-rose-500/30';
         }
     };
 
     // Helper: Activity Category Icon
     const getActivityIcon = (type?: string) => {
         switch (type) {
-            case 'Reservation': return <ForkKnife className="w-3.5 h-3.5 shrink-0" weight="duotone" />;
-            case 'Tour': return <Compass className="w-3.5 h-3.5 shrink-0" weight="duotone" />;
+            case 'Reservation':
+            case 'Dining':
+                return <ForkKnife className="w-3.5 h-3.5 shrink-0" weight="duotone" />;
+            case 'Tour':
+                return <Compass className="w-3.5 h-3.5 shrink-0" weight="duotone" />;
+            case 'Sightseeing':
+                return <Camera className="w-3.5 h-3.5 shrink-0" weight="duotone" />;
+            case 'Museum':
+                return <Buildings className="w-3.5 h-3.5 shrink-0" weight="duotone" />;
+            case 'Outdoor':
+                return <Mountains className="w-3.5 h-3.5 shrink-0" weight="duotone" />;
+            case 'Entertainment':
+                return <FilmSlate className="w-3.5 h-3.5 shrink-0" weight="duotone" />;
+            case 'Shopping':
+                return <ShoppingBag className="w-3.5 h-3.5 shrink-0" weight="duotone" />;
+            case 'Wellness':
+                return <Sparkle className="w-3.5 h-3.5 shrink-0" weight="duotone" />;
+            case 'Nightlife':
+                return <Wine className="w-3.5 h-3.5 shrink-0" weight="duotone" />;
             case 'Activity':
             default:
                 return <Ticket className="w-3.5 h-3.5 shrink-0" weight="duotone" />;
@@ -416,9 +520,27 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                                 <div
                                     key={act.id}
                                     onClick={() => onEditActivity(tripDates[0], act)}
-                                    className="p-3 rounded-2xl bg-white/70 dark:bg-dark-card/70 border border-black/10 dark:border-white/10 hover:border-amber-500/50 cursor-pointer space-y-1"
+                                    className="p-3 rounded-2xl bg-white/70 dark:bg-dark-card/70 border border-black/10 dark:border-white/10 hover:border-amber-500/50 cursor-pointer space-y-1 relative group"
                                 >
-                                    <span className="text-2xs font-bold text-amber-600 dark:text-amber-400 uppercase">{act.type}</span>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-2xs font-bold text-amber-600 dark:text-amber-400 uppercase">{act.type}</span>
+                                        {onDeleteActivity && (
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (window.confirm(`Delete activity "${act.title}"?`)) {
+                                                        onDeleteActivity(act.id);
+                                                    }
+                                                }}
+                                                className="opacity-0 group-hover:opacity-100 hover:text-rose-500 p-1 rounded-lg transition-all text-light-text-secondary dark:text-dark-text-secondary hover:bg-rose-500/10 cursor-pointer min-w-[28px] min-h-[28px] flex items-center justify-center"
+                                                aria-label={`Delete activity ${act.title}`}
+                                                title="Delete activity"
+                                            >
+                                                <Trash className="w-3.5 h-3.5" />
+                                            </button>
+                                        )}
+                                    </div>
                                     <p className="text-xs font-bold truncate">{act.title}</p>
                                     <p className="text-2xs text-light-text-secondary">Flexible Date</p>
                                 </div>
@@ -472,8 +594,17 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                     if (!activeDateStr) return null;
                     const dateObj = new Date(activeDateStr);
                     const location = getLocationForDate(activeDateStr);
-                    const dayTransports = getTransportScheduleEventsForDate(trip.transports, activeDateStr);
-                    const dayActivities = (trip.activities || []).filter(a => a.date === activeDateStr);
+                    const dayTransports = getTransportScheduleEventsForDate(trip.transports, activeDateStr).sort((a, b) => {
+                        const utcA = getTransportUtcTimestamp(a, a.isDropoff);
+                        const utcB = getTransportUtcTimestamp(b, b.isDropoff);
+                        if (utcA !== utcB) return utcA - utcB;
+                        const timeA = (a.isDropoff ? a.arrivalTime : a.departureTime) || '00:00';
+                        const timeB = (b.isDropoff ? b.arrivalTime : b.departureTime) || '00:00';
+                        return timeA.localeCompare(timeB);
+                    });
+                    const dayActivities = (trip.activities || [])
+                        .filter(a => a.date === activeDateStr)
+                        .sort((a, b) => (a.time || '00:00').localeCompare(b.time || '00:00'));
                     const activeStay = trip.accommodations?.find(a => activeDateStr >= (a.checkInDate || '') && activeDateStr <= (a.checkOutDate || a.checkInDate || ''));
 
                     return (
@@ -489,9 +620,6 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                                             {formatDate(dateObj, 'weekday-long', settings)}
                                         </h3>
                                     </div>
-                                    <p className="text-xs text-light-text-secondary mt-0.5">
-                                        {formatDate(dateObj, 'long', settings)}
-                                    </p>
                                     {location && (
                                         <div className="inline-flex items-center gap-1 text-2xs font-bold text-primary-600 dark:text-primary-400 mt-1">
                                             <MapPin className="w-3.5 h-3.5" weight="duotone" />
@@ -505,7 +633,7 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between px-1">
                                     <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary flex items-center gap-1.5">
-                                        <AirplaneTilt className="w-4 h-4 text-blue-500" /> Transport
+                                        <AirplaneTilt className="w-4 h-4 text-blue-500" weight="duotone" /> Transport
                                     </span>
                                     <button
                                         type="button"
@@ -516,37 +644,42 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                                     </button>
                                 </div>
                                 {dayTransports.length === 0 ? (
-                                    <div 
+                                    <GlassPanel 
                                         onClick={() => onEditTransport(undefined, activeDateStr)}
-                                        className="p-4 rounded-2xl border border-dashed border-black/10 dark:border-white/10 text-center text-xs text-light-text-secondary cursor-pointer hover:border-blue-500/50"
+                                        className="wg-glass-card p-4 rounded-2xl border border-dashed border-black/10 dark:border-white/10 text-center text-xs text-light-text-secondary cursor-pointer hover:border-blue-500/50"
+                                        overrides={{ borderRadius: 18 }}
+                                        padding="14px"
                                     >
                                         No transport scheduled. Tap to add.
-                                    </div>
+                                    </GlassPanel>
                                 ) : (
                                     <div className="space-y-2">
                                         {dayTransports.map((t, idx) => (
-                                            <div
+                                            <GlassPanel
                                                 key={`${t.id}-${idx}`}
                                                 onClick={() => onEditTransport([t], activeDateStr)}
-                                                className={`p-3.5 rounded-2xl border transition-all cursor-pointer space-y-1.5 ${getTransportCardStyle(t.mode)}`}
+                                                className={`wg-glass-card shadow-sm border transition-all cursor-pointer space-y-1.5 ${getTransportGlassStyle(t.mode)}`}
+                                                overrides={{ borderRadius: 18 }}
+                                                padding="12px"
                                             >
-                                                <div className="flex items-center justify-between">
-                                                    <span className="inline-flex items-center gap-1 text-2xs font-bold uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-full">
-                                                        {getTransportIcon(t.mode)}
-                                                        <span>{t.mode}</span>
-                                                    </span>
-                                                    <span className="font-mono text-2xs font-bold">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <div className="flex items-center gap-2 min-w-0">
+                                                        <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 shadow-xs border ${getTransportIconContainerStyle(t.mode)}`}>
+                                                            {getTransportIcon(t.mode)}
+                                                        </div>
+                                                        <h4 className="font-bold text-sm leading-tight text-light-text dark:text-dark-text truncate">
+                                                            {getTransportScheduleTitle(t, t.isDropoff)}
+                                                        </h4>
+                                                    </div>
+                                                    <span className={`font-mono text-2xs font-bold px-2 py-0.5 rounded-full shrink-0 border ${getTransportTimeBadgeStyle(t.mode)}`}>
                                                         {t.isDropoff ? t.arrivalTime || '00:00' : t.departureTime || '00:00'}
                                                     </span>
                                                 </div>
-                                                <h4 className="font-black text-sm leading-snug">
-                                                    {getTransportScheduleTitle(t, t.isDropoff)}
-                                                </h4>
-                                                <div className="flex items-center justify-between text-2xs opacity-80 pt-1 border-t border-white/10">
+                                                <div className="flex items-center justify-between text-2xs text-light-text-secondary pt-1 border-t border-black/5 dark:border-white/5">
                                                     <span className="truncate">{getTransportScheduleLocation(t, t.isDropoff)}</span>
-                                                    {t.cost ? <span className="font-mono font-bold">{formatCurrency(t.cost)}</span> : null}
+                                                    {t.cost ? <span className="font-mono font-bold text-light-text dark:text-dark-text">{formatCurrency(t.cost)}</span> : null}
                                                 </div>
-                                            </div>
+                                            </GlassPanel>
                                         ))}
                                     </div>
                                 )}
@@ -556,7 +689,7 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between px-1">
                                     <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary flex items-center gap-1.5">
-                                        <Bed className="w-4 h-4 text-sky-500" /> Accommodation
+                                        <Bed className="w-4 h-4 text-sky-500" weight="duotone" /> Accommodation
                                     </span>
                                     <button
                                         type="button"
@@ -567,40 +700,45 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                                     </button>
                                 </div>
                                 {activeStay ? (
-                                    <div
+                                    <GlassPanel
                                         onClick={() => onEditAccommodation(activeStay, activeDateStr)}
-                                        className="p-4 rounded-2xl bg-sky-50/90 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800/40 text-light-text dark:text-dark-text cursor-pointer space-y-2 shadow-xs"
+                                        className="wg-glass-card shadow-xs rounded-2xl border border-sky-300/40 dark:border-sky-700/30 bg-sky-50/70 dark:bg-sky-950/30 text-light-text dark:text-dark-text cursor-pointer space-y-2"
+                                        overrides={{ borderRadius: 20 }}
+                                        padding="14px"
                                     >
-                                        <div className="flex items-center justify-between">
-                                            <span className="inline-flex items-center gap-1 text-2xs font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300 bg-sky-500/10 px-2 py-0.5 rounded-full border border-sky-500/20">
-                                                {getAccommodationIcon(activeStay.type)}
-                                                <span>{activeStay.type || 'Hotel'}</span>
-                                            </span>
+                                        <div className="flex items-center justify-between gap-2">
+                                            <div className="flex items-center gap-2.5 min-w-0">
+                                                <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-xs bg-sky-500/20 text-sky-600 dark:text-sky-300 border border-sky-500/30">
+                                                    {getAccommodationIcon(activeStay.type)}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <h4 className="font-black text-sm text-light-text dark:text-dark-text truncate">
+                                                        {activeStay.name}
+                                                    </h4>
+                                                    {activeStay.address && (
+                                                        <p className="text-2xs text-light-text-secondary mt-0.5 flex items-center gap-1 truncate">
+                                                            <MapPin className="w-3 h-3 text-sky-500 shrink-0" />
+                                                            <span className="truncate">{activeStay.address}</span>
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
                                             {activeStay.cost ? (
-                                                <span className="font-mono text-xs font-bold text-sky-700 dark:text-sky-300">
+                                                <span className="font-mono text-xs font-bold text-sky-700 dark:text-sky-300 shrink-0">
                                                     {formatCurrency(activeStay.cost)}
                                                 </span>
                                             ) : null}
                                         </div>
-                                        <div>
-                                            <h4 className="font-black text-sm text-light-text dark:text-dark-text">
-                                                {activeStay.name}
-                                            </h4>
-                                            {activeStay.address && (
-                                                <p className="text-2xs text-light-text-secondary mt-0.5 flex items-center gap-1 truncate">
-                                                    <MapPin className="w-3 h-3 text-sky-500 shrink-0" />
-                                                    <span className="truncate">{activeStay.address}</span>
-                                                </p>
-                                            )}
-                                        </div>
-                                    </div>
+                                    </GlassPanel>
                                 ) : (
-                                    <div 
+                                    <GlassPanel 
                                         onClick={() => onEditAccommodation(undefined, activeDateStr)}
-                                        className="p-4 rounded-2xl border border-dashed border-sky-300/40 dark:border-sky-700/40 text-center text-xs text-light-text-secondary cursor-pointer hover:border-sky-500/50"
+                                        className="wg-glass-card p-4 rounded-2xl border border-dashed border-sky-300/40 dark:border-sky-700/40 text-center text-xs text-light-text-secondary cursor-pointer hover:border-sky-500/50"
+                                        overrides={{ borderRadius: 18 }}
+                                        padding="14px"
                                     >
                                         No stay booked for tonight. Tap to book stay.
-                                    </div>
+                                    </GlassPanel>
                                 )}
                             </div>
 
@@ -608,7 +746,7 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between px-1">
                                     <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary flex items-center gap-1.5">
-                                        <Ticket className="w-4 h-4 text-amber-500" /> Activities
+                                        <Ticket className="w-4 h-4 text-amber-500" weight="duotone" /> Activities
                                     </span>
                                     <button
                                         type="button"
@@ -619,41 +757,64 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                                     </button>
                                 </div>
                                 {dayActivities.length === 0 ? (
-                                    <div 
+                                    <GlassPanel 
                                         onClick={() => onEditActivity(activeDateStr)}
-                                        className="p-4 rounded-2xl border border-dashed border-black/10 dark:border-white/10 text-center text-xs text-light-text-secondary cursor-pointer hover:border-amber-500/50"
+                                        className="wg-glass-card p-4 rounded-2xl border border-dashed border-black/10 dark:border-white/10 text-center text-xs text-light-text-secondary cursor-pointer hover:border-amber-500/50"
+                                        overrides={{ borderRadius: 18 }}
+                                        padding="14px"
                                     >
                                         No activities planned. Tap to add.
-                                    </div>
+                                    </GlassPanel>
                                 ) : (
                                     <div className="space-y-2">
                                         {dayActivities.map(act => (
-                                            <div
+                                            <GlassPanel
                                                 key={act.id}
                                                 onClick={() => onEditActivity(activeDateStr, act)}
-                                                className={`p-3.5 rounded-2xl border transition-all cursor-pointer space-y-1 ${getActivityCardStyle(act.type)}`}
+                                                className={`wg-glass-card shadow-xs border transition-all cursor-pointer space-y-1 ${getActivityGlassStyle(act.type)}`}
+                                                overrides={{ borderRadius: 18 }}
+                                                padding="12px"
                                             >
-                                                <div className="flex items-center justify-between">
-                                                    <span className="inline-flex items-center gap-1 text-2xs font-bold uppercase tracking-wider opacity-80">
-                                                        {getActivityIcon(act.type)}
-                                                        <span>{act.type || 'Activity'}</span>
-                                                    </span>
-                                                    {act.time && (
-                                                        <span className="font-mono text-2xs font-bold">
-                                                            {act.time}
-                                                        </span>
-                                                    )}
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <div className="flex items-center gap-2 min-w-0">
+                                                        <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 shadow-xs border ${getActivityIconContainerStyle(act.type)}`}>
+                                                            {getActivityIcon(act.type)}
+                                                        </div>
+                                                        <h4 className="font-bold text-sm leading-tight truncate">
+                                                            {act.title}
+                                                        </h4>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 shrink-0">
+                                                        {act.time && (
+                                                            <span className="font-mono text-2xs font-bold opacity-80 px-1.5 py-0.5 rounded-md bg-black/5 dark:bg-white/10">
+                                                                {act.time}
+                                                            </span>
+                                                        )}
+                                                        {onDeleteActivity && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    if (window.confirm(`Delete activity "${act.title}"?`)) {
+                                                                        onDeleteActivity(act.id);
+                                                                    }
+                                                                }}
+                                                                className="text-light-text-secondary dark:text-dark-text-secondary hover:text-rose-500 hover:bg-rose-500/10 p-1 rounded-lg transition-colors cursor-pointer min-w-[28px] min-h-[28px] flex items-center justify-center"
+                                                                aria-label={`Delete activity ${act.title}`}
+                                                                title="Delete activity"
+                                                            >
+                                                                <Trash className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                <h4 className="font-bold text-sm leading-snug">
-                                                    {act.title}
-                                                </h4>
                                                 {act.location && (
-                                                    <p className="text-2xs opacity-80 flex items-center gap-1 truncate">
+                                                    <p className="text-2xs opacity-80 flex items-center gap-1 truncate pt-1 border-t border-black/5 dark:border-white/5">
                                                         <MapPin className="w-3 h-3 shrink-0" />
                                                         <span className="truncate">{act.location}</span>
                                                     </p>
                                                 )}
-                                            </div>
+                                            </GlassPanel>
                                         ))}
                                     </div>
                                 )}
@@ -679,7 +840,11 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                     {/* ========================================================== */}
                     
                     {/* Col 1 Header: Day */}
-                    <div className="sticky top-2 z-20 bg-white/90 dark:bg-dark-card/90 backdrop-blur-md p-3.5 rounded-2xl border border-black/10 dark:border-white/10 shadow-xs flex items-center justify-between">
+                    <GlassPanel 
+                        className="sticky top-2 z-20 wg-glass-card shadow-sm flex items-center justify-between" 
+                        overrides={{ borderRadius: 20 }}
+                        padding="14px"
+                    >
                         <div className="flex items-center gap-2">
                             <CalendarBlank className="w-4 h-4 text-primary-500" weight="duotone" />
                             <span className="text-xs font-black uppercase tracking-wider text-light-text dark:text-dark-text">Day</span>
@@ -687,10 +852,14 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                         <span className="text-2xs font-mono font-bold text-light-text-secondary bg-black/5 dark:bg-white/5 px-2 py-0.5 rounded-full">
                             {tripDates.length}
                         </span>
-                    </div>
+                    </GlassPanel>
 
                     {/* Col 2 Header: Transport */}
-                    <div className="sticky top-2 z-20 bg-white/90 dark:bg-dark-card/90 backdrop-blur-md p-3.5 rounded-2xl border border-black/10 dark:border-white/10 shadow-xs flex items-center justify-between">
+                    <GlassPanel 
+                        className="sticky top-2 z-20 wg-glass-card shadow-sm flex items-center justify-between" 
+                        overrides={{ borderRadius: 20 }}
+                        padding="14px"
+                    >
                         <div className="flex items-center gap-2">
                             <AirplaneTilt className="w-4 h-4 text-blue-500" weight="duotone" />
                             <span className="text-xs font-black uppercase tracking-wider text-light-text dark:text-dark-text">Transport</span>
@@ -698,10 +867,14 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                         <span className="text-2xs font-mono font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full">
                             {trip.transports?.length || 0}
                         </span>
-                    </div>
+                    </GlassPanel>
 
                     {/* Col 3 Header: Accommodation */}
-                    <div className="sticky top-2 z-20 bg-white/90 dark:bg-dark-card/90 backdrop-blur-md p-3.5 rounded-2xl border border-black/10 dark:border-white/10 shadow-xs flex items-center justify-between">
+                    <GlassPanel 
+                        className="sticky top-2 z-20 wg-glass-card shadow-sm flex items-center justify-between" 
+                        overrides={{ borderRadius: 20 }}
+                        padding="14px"
+                    >
                         <div className="flex items-center gap-2">
                             <Bed className="w-4 h-4 text-sky-500" weight="duotone" />
                             <span className="text-xs font-black uppercase tracking-wider text-light-text dark:text-dark-text">Accommodation</span>
@@ -709,10 +882,14 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                         <span className="text-2xs font-mono font-bold text-sky-600 dark:text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded-full">
                             {trip.accommodations?.length || 0}
                         </span>
-                    </div>
+                    </GlassPanel>
 
                     {/* Col 4 Header: Activities */}
-                    <div className="sticky top-2 z-20 bg-white/90 dark:bg-dark-card/90 backdrop-blur-md p-3.5 rounded-2xl border border-black/10 dark:border-white/10 shadow-xs flex items-center justify-between">
+                    <GlassPanel 
+                        className="sticky top-2 z-20 wg-glass-card shadow-sm flex items-center justify-between" 
+                        overrides={{ borderRadius: 20 }}
+                        padding="14px"
+                    >
                         <div className="flex items-center gap-2">
                             <Ticket className="w-4 h-4 text-amber-500" weight="duotone" />
                             <span className="text-xs font-black uppercase tracking-wider text-light-text dark:text-dark-text">Activities</span>
@@ -720,7 +897,7 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                         <span className="text-2xs font-mono font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">
                             {trip.activities?.length || 0}
                         </span>
-                    </div>
+                    </GlassPanel>
 
                     {/* ========================================================== */}
                     {/* DAILY ROWS: Day Column (Col 1), Transport (Col 2), Activities (Col 4) */}
@@ -729,8 +906,17 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                         const dateObj = new Date(dateStr);
                         const isToday = new Date().toDateString() === dateObj.toDateString();
                         const location = getLocationForDate(dateStr);
-                        const dayTransports = getTransportScheduleEventsForDate(trip.transports, dateStr);
-                        const dayActivities = (trip.activities || []).filter(a => a.date === dateStr);
+                        const dayTransports = getTransportScheduleEventsForDate(trip.transports, dateStr).sort((a, b) => {
+                            const utcA = getTransportUtcTimestamp(a, a.isDropoff);
+                            const utcB = getTransportUtcTimestamp(b, b.isDropoff);
+                            if (utcA !== utcB) return utcA - utcB;
+                            const timeA = (a.isDropoff ? a.arrivalTime : a.departureTime) || '00:00';
+                            const timeB = (b.isDropoff ? b.arrivalTime : b.departureTime) || '00:00';
+                            return timeA.localeCompare(timeB);
+                        });
+                        const dayActivities = (trip.activities || [])
+                            .filter(a => a.date === dateStr)
+                            .sort((a, b) => (a.time || '00:00').localeCompare(b.time || '00:00'));
                         const rowIndex = dIdx + 2;
 
                         return (
@@ -739,43 +925,43 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                                 {/* ---------------------------------------------------- */}
                                 {/* COL 1: DAY CARD                                      */}
                                 {/* ---------------------------------------------------- */}
-                                <div 
-                                    style={{ gridColumn: 1, gridRow: rowIndex }}
-                                    className={`p-3.5 rounded-2xl border transition-all flex flex-col justify-between ${
-                                        isToday
-                                        ? 'bg-primary-500/10 border-primary-500/40 ring-1 ring-primary-500/30'
-                                        : 'bg-white/70 dark:bg-dark-card/70 border-black/10 dark:border-white/10'
-                                    }`}
-                                >
-                                    <div className="space-y-1">
-                                        <div className="flex items-center justify-between gap-1">
-                                            <span className={`px-2 py-0.5 rounded-lg text-2xs font-black uppercase tracking-wider ${
-                                                isToday ? 'bg-primary-500 text-white shadow-xs' : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'
-                                            }`}>
-                                                Day {dIdx + 1}
-                                            </span>
-                                            {isToday && (
-                                                <span className="text-2xs font-bold text-primary-500 uppercase tracking-widest flex items-center gap-1">
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-primary-500 animate-pulse" />
-                                                    Today
+                                <div style={{ gridColumn: 1, gridRow: rowIndex }} className="h-full">
+                                    <GlassPanel 
+                                        className={`wg-glass-card shadow-xs h-full flex flex-col justify-between transition-all ${
+                                            isToday
+                                            ? 'ring-2 ring-primary-500/50 border-primary-500/40 bg-primary-500/10'
+                                            : 'border-black/10 dark:border-white/10'
+                                        }`}
+                                        overrides={{ borderRadius: 20 }}
+                                        padding="14px"
+                                    >
+                                        <div className="space-y-1.5">
+                                            <div className="flex items-center justify-between gap-1">
+                                                <span className={`px-2 py-0.5 rounded-lg text-2xs font-black uppercase tracking-wider ${
+                                                    isToday ? 'bg-primary-500 text-white shadow-xs' : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'
+                                                }`}>
+                                                    Day {dIdx + 1}
                                                 </span>
-                                            )}
+                                                {isToday && (
+                                                    <span className="text-2xs font-bold text-primary-500 uppercase tracking-widest flex items-center gap-1">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-primary-500 animate-pulse" />
+                                                        Today
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            <h4 className="font-black text-sm text-light-text dark:text-dark-text tracking-tight leading-snug">
+                                                {formatDate(dateObj, 'weekday-long', settings)}
+                                            </h4>
                                         </div>
 
-                                        <h4 className="font-black text-sm text-light-text dark:text-dark-text tracking-tight leading-snug">
-                                            {formatDate(dateObj, 'weekday-long', settings)}
-                                        </h4>
-                                        <p className="text-2xs text-light-text-secondary font-medium">
-                                            {formatDate(dateObj, 'short-with-year', settings)}
-                                        </p>
-                                    </div>
-
-                                    {location && (
-                                        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider text-primary-600 dark:text-primary-400 bg-primary-500/10 border border-primary-500/20 truncate mt-2">
-                                            <MapPin className="w-3 h-3 shrink-0" weight="duotone" />
-                                            <span className="truncate">{location.name}</span>
-                                        </div>
-                                    )}
+                                        {location && (
+                                            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider text-primary-600 dark:text-primary-400 bg-primary-500/10 border border-primary-500/20 truncate mt-2 self-start max-w-full">
+                                                <MapPin className="w-3 h-3 shrink-0" weight="duotone" />
+                                                <span className="truncate">{location.name}</span>
+                                            </div>
+                                        )}
+                                    </GlassPanel>
                                 </div>
 
                                 {/* ---------------------------------------------------- */}
@@ -783,52 +969,55 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                                 {/* ---------------------------------------------------- */}
                                 <div 
                                     style={{ gridColumn: 2, gridRow: rowIndex }}
-                                    className="p-1 rounded-2xl flex flex-col justify-start gap-2"
+                                    className="h-full"
                                 >
                                     {dayTransports.length === 0 ? (
-                                        <div 
+                                        <GlassPanel 
                                             onClick={() => onEditTransport(undefined, dateStr)}
-                                            className="h-full min-h-[96px] border border-dashed border-black/10 dark:border-white/10 rounded-2xl p-3 flex flex-col items-center justify-center text-light-text-secondary hover:border-blue-500/50 hover:bg-blue-500/5 transition-all cursor-pointer group"
-                                            title="Add transport on this day"
+                                            className="wg-glass-card wg-glass-card-dashed h-full flex flex-col items-center justify-center text-light-text-secondary hover:border-blue-500/50 hover:bg-blue-500/5 transition-all cursor-pointer group"
+                                            overrides={{ borderRadius: 20 }}
+                                            padding="14px"
                                         >
-                                            <Plus className="w-4 h-4 opacity-30 group-hover:opacity-100 group-hover:scale-110 transition-all text-blue-500" />
-                                            <span className="text-2xs font-bold uppercase tracking-wider opacity-30 group-hover:opacity-100 mt-1">
+                                            <Plus className="w-4 h-4 opacity-40 group-hover:opacity-100 group-hover:scale-110 transition-all text-blue-500" />
+                                            <span className="text-2xs font-bold uppercase tracking-wider opacity-40 group-hover:opacity-100 mt-1">
                                                 Add Transport
                                             </span>
-                                        </div>
+                                        </GlassPanel>
                                     ) : (
-                                        <div className="space-y-2 flex-1 flex flex-col justify-center">
+                                        <div className="h-full flex flex-col justify-between gap-2">
                                             {dayTransports.map((t, tIdx) => (
-                                                <div
+                                                <GlassPanel
                                                     key={`${t.id}-${tIdx}`}
                                                     onClick={() => onEditTransport([t], dateStr)}
-                                                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer group space-y-1.5 shadow-sm hover:scale-[1.01] ${getTransportCardStyle(t.mode)}`}
+                                                    className={`wg-glass-card h-full flex flex-col justify-between shadow-sm transition-all cursor-pointer group hover:scale-[1.01] ${getTransportGlassStyle(t.mode)}`}
+                                                    overrides={{ borderRadius: 20 }}
+                                                    padding="14px"
                                                 >
                                                     <div className="flex items-center justify-between gap-2">
-                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-black/20 text-white border border-white/20">
-                                                            {getTransportIcon(t.mode)}
-                                                            <span>{t.mode}</span>
-                                                        </span>
-                                                        <span className="font-mono text-2xs font-bold bg-white/20 px-2 py-0.5 rounded-full text-white">
+                                                        <div className="flex items-center gap-2 min-w-0">
+                                                            <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 shadow-xs border ${getTransportIconContainerStyle(t.mode)}`}>
+                                                                {getTransportIcon(t.mode)}
+                                                            </div>
+                                                            <h5 className="font-black text-xs sm:text-sm text-light-text dark:text-dark-text leading-tight truncate">
+                                                                {getTransportScheduleTitle(t, t.isDropoff)}
+                                                            </h5>
+                                                        </div>
+                                                        <span className={`font-mono text-2xs font-bold px-2 py-0.5 rounded-full shrink-0 border ${getTransportTimeBadgeStyle(t.mode)}`}>
                                                             {t.isDropoff ? t.arrivalTime || '00:00' : t.departureTime || '00:00'}
                                                         </span>
                                                     </div>
 
-                                                    <h5 className="font-black text-xs sm:text-sm text-white leading-snug">
-                                                        {getTransportScheduleTitle(t, t.isDropoff)}
-                                                    </h5>
-
-                                                    <div className="flex items-center justify-between text-2xs opacity-85 pt-1 border-t border-white/15">
+                                                    <div className="flex items-center justify-between text-2xs text-light-text-secondary pt-1.5 border-t border-black/10 dark:border-white/10 mt-auto">
                                                         <span className="truncate max-w-[170px]" title={getTransportScheduleLocation(t, t.isDropoff)}>
                                                             {getTransportScheduleLocation(t, t.isDropoff)}
                                                         </span>
                                                         {t.cost ? (
-                                                            <span className="font-mono font-bold">
+                                                            <span className="font-mono font-bold text-light-text dark:text-dark-text">
                                                                 {formatCurrency(t.cost)}
                                                             </span>
                                                         ) : null}
                                                     </div>
-                                                </div>
+                                                </GlassPanel>
                                             ))}
                                         </div>
                                     )}
@@ -839,44 +1028,65 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                                 {/* ---------------------------------------------------- */}
                                 <div 
                                     style={{ gridColumn: 4, gridRow: rowIndex }}
-                                    className="p-1 rounded-2xl flex flex-col justify-start gap-2"
+                                    className="h-full"
                                 >
                                     {dayActivities.length === 0 ? (
-                                        <div 
+                                        <GlassPanel 
                                             onClick={() => onEditActivity(dateStr)}
-                                            className="h-full min-h-[96px] border border-dashed border-black/10 dark:border-white/10 rounded-2xl p-3 flex flex-col items-center justify-center text-light-text-secondary hover:border-amber-500/50 hover:bg-amber-500/5 transition-all cursor-pointer group"
-                                            title="Add activity on this day"
+                                            className="wg-glass-card wg-glass-card-dashed h-full flex flex-col items-center justify-center text-light-text-secondary hover:border-amber-500/50 hover:bg-amber-500/5 transition-all cursor-pointer group"
+                                            overrides={{ borderRadius: 20 }}
+                                            padding="14px"
                                         >
-                                            <Plus className="w-4 h-4 opacity-30 group-hover:opacity-100 group-hover:scale-110 transition-all text-amber-500" />
-                                            <span className="text-2xs font-bold uppercase tracking-wider opacity-30 group-hover:opacity-100 mt-1">
+                                            <Plus className="w-4 h-4 opacity-40 group-hover:opacity-100 group-hover:scale-110 transition-all text-amber-500" />
+                                            <span className="text-2xs font-bold uppercase tracking-wider opacity-40 group-hover:opacity-100 mt-1">
                                                 Add Activity
                                             </span>
-                                        </div>
+                                        </GlassPanel>
                                     ) : (
-                                        <div className="space-y-2 flex-1 flex flex-col justify-center">
+                                        <div className="h-full flex flex-col justify-between gap-2">
                                             {dayActivities.map(act => (
-                                                <div
+                                                <GlassPanel
                                                     key={act.id}
                                                     onClick={() => onEditActivity(dateStr, act)}
-                                                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer group space-y-1.5 shadow-xs hover:scale-[1.01] ${getActivityCardStyle(act.type)}`}
+                                                    className={`wg-glass-card h-full flex flex-col justify-between shadow-xs transition-all cursor-pointer group hover:scale-[1.01] ${getActivityGlassStyle(act.type)}`}
+                                                    overrides={{ borderRadius: 20 }}
+                                                    padding="14px"
                                                 >
-                                                    <div className="flex items-center justify-between gap-1">
-                                                        <span className="inline-flex items-center gap-1 text-2xs font-bold uppercase tracking-wider opacity-85">
-                                                            {getActivityIcon(act.type)}
-                                                            <span>{act.type || 'Activity'}</span>
-                                                        </span>
-                                                        {act.time && (
-                                                            <span className="font-mono text-2xs font-bold opacity-80">
-                                                                {act.time}
-                                                            </span>
-                                                        )}
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <div className="flex items-center gap-2 min-w-0">
+                                                            <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 shadow-xs border ${getActivityIconContainerStyle(act.type)}`}>
+                                                                {getActivityIcon(act.type)}
+                                                            </div>
+                                                            <h5 className="font-black text-xs sm:text-sm leading-tight truncate text-light-text dark:text-dark-text">
+                                                                {act.title}
+                                                            </h5>
+                                                        </div>
+                                                        <div className="flex items-center gap-1 shrink-0">
+                                                            {act.time && (
+                                                                <span className="font-mono text-2xs font-bold opacity-80 shrink-0 px-1.5 py-0.5 rounded-md bg-black/5 dark:bg-white/10">
+                                                                    {act.time}
+                                                                </span>
+                                                            )}
+                                                            {onDeleteActivity && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        if (window.confirm(`Delete activity "${act.title}"?`)) {
+                                                                            onDeleteActivity(act.id);
+                                                                        }
+                                                                    }}
+                                                                    className="opacity-0 group-hover:opacity-100 hover:text-rose-500 p-1 rounded-lg transition-all text-light-text-secondary dark:text-dark-text-secondary hover:bg-rose-500/10 cursor-pointer min-w-[26px] min-h-[26px] flex items-center justify-center"
+                                                                    aria-label={`Delete activity ${act.title}`}
+                                                                    title="Delete activity"
+                                                                >
+                                                                    <Trash className="w-3.5 h-3.5" />
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     </div>
 
-                                                    <h5 className="font-black text-xs sm:text-sm leading-snug">
-                                                        {act.title}
-                                                    </h5>
-
-                                                    <div className="flex items-center justify-between text-2xs opacity-80 pt-1 border-t border-black/5 dark:border-white/5">
+                                                    <div className="flex items-center justify-between text-2xs opacity-80 pt-1.5 border-t border-black/10 dark:border-white/10 mt-auto">
                                                         <span className="truncate max-w-[170px]" title={act.location}>
                                                             {act.location || 'Local Landmark'}
                                                         </span>
@@ -886,16 +1096,8 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                                                             </span>
                                                         ) : null}
                                                     </div>
-                                                </div>
+                                                </GlassPanel>
                                             ))}
-                                            <button
-                                                type="button"
-                                                onClick={() => onEditActivity(dateStr)}
-                                                className="w-full py-1.5 rounded-xl border border-dashed border-black/10 dark:border-white/10 text-2xs font-bold uppercase tracking-wider text-light-text-secondary hover:text-amber-600 hover:border-amber-500/50 hover:bg-amber-500/5 transition-all flex items-center justify-center gap-1 cursor-pointer"
-                                            >
-                                                <Plus className="w-3 h-3" />
-                                                <span>Add Another</span>
-                                            </button>
                                         </div>
                                     )}
                                 </div>
@@ -918,49 +1120,55 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                                     gridColumn: 3,
                                     gridRow: `${span.gridRowStart} / ${span.gridRowEnd}`
                                 }}
-                                onClick={() => onEditAccommodation(stay)}
-                                className="p-4 sm:p-5 rounded-3xl bg-sky-50/90 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/40 text-light-text dark:text-dark-text shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group hover:border-sky-400"
+                                className="h-full"
                             >
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between gap-2">
-                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-2xs font-bold uppercase tracking-wider bg-sky-500/10 text-sky-700 dark:text-sky-300 border border-sky-500/20">
-                                            {getAccommodationIcon(stay.type)}
-                                            <span>{stay.type || 'Hotel'}</span>
-                                        </span>
+                                <GlassPanel
+                                    onClick={() => onEditAccommodation(stay)}
+                                    className="wg-glass-card wg-glass-card-sightseeing shadow-sm hover:shadow-md transition-all cursor-pointer h-full flex flex-col justify-between group hover:border-sky-400"
+                                    overrides={{ borderRadius: 24 }}
+                                    padding="16px"
+                                >
+                                    <div className="space-y-2">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="flex items-center gap-2.5 min-w-0">
+                                                <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-xs bg-sky-500/20 text-sky-600 dark:text-sky-300 border border-sky-500/30">
+                                                    {getAccommodationIcon(stay.type)}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <h4 className="font-black text-sm sm:text-base text-light-text dark:text-dark-text tracking-tight truncate group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
+                                                        {stay.name}
+                                                    </h4>
+                                                    {stay.address && (
+                                                        <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5 flex items-center gap-1 truncate">
+                                                            <MapPin className="w-3 h-3 text-sky-500 shrink-0" weight="duotone" />
+                                                            <span className="truncate">{stay.address}</span>
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
 
-                                        <div className="flex items-center gap-1.5">
-                                            <span className="px-2.5 py-0.5 rounded-full text-2xs font-mono font-bold bg-sky-500/20 text-sky-800 dark:text-sky-200">
-                                                {span.totalNights} {span.totalNights === 1 ? 'Night' : 'Nights'}
-                                            </span>
-                                            {stay.cost ? (
-                                                <span className="font-mono text-xs font-black text-sky-800 dark:text-sky-200 px-2 py-0.5 rounded-full bg-sky-500/20">
-                                                    {formatCurrency(stay.cost)}
+                                            <div className="flex items-center gap-1.5 shrink-0">
+                                                <span className="px-2 py-0.5 rounded-full text-2xs font-mono font-bold bg-sky-500/20 text-sky-800 dark:text-sky-200">
+                                                    {span.totalNights} {span.totalNights === 1 ? 'Night' : 'Nights'}
                                                 </span>
-                                            ) : null}
+                                                {stay.cost ? (
+                                                    <span className="font-mono text-2xs font-black text-sky-800 dark:text-sky-200 px-2 py-0.5 rounded-full bg-sky-500/20">
+                                                        {formatCurrency(stay.cost)}
+                                                    </span>
+                                                ) : null}
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <div>
-                                        <h4 className="font-black text-sm sm:text-base text-light-text dark:text-dark-text tracking-tight group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
-                                            {stay.name}
-                                        </h4>
-                                        {stay.address && (
-                                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-1 flex items-center gap-1.5 truncate">
-                                                <MapPin className="w-3.5 h-3.5 text-sky-500 shrink-0" weight="duotone" />
-                                                <span className="truncate">{stay.address}</span>
-                                            </p>
-                                        )}
+                                    <div className="mt-4 pt-3 border-t border-sky-500/15 flex flex-wrap items-center justify-between gap-2 text-2xs text-light-text-secondary">
+                                        <span>
+                                            In: <strong className="text-light-text dark:text-dark-text">{formatDate(new Date(stay.checkInDate), 'short', settings)}</strong> {stay.checkInTime ? `(${stay.checkInTime})` : ''}
+                                        </span>
+                                        <span>
+                                            Out: <strong className="text-light-text dark:text-dark-text">{stay.checkOutDate ? formatDate(new Date(stay.checkOutDate), 'short', settings) : ''}</strong> {stay.checkOutTime ? `(${stay.checkOutTime})` : ''}
+                                        </span>
                                     </div>
-                                </div>
-
-                                <div className="mt-4 pt-3 border-t border-sky-500/15 flex flex-wrap items-center justify-between gap-2 text-2xs text-light-text-secondary">
-                                    <span>
-                                        In: <strong className="text-light-text dark:text-dark-text">{formatDate(new Date(stay.checkInDate), 'short', settings)}</strong> {stay.checkInTime ? `(${stay.checkInTime})` : ''}
-                                    </span>
-                                    <span>
-                                        Out: <strong className="text-light-text dark:text-dark-text">{stay.checkOutDate ? formatDate(new Date(stay.checkOutDate), 'short', settings) : ''}</strong> {stay.checkOutTime ? `(${stay.checkOutTime})` : ''}
-                                    </span>
-                                </div>
+                                </GlassPanel>
                             </div>
                         );
                     })}
@@ -976,17 +1184,22 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
                                     gridColumn: 3,
                                     gridRow: `${gap.gridRowStart} / ${gap.gridRowEnd}`
                                 }}
-                                onClick={() => onEditAccommodation(undefined, defaultDate)}
-                                className="border border-dashed border-sky-300/40 dark:border-sky-700/30 bg-sky-500/[0.02] rounded-3xl p-4 flex flex-col items-center justify-center text-light-text-secondary hover:border-sky-500/60 hover:bg-sky-500/5 transition-all cursor-pointer group"
-                                title="Book accommodation for this period"
+                                className="h-full"
                             >
-                                <Bed className="w-5 h-5 text-sky-500/50 group-hover:text-sky-500 group-hover:scale-110 transition-all" weight="duotone" />
-                                <span className="text-xs font-bold uppercase tracking-wider text-sky-700 dark:text-sky-400 mt-2">
-                                    + Book Stay
-                                </span>
-                                <span className="text-2xs text-light-text-secondary opacity-60 mt-0.5">
-                                    No stay booked ({gapDays} {gapDays === 1 ? 'day' : 'days'})
-                                </span>
+                                <GlassPanel
+                                    onClick={() => onEditAccommodation(undefined, defaultDate)}
+                                    className="wg-glass-card wg-glass-card-dashed h-full flex flex-col items-center justify-center text-light-text-secondary hover:border-sky-500/60 hover:bg-sky-500/5 transition-all cursor-pointer group"
+                                    overrides={{ borderRadius: 24 }}
+                                    padding="16px"
+                                >
+                                    <Bed className="w-5 h-5 text-sky-500/50 group-hover:text-sky-500 group-hover:scale-110 transition-all" weight="duotone" />
+                                    <span className="text-xs font-bold uppercase tracking-wider text-sky-700 dark:text-sky-400 mt-2">
+                                        + Book Stay
+                                    </span>
+                                    <span className="text-2xs text-light-text-secondary opacity-60 mt-0.5">
+                                        No stay booked ({gapDays} {gapDays === 1 ? 'day' : 'days'})
+                                    </span>
+                                </GlassPanel>
                             </div>
                         );
                     })}

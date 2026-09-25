@@ -1,5 +1,11 @@
 import { Transport } from '../types';
 import { formatProperLocationName } from '../services/geocoding';
+import { 
+    getAirportTimezone, 
+    parseLocalDateInTimezone, 
+    getFlightDepartureUtcDate, 
+    getFlightArrivalUtcDate 
+} from './flightData';
 
 /**
  * Determines whether a Transport item represents an actual Car Rental booking
@@ -54,6 +60,10 @@ export function getTransportScheduleTitle(t: Transport, isDropoff?: boolean): st
             const hasProvider = t.provider && !['Car Rental', 'Private Car Rental', 'Rental Agency', 'Personal Vehicle'].includes(t.provider);
             return hasProvider ? `Rental Car Dropoff (${t.provider})` : 'Rental Car Dropoff';
         }
+        if (t.mode === 'Flight') {
+            const destName = formatProperLocationName(t.destination);
+            return destName ? `Flight Arrival at ${destName}` : 'Flight Arrival';
+        }
         return `Dropoff ${t.mode}`;
     }
 
@@ -65,7 +75,7 @@ export function getTransportScheduleTitle(t: Transport, isDropoff?: boolean): st
     // It is an excursion / route journey / transit leg
     const destName = formatProperLocationName(t.destination);
 
-    if (t.mode === 'Car Rental' || t.mode === 'Personal Car' || t.mode === 'Road Trip' || (t.mode as string) === 'Drive') {
+    if (t.mode === 'Car Rental' || t.mode === 'Personal Car' || (t.mode as string) === 'Road Trip' || (t.mode as string) === 'Drive') {
         return destName ? `Road Trip to ${destName}` : 'Road Trip';
     }
 
@@ -109,7 +119,30 @@ export function getTransportScheduleLocation(t: Transport, isDropoff?: boolean):
 }
 
 /**
- * Extracts and tags transport events for a given calendar date.
+ * Calculates the exact UTC epoch timestamp for a transport event,
+ * taking into account local timezone for the airport, station, or city.
+ */
+export function getTransportUtcTimestamp(t: Transport, isDropoff?: boolean): number {
+    if (t.mode === 'Flight') {
+        const utcDate = isDropoff ? getFlightArrivalUtcDate(t) : getFlightDepartureUtcDate(t);
+        if (!isNaN(utcDate.getTime())) {
+            return utcDate.getTime();
+        }
+    }
+
+    const dateStr = isDropoff ? (t.arrivalDate || t.departureDate) : t.departureDate;
+    const timeStr = (isDropoff ? t.arrivalTime : t.departureTime) || (isDropoff ? '18:00' : '09:00');
+    
+    // Resolve timezone from origin (or destination for dropoff)
+    const code = isDropoff ? (t.dropoffLocation || t.destination) : (t.pickupLocation || t.origin);
+    const tz = (code && getAirportTimezone(code)) || undefined;
+    const parsed = parseLocalDateInTimezone(dateStr || '2026-01-01', timeStr, tz);
+    return !isNaN(parsed.getTime()) ? parsed.getTime() : new Date(`${dateStr}T${timeStr}:00`).getTime();
+}
+
+/**
+ * Extracts and tags transport events for a given calendar date,
+ * strictly sorted chronologically taking into account time zone.
  * Accurately surfaces Rental Car Pickup on pickup date and Rental Car Dropoff on dropoff date,
  * including when both occur on the same day.
  */
@@ -138,7 +171,20 @@ export function getTransportScheduleEventsForDate(
             if (t.departureDate === dateStr) {
                 events.push({ ...t, isDropoff: false });
             }
+            // Flights or legs arriving on a different date
+            if (t.mode === 'Flight' && t.arrivalDate && t.arrivalDate === dateStr && t.arrivalDate !== t.departureDate) {
+                events.push({ ...t, isDropoff: true });
+            }
         }
+    });
+
+    // Chronological sorting taking into account time zones
+    events.sort((a, b) => {
+        const timeA = getTransportUtcTimestamp(a, a.isDropoff);
+        const timeB = getTransportUtcTimestamp(b, b.isDropoff);
+        if (timeA !== timeB) return timeA - timeB;
+        if (a.isDropoff !== b.isDropoff) return a.isDropoff ? 1 : -1;
+        return 0;
     });
 
     return events;

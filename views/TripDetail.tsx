@@ -2338,6 +2338,11 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                     setSelectedActivityForModal(null);
                 }} 
                 onSave={handleSaveActivity}
+                onDelete={(activityId) => {
+                    handleDeleteActivity(activityId);
+                    setIsActivityModalOpen(false);
+                    setSelectedActivityForModal(null);
+                }}
                 initialData={selectedActivityForModal}
                 defaultDate={currentDayForActivity}
                 tripStartDate={trip.startDate}

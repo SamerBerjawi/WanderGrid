@@ -10,11 +10,17 @@ import {
     Check,
     X,
     Trash,
-    WarningCircle
+    WarningCircle,
+    Camera,
+    Buildings,
+    Mountains,
+    FilmSlate,
+    ShoppingBag,
+    Sparkle
 } from '@phosphor-icons/react';
 import { Input, Autocomplete, TimeInput } from './ui';
 import GlassPanel from './glass/GlassPanel';
-import { Activity, GeoCoordinates } from '../types';
+import { Activity, ActivityType, GeoCoordinates } from '../types';
 import { searchLocations, getCoordinates } from '../services/geocoding';
 import { getCurrencySymbol } from '../utils/formatters';
 import {
@@ -38,10 +44,16 @@ export interface ExcursionConfiguratorProps {
     onClose: () => void;
 }
 
-const CATEGORIES: { type: 'Activity' | 'Reservation' | 'Tour'; label: string; icon: React.ElementType; description: string }[] = [
-    { type: 'Tour', label: 'Guided Tour / Excursion', icon: Compass, description: 'Boat charters, guided walks, museum passes' },
-    { type: 'Reservation', label: 'Dining & Reservation', icon: ForkKnife, description: 'Restaurants, wine tastings, lounges' },
-    { type: 'Activity', label: 'Sightseeing & Adventure', icon: Ticket, description: 'Beaches, hiking, landmarks, attractions' },
+const CATEGORIES: { type: ActivityType; label: string; icon: React.ElementType; description: string }[] = [
+    { type: 'Tour', label: 'Guided Tour', icon: Compass, description: 'Boat charters, guided walks, day excursions' },
+    { type: 'Reservation', label: 'Dining & Food', icon: ForkKnife, description: 'Restaurants, wine tastings, lounges & cafes' },
+    { type: 'Sightseeing', label: 'Sightseeing', icon: Camera, description: 'Landmarks, viewpoints & photo spots' },
+    { type: 'Museum', label: 'Museum & Culture', icon: Buildings, description: 'Art galleries, museums & historic monuments' },
+    { type: 'Outdoor', label: 'Outdoor & Nature', icon: Mountains, description: 'Hiking, beaches, parks & water sports' },
+    { type: 'Entertainment', label: 'Shows & Events', icon: FilmSlate, description: 'Concerts, theater, sports & festivals' },
+    { type: 'Shopping', label: 'Shopping', icon: ShoppingBag, description: 'Local markets, boutiques & bazaars' },
+    { type: 'Wellness', label: 'Wellness & Spa', icon: Sparkle, description: 'Thermal baths, massage, sauna & yoga' },
+    { type: 'Activity', label: 'General Activity', icon: Ticket, description: 'Other experiences, tickets & passes' },
 ];
 
 export const ExcursionConfigurator: React.FC<ExcursionConfiguratorProps> = ({
@@ -56,7 +68,7 @@ export const ExcursionConfigurator: React.FC<ExcursionConfiguratorProps> = ({
     onClose
 }) => {
     const [title, setTitle] = useState('');
-    const [type, setType] = useState<'Tour' | 'Reservation' | 'Activity'>('Tour');
+    const [type, setType] = useState<ActivityType>('Tour');
     const [date, setDate] = useState(defaultDate || '');
     const [time, setTime] = useState('10:00');
     const [location, setLocation] = useState('');

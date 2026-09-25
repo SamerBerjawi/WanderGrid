@@ -188,7 +188,12 @@ export const airportTimezones = new Map<string, string>(Object.entries(DEFAULT_A
 export function getAirportTimezone(iataCode: string): string | undefined {
   const code = (iataCode || "").trim().toUpperCase();
   if (!code) return undefined;
-  return airportTimezones.get(code);
+  if (airportTimezones.has(code)) return airportTimezones.get(code);
+  const match = code.match(/\b([A-Z]{3})\b/);
+  if (match && airportTimezones.has(match[1])) {
+    return airportTimezones.get(match[1]);
+  }
+  return undefined;
 }
 
 export function parseLocalDateInTimezone(dateStr: string, timeStr: string, timeZoneId?: string): Date {

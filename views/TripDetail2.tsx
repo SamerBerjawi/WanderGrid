@@ -2349,9 +2349,24 @@ export const TripDetail2: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                         <Input label="Notes / Description" placeholder="Booking ref, instructions..." value={activityForm.description || ''} onChange={e => setActivityForm({...activityForm, description: e.target.value})} />
                     </div>
 
-                    <div className="flex justify-end gap-3 pt-4 border-t border-black/5 dark:border-white/5">
-                        <Button variant="secondary" onClick={() => setIsActivityModalOpen(false)}>Cancel</Button>
-                        <Button variant="primary" onClick={handleSaveActivity} disabled={!activityForm.title || !activityForm.date}>Save Item</Button>
+                    <div className="flex justify-between items-center pt-4 border-t border-black/5 dark:border-white/5">
+                        {activityForm.id ? (
+                            <Button 
+                                variant="danger" 
+                                onClick={() => {
+                                    if (window.confirm('Delete this activity?')) {
+                                        handleDeleteActivity(activityForm.id!);
+                                        setIsActivityModalOpen(false);
+                                    }
+                                }}
+                            >
+                                Delete
+                            </Button>
+                        ) : <div />}
+                        <div className="flex gap-3">
+                            <Button variant="secondary" onClick={() => setIsActivityModalOpen(false)}>Cancel</Button>
+                            <Button variant="primary" onClick={handleSaveActivity} disabled={!activityForm.title || !activityForm.date}>Save Item</Button>
+                        </div>
                     </div>
                 </div>
             </Modal>
