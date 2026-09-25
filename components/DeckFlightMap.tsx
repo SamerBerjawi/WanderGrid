@@ -49,6 +49,7 @@ import { fetchMultiModalRoute, getCachedMultiModalRoute } from '../services/mult
 import { dataService } from '../services/mockDb';
 import { formatDate } from '../utils/formatters';
 import GlassPanel from './glass/GlassPanel';
+import { globeHorizonCullExtension } from './GlobeHorizonCullExtension';
 
 // --- Country Matching Helper for Scratch Map & Overlays ---
 let geoJsonMemoryCache: any = null;
@@ -306,6 +307,13 @@ export const createMapLibreStyle = (
             }
         },
         layers: [
+            {
+                id: 'background-base-layer',
+                type: 'background',
+                paint: {
+                    'background-color': isDark ? '#05070f' : '#f0f4f8'
+                }
+            },
             {
                 id: 'raster-basemap-layer',
                 type: 'raster',
@@ -1332,7 +1340,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         getFillColor: [visitedCountries, countryStatusMap, viewMode, isDark, showLived, showWishlist, showLayover],
                         getLineColor: [countryStatusMap, isDark, showLived, showWishlist, showLayover],
                         getLineWidth: [countryStatusMap, showLived, showWishlist, showLayover]
-                    }
+                    },
+                    extensions: [globeHorizonCullExtension]
                 })
             );
         }
@@ -1355,7 +1364,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     getLineWidth: 1.5,
                     wrapLongitude: true,
                     pickable: true,
-                    onHover: (info: any) => info.object && setHoverInfo(info)
+                    onHover: (info: any) => info.object && setHoverInfo(info),
+                    extensions: [globeHorizonCullExtension]
                 })
             );
         }
@@ -1397,7 +1407,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     updateTriggers: {
                         getColor: [hoveredRouteKey, selectedCorridor?.id],
                         getWidth: [hoveredRouteKey, selectedCorridor?.id, effectiveProjection]
-                    }
+                    },
+                    extensions: [globeHorizonCullExtension]
                 })
             );
         }
@@ -1467,7 +1478,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         getTargetColor: [selectedCorridor?.id, hoveredRouteKey, activeAppearance.routeColorMode],
                         getWidth: [selectedCorridor?.id, hoveredRouteKey, isWidthByFreq, scaleMultiplier, effectiveProjection],
                         getHeight: [arcHeight, effectiveProjection, isElevatedActive]
-                    }
+                    },
+                    extensions: [globeHorizonCullExtension]
                 })
             );
 
@@ -1496,7 +1508,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     onClick: handleRouteClick,
                     updateTriggers: {
                         getHeight: [arcHeight, effectiveProjection, isElevatedActive]
-                    }
+                    },
+                    extensions: [globeHorizonCullExtension]
                 })
             );
         }
@@ -1522,7 +1535,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         depthWriteEnabled: false,
                         depthCompare: 'always',
                         depthTest: false
-                    }
+                    },
+                    extensions: [globeHorizonCullExtension]
                 })
             );
         }
@@ -1545,7 +1559,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         widthUnits: 'meters',
                         widthMinPixels: 2.0,
                         wrapLongitude: true,
-                        pickable: false
+                        pickable: false,
+                        extensions: [globeHorizonCullExtension]
                     })
                 );
             }
@@ -1563,7 +1578,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         getRadius: (d: any) => d.radius * 1.5,
                         radiusUnits: 'pixels',
                         wrapLongitude: true,
-                        pickable: false
+                        pickable: false,
+                        extensions: [globeHorizonCullExtension]
                     }),
                     new ScatterplotLayer({
                         id: 'airport-cluster-nodes',
@@ -1579,7 +1595,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         wrapLongitude: true,
                         pickable: true,
                         onHover: (info: any) => info.object && setHoverInfo(info),
-                        onClick: (info: any) => info.object?.tripId && onTripClick && onTripClick(info.object.tripId)
+                        onClick: (info: any) => info.object?.tripId && onTripClick && onTripClick(info.object.tripId),
+                        extensions: [globeHorizonCullExtension]
                     }),
                     new TextLayer({
                         id: 'airport-cluster-text',
@@ -1592,7 +1609,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         getAlignmentBaseline: 'center',
                         fontWeight: 'bold',
                         wrapLongitude: true,
-                        pickable: false
+                        pickable: false,
+                        extensions: [globeHorizonCullExtension]
                     })
                 );
             } else if (airportPoints.length > 0) {
@@ -1651,7 +1669,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         updateTriggers: {
                             getFillColor: [selectedCorridor?.id, isDark, activeAppearance.routeColorMode, activeAppearance.airportMode],
                             getRadius: [selectedCorridor?.id, activeAppearance.airportMode, activeAppearance.airportSize]
-                        }
+                        },
+                        extensions: [globeHorizonCullExtension]
                     })
                 );
             }
@@ -1699,9 +1718,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     useEffect(() => {
         if (!mapContainerRef.current) return;
 
-        const style = createMapLibreStyle(currentLayer, isDark, workspaceSettings?.cartoApiKey);
-
         const isGlobe = effectiveProjection === 'globe';
+        const style = createMapLibreStyle(currentLayer, isDark, workspaceSettings?.cartoApiKey, isGlobe);
+
         const rect = mapContainerRef.current.getBoundingClientRect();
         const width = rect.width || window.innerWidth || 1200;
         const height = rect.height || window.innerHeight || 800;
@@ -1825,12 +1844,27 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         }
     }, [deckLayers]);
 
-    // Synchronize Basemap Style changes smoothly
+    // Synchronize Basemap Style changes smoothly without reverting 3D Globe projection
     useEffect(() => {
-        if (!mapRef.current) return;
-        const nextStyle = createMapLibreStyle(currentLayer, isDark, workspaceSettings?.cartoApiKey);
-        mapRef.current.setStyle(nextStyle);
-    }, [currentLayer, isDark, workspaceSettings?.cartoApiKey]);
+        const map = mapRef.current;
+        if (!map) return;
+        const isGlobe = effectiveProjection === 'globe';
+        const nextStyle = createMapLibreStyle(currentLayer, isDark, workspaceSettings?.cartoApiKey, isGlobe);
+        map.setStyle(nextStyle);
+
+        // Re-assert projection on styledata to preserve 3D Globe mode across basemap changes
+        const onStyleData = () => {
+            if ((map as any).setProjection) {
+                try {
+                    (map as any).setProjection({ type: isGlobe ? 'globe' : 'mercator' });
+                } catch (e) {
+                    console.warn('[DeckFlightMap] style change setProjection warning:', e);
+                }
+            }
+        };
+
+        map.once('styledata', onStyleData);
+    }, [currentLayer, isDark, workspaceSettings?.cartoApiKey, effectiveProjection]);
 
     // Synchronize RainViewer precipitation radar directly into MapLibre GL
     useEffect(() => {
