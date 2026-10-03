@@ -28,14 +28,18 @@ import {
     Sun,
     Moon,
     Clock,
-    CaretDown
+    CaretDown,
+    ShieldCheck,
+    Car,
+    ArrowsMerge,
+    ArrowsClockwise
 } from '@phosphor-icons/react';
 import { motion, AnimatePresence } from 'motion/react';
 import GlassPanel from '../components/glass/GlassPanel';
 import { Modal, Badge, Button, Input, Select } from '../components/ui';
-import { dataService, ImportState } from '../services/mockDb';
+import { dataService, ImportState, isTripRoad, isTripAir } from '../services/mockDb';
 import { calendarService } from '../services/calendarExport';
-import { User, WorkspaceSettings, EntitlementType, SavedConfig, Trip } from '../types';
+import { User, WorkspaceSettings, EntitlementType, SavedConfig, Trip, BackupSelectionOptions, RestoreOptions } from '../types';
 import { GearSettingsTab } from '../components/GearSettingsTab';
 import { CarriersTab } from '../components/CarriersTab';
 import { 
@@ -97,10 +101,32 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
   // Calendar copy feedback
   const [copiedCalendar, setCopiedCalendar] = useState(false);
 
-  // Backup file controls
+  // Backup file & granularity controls
+  const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
+  const [backupCategories, setBackupCategories] = useState<Required<BackupSelectionOptions>>({
+    flights: true,
+    roadTrips: true,
+    visited: true,
+    settings: true,
+    users: true,
+    calendar: true
+  });
+  const [isExporting, setIsExporting] = useState(false);
+
+  // Restore file & granularity controls
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingBackupData, setPendingBackupData] = useState<any | null>(null);
+  const [restoreMode, setRestoreMode] = useState<'merge' | 'replace'>('merge');
+  const [restoreCategories, setRestoreCategories] = useState<Required<BackupSelectionOptions>>({
+    flights: true,
+    roadTrips: true,
+    visited: true,
+    settings: true,
+    users: true,
+    calendar: true
+  });
   const [restoreStatus, setRestoreStatus] = useState<'idle' | 'reading' | 'importing' | 'success' | 'error'>('idle');
   const [restoreErrorMessage, setRestoreErrorMessage] = useState('');
 

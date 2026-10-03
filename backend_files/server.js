@@ -133,13 +133,8 @@ function removeSensitiveData(obj) {
     const cleaned = {};
     for (const [key, val] of Object.entries(obj)) {
         const lowerKey = key.toLowerCase();
-        if (
-            lowerKey === 'password' || 
-            lowerKey.includes('apikey') || 
-            lowerKey.includes('api_key') || 
-            lowerKey.includes('token') || 
-            lowerKey.includes('secret')
-        ) {
+        // Only redact user passwords, preserve API keys, tokens, and settings
+        if (lowerKey === 'password') {
             continue;
         }
         
@@ -2083,7 +2078,8 @@ app.get('/api/backup', async (req, res) => {
 });
 
 app.post('/api/restore', async (req, res) => {
-    const data = req.body;
+    const rawBody = req.body || {};
+    const data = (rawBody.data && typeof rawBody.data === 'object') ? rawBody.data : rawBody;
     
     // Strict validation-driven checks
     if (!data || typeof data !== 'object') {
@@ -2111,38 +2107,210 @@ app.post('/api/restore', async (req, res) => {
         return res.status(400).json({ error: "Validation failed: 'workspaceSettings' must be an object" });
     }
 
+    const restoreOptions = rawBody.restoreOptions || data.restoreOptions || {};
+    const mode = restoreOptions.mode === 'merge' ? 'merge' : 'replace';
+    const selected = restoreOptions.selectedCategories || {
+        flights: true,
+        roadTrips: true,
+        visited: true,
+        settings: true,
+        users: true,
+        calendar: true
+    };
+
+    const currentUserId = restoreOptions.currentUserId || req.user?.id;
+    const currentUserEmail = (restoreOptions.currentUserEmail || req.user?.email || '').toLowerCase().trim();
+
+    // Helper functions for trip categorization
+    const isTripRoad = (t) => {
+        if (t.icon === '🚗') return true;
+        if (t.locations && t.locations.length > 1) return true;
+        const transports = t.transports || [];
+        return transports.some(tr => tr.mode && tr.mode !== 'Flight');
+    };
+    const isTripAir = (t) => {
+        if (t.isBundleOnly || t.icon === '✈️') return true;
+        const transports = t.transports || [];
+        if (transports.length === 0) return true; // General trip default
+        return transports.some(tr => !tr.mode || tr.mode === 'Flight');
+    };
+
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
         
-        for (const table of tables) {
-            const existingItemsMap = new Map();
-            try {
-                const { rows } = await client.query(`SELECT id, data FROM ${table}`);
-                rows.forEach(r => existingItemsMap.set(r.id, r.data));
-            } catch (err) {
-                console.warn(`Could not load existing items for merge: ${err.message}`);
+        // 1. RESTORE USERS (With Active Session Safety)
+        if (selected.users !== false && data.users && Array.isArray(data.users)) {
+            const { rows: existingUserRows } = await client.query('SELECT id, data FROM users');
+            const existingUserMap = new Map(existingUserRows.map(r => [r.id, r.data]));
+            
+            // Find currently active user in DB
+            let activeUserRecord = null;
+            for (const r of existingUserRows) {
+                if (r.id === currentUserId || (r.data?.email && r.data.email.toLowerCase().trim() === currentUserEmail)) {
+                    activeUserRecord = r.data;
+                    break;
+                }
             }
 
-            await client.query(`TRUNCATE TABLE ${table}`);
-            if (data[table] && Array.isArray(data[table])) {
-                for (const item of data[table]) {
-                    if (table === 'users') {
-                        const existingUser = existingItemsMap.get(item.id);
-                        if (!item.password) {
-                            if (existingUser && existingUser.password) {
-                                item.password = existingUser.password;
-                            } else {
-                                item.password = await hashPassword('password');
-                            }
+            if (mode === 'replace') {
+                await client.query('TRUNCATE TABLE users');
+                let sessionUserInserted = false;
+                for (const item of data.users) {
+                    const existing = existingUserMap.get(item.id);
+                    if (!item.password) {
+                        item.password = (existing && existing.password) ? existing.password : await hashPassword('password');
+                    }
+                    if (item.id === currentUserId || (item.email && item.email.toLowerCase().trim() === currentUserEmail)) {
+                        sessionUserInserted = true;
+                    }
+                    await client.query('INSERT INTO users (id, data) VALUES ($1, $2)', [item.id, JSON.stringify(item)]);
+                }
+                // Guarantee active user is never deleted
+                if (!sessionUserInserted && activeUserRecord) {
+                    await client.query(
+                        'INSERT INTO users (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2',
+                        [activeUserRecord.id, JSON.stringify(activeUserRecord)]
+                    );
+                }
+            } else {
+                // Merge users
+                for (const item of data.users) {
+                    const existing = existingUserMap.get(item.id);
+                    const mergedUser = existing ? { ...existing, ...item } : item;
+                    if (!mergedUser.password) {
+                        mergedUser.password = (existing && existing.password) ? existing.password : await hashPassword('password');
+                    }
+                    await client.query(
+                        'INSERT INTO users (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2',
+                        [item.id, JSON.stringify(mergedUser)]
+                    );
+                }
+            }
+        }
+
+        // 2. RESTORE TRIPS (Granular Flights vs Road Trips)
+        if ((selected.flights !== false || selected.roadTrips !== false) && data.trips && Array.isArray(data.trips)) {
+            const { rows: existingTripRows } = await client.query('SELECT id, data FROM trips');
+            const existingTripsMap = new Map(existingTripRows.map(r => [r.id, r.data]));
+
+            const incomingTrips = data.trips.filter(t => {
+                const road = isTripRoad(t);
+                const air = isTripAir(t);
+                if (selected.roadTrips && selected.flights) return true;
+                if (selected.roadTrips && road) return true;
+                if (selected.flights && air) return true;
+                return false;
+            });
+
+            if (mode === 'replace') {
+                // Keep categories not selected
+                const tripsToKeep = new Map();
+                if (!selected.roadTrips) {
+                    existingTripRows.forEach(r => { if (isTripRoad(r.data)) tripsToKeep.set(r.id, r.data); });
+                }
+                if (!selected.flights) {
+                    existingTripRows.forEach(r => { if (isTripAir(r.data) && !isTripRoad(r.data)) tripsToKeep.set(r.id, r.data); });
+                }
+                // Add incoming
+                incomingTrips.forEach(t => tripsToKeep.set(t.id, t));
+
+                await client.query('TRUNCATE TABLE trips');
+                for (const t of tripsToKeep.values()) {
+                    await client.query('INSERT INTO trips (id, data) VALUES ($1, $2)', [t.id, JSON.stringify(t)]);
+                }
+            } else {
+                // Merge
+                for (const t of incomingTrips) {
+                    const existing = existingTripsMap.get(t.id);
+                    const merged = existing ? { ...existing, ...t } : t;
+                    await client.query(
+                        'INSERT INTO trips (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2',
+                        [t.id, JSON.stringify(merged)]
+                    );
+                }
+            }
+        }
+
+        // 3. RESTORE FLIGHTS (Independent Transports)
+        if ((selected.flights !== false || selected.roadTrips !== false) && data.flights && Array.isArray(data.flights)) {
+            const { rows: existingFlightRows } = await client.query('SELECT id, data FROM flights');
+            const existingFlightsMap = new Map(existingFlightRows.map(r => [r.id, r.data]));
+
+            const incomingFlights = data.flights.filter(f => {
+                const isAir = !f.mode || f.mode === 'Flight';
+                if (selected.flights && isAir) return true;
+                if (selected.roadTrips && !isAir) return true;
+                return false;
+            });
+
+            if (mode === 'replace') {
+                const flightsToKeep = new Map();
+                if (!selected.flights) {
+                    existingFlightRows.forEach(r => { if (!r.data.mode || r.data.mode === 'Flight') flightsToKeep.set(r.id, r.data); });
+                }
+                if (!selected.roadTrips) {
+                    existingFlightRows.forEach(r => { if (r.data.mode && r.data.mode !== 'Flight') flightsToKeep.set(r.id, r.data); });
+                }
+                incomingFlights.forEach(f => flightsToKeep.set(f.id, f));
+
+                await client.query('TRUNCATE TABLE flights');
+                for (const f of flightsToKeep.values()) {
+                    await client.query('INSERT INTO flights (id, data) VALUES ($1, $2)', [f.id, JSON.stringify(f)]);
+                }
+            } else {
+                for (const f of incomingFlights) {
+                    const existing = existingFlightsMap.get(f.id);
+                    const merged = existing ? { ...existing, ...f } : f;
+                    await client.query(
+                        'INSERT INTO flights (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2',
+                        [f.id, JSON.stringify(merged)]
+                    );
+                }
+            }
+        }
+
+        // 4. RESTORE VISITED PLACES
+        if (selected.visited !== false && data.visited && Array.isArray(data.visited)) {
+            if (mode === 'replace') {
+                await client.query('TRUNCATE TABLE visited');
+                for (const item of data.visited) {
+                    await client.query('INSERT INTO visited (id, data) VALUES ($1, $2)', [item.id, JSON.stringify(item)]);
+                }
+            } else {
+                for (const item of data.visited) {
+                    await client.query(
+                        'INSERT INTO visited (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2',
+                        [item.id, JSON.stringify(item)]
+                    );
+                }
+            }
+        }
+
+        // 5. RESTORE CALENDAR / EVENTS / ENTITLEMENTS / CONFIGS
+        if (selected.calendar !== false) {
+            const calTables = ['events', 'entitlements', 'configs'];
+            for (const table of calTables) {
+                if (data[table] && Array.isArray(data[table])) {
+                    if (mode === 'replace') {
+                        await client.query(`TRUNCATE TABLE ${table}`);
+                        for (const item of data[table]) {
+                            await client.query(`INSERT INTO ${table} (id, data) VALUES ($1, $2)`, [item.id, JSON.stringify(item)]);
+                        }
+                    } else {
+                        for (const item of data[table]) {
+                            await client.query(
+                                `INSERT INTO ${table} (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2`,
+                                [item.id, JSON.stringify(item)]
+                            );
                         }
                     }
-                    await client.query(`INSERT INTO ${table} (id, data) VALUES ($1, $2)`, [item.id, JSON.stringify(item)]);
                 }
             }
         }
         
-        if (data.workspaceSettings) {
+        // 6. RESTORE WORKSPACE SETTINGS & API KEYS
+        if (selected.settings !== false && data.workspaceSettings && typeof data.workspaceSettings === 'object') {
             let currentSettings = {};
             try {
                 const settingsRes = await client.query(`SELECT data FROM settings WHERE key = 'workspace'`);
@@ -2154,7 +2322,10 @@ app.post('/api/restore', async (req, res) => {
                 currentSettings = {};
             }
 
-            const mergedSettings = { ...(data.workspaceSettings || {}) };
+            const mergedSettings = mode === 'merge' 
+                ? { ...currentSettings, ...data.workspaceSettings } 
+                : { ...data.workspaceSettings };
+                
             const keysToCheck = ['aviationStackApiKey', 'brandfetchApiKey', 'googleGeminiApiKey', 'cartoApiKey'];
             keysToCheck.forEach(k => {
                 if (!mergedSettings[k] && currentSettings && currentSettings[k]) {
@@ -2169,7 +2340,7 @@ app.post('/api/restore', async (req, res) => {
         }
         
         await client.query('COMMIT');
-        res.json({ success: true });
+        res.json({ success: true, mode, selected });
     } catch (err) {
         await client.query('ROLLBACK');
         sendError(res, err, 500, 'Failed to restore database backup');

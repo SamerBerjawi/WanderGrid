@@ -458,3 +458,26 @@ export interface FlightStatusResponse {
         is_ground: boolean;
     };
 }
+
+export interface BackupSelectionOptions {
+  flights?: boolean;
+  roadTrips?: boolean;
+  visited?: boolean;
+  settings?: boolean;
+  users?: boolean;
+  calendar?: boolean;
+}
+
+export interface RestoreOptions {
+  mode?: 'merge' | 'replace';
+  selectedCategories?: {
+    flights?: boolean;
+    roadTrips?: boolean;
+    visited?: boolean;
+    settings?: boolean;
+    users?: boolean;
+    calendar?: boolean;
+  };
+  currentUserId?: string;
+  currentUserEmail?: string;
+}

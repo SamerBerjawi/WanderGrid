@@ -1,5 +1,5 @@
 
-import { User, Trip, PublicHoliday, EntitlementType, SavedConfig, WorkspaceSettings, CustomEvent as TripCustomEvent, PackingItem, Carrier } from '../types';
+import { User, Trip, PublicHoliday, EntitlementType, SavedConfig, WorkspaceSettings, CustomEvent as TripCustomEvent, PackingItem, Carrier, BackupSelectionOptions, RestoreOptions } from '../types';
 import { getCoordinates } from './geocoding';
 
 const GEO_CACHE_KEY = 'wandergrid_geo_cache_v2';
@@ -216,6 +216,7 @@ export async function verifyPasswordInBrowser(password: string, storedHash: stri
 }
 
 // --- Recursive Sensitive Credential Redaction for Backup Exports ---
+// Redacts ONLY user authentication passwords, preserving all API keys, tokens, settings, and configs
 export function removeSensitiveData(obj: any): any {
   if (!obj || typeof obj !== 'object') {
     return obj;
@@ -228,19 +229,30 @@ export function removeSensitiveData(obj: any): any {
   const cleaned: any = {};
   for (const [key, val] of Object.entries(obj)) {
     const lowerKey = key.toLowerCase();
-    if (
-      lowerKey === 'password' || 
-      lowerKey.includes('apikey') || 
-      lowerKey.includes('api_key') || 
-      lowerKey.includes('token') || 
-      lowerKey.includes('secret')
-    ) {
+    if (lowerKey === 'password') {
       continue;
     }
     cleaned[key] = removeSensitiveData(val);
   }
   return cleaned;
 }
+
+// Helpers for categorizing trips in backup and restore
+export const isTripRoad = (t: any): boolean => {
+  if (!t) return false;
+  if (t.icon === '🚗') return true;
+  if (t.locations && t.locations.length > 1) return true;
+  const transports = t.transports || [];
+  return transports.some((tr: any) => tr.mode && tr.mode !== 'Flight');
+};
+
+export const isTripAir = (t: any): boolean => {
+  if (!t) return false;
+  if (t.isBundleOnly || t.icon === '✈️') return true;
+  const transports = t.transports || [];
+  if (transports.length === 0) return true;
+  return transports.some((tr: any) => !tr.mode || tr.mode === 'Flight');
+};
 
 class DataService {
   private _importState: ImportState = { status: '', progress: 0, isActive: false };
@@ -650,42 +662,181 @@ class DataService {
       }
 
       if (endpoint === '/restore' && method === 'POST') {
-          const data = body;
-          collections.forEach(c => {
-              if (data[c.storage] && Array.isArray(data[c.storage])) {
-                  const keyName = key(c.storage);
-                  const existingList = getCachedStorage<any[]>(keyName, []);
-                  const existingMap = new Map((Array.isArray(existingList) ? existingList : []).map((item: any) => [item.id, item]));
+          const rawBody = (body || {}) as any;
+          const data = (rawBody.data && typeof rawBody.data === 'object') ? rawBody.data : rawBody;
+          const restoreOptions = rawBody.restoreOptions || data.restoreOptions || {};
+          const mode = restoreOptions.mode === 'merge' ? 'merge' : 'replace';
+          const selected = restoreOptions.selectedCategories || {
+              flights: true,
+              roadTrips: true,
+              visited: true,
+              settings: true,
+              users: true,
+              calendar: true
+          };
 
-                  const newList = data[c.storage].map((item: any) => {
-                      if (c.storage === 'users') {
-                          const existingUser: any = existingMap.get(item.id);
-                          if (!item.password) {
-                              if (existingUser && existingUser.password) {
-                                  return { ...item, password: existingUser.password };
-                              } else {
-                                  return { ...item, password: 'password' };
-                              }
-                          }
+          const currentUserId = restoreOptions.currentUserId;
+          const currentUserEmail = (restoreOptions.currentUserEmail || '').toLowerCase().trim();
+
+          // 1. Users
+          if (selected.users !== false && data.users && Array.isArray(data.users)) {
+              const keyName = key('users');
+              const existingList = getCachedStorage<any[]>(keyName, []);
+              const existingMap = new Map((Array.isArray(existingList) ? existingList : []).map((item: any) => [item.id, item]));
+              
+              let activeUserRecord: any = null;
+              for (const u of existingList) {
+                  if (u.id === currentUserId || (u.email && u.email.toLowerCase().trim() === currentUserEmail)) {
+                      activeUserRecord = u;
+                      break;
+                  }
+              }
+
+              if (mode === 'replace') {
+                  let sessionUserInserted = false;
+                  const newList = data.users.map((item: any) => {
+                      const existingUser: any = existingMap.get(item.id);
+                      if (!item.password) {
+                          item = { ...item, password: (existingUser && existingUser.password) ? existingUser.password : 'password' };
+                      }
+                      if (item.id === currentUserId || (item.email && item.email.toLowerCase().trim() === currentUserEmail)) {
+                          sessionUserInserted = true;
                       }
                       return item;
                   });
+                  if (!sessionUserInserted && activeUserRecord) {
+                      newList.push(activeUserRecord);
+                  }
                   setCachedStorage(keyName, newList, true);
+              } else {
+                  const mergedMap = new Map(existingMap);
+                  for (const item of data.users) {
+                      const existingUser: any = existingMap.get(item.id);
+                      const merged = existingUser ? { ...existingUser, ...item } : item;
+                      if (!merged.password) {
+                          merged.password = (existingUser && existingUser.password) ? existingUser.password : 'password';
+                      }
+                      mergedMap.set(item.id, merged);
+                  }
+                  setCachedStorage(keyName, Array.from(mergedMap.values()), true);
               }
-          });
-          if (data.workspaceSettings) {
-              const currentSettings = (getCachedStorage<any>(key('settings'), {}) || {}) as any;
-              const restoredSettings = { ...DEFAULT_WORKSPACE_SETTINGS, ...(data.workspaceSettings || {}) };
-              const keysToCheck = ['aviationStackApiKey', 'brandfetchApiKey', 'googleGeminiApiKey', 'cartoApiKey'];
-              keysToCheck.forEach(k => {
-                  if (!restoredSettings[k] && currentSettings && currentSettings[k]) {
-                      restoredSettings[k] = currentSettings[k];
+          }
+
+          // 2. Trips
+          if ((selected.flights !== false || selected.roadTrips !== false) && data.trips && Array.isArray(data.trips)) {
+              const keyName = key('trips');
+              const existingTrips = getCachedStorage<any[]>(keyName, []);
+              const existingTripsMap = new Map((Array.isArray(existingTrips) ? existingTrips : []).map((t: any) => [t.id, t]));
+
+              const incomingTrips = data.trips.filter((t: any) => {
+                  const road = isTripRoad(t);
+                  const air = isTripAir(t);
+                  if (selected.roadTrips && selected.flights) return true;
+                  if (selected.roadTrips && road) return true;
+                  if (selected.flights && air) return true;
+                  return false;
+              });
+
+              if (mode === 'replace') {
+                  const tripsToKeep = new Map<string, any>();
+                  if (!selected.roadTrips) {
+                      existingTrips.forEach((t: any) => { if (isTripRoad(t)) tripsToKeep.set(t.id, t); });
+                  }
+                  if (!selected.flights) {
+                      existingTrips.forEach((t: any) => { if (isTripAir(t) && !isTripRoad(t)) tripsToKeep.set(t.id, t); });
+                  }
+                  incomingTrips.forEach((t: any) => tripsToKeep.set(t.id, t));
+                  setCachedStorage(keyName, Array.from(tripsToKeep.values()), true);
+              } else {
+                  const mergedMap = new Map(existingTripsMap);
+                  for (const t of incomingTrips) {
+                      const existing = existingTripsMap.get(t.id);
+                      mergedMap.set(t.id, existing ? { ...existing, ...t } : t);
+                  }
+                  setCachedStorage(keyName, Array.from(mergedMap.values()), true);
+              }
+          }
+
+          // 3. Flights (Independent transports)
+          if ((selected.flights !== false || selected.roadTrips !== false) && data.flights && Array.isArray(data.flights)) {
+              const keyName = key('flights');
+              const existingFlights = getCachedStorage<any[]>(keyName, []);
+              const existingFlightsMap = new Map((Array.isArray(existingFlights) ? existingFlights : []).map((f: any) => [f.id, f]));
+
+              const incomingFlights = data.flights.filter((f: any) => {
+                  const isAir = !f.mode || f.mode === 'Flight';
+                  if (selected.flights && isAir) return true;
+                  if (selected.roadTrips && !isAir) return true;
+                  return false;
+              });
+
+              if (mode === 'replace') {
+                  const flightsToKeep = new Map<string, any>();
+                  if (!selected.flights) {
+                      existingFlights.forEach((f: any) => { if (!f.mode || f.mode === 'Flight') flightsToKeep.set(f.id, f); });
+                  }
+                  if (!selected.roadTrips) {
+                      existingFlights.forEach((f: any) => { if (f.mode && f.mode !== 'Flight') flightsToKeep.set(f.id, f); });
+                  }
+                  incomingFlights.forEach((f: any) => flightsToKeep.set(f.id, f));
+                  setCachedStorage(keyName, Array.from(flightsToKeep.values()), true);
+              } else {
+                  const mergedMap = new Map(existingFlightsMap);
+                  for (const f of incomingFlights) {
+                      const existing = existingFlightsMap.get(f.id);
+                      mergedMap.set(f.id, existing ? { ...existing, ...f } : f);
+                  }
+                  setCachedStorage(keyName, Array.from(mergedMap.values()), true);
+              }
+          }
+
+          // 4. Visited
+          if (selected.visited !== false && data.visited && Array.isArray(data.visited)) {
+              const keyName = key('visited');
+              if (mode === 'replace') {
+                  setCachedStorage(keyName, data.visited, true);
+              } else {
+                  const existingVisited = getCachedStorage<any[]>(keyName, []);
+                  const map = new Map(existingVisited.map((v: any) => [v.id, v]));
+                  data.visited.forEach((v: any) => map.set(v.id, v));
+                  setCachedStorage(keyName, Array.from(map.values()), true);
+              }
+          }
+
+          // 5. Calendar (events, entitlements, configs)
+          if (selected.calendar !== false) {
+              ['events', 'entitlements', 'configs'].forEach(col => {
+                  if (data[col] && Array.isArray(data[col])) {
+                      const keyName = key(col);
+                      if (mode === 'replace') {
+                          setCachedStorage(keyName, data[col], true);
+                      } else {
+                          const existing = getCachedStorage<any[]>(keyName, []);
+                          const map = new Map(existing.map((e: any) => [e.id, e]));
+                          data[col].forEach((e: any) => map.set(e.id, e));
+                          setCachedStorage(keyName, Array.from(map.values()), true);
+                      }
                   }
               });
-              setCachedStorage(key('settings'), restoredSettings, true);
           }
+
+          // 6. Settings
+          if (selected.settings !== false && data.workspaceSettings && typeof data.workspaceSettings === 'object') {
+              const currentSettings = (getCachedStorage<any>(key('settings'), {}) || {}) as any;
+              const mergedSettings = mode === 'merge'
+                  ? { ...DEFAULT_WORKSPACE_SETTINGS, ...currentSettings, ...data.workspaceSettings }
+                  : { ...DEFAULT_WORKSPACE_SETTINGS, ...data.workspaceSettings };
+              const keysToCheck = ['aviationStackApiKey', 'brandfetchApiKey', 'googleGeminiApiKey', 'cartoApiKey'];
+              keysToCheck.forEach(k => {
+                  if (!mergedSettings[k] && currentSettings && currentSettings[k]) {
+                      mergedSettings[k] = currentSettings[k];
+                  }
+              });
+              setCachedStorage(key('settings'), mergedSettings, true);
+          }
+
           try { window.dispatchEvent(new CustomEvent('wandergrid_db_updated')); } catch (e) {}
-          return { success: true } as unknown as T;
+          return { success: true, mode, selected } as unknown as T;
       }
 
       throw new Error(`Local Mock: Route not found ${endpoint}`);
@@ -1171,28 +1322,114 @@ class DataService {
         window.dispatchEvent(new CustomEvent('wandergrid_db_updated'));
       } catch (e) {}
   }
-  async exportFullState(): Promise<string> {
+  async exportFullState(options?: BackupSelectionOptions): Promise<string> {
+      const selected: BackupSelectionOptions = {
+          flights: true,
+          roadTrips: true,
+          visited: true,
+          settings: true,
+          users: true,
+          calendar: true,
+          ...(options || {})
+      };
+
       let geoCache: any[] = [];
-      try {
-          const storedGeo = localStorage.getItem(GEO_CACHE_KEY);
-          if (storedGeo) geoCache = JSON.parse(storedGeo);
-      } catch (e) {}
+      if (selected.visited !== false) {
+          try {
+              const storedGeo = localStorage.getItem(GEO_CACHE_KEY);
+              if (storedGeo) geoCache = JSON.parse(storedGeo);
+          } catch (e) {}
+      }
+
       const dbState = await this.fetch<any>('/backup');
-      const cleanDbState = removeSensitiveData(dbState);
-      const state = { version: '3.7', timestamp: new Date().toISOString(), ...cleanDbState, caches: { geo: geoCache } };
+      const cleanDbState = removeSensitiveData(dbState) || {};
+
+      // Filter trips according to granularity
+      let trips = Array.isArray(cleanDbState.trips) ? cleanDbState.trips : [];
+      if (selected.flights === false && selected.roadTrips === false) {
+          trips = [];
+      } else if (selected.flights === false && selected.roadTrips === true) {
+          trips = trips.filter(isTripRoad);
+      } else if (selected.flights === true && selected.roadTrips === false) {
+          trips = trips.filter((t: any) => isTripAir(t) && !isTripRoad(t));
+      }
+
+      // Filter independent flights/transports according to granularity
+      let flights = Array.isArray(cleanDbState.flights) ? cleanDbState.flights : [];
+      if (selected.flights === false && selected.roadTrips === false) {
+          flights = [];
+      } else if (selected.flights === false && selected.roadTrips === true) {
+          flights = flights.filter((f: any) => f.mode && f.mode !== 'Flight');
+      } else if (selected.flights === true && selected.roadTrips === false) {
+          flights = flights.filter((f: any) => !f.mode || f.mode === 'Flight');
+      }
+
+      // Always maintain the exact canonical JSON schema
+      const state = {
+          version: '3.7',
+          timestamp: new Date().toISOString(),
+          users: selected.users !== false && Array.isArray(cleanDbState.users) ? cleanDbState.users : [],
+          trips,
+          events: selected.calendar !== false && Array.isArray(cleanDbState.events) ? cleanDbState.events : [],
+          entitlements: selected.calendar !== false && Array.isArray(cleanDbState.entitlements) ? cleanDbState.entitlements : [],
+          configs: selected.calendar !== false && Array.isArray(cleanDbState.configs) ? cleanDbState.configs : [],
+          flights,
+          visited: selected.visited !== false && Array.isArray(cleanDbState.visited) ? cleanDbState.visited : [],
+          workspaceSettings: selected.settings !== false && cleanDbState.workspaceSettings && typeof cleanDbState.workspaceSettings === 'object' ? cleanDbState.workspaceSettings : {},
+          caches: { geo: geoCache }
+      };
+
       return JSON.stringify(state, null, 2);
   }
-  async importFullState(jsonString: string): Promise<void> {
+
+  async importFullState(jsonString: string, options?: RestoreOptions): Promise<void> {
       try {
           const state = JSON.parse(jsonString.trim().replace(/^\uFEFF/, ''));
-          await this.fetch('/restore', { method: 'POST', body: JSON.stringify(state) });
-          if (state.caches?.geo && Array.isArray(state.caches.geo)) {
+
+          // Retain current session identity so restore NEVER logs the user out
+          let currentUserId = options?.currentUserId;
+          let currentUserEmail = options?.currentUserEmail;
+          if (!currentUserId || !currentUserEmail) {
+              try {
+                  const sessionUserStr = localStorage.getItem('wandergrid_session_user');
+                  if (sessionUserStr) {
+                      const sessionUser = JSON.parse(sessionUserStr);
+                      if (sessionUser?.id) currentUserId = currentUserId || sessionUser.id;
+                      if (sessionUser?.email) currentUserEmail = currentUserEmail || sessionUser.email;
+                  }
+              } catch (e) {}
+          }
+
+          const payload = {
+              data: state,
+              restoreOptions: {
+                  mode: options?.mode || 'replace',
+                  selectedCategories: options?.selectedCategories || {
+                      flights: true,
+                      roadTrips: true,
+                      visited: true,
+                      settings: true,
+                      users: true,
+                      calendar: true
+                  },
+                  currentUserId,
+                  currentUserEmail
+              }
+          };
+
+          await this.fetch('/restore', { method: 'POST', body: JSON.stringify(payload) });
+
+          const selectedCats = payload.restoreOptions.selectedCategories;
+          if (selectedCats.visited !== false && state.caches?.geo && Array.isArray(state.caches.geo)) {
               localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(state.caches.geo));
           }
+
           // Clear dashboard cached stats on import to avoid stale states
           localStorage.removeItem('wandergrid_dashboard_cache_v1');
           return Promise.resolve();
-      } catch (e) { return Promise.reject(e); }
+      } catch (e) {
+          return Promise.reject(e);
+      }
   }
 }
 
