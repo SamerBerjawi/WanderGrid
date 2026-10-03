@@ -1037,8 +1037,9 @@ export const TripDetail2: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         return timeA.localeCompare(timeB);
     };
 
-    // Group by Itinerary ID
-    const transportGroups = [...(trip.transports || [])].sort(compareTransports).reduce((groups, t) => {
+    // Group by Itinerary ID for Bookings tab (excludes Personal Car which is a personal road trip, not a booking)
+    const bookingTransports = (trip.transports || []).filter(t => t.mode !== 'Personal Car');
+    const transportGroups = [...bookingTransports].sort(compareTransports).reduce((groups, t) => {
         const key = t.itineraryId || 'misc';
         if (!groups[key]) groups[key] = [];
         groups[key].push(t);
@@ -1829,7 +1830,7 @@ export const TripDetail2: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                             <EmptyState
                                 icon={<AirplaneTilt className="w-10 h-10 text-primary-500" weight="duotone" />}
                                 title="No Transport Bookings Yet"
-                                description="Log your flight, train, or drive segments to coordinate departure times and seat assignments."
+                                description="Log your flight, train, ferry, or rental vehicle segments to coordinate departure times and seat assignments."
                                 action={{
                                     label: "Add Booking",
                                     onClick: () => openTransportModal(),
@@ -2253,7 +2254,7 @@ export const TripDetail2: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                     </div>
                                     <div>
                                         <h4 className="font-bold text-light-text dark:text-dark-text text-lg">Transportation</h4>
-                                        <p className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider">{trip.transports?.length || 0} Bookings</p>
+                                        <p className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider">{bookingTransports.length} Bookings</p>
                                     </div>
                                 </div>
                                 <div className="text-xl font-bold text-light-text dark:text-dark-text">{formatCurrency(transportCost)}</div>
