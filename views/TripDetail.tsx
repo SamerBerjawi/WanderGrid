@@ -58,6 +58,7 @@ import GlassPanel from '../components/glass/GlassPanel';
 import { CARD_ELEVATED_STYLE } from '../constants';
 import { VirtualListItem } from '../components/ui/VirtualListItem';
 import { TransportConfigurator } from '../components/FlightConfigurator';
+import { syncPitStopsToVisited } from '../services/pitStopSync';
 import { AccommodationConfigurator } from '../components/AccommodationConfigurator';
 import { ExcursionConfigurator } from '../components/ExcursionConfigurator';
 import { LocationManager } from '../components/LocationManager';
@@ -713,6 +714,18 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         }
         updatedTransports = [...updatedTransports, ...newTransports];
         const updatedTrip = { ...trip, transports: updatedTransports };
+
+        // Synchronize any road trip pit stops to Visited places collection
+        for (const t of newTransports) {
+            if (t.waypoints && t.waypoints.length > 0) {
+                void syncPitStopsToVisited(t.waypoints, {
+                    date: t.departureDate,
+                    origin: t.origin,
+                    destination: t.destination
+                });
+            }
+        }
+
         const savedTrip = await dataService.updateTrip(updatedTrip);
         invalidateGlobalWanderCache();
         window.dispatchEvent(new CustomEvent('wandergrid_db_updated'));
@@ -1034,23 +1047,23 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     }, 0) || 0;
     const excursionsCount = trip.activities?.length || 0;
 
-    const destinationCoordinates: [number, number] | undefined = (() => {
-        if (trip?.location?.coordinates && trip.location.coordinates.length === 2) {
-            return [trip.location.coordinates[0], trip.location.coordinates[1]];
+    const destinationCoordinates: { lat: number; lng: number } | null = (() => {
+        if (trip?.coordinates?.lat && trip?.coordinates?.lng) {
+            return { lat: trip.coordinates.lat, lng: trip.coordinates.lng };
         }
         if (trip?.transports && trip.transports.length > 0) {
             const lastT = trip.transports[trip.transports.length - 1];
-            if (lastT.destinationCoordinates && lastT.destinationCoordinates.length === 2) {
-                return [lastT.destinationCoordinates[0], lastT.destinationCoordinates[1]];
+            if (lastT.destLat && lastT.destLng) {
+                return { lat: lastT.destLat, lng: lastT.destLng };
             }
         }
         if (trip?.accommodations && trip.accommodations.length > 0) {
             const firstA = trip.accommodations[0];
-            if (firstA.coordinates && firstA.coordinates.length === 2) {
-                return [firstA.coordinates[0], firstA.coordinates[1]];
+            if (firstA.coordinates?.lat && firstA.coordinates?.lng) {
+                return { lat: firstA.coordinates.lat, lng: firstA.coordinates.lng };
             }
         }
-        return undefined;
+        return null;
     })();
 
     const compareTransports = (a: Transport, b: Transport) => {
@@ -2026,6 +2039,39 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                                     )}
                                                                 </div>
                                                             )}
+
+                                                            {/* Pit Stops Along the Route */}
+                                                            {t.waypoints && t.waypoints.length > 0 && (
+                                                                <div className="flex flex-col gap-2 pt-3 border-t border-black/5 dark:border-white/5">
+                                                                    <span className="text-2xs uppercase font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider flex items-center gap-1.5">
+                                                                        <Compass className="w-3.5 h-3.5 text-amber-500" weight="duotone" />
+                                                                        Pit Stops Along Route ({t.waypoints.length}):
+                                                                    </span>
+                                                                    <div className="flex flex-wrap gap-2">
+                                                                        {t.waypoints.map((wp, wIdx) => (
+                                                                            <div
+                                                                                key={wp.id || wIdx}
+                                                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs font-semibold text-light-text dark:text-dark-text shadow-2xs"
+                                                                            >
+                                                                                <span className="w-4 h-4 rounded-full bg-amber-500 text-white font-bold text-3xs flex items-center justify-center shrink-0">
+                                                                                    {wIdx + 1}
+                                                                                </span>
+                                                                                <span className="font-bold text-amber-800 dark:text-amber-200">{wp.name}</span>
+                                                                                {wp.type && wp.type !== 'Stop' && (
+                                                                                    <span className="text-3xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 uppercase font-mono font-bold">
+                                                                                        {wp.type}
+                                                                                    </span>
+                                                                                )}
+                                                                                {wp.addToVisited !== false && (
+                                                                                    <span className="text-3xs text-emerald-600 dark:text-emerald-400 font-bold ml-0.5" title="Added to Visited Places">
+                                                                                        ✓ Visited
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            )}
                                                         </React.Fragment>
                                                     );
                                                 })}
@@ -2290,7 +2336,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 title="Manage Transport" 
                 subtitle="Voyage Logistics & Road Trips"
                 icon="directions_car"
-                iconBg="bg-primary-500"
                 maxWidth="max-w-4xl"
             >
                 <TransportConfigurator 
@@ -2309,7 +2354,6 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 title="Manage Accommodation" 
                 subtitle="Stays, Lodging & Overnights"
                 icon="hotel"
-                iconBg="bg-amber-500"
                 maxWidth="max-w-3xl"
             >
                 <AccommodationConfigurator 

@@ -65,6 +65,8 @@ export interface RoadTripWaypoint {
   type: 'Stop' | 'Food' | 'Lodging' | 'Sightseeing' | 'Fuel';
   notes?: string;
   coordinates?: GeoCoordinates;
+  addToVisited?: boolean;
+  visitDate?: string;
 }
 
 export interface Transport {

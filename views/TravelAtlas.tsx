@@ -220,6 +220,31 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
           }
         }
       });
+
+      // Pit Stops & Waypoints inside Transports (Road trips, Car rentals, Personal vehicles)
+      t.transports?.forEach(tr => {
+        tr.waypoints?.forEach(wp => {
+          if (wp.name) {
+            const canonicalCity = cleanCityName(wp.name);
+            const key = `${canonicalCity.toLowerCase()}_xx`;
+            if (!cityMap.has(key)) {
+              cityMap.set(key, {
+                id: `transport_wp_${wp.id || key}`,
+                type: 'city',
+                code: 'XX',
+                name: formatPlaceName(canonicalCity),
+                countryCode: 'XX',
+                countryName: 'Road Trip Pit Stop',
+                visitDate: wp.visitDate || tr.departureDate || t.startDate,
+                lat: wp.coordinates?.lat,
+                lng: wp.coordinates?.lng,
+                notes: `Pit stop on ${tr.provider || tr.mode || 'road trip'}: ${tr.origin} → ${tr.destination}`,
+                isManual: false
+              });
+            }
+          }
+        });
+      });
     });
 
     // 3. Cities from land/road trips
@@ -262,6 +287,28 @@ export const TravelAtlas: React.FC<TravelAtlasProps> = ({ onTripClick }) => {
           });
         }
       }
+      // Waypoints and Pit Stops inside Road Trips
+      r.waypoints?.forEach(wp => {
+        if (wp.name) {
+          const canonicalCity = cleanCityName(wp.name);
+          const key = `${canonicalCity.toLowerCase()}_xx`;
+          if (!cityMap.has(key)) {
+            cityMap.set(key, {
+              id: `rt_wp_${wp.id || key}`,
+              type: 'city',
+              code: 'XX',
+              name: formatPlaceName(canonicalCity),
+              countryCode: 'XX',
+              countryName: 'Road Trip Pit Stop',
+              visitDate: wp.visitDate || r.departureDate || r.date,
+              lat: wp.coordinates?.lat,
+              lng: wp.coordinates?.lng,
+              notes: `Pit stop on road trip: ${r.origin} → ${r.destination}`,
+              isManual: false
+            });
+          }
+        }
+      });
     });
 
     // 4. Cities from flights

@@ -170,6 +170,20 @@ export const PAGE_THEMES: Record<ViewState, PageThemeConfig> = {
     activeSidebarLight: 'bg-gradient-to-r from-amber-500/15 to-emerald-500/10 text-amber-950 border border-amber-500/30 shadow-[0_0_15px_-3px_rgba(245,158,11,0.2)]',
     indicator: 'bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.8)]'
   },
+  [ViewState.TRIP_DETAIL_2]: {
+    id: ViewState.TRIP_DETAIL_2,
+    title: 'Trip Itinerary V2',
+    color: 'text-amber-500 dark:text-amber-400',
+    accentHex: '#f59e0b',
+    glowGradients: {
+      primary: '#f59e0b',
+      secondary: '#10b981',
+      tertiary: '#0ea5e9'
+    },
+    activeSidebarDark: 'bg-gradient-to-r from-amber-500/20 to-emerald-500/15 text-white border border-amber-400/30 shadow-[0_0_15px_-3px_rgba(245,158,11,0.25)]',
+    activeSidebarLight: 'bg-gradient-to-r from-amber-500/15 to-emerald-500/10 text-amber-950 border border-amber-500/30 shadow-[0_0_15px_-3px_rgba(245,158,11,0.2)]',
+    indicator: 'bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.8)]'
+  },
   [ViewState.GAMIFICATION]: {
     id: ViewState.GAMIFICATION,
     title: 'Expeditions & Ranks',

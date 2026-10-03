@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { getCoordinates, getCoordinatesSync, searchLocations } from '../services/geocoding';
 import { formatDate } from '../utils/formatters';
 import { EmptyState } from '../components/EmptyState';
+import { syncPitStopsToVisited } from '../services/pitStopSync';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { TooltipContent } from '../components/TooltipContent';
 
@@ -668,6 +669,15 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
         }
       }
 
+      // Sync waypoints to user's Visited places
+      if (formWaypoints && formWaypoints.length > 0) {
+        void syncPitStopsToVisited(formWaypoints, {
+          date: formDepDate,
+          origin: formOrigin,
+          destination: formDestination
+        });
+      }
+
       // Dispatch invalidation to invoke global Window sync
       window.dispatchEvent(new CustomEvent('wandergrid_db_updated'));
       setIsModalOpen(false);
@@ -714,10 +724,11 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
   const handleAddWaypoint = () => {
     if (!newWaypointName.trim()) return;
     const waypoint: RoadTripWaypoint = {
-      id: `waypoint-${Math.random().toString(36).substring(2, 9)}`,
+      id: `waypoint-${crypto.randomUUID()}`,
       name: newWaypointName.trim(),
       type: newWaypointType,
-      notes: newWaypointNotes.trim() || undefined
+      notes: newWaypointNotes.trim() || undefined,
+      addToVisited: true
     };
     setFormWaypoints(prev => [...prev, waypoint]);
     setNewWaypointName('');

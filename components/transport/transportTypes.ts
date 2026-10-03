@@ -8,7 +8,7 @@ import {
     Car,
     Anchor
 } from '@phosphor-icons/react';
-import { TransportMode, Transport } from '../../types';
+import { TransportMode, Transport, RoadTripWaypoint } from '../../types';
 
 export type TripType = 'Round Trip' | 'One-Way' | 'Multi-City';
 
@@ -63,6 +63,7 @@ export interface CarForm {
     distance?: number;
     logoUrl?: string;
     notes?: string;
+    waypoints?: RoadTripWaypoint[];
 }
 
 export interface AirportData {

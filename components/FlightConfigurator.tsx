@@ -27,6 +27,7 @@ import { CarRentalForm } from './transport/CarRentalForm';
 import { PersonalCarForm } from './transport/PersonalCarForm';
 import { CruiseForm } from './transport/CruiseForm';
 import { getCurrencySymbol } from '../utils/formatters';
+import { syncPitStopsToVisited } from '../services/pitStopSync';
 import { STATUS_DANGER_STYLE, BTN_PRIMARY_STYLE, BTN_SECONDARY_STYLE, BTN_DANGER_STYLE } from '../constants';
 
 export interface TransportConfiguratorProps {
@@ -79,7 +80,8 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
         website: undefined,
         distance: undefined,
         logoUrl: undefined,
-        notes: ''
+        notes: '',
+        waypoints: []
     });
 
     // Load workspace settings
@@ -87,7 +89,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
         dataService.getWorkspaceSettings().then(s => {
             if (s) {
                 if (s.currency) setCurrencySymbol(getCurrencySymbol(s.currency));
-                if (s.aviationstackApiKey) setApiKey(s.aviationstackApiKey);
+                if (s.aviationStackApiKey) setApiKey(s.aviationStackApiKey);
                 if (s.brandfetchApiKey) setBrandfetchKey(s.brandfetchApiKey);
                 if (s.defaultLandTransportMethod && (!initialData || initialData.length === 0)) {
                     setMode(s.defaultLandTransportMethod);
@@ -127,7 +129,8 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                     website: first.website,
                     distance: first.distance,
                     logoUrl: first.logoUrl,
-                    notes: first.notes || ''
+                    notes: first.notes || '',
+                    waypoints: first.waypoints || []
                 });
             } else {
                 if (first.type) setTripType(first.type as TripType);
@@ -302,8 +305,14 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                 distance: carForm.distance,
                 duration: carForm.duration,
                 logoUrl: carForm.logoUrl,
+                waypoints: carForm.waypoints,
                 notes: carForm.notes
             };
+            void syncPitStopsToVisited(carForm.waypoints, {
+                date: carForm.pickupDate,
+                origin: carForm.pickupLocation,
+                destination: carForm.dropoffLocation
+            });
             onSave([t]);
         } else {
             const parsedCost = parseFloat(bookingCost);

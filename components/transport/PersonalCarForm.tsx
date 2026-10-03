@@ -5,6 +5,8 @@ import GlassPanel from '../glass/GlassPanel';
 import { CarForm } from './transportTypes';
 import { searchLocations, getCoordinates, calculateDistance } from '../../services/geocoding';
 
+import { PitStopManager } from './PitStopManager';
+
 interface PersonalCarFormProps {
     form: CarForm;
     currencySymbol: string;
@@ -27,15 +29,27 @@ export const PersonalCarForm: React.FC<PersonalCarFormProps> = ({
         if (!form.pickupLocation || !form.dropoffLocation) return;
         setIsCalculatingDistance(true);
         try {
-            const [c1, c2] = await Promise.all([
-                getCoordinates(form.pickupLocation),
-                getCoordinates(form.dropoffLocation)
-            ]);
-            if (c1 && c2) {
-                const dist = calculateDistance(c1.lat, c1.lng, c2.lat, c2.lng);
-                // Driving estimate: ~80 km/h
-                const estMinutes = Math.round((dist / 80) * 60) + 15;
-                onUpdate({ distance: dist, duration: estMinutes });
+            // Sequence: Origin -> Pit Stops -> Destination
+            const locations = [
+                form.pickupLocation,
+                ...(form.waypoints || []).map(w => w.name).filter(Boolean),
+                form.dropoffLocation
+            ];
+            const coordsList = await Promise.all(locations.map(loc => getCoordinates(loc)));
+            let totalDist = 0;
+            for (let i = 0; i < coordsList.length - 1; i++) {
+                const c1 = coordsList[i];
+                const c2 = coordsList[i + 1];
+                if (c1 && c2) {
+                    totalDist += calculateDistance(c1.lat, c1.lng, c2.lat, c2.lng);
+                }
+            }
+
+            if (totalDist > 0) {
+                // Driving estimate: ~80 km/h + 20 min buffer per stop
+                const stopsCount = (form.waypoints || []).length;
+                const estMinutes = Math.round((totalDist / 80) * 60) + 15 + stopsCount * 20;
+                onUpdate({ distance: Math.round(totalDist), duration: estMinutes });
             }
         } catch (e) {
             console.warn("Could not calculate driving distance:", e);
@@ -68,6 +82,14 @@ export const PersonalCarForm: React.FC<PersonalCarFormProps> = ({
                     fetchSuggestions={fetchLocationSuggestions} 
                 />
             </div>
+
+            {/* Pit Stops Along the Road */}
+            <PitStopManager 
+                waypoints={form.waypoints || []} 
+                onChange={waypoints => onUpdate({ waypoints })} 
+                origin={form.pickupLocation} 
+                destination={form.dropoffLocation} 
+            />
 
             {/* Vehicle & Driving Distance */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">

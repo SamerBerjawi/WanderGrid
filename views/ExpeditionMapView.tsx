@@ -29,6 +29,7 @@ const DeckFlightMap = lazy(() => import('../components/DeckFlightMap').then(m =>
 import { motion } from 'motion/react';
 import GlassPanel from '../components/glass/GlassPanel';
 import { dataService } from '../services/mockDb';
+import { runAfterFirstPaint, mapWithConcurrency } from '../services/utils';
 import { Trip, CountryResidenceStatus, PredefinedMapMode, getResidenceStatuses } from '../types';
 import { Input } from '../components/ui';
 import { LiquidGlassSelect, LiquidGlassMultiSelect } from '../components/LiquidGlassSelect';

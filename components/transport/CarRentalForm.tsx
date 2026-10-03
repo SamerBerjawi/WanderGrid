@@ -1,9 +1,10 @@
-import React from 'react';
-import { Key, Clock } from '@phosphor-icons/react';
+import React, { useState } from 'react';
+import { Key, Clock, Speedometer } from '@phosphor-icons/react';
 import { Input, Autocomplete, TimeInput, DateRangePicker } from '../ui';
 import GlassPanel from '../glass/GlassPanel';
 import { CarForm } from './transportTypes';
-import { searchLocations } from '../../services/geocoding';
+import { searchLocations, getCoordinates, calculateDistance } from '../../services/geocoding';
+import { PitStopManager } from './PitStopManager';
 
 interface CarRentalFormProps {
     form: CarForm;
@@ -16,9 +17,43 @@ export const CarRentalForm: React.FC<CarRentalFormProps> = ({
     currencySymbol,
     onUpdate
 }) => {
+    const [isCalculatingDistance, setIsCalculatingDistance] = useState(false);
+
     const fetchLocationSuggestions = async (query: string) => {
         if (!query || query.length < 2) return [];
         return searchLocations(query);
+    };
+
+    const handleAutoCalcDistance = async () => {
+        if (!form.pickupLocation || !form.dropoffLocation) return;
+        setIsCalculatingDistance(true);
+        try {
+            // Sequence: Pickup -> Pit Stops -> Dropoff
+            const locations = [
+                form.pickupLocation,
+                ...(form.waypoints || []).map(w => w.name).filter(Boolean),
+                form.dropoffLocation
+            ];
+            const coordsList = await Promise.all(locations.map(loc => getCoordinates(loc)));
+            let totalDist = 0;
+            for (let i = 0; i < coordsList.length - 1; i++) {
+                const c1 = coordsList[i];
+                const c2 = coordsList[i + 1];
+                if (c1 && c2) {
+                    totalDist += calculateDistance(c1.lat, c1.lng, c2.lat, c2.lng);
+                }
+            }
+
+            if (totalDist > 0) {
+                const stopsCount = (form.waypoints || []).length;
+                const estMinutes = Math.round((totalDist / 80) * 60) + 15 + stopsCount * 20;
+                onUpdate({ distance: Math.round(totalDist), duration: estMinutes });
+            }
+        } catch (e) {
+            console.warn("Could not calculate rental driving distance:", e);
+        } finally {
+            setIsCalculatingDistance(false);
+        }
     };
 
     return (
@@ -46,8 +81,16 @@ export const CarRentalForm: React.FC<CarRentalFormProps> = ({
                 />
             </div>
 
+            {/* Pit Stops Along the Road */}
+            <PitStopManager 
+                waypoints={form.waypoints || []} 
+                onChange={waypoints => onUpdate({ waypoints })} 
+                origin={form.pickupLocation} 
+                destination={form.dropoffLocation} 
+            />
+
             {/* Agency & Car Model */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
                 <Input 
                     label="Rental Agency" 
                     placeholder="e.g. Sixt, Hertz, Avis" 
@@ -66,6 +109,25 @@ export const CarRentalForm: React.FC<CarRentalFormProps> = ({
                     value={form.confirmationCode} 
                     onChange={e => onUpdate({ confirmationCode: e.target.value })} 
                 />
+                <div className="flex gap-2 items-end">
+                    <Input 
+                        label="Est. Distance (km)" 
+                        type="number" 
+                        placeholder="e.g. 290" 
+                        value={form.distance !== undefined ? String(form.distance) : ''} 
+                        onChange={e => onUpdate({ distance: parseFloat(e.target.value) || undefined })} 
+                    />
+                    <button 
+                        type="button"
+                        onClick={handleAutoCalcDistance}
+                        disabled={isCalculatingDistance || !form.pickupLocation || !form.dropoffLocation}
+                        className="min-h-[44px] px-3 py-2 rounded-xl bg-primary-500/10 hover:bg-primary-500/20 text-primary-600 dark:text-primary-400 font-bold text-xs flex items-center justify-center gap-1 transition-all cursor-pointer disabled:opacity-50"
+                        title="Estimate road distance"
+                    >
+                        <Speedometer className="w-3.5 h-3.5" weight="bold" />
+                        <span>Auto</span>
+                    </button>
+                </div>
             </div>
 
             {/* Pickup & Dropoff Schedule */}
