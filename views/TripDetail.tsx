@@ -875,7 +875,8 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
             if (finalTransportIds.has(t.id)) {
                 return false;
             }
-            if (t.itineraryId === 'route-gen' || t.itineraryId === 'route-booked') {
+            // If it was managed by route manager (ground/sea or excursion), do not preserve if omitted (it was deleted)
+            if (t.mode !== 'Flight' || t.isExcursion || t.itineraryId === 'route-gen' || t.itineraryId === 'route-booked' || t.customFields?.some(f => f.key === 'legId')) {
                 return false;
             }
             return true;
@@ -2340,6 +2341,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
             >
                 <TransportConfigurator 
                     initialData={editingTransports || []}
+                    allTripTransports={trip.transports || []}
                     onSave={handleSaveTransports}
                     onDelete={handleDeleteTransports}
                     onCancel={() => setIsTransportModalOpen(false)}

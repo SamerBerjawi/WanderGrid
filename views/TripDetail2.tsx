@@ -866,12 +866,12 @@ export const TripDetail2: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
             if (finalTransportIds.has(t.id)) {
                 return false;
             }
-            // If the transport is a route-managed transport (itineraryId is 'route-gen' or 'route-booked'), 
-            // but it is NOT in the new finalTransports, it means it was deleted by the user in the route manager!
-            if (t.itineraryId === 'route-gen' || t.itineraryId === 'route-booked') {
+            // If the transport was managed by route manager (ground/sea, excursion, or route-gen),
+            // but is omitted in finalTransports, it was deleted by the user in route manager!
+            if (t.mode !== 'Flight' || t.isExcursion || t.itineraryId === 'route-gen' || t.itineraryId === 'route-booked' || t.customFields?.some(f => f.key === 'legId')) {
                 return false;
             }
-            // Keep all other manually entered bookings, independent flights, cruises, etc.
+            // Keep all other manually entered bookings, independent flights, etc.
             return true;
         });
 
@@ -2302,6 +2302,7 @@ export const TripDetail2: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
             >
                 <TransportConfigurator 
                     initialData={editingTransports || []}
+                    allTripTransports={trip.transports || []}
                     onSave={handleSaveTransports}
                     onDelete={handleDeleteTransports}
                     onCancel={() => setIsTransportModalOpen(false)}

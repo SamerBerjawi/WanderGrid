@@ -8,7 +8,7 @@ import {
     X,
     CalendarBlank
 } from '@phosphor-icons/react';
-import { Button, Input } from './ui';
+import { Button, Input, Select } from './ui';
 import { Transport, TransportMode } from '../types';
 import { dataService } from '../services/mockDb';
 import {
@@ -32,6 +32,7 @@ import { STATUS_DANGER_STYLE, BTN_PRIMARY_STYLE, BTN_SECONDARY_STYLE, BTN_DANGER
 
 export interface TransportConfiguratorProps {
     initialData?: Transport[];
+    allTripTransports?: Transport[];
     onSave: (transports: Transport[]) => void;
     onDelete?: (ids: string[]) => void;
     onCancel: () => void;
@@ -41,6 +42,7 @@ export interface TransportConfiguratorProps {
 
 export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
     initialData,
+    allTripTransports,
     onSave,
     onDelete,
     onCancel,
@@ -84,6 +86,11 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
         waypoints: []
     });
 
+    // Excursion Grouping State for Ground & Sea Transports
+    const [selectedExcursion, setSelectedExcursion] = useState<string>('Main Route');
+    const [isCustomExcursion, setIsCustomExcursion] = useState<boolean>(false);
+    const [customExcursionTitle, setCustomExcursionTitle] = useState<string>('');
+
     // Load workspace settings
     useEffect(() => {
         dataService.getWorkspaceSettings().then(s => {
@@ -100,10 +107,28 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
 
     // Hydrate from initialData
     useEffect(() => {
+        const tripExcursionTitles = Array.from(new Set(
+            (allTripTransports || [])
+                .map(t => t.customFields?.find(f => f.key === 'legTitle')?.value)
+                .filter(Boolean) as string[]
+        ));
+
         if (initialData && initialData.length > 0) {
             const first = initialData[0];
             setMode(first.mode || 'Flight');
             setBookingRef(first.confirmationCode || '');
+
+            const initialLegTitle = first.customFields?.find(f => f.key === 'legTitle')?.value;
+            if (initialLegTitle) {
+                setSelectedExcursion(initialLegTitle);
+                setIsCustomExcursion(false);
+            } else if (tripExcursionTitles.length > 0) {
+                setSelectedExcursion(tripExcursionTitles[0]);
+                setIsCustomExcursion(false);
+            } else {
+                setSelectedExcursion('Main Route');
+                setIsCustomExcursion(false);
+            }
 
             // Unify cost calculation
             const totalInitialCost = initialData.reduce((acc, curr) => acc + (curr.cost || 0), 0);
@@ -275,13 +300,40 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
         ? Boolean(carForm.pickupLocation && carForm.pickupDate)
         : segments.every(s => s.origin && s.destination && (s.date || s.isApproximate)));
 
+    const availableExcursions = Array.from(new Set([
+        'Main Route',
+        'Excursion 1',
+        ...(allTripTransports || []).map(t => t.customFields?.find(f => f.key === 'legTitle')?.value),
+        ...(initialData || []).map(t => t.customFields?.find(f => f.key === 'legTitle')?.value),
+        selectedExcursion
+    ].filter(Boolean) as string[]));
+
+    const getFinalExcursionInfo = () => {
+        const finalTitle = (isCustomExcursion ? customExcursionTitle.trim() : selectedExcursion.trim()) || 'Main Route';
+        const existingTx = (allTripTransports || []).find(t => t.customFields?.find(f => f.key === 'legTitle')?.value === finalTitle);
+        const existingLegId = existingTx?.customFields?.find(f => f.key === 'legId')?.value;
+        const finalLegId = existingLegId || 'leg-' + finalTitle.toLowerCase().replace(/[^a-z0-9]/g, '-');
+        return { legId: finalLegId, legTitle: finalTitle };
+    };
+
     const handleSave = () => {
         // Use crypto.randomUUID() instead of Math.random
         const itineraryId = (initialData && initialData.length > 0 && initialData[0].itineraryId)
             ? initialData[0].itineraryId
             : crypto.randomUUID();
 
+        const { legId, legTitle } = getFinalExcursionInfo();
+
         if (isCar) {
+            const baseCustomFields = (initialData && initialData[0]?.customFields) || [];
+            const filteredCustomFields = baseCustomFields.filter(f => f.key !== 'legId' && f.key !== 'legTitle' && f.key !== 'isExcursion');
+            const carCustomFields = [
+                ...filteredCustomFields,
+                { key: 'legId', value: legId },
+                { key: 'legTitle', value: legTitle },
+                { key: 'isExcursion', value: 'true' }
+            ];
+
             const t: Transport = {
                 id: (initialData && initialData.length > 0 && initialData[0].id) ? initialData[0].id : crypto.randomUUID(),
                 itineraryId,
@@ -306,7 +358,9 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                 duration: carForm.duration,
                 logoUrl: carForm.logoUrl,
                 waypoints: carForm.waypoints,
-                notes: carForm.notes
+                notes: carForm.notes,
+                isExcursion: true,
+                customFields: carCustomFields
             };
             void syncPitStopsToVisited(carForm.waypoints, {
                 date: carForm.pickupDate,
@@ -320,8 +374,19 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
             // Equal distribution across legs to prevent leg 0 taking 100% and leg 1 taking $0
             const costPerLeg = segments.length > 0 ? (totalCost / segments.length) : 0;
 
+            const isGroundOrSea = mode !== 'Flight';
+
             const transports: Transport[] = segments.map((seg, idx) => {
                 const existingId = initialData?.find(f => f.id === seg.id)?.id;
+                const baseCustomFields = seg.customFields || [];
+                const filteredCustomFields = baseCustomFields.filter(f => f.key !== 'legId' && f.key !== 'legTitle' && f.key !== 'isExcursion');
+                const segCustomFields = isGroundOrSea ? [
+                    ...filteredCustomFields,
+                    { key: 'legId', value: legId },
+                    { key: 'legTitle', value: legTitle },
+                    { key: 'isExcursion', value: 'true' }
+                ] : baseCustomFields;
+
                 return {
                     id: existingId || crypto.randomUUID(),
                     itineraryId,
@@ -356,7 +421,8 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                     tailNumber: seg.tailNumber,
                     isApproximate: seg.isApproximate,
                     approximateYear: seg.approximateYear,
-                    customFields: seg.customFields
+                    isExcursion: isGroundOrSea,
+                    customFields: segCustomFields
                 };
             });
             onSave(transports);
@@ -567,6 +633,52 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                             />
                             <span className="absolute left-3 top-9 text-light-text-secondary font-bold text-xs">{currencySymbol}</span>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Excursion Grouping for Ground & Sea Transports */}
+            {mode !== 'Flight' && (
+                <div className="p-5 rounded-3xl bg-white/50 dark:bg-white/[0.04] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-xs space-y-3">
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
+                            Excursion Grouping (Routes)
+                        </span>
+                        <span className="text-2xs font-bold text-primary-600 dark:text-primary-400">
+                            Synced with Routes tab
+                        </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                        <Select
+                            label="Assign to Excursion"
+                            value={isCustomExcursion ? '__new__' : selectedExcursion}
+                            onChange={e => {
+                                if (e.target.value === '__new__') {
+                                    setIsCustomExcursion(true);
+                                } else {
+                                    setIsCustomExcursion(false);
+                                    setSelectedExcursion(e.target.value);
+                                }
+                            }}
+                            options={[
+                                ...availableExcursions.map(title => ({
+                                    value: title,
+                                    label: title
+                                })),
+                                { value: '__new__', label: '+ Create New Excursion...' }
+                            ]}
+                        />
+
+                        {isCustomExcursion && (
+                            <Input
+                                label="New Excursion Name"
+                                placeholder="e.g. Day Trip to Amalfi"
+                                value={customExcursionTitle}
+                                onChange={e => setCustomExcursionTitle(e.target.value)}
+                                autoFocus
+                            />
+                        )}
                     </div>
                 </div>
             )}

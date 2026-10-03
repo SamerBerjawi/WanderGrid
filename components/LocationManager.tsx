@@ -25,6 +25,7 @@ import {
 import { Button, Input, Autocomplete, Select, Card, Badge } from './ui';
 import { LocationEntry, Transport, TransportMode } from '../types';
 import { searchLocations, getCoordinates, getCoordinatesSync, calculateDistance } from '../services/geocoding';
+import { syncPitStopsToVisited } from '../services/pitStopSync';
 
 interface RouteManagerProps {
     locations: LocationEntry[];
@@ -43,6 +44,7 @@ interface RouteSegment {
     transportMode: TransportMode;
     linkStartToPrevDest?: boolean;
     linkDateToPrevDate?: boolean;
+    originalTransport?: Transport;
 }
 
 interface JourneyLeg {
@@ -125,7 +127,12 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
     }, [legs]);
 
     const initializeRoute = () => {
-        if (!transports || transports.length === 0) {
+        // Filter all relevant transports: ground/sea transports or anything explicitly marked isExcursion or with legId
+        const routeTransports = (transports || []).filter(tx => 
+            tx.mode !== 'Flight' || tx.isExcursion || tx.customFields?.some(f => f.key === 'legId')
+        );
+
+        if (routeTransports.length === 0) {
             if (locations && locations.length >= 2) {
                 const segments: RouteSegment[] = [];
                 for (let i = 0; i < locations.length - 1; i++) {
@@ -163,9 +170,9 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
         }
 
         const legGroups: { [key: string]: { title: string; txs: Transport[] } } = {};
-        const legacyTransports: Transport[] = [];
+        const unassignedTransports: Transport[] = [];
 
-        transports.forEach(tx => {
+        routeTransports.forEach(tx => {
             const legIdField = tx.customFields?.find(f => f.key === 'legId')?.value;
             const legTitleField = tx.customFields?.find(f => f.key === 'legTitle')?.value;
 
@@ -174,8 +181,14 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                     legGroups[legIdField] = { title: legTitleField || 'Excursion', txs: [] };
                 }
                 legGroups[legIdField].txs.push(tx);
-            } else if (tx.itineraryId === 'route-gen' || tx.itineraryId === 'route-booked') {
-                legacyTransports.push(tx);
+            } else if (legTitleField) {
+                const derivedLegId = 'leg-' + legTitleField.toLowerCase().replace(/[^a-z0-9]/g, '-');
+                if (!legGroups[derivedLegId]) {
+                    legGroups[derivedLegId] = { title: legTitleField, txs: [] };
+                }
+                legGroups[derivedLegId].txs.push(tx);
+            } else {
+                unassignedTransports.push(tx);
             }
         });
 
@@ -195,7 +208,8 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                     date: tx.departureDate || defaultStartDate,
                     transportMode: tx.mode || 'Train',
                     linkStartToPrevDest,
-                    linkDateToPrevDate
+                    linkDateToPrevDate,
+                    originalTransport: tx
                 };
             });
 
@@ -206,10 +220,10 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
             });
         });
 
-        if (legacyTransports.length > 0) {
-            const sortedLegacy = [...legacyTransports].sort((a, b) => new Date(a.departureDate).getTime() - new Date(b.departureDate).getTime());
-            const segments: RouteSegment[] = sortedLegacy.map((tx, idx) => {
-                const prevTx = idx > 0 ? sortedLegacy[idx - 1] : null;
+        if (unassignedTransports.length > 0) {
+            const sortedUnassigned = [...unassignedTransports].sort((a, b) => new Date(a.departureDate).getTime() - new Date(b.departureDate).getTime());
+            const segments: RouteSegment[] = sortedUnassigned.map((tx, idx) => {
+                const prevTx = idx > 0 ? sortedUnassigned[idx - 1] : null;
                 const linkStartToPrevDest = prevTx ? tx.origin.toLowerCase().trim() === prevTx.destination.toLowerCase().trim() : false;
                 const linkDateToPrevDate = prevTx ? tx.departureDate === prevTx.departureDate : false;
 
@@ -220,13 +234,14 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                     date: tx.departureDate || defaultStartDate,
                     transportMode: tx.mode || 'Train',
                     linkStartToPrevDest,
-                    linkDateToPrevDate
+                    linkDateToPrevDate,
+                    originalTransport: tx
                 };
             });
 
             parsedLegs.push({
-                id: 'leg-legacy',
-                title: 'Main Route',
+                id: 'leg-main',
+                title: parsedLegs.length === 0 ? 'Main Route' : 'Main Route',
                 segments
             });
         }
@@ -523,6 +538,54 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
         }));
     };
 
+    // Move a transport segment between excursions, or to a new excursion
+    const moveSegmentToLeg = (fromLegId: string, segmentId: string, toLegId: string) => {
+        setLegs(prevLegs => {
+            let movingSeg: RouteSegment | null = null;
+            const updatedLegs = prevLegs.map(leg => {
+                if (leg.id === fromLegId) {
+                    const seg = leg.segments.find(s => s.id === segmentId);
+                    if (seg) movingSeg = seg;
+                    return {
+                        ...leg,
+                        segments: leg.segments.filter(s => s.id !== segmentId)
+                    };
+                }
+                return leg;
+            });
+
+            if (!movingSeg) return prevLegs;
+
+            const detachedSeg: RouteSegment = {
+                ...movingSeg,
+                linkStartToPrevDest: false,
+                linkDateToPrevDate: false
+            };
+
+            if (toLegId === 'new') {
+                const nextLegId = `leg-${Math.random().toString(36).substring(2, 9)}`;
+                return [
+                    ...updatedLegs,
+                    {
+                        id: nextLegId,
+                        title: `Excursion ${updatedLegs.length + 1}`,
+                        segments: [detachedSeg]
+                    }
+                ];
+            }
+
+            return updatedLegs.map(leg => {
+                if (leg.id === toLegId) {
+                    return {
+                        ...leg,
+                        segments: [...leg.segments, detachedSeg]
+                    };
+                }
+                return leg;
+            });
+        });
+    };
+
     // Native Drag and Drop Legs handler
     const handleDropLeg = (targetIdx: number) => {
         if (draggedLegIndex === null || draggedLegIndex === targetIdx) return;
@@ -570,36 +633,83 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                     const speed = TRANSPORT_DETAILS[seg.transportMode]?.speed || 100;
                     const durationInMinutes = Math.round((distance / speed) * 60) || 120;
 
-                    finalTransports.push({
-                        id: seg.id || 'tx-' + Math.random().toString(36).substring(2, 11),
-                        itineraryId: 'route-gen',
-                        type: 'One-Way',
-                        mode: seg.transportMode,
-                        provider: `${TRANSPORT_DETAILS[seg.transportMode]?.label || 'Route Line'} Service`,
-                        identifier: '',
-                        confirmationCode: '',
-                        origin: startName,
-                        destination: destName,
-                        departureDate: seg.date,
-                        departureTime: '10:00',
-                        arrivalDate: seg.date,
-                        arrivalTime: '13:00',
-                        travelClass: 'Economy',
-                        cost: 0,
-                        pickupLocation: startName,
-                        dropoffLocation: destName,
-                        duration: durationInMinutes,
-                        distance: distance,
-                        originLat: startCoords?.lat,
-                        originLng: startCoords?.lng,
-                        destLat: destCoords?.lat,
-                        destLng: destCoords?.lng,
-                        isExcursion: true,
-                        customFields: [
-                            { key: 'legId', value: leg.id },
-                            { key: 'legTitle', value: leg.title },
-                            { key: 'isExcursion', value: 'true' }
-                        ]
+                    const existingTx = seg.originalTransport || transports.find(t => t.id === seg.id);
+
+                    if (existingTx) {
+                        const existingCustomFields = (existingTx.customFields || []).filter(
+                            f => f.key !== 'legId' && f.key !== 'legTitle' && f.key !== 'isExcursion'
+                        );
+                        const isCarMode = seg.transportMode === 'Car Rental' || seg.transportMode === 'Personal Car';
+
+                        finalTransports.push({
+                            ...existingTx,
+                            id: seg.id,
+                            mode: seg.transportMode,
+                            origin: startName,
+                            destination: destName,
+                            departureDate: seg.date,
+                            arrivalDate: (existingTx.arrivalDate && existingTx.departureDate && existingTx.arrivalDate !== existingTx.departureDate)
+                                ? existingTx.arrivalDate
+                                : seg.date,
+                            pickupLocation: isCarMode ? startName : (existingTx.pickupLocation || startName),
+                            dropoffLocation: isCarMode ? destName : (existingTx.dropoffLocation || destName),
+                            distance: distance,
+                            duration: durationInMinutes,
+                            originLat: startCoords?.lat ?? existingTx.originLat,
+                            originLng: startCoords?.lng ?? existingTx.originLng,
+                            destLat: destCoords?.lat ?? existingTx.destLat,
+                            destLng: destCoords?.lng ?? existingTx.destLng,
+                            isExcursion: true,
+                            customFields: [
+                                ...existingCustomFields,
+                                { key: 'legId', value: leg.id },
+                                { key: 'legTitle', value: leg.title },
+                                { key: 'isExcursion', value: 'true' }
+                            ]
+                        });
+                    } else {
+                        finalTransports.push({
+                            id: seg.id && !seg.id.startsWith('seg-') ? seg.id : 'tx-' + Math.random().toString(36).substring(2, 11),
+                            itineraryId: 'route-gen',
+                            type: 'One-Way',
+                            mode: seg.transportMode,
+                            provider: `${TRANSPORT_DETAILS[seg.transportMode]?.label || 'Route Line'} Service`,
+                            identifier: '',
+                            confirmationCode: '',
+                            origin: startName,
+                            destination: destName,
+                            departureDate: seg.date,
+                            departureTime: '10:00',
+                            arrivalDate: seg.date,
+                            arrivalTime: '13:00',
+                            travelClass: 'Economy',
+                            cost: 0,
+                            pickupLocation: startName,
+                            dropoffLocation: destName,
+                            duration: durationInMinutes,
+                            distance: distance,
+                            originLat: startCoords?.lat,
+                            originLng: startCoords?.lng,
+                            destLat: destCoords?.lat,
+                            destLng: destCoords?.lng,
+                            isExcursion: true,
+                            customFields: [
+                                { key: 'legId', value: leg.id },
+                                { key: 'legTitle', value: leg.title },
+                                { key: 'isExcursion', value: 'true' }
+                            ]
+                        });
+                    }
+                }
+            }
+
+            // Synchronize pit stops to Visited places collection for any car transports
+            for (const t of finalTransports) {
+                if (t.waypoints && t.waypoints.length > 0) {
+                    void syncPitStopsToVisited(t.waypoints, {
+                        date: t.departureDate,
+                        origin: t.origin,
+                        destination: t.destination
                     });
                 }
             }
@@ -801,18 +911,90 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
 
                                 {/* Core simplified row table */}
                                 <div className="space-y-6">
-                                    {leg.segments.map((seg, idx) => {
-                                        const isFirst = idx === 0;
-                                        const isLast = idx === leg.segments.length - 1;
-                                        const prevSegment = idx > 0 ? leg.segments[idx - 1] : null;
-
-                                        return (
-                                            <div 
-                                                key={seg.id} 
-                                                className="relative p-5 rounded-3xl bg-gray-50/60 dark:bg-gray-800/20 border border-gray-150 dark:border-white/[0.04] hover:border-gray-200 dark:hover:border-white/10 transition-all shadow-xs"
+                                    {leg.segments.length === 0 ? (
+                                        <div className="p-6 text-center rounded-2xl bg-black/5 dark:bg-white/[0.02] border border-dashed border-black/10 dark:border-white/10 space-y-2">
+                                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium">
+                                                No transports in this excursion. Move transports here or add a new segment.
+                                            </p>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => addSegment(leg.id)}
+                                                icon={<Plus className="w-4 h-4" />}
+                                                className="text-xs font-bold"
                                             >
-                                                {/* Spacious flexible grid layout with perfectly aligned heights and headers */}
-                                                <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 sm:gap-4 items-start">
+                                                Add Segment
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        leg.segments.map((seg, idx) => {
+                                            const isFirst = idx === 0;
+                                            const isLast = idx === leg.segments.length - 1;
+                                            const prevSegment = idx > 0 ? leg.segments[idx - 1] : null;
+
+                                            return (
+                                                <div 
+                                                    key={seg.id} 
+                                                    className="relative p-5 rounded-3xl bg-gray-50/60 dark:bg-gray-800/20 border border-gray-150 dark:border-white/[0.04] hover:border-gray-200 dark:hover:border-white/10 transition-all shadow-xs"
+                                                >
+                                                    {/* Top Excursion Grouping & Booking Reference Header */}
+                                                    <div className="flex flex-wrap items-center justify-between gap-3 pb-3 mb-3 border-b border-black/5 dark:border-white/5 text-xs">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1">
+                                                                <Route className="w-3.5 h-3.5 text-primary-500" />
+                                                                Excursion:
+                                                            </span>
+                                                            <div className="w-48 sm:w-56">
+                                                                <Select
+                                                                    value={leg.id}
+                                                                    onChange={(e) => moveSegmentToLeg(leg.id, seg.id, e.target.value)}
+                                                                    options={[
+                                                                        ...legs.map((l, lIdx) => ({
+                                                                            value: l.id,
+                                                                            label: l.title || `Excursion ${lIdx + 1}`
+                                                                        })),
+                                                                        { value: 'new', label: '+ Move to New Excursion...' }
+                                                                    ]}
+                                                                />
+                                                            </div>
+                                                        </div>
+
+                                                        {seg.originalTransport && (
+                                                            <div className="flex items-center gap-2">
+                                                                {seg.originalTransport.provider && (
+                                                                    <span className="px-2.5 py-1 rounded-full text-2xs font-bold bg-black/5 dark:bg-white/5 text-light-text dark:text-dark-text border border-black/5 dark:border-white/5">
+                                                                        {seg.originalTransport.provider}
+                                                                    </span>
+                                                                )}
+                                                                {seg.originalTransport.confirmationCode && (
+                                                                    <span className="px-2.5 py-1 rounded-full text-2xs font-mono font-bold bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
+                                                                        {seg.originalTransport.confirmationCode}
+                                                                    </span>
+                                                                )}
+                                                                {seg.originalTransport.cost !== undefined && seg.originalTransport.cost > 0 && (
+                                                                    <span className="px-2.5 py-1 rounded-full text-2xs font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                                                        ${seg.originalTransport.cost}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Road Trip Pit Stops summary if available */}
+                                                    {seg.originalTransport?.waypoints && seg.originalTransport.waypoints.length > 0 && (
+                                                        <div className="flex flex-wrap items-center gap-1.5 mb-3 p-2.5 rounded-2xl bg-primary-500/5 border border-primary-500/15 text-2xs">
+                                                            <span className="font-bold uppercase tracking-wider text-primary-600 dark:text-primary-400 flex items-center gap-1">
+                                                                <MapPin className="w-3.5 h-3.5" />
+                                                                {seg.originalTransport.waypoints.length} Pit Stop{seg.originalTransport.waypoints.length > 1 ? 's' : ''}:
+                                                            </span>
+                                                            <span className="text-light-text dark:text-dark-text font-medium">
+                                                                {seg.originalTransport.waypoints.map(w => w.name).join(' → ')}
+                                                            </span>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Spacious flexible grid layout with perfectly aligned heights and headers */}
+                                                    <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 sm:gap-4 items-start">
                                                     
                                                     {/* Start City Selection with Inline Lock Toggle */}
                                                     <div className="md:col-span-3 space-y-1.5 min-w-0 relative">
@@ -1000,7 +1182,8 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                                                 )}
                                             </div>
                                         );
-                                    })}
+                                    })
+                                )}
                                 </div>
 
                                 {/* Timeline error/validation block */}
