@@ -483,16 +483,20 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
             } else if (initialData) {
                 await dataService.updateTrip(tripPayload);
                 if (unassignedFlightsToRemove.length > 0) {
-                    for (const fId of unassignedFlightsToRemove) {
-                        try { await dataService.deleteFlight(fId); } catch (e) {}
-                    }
+                    await Promise.all(unassignedFlightsToRemove.map(fId =>
+                        dataService.deleteFlight(fId).catch(e =>
+                            console.warn('Failed to clean up unassigned flight:', fId, e)
+                        )
+                    ));
                 }
             } else {
                 const saved = await dataService.addTrip(tripPayload);
                 if (unassignedFlightsToRemove.length > 0) {
-                    for (const fId of unassignedFlightsToRemove) {
-                        try { await dataService.deleteFlight(fId); } catch (e) {}
-                    }
+                    await Promise.all(unassignedFlightsToRemove.map(fId =>
+                        dataService.deleteFlight(fId).catch(e =>
+                            console.warn('Failed to clean up unassigned flight:', fId, e)
+                        )
+                    ));
                 }
                 if (onTripCreated) {
                     onTripCreated(saved);

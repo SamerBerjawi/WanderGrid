@@ -1078,22 +1078,27 @@ export async function getCoordinates(location: string): Promise<{ lat: number; l
     const meteoData = await fetchOpenMeteoGeocoding(searchQuery);
     if (meteoData && meteoData.length > 0) {
         const item = meteoData[0];
-        const entry = {
-            lat: item.latitude,
-            lng: item.longitude,
-            lon: item.longitude,
-            tz: item.timezone || 'UTC',
-            city: item.name,
-            country: item.country,
-            countryCode: item.country_code?.toUpperCase()
-        };
-        internalCache.set(cleanLocation, entry);
-        saveCache();
-        return { ...entry, lat: item.latitude, lng: item.longitude };
+        const lat = item.latitude;
+        const lng = item.longitude;
+        // Sanity check: valid numbers, in-range, and reject (0,0)
+        if (!isNaN(lat) && !isNaN(lng) && (lat !== 0 || lng !== 0) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+            const entry = {
+                lat,
+                lng,
+                lon: lng,
+                tz: item.timezone || undefined,
+                city: item.name,
+                country: item.country,
+                countryCode: item.country_code?.toUpperCase()
+            };
+            internalCache.set(cleanLocation, entry);
+            saveCache();
+            return { ...entry, lat, lng };
+        }
     }
     
     await throttleNetwork();
-    const res = await fetchWithTimeout(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1`, {
+    const res = await fetchWithTimeout(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&addressdetails=1&limit=1`, {
         headers: { 
             'Accept-Language': 'en',
             'User-Agent': 'WanderGridTravelMap/1.0 (contact: berjawi@gmail.com)'
@@ -1102,14 +1107,29 @@ export async function getCoordinates(location: string): Promise<{ lat: number; l
     if (res.ok) {
         const data = await res.json();
         if (data.length > 0) {
-          const lat = parseFloat(data[0].lat), lng = parseFloat(data[0].lon);
-          const entry = { lat, lng, lon: lng, tz: 'UTC' };
-          internalCache.set(cleanLocation, entry);
-          saveCache();
-          return { ...entry, lat, lng };
+          const item = data[0];
+          const lat = parseFloat(item.lat), lng = parseFloat(item.lon);
+          // Sanity check: valid numbers, in-range, and reject (0,0)
+          if (!isNaN(lat) && !isNaN(lng) && (lat !== 0 || lng !== 0) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+            const address = item.address || {};
+            const entry = {
+              lat,
+              lng,
+              lon: lng,
+              tz: undefined,
+              city: address.city || address.town || address.village || address.municipality || item.display_name?.split(',')[0]?.trim(),
+              country: address.country,
+              countryCode: address.country_code?.toUpperCase()
+            };
+            internalCache.set(cleanLocation, entry);
+            saveCache();
+            return { ...entry, lat, lng };
+          }
         }
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn('[geocoding] live lookup failed for', cleanLocation, e);
+  }
   return undefined;
 }
 

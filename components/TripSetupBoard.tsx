@@ -32,7 +32,8 @@ import {
     Ticket,
     Armchair,
     Tag,
-    Path
+    Path,
+    WarningCircle
 } from '@phosphor-icons/react';
 import { Input, Autocomplete, TimeInput, Select, DateRangePicker, DatePicker } from './ui';
 import GlassPanel from './glass/GlassPanel';
@@ -43,7 +44,7 @@ import { invalidateGlobalWanderCache, useWanderSync } from '../hooks/useWanderSy
 import { searchLocations, searchStations, getCoordinates } from '../services/geocoding';
 import { parseGoogleMapsUrl } from '../services/locationParser';
 import { getAirportsByQueryLocally, getCarriersByQueryLocally, AIRLINE_CODES, formatCommercialAirlineName } from '../utils/flightData';
-import { formatDate, formatDateRange, formatCurrency, getCurrencySymbol } from '../utils/formatters';
+import { formatDate, formatDateRange, formatCurrency, getCurrencySymbol, calculateTransportCost } from '../utils/formatters';
 import { useExistingTripSuggestions, DiscoveredFlightItem, DiscoveredRouteItem, DiscoveredStayItem } from '../hooks/useExistingTripSuggestions';
 import { ExistingBookingsSuggestions } from './ExistingBookingsSuggestions';
 import { 
@@ -440,6 +441,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
 
     // Submission State
     const [isSaving, setIsSaving] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
 
     // Destination change handler
     const handleDestinationChange = (val: string) => {
@@ -504,12 +506,15 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
 
     const totalTransportCost = useMemo(() => {
         if (editingTransportIndex !== null) {
-            return transportsList.reduce((sum, t, idx) => {
-                if (idx === editingTransportIndex) return sum + draftTransportCost;
-                return sum + (t.cost || 0);
-            }, 0);
+            const listWithDraft = transportsList.map((t, idx) => {
+                if (idx === editingTransportIndex) {
+                    return { ...t, cost: draftTransportCost };
+                }
+                return t;
+            });
+            return calculateTransportCost(listWithDraft);
         }
-        const committed = transportsList.reduce((sum, t) => sum + (t.cost || 0), 0);
+        const committed = calculateTransportCost(transportsList);
         return committed + draftTransportCost;
     }, [transportsList, draftTransportCost, editingTransportIndex]);
 
@@ -1139,7 +1144,18 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
         } else if (editingTransportIndex !== null && editingTransportIndex > index) {
             setEditingTransportIndex(editingTransportIndex - 1);
         }
-        setTransportsList(prev => prev.filter((_, i) => i !== index));
+        setTransportsList(prev => {
+            const itemToRemove = prev[index];
+            const remaining = prev.filter((_, i) => i !== index).map(t => ({ ...t }));
+            // If the removed leg had cost and other legs in the same itinerary exist, transfer cost to the next leg
+            if (itemToRemove && itemToRemove.itineraryId && (itemToRemove.cost || 0) > 0) {
+                const remainingLeg = remaining.find(t => t.itineraryId === itemToRemove.itineraryId);
+                if (remainingLeg && (!remainingLeg.cost || remainingLeg.cost === 0)) {
+                    remainingLeg.cost = itemToRemove.cost;
+                }
+            }
+            return remaining;
+        });
     };
 
     // Edit configured accommodation
@@ -1236,7 +1252,9 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
 
     // Finalize Trip Creation
     const handleFinalizeTrip = async () => {
+        setSaveError(null);
         setIsSaving(true);
+        let savedTrip: Trip | null = null;
         try {
             const tripId = crypto.randomUUID();
             const tripPayload: Trip = {
@@ -1289,26 +1307,36 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                 activities: []
             };
 
-            const savedTrip = await dataService.addTrip(tripPayload);
+            savedTrip = await dataService.addTrip(tripPayload);
 
             // Reconcile and delete adopted independent unassigned flights
             if (reconciledFlightIds.length > 0) {
-                for (const fId of reconciledFlightIds) {
-                    try {
-                        await dataService.deleteFlight(fId);
-                    } catch (delErr) {
-                        console.warn("Failed to reconcile independent flight:", fId, delErr);
-                    }
-                }
+                await Promise.all(reconciledFlightIds.map(fId =>
+                    dataService.deleteFlight(fId).catch(delErr =>
+                        console.warn("Failed to reconcile independent flight:", fId, delErr)
+                    )
+                ));
             }
 
             invalidateGlobalWanderCache();
             window.dispatchEvent(new CustomEvent('wandergrid_db_updated'));
-            onTripCreated(savedTrip);
-            onClose();
         } catch (err: any) {
             console.error("Failed to create trip:", err);
             setIsSaving(false);
+            setSaveError("We couldn't create the trip — please check your connection and try again.");
+            return;
+        }
+
+        // On successful trip creation, guarantee wizard closes even if the navigation callback throws
+        try {
+            if (savedTrip) {
+                onTripCreated(savedTrip);
+            }
+        } catch (navErr) {
+            console.error("Error during trip navigation callback:", navErr);
+        } finally {
+            setIsSaving(false);
+            onClose();
         }
     };
 
@@ -1912,21 +1940,21 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <Input 
-                                label="Ferry Operator / Line" 
-                                placeholder="e.g. Blue Star Ferries, MSC" 
+                                label={transportMode === 'Cruise' ? "Cruise Line / Operator" : "Ferry Operator / Line"} 
+                                placeholder={transportMode === 'Cruise' ? "e.g. Royal Caribbean, MSC, Norwegian" : "e.g. Blue Star Ferries, Hellenic Seaways"} 
                                 value={outboundCarrier} 
                                 onChange={e => setOutboundCarrier(e.target.value)} 
                             />
                             <Input 
-                                label="Vessel / Ship Name" 
-                                placeholder="e.g. Blue Star Delos" 
+                                label={transportMode === 'Cruise' ? "Cruise Ship Name" : "Vessel / Ship Name"} 
+                                placeholder={transportMode === 'Cruise' ? "e.g. Symphony of the Seas" : "e.g. Blue Star Delos"} 
                                 value={outboundNumber} 
                                 onChange={e => setOutboundNumber(e.target.value)} 
                             />
                         </div>
                         <DateRangePicker 
                             accentColor="blue"
-                            label="Ferry Dates"
+                            label={transportMode === 'Cruise' ? "Cruise Dates" : "Ferry Dates"}
                             startLabel="Departure Date"
                             endLabel="Return Date"
                             startDate={outboundDate || startDate}
@@ -1964,7 +1992,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
             <div className="space-y-2 pt-2 border-t border-black/5 dark:border-white/5">
                 <div className="flex items-center justify-between text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
                     <span>Configured Legs ({transportsList.length})</span>
-                    <span>Total: {formatCurrency(transportsList.reduce((sum, t) => sum + (t.cost || 0), 0), activeCurrency)}</span>
+                    <span>Total: {formatCurrency(calculateTransportCost(transportsList), activeCurrency)}</span>
                 </div>
                 <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar">
                     {transportsList.map((t, idx) => {
@@ -2202,6 +2230,13 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                     </GlassButton>
                 </div>
             </div>
+
+            {saveError && (
+                <div className={`p-3.5 rounded-2xl text-xs font-semibold ${STATUS_DANGER_STYLE} flex items-center gap-2.5 shadow-sm`}>
+                    <WarningCircle className="w-5 h-5 shrink-0" weight="bold" />
+                    <span>{saveError}</span>
+                </div>
+            )}
 
             {/* Map-Style Floating Stage Tabs (Planner Standard) */}
             <div className="flex items-center justify-center sm:justify-start overflow-x-auto sm:overflow-visible no-scrollbar p-3 -m-3 shrink-0 w-full sm:w-auto">
@@ -2518,10 +2553,10 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                             <label className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
                                 Sub-step 2a: Method
                             </label>
-                            <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+                            <div className="grid grid-cols-3 sm:grid-cols-7 gap-1.5">
                                 {TRANSPORT_MODES.map(m => {
                                     const IconM = m.icon;
-                                    const isSel = transportMode === m.mode || (m.mode === 'Cruise' && transportMode === 'Ferry');
+                                    const isSel = transportMode === m.mode;
                                     return (
                                         <button
                                             key={m.mode}
@@ -2814,6 +2849,13 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                     </span>
                                 </div>
 
+                                {saveError && (
+                                    <div className={`p-3 rounded-xl text-xs font-semibold ${STATUS_DANGER_STYLE} flex items-center gap-2 mb-3`}>
+                                        <WarningCircle className="w-4 h-4 shrink-0" weight="bold" />
+                                        <span>{saveError}</span>
+                                    </div>
+                                )}
+
                                 <GlassButton 
                                     type="button" 
                                     variant="primary"
@@ -3036,10 +3078,10 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 <label className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
                                     Method
                                 </label>
-                                <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+                                <div className="grid grid-cols-3 sm:grid-cols-7 gap-1.5">
                                     {TRANSPORT_MODES.map(m => {
                                         const IconM = m.icon;
-                                        const isSel = transportMode === m.mode || (m.mode === 'Cruise' && transportMode === 'Ferry');
+                                        const isSel = transportMode === m.mode;
                                         return (
                                             <button
                                                 key={m.mode}
@@ -3320,6 +3362,12 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                             </div>
 
                             <div className="pt-2">
+                                {saveError && (
+                                    <div className={`p-3 rounded-xl text-xs font-semibold ${STATUS_DANGER_STYLE} flex items-center gap-2 mb-3`}>
+                                        <WarningCircle className="w-4 h-4 shrink-0" weight="bold" />
+                                        <span>{saveError}</span>
+                                    </div>
+                                )}
                                 <GlassButton 
                                     type="button" 
                                     variant="primary"

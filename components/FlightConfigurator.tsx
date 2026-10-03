@@ -219,8 +219,40 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                 });
                 setSegments(mapped);
             }
+        } else {
+            // Reset to a clean "add new" state — don't leave previous session's data behind
+            setMode('Flight');
+            setTripType('Round Trip');
+            setBookingRef('');
+            setBookingCost('');
+            setShowDeleteConfirm(false);
+            setSelectedExcursion('Main Route');
+            setIsCustomExcursion(false);
+            setCustomExcursionTitle('');
+            setCarForm({
+                pickupLocation: '',
+                dropoffLocation: '',
+                pickupDate: defaultStartDate || '',
+                pickupTime: '10:00',
+                dropoffDate: defaultEndDate || '',
+                dropoffTime: '10:00',
+                duration: 0,
+                agency: '',
+                model: '',
+                confirmationCode: '',
+                cost: undefined,
+                website: undefined,
+                distance: undefined,
+                logoUrl: undefined,
+                notes: '',
+                waypoints: []
+            });
+            setSegments([
+                createDefaultSegment({ section: 'outbound', date: defaultStartDate || '', arrivalDate: defaultStartDate || '' }),
+                createDefaultSegment({ section: 'return', date: defaultEndDate || '', arrivalDate: defaultEndDate || '' })
+            ]);
         }
-    }, [initialData]);
+    }, [initialData, defaultStartDate, defaultEndDate]);
 
     const handleModeChange = (newMode: TransportMode) => {
         setMode(newMode);
@@ -469,7 +501,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
             <div className="bg-black/5 dark:bg-white/5 p-1.5 rounded-2xl flex gap-1 overflow-x-auto border border-black/5 dark:border-white/5 custom-scrollbar">
                 {TRANSPORT_MODES.map(m => {
                     const ModeIcon = m.icon;
-                    const isActive = mode === m.mode || (m.mode === 'Cruise' && mode === 'Ferry');
+                    const isActive = mode === m.mode;
                     return (
                         <button
                             type="button"

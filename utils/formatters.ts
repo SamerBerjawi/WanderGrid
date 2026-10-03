@@ -1,5 +1,5 @@
 import { getWanderSyncCachedData } from '../hooks/useWanderSync';
-import { WorkspaceSettings } from '../types';
+import { WorkspaceSettings, Transport } from '../types';
 
 /**
  * Global Date & Currency Formatter Engine
@@ -291,4 +291,30 @@ export function getCurrencySymbol(currencyCode?: string): string {
   } catch {
     return '$';
   }
+}
+
+/**
+ * Calculates total transport cost for a list of transport legs.
+ * 
+ * TODO: Deeper architectural fix — store cost once per itinerary at the itinerary level
+ * instead of per-leg-with-a-convention. For now, aggregate by itineraryId (or id)
+ * to avoid double counting or zeroing out cost when leg index 0 is deleted/isolated.
+ */
+export function calculateTransportCost(transports?: (Transport | Partial<Transport>)[] | null): number {
+  if (!transports || transports.length === 0) return 0;
+
+  const groupCosts: Record<string, number> = {};
+
+  for (const t of transports) {
+    if (!t) continue;
+    const key = t.itineraryId || t.id || `leg_${Math.random()}`;
+    const cost = typeof t.cost === 'number' && !isNaN(t.cost) ? t.cost : 0;
+
+    // Aggregate by itineraryId: pick the first non-zero cost encountered, or retain initial 0
+    if (groupCosts[key] === undefined || (groupCosts[key] === 0 && cost > 0)) {
+      groupCosts[key] = cost;
+    }
+  }
+
+  return Object.values(groupCosts).reduce((sum, c) => sum + c, 0);
 }

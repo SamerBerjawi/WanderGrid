@@ -72,7 +72,7 @@ import { GoogleGenAI } from "@google/genai";
 const DeckFlightMap = React.lazy(() => import('../components/DeckFlightMap').then(m => ({ default: m.DeckFlightMap || m.default })));
 const FlightImportWizard = React.lazy(() => import('../components/FlightImportWizard').then(m => ({ default: m.FlightImportWizard })));
 import { getMerchantLogoUrl } from '../utils/brandfetch';
-import { formatDate, formatDateRange, formatCurrency, getCurrencySymbol } from '../utils/formatters';
+import { formatDate, formatDateRange, formatCurrency, getCurrencySymbol, calculateTransportCost } from '../utils/formatters';
 import { EmptyState } from '../components/EmptyState';
 import { isCarRentalBooking, getTransportScheduleTitle, getTransportScheduleLocation, getTransportScheduleEventsForDate } from '../utils/transportSchedule';
 
@@ -828,9 +828,23 @@ export const TripDetail2: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
 
     const handleDeleteTransports = async (ids: string[]) => {
         if (!trip) return;
-        const updatedTransports = (trip.transports || []).filter(f => !ids.includes(f.id));
+        const deletedTransports = (trip.transports || []).filter(f => ids.includes(f.id));
+        const updatedTransports = (trip.transports || []).filter(f => !ids.includes(f.id)).map(t => ({ ...t }));
+
+        // If any deleted transport leg had a cost, transfer it to the first remaining leg of the same itinerary
+        for (const deleted of deletedTransports) {
+            if (deleted.itineraryId && (deleted.cost || 0) > 0) {
+                const remainingLeg = updatedTransports.find(t => t.itineraryId === deleted.itineraryId);
+                if (remainingLeg && (!remainingLeg.cost || remainingLeg.cost === 0)) {
+                    remainingLeg.cost = deleted.cost;
+                }
+            }
+        }
+
         const updatedTrip = { ...trip, transports: updatedTransports };
         await dataService.updateTrip(updatedTrip);
+        invalidateGlobalWanderCache();
+        window.dispatchEvent(new CustomEvent('wandergrid_db_updated'));
         setTrip(updatedTrip);
         setIsTransportModalOpen(false);
         setEditingTransports(null);
@@ -1021,7 +1035,7 @@ export const TripDetail2: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
     if (loading || !trip) return <div className="p-8 text-gray-400 animate-pulse">Loading Trip Data...</div>;
 
     const activityCost = trip.activities?.reduce((sum, a) => sum + (a.cost || 0), 0) || 0;
-    const transportCost = trip.transports?.reduce((sum, f) => sum + (f.cost || 0), 0) || 0;
+    const transportCost = calculateTransportCost(trip.transports);
     const stayCost = trip.accommodations?.reduce((sum, a) => sum + (a.cost || 0), 0) || 0;
     const totalCost = transportCost + stayCost + activityCost;
     const duration = Math.ceil((new Date(trip.endDate).getTime() - new Date(trip.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1;
