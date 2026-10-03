@@ -2127,87 +2127,149 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                     if (dateA !== dateB) return dateA.localeCompare(dateB);
                                     return timeA.localeCompare(timeB);
                                 }).map(stay => (
-                                    <VirtualListItem key={stay.id} minHeight={140}>
-                                        <GlassPanel className="wg-glass-card rounded-[28px] p-6 sm:p-8 flex flex-col md:flex-row justify-between items-stretch gap-6 group relative">
-                                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-5 flex-1">
-                                                {/* Brand Logo or Visual Accent */}
-                                                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-50 to-indigo-100 dark:from-indigo-950/20 dark:to-indigo-900/30 border border-indigo-100 dark:border-indigo-900/20 flex items-center justify-center text-primary-600 dark:text-primary-400 font-black text-2xl overflow-hidden shrink-0 shadow-sm">
-                                                    {stay.logoUrl ? (
-                                                        <img referrerPolicy="no-referrer" src={stay.logoUrl} className="w-full h-full object-cover" />
-                                                    ) : (
-                                                        <TripItemIcon name={stay.type} className="w-7 h-7" />
-                                                    )}
-                                                </div>
-                                                
-                                                <div className="space-y-1.5 flex-1 min-w-0">
-                                                    <div className="flex flex-wrap items-center gap-2">
-                                                        <h4 className="font-bold text-light-text dark:text-dark-text text-lg truncate leading-tight">{stay.name}</h4>
-                                                        <span className="px-2 py-0.5 rounded-md bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest">
-                                                            {stay.type}
-                                                        </span>
+                                    <VirtualListItem key={stay.id} minHeight={160}>
+                                        <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden transition-all duration-300">
+                                            {/* Header / Identity & Pricing Bar */}
+                                            <div className="p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-black/[0.02] dark:bg-white/[0.01] border-b border-black/5 dark:border-white/5">
+                                                <div className="flex items-center gap-3.5 min-w-0">
+                                                    <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 flex items-center justify-center overflow-hidden shadow-inner shrink-0">
+                                                        {stay.logoUrl ? (
+                                                            <img referrerPolicy="no-referrer" src={stay.logoUrl} className="w-full h-full object-cover" alt="" />
+                                                        ) : (
+                                                            <TripItemIcon name={stay.type} className="w-6 h-6" />
+                                                        )}
                                                     </div>
-                                                    <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium flex items-center gap-1 max-w-full">
-                                                        <MapPin className="w-3.5 h-3.5 shrink-0" weight="duotone" />
-                                                        <span className="truncate select-all" title={stay.address}>{formatProperLocationName(stay.address)}</span>
-                                                    </p>
-                                                    
-                                                    <div className="flex flex-wrap gap-2 pt-1.5">
-                                                        <span className="bg-primary-500/10 border border-primary-500/20 text-primary-600 dark:text-primary-400 px-2.5 py-0.5 rounded-lg text-2xs font-bold uppercase tracking-wider flex items-center gap-1">
-                                                            <Moon className="w-3 h-3" />
-                                                            {calculateNights(stay.checkInDate, stay.checkOutDate)} Nights
-                                                        </span>
-                                                        <span className="bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary px-2.5 py-0.5 rounded-lg text-2xs font-bold tracking-tight">
-                                                            {formatDateRange(stay.checkInDate, stay.checkOutDate, settings).toUpperCase()}
-                                                        </span>
-                                                        {stay.confirmationCode && (
-                                                            <span className="bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary font-mono text-2xs uppercase font-bold px-2 py-0.5 rounded-lg select-all">
-                                                                CONF: {stay.confirmationCode}
+                                                    <div className="min-w-0">
+                                                        <div className="flex flex-wrap items-center gap-2">
+                                                            <h4 className="font-bold text-light-text dark:text-dark-text text-base leading-tight truncate">
+                                                                {stay.name}
+                                                            </h4>
+                                                            <span className="px-2 py-0.5 rounded-md bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest shrink-0">
+                                                                {stay.type}
+                                                            </span>
+                                                            {stay.confirmationCode && (
+                                                                <span className="bg-primary-500/10 border border-primary-500/20 text-primary-600 dark:text-primary-400 font-mono text-2xs uppercase font-bold px-2 py-0.5 rounded-md select-all shrink-0">
+                                                                    CONF: {stay.confirmationCode}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Right: Cost & Edit Details */}
+                                                <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto border-t sm:border-0 border-black/5 dark:border-white/5 pt-3 sm:pt-0 shrink-0">
+                                                    <div className="flex items-baseline sm:flex-col sm:items-end gap-1.5 sm:gap-0.5">
+                                                        <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 leading-none">
+                                                            {stay.cost ? formatCurrency(stay.cost, settings?.currency) : <span className="text-light-text-secondary font-mono text-xs italic">Unpriced</span>}
+                                                        </div>
+                                                        {stay.cost && calculateNights(stay.checkInDate, stay.checkOutDate) > 0 && (
+                                                            <span className="text-2xs font-semibold text-light-text-secondary dark:text-dark-text-secondary">
+                                                                {formatCurrency(Math.round(stay.cost / calculateNights(stay.checkInDate, stay.checkOutDate)), settings?.currency)} / night
                                                             </span>
                                                         )}
                                                     </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Right: Stay Details / Pricing */}
-                                            <div className="flex sm:flex-row md:flex-col items-center justify-between md:justify-center md:items-end gap-3 shrink-0 border-t md:border-t-0 md:border-l border-black/5 dark:border-white/5 pt-4 md:pt-0 md:pl-6">
-                                                <div className="md:text-right">
-                                                    <p className="text-2xs font-bold uppercase tracking-widest text-light-text-secondary dark:text-dark-text-secondary">Total Cost</p>
-                                                    {stay.cost ? (
-                                                        <>
-                                                            <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">{formatCurrency(stay.cost, settings?.currency)}</div>
-                                                            <p className="text-2xs font-semibold text-light-text-secondary dark:text-dark-text-secondary">
-                                                                {formatCurrency(Math.round(stay.cost / calculateNights(stay.checkInDate, stay.checkOutDate)), settings?.currency)} / night
-                                                            </p>
-                                                        </>
-                                                    ) : (
-                                                        <div className="text-light-text-secondary font-mono text-xs italic">Unpriced</div>
-                                                    )}
-                                                </div>
-                                                
-                                                <div className="flex gap-2">
-                                                    {stay.website && (
-                                                        <a 
-                                                            href={stay.website} 
-                                                            target="_blank" 
-                                                            rel="noopener noreferrer" 
-                                                            className="w-8 h-8 rounded-lg bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 flex items-center justify-center text-light-text-secondary hover:text-primary-600 transition-all cursor-pointer"
-                                                            aria-label="Visit stay website"
-                                                            title="Visit Website"
-                                                        >
-                                                            <Globe className="w-4 h-4" />
-                                                        </a>
-                                                    )}
-                                                    <button 
-                                                        onClick={() => openAccommodationModal()} 
-                                                        className="w-8 h-8 rounded-lg bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 flex items-center justify-center text-light-text-secondary hover:text-primary-600 transition-all cursor-pointer"
+                                                    <button
+                                                        onClick={() => openAccommodationModal()}
                                                         aria-label="Edit stay details"
-                                                        title="Edit Stay Details"
+                                                        className="text-xs font-bold text-primary-600 dark:text-primary-400 hover:text-primary-500 uppercase tracking-widest mt-1 cursor-pointer flex items-center gap-1 bg-primary-500/10 px-2.5 py-1 rounded-lg border border-primary-500/20 hover:shadow-sm transition-all"
                                                     >
-                                                        <PencilSimple className="w-4 h-4" />
+                                                        <PencilSimple className="w-3.5 h-3.5" /> Edit Details
                                                     </button>
                                                 </div>
                                             </div>
 
+                                            {/* Body: Check-In -> Stay Vector -> Check-Out */}
+                                            <div className="p-5 sm:p-6 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-6 relative">
+                                                {/* Left: Check-In */}
+                                                <div className="flex-1 flex items-center gap-3.5 min-w-[180px]">
+                                                    <div className="w-10 h-10 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 flex items-center justify-center shrink-0 shadow-sm text-zinc-500 dark:text-zinc-400">
+                                                        <CalendarBlank className="w-5 h-5 text-amber-500" weight="duotone" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-2xs uppercase font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider">Check-In</p>
+                                                        <div className="flex items-baseline gap-2 mt-0.5">
+                                                            <span className="text-base sm:text-lg font-black text-light-text dark:text-dark-text tracking-tight">
+                                                                {formatDate(stay.checkInDate, 'weekday-short', settings)}
+                                                            </span>
+                                                            <span className="text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary font-mono">
+                                                                {stay.checkInTime ? formatTime(stay.checkInTime) : 'From 15:00'}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary mt-0.5">
+                                                            {stay.checkInDate}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                {/* Center: Stay Duration Vector */}
+                                                <div className="flex flex-col items-center justify-center min-w-[150px] shrink-0 pointer-events-none select-none relative py-1 md:py-0">
+                                                    <span className="bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 px-2.5 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider flex items-center gap-1 mb-1.5">
+                                                        <Moon className="w-3 h-3" weight="fill" />
+                                                        {calculateNights(stay.checkInDate, stay.checkOutDate)} Nights
+                                                    </span>
+                                                    <div className="w-full flex items-center gap-1.5 relative px-2">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-amber-500 border border-amber-400 shrink-0"></div>
+                                                        <div className="flex-1 h-[2px] border-t-2 border-dashed border-black/10 dark:border-white/10 relative flex items-center justify-center">
+                                                            <Bed className="w-4 h-4 text-zinc-400 dark:text-zinc-500 absolute -top-2" weight="duotone" />
+                                                        </div>
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-amber-500 border border-amber-400 shrink-0"></div>
+                                                    </div>
+                                                    <span className="text-3xs font-mono font-bold uppercase tracking-wider text-light-text-secondary/70 dark:text-dark-text-secondary/70 mt-1.5">
+                                                        {formatDateRange(stay.checkInDate, stay.checkOutDate, settings)}
+                                                    </span>
+                                                </div>
+
+                                                {/* Right: Check-Out */}
+                                                <div className="flex-1 flex items-center justify-start md:justify-end gap-3.5 min-w-[180px]">
+                                                    <div className="md:text-right">
+                                                        <p className="text-2xs uppercase font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider">Check-Out</p>
+                                                        <div className="flex items-baseline md:justify-end gap-2 mt-0.5">
+                                                            <span className="text-base sm:text-lg font-black text-light-text dark:text-dark-text tracking-tight">
+                                                                {formatDate(stay.checkOutDate, 'weekday-short', settings)}
+                                                            </span>
+                                                            <span className="text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary font-mono">
+                                                                {stay.checkOutTime ? formatTime(stay.checkOutTime) : 'Until 11:00'}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary mt-0.5">
+                                                            {stay.checkOutDate}
+                                                        </p>
+                                                    </div>
+                                                    <div className="w-10 h-10 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 flex items-center justify-center shrink-0 order-first md:order-last shadow-sm text-zinc-500 dark:text-zinc-400">
+                                                        <CalendarCheck className="w-5 h-5 text-emerald-500" weight="duotone" />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Footer / Location & Details Strip */}
+                                            <div className="px-5 py-3 bg-black/[0.015] dark:bg-white/[0.015] border-t border-black/5 dark:border-white/5 flex flex-wrap items-center justify-between gap-3 text-xs">
+                                                <div className="flex items-center gap-1.5 text-light-text-secondary dark:text-dark-text-secondary font-medium min-w-0 max-w-full">
+                                                    <MapPin className="w-3.5 h-3.5 text-amber-500 shrink-0" weight="duotone" />
+                                                    <span className="truncate select-all" title={stay.address}>
+                                                        {formatProperLocationName(stay.address)}
+                                                    </span>
+                                                </div>
+
+                                                <div className="flex items-center gap-3 shrink-0">
+                                                    {stay.notes && (
+                                                        <span className="text-2xs text-light-text-secondary/80 dark:text-dark-text-secondary/80 italic max-w-xs truncate" title={stay.notes}>
+                                                            {stay.notes}
+                                                        </span>
+                                                    )}
+                                                    {stay.website && (
+                                                        <a
+                                                            href={stay.website}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-2xs font-bold text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1 cursor-pointer"
+                                                            title="Open stay website"
+                                                        >
+                                                            <Globe className="w-3.5 h-3.5" />
+                                                            <span>Website</span>
+                                                        </a>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </GlassPanel>
                                     </VirtualListItem>
                                 ))}
