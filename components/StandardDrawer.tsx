@@ -128,7 +128,7 @@ export const StandardDrawer: React.FC<DrawerProps> = ({
             padding="0px"
             overrides={{ borderRadius: 28 }}
           >
-            <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px]">
+            <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px] bg-white/90 dark:bg-dark-card/90 backdrop-blur-2xl">
             {/* Header */}
             <div className="p-4 sm:p-6 border-b border-black/5 dark:border-white/10 flex items-center justify-between bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">
             <div className="flex items-center gap-3 min-w-0">

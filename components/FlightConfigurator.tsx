@@ -476,8 +476,8 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                             key={m.mode}
                             onClick={() => handleModeChange(m.mode)}
                             className={`flex-1 flex flex-col items-center justify-center py-2.5 px-3 rounded-xl transition-all min-w-[72px] min-h-[48px] cursor-pointer ${isActive
-                                    ? 'bg-white/80 dark:bg-white/15 backdrop-blur-md shadow-sm text-primary-600 dark:text-primary-300 font-bold border border-black/5 dark:border-white/10'
-                                    : 'text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/10'
+                                    ? 'bg-white dark:bg-dark-card shadow-sm text-primary-600 dark:text-primary-400 font-bold border border-black/5 dark:border-white/10'
+                                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/10'
                                 }`}
                         >
                             <ModeIcon className="w-5 h-5 mb-1" weight={isActive ? "duotone" : "regular"} />
@@ -500,8 +500,8 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                                     key={type}
                                     onClick={() => handleTripTypeChange(type)}
                                     className={`px-3.5 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer min-h-[36px] ${isActive
-                                            ? 'bg-white/80 dark:bg-white/15 backdrop-blur-md text-primary-600 dark:text-primary-300 shadow-sm border border-black/5 dark:border-white/10'
-                                            : 'text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/10'
+                                            ? 'bg-white dark:bg-dark-card text-primary-600 dark:text-primary-400 shadow-sm border border-black/5 dark:border-white/10'
+                                            : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/10'
                                         }`}
                                 >
                                     {type}
@@ -610,7 +610,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
 
             {/* Booking Reference & Cost Bar for non-car transports */}
             {!isCar && (
-                <div className="p-5 rounded-3xl bg-white/50 dark:bg-white/[0.04] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-xs space-y-3">
+                <div className="p-5 rounded-3xl bg-white/70 dark:bg-white/[0.05] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-xs space-y-3">
                     <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
                         Booking Reference & Financials
                     </span>
@@ -639,7 +639,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
 
             {/* Excursion Grouping for Ground & Sea Transports */}
             {mode !== 'Flight' && (
-                <div className="p-5 rounded-3xl bg-white/50 dark:bg-white/[0.04] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-xs space-y-3">
+                <div className="p-5 rounded-3xl bg-white/70 dark:bg-white/[0.05] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-xs space-y-3">
                     <div className="flex items-center justify-between">
                         <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
                             Excursion Grouping (Routes)
@@ -684,7 +684,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
             )}
 
             {/* Sticky Frosted Action Footer */}
-            <div className="p-4 sm:p-5 -mx-4 sm:-mx-6 -mb-4 sm:-mb-6 mt-6 border-t border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] backdrop-blur-md flex items-center justify-between gap-3 sticky bottom-0 z-20 rounded-b-[28px]">
+            <div className="p-4 sm:p-5 -mx-4 sm:-mx-6 -mb-4 sm:-mb-6 mt-6 border-t border-black/5 dark:border-white/10 bg-white/80 dark:bg-dark-card/80 backdrop-blur-md flex items-center justify-between gap-3 sticky bottom-0 z-20 rounded-b-[28px]">
                 {initialData && onDelete ? (
                     <button
                         type="button"
@@ -708,7 +708,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                         type="button"
                         onClick={handleSave}
                         disabled={!isValid}
-                        className={`${BTN_PRIMARY_STYLE} px-8 h-11 text-xs font-bold uppercase tracking-wider flex items-center gap-2 cursor-pointer disabled:opacity-50`}
+                        className="bg-primary-500 hover:bg-primary-600 text-white px-8 h-11 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-primary-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <span>Save {mode}</span>
                         <Check className="w-4 h-4" weight="bold" />

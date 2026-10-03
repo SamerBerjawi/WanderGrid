@@ -14,7 +14,6 @@ import {
     Check
 } from '@phosphor-icons/react';
 import { Input, Autocomplete, TimeInput, Badge, DateRangePicker } from './ui';
-import GlassPanel from './glass/GlassPanel';
 import { Accommodation } from '../types';
 import { dataService } from '../services/mockDb';
 import { formatDateRange, formatCurrency, getCurrencySymbol } from '../utils/formatters';
@@ -226,7 +225,7 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
         }
     }; if (showDeleteConfirm) {
         return (
-            <GlassPanel className="wg-glass-card w-full shadow-2xl overflow-hidden animate-fade-in my-4" overrides={{ borderRadius: 28 }} padding="0px">
+            <div className="w-full my-4">
                 <div className="p-6 sm:p-8 rounded-3xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 text-center space-y-6">
                     <div className="w-20 h-20 bg-rose-500/15 border border-rose-500/20 rounded-2xl flex items-center justify-center mx-auto text-rose-500 shadow-inner">
                     <Trash className="w-10 h-10" weight="duotone" />
@@ -255,13 +254,12 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                         </button>
                     </div>
                 </div>
-            </GlassPanel>
+            </div>
         );
     }
 
     return (
-        <GlassPanel className="wg-glass-card w-full shadow-2xl overflow-hidden animate-fade-in" overrides={{ borderRadius: 28 }} padding="0px">
-            <div className="p-6 sm:p-8 space-y-6">
+        <div className="p-6 sm:p-8 rounded-3xl bg-white/70 dark:bg-white/[0.05] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-xs space-y-6 animate-fade-in">
 
             {/* Inline Draft Error */}
             {draftError && (
@@ -562,9 +560,7 @@ export const AccommodationConfigurator: React.FC<AccommodationConfiguratorProps>
                     </button>
                 </div>
             </div>
-
-            </div>
-        </GlassPanel>
+        </div>
     );
 };
 export default AccommodationConfigurator;

@@ -427,53 +427,55 @@ export const Modal: React.FC<ModalProps> = ({
         padding="0px"
         overrides={{ borderRadius: 28 }}
       >
-        {/* Header */}
-        <div className="p-4 sm:p-6 border-b border-black/5 dark:border-white/10 flex items-center justify-between bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">
-          <div className="flex items-center gap-3 min-w-0">
-            {icon && (
-              <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white bg-primary-500 shrink-0 shadow-md transition-transform hover:scale-105">
-                <Icon className="text-2xl" name={icon} />
-              </div>
-            )}
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h3 className={HEADER_TITLE_STYLE}>{title}</h3>
-                {tag && (
-                  <span className={STATUS_PILL_STYLE}>
-                    {tag}
-                  </span>
+        <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px] bg-white/90 dark:bg-dark-card/90 backdrop-blur-2xl">
+          {/* Header */}
+          <div className="p-4 sm:p-6 border-b border-black/5 dark:border-white/10 flex items-center justify-between bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">
+            <div className="flex items-center gap-3 min-w-0">
+              {icon && (
+                <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white bg-primary-500 shrink-0 shadow-md transition-transform hover:scale-105">
+                  <Icon className="text-2xl" name={icon} />
+                </div>
+              )}
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className={HEADER_TITLE_STYLE}>{title}</h3>
+                  {tag && (
+                    <span className={STATUS_PILL_STYLE}>
+                      {tag}
+                    </span>
+                  )}
+                </div>
+                {subtitle && (
+                  <p className={HEADER_SUBTITLE_STYLE}>
+                    {subtitle}
+                  </p>
                 )}
               </div>
-              {subtitle && (
-                <p className={HEADER_SUBTITLE_STYLE}>
-                  {subtitle}
-                </p>
-              )}
             </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className={CLOSE_BTN_STYLE}
+              aria-label="Close dialog"
+            >
+              <Icon className="text-lg" name="close" />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className={CLOSE_BTN_STYLE}
-            aria-label="Close dialog"
-          >
-            <Icon className="text-lg" name="close" />
-          </button>
-        </div>
 
-        {/* Content */}
-        <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1 min-h-0">
-          {children}
-        </div>
-
-        {/* Sticky Frosted Footer (optional) */}
-        {footerActions && (
-          <div
-            className="p-4 sm:p-6 border-t border-black/5 dark:border-white/10 bg-white/30 dark:bg-white/[0.03] backdrop-blur-md flex items-center justify-between gap-3 shrink-0"
-          >
-            {footerActions}
+          {/* Content */}
+          <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1 min-h-0">
+            {children}
           </div>
-        )}
+
+          {/* Sticky Frosted Footer (optional) */}
+          {footerActions && (
+            <div
+              className="p-4 sm:p-6 border-t border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] backdrop-blur-md flex items-center justify-between gap-3 shrink-0"
+            >
+              {footerActions}
+            </div>
+          )}
+        </div>
       </GlassPanel>
     </div>,
     document.body

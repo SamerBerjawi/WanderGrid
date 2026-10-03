@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Car, Clock, Speedometer } from '@phosphor-icons/react';
 import { Input, Autocomplete, TimeInput } from '../ui';
-import GlassPanel from '../glass/GlassPanel';
 import { CarForm } from './transportTypes';
 import { searchLocations, getCoordinates, calculateDistance } from '../../services/geocoding';
 
@@ -59,8 +58,7 @@ export const PersonalCarForm: React.FC<PersonalCarFormProps> = ({
     };
 
     return (
-        <GlassPanel className="wg-glass-card w-full shadow-2xl overflow-hidden relative" overrides={{ borderRadius: 28 }} padding="0px">
-            <div className="p-5 sm:p-6 space-y-4">
+        <div className="p-5 sm:p-6 rounded-3xl bg-white/70 dark:bg-white/[0.05] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-xs space-y-4">
             <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
                 Personal Vehicle Road Trip
             </span>
@@ -180,7 +178,6 @@ export const PersonalCarForm: React.FC<PersonalCarFormProps> = ({
                 value={form.notes || ''} 
                 onChange={e => onUpdate({ notes: e.target.value })} 
             />
-            </div>
-        </GlassPanel>
+        </div>
     );
 };
