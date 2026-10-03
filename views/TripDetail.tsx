@@ -282,10 +282,12 @@ const WeatherWidget: React.FC<{ location: string, coordinates?: { lat: number, l
             </div>
             <div>
                 <div className="text-3xl font-black leading-none">{Math.round(weather.current_weather.temperature)}°</div>
-                <div className="text-xs font-medium opacity-90 flex gap-2 mt-1">
-                    <span>H: {Math.round(weather.daily.temperature_2m_max[0])}°</span>
-                    <span>L: {Math.round(weather.daily.temperature_2m_min[0])}°</span>
-                </div>
+                {weather.daily?.temperature_2m_max?.length > 0 && weather.daily?.temperature_2m_min?.length > 0 && (
+                    <div className="text-xs font-medium opacity-90 flex gap-2 mt-1">
+                        <span>H: {Math.round(weather.daily.temperature_2m_max[0])}°</span>
+                        <span>L: {Math.round(weather.daily.temperature_2m_min[0])}°</span>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -564,12 +566,23 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
             }
 
             if (lat && lng) {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 3000);
                 try {
-                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto`);
-                    const data = await res.json();
-                    setWeather(data);
+                    const res = await fetch(
+                        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto`,
+                        { signal: controller.signal }
+                    );
+                    clearTimeout(timeoutId);
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data?.current_weather && data?.daily?.temperature_2m_max?.length) {
+                            setWeather(data);
+                        }
+                    }
                 } catch (e) {
-                    console.error("Trip weather fetch failed", e);
+                    clearTimeout(timeoutId);
+                    // Silently fail safe per AGENTS.md §2
                 }
             }
             setWeatherLoading(false);
@@ -1037,7 +1050,23 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         return getTransportScheduleEventsForDate(trip?.transports, dateStr);
     };
 
-    if (loading || !trip) return <div className="p-8 text-gray-400 animate-pulse">Loading Trip Data...</div>;
+    if (loading) return <div className="p-8 text-gray-400 animate-pulse">Loading Trip Data...</div>;
+
+    if (!trip) {
+        return (
+            <div className="w-full max-w-[1680px] mx-auto pt-12 px-4 flex flex-col items-center justify-center">
+                <EmptyState
+                    icon="compass"
+                    title="Trip Not Found"
+                    description="This trip could not be found or may have been removed."
+                    action={{
+                        label: "Return to Dashboard",
+                        onClick: onBack
+                    }}
+                />
+            </div>
+        );
+    }
 
     const activityCost = trip.activities?.reduce((sum, a) => sum + (a.cost || 0), 0) || 0;
     const transportCost = calculateTransportCost(trip.transports);
@@ -1424,7 +1453,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                                                         <TripItemIcon name={vibe.icon} className="w-4 h-4" />
                                                         <span>
                                                             {Math.round(weather.current_weather.temperature)}°C · {getWeatherDescription(weather.current_weather.weathercode)}
-                                                            {weather.daily && (
+                                                            {weather.daily?.temperature_2m_max?.length > 0 && weather.daily?.temperature_2m_min?.length > 0 && (
                                                                 <span className="opacity-80 ml-1.5 text-xs font-normal">
                                                                     (H: {Math.round(weather.daily.temperature_2m_max[0])}° L: {Math.round(weather.daily.temperature_2m_min[0])}°)
                                                                 </span>

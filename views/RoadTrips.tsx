@@ -12,7 +12,7 @@ import { Trip, Transport, TransportMode, RoadTripWaypoint, ViewState } from '../
 import { dataService } from '../services/mockDb';
 import { motion, AnimatePresence } from 'motion/react';
 import { getCoordinates, getCoordinatesSync, searchLocations } from '../services/geocoding';
-import { formatDate } from '../utils/formatters';
+import { formatDate, formatCurrency } from '../utils/formatters';
 import { EmptyState } from '../components/EmptyState';
 import { syncPitStopsToVisited } from '../services/pitStopSync';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
@@ -1211,7 +1211,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                         {/* Cost & Trip badges */}
                         <div className="flex flex-col items-start md:items-end justify-center">
                           {tr.cost ? (
-                            <span className="text-sm md:text-base font-black font-mono text-zinc-900 dark:text-zinc-100">${parseFloat(tr.cost).toFixed(2)}</span>
+                            <span className="text-sm md:text-base font-black font-mono text-zinc-900 dark:text-zinc-100">{formatCurrency(parseFloat(tr.cost) || 0)}</span>
                           ) : (
                             <span className="text-xs font-bold text-zinc-400">No cost</span>
                           )}

@@ -1826,28 +1826,40 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             }
         });
 
-        // Forward MapLibre Canvas Mousemove to Deck.gl overlay for hover tooltips
-        map.on('mousemove', (e) => {
+        // Forward MapLibre Canvas Mousemove to Deck.gl overlay for hover tooltips (Throttled via requestAnimationFrame)
+        let pickRafId: number | null = null;
+        const onMouseMove = (e: any) => {
             if (!overlayRef.current) return;
-            const picked = overlayRef.current.pickObject({
-                x: e.point.x,
-                y: e.point.y,
-                radius: 12
+            if (pickRafId !== null) return;
+            const pt = { x: e.point.x, y: e.point.y };
+            pickRafId = requestAnimationFrame(() => {
+                pickRafId = null;
+                if (!overlayRef.current || !mapRef.current) return;
+                const picked = overlayRef.current.pickObject({
+                    x: pt.x,
+                    y: pt.y,
+                    radius: 12
+                });
+                if (picked?.object) {
+                    mapRef.current.getCanvas().style.cursor = 'pointer';
+                    handleRouteHoverRef.current(picked);
+                } else {
+                    mapRef.current.getCanvas().style.cursor = '';
+                    handleRouteHoverRef.current({ object: null });
+                }
             });
-            if (picked?.object) {
-                map.getCanvas().style.cursor = 'pointer';
-                handleRouteHoverRef.current(picked);
-            } else {
-                map.getCanvas().style.cursor = '';
-                handleRouteHoverRef.current({ object: null });
-            }
-        });
+        };
+        map.on('mousemove', onMouseMove);
 
         mapRef.current = map;
         setMapInstance(map);
         overlayRef.current = overlay;
 
         return () => {
+            if (pickRafId !== null) {
+                cancelAnimationFrame(pickRafId);
+                pickRafId = null;
+            }
             isMapLoadedRef.current = false;
             try {
                 map.removeControl(overlay as any);

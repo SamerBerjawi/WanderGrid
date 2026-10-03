@@ -69,6 +69,7 @@ export const safeStorage = {
       console.warn(`[STORAGE] Failed to write ${key} (possible quota exceeded):`, e);
       try {
         localStorage.removeItem('wandergrid_dashboard_cache_v1');
+        localStorage.removeItem('wandergrid_geo_cache_v3');
         localStorage.setItem(key, value);
         return true;
       } catch (retryErr) {

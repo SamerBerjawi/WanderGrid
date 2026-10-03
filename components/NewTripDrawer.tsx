@@ -824,7 +824,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
 
                                             {/* Suggestions Flyout */}
                                             {showSuggestions && suggestions.length > 0 && (
-                                                <div className="absolute top-full left-0 mt-2 w-full z-[70] bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden max-h-52 overflow-y-auto custom-scrollbar p-1.5">
+                                                <div className="absolute top-full left-0 mt-2 w-full z-dropdown bg-white/90 dark:bg-dark-card/90 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden max-h-52 overflow-y-auto custom-scrollbar p-1.5">
                                                     {suggestions.map((item, idx) => (
                                                         <button
                                                             key={idx}

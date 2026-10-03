@@ -87,6 +87,7 @@ export default function App() {
           case ViewState.GAMIFICATION: path = '/gamification'; break;
           case ViewState.FLIGHTS: path = '/flights'; break;
           case ViewState.ROADTRIPS: path = '/roadtrips'; break;
+          case ViewState.TRAVEL_ATLAS: path = '/atlas'; break;
           case ViewState.VACATION_CALENDAR: path = '/calendar'; break;
           case ViewState.USER_DETAIL: path = id ? `/user/${id}` : '/'; break;
           case ViewState.TRIP_DETAIL: path = id ? `/trip/${id}` : '/'; break;

@@ -1398,3 +1398,38 @@ async function resolvePlaceNameRaw(query: string): Promise<{ city: string, count
 }
 
 export const getRegion = (code: string) => COUNTRY_REGION_MAP[code] || 'Unknown';
+
+export interface DeviceCoordinates {
+    latitude: number;
+    longitude: number;
+    accuracy: number;
+}
+
+export const getCurrentDevicePosition = (
+    timeoutMs = 8000
+): Promise<DeviceCoordinates | null> => {
+    return new Promise((resolve) => {
+        if (typeof window === 'undefined' || !('geolocation' in navigator)) {
+            resolve(null);
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                resolve({
+                    latitude: pos.coords.latitude,
+                    longitude: pos.coords.longitude,
+                    accuracy: pos.coords.accuracy,
+                });
+            },
+            (err) => {
+                console.warn('[Geolocation] Device location lookup failed or was denied:', err.message);
+                resolve(null);
+            },
+            {
+                enableHighAccuracy: false, // Balanced power & rapid lock
+                timeout: timeoutMs,
+                maximumAge: 60000, // 1 minute coordinate cache
+            }
+        );
+    });
+};

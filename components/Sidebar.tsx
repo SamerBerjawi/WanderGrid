@@ -421,7 +421,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="md:hidden fixed inset-0 bg-black/40 dark:bg-black/60 z-[55]"
+              className="md:hidden fixed inset-0 bg-black/40 dark:bg-black/60 z-modal-backdrop"
               onClick={() => setIsMoreOpen(false)}
             />
             {/* Elegant Minimalist Floating Menu Box with Liquid Glass */}
@@ -430,7 +430,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 12, x: 0 }}
               transition={{ type: "spring", stiffness: 450, damping: 32 }}
-              className="md:hidden fixed bottom-[5.5rem] right-4 w-56 z-[60]"
+              className="md:hidden fixed bottom-[5.5rem] right-4 w-56 z-modal"
             >
               <GlassPanel
                 className="wg-glass-card shadow-2xl"

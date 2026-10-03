@@ -56,7 +56,7 @@ import { useWanderSync } from '../hooks/useWanderSync';
 import { Trip, User, WorkspaceSettings, EntitlementType, PublicHoliday, Transport } from '../types';
 import { getCoordinatesSync, calculateDistance, formatPlaceName } from '../services/geocoding';
 import { getFlagEmoji, getRegion } from '../services/geoData';
-import { formatDate, formatDateRange, formatCurrency } from '../utils/formatters';
+import { formatDate, formatDateRange, formatCurrency, calculateTransportCost } from '../utils/formatters';
 import { 
     INPUT_BASE_STYLE, 
     BTN_PRIMARY_STYLE, 
@@ -262,7 +262,7 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
             else if (mode === 'ferry' || mode === 'ship') ferryCount++;
         });
 
-        const transportCost = transports.reduce((s, t) => s + (t.cost || 0), 0);
+        const transportCost = calculateTransportCost(transports);
         const stayCost = (trip.accommodations || []).reduce((s, a) => s + (a.cost || 0), 0);
         const activityCost = (trip.activities || []).reduce((s, act) => s + ((act as any).cost || 0), 0);
         const totalBudget = transportCost + stayCost + activityCost;
@@ -545,8 +545,8 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
                 return durB - durA;
             }
             if (sortBy === 'budget_desc') {
-                const costA = (a.transports || []).reduce((s, t) => s + (t.cost || 0), 0) + (a.accommodations || []).reduce((s, ac) => s + (ac.cost || 0), 0);
-                const costB = (b.transports || []).reduce((s, t) => s + (t.cost || 0), 0) + (b.accommodations || []).reduce((s, ac) => s + (ac.cost || 0), 0);
+                const costA = calculateTransportCost(a.transports) + (a.accommodations || []).reduce((s, ac) => s + (ac.cost || 0), 0);
+                const costB = calculateTransportCost(b.transports) + (b.accommodations || []).reduce((s, ac) => s + (ac.cost || 0), 0);
                 return costB - costA;
             }
             if (sortBy === 'completeness_asc') {
@@ -610,7 +610,7 @@ export const VacationPlanner: React.FC<VacationPlannerProps> = ({ onTripClick })
     const totalCommittedBudget = useMemo(() => {
         const targetTrips = [...plannedTrips, ...confirmedTrips];
         return targetTrips.reduce((sum, t) => {
-            const tCost = (t.transports || []).reduce((s, tr) => s + (tr.cost || 0), 0);
+            const tCost = calculateTransportCost(t.transports);
             const aCost = (t.accommodations || []).reduce((s, ac) => s + (ac.cost || 0), 0);
             return sum + tCost + aCost;
         }, 0);
