@@ -204,13 +204,14 @@ export function buildRouteCorridors(trips: Trip[]): Map<string, RouteCorridor> {
             // Bidirectional corridor key (lexicographically sorted)
             const corridorId = oUpper < dUpper ? `${oUpper}<->${dUpper}` : `${dUpper}<->${oUpper}`;
 
+            const cleanProvider = (t.provider || '').trim();
             const leg: CorridorFlightLeg = {
                 id: `${trip.id}_${t.identifier || ''}_${t.departureDate || ''}`,
                 tripId: trip.id,
                 tripName: trip.name,
                 origin: formatProperLocationName(oCode),
                 destination: formatProperLocationName(dCode),
-                provider: t.provider || (t.mode === 'Flight' || !t.mode ? 'Flight' : t.mode),
+                provider: cleanProvider,
                 identifier: t.identifier || '',
                 departureDate: t.departureDate,
                 mode: t.mode || 'Flight'
@@ -240,7 +241,7 @@ export function buildRouteCorridors(trips: Trip[]): Map<string, RouteCorridor> {
                     distanceKm: distKm,
                     distanceMiles: Math.round(distKm * 0.621371),
                     totalFlights: 1,
-                    airlines: leg.provider ? [leg.provider] : [],
+                    airlines: cleanProvider ? [cleanProvider] : [],
                     firstFlownDate: leg.departureDate,
                     lastFlownDate: leg.departureDate,
                     flights: [leg]
@@ -250,8 +251,8 @@ export function buildRouteCorridors(trips: Trip[]): Map<string, RouteCorridor> {
                 existing.totalFlights += 1;
                 existing.flights.push(leg);
 
-                if (leg.provider && !existing.airlines.includes(leg.provider)) {
-                    existing.airlines.push(leg.provider);
+                if (cleanProvider && !existing.airlines.includes(cleanProvider)) {
+                    existing.airlines.push(cleanProvider);
                 }
 
                 if (leg.departureDate) {
@@ -267,4 +268,159 @@ export function buildRouteCorridors(trips: Trip[]): Map<string, RouteCorridor> {
     });
 
     return corridors;
+}
+
+export interface RouteTransportSummary {
+    primaryMode: string;
+    isMultiModal: boolean;
+    activityLabel: string;        // "Cruises", "Flights", "Trains", "Buses", "Drives", "Trips"
+    singleActivityLabel: string;  // "Cruise", "Flight", "Train", "Bus", "Drive", "Trip"
+    providerLabel: string;        // "Cruise Lines", "Airlines", "Rail Operators", "Bus Operators", "Car Rentals", "Operators"
+    singleProviderLabel: string;  // "Cruise Line", "Airline", "Rail Operator", "Bus Operator", "Car Rental", "Operator"
+    providerCount: number;
+    verbPast: string;             // "last sailed", "last flown", "last traveled", "last driven"
+    listTitle: string;            // "CRUISES", "FLIGHTS", "TRAINS", "BUSES", "DRIVES", "JOURNEYS"
+    modeIconType: 'flight' | 'cruise' | 'ferry' | 'train' | 'bus' | 'car' | 'mixed';
+    distinctModes: string[];
+}
+
+export function getRouteTransportSummary(corridor: RouteCorridor): RouteTransportSummary {
+    const legs = corridor.flights || [];
+    const rawModes = legs.map(l => (l.mode || 'Flight').trim());
+    const distinctModes = Array.from(new Set(rawModes));
+
+    // Categorize modes into primary types:
+    const categorizedModes = distinctModes.map(m => {
+        const lower = m.toLowerCase();
+        if (lower.includes('flight') || lower.includes('plane') || lower.includes('air')) return 'flight';
+        if (lower.includes('train') || lower.includes('rail')) return 'train';
+        if (lower.includes('bus')) return 'bus';
+        if (lower.includes('cruise')) return 'cruise';
+        if (lower.includes('ferry') || lower.includes('boat') || lower.includes('ship')) return 'ferry';
+        if (lower.includes('car') || lower.includes('drive') || lower.includes('taxi')) return 'car';
+        return 'other';
+    });
+
+    const uniqueCategories = Array.from(new Set(categorizedModes));
+    const isMultiModal = uniqueCategories.length > 1;
+
+    // Calculate real distinct providers
+    const knownProviders = new Set<string>();
+    legs.forEach(l => {
+        const p = (l.provider || '').trim();
+        if (p && p.toLowerCase() !== 'flight' && !distinctModes.some(dm => dm.toLowerCase() === p.toLowerCase())) {
+            knownProviders.add(p);
+        }
+    });
+
+    const count = legs.length;
+    const providerCount = knownProviders.size > 0 ? knownProviders.size : (corridor.airlines?.length > 0 ? corridor.airlines.length : 1);
+
+    if (isMultiModal) {
+        return {
+            primaryMode: 'Multi-modal',
+            isMultiModal: true,
+            activityLabel: count === 1 ? 'Trip' : 'Trips',
+            singleActivityLabel: 'Trip',
+            providerLabel: providerCount === 1 ? 'Operator' : 'Operators',
+            singleProviderLabel: 'Operator',
+            providerCount,
+            verbPast: 'last traveled',
+            listTitle: 'JOURNEYS',
+            modeIconType: 'mixed',
+            distinctModes
+        };
+    }
+
+    const singleCat = uniqueCategories[0] || 'flight';
+
+    switch (singleCat) {
+        case 'cruise':
+            return {
+                primaryMode: 'Cruise',
+                isMultiModal: false,
+                activityLabel: count === 1 ? 'Cruise' : 'Cruises',
+                singleActivityLabel: 'Cruise',
+                providerLabel: providerCount === 1 ? 'Cruise Line' : 'Cruise Lines',
+                singleProviderLabel: 'Cruise Line',
+                providerCount,
+                verbPast: 'last sailed',
+                listTitle: 'CRUISES',
+                modeIconType: 'cruise',
+                distinctModes
+            };
+        case 'ferry':
+            return {
+                primaryMode: 'Ferry',
+                isMultiModal: false,
+                activityLabel: count === 1 ? 'Ferry Trip' : 'Ferries',
+                singleActivityLabel: 'Ferry',
+                providerLabel: providerCount === 1 ? 'Ferry Line' : 'Ferry Lines',
+                singleProviderLabel: 'Ferry Line',
+                providerCount,
+                verbPast: 'last sailed',
+                listTitle: 'FERRIES',
+                modeIconType: 'ferry',
+                distinctModes
+            };
+        case 'train':
+            return {
+                primaryMode: 'Train',
+                isMultiModal: false,
+                activityLabel: count === 1 ? 'Train' : 'Trains',
+                singleActivityLabel: 'Train',
+                providerLabel: providerCount === 1 ? 'Rail Operator' : 'Rail Operators',
+                singleProviderLabel: 'Rail Operator',
+                providerCount,
+                verbPast: 'last traveled',
+                listTitle: 'TRAINS',
+                modeIconType: 'train',
+                distinctModes
+            };
+        case 'bus':
+            return {
+                primaryMode: 'Bus',
+                isMultiModal: false,
+                activityLabel: count === 1 ? 'Bus' : 'Buses',
+                singleActivityLabel: 'Bus',
+                providerLabel: providerCount === 1 ? 'Bus Line' : 'Bus Operators',
+                singleProviderLabel: 'Bus Operator',
+                providerCount,
+                verbPast: 'last traveled',
+                listTitle: 'BUSES',
+                modeIconType: 'bus',
+                distinctModes
+            };
+        case 'car': {
+            const isRental = distinctModes.some(m => m.toLowerCase().includes('rental'));
+            return {
+                primaryMode: isRental ? 'Car Rental' : 'Car',
+                isMultiModal: false,
+                activityLabel: count === 1 ? 'Drive' : 'Drives',
+                singleActivityLabel: 'Drive',
+                providerLabel: isRental ? (providerCount === 1 ? 'Car Rental' : 'Car Rentals') : (providerCount === 1 ? 'Vehicle' : 'Vehicles'),
+                singleProviderLabel: isRental ? 'Car Rental' : 'Vehicle',
+                providerCount,
+                verbPast: 'last driven',
+                listTitle: 'DRIVES',
+                modeIconType: 'car',
+                distinctModes
+            };
+        }
+        case 'flight':
+        default:
+            return {
+                primaryMode: 'Flight',
+                isMultiModal: false,
+                activityLabel: count === 1 ? 'Flight' : 'Flights',
+                singleActivityLabel: 'Flight',
+                providerLabel: providerCount === 1 ? 'Airline' : 'Airlines',
+                singleProviderLabel: 'Airline',
+                providerCount,
+                verbPast: 'last flown',
+                listTitle: 'FLIGHTS',
+                modeIconType: 'flight',
+                distinctModes
+            };
+    }
 }

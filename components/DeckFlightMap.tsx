@@ -29,7 +29,8 @@ import {
     MagnifyingGlassPlus as ZoomIn,
     MagnifyingGlassMinus as ZoomOut,
     List,
-    Sparkle
+    Sparkle,
+    Bus
 } from '@phosphor-icons/react';
 import { Trip, CountryResidenceStatus, PredefinedMapMode, toggleCountryResidenceStatus, WorkspaceSettings } from '../types';
 import { useWanderSync } from '../hooks/useWanderSync';
@@ -44,7 +45,7 @@ import {
 import { getTwilightGradientGeoJSON } from '../services/solarTerminator';
 import { getLatestRainRadarMetadata, RainRadarMetadata } from '../services/rainViewer';
 import { generateAirportRunway, RunwayGeometry, getPhysicalRunways } from '../services/airportRunways';
-import { buildRouteCorridors, RouteCorridor, getApproxLocalTime, formatAirportDisplayName, resolveLocationMetadata } from '../services/routeCorridor';
+import { buildRouteCorridors, RouteCorridor, getApproxLocalTime, formatAirportDisplayName, resolveLocationMetadata, getRouteTransportSummary, RouteTransportSummary } from '../services/routeCorridor';
 import { getFlagEmoji, getRegion } from '../services/geoData';
 import { fetchMultiModalRoute, getCachedMultiModalRoute } from '../services/multiModalRouting';
 import { dataService } from '../services/mockDb';
@@ -193,6 +194,26 @@ const formatAirportCityDotName = (name: string, city?: string): string => {
         return `${cleanCity} · ${cleanName}`;
     }
     return cleanCity || cleanName || '';
+};
+
+const renderRouteModeIcon = (mode: string, className = "w-4 h-4") => {
+    const lower = (mode || '').toLowerCase();
+    if (lower.includes('train') || lower.includes('rail')) {
+        return <Train className={className} weight="duotone" />;
+    }
+    if (lower.includes('cruise') || lower.includes('ferry') || lower.includes('boat') || lower.includes('ship')) {
+        return <Ship className={className} weight="duotone" />;
+    }
+    if (lower.includes('car') || lower.includes('drive') || lower.includes('taxi')) {
+        return <Car className={className} weight="duotone" />;
+    }
+    if (lower.includes('bus')) {
+        return <Bus className={className} weight="duotone" />;
+    }
+    if (lower.includes('multi') || lower.includes('mixed')) {
+        return <Sparkle className={className} weight="duotone" />;
+    }
+    return <Plane className={className} weight="duotone" />;
 };
 
 // Calculate approximate polygon centroid for Scratch Map regional coloring
@@ -2404,183 +2425,212 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             )}
 
             {/* AirTrail Style Route Corridor Inspector Card with Liquid Glass */}
-            {selectedCorridor && (
-                <div
-                    className={`absolute top-20 z-30 w-[360px] sm:w-[380px] max-h-[calc(100vh-6rem)] flex flex-col animate-airtrail-slide-in pointer-events-auto transition-all duration-300 ${isEmbedded ? 'left-3 max-w-[calc(100%-1.5rem)]' : (sidebarCollapsed ? 'left-5 md:left-28' : 'left-5 md:left-80')}`}
-                >
-                    <GlassPanel
-                        className="wg-glass-card w-full max-h-[calc(100vh-6.5rem)] flex flex-col shadow-2xl relative"
-                        padding="18px"
-                        overrides={{ borderRadius: 28 }}
+            {selectedCorridor && (() => {
+                const summary = getRouteTransportSummary(selectedCorridor);
+                return (
+                    <div
+                        className={`absolute top-20 z-30 w-[360px] sm:w-[380px] max-h-[calc(100vh-6rem)] flex flex-col animate-airtrail-slide-in pointer-events-auto transition-all duration-300 ${isEmbedded ? 'left-3 max-w-[calc(100%-1.5rem)]' : (sidebarCollapsed ? 'left-5 md:left-28' : 'left-5 md:left-80')}`}
                     >
-                        {/* Top Header Bar with Colored Title & Prominent Close Button */}
-                        <div className="flex items-center justify-between pb-3 mb-2.5 border-b border-black/5 dark:border-white/10 shrink-0">
-                            <div className="flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-primary-500 shadow-sm shadow-primary-500/50" />
-                                <span className="text-xs font-extrabold uppercase tracking-wider text-primary-600 dark:text-primary-400">
-                                    Route
-                                </span>
-                            </div>
-                            <button
-                                onClick={handleResetCorridor}
-                                className="w-8 h-8 wg-touch-target rounded-xl flex items-center justify-center text-gray-700 hover:text-gray-950 dark:text-gray-200 dark:hover:text-white bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/20 border border-black/10 dark:border-white/15 transition-all cursor-pointer shrink-0 shadow-xs active:scale-95"
-                                aria-label="Close route details"
-                                title="Close route details"
-                            >
-                                <X className="w-4 h-4 stroke-[2.5]" />
-                            </button>
-                        </div>
-
-                        {/* Scrollable Container */}
-                        <div className="flex-1 overflow-y-auto custom-scrollbar -mr-1 pr-1">
-                            {/* Origin Block */}
-                            {(() => {
-                                const originTime = getApproxLocalTime(selectedCorridor.originCoords[0]);
-                                const originDisplay = formatAirportCityDotName(selectedCorridor.originName, selectedCorridor.originCity);
-                                return (
-                                    <div className="space-y-1">
-                                        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate block">
-                                            {originDisplay}
-                                        </span>
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-2xl leading-none shrink-0">{selectedCorridor.originFlag}</span>
-                                                <span className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white font-sans">
-                                                    {selectedCorridor.originCode.toUpperCase()}
-                                                </span>
-                                                <ChevronRight className="w-4 h-4 text-gray-400 dark:text-gray-500 ml-0.5" />
-                                            </div>
-                                            <div className="text-right">
-                                                <span className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white block font-sans">
-                                                    {originTime.timeStr}
-                                                </span>
-                                                <span className="text-xs text-gray-500 dark:text-gray-400 font-medium block">
-                                                    {originTime.dateStr} · {originTime.utcOffsetStr}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })()}
-
-                            {/* Middle Hairline Distance & Relative Time Indicator */}
-                            <div className="flex items-center gap-2.5 my-3">
-                                <div className="flex-1 h-px bg-gray-200 dark:bg-zinc-800" />
-                                <span className="text-2xs text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap">
-                                    {selectedCorridor.distanceKm.toLocaleString()} km · {getRelativeTimeDiffString(selectedCorridor.originCoords[0], selectedCorridor.destCoords[0], selectedCorridor.destCode)}
-                                </span>
-                                <div className="flex-1 h-px bg-gray-200 dark:bg-zinc-800" />
+                        <GlassPanel
+                            className="wg-glass-card w-full max-h-[calc(100vh-6.5rem)] flex flex-col shadow-2xl relative"
+                            padding="18px"
+                            overrides={{ borderRadius: 28 }}
+                        >
+                            {/* Top Header Bar with Colored Title & Prominent Close Button */}
+                            <div className="flex items-center justify-between pb-3 mb-2.5 border-b border-black/5 dark:border-white/10 shrink-0">
+                                <div className="flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-primary-500 shadow-sm shadow-primary-500/50" />
+                                    <span className="text-xs font-extrabold uppercase tracking-wider text-primary-600 dark:text-primary-400">
+                                        Route
+                                    </span>
+                                    <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1">
+                                        {renderRouteModeIcon(summary.primaryMode, "w-3 h-3 text-primary-500")}
+                                        <span>{summary.singleActivityLabel.toUpperCase()}</span>
+                                    </span>
+                                </div>
+                                <button
+                                    onClick={handleResetCorridor}
+                                    className="w-8 h-8 wg-touch-target rounded-xl flex items-center justify-center text-gray-700 hover:text-gray-950 dark:text-gray-200 dark:hover:text-white bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/20 border border-black/10 dark:border-white/15 transition-all cursor-pointer shrink-0 shadow-xs active:scale-95"
+                                    aria-label="Close route details"
+                                    title="Close route details"
+                                >
+                                    <X className="w-4 h-4 stroke-[2.5]" />
+                                </button>
                             </div>
 
-                            {/* Destination Block */}
-                            {(() => {
-                                const destTime = getApproxLocalTime(selectedCorridor.destCoords[0]);
-                                const destDisplay = formatAirportCityDotName(selectedCorridor.destName, selectedCorridor.destCity);
-                                return (
-                                    <div className="space-y-1">
-                                        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate block">
-                                            {destDisplay}
-                                        </span>
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-2xl leading-none shrink-0">{selectedCorridor.destFlag}</span>
-                                                <span className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white font-sans">
-                                                    {selectedCorridor.destCode.toUpperCase()}
-                                                </span>
-                                                <ChevronRight className="w-4 h-4 text-gray-400 dark:text-gray-500 ml-0.5" />
+                            {/* Scrollable Container */}
+                            <div className="flex-1 overflow-y-auto custom-scrollbar -mr-1 pr-1">
+                                {/* Origin Block */}
+                                {(() => {
+                                    const originTime = getApproxLocalTime(selectedCorridor.originCoords[0]);
+                                    const originDisplay = formatAirportCityDotName(selectedCorridor.originName, selectedCorridor.originCity);
+                                    return (
+                                        <div className="space-y-1">
+                                            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate block">
+                                                {originDisplay}
+                                            </span>
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-2xl leading-none shrink-0">{selectedCorridor.originFlag}</span>
+                                                    <span className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white font-sans">
+                                                        {selectedCorridor.originCode.toUpperCase()}
+                                                    </span>
+                                                    <ChevronRight className="w-4 h-4 text-gray-400 dark:text-gray-500 ml-0.5" />
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white block font-sans">
+                                                        {originTime.timeStr}
+                                                    </span>
+                                                    <span className="text-xs text-gray-500 dark:text-gray-400 font-medium block">
+                                                        {originTime.dateStr} · {originTime.utcOffsetStr}
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <div className="text-right">
-                                                <span className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white block font-sans">
-                                                    {destTime.timeStr}
-                                                </span>
-                                                <span className="text-xs text-gray-500 dark:text-gray-400 font-medium block">
-                                                    {destTime.dateStr} · {destTime.utcOffsetStr}
-                                                </span>
+                                        </div>
+                                    );
+                                })()}
+
+                                {/* Middle Hairline Distance & Relative Time Indicator */}
+                                <div className="flex items-center gap-2.5 my-3">
+                                    <div className="flex-1 h-px bg-gray-200 dark:bg-zinc-800" />
+                                    <span className="text-2xs text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap">
+                                        {selectedCorridor.distanceKm.toLocaleString()} km · {getRelativeTimeDiffString(selectedCorridor.originCoords[0], selectedCorridor.destCoords[0], selectedCorridor.destCode)}
+                                    </span>
+                                    <div className="flex-1 h-px bg-gray-200 dark:bg-zinc-800" />
+                                </div>
+
+                                {/* Destination Block */}
+                                {(() => {
+                                    const destTime = getApproxLocalTime(selectedCorridor.destCoords[0]);
+                                    const destDisplay = formatAirportCityDotName(selectedCorridor.destName, selectedCorridor.destCity);
+                                    return (
+                                        <div className="space-y-1">
+                                            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate block">
+                                                {destDisplay}
+                                            </span>
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-2xl leading-none shrink-0">{selectedCorridor.destFlag}</span>
+                                                    <span className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white font-sans">
+                                                        {selectedCorridor.destCode.toUpperCase()}
+                                                    </span>
+                                                    <ChevronRight className="w-4 h-4 text-gray-400 dark:text-gray-500 ml-0.5" />
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white block font-sans">
+                                                        {destTime.timeStr}
+                                                    </span>
+                                                    <span className="text-xs text-gray-500 dark:text-gray-400 font-medium block">
+                                                        {destTime.dateStr} · {destTime.utcOffsetStr}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+
+                                {/* Section Divider */}
+                                <div className="border-t border-gray-100 dark:border-zinc-800 my-4" />
+
+                                {/* Route Activity Section */}
+                                <div>
+                                    <div className="text-2xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-3">
+                                        ROUTE ACTIVITY
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="bg-black/5 dark:bg-white/[0.06] rounded-2xl p-4 border border-black/5 dark:border-white/[0.06]">
+                                            <div className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                                                {summary.activityLabel}
+                                            </div>
+                                            <div className="text-3xl font-bold text-gray-900 dark:text-white mt-1 tracking-tight">
+                                                {selectedCorridor.flights.length}
+                                            </div>
+                                        </div>
+                                        <div className="bg-black/5 dark:bg-white/[0.06] rounded-2xl p-4 border border-black/5 dark:border-white/[0.06]">
+                                            <div className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                                                {summary.providerLabel}
+                                            </div>
+                                            <div className="text-3xl font-bold text-gray-900 dark:text-white mt-1 tracking-tight">
+                                                {summary.providerCount}
                                             </div>
                                         </div>
                                     </div>
-                                );
-                            })()}
-
-                            {/* Section Divider */}
-                            <div className="border-t border-gray-100 dark:border-zinc-800 my-4" />
-
-                            {/* Route Activity Section */}
-                            <div>
-                                <div className="text-2xs font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-3">
-                                    ROUTE ACTIVITY
+                                    <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-3">
+                                        {selectedCorridor.distanceKm.toLocaleString()} km
+                                        {selectedCorridor.lastFlownDate && (
+                                            <> · {summary.verbPast} <span className="text-gray-700 dark:text-gray-200 font-semibold">{formatAirTrailDateMedium(selectedCorridor.lastFlownDate)}</span></>
+                                        )}
+                                    </div>
                                 </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="bg-black/5 dark:bg-white/[0.06] rounded-2xl p-4 border border-black/5 dark:border-white/[0.06]">
-                                        <div className="text-xs font-medium text-gray-500 dark:text-gray-400">Flights</div>
-                                        <div className="text-3xl font-bold text-gray-900 dark:text-white mt-1 tracking-tight">
-                                            {selectedCorridor.totalFlights}
+
+                                {/* Section Divider */}
+                                <div className="border-t border-gray-100 dark:border-zinc-800 my-4" />
+
+                                {/* Transports List Section */}
+                                <div>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300">
+                                            <List className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                                            <span>{summary.listTitle} <span className="font-normal text-gray-400 dark:text-gray-500 ml-1">{selectedCorridor.flights.length}</span></span>
                                         </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsFlightListExpanded(!isFlightListExpanded)}
+                                            className="text-xs font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors cursor-pointer"
+                                        >
+                                            {isFlightListExpanded ? 'Collapse' : 'Open list'}
+                                        </button>
                                     </div>
-                                    <div className="bg-black/5 dark:bg-white/[0.06] rounded-2xl p-4 border border-black/5 dark:border-white/[0.06]">
-                                        <div className="text-xs font-medium text-gray-500 dark:text-gray-400">Airlines</div>
-                                        <div className="text-3xl font-bold text-gray-900 dark:text-white mt-1 tracking-tight">
-                                            {selectedCorridor.airlines?.length || 1}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-3">
-                                    {selectedCorridor.distanceKm.toLocaleString()} km
-                                    {selectedCorridor.lastFlownDate && (
-                                        <> · last flown <span className="text-gray-700 dark:text-gray-200 font-semibold">{formatAirTrailDateMedium(selectedCorridor.lastFlownDate)}</span></>
-                                    )}
-                                </div>
-                            </div>
 
-                            {/* Section Divider */}
-                            <div className="border-t border-gray-100 dark:border-zinc-800 my-4" />
-
-                            {/* Flights List Section */}
-                            <div>
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300">
-                                        <List className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-                                        <span>FLIGHTS <span className="font-normal text-gray-400 dark:text-gray-500 ml-1">{selectedCorridor.totalFlights}</span></span>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsFlightListExpanded(!isFlightListExpanded)}
-                                        className="text-xs font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors cursor-pointer"
-                                    >
-                                        {isFlightListExpanded ? 'Collapse' : 'Open list'}
-                                    </button>
-                                </div>
-
-                                <div className={`mt-3 space-y-3 overflow-y-auto custom-scrollbar pr-1 transition-all duration-200 ${isFlightListExpanded ? 'max-h-72' : 'max-h-48'}`}>
-                                    {selectedCorridor.flights.map((f, idx) => (
-                                        <div key={idx} className="flex items-start justify-between text-xs group">
-                                            <div>
-                                                <div className="flex items-center gap-3">
-                                                    <span className="font-bold text-sm text-gray-900 dark:text-white font-sans">{f.origin.toUpperCase()}</span>
-                                                    <span className="font-bold text-sm text-gray-900 dark:text-white font-sans">{f.destination.toUpperCase()}</span>
-                                                    {(f.identifier || f.provider) && (
-                                                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                                                            {f.identifier ? `${f.provider} ${f.identifier}` : f.provider}
-                                                        </span>
+                                    <div className={`mt-3 space-y-2 overflow-y-auto custom-scrollbar pr-1 transition-all duration-200 ${isFlightListExpanded ? 'max-h-72' : 'max-h-48'}`}>
+                                        {selectedCorridor.flights.map((f, idx) => {
+                                            const legMode = f.mode || 'Flight';
+                                            const hasCustomProvider = f.provider && f.provider.toLowerCase() !== 'flight' && f.provider.toLowerCase() !== legMode.toLowerCase();
+                                            return (
+                                                <div key={idx} className="p-2.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 flex items-start justify-between text-xs group hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                                                    <div className="flex items-start gap-2.5 min-w-0">
+                                                        <div className="mt-0.5 w-6 h-6 rounded-lg bg-black/5 dark:bg-white/5 flex items-center justify-center shrink-0 text-primary-600 dark:text-primary-400">
+                                                            {renderRouteModeIcon(legMode, "w-3.5 h-3.5")}
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                                                <span className="font-bold text-sm text-gray-900 dark:text-white font-sans">{f.origin.toUpperCase()}</span>
+                                                                <ArrowRight className="w-3 h-3 text-gray-400 dark:text-gray-500 shrink-0" />
+                                                                <span className="font-bold text-sm text-gray-900 dark:text-white font-sans">{f.destination.toUpperCase()}</span>
+                                                                {f.identifier && (
+                                                                    <span className="text-2xs font-mono font-bold px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/5 text-primary-600 dark:text-primary-400 border border-black/5 dark:border-white/5 ml-1">
+                                                                        {f.identifier}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-normal flex items-center gap-2 flex-wrap">
+                                                                <span>{hasCustomProvider ? f.provider : legMode}</span>
+                                                                {hasCustomProvider && (
+                                                                    <span className="px-1.5 py-0.2 rounded text-3xs font-semibold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-gray-400">
+                                                                        {legMode}
+                                                                    </span>
+                                                                )}
+                                                                {f.tripName && (
+                                                                    <span className="truncate max-w-[130px] text-gray-400 dark:text-gray-500">· {f.tripName}</span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    {f.departureDate && (
+                                                        <div className="text-xs font-medium text-gray-500 dark:text-gray-400 font-sans pt-0.5 shrink-0 pl-2">
+                                                            {formatAirTrailDate(f.departureDate)}
+                                                        </div>
                                                     )}
                                                 </div>
-                                                <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 font-normal">
-                                                    {f.provider || 'Flight'}
-                                                </div>
-                                            </div>
-                                            {f.departureDate && (
-                                                <div className="text-xs font-medium text-gray-500 dark:text-gray-400 font-sans pt-0.5 shrink-0">
-                                                    {formatAirTrailDate(f.departureDate)}
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
+                                            );
+                                        })}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </GlassPanel>
-                </div>
-            )}
+                        </GlassPanel>
+                    </div>
+                );
+            })()}
 
             {/* Interactive Object Hover HUD Tooltip with Liquid Glass */}
             {hoverInfo?.object && !selectedCorridor && !selectedCountry && (
@@ -2597,8 +2647,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         const c = corridorMap.get(hoverInfo.object.corridorId);
                         if (!c) return null;
 
-                        const airlineCount = c.airlines?.length || 1;
+                        const summary = getRouteTransportSummary(c);
                         const latestFlight = c.flights[c.flights.length - 1] || c.flights[0];
+                        const latestMode = latestFlight?.mode || 'Flight';
 
                         return (
                             <GlassPanel
@@ -2612,6 +2663,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                         <span className="w-1.5 h-1.5 rounded-full bg-primary-500 shadow-sm shadow-primary-500/50" />
                                         <span className="text-xs font-extrabold uppercase tracking-wider text-primary-600 dark:text-primary-400">
                                             Route
+                                        </span>
+                                        <span className="px-1.5 py-0.5 rounded-md text-3xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary ml-1">
+                                            {summary.singleActivityLabel}
                                         </span>
                                     </div>
                                 </div>
@@ -2631,7 +2685,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                 <div className="flex items-center gap-2.5 my-2.5">
                                     <div className="flex-1 h-px bg-gray-200 dark:bg-zinc-800" />
                                     <span className="text-2xs text-gray-400 dark:text-gray-500 font-medium whitespace-nowrap">
-                                        {c.distanceKm.toLocaleString()} km · {c.flights.length} {c.flights.length === 1 ? 'trip' : 'trips'} · {airlineCount} {airlineCount === 1 ? 'airline' : 'airlines'}
+                                        {c.distanceKm.toLocaleString()} km · {c.flights.length} {c.flights.length === 1 ? summary.singleActivityLabel.toLowerCase() : summary.activityLabel.toLowerCase()} · {summary.providerCount} {summary.providerCount === 1 ? summary.singleProviderLabel.toLowerCase() : summary.providerLabel.toLowerCase()}
                                     </span>
                                     <div className="flex-1 h-px bg-gray-200 dark:bg-zinc-800" />
                                 </div>
@@ -2650,34 +2704,37 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                 {/* Section Divider */}
                                 <div className="border-t border-gray-100 dark:border-zinc-800 my-3" />
 
-                                {/* Flights Section */}
+                                {/* Activity Section */}
                                 <div>
                                     <div className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-2.5 flex items-center gap-1.5">
-                                        Flights <span className="font-normal text-gray-400 dark:text-gray-500">{c.totalFlights}</span>
+                                        {summary.activityLabel} <span className="font-normal text-gray-400 dark:text-gray-500">{c.flights.length}</span>
                                     </div>
                                     {latestFlight && (
                                         <div className="flex items-start gap-2.5">
                                             <div className="pt-0.5 shrink-0 text-gray-400 dark:text-gray-500">
-                                                <Plane className="w-4 h-4 transform -rotate-45" />
+                                                {renderRouteModeIcon(latestMode, "w-4 h-4")}
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-4">
+                                                    <div className="flex items-center gap-2">
                                                         <span className="font-bold text-sm text-gray-900 dark:text-white tracking-tight">
                                                             {formatProperLocationName(latestFlight.origin)}
                                                         </span>
+                                                        <ArrowRight className="w-3 h-3 text-gray-400 dark:text-gray-500 shrink-0" />
                                                         <span className="font-bold text-sm text-gray-900 dark:text-white tracking-tight">
                                                             {formatProperLocationName(latestFlight.destination)}
                                                         </span>
                                                     </div>
                                                     {latestFlight.departureDate && (
-                                                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 font-sans shrink-0">
+                                                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 font-sans shrink-0 pl-1">
                                                             {formatAirTrailDate(latestFlight.departureDate)}
                                                         </span>
                                                     )}
                                                 </div>
                                                 <div className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                                                    {latestFlight.provider || 'Flight'}
+                                                    {latestFlight.provider && latestFlight.provider.toLowerCase() !== 'flight' && latestFlight.provider.toLowerCase() !== latestMode.toLowerCase()
+                                                        ? `${latestFlight.provider} · ${latestMode}`
+                                                        : latestMode}
                                                 </div>
                                             </div>
                                         </div>
