@@ -779,7 +779,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                                         <button
                                                             type="button"
                                                             onClick={() => handleRemoveDestination(idx)}
-                                                            className="p-0.5 hover:text-rose-500 rounded-md transition-colors cursor-pointer ml-0.5 text-zinc-400 hover:text-rose-500"
+                                                            className="p-0.5 rounded-md transition-colors cursor-pointer ml-0.5 text-light-text-secondary dark:text-dark-text-secondary hover:text-rose-500"
                                                             aria-label={`Remove ${dest.name}`}
                                                         >
                                                             <XCircle weight="duotone" className="w-3.5 h-3.5" />

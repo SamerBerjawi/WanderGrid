@@ -68,8 +68,12 @@ export const safeStorage = {
     } catch (e) {
       console.warn(`[STORAGE] Failed to write ${key} (possible quota exceeded):`, e);
       try {
-        localStorage.removeItem('wandergrid_dashboard_cache_v1');
-        localStorage.removeItem('wandergrid_geo_cache_v3');
+        // Evict every regenerable cache (geo, routing, dashboard) — never primary data collections
+        const REGENERABLE = /^wandergrid_(dashboard_cache|geo_cache|overland_routes|multimodal_routes|coord)/;
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const k = localStorage.key(i);
+          if (k && k !== key && REGENERABLE.test(k)) localStorage.removeItem(k);
+        }
         localStorage.setItem(key, value);
         return true;
       } catch (retryErr) {
@@ -848,6 +852,19 @@ class DataService {
               setCachedStorage(key('settings'), mergedSettings, true);
           }
 
+          // Verify primary collections actually persisted — otherwise they vanish on reload
+          for (const col of ['trips', 'flights', 'users']) {
+              const expected = memoryCache[key(col)];
+              if (Array.isArray(expected) && expected.length > 0) {
+                  const raw = safeStorage.getItem(key(col));
+                  let persistedCount = -1;
+                  try { persistedCount = raw ? (JSON.parse(raw) as any[]).length : -1; } catch (e) {}
+                  if (persistedCount !== expected.length) {
+                      throw new Error(`Browser storage is full: restored ${col} could not be saved. Clear site data for localhost and retry.`);
+                  }
+              }
+          }
+
           try { window.dispatchEvent(new CustomEvent('wandergrid_db_updated')); } catch (e) {}
           return { success: true, mode, selected } as unknown as T;
       }
@@ -1447,7 +1464,8 @@ class DataService {
 
           const selectedCats = payload.restoreOptions.selectedCategories;
           if (selectedCats.visited !== false && state.caches?.geo && Array.isArray(state.caches.geo)) {
-              localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(state.caches.geo));
+              // Non-fatal: a quota failure on the geo cache must not abort an otherwise successful restore
+              safeStorage.setItem(GEO_CACHE_KEY, JSON.stringify(state.caches.geo));
           }
 
           // Clear dashboard cached stats on import to avoid stale states

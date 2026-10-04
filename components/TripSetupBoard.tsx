@@ -142,7 +142,7 @@ const CABIN_OPTIONS = [
     { label: 'First Class', value: 'First Class' }
 ];
 
-export const AIRLINE_DOMAINS: Record<string, string> = {
+const AIRLINE_DOMAINS: Record<string, string> = {
     'delta': 'delta.com', 'delta air lines': 'delta.com', 'dl': 'delta.com',
     'american': 'aa.com', 'american airlines': 'aa.com', 'aa': 'aa.com',
     'united': 'united.com', 'united airlines': 'united.com', 'ua': 'united.com',
@@ -2453,7 +2453,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                                 {/* Travelers Selection */}
                                 {users.length > 0 && (
                                     <div className="space-y-1.5">
-                                        <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center justify-between">
+                                        <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
                                             <span>Travelers</span>
                                             <span className="font-normal text-2xs text-light-text-secondary/70">{selectedUserIds.length} Selected</span>
                                         </label>
@@ -2985,7 +2985,7 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
                             {/* Travelers */}
                             {users.length > 0 && (
                                 <div className="space-y-1.5">
-                                    <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center justify-between">
+                                    <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
                                         <span>Travelers</span>
                                         <span className="font-normal text-2xs text-light-text-secondary/70">{selectedUserIds.length} Selected</span>
                                     </label>

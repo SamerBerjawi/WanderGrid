@@ -381,7 +381,7 @@ export function getMapContentPadding(
     };
 }
 
-export function calculateAdaptiveWorldCamera(
+function calculateAdaptiveWorldCamera(
     containerWidth: number,
     containerHeight: number,
     isSidebarCollapsed: boolean,
