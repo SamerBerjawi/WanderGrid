@@ -1008,7 +1008,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
             </div>
 
             {/* 3.5 MOBILE TOP BAR (< md): Telemetry on left, Fullscreen & Controls on right */}
-            <div className="flex md:hidden absolute top-3 inset-x-3 z-20 items-center justify-between pointer-events-none">
+            <div className="flex md:hidden absolute top-[calc(0.75rem+env(safe-area-inset-top,0px))] inset-x-3 z-20 items-center justify-between pointer-events-none safe-x">
                 {/* Left: Compact Telemetry / Map Brand */}
                 <div className="pointer-events-auto">
                     <GlassPanel
@@ -1069,7 +1069,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
             </div>
 
             {/* 3.6 MOBILE BOTTOM FLOATING TAB SELECTOR (< md) - Floating just above bottom navbar */}
-            <div className={`flex md:hidden fixed bottom-[4.85rem] inset-x-0 z-40 items-center justify-center px-4 pointer-events-none transition-opacity duration-200 ${isSidebarOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
+            <div className={`flex md:hidden fixed bottom-[calc(4.85rem+env(safe-area-inset-bottom,0px))] inset-x-0 z-40 items-center justify-center px-4 pointer-events-none transition-opacity duration-200 ${isSidebarOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
                 }`}>
                 <div className="pointer-events-auto w-full max-w-sm">
                     <GlassPanel
@@ -1132,7 +1132,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                     overrides={{ borderRadius: 0 }}
                 >
                     {/* Sidebar Header */}
-                    <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-black/5 dark:border-white/5 bg-gradient-to-r from-primary-500/10 via-transparent to-transparent shrink-0">
+                    <div className="flex items-center justify-between px-6 pt-[calc(1.25rem+env(safe-area-inset-top,0px))] md:pt-5 pb-4 border-b border-black/5 dark:border-white/5 bg-gradient-to-r from-primary-500/10 via-transparent to-transparent shrink-0">
                         <div className="flex items-center gap-2.5">
                             <div className="w-8 h-8 rounded-xl bg-primary-500/15 dark:bg-primary-500/25 border border-primary-500/30 dark:border-primary-400/40 flex items-center justify-center text-primary-600 dark:text-primary-400 shrink-0 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_6px_rgba(234,88,12,0.15)] backdrop-blur-md">
                                 <SlidersHorizontal className="w-4 h-4" />
@@ -1211,7 +1211,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                     </div>
 
                     {/* Sidebar Content (Scrollable) */}
-                    <div className="flex-1 overflow-y-auto p-6 pb-28 md:pb-6 space-y-6 custom-scrollbar">
+                    <div className="flex-1 overflow-y-auto p-6 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] md:pb-6 space-y-6 custom-scrollbar">
                         {/* TAB 1: CARTOGRAPHY (PROJECTION & BASEMAPS) - SKY ACCENT */}
                         {activeSidebarTab === 'cartography' && (
                             <div className="space-y-6">

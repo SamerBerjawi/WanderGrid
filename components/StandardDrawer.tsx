@@ -116,7 +116,7 @@ export const StandardDrawer: React.FC<DrawerProps> = ({
       />
 
       {/* 2. Slide-out Shell with Liquid Glass (Floating 28px standard) */}
-      <div className="fixed top-3 sm:top-4 right-3 sm:right-4 bottom-3 sm:bottom-4 z-modal flex max-w-full pl-0 sm:pl-10 pointer-events-none">
+      <div className="fixed top-[calc(0.75rem+env(safe-area-inset-top,0px))] sm:top-4 right-[calc(0.75rem+env(safe-area-inset-right,0px))] sm:right-4 bottom-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:bottom-4 z-modal flex max-w-full pl-0 sm:pl-10 pointer-events-none">
         <div 
           className={`w-screen max-w-lg h-full flex flex-col transform transition-transform duration-300 ease-out pointer-events-auto ${
             isVisible ? 'translate-x-0' : 'translate-x-full'

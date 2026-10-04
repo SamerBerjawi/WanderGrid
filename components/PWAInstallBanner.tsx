@@ -121,7 +121,7 @@ export const PWAInstallBanner: React.FC = () => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 30, scale: 0.96 }}
             transition={{ duration: 0.25, ease: 'easeOut' }}
-            className="fixed bottom-20 md:bottom-6 right-3 md:right-6 z-popover max-w-[360px] w-[calc(100vw-24px)] pointer-events-auto"
+            className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] md:bottom-6 right-3 md:right-6 z-popover max-w-[360px] w-[calc(100vw-24px)] pointer-events-auto safe-x"
           >
             <GlassPanel
               className="wg-glass-card p-4 bg-white/90 dark:bg-dark-card/90 border border-black/10 dark:border-white/10 shadow-2xl flex flex-col gap-3"
@@ -183,7 +183,7 @@ export const PWAInstallBanner: React.FC = () => {
       {/* 4. iOS Install Helper Modal */}
       <AnimatePresence>
         {showIosInstructions && (
-          <div className="fixed inset-0 z-modal overflow-hidden flex items-end sm:items-center justify-center font-sans">
+          <div className="fixed inset-0 z-modal overflow-hidden flex items-end sm:items-center justify-center font-sans safe-x safe-bottom">
             {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
@@ -199,7 +199,7 @@ export const PWAInstallBanner: React.FC = () => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 50 }}
               transition={{ duration: 0.25, ease: 'easeOut' }}
-              className="relative w-full max-w-md p-6 bg-white/80 dark:bg-dark-card/80 backdrop-blur-xl border-t sm:border border-black/10 dark:border-white/10 rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col gap-5 m-0 sm:m-4"
+              className="relative w-full max-w-md p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] sm:pb-6 bg-white/80 dark:bg-dark-card/80 backdrop-blur-xl border-t sm:border border-black/10 dark:border-white/10 rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col gap-5 m-0 sm:m-4"
               style={{ WebkitBackdropFilter: 'blur(24px)' }}
             >
               <div className="flex items-center justify-between">

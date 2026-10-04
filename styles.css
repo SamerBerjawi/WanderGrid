@@ -142,10 +142,28 @@
 /* Margin variants */
 .m-safe-bottom { margin-bottom: env(safe-area-inset-bottom, 0px); }
 .m-safe-top    { margin-top:    env(safe-area-inset-top, 0px); }
+.m-safe-left   { margin-left:   env(safe-area-inset-left, 0px); }
+.m-safe-right  { margin-right:  env(safe-area-inset-right, 0px); }
+.m-safe-x      { margin-left: env(safe-area-inset-left, 0px); margin-right: env(safe-area-inset-right, 0px); }
 
-/* Fixed bottom bar with safe-area */
+/* Fixed & floating elements safe-area offsets */
+.bottom-safe-nav {
+  bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+}
+.bottom-safe-menu {
+  bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+}
+.top-safe-offset {
+  top: calc(0.75rem + env(safe-area-inset-top, 0px));
+}
 .fixed-bottom-safe {
   padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+}
+.pb-safe-scroll {
+  padding-bottom: calc(7rem + env(safe-area-inset-bottom, 0px));
+}
+.pt-safe-content {
+  padding-top: calc(0.5rem + env(safe-area-inset-top, 0px));
 }
 
 /* Touch feedback — Apple HIG active state */

@@ -177,7 +177,7 @@ export const ExcursionConfigurator: React.FC<ExcursionConfiguratorProps> = ({
     };
 
     return createPortal(
-        <div className="fixed inset-0 z-modal overflow-y-auto flex items-center justify-center p-4 sm:p-6 font-sans">
+        <div className="fixed inset-0 z-modal overflow-y-auto flex items-center justify-center p-4 sm:p-6 safe-top safe-bottom safe-x font-sans">
             {/* Backdrop */}
             <div
                 className="fixed inset-0 bg-black/40 dark:bg-black/60 transition-opacity duration-300"

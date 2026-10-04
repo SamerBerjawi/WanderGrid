@@ -332,7 +332,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </aside>
 
       {/* Mobile Bottom Navigation with Liquid Glass */}
-      <div className="flex md:hidden fixed bottom-2 left-0 right-0 z-50 items-center justify-center px-3 pointer-events-none">
+      <div className="flex md:hidden fixed bottom-safe-nav left-0 right-0 z-50 items-center justify-center px-3 pointer-events-none safe-x">
         <GlassPanel
           className="wg-glass-pill shadow-2xl pointer-events-auto w-full max-w-md"
           overrides={{ borderRadius: 28 }}
@@ -430,7 +430,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 12, x: 0 }}
               transition={{ type: "spring", stiffness: 450, damping: 32 }}
-              className="md:hidden fixed bottom-[5.5rem] right-4 w-56 z-modal"
+              className="md:hidden fixed bottom-safe-menu right-4 w-56 z-modal safe-right"
             >
               <GlassPanel
                 className="wg-glass-card shadow-2xl"

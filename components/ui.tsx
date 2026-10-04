@@ -328,7 +328,7 @@ export const Modal: React.FC<ModalProps> = ({
   if (!visible && !isOpen) return null;
 
   return createPortal(
-    <div className={cn("fixed inset-0 z-modal flex items-center justify-center p-4 transition-all duration-300 font-sans", isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none')}>
+    <div className={cn("fixed inset-0 z-modal flex items-center justify-center p-4 safe-top safe-bottom safe-x transition-all duration-300 font-sans", isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none')}>
       {/* 1. Translucent Scrim Backdrop (No blur to avoid double-blurring page content) */}
       <div
         className="fixed inset-0 bg-black/40 dark:bg-black/60 transition-opacity"
@@ -339,7 +339,7 @@ export const Modal: React.FC<ModalProps> = ({
       <GlassPanel
         ref={modalRef}
         className={cn(
-          "wg-glass-card w-full shadow-2xl overflow-hidden transform transition-all duration-300 max-h-[90vh] flex flex-col min-h-0 z-10",
+          "wg-glass-card w-full shadow-2xl overflow-hidden transform transition-all duration-300 max-h-[calc(90dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] flex flex-col min-h-0 z-10",
           maxWidth,
           isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'
         )}

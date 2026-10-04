@@ -186,6 +186,9 @@ export default function App() {
         if (metaThemeColor) {
             metaThemeColor.setAttribute('content', isDark ? '#050505' : '#FAFAFA');
         }
+        document.querySelectorAll('meta[name="theme-color"]').forEach(el => {
+            el.setAttribute('content', isDark ? '#050505' : '#FAFAFA');
+        });
     };
     
     applyTheme(theme);
@@ -291,7 +294,7 @@ export default function App() {
 
   if (!isAuthReady) {
       return (
-        <div className="flex h-screen w-full overflow-hidden bg-gradient-to-br from-indigo-50/50 via-slate-100/60 to-blue-50/50 dark:from-slate-950 dark:via-slate-900/90 dark:to-indigo-950/95 transition-colors duration-500 text-gray-900 dark:text-gray-100 relative">
+        <div className="flex h-screen w-full overflow-hidden bg-gradient-to-br from-indigo-50/50 via-slate-100/60 to-blue-50/50 dark:from-slate-950 dark:via-slate-900/90 dark:to-indigo-950/95 transition-colors duration-500 text-gray-900 dark:text-gray-100 relative safe-top safe-bottom safe-x">
             <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
                 <div className="absolute -top-40 -left-40 w-[550px] h-[550px] rounded-full bg-blue-500/2 dark:bg-blue-600/3 blur-[120px] animate-[pulse_10s_infinite]" />
                 <div className="absolute -bottom-40 -right-40 w-[600px] h-[600px] rounded-full bg-purple-500/2 dark:bg-purple-600/3 blur-[130px] animate-[pulse_14s_infinite] delay-1000" />
@@ -305,7 +308,7 @@ export default function App() {
 
   if (!currentUser) {
       return (
-        <div className="flex h-screen w-full overflow-hidden bg-gradient-to-br from-indigo-50/50 via-slate-100/60 to-blue-50/50 dark:from-slate-950 dark:via-slate-900/90 dark:to-indigo-950/95 transition-colors duration-500 text-gray-900 dark:text-gray-100 relative">
+        <div className="flex h-screen w-full overflow-hidden bg-gradient-to-br from-indigo-50/50 via-slate-100/60 to-blue-50/50 dark:from-slate-950 dark:via-slate-900/90 dark:to-indigo-950/95 transition-colors duration-500 text-gray-900 dark:text-gray-100 relative safe-top safe-bottom safe-x">
             {/* Pulsing ambient spots */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
                 <div className="absolute -top-40 -left-40 w-[550px] h-[550px] rounded-full bg-blue-500/2 dark:bg-blue-600/3 blur-[120px] animate-[pulse_10s_infinite]" />
@@ -324,7 +327,7 @@ export default function App() {
 
   return (
     <IconContext.Provider value={{ weight: 'duotone' }}>
-      <div className="flex h-screen w-full overflow-hidden bg-[#FAFAFA] dark:bg-[#050505] transition-colors duration-700 text-light-text dark:text-dark-text relative">
+      <div className="flex h-screen w-full overflow-hidden bg-[#FAFAFA] dark:bg-[#050505] transition-colors duration-700 text-light-text dark:text-dark-text relative safe-x">
         {/* Dynamic Ambient Background Glow representing current page theme */}
         <AmbientBackground 
           theme={getPageTheme(view)} 
@@ -343,7 +346,7 @@ export default function App() {
         <main className={`flex-1 h-full relative z-10 transition-all duration-300 ${
           view === ViewState.MAP 
             ? 'p-0 overflow-hidden' 
-            : `px-2 sm:px-4 md:px-8 pt-2 sm:pt-4 pb-28 md:pb-8 overflow-y-auto custom-scrollbar ${isSidebarCollapsed ? 'md:pl-28' : 'md:pl-80'}`
+            : `px-2 sm:px-4 md:px-8 pt-[calc(0.5rem+env(safe-area-inset-top,0px))] sm:pt-4 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] md:pb-8 overflow-y-auto custom-scrollbar ${isSidebarCollapsed ? 'md:pl-28' : 'md:pl-80'}`
         }`}>
           <AnimatePresence mode="wait">
             <motion.div

@@ -84,7 +84,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
     };
 
     return createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 font-sans select-none">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 safe-top safe-bottom safe-x font-sans select-none">
             {/* Scrim Backdrop */}
             <div 
                 className="fixed inset-0 bg-black/40 dark:bg-black/60 transition-opacity" 
@@ -93,7 +93,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
 
             {/* Modal Dialog with Liquid Glass */}
             <GlassPanel
-                className="wg-glass-card w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[88vh] z-10"
+                className="wg-glass-card w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[calc(88dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] z-10"
                 padding="0px"
                 overrides={{ borderRadius: 28 }}
             >

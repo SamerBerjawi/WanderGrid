@@ -2501,8 +2501,8 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
 
             {/* Cinematic Modal */}
             {isCinematicOpen && (
-                <div className="fixed inset-0 z-modal bg-black">
-                    <div className="absolute top-6 right-6 z-popover">
+                <div className="fixed inset-0 z-modal bg-black safe-top safe-bottom safe-x">
+                    <div className="absolute top-[calc(1.5rem+env(safe-area-inset-top,0px))] right-[calc(1.5rem+env(safe-area-inset-right,0px))] z-popover">
                         <button 
                             onClick={() => setIsCinematicOpen(false)} 
                             className="min-w-[44px] min-h-[44px] bg-black/60 hover:bg-black/80 text-white rounded-full p-2.5 backdrop-blur-md transition-colors border border-white/20 flex items-center justify-center cursor-pointer"
