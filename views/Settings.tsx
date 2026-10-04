@@ -446,6 +446,39 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
               mode: restoreMode,
               selectedCategories: restoreCategories
           });
+
+          // If the restored backup includes users, ensure active session points to a valid user in the restored database
+          if (restoreCategories.users && Array.isArray(pendingBackupData.users) && pendingBackupData.users.length > 0) {
+              try {
+                  const sessionRaw = localStorage.getItem('wandergrid_session_user');
+                  const sessionUser = sessionRaw ? JSON.parse(sessionRaw) : null;
+                  const norm = (v: any) => String(v || '').toLowerCase().trim();
+                  const sessionKeys = new Set([sessionUser?.id, sessionUser?.email].filter(Boolean).map(norm));
+
+                  const matchesRestored = !!sessionUser && pendingBackupData.users.some((u: any) =>
+                      sessionKeys.has(norm(u.id)) || (u.email && sessionKeys.has(norm(u.email)))
+                  );
+
+                  // Would the current session actually see the restored trips?
+                  const restoredTrips: any[] = Array.isArray(pendingBackupData.trips) ? pendingBackupData.trips : [];
+                  const isSessionAdmin = norm(sessionUser?.role) === 'admin';
+                  const canSeeRestoredTrips = restoredTrips.length === 0 || isSessionAdmin || restoredTrips.some((t: any) =>
+                      t.privacy === 'Public' ||
+                      (Array.isArray(t.participants) && t.participants.some((p: any) => sessionKeys.has(norm(p))))
+                  );
+
+                  // Adopt the backup's owner when the active account is foreign to the restored dataset
+                  if (!matchesRestored || !canSeeRestoredTrips) {
+                      const primaryUser = pendingBackupData.users.find((u: any) => norm(u.role) === 'admin') || pendingBackupData.users[0];
+                      if (primaryUser) {
+                          localStorage.setItem('wandergrid_session_user', JSON.stringify(primaryUser));
+                      }
+                  }
+              } catch (e) {
+                  console.warn("Could not synchronize session user to restored dataset:", e);
+              }
+          }
+
           setRestoreStatus('success');
           setTimeout(() => {
               setIsRestoreModalOpen(false);

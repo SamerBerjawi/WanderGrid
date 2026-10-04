@@ -2152,6 +2152,9 @@ app.post('/api/restore', async (req, res) => {
                     break;
                 }
             }
+            if (!activeUserRecord && restoreOptions.currentUser) {
+                activeUserRecord = restoreOptions.currentUser;
+            }
 
             if (mode === 'replace') {
                 await client.query('TRUNCATE TABLE users');

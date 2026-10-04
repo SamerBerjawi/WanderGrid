@@ -143,10 +143,17 @@ export default function App() {
         try {
             const parsedUser = JSON.parse(storedUserStr);
             dataService.getUsers().then(users => {
-                const matched = users.find(u => u.id === parsedUser.id || u.email?.toLowerCase() === parsedUser.email?.toLowerCase());
+                const matched = users.find(u => u.id === parsedUser.id || u.email?.toLowerCase().trim() === parsedUser.email?.toLowerCase().trim());
                 if (matched) {
                     setCurrentUser(matched);
                     localStorage.setItem('wandergrid_session_user', JSON.stringify(matched));
+                } else if (users.length > 0) {
+                    // Safety: If restoring a backup or switching rosters where parsedUser is not present,
+                    // smoothly reconcile to the primary restored admin/user instead of kicking to login screen!
+                    const fallbackUser = users.find(u => u.role === 'Admin') || users[0];
+                    console.info("Session user reconciled to restored roster:", fallbackUser.email);
+                    setCurrentUser(fallbackUser);
+                    localStorage.setItem('wandergrid_session_user', JSON.stringify(fallbackUser));
                 } else {
                     setCurrentUser(null);
                     localStorage.removeItem('wandergrid_session_user');

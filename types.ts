@@ -480,4 +480,5 @@ export interface RestoreOptions {
   };
   currentUserId?: string;
   currentUserEmail?: string;
+  currentUser?: any;
 }

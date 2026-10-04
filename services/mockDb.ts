@@ -512,6 +512,11 @@ class DataService {
                   throw new Error(`API Error: ${res.statusText}`);
               }
 
+              const contentType = res.headers.get('content-type') || '';
+              if (contentType.includes('text/html')) {
+                  throw new Error("API Route Not Found (HTML fallback)");
+              }
+
               const result = await res.json();
               const isMutation = options?.method && ['POST', 'PUT', 'DELETE'].includes(options.method.toUpperCase());
               if (isMutation) {
@@ -678,6 +683,7 @@ class DataService {
 
           const currentUserId = restoreOptions.currentUserId;
           const currentUserEmail = (restoreOptions.currentUserEmail || '').toLowerCase().trim();
+          const sessionUserObj = restoreOptions.currentUser || null;
 
           // 1. Users
           if (selected.users !== false && data.users && Array.isArray(data.users)) {
@@ -691,6 +697,9 @@ class DataService {
                       activeUserRecord = u;
                       break;
                   }
+              }
+              if (!activeUserRecord && sessionUserObj) {
+                  activeUserRecord = sessionUserObj;
               }
 
               if (mode === 'replace') {
@@ -718,6 +727,9 @@ class DataService {
                           merged.password = (existingUser && existingUser.password) ? existingUser.password : 'password';
                       }
                       mergedMap.set(item.id, merged);
+                  }
+                  if (activeUserRecord && !mergedMap.has(activeUserRecord.id)) {
+                      mergedMap.set(activeUserRecord.id, activeUserRecord);
                   }
                   setCachedStorage(keyName, Array.from(mergedMap.values()), true);
               }
@@ -974,17 +986,27 @@ class DataService {
       if (stored) loggedInUser = JSON.parse(stored);
     } catch (e) {}
 
+    const list = Array.isArray(allTrips) ? allTrips : [];
+
     if (!loggedInUser) {
-      return allTrips.filter(t => t.privacy === 'Public');
+      return list.filter(t => t.privacy === 'Public');
     }
 
-    if (loggedInUser.role === 'Admin') {
-      return allTrips;
+    if (String(loggedInUser.role || '').toLowerCase() === 'admin') {
+      return list;
     }
 
-    return allTrips.filter(t => 
-      t.participants.includes(loggedInUser.id) || 
-      t.privacy === 'Public'
+    // Match on id OR email (case-insensitive) — backups may key participants by either
+    const userKeys = new Set(
+      [loggedInUser.id, loggedInUser.email]
+        .filter(Boolean)
+        .map((v: any) => String(v).toLowerCase().trim())
+    );
+
+    return list.filter(t =>
+      t.privacy === 'Public' ||
+      (Array.isArray(t.participants) &&
+        t.participants.some(p => userKeys.has(String(p).toLowerCase().trim())))
     );
   }
 
@@ -1390,11 +1412,13 @@ class DataService {
           // Retain current session identity so restore NEVER logs the user out
           let currentUserId = options?.currentUserId;
           let currentUserEmail = options?.currentUserEmail;
-          if (!currentUserId || !currentUserEmail) {
+          let currentUser = options?.currentUser;
+          if (!currentUserId || !currentUserEmail || !currentUser) {
               try {
                   const sessionUserStr = localStorage.getItem('wandergrid_session_user');
                   if (sessionUserStr) {
                       const sessionUser = JSON.parse(sessionUserStr);
+                      currentUser = currentUser || sessionUser;
                       if (sessionUser?.id) currentUserId = currentUserId || sessionUser.id;
                       if (sessionUser?.email) currentUserEmail = currentUserEmail || sessionUser.email;
                   }
@@ -1414,7 +1438,8 @@ class DataService {
                       calendar: true
                   },
                   currentUserId,
-                  currentUserEmail
+                  currentUserEmail,
+                  currentUser
               }
           };
 
