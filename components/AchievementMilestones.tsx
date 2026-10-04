@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Trophy as Award, Compass, MagnifyingGlass as Search, Sparkle as Stars, CheckCircle as CheckCircle2, Lock, Airplane as Plane, Globe, MapPin } from '@phosphor-icons/react';
 import { Trip } from '../types';
 import { VisitedCountry } from './PassportStamp';
+import { GlassPanel } from './glass/GlassPanel';
 
 interface Achievement {
   id: string;
@@ -38,7 +39,7 @@ const CircularProgress: React.FC<CircularProgressProps> = ({
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          className="text-zinc-150 dark:text-zinc-800"
+          className="text-black/10 dark:text-white/10"
           strokeWidth={strokeWidth}
           stroke="currentColor"
           fill="transparent"
@@ -56,7 +57,7 @@ const CircularProgress: React.FC<CircularProgressProps> = ({
           fill="transparent"
         />
       </svg>
-      <span className="absolute text-2xs font-bold font-mono text-zinc-650 dark:text-zinc-350">
+      <span className="absolute text-2xs font-bold font-mono text-light-text-secondary dark:text-dark-text-secondary">
         {percentage}%
       </span>
     </div>
@@ -97,7 +98,7 @@ export const AchievementMilestones: React.FC<AchievementMilestonesProps> = ({
       {
         id: 'first_stamp',
         title: 'Explorer Starter',
-        description: 'Record your first entry seal in a country passport ledger.',
+        description: 'Log your first visited country.',
         icon: <Globe className="w-5 h-5 text-emerald-500" />,
         targetValue: 1,
         currentValue: visitedCountries.length,
@@ -107,7 +108,7 @@ export const AchievementMilestones: React.FC<AchievementMilestonesProps> = ({
       {
         id: 'continental_collector',
         title: 'Visited 5 Countries',
-        description: 'Pass five borders to establish your footprints globally.',
+        description: 'Visit 5 distinct countries globally.',
         icon: <Compass className="w-5 h-5 text-amber-500" />,
         targetValue: 5,
         currentValue: visitedCountries.length,
@@ -117,7 +118,7 @@ export const AchievementMilestones: React.FC<AchievementMilestonesProps> = ({
       {
         id: 'frequent_flyer',
         title: 'Cloud Captain',
-        description: 'Board at least 5 commercial flight wings.',
+        description: 'Take 5 recorded flights.',
         icon: <Plane className="w-5 h-5 text-blue-500" />,
         targetValue: 5,
         currentValue: flightsCount,
@@ -127,7 +128,7 @@ export const AchievementMilestones: React.FC<AchievementMilestonesProps> = ({
       {
         id: 'ten_thousand_miles',
         title: 'First 10,000 Miles',
-        description: 'Earn your initial wings with 10k real flight miles logged.',
+        description: 'Log 10,000 flight miles.',
         icon: <Award className="w-5 h-5 text-purple-500" />,
         targetValue: 10000,
         currentValue: totalMiles,
@@ -137,7 +138,7 @@ export const AchievementMilestones: React.FC<AchievementMilestonesProps> = ({
       {
         id: 'stamped_decal',
         title: 'Sticker Collector',
-        description: 'Adhere 5 physical adhesive landmark decals to your album.',
+        description: 'Collect 5 landmark stickers.',
         icon: <Stars className="w-5 h-5 text-yellow-500" />,
         targetValue: 5,
         currentValue: stickersCount,
@@ -147,7 +148,7 @@ export const AchievementMilestones: React.FC<AchievementMilestonesProps> = ({
       {
         id: 'megapolis_visitor',
         title: 'Urban Surveyor',
-        description: 'Inspect ten distinct capital or metropolis city coordinates.',
+        description: 'Visit 10 distinct cities.',
         icon: <MapPin className="w-5 h-5 text-rose-500" />,
         targetValue: 10,
         currentValue: visitedCountries.reduce((citiesCount, country) => {
@@ -160,25 +161,22 @@ export const AchievementMilestones: React.FC<AchievementMilestonesProps> = ({
     ];
   }, [visitedCountries, flightsCount, totalMiles, stickersCount]);
 
+  const unlockedCount = achievementsList.filter((a) => a.currentValue >= a.targetValue).length;
+
   return (
-    <div className="bg-white/70 dark:bg-zinc-900/40 backdrop-blur-md rounded-3xl border border-zinc-200/50 dark:border-white/5 p-8 shadow-sm">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <span className="text-2xs font-bold text-gray-400 uppercase tracking-widest block">
-            Adventure Logs
-          </span>
-          <h3 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white capitalize flex items-center gap-2">
-            Achievement Milestones 🏆
-          </h3>
-        </div>
+    <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden p-5 sm:p-7 border border-black/5 dark:border-white/10 shadow-xs">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-base sm:text-lg font-bold text-light-text dark:text-dark-text tracking-tight">
+          Milestones
+        </h3>
         <div className="text-right">
-          <span className="text-xs font-bold text-indigo-500 dark:text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1.5 rounded-xl uppercase tracking-wider">
-            {achievementsList.filter((a) => a.currentValue >= a.targetValue).length} / {achievementsList.length} Unlocked
+          <span className="text-2xs font-mono font-bold text-primary-600 dark:text-primary-400 bg-primary-500/10 border border-primary-500/20 px-2.5 py-1 rounded-xl uppercase tracking-wider">
+            {unlockedCount} / {achievementsList.length} Unlocked
           </span>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
         {achievementsList.map((ach) => {
           const isUnlocked = ach.currentValue >= ach.targetValue;
           const progressPercent = Math.min(100, Math.round((ach.currentValue / ach.targetValue) * 100));
@@ -186,34 +184,34 @@ export const AchievementMilestones: React.FC<AchievementMilestonesProps> = ({
           return (
             <div
               key={ach.id}
-              className={`p-5 rounded-3xl border transition-all relative overflow-hidden flex flex-col justify-between h-48 select-none group ${
+              className={`p-4 sm:p-5 rounded-2xl border transition-all relative overflow-hidden flex flex-col justify-between h-44 select-none group ${
                 isUnlocked
-                  ? 'bg-gradient-to-br from-zinc-50 to-white dark:from-zinc-900/60 dark:to-zinc-805/45 border-zinc-200/50 dark:border-white/5 shadow-md hover:shadow-xl'
-                  : 'bg-zinc-100/30 dark:bg-zinc-900/10 border-zinc-200/35 dark:border-white/5 opacity-75'
+                  ? 'bg-white/60 dark:bg-white/[0.06] border-black/10 dark:border-white/15 shadow-xs'
+                  : 'bg-white/30 dark:bg-white/[0.02] border-black/5 dark:border-white/5 opacity-75'
               }`}
             >
               {/* Unlock Radial Backdrop Spot */}
               {isUnlocked && (
-                <div className="absolute right-0 top-0 w-24 h-24 bg-indigo-500/5 dark:bg-indigo-400/5 rounded-full blur-2xl pointer-events-none -translate-y-1/2 translate-x-1/3" />
+                <div className="absolute right-0 top-0 w-24 h-24 bg-primary-500/5 dark:bg-primary-400/5 rounded-full blur-2xl pointer-events-none -translate-y-1/2 translate-x-1/3" />
               )}
 
               <div className="flex gap-3 justify-between items-start relative z-10 w-full">
-                <div className="flex gap-3 min-w-0">
+                <div className="flex gap-2.5 sm:gap-3 min-w-0">
                   <div
-                    className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 border shadow-inner ${
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${
                       isUnlocked
-                        ? `bg-gradient-to-br ${ach.badgeGradient} text-white border-transparent`
-                        : 'bg-zinc-100 dark:bg-zinc-850 text-zinc-400 dark:text-zinc-600 border-zinc-200 dark:border-zinc-800'
+                        ? `bg-gradient-to-br ${ach.badgeGradient} text-white border-transparent shadow-xs`
+                        : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary border-black/10 dark:border-white/10'
                     }`}
                   >
-                    {isUnlocked ? ach.icon : <Lock className="w-4.5 h-4.5 text-zinc-400" />}
+                    {isUnlocked ? ach.icon : <Lock className="w-4 h-4 text-light-text-secondary dark:text-dark-text-secondary" />}
                   </div>
                   <div className="min-w-0">
-                    <h4 className="text-xs sm:text-sm font-bold text-gray-950 dark:text-white tracking-tight flex items-center gap-1.5 leading-tight">
+                    <h4 className="text-xs sm:text-sm font-bold text-light-text dark:text-dark-text tracking-tight flex items-center gap-1.5 leading-tight">
                       <span className="truncate" title={ach.title}>{ach.title}</span>
-                      {isUnlocked && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />}
+                      {isUnlocked && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" weight="fill" />}
                     </h4>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1.5 font-normal leading-relaxed line-clamp-2">
+                    <p className="text-2xs sm:text-xs text-light-text-secondary dark:text-dark-text-secondary mt-1 font-medium leading-normal line-clamp-2">
                       {ach.description}
                     </p>
                   </div>
@@ -221,12 +219,12 @@ export const AchievementMilestones: React.FC<AchievementMilestonesProps> = ({
 
                 <CircularProgress 
                   percentage={progressPercent} 
-                  colorClasses={isUnlocked ? "text-emerald-500 dark:text-emerald-400" : "text-indigo-500 dark:text-indigo-400"}
+                  colorClasses={isUnlocked ? "text-emerald-500 dark:text-emerald-400" : "text-primary-500 dark:text-primary-400"}
                 />
               </div>
 
-              <div className="space-y-2 relative z-10">
-                <div className="flex justify-between items-end text-2xs font-mono font-bold text-gray-500 dark:text-zinc-500">
+              <div className="space-y-1.5 relative z-10">
+                <div className="flex justify-between items-end text-3xs sm:text-2xs font-mono font-bold text-light-text-secondary dark:text-dark-text-secondary">
                   <span className="uppercase">
                     {isUnlocked ? 'Unlocked' : 'In Progress'}
                   </span>
@@ -235,12 +233,12 @@ export const AchievementMilestones: React.FC<AchievementMilestonesProps> = ({
                   </span>
                 </div>
                 
-                <div className="h-3 w-full bg-zinc-100 dark:bg-white/5 rounded-full overflow-hidden relative border border-white/5 shadow-inner">
+                <div className="h-2 w-full bg-black/5 dark:bg-white/5 rounded-full overflow-hidden relative border border-black/5 dark:border-white/5">
                   <div
-                    className={`h-full transition-all duration-1000 ease-out rounded-full relative ${
+                    className={`h-full transition-all duration-700 ease-out rounded-full relative ${
                       isUnlocked
-                        ? 'bg-gradient-to-r from-emerald-400 to-indigo-500'
-                        : 'bg-zinc-400/50 dark:bg-zinc-700/50'
+                        ? 'bg-gradient-to-r from-emerald-400 to-primary-500'
+                        : 'bg-black/20 dark:bg-white/20'
                     }`}
                     style={{ width: `${progressPercent}%` }}
                   />
@@ -250,6 +248,6 @@ export const AchievementMilestones: React.FC<AchievementMilestonesProps> = ({
           );
         })}
       </div>
-    </div>
+    </GlassPanel>
   );
 };

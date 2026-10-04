@@ -29,19 +29,19 @@ export interface FlightTrendPoint {
 const renderStatIcon = (icon: string) => {
     switch (icon) {
         case 'flight_takeoff':
-            return <AirplaneTakeoff weight="duotone" className="w-7 h-7" />;
+            return <AirplaneTakeoff weight="duotone" className="w-4 h-4 sm:w-5 sm:h-5" />;
         case 'public':
-            return <Globe weight="duotone" className="w-7 h-7" />;
+            return <Globe weight="duotone" className="w-4 h-4 sm:w-5 sm:h-5" />;
         case 'schedule':
-            return <Clock weight="duotone" className="w-7 h-7" />;
+            return <Clock weight="duotone" className="w-4 h-4 sm:w-5 sm:h-5" />;
         case 'place':
-            return <MapPin weight="duotone" className="w-7 h-7" />;
+            return <MapPin weight="duotone" className="w-4 h-4 sm:w-5 sm:h-5" />;
         default:
-            return <Airplane weight="duotone" className="w-7 h-7" />;
+            return <Airplane weight="duotone" className="w-4 h-4 sm:w-5 sm:h-5" />;
     }
 };
 
-// Liquid Glass Styled Stat Card (Memoized)
+// Liquid Glass Styled Stat Card (Responsive, Mobile-First)
 export const StatCard: React.FC<{ 
   title: string; 
   value: string | number; 
@@ -50,19 +50,30 @@ export const StatCard: React.FC<{
   color?: string 
 }> = React.memo(({ title, value, subtitle, icon, color = 'blue' }) => {
     return (
-        <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden p-6 flex items-center gap-5 relative group transition-all duration-300 hover:-translate-y-0.5">
+        <GlassPanel className="wg-glass-card rounded-2xl sm:rounded-[28px] overflow-hidden p-3.5 sm:p-5 flex flex-col justify-between relative group transition-all duration-300 hover:-translate-y-0.5 border border-black/5 dark:border-white/10">
             {/* Ambient Accent Spot */}
-            <div className={`absolute -right-12 -top-12 w-32 h-32 bg-${color}-500/10 dark:bg-${color}-500/15 rounded-full blur-[40px] pointer-events-none transition-all duration-500 group-hover:scale-125`} />
+            <div className={`absolute -right-8 -top-8 w-24 h-24 bg-${color}-500/10 dark:bg-${color}-500/15 rounded-full blur-[30px] pointer-events-none transition-all duration-500 group-hover:scale-125`} />
             
-            {/* Edge Catch Icon Wrapper */}
-            <div className={`w-14 h-14 rounded-2xl bg-${color}-500/10 border border-${color}-500/20 dark:border-${color}-400/20 text-${color}-600 dark:text-${color}-400 flex items-center justify-center shadow-inner relative shrink-0`}>
-                {renderStatIcon(icon)}
+            {/* Top row: Compact Icon Pill + Label */}
+            <div className="flex items-center gap-2 sm:gap-2.5 relative z-10 min-w-0">
+                <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-${color}-500/10 border border-${color}-500/20 text-${color}-600 dark:text-${color}-400 flex items-center justify-center shrink-0`}>
+                    {renderStatIcon(icon)}
+                </div>
+                <span className="text-2xs sm:text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider truncate">
+                    {title}
+                </span>
             </div>
             
-            <div className="relative z-10 min-w-0">
-                <div className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest mb-1 truncate">{title}</div>
-                <div className="text-3xl font-black text-light-text dark:text-dark-text leading-none tracking-tight truncate">{value}</div>
-                {subtitle && <div className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary mt-1.5 truncate">{subtitle}</div>}
+            {/* Metric Value & Subtitle */}
+            <div className="relative z-10 mt-2 sm:mt-3 min-w-0">
+                <div className="text-lg sm:text-2xl lg:text-3xl font-black text-light-text dark:text-dark-text leading-tight tracking-tight">
+                    {value}
+                </div>
+                {subtitle && (
+                    <div className="text-2xs sm:text-xs font-medium text-light-text-secondary dark:text-dark-text-secondary mt-0.5 sm:mt-1 truncate">
+                        {subtitle}
+                    </div>
+                )}
             </div>
         </GlassPanel>
     );

@@ -1,52 +1,45 @@
 import React, { useEffect, useState, useMemo, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Card, Button } from '../components/ui';
+import { Button } from '../components/ui';
 const DeckFlightMap = lazy(() => import('../components/DeckFlightMap').then(m => ({ default: m.DeckFlightMap || m.default })));
 const FlightTrackerModal = lazy(() => import('../components/FlightTrackerModal').then(m => ({ default: m.FlightTrackerModal })));
 import { dataService } from '../services/mockDb';
 import { User, Trip, EntitlementType, PublicHoliday, getResidenceStatuses } from '../types';
 import { resolvePlaceName, calculateDistance, getCoordinates, getCoordinatesSync, refineUKCountry, formatPlaceName } from '../services/geocoding';
 import { getRegion, getFlagEmoji } from '../services/geoData';
-import { REGION_STYLES } from './regionStyles';
 import { getTripsVersion, serializeVisitedData, deserializeVisitedData, runAfterFirstPaint, mapWithConcurrency } from '../services/utils';
 import { StatCard, ExtremeFlightCard, DonutChart, TopList, ExtremeFlight, FlightTrendChart, FlightTrendPoint } from '../components/DashboardWidgets';
 import { PassportStamp, VisitedCountry } from '../components/PassportStamp';
-import { StampFlipBook } from '../components/StampFlipBook';
 import { StickerStamp } from '../components/StickerStamp';
 import { AchievementMilestones } from '../components/AchievementMilestones';
-import { ICONIC_STICKERS, loadStickersProgress, StickerClaim, STICKER_CATEGORIES } from '../utils/stickersData';
+import { ICONIC_STICKERS, loadStickersProgress, STICKER_CATEGORIES } from '../utils/stickersData';
 import { formatDate } from '../utils/formatters';
 import { GlassPanel } from '../components/glass/GlassPanel';
 import { LiveClock } from '../components/LiveClock';
 import { EmptyState } from '../components/EmptyState';
 import { 
     Globe, 
+    AirplaneTakeoff, 
     Airplane as Plane, 
-    Trophy as Award, 
     Compass, 
     MagnifyingGlass as Search, 
     MapPin, 
-    CalendarBlank as Calendar, 
     CheckCircle, 
     ShieldCheck as Shield, 
-    SuitcaseSimple as Briefcase, 
-    CaretRight as ChevronRight, 
-    TrendUp as TrendingUp, 
-    Cpu, 
-    Stack as Layers, 
-    WifiHigh as Wifi, 
-    Sparkle as Sparkles, 
     Ticket, 
-    Pulse as Activity, 
-    Info,
+    Sparkle as Sparkles, 
     IdentificationCard,
-    BookOpen,
     Star,
     Trophy,
     ChartBar,
     Lightbulb,
     X,
-    AirplaneTilt
+    ArrowUpRight,
+    Clock,
+    Broadcast,
+    NavigationArrow,
+    Planet,
+    TrendUp
 } from '@phosphor-icons/react';
 
 interface DashboardProps {
@@ -106,17 +99,19 @@ const itemVariants = {
   }
 };
 
+type StatsTabKey = 'stamps' | 'stickers' | 'milestones' | 'analytics';
+
 export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }) => {
-  const [users, setUsers] = useState<User[]>([]);
+  const [, setUsers] = useState<User[]>([]);
   const [trips, setTrips] = useState<Trip[]>([]);
-  const [entitlements, setEntitlements] = useState<EntitlementType[]>([]);
-  const [holidays, setHolidays] = useState<PublicHoliday[]>([]);
+  const [, setEntitlements] = useState<EntitlementType[]>([]);
+  const [, setHolidays] = useState<PublicHoliday[]>([]);
   const [loading, setLoading] = useState(true);
   
   const [visitedData, setVisitedData] = useState<VisitedCountry[]>([]);
   const [totalCities, setTotalCities] = useState(0);
   const [totalDistance, setTotalDistance] = useState(0);
-  const [activeStatsTab, setActiveStatsTab] = useState('stamps');
+  const [activeStatsTab, setActiveStatsTab] = useState<StatsTabKey>('stamps');
 
   // Interactive Stamps Filter States
   const [stampSearch, setStampSearch] = useState('');
@@ -125,6 +120,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
   // Gamification & Stickers Integrated States
   const [stickerSearch, setStickerSearch] = useState('');
   const [selectedStickerCategory, setSelectedStickerCategory] = useState('All');
+
+  // Interactive Map View Modes & Touch Safety
+  const [mapViewMode, setMapViewMode] = useState<'3d' | '2d'>(() => {
+    return (localStorage.getItem('wandergrid_map_view_mode') as '3d' | '2d') || '2d';
+  });
+
+  const [isFlightTrackerOpen, setIsFlightTrackerOpen] = useState(false);
+  const [todaysFlight, setTodaysFlight] = useState<{ iata: string; origin: string; destination: string; date: string } | undefined>(undefined);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   // Computed Past Trips, Sticker Claims and Stats
   const pastTrips = useMemo(() => {
@@ -158,26 +162,26 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
     // Collector Ranks based on total unlocked percentage
     let rank = 'Backyard Explorer';
     let nextRank = 'Novice Surveyor';
-    let rankDesc = 'You have just started finding stickers around the globe!';
+    let rankDesc = 'Start finding landmark stickers around the globe!';
     if (percent >= 15) {
         rank = 'Novice Surveyor';
         nextRank = 'Experienced Cartographer';
-        rankDesc = 'You are mapping your footprint across notable historic regions.';
+        rankDesc = 'Mapping your footprint across historic territories.';
     }
     if (percent >= 40) {
         rank = 'Experienced Cartographer';
         nextRank = 'Elite Trailblazer';
-        rankDesc = 'Your travels capture majestic peaks and natural wonders alike.';
+        rankDesc = 'Capturing majestic peaks and natural wonders alike.';
     }
     if (percent >= 70) {
         rank = 'Elite Trailblazer';
         nextRank = 'Legendary World Voyager';
-        rankDesc = 'An exceptional portfolio of historic claims and extreme alpine peaks!';
+        rankDesc = 'Exceptional portfolio of historic claims and summits.';
     }
     if (percent === 100) {
         rank = 'Legendary World Voyager';
         nextRank = 'Ultimate Completionist';
-        rankDesc = 'You have stood before every historic wonder, park, and high summit on Earth.';
+        rankDesc = 'Stood before every historic wonder, park, and summit on Earth.';
     }
 
     return {
@@ -191,22 +195,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
     };
   }, [stickerClaims]);
 
-  const [isFlightTrackerOpen, setIsFlightTrackerOpen] = useState(false);
-  const [todaysFlight, setTodaysFlight] = useState<{ iata: string; origin: string; destination: string; date: string } | undefined>(undefined);
-
-  const [mapViewMode, setMapViewMode] = useState<'3d' | '2d'>(() => {
-    return (localStorage.getItem('wandergrid_map_view_mode') as '3d' | '2d') || '2d';
-  });
-
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-
   useEffect(() => {
-    // Current user loading for profile details
     const sessionUser = localStorage.getItem('wandergrid_session_user');
     if (sessionUser) {
         try {
             setCurrentUser(JSON.parse(sessionUser));
-        } catch (e) {}
+        } catch (e) {
+            console.warn("Could not parse session user", e);
+        }
     }
   }, []);
 
@@ -317,7 +313,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
           }
       });
 
-      // Create instant visual set (fast sync lookup)
       const initialTrips = (t || []).map(trip => {
           const assignedFlights = flightsByTripIdMap.get(trip.id) || [];
           const existingTransports = trip.transports || [];
@@ -360,7 +355,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                   setTotalDistance(cached.totalDistance);
                   setLoading(false);
                   
-                  // Run background geocoding in case anything is missing
                   runAfterFirstPaint(async () => {
                       let coordsDirty = false;
                       const resolveCoordsAsync = async (locName: string) => {
@@ -402,7 +396,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                   });
                   return;
               }
-          } catch (e) {}
+          } catch (e) {
+              console.warn("Could not deserialize cache", e);
+          }
       }
 
       setLoading(false);
@@ -528,7 +524,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
             const dbVisited = await dataService.getVisited();
             const hasSeededBefore = localStorage.getItem('wandergrid_visited_seeded') === 'true';
             if (dbVisited && (dbVisited.length > 0 || hasSeededBefore)) {
-                // Read from database. Only show visited countries (exclude layover/transit and wishlist)!
                 const countries = dbVisited.filter(item => {
                     if (item.type !== 'country') return false;
                     const statuses = getResidenceStatuses(item);
@@ -660,7 +655,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
             console.warn("Could not fetch from database, using fallback computation:", dbErr);
         }
 
-        // --- Schema Seed Fallback ---
         const countryMap = new Map<string, VisitedCountry>();
         const placesToResolve = new Set<string>();
 
@@ -676,7 +670,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
             trip.locations?.forEach(l => { if (l.name) placesToResolve.add(l.name); });
         });
 
-        // Optimized batch resolution
         const uniquePlaces = Array.from(placesToResolve).filter(Boolean);
         const resolvedResults = await mapWithConcurrency(uniquePlaces, resolvePlaceName, GEO_CONCURRENCY_LIMIT);
         const resolvedData = new Map<string, any>();
@@ -734,7 +727,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
         });
         const visitedData = finalized.sort((a, b) => a.name.localeCompare(b.name));
 
-        // Background write newly resolved dataset to Visited DB collection as permanent registry seed
         try {
             const bulkSeed: any[] = [];
             finalized.forEach(c => {
@@ -806,7 +798,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
             });
         });
 
-        return { totalFlights, totalDistance: Math.round(totalDist), totalDurationHours: Math.round(totalDurationMinutes / 60), topAirports: Array.from(airports.entries()).sort((a,b)=>b[1]-a[1]).map(([l,c])=>({label:l,count:c,code:l})), topAirlines: Array.from(airlines.entries()).sort((a,b)=>b[1]-a[1]).map(([l,c])=>({label:l,count:c})), earthCircumnavigations: (totalDist / 40075).toFixed(1), daysInAir: (totalDurationMinutes / 1440).toFixed(1), longestFlight, shortestFlight, seatCounts: [{ label: 'Window', value: seatCounts.Window, color: '#3b82f6' }, { label: 'Aisle', value: seatCounts.Aisle, color: '#8b5cf6' }, { label: 'Middle', value: seatCounts.Middle, color: '#94a3b8' }].filter(x => x.value > 0), classCounts: [{ label: 'Economy', value: classCounts.Economy, color: '#64748b' }, { label: 'Premium', value: classCounts.Premium, color: '#0ea5e9' }, { label: 'Business', value: classCounts.Business, color: '#f59e0b' }, { label: 'First', value: classCounts.First, color: '#a855f7' }].filter(x => x.value > 0) };
+        return { 
+            totalFlights, 
+            totalDistance: Math.round(totalDist), 
+            totalDurationHours: Math.round(totalDurationMinutes / 60), 
+            topAirports: Array.from(airports.entries()).sort((a,b)=>b[1]-a[1]).map(([l,c])=>({label:l,count:c,code:l})), 
+            topAirlines: Array.from(airlines.entries()).sort((a,b)=>b[1]-a[1]).map(([l,c])=>({label:l,count:c})), 
+            earthCircumnavigations: (totalDist / 40075).toFixed(1), 
+            daysInAir: (totalDurationMinutes / 1440).toFixed(1), 
+            longestFlight, 
+            shortestFlight, 
+            seatCounts: [{ label: 'Window', value: seatCounts.Window, color: '#3b82f6' }, { label: 'Aisle', value: seatCounts.Aisle, color: '#8b5cf6' }, { label: 'Middle', value: seatCounts.Middle, color: '#94a3b8' }].filter(x => x.value > 0), 
+            classCounts: [{ label: 'Economy', value: classCounts.Economy, color: '#64748b' }, { label: 'Premium', value: classCounts.Premium, color: '#0ea5e9' }, { label: 'Business', value: classCounts.Business, color: '#f59e0b' }, { label: 'First', value: classCounts.First, color: '#a855f7' }].filter(x => x.value > 0) 
+        };
   }, [trips]);
 
   const flightTrendData = useMemo<FlightTrendPoint[]>(() => {
@@ -832,7 +836,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
 
         const grouped: { [key: string]: number } = {};
         rawFlights.forEach(f => {
-            const label = f.date.substring(0, 7); // YYYY-MM
+            const label = f.date.substring(0, 7);
             grouped[label] = (grouped[label] || 0) + f.distance;
         });
 
@@ -884,7 +888,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
         });
   }, [visitedData, stampSearch, selectedRegion]);
 
-  // Compute region frequencies for stamps progress visualization
   const regionalProgress = useMemo(() => {
     const counts: Record<string, number> = {};
     visitedData.forEach(c => {
@@ -893,7 +896,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
     return counts;
   }, [visitedData]);
 
-  // Upcoming scheduled trips ledger
   const upcomingTripsList = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
     return trips
@@ -902,15 +904,34 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
       .slice(0, 3);
   }, [trips]);
 
+  // Next imminent journey for dynamic hero island
+  const nextDepartureTrip = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return trips
+      .filter(t => t.status !== 'Cancelled' && t.status !== 'Past' && t.startDate && new Date(t.startDate) >= today)
+      .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())[0] || null;
+  }, [trips]);
+
+  const daysUntilNextTrip = useMemo(() => {
+    if (!nextDepartureTrip?.startDate) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const start = new Date(nextDepartureTrip.startDate);
+    start.setHours(0, 0, 0, 0);
+    const diff = start.getTime() - today.getTime();
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  }, [nextDepartureTrip]);
+
   if (loading) {
     return (
-        <div className="w-full h-[60vh] flex flex-col items-center justify-center space-y-4 bg-zinc-50 dark:bg-zinc-950">
+        <div className="w-full h-[60vh] flex flex-col items-center justify-center space-y-4">
             <div className="relative w-16 h-16">
-                <div className="absolute inset-0 rounded-full border-4 border-blue-500/20 border-t-blue-500 animate-spin" />
+                <div className="absolute inset-0 rounded-full border-4 border-primary-500/20 border-t-primary-500 animate-spin" />
                 <div className="absolute inset-2 rounded-full border-4 border-emerald-500/20 border-b-emerald-500 animate-[spin_2s_linear_infinite_reverse]" />
             </div>
-            <h4 className="text-sm font-bold text-gray-800 dark:text-gray-200 uppercase tracking-widest">Compiling Expeditions...</h4>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Aligning coordinate history & flight registries</p>
+            <h4 className="text-xs font-bold text-light-text dark:text-dark-text uppercase tracking-widest">Compiling Expeditions...</h4>
+            <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary">Aligning coordinate history & telemetry</p>
         </div>
     );
   }
@@ -918,249 +939,320 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
   return (
     <div className="w-full max-w-[1680px] mx-auto pt-2 sm:pt-4 px-1 sm:px-4 md:px-6 lg:px-8 flex flex-col gap-5 sm:gap-6 animate-fadeIn pb-16">
         
-        {/* Soft designer lighting gradients */}
-        <div className="absolute top-0 left-1/4 w-[40rem] h-[30rem] bg-gradient-to-tr from-primary-500/[0.04] to-indigo-500/[0.04] dark:from-primary-600/[0.08] dark:to-indigo-500/[0.06] rounded-full blur-[120px] pointer-events-none select-none -z-10" />
-        <div className="absolute top-[40%] right-10 w-[35rem] h-[35rem] bg-gradient-to-bl from-amber-500/[0.03] to-orange-500/[0.03] dark:from-amber-500/[0.04] dark:to-orange-500/[0.04] rounded-full blur-[140px] pointer-events-none select-none -z-10" />
+        {/* Soft background ambient glow */}
+        <div className="absolute top-0 left-1/4 w-[40rem] h-[30rem] bg-gradient-to-tr from-primary-500/[0.04] to-indigo-500/[0.04] dark:from-primary-600/[0.07] dark:to-indigo-500/[0.05] rounded-full blur-[140px] pointer-events-none select-none -z-10" />
+        <div className="absolute top-[35%] right-10 w-[35rem] h-[35rem] bg-gradient-to-bl from-amber-500/[0.03] to-orange-500/[0.03] dark:from-amber-500/[0.04] dark:to-orange-500/[0.04] rounded-full blur-[140px] pointer-events-none select-none -z-10" />
 
         {/* ========================================================= */}
-        {/* SWISS MODERN DESIGNER PROFILE TERMINAL HEADER */}
+        {/* 1. HERO HEADER (The Planner Standard §2.2)                */}
+        {/* Title Left, Primary Action Button Right on Mobile & Desktop */}
         {/* ========================================================= */}
-        <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden p-5 sm:p-8">
-            <div className="flex flex-col xl:flex-row items-center justify-between text-center xl:text-left gap-5 sm:gap-6 relative z-10">
+        <div className="flex flex-row items-center justify-between gap-2.5 sm:gap-4 w-full pt-1 pb-1 text-left">
+            <div className="flex items-center justify-start gap-2.5 sm:gap-3 md:gap-4 min-w-0">
+                <Compass 
+                    className="w-7 h-7 sm:w-10 sm:h-10 md:w-12 md:h-12 text-primary-500 shrink-0" 
+                    weight="duotone" 
+                />
+                <div className="min-w-0">
+                    <h1 className="text-xl sm:text-3xl md:text-5xl font-black text-light-text dark:text-dark-text tracking-tight leading-tight sm:leading-none truncate sm:overflow-visible">
+                        Expedition Command
+                    </h1>
+                </div>
+            </div>
+
+            <div className="flex items-center justify-end shrink-0 gap-2">
+                <Button 
+                    variant="primary" 
+                    className="shrink-0 min-h-[44px]"
+                    onClick={() => setIsFlightTrackerOpen(true)}
+                    icon={<AirplaneTakeoff className="w-4 h-4" weight="bold" />}
+                >
+                    <span className="hidden xs:inline sm:inline">Track Flight</span>
+                    <span className="xs:hidden sm:hidden">Track</span>
+                </Button>
+            </div>
+        </div>
+
+        {/* ========================================================= */}
+        {/* 2. DYNAMIC ISLAND & CONTEXTUAL STATUS STRIP (Mobile First)*/}
+        {/* ========================================================= */}
+        <GlassPanel className="wg-glass-card rounded-2xl sm:rounded-[28px] overflow-hidden p-3.5 sm:p-5 shadow-xs border border-black/5 dark:border-white/10">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 relative z-10">
                 
-                {/* Explorer Terminal Profile Info */}
-                <div className="flex flex-col sm:flex-row items-center text-center sm:text-left gap-4 sm:gap-5">
-                    <div className="relative group shrink-0 select-none">
-                        <div className="absolute inset-0 bg-gradient-to-tr from-primary-600 via-indigo-500 to-amber-500 rounded-full blur opacity-25 group-hover:scale-105 transition-all duration-500" />
-                        <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-black/5 dark:bg-white/5 text-light-text dark:text-dark-text flex items-center justify-center font-black text-xl sm:text-2xl border border-black/10 dark:border-white/10 shadow-sm">
-                            <span className="bg-gradient-to-tr from-primary-600 to-indigo-400 dark:from-white dark:to-zinc-300 bg-clip-text text-transparent font-extrabold">
-                                {currentUser?.name ? currentUser.name.charAt(0) : currentUser?.email ? currentUser.email.charAt(0) : 'E'}
-                            </span>
+                {/* Explorer Profile & Beacon */}
+                <div className="flex items-center gap-3 min-w-0">
+                    <div 
+                        onClick={() => currentUser?.id && onUserClick && onUserClick(currentUser.id)}
+                        className="relative group shrink-0 select-none cursor-pointer"
+                        title="View profile details"
+                    >
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-primary-500/10 dark:bg-primary-400/10 text-primary-600 dark:text-primary-400 flex items-center justify-center font-black text-base sm:text-lg border border-primary-500/20 shadow-xs transition-transform group-hover:scale-105">
+                            {currentUser?.name ? currentUser.name.charAt(0) : currentUser?.email ? currentUser.email.charAt(0).toUpperCase() : 'E'}
                         </div>
-                        <div className="absolute -bottom-1 -right-1 bg-emerald-500 rounded-full p-1 border-2 border-white dark:border-[#0c0c0e] shadow-md">
-                            <div className="w-2 h-2 bg-white rounded-full animate-ping absolute" />
-                            <div className="w-2 h-2 bg-white rounded-full" />
+                        <div className="absolute -bottom-0.5 -right-0.5 bg-emerald-500 rounded-full p-0.5 sm:p-1 border-2 border-white dark:border-[#0c0c0e]">
+                            <div className="w-1.5 h-1.5 bg-white rounded-full animate-ping absolute" />
+                            <div className="w-1.5 h-1.5 bg-white rounded-full" />
                         </div>
                     </div>
-                    <div className="flex flex-col items-center sm:items-start">
-                        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
-                            <h2 id="explorer-name-banner" className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight text-light-text dark:text-dark-text flex items-center justify-center sm:justify-start gap-2">
-                                Welcome back, {currentUser?.name || currentUser?.email?.split('@')[0] || 'Explorer'}
-                                <Sparkles className="w-5 h-5 text-amber-500 animate-pulse shrink-0" weight="duotone" />
+                    
+                    <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-sm sm:text-base font-bold text-light-text dark:text-dark-text tracking-tight truncate">
+                                Welcome, {currentUser?.name || currentUser?.email?.split('@')[0] || 'Explorer'}
                             </h2>
-                            <span className="inline-flex items-center gap-1 text-2xs font-mono font-bold uppercase bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 py-1 px-2.5 rounded-lg leading-none">
-                                <Shield className="w-3.5 h-3.5" weight="duotone" /> Checked-In
+                            <span className="px-1.5 py-0.5 rounded-full text-3xs sm:text-2xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 inline-flex items-center gap-1 shrink-0">
+                                <Shield className="w-2.5 h-2.5 sm:w-3 sm:h-3" weight="duotone" /> Active
                             </span>
                         </div>
-                        <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-semibold tracking-wide mt-1.5 leading-relaxed">
-                            Status: <span className="font-extrabold text-light-text dark:text-dark-text">{currentLevel.name}</span> (Level {currentLevel.level}) • Airport registries operational
+                        <p className="text-2xs sm:text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium truncate mt-0.5">
+                            <span className="font-semibold text-light-text dark:text-dark-text">{currentLevel.name}</span> • Level {currentLevel.level}
                         </p>
                     </div>
                 </div>
 
-                {/* Live Clock & Action */}
-                <div className="flex flex-wrap items-center justify-center xl:justify-end gap-3 sm:gap-4 border-t xl:border-t-0 border-black/5 dark:border-white/5 pt-4 xl:pt-0 w-full xl:w-auto">
-                    <LiveClock />
+                {/* Right: Live Flight Status or Imminent Trip Countdown + Clock */}
+                <div className="flex items-center justify-between sm:justify-end gap-2 pt-2.5 sm:pt-0 border-t sm:border-t-0 border-black/5 dark:border-white/5 w-full sm:w-auto">
+                    {todaysFlight ? (
+                        <div 
+                            onClick={() => setIsFlightTrackerOpen(true)}
+                            className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-sky-500/10 text-sky-700 dark:text-sky-300 border border-sky-500/20 cursor-pointer hover:bg-sky-500/15 transition-all text-xs font-mono font-bold truncate max-w-[200px]"
+                            title="Active flight scheduled today"
+                        >
+                            <Broadcast className="w-3.5 h-3.5 text-sky-500 animate-pulse shrink-0" weight="duotone" />
+                            <span className="truncate">{todaysFlight.iata}: {todaysFlight.origin}➔{todaysFlight.destination}</span>
+                        </div>
+                    ) : nextDepartureTrip ? (
+                        <div 
+                            onClick={() => onTripClick && onTripClick(nextDepartureTrip.id)}
+                            className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-primary-500/10 text-primary-700 dark:text-primary-300 border border-primary-500/20 cursor-pointer hover:bg-primary-500/15 transition-all text-xs font-medium truncate max-w-[220px]"
+                            title="Click to inspect upcoming expedition"
+                        >
+                            <NavigationArrow className="w-3.5 h-3.5 text-primary-500 shrink-0" weight="duotone" />
+                            <span className="truncate font-semibold">{nextDepartureTrip.name}</span>
+                            <strong className="font-mono text-primary-600 dark:text-primary-400 shrink-0">in {daysUntilNextTrip === 0 ? 'today' : `${daysUntilNextTrip}d`}</strong>
+                        </div>
+                    ) : null}
 
-                    <Button 
-                        variant="primary" 
-                        color="blue"
-                        className="shrink-0 min-h-[44px]" 
-                        onClick={() => setIsFlightTrackerOpen(true)}
-                        aria-label="Track active flight"
-                        icon={<Plane className="w-4 h-4" weight="duotone" />}
-                    >
-                        Track Active Flight
-                    </Button>
+                    <LiveClock />
                 </div>
             </div>
         </GlassPanel>
 
         {/* ========================================================= */}
-        {/* ROW 2: BENTO HUB (MAP CONSOLE & MEMBERSHIP COMPOSITION) */}
+        {/* 3. CORE TELEMETRY METRIC CARDS (Responsive 4-Card Grid)   */}
         {/* ========================================================= */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-stretch">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
+            <StatCard 
+                title="Nations" 
+                value={visitedData.length} 
+                subtitle={`${Math.round((visitedData.length / 195) * 100)}% World`} 
+                icon="public" 
+                color="blue" 
+            />
+            <StatCard 
+                title="Distance" 
+                value={`${(totalDistance / 1000).toFixed(1)}k km`} 
+                subtitle={`${stats.earthCircumnavigations}x Orbits`} 
+                icon="flight_takeoff" 
+                color="emerald" 
+            />
+            <StatCard 
+                title="Cities" 
+                value={totalCities} 
+                subtitle={`${availableRegions.length - 1} Regions`} 
+                icon="place" 
+                color="amber" 
+            />
+            <StatCard 
+                title="Flights" 
+                value={`${stats.totalFlights}`} 
+                subtitle={`${stats.totalDurationHours}h Airtime`} 
+                icon="schedule" 
+                color="purple" 
+            />
+        </div>
+
+        {/* ========================================================= */}
+        {/* 4. BENTO HUB: INTERACTIVE MAP & EXPLORER CREDENTIALS      */}
+        {/* ========================================================= */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-stretch">
             
-            {/* Interactive World Map Widget (Col-span 2) */}
-            <GlassPanel className="xl:col-span-2 relative h-[36rem] rounded-[28px] overflow-hidden flex flex-col wg-glass-card">
-                <div className="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-white/35 dark:from-black/10 to-transparent pointer-events-none z-10" />
-                
-                <div className="w-full h-full flex-1 relative min-h-[400px]">
-                    <Suspense fallback={
-                        <div className="w-full h-full flex flex-col items-center justify-center bg-black/5 dark:bg-black/30 space-y-4">
-                            <div className="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" />
-                            <p className="text-2xs font-bold uppercase tracking-[0.2em] text-light-text-secondary dark:text-dark-text-secondary">Loading Expedition Coordinates...</p>
+            {/* Interactive World Expedition Map (lg:col-span-8) */}
+            <div className="lg:col-span-8 flex flex-col">
+                <GlassPanel 
+                    className="wg-glass-card rounded-[28px] overflow-hidden flex flex-col h-[26rem] sm:h-[32rem] lg:h-[36rem] relative border border-black/5 dark:border-white/10 shadow-glass-card"
+                    overrides={{ borderRadius: 28 }}
+                    padding="0px"
+                >
+                    {/* Map Banner Header */}
+                    <div className="p-3.5 sm:p-5 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-primary-500/10 via-primary-500/5 to-transparent shrink-0 z-10">
+                        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-br from-primary-500 to-indigo-600 text-white shadow-md shadow-primary-500/20 flex items-center justify-center shrink-0">
+                                <Globe className="w-4 h-4 sm:w-5 sm:h-5" weight="duotone" />
+                            </div>
+                            <h2 className="text-sm sm:text-base font-bold text-light-text dark:text-dark-text tracking-tight truncate">
+                                Expedition Map
+                            </h2>
                         </div>
-                    }>
-                        <DeckFlightMap 
-                            trips={trips.filter(t => t.status !== 'Cancelled')} 
-                            animateRoutes={false} 
-                            showFrequencyWeight={true}
-                            onTripClick={onTripClick}
-                            showCountries={false}
-                            clusterMode={false}
-                            visitedCountries={visitedData.map(vd => vd.code)}
-                            showGradientRoutes={true}
-                            showFlightRoutes={true}
-                            showLandSeaRoutes={true}
-                            projection={mapViewMode === '3d' ? 'globe' : 'flat'}
-                            elevatedRoutes={mapViewMode === '3d'}
-                            embedded={true}
-                        />
-                    </Suspense>
-                </div>
-                
-                {/* Floating Tactile Map Controls */}
-                <div className="absolute top-5 right-5 z-20 flex items-center">
-                    <button
-                        type="button"
-                        onClick={() => {
-                            const nextMode = mapViewMode === '3d' ? '2d' : '3d';
-                            setMapViewMode(nextMode);
-                            localStorage.setItem('wandergrid_map_view_mode', nextMode);
-                        }}
-                        aria-label={mapViewMode === '3d' ? 'Switch to 2D Map' : 'Switch to 3D Globe'}
-                        className="bg-black/70 dark:bg-black/80 px-3.5 py-1.5 rounded-2xl border border-white/10 flex items-center gap-3 shadow-lg min-h-[44px] cursor-pointer hover:border-white/20 transition-all text-white group"
-                        title={mapViewMode === '3d' ? 'Switch to 2D Map' : 'Switch to 3D Globe'}
-                    >
-                        <div className="flex items-center gap-1.5">
-                            <Globe className={`w-4 h-4 transition-colors ${mapViewMode === '3d' ? 'text-primary-400' : 'text-zinc-400'}`} weight="duotone" />
+
+                        {/* Floating Tactile 2D/3D Mode Pill */}
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const nextMode = mapViewMode === '3d' ? '2d' : '3d';
+                                setMapViewMode(nextMode);
+                                localStorage.setItem('wandergrid_map_view_mode', nextMode);
+                            }}
+                            aria-label={mapViewMode === '3d' ? 'Switch to 2D Map' : 'Switch to 3D Globe'}
+                            className="bg-white/80 dark:bg-white/10 hover:bg-white dark:hover:bg-white/15 px-3 py-1.5 rounded-xl sm:rounded-2xl border border-black/10 dark:border-white/15 flex items-center gap-2 shadow-xs min-h-[40px] cursor-pointer transition-all text-light-text dark:text-dark-text"
+                            title={mapViewMode === '3d' ? 'Switch to 2D Map' : 'Switch to 3D Globe'}
+                        >
+                            <Planet className={`w-4 h-4 transition-colors ${mapViewMode === '3d' ? 'text-primary-500' : 'text-zinc-400'}`} weight="duotone" />
                             <span className="text-xs font-bold tracking-tight select-none">
-                                {mapViewMode === '3d' ? '3D Globe' : '2D Map'}
+                                {mapViewMode === '3d' ? '3D' : '2D'}
                             </span>
-                        </div>
-                        <div className={`w-8 h-4 p-0.5 rounded-full transition-all duration-300 flex items-center ${mapViewMode === '3d' ? 'bg-primary-600 justify-end' : 'bg-zinc-700 justify-start'}`}>
-                            <div className="w-3 h-3 bg-white rounded-full shadow-sm" />
-                        </div>
-                    </button>
-                </div>
-            </GlassPanel>
+                            <div className={`w-7 h-4 p-0.5 rounded-full transition-all duration-300 flex items-center ${mapViewMode === '3d' ? 'bg-primary-500 justify-end' : 'bg-black/20 dark:bg-white/20 justify-start'}`}>
+                                <div className="w-3 h-3 bg-white rounded-full shadow-xs" />
+                            </div>
+                        </button>
+                    </div>
 
-            {/* Exclusive Loyalty & Passing Column (Col-span 1) */}
-            <div className="xl:col-span-1 h-full flex flex-col justify-between gap-6">
+                    {/* DeckGL Map Container */}
+                    <div className="w-full h-full flex-1 relative min-h-[300px]">
+                        <Suspense fallback={
+                            <div className="w-full h-full flex flex-col items-center justify-center space-y-4">
+                                <div className="w-8 h-8 border-3 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                            </div>
+                        }>
+                            <DeckFlightMap 
+                                trips={trips.filter(t => t.status !== 'Cancelled')} 
+                                animateRoutes={false} 
+                                showFrequencyWeight={true}
+                                onTripClick={onTripClick}
+                                showCountries={false}
+                                clusterMode={false}
+                                visitedCountries={visitedData.map(vd => vd.code)}
+                                showGradientRoutes={true}
+                                showFlightRoutes={true}
+                                showLandSeaRoutes={true}
+                                projection={mapViewMode === '3d' ? 'globe' : 'flat'}
+                                elevatedRoutes={mapViewMode === '3d'}
+                                embedded={true}
+                            />
+                        </Suspense>
+                    </div>
+                </GlassPanel>
+            </div>
+
+            {/* Explorer Telemetry & Membership Column (lg:col-span-4) */}
+            <div className="lg:col-span-4 flex flex-col justify-between gap-4 sm:gap-6">
                 
-                {/* METALLIC MEMBERSHIP CARD */}
-                <div id="holographic-titanium-card" className="relative overflow-hidden rounded-[28px] p-6 bg-gradient-to-br from-zinc-900 via-zinc-950 to-slate-950 border border-white/10 shadow-lg group flex flex-col justify-between h-[15.5rem] transition-all duration-300">
-                    
-                    {/* Iridescent security holographic chip and light vectors */}
-                    <div className="absolute top-[30%] right-[8%] w-11 h-14 bg-gradient-to-tr from-cyan-400 via-purple-400 to-yellow-300 opacity-20 blur-[1.5px] rounded rotate-12 pointer-events-none group-hover:opacity-45 transition-all duration-700 mx-auto select-none" />
-                    <div className="absolute -top-12 -left-12 w-32 h-32 bg-amber-500/5 rounded-full blur-[40px] group-hover:bg-amber-500/10 transition-all duration-500 pointer-events-none" />
-                    <div className="absolute -bottom-16 -right-16 w-40 h-40 bg-primary-500/10 rounded-full blur-[50px] pointer-events-none" />
+                {/* REIMAGINED LIQUID GLASS EXPLORER CREDENTIAL CARD */}
+                <GlassPanel 
+                    className="wg-glass-card rounded-2xl sm:rounded-[28px] overflow-hidden p-5 sm:p-6 relative group transition-all duration-300 flex flex-col justify-between h-[13.5rem] sm:h-[15.5rem] border border-primary-500/20 shadow-md"
+                    overrides={{ borderRadius: 28 }}
+                    padding="0px"
+                >
+                    <div className="p-5 sm:p-6 h-full flex flex-col justify-between relative z-10">
+                        {/* Iridescent shimmer overlays */}
+                        <div className="absolute -top-10 -right-10 w-36 h-36 bg-gradient-to-br from-primary-500/15 via-indigo-500/10 to-transparent rounded-full blur-[40px] pointer-events-none" />
+                        <div className="absolute -bottom-10 -left-10 w-36 h-36 bg-gradient-to-tr from-amber-500/15 via-pink-500/10 to-transparent rounded-full blur-[40px] pointer-events-none" />
 
-                    <div className="flex justify-between items-start relative z-10 w-full">
-                        <div>
+                        {/* Top Card Bar */}
+                        <div className="flex justify-between items-start w-full">
                             <div className="flex items-center gap-1.5">
-                                <span className="text-2xs font-mono font-bold tracking-widest text-[#f59e0b] uppercase">Wander Executive</span>
-                                <span className="w-1.5 h-1.5 bg-[#f59e0b] rounded-full animate-pulse" />
+                                <span className="text-2xs font-mono font-bold tracking-widest text-primary-600 dark:text-primary-400 uppercase">Executive Pass</span>
+                                <span className="w-1.5 h-1.5 bg-primary-500 rounded-full animate-pulse" />
                             </div>
-                            <span className="block text-2xs font-mono text-zinc-400 mt-0.5 uppercase tracking-wider">Holographic Membership Card</span>
-                        </div>
-                        <div className="flex flex-col items-end gap-1">
-                            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20 shadow-sm">
-                                <Cpu className="w-4 h-4 text-amber-500" weight="duotone" />
+                            <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                <Sparkles className="w-3.5 h-3.5" weight="duotone" />
                             </div>
-                            <span className="text-2xs font-mono text-zinc-500 uppercase tracking-widest leading-none">Security RFID</span>
-                        </div>
-                    </div>
-
-                    <div className="space-y-4 relative z-10 mt-2">
-                        {/* Mock Card Numbers */}
-                        <div className="font-mono text-xs sm:text-sm tracking-[0.22em] text-zinc-200 font-bold flex justify-between">
-                            <span>EX-{currentLevel.level.toString().padStart(2, '0')}</span>
-                            <span>5024</span>
-                            <span>2196</span>
-                            <span className="text-amber-500">{2026 + currentLevel.level}</span>
                         </div>
 
-                        {/* Holder Metrics */}
-                        <div className="flex justify-between items-end border-t border-white/10 pt-3">
-                            <div>
-                                <span className="block text-2xs font-mono text-zinc-500 uppercase font-bold tracking-widest mb-0.5">Cardholder</span>
-                                <span className="text-xs font-bold text-white uppercase tracking-wider truncate max-w-[150px]">
-                                    {currentUser?.name ? currentUser.name : currentUser?.email ? currentUser.email.split('@')[0] : 'EXECUTIVE EXPLORER'}
-                                </span>
+                        {/* Card Identifier & Numbers */}
+                        <div className="space-y-2.5 mt-2">
+                            <div className="font-mono text-xs sm:text-sm tracking-[0.22em] text-light-text dark:text-dark-text font-bold flex justify-between">
+                                <span>EX-{currentLevel.level.toString().padStart(2, '0')}</span>
+                                <span>5024</span>
+                                <span>2196</span>
+                                <span className="text-primary-600 dark:text-primary-400">{2026 + currentLevel.level}</span>
                             </div>
-                            <div className="text-right">
-                                <span className="block text-2xs font-mono text-zinc-500 uppercase font-bold tracking-widest mb-0.5">Tier LEVEL</span>
-                                <span className="text-xs font-bold text-amber-500 uppercase tracking-wider">
-                                    {currentLevel.name}
-                                </span>
+
+                            {/* Cardholder Footnote */}
+                            <div className="flex justify-between items-end border-t border-black/10 dark:border-white/10 pt-2">
+                                <div>
+                                    <span className="block text-3xs font-mono text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold tracking-widest">Cardholder</span>
+                                    <span className="text-xs font-bold text-light-text dark:text-dark-text uppercase tracking-wider truncate max-w-[130px] block">
+                                        {currentUser?.name ? currentUser.name : currentUser?.email ? currentUser.email.split('@')[0] : 'EXPLORER'}
+                                    </span>
+                                </div>
+                                <div className="text-right">
+                                    <span className="block text-3xs font-mono text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold tracking-widest">Tier</span>
+                                    <span className="text-xs font-bold text-primary-600 dark:text-primary-400 uppercase tracking-wider">
+                                        {currentLevel.name}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
+                </GlassPanel>
 
-                {/* Altitude level details progress */}
-                <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden p-5 shadow-sm">
-                    <div className="flex justify-between items-end mb-2.5">
-                        <span className="text-2xs font-mono font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest">Altitudal completion</span>
-                        <span className="text-xs font-mono font-bold text-primary-500">{Math.round(progressToNext)}% Completed</span>
+                {/* Level Progress Milestone Card */}
+                <GlassPanel className="wg-glass-card rounded-2xl sm:rounded-[28px] overflow-hidden p-4 sm:p-5 shadow-xs border border-black/5 dark:border-white/10">
+                    <div className="flex justify-between items-end mb-2">
+                        <span className="text-2xs font-mono font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest">Tier Progress</span>
+                        <span className="text-xs font-mono font-bold text-primary-600 dark:text-primary-400">{Math.round(progressToNext)}%</span>
                     </div>
                     
-                    <div className="h-3.5 w-full bg-black/5 dark:bg-white/5 rounded-full overflow-hidden p-0.5 border border-black/5 dark:border-white/5">
-                        <div className="h-full bg-gradient-to-r from-primary-500 via-indigo-500 to-amber-500 transition-all duration-1000 ease-out rounded-full relative" style={{ width: `${progressToNext}%` }}>
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[pulse_1.5s_infinite]" />
-                        </div>
+                    <div className="h-2.5 w-full bg-black/5 dark:bg-white/5 rounded-full overflow-hidden p-0.5 border border-black/5 dark:border-white/5">
+                        <div className="h-full bg-gradient-to-r from-primary-500 via-indigo-500 to-amber-500 transition-all duration-700 ease-out rounded-full" style={{ width: `${progressToNext}%` }} />
                     </div>
 
                     {nextLevel && (
-                        <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary mt-2.5 font-bold text-center uppercase tracking-wider leading-relaxed">
-                            Arrive in <span className="font-extrabold text-light-text dark:text-dark-text">{nextLevel.countries - visitedData.length} countries</span> to achieve <span className="font-bold text-amber-500">{nextLevel.name}</span>
+                        <p className="text-2xs font-mono font-semibold text-light-text-secondary dark:text-dark-text-secondary mt-2 text-center uppercase tracking-wider">
+                            {nextLevel.countries - visitedData.length} to <strong className="text-light-text dark:text-dark-text">{nextLevel.name}</strong>
                         </p>
                     )}
                 </GlassPanel>
 
-                {/* BOARDING PASSES TRANSITING slips */}
-                <GlassPanel id="transit-passes-scroller" className="wg-glass-card rounded-[28px] overflow-hidden p-5 flex-1 flex flex-col justify-between shadow-sm min-h-[14rem]">
+                {/* Boarding Slip Register */}
+                <GlassPanel className="wg-glass-card rounded-2xl sm:rounded-[28px] overflow-hidden p-4 sm:p-5 flex-1 flex flex-col justify-between shadow-xs border border-black/5 dark:border-white/10 min-h-[12rem]">
                     <div>
-                        <div className="flex justify-between items-center mb-3">
-                            <h3 className="text-2xs font-mono font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest">Active Boarding Register</h3>
-                            <span className="text-2xs font-mono bg-black/5 dark:bg-white/5 py-0.5 px-2 rounded text-light-text-secondary dark:text-dark-text-secondary border border-black/5 dark:border-white/5 uppercase font-bold">Gate</span>
+                        <div className="flex justify-between items-center mb-2.5">
+                            <h3 className="text-2xs font-mono font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest">Upcoming</h3>
+                            <span className="text-2xs font-mono bg-primary-500/10 text-primary-600 dark:text-primary-400 py-0.5 px-2 rounded-full uppercase font-bold border border-primary-500/20">
+                                {upcomingTripsList.length}
+                            </span>
                         </div>
                         
                         {upcomingTripsList.length === 0 ? (
-                            <div className="p-4 py-8 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-dashed border-black/10 dark:border-white/10 flex flex-col items-center justify-center text-center">
-                                <Compass className="w-5 h-5 text-zinc-400 mb-1.5 animate-[spin_32s_linear_infinite]" weight="duotone" />
-                                <p className="text-xs font-mono font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider">No Active Slips queued</p>
-                                <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-1 font-medium leading-relaxed">Create itineraries in standard views to configure active transit keys</p>
+                            <div className="p-4 py-6 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-dashed border-black/10 dark:border-white/10 flex flex-col items-center justify-center text-center">
+                                <Compass className="w-5 h-5 text-zinc-400 mb-1" weight="duotone" />
+                                <p className="text-xs font-mono text-light-text-secondary dark:text-dark-text-secondary">No upcoming trips</p>
                             </div>
                         ) : (
-                            <div className="space-y-3">
+                            <div className="space-y-2">
                                 {upcomingTripsList.map((t) => (
                                     <div 
                                         key={t.id} 
                                         onClick={() => onTripClick && onTripClick(t.id)}
-                                        className="relative overflow-hidden p-3 bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 rounded-2xl flex items-center justify-between hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 shadow-sm group"
-                                        title="Click to view boarding details"
+                                        className="relative overflow-hidden p-2.5 bg-white/50 dark:bg-white/[0.04] border border-black/5 dark:border-white/10 rounded-xl flex items-center justify-between hover:bg-white/80 dark:hover:bg-white/[0.08] cursor-pointer transition-all duration-150 min-h-[44px] group"
+                                        title="View expedition details"
                                     >
-                                        {/* Classic boarding ticket side cutouts */}
-                                        <div className="absolute top-[40%] -left-1.5 w-3 h-3 bg-light-card dark:bg-dark-card border border-black/10 dark:border-white/10 rounded-full z-10" />
-                                        <div className="absolute top-[40%] -right-1.5 w-3 h-3 bg-light-card dark:bg-dark-card border border-black/10 dark:border-white/10 rounded-full z-10" />
-
-                                        <div className="flex items-center gap-3 min-w-0 pl-1 z-10">
-                                            <div className="w-8.5 h-8.5 rounded-xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-primary-600 dark:text-primary-400 shrink-0">
-                                                <span className="text-lg leading-none">{t.icon || '✈️'}</span>
+                                        <div className="flex items-center gap-2.5 min-w-0 z-10">
+                                            <div className="w-7 h-7 rounded-lg bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-primary-600 dark:text-primary-400 shrink-0">
+                                                <span className="text-xs">{t.icon || '✈️'}</span>
                                             </div>
                                             <div className="min-w-0">
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className="block text-xs font-bold text-light-text dark:text-dark-text truncate leading-none">{t.name}</span>
-                                                    <Ticket className="w-3 h-3 text-zinc-400 shrink-0" weight="duotone" />
-                                                </div>
-                                                <span className="block text-2xs font-mono font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase mt-1 truncate tracking-wider">{t.location}</span>
+                                                <span className="block text-xs font-bold text-light-text dark:text-dark-text truncate">{t.name}</span>
+                                                <span className="block text-3xs font-mono text-light-text-secondary dark:text-dark-text-secondary uppercase truncate">{t.location}</span>
                                             </div>
                                         </div>
                                         
-                                        <div className="text-right shrink-0 pr-1 font-mono z-10">
+                                        <div className="text-right shrink-0 font-mono z-10 pl-2">
                                             <span className="block text-xs font-bold text-primary-600 dark:text-primary-400 uppercase">
                                                 {formatDate(t.startDate, 'short')}
                                             </span>
-                                            <div className="flex gap-0.5 justify-end opacity-20 h-3.5 mt-1">
-                                                <span className="w-[1px] bg-zinc-800 dark:bg-white h-full" />
-                                                <span className="w-[2px] bg-zinc-800 dark:bg-white h-full" />
-                                                <span className="w-[1px] bg-zinc-800 dark:bg-white h-full" />
-                                                <span className="w-[3px] bg-zinc-800 dark:bg-white h-full" />
-                                                <span className="w-[1px] bg-zinc-800 dark:bg-white h-full" />
-                                            </div>
                                         </div>
                                     </div>
                                 ))}
@@ -1172,97 +1264,101 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
         </div>
 
         {/* ========================================================= */}
-        {/* ROW 3: SWISS OPTIMIZED CONTROL REGISTRATION AND TABS */}
+        {/* 5. MULTI-SUITE EXPLORATION TABS (The Planner Standard §2.3) */}
+        {/* Centered on mobile! 3D Album deleted completely!          */}
         {/* ========================================================= */}
-        <div id="stats-tab-console" className="space-y-6">
+        <div className="space-y-5">
             
-            {/* Segmentation Switch Box (Liquid Glass Pill) */}
-            <div className="flex flex-col xl:flex-row gap-4 items-center justify-between border-b border-black/5 dark:border-white/5 pb-4">
+            {/* Centered Floating Liquid Glass Tab Switcher */}
+            <div className="flex items-center justify-center sm:justify-start overflow-x-auto sm:overflow-visible no-scrollbar p-2 -m-2 shrink-0 w-full">
                 <GlassPanel
                     className="wg-glass-pill shadow-lg shadow-black/5 dark:shadow-black/25 shrink-0"
-                    padding="4px 6px"
+                    padding="3px 5px"
                     overrides={{ borderRadius: 9999 }}
                 >
-                    <div className="flex items-center gap-1 shrink-0 overflow-x-auto max-w-full no-scrollbar">
-                    {[
-                        { id: 'stamps', label: 'Passport Stamps', icon: IdentificationCard },
-                        { id: 'flipbook', label: '3D Album', icon: BookOpen },
-                        { id: 'stickers', label: 'Landmark Stickers', icon: Star },
-                        { id: 'milestones', label: 'Achievements', icon: Trophy },
-                        { id: 'analytics', label: 'Flight Cockpit', icon: ChartBar },
-                    ].map(tab => {
-                        const Icon = tab.icon;
-                        const isActive = activeStatsTab === tab.id;
-                        return (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveStatsTab(tab.id)}
-                                aria-label={tab.label}
-                                className={`relative px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer select-none whitespace-nowrap min-h-[44px] ${
-                                    isActive 
-                                    ? 'text-light-text dark:text-dark-text font-black' 
-                                    : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
-                                }`}
-                            >
-                                {isActive && (
-                                    <motion.div
-                                        layoutId="dashboardActiveTab"
-                                        className="absolute inset-0 bg-white dark:bg-dark-card rounded-full shadow-sm"
-                                        transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                                    />
-                                )}
-                                <span className="relative z-10 flex items-center gap-2">
-                                    <Icon className="w-4 h-4" weight={isActive ? "duotone" : "regular"} />
-                                    <span className="hidden sm:inline">{tab.label}</span>
-                                </span>
-                            </button>
-                        );
-                    })}
+                    <div className="flex gap-1 relative items-center">
+                        {[
+                            { id: 'stamps' as const, label: 'Stamps', icon: IdentificationCard, count: visitedData.length },
+                            { id: 'stickers' as const, label: 'Stickers', icon: Star, count: `${stickerStats.unlockedCount}/${stickerStats.totalCount}` },
+                            { id: 'milestones' as const, label: 'Milestones', icon: Trophy },
+                            { id: 'analytics' as const, label: 'Analytics', icon: ChartBar },
+                        ].map((tab) => {
+                            const isSelected = activeStatsTab === tab.id;
+                            const IconComponent = tab.icon;
+
+                            return (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveStatsTab(tab.id)}
+                                    aria-label={tab.label}
+                                    className={`relative rounded-full text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none active:scale-95 min-h-[44px] ${
+                                        isSelected
+                                            ? 'text-primary-700 dark:text-primary-300 px-3.5 sm:px-5 py-2'
+                                            : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text px-3 sm:px-4 py-2'
+                                    }`}
+                                >
+                                    {isSelected && (
+                                        <motion.div
+                                            layoutId="dashboardActiveTab"
+                                            className="absolute inset-0 rounded-full bg-primary-500/20 dark:bg-primary-500/30 backdrop-blur-md border border-primary-500/40 dark:border-primary-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(99,102,241,0.3)] z-0"
+                                            style={{ WebkitBackdropFilter: 'blur(12px)' }}
+                                            transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                                        />
+                                    )}
+                                    <span className="relative z-10 flex items-center gap-1.5 sm:gap-2">
+                                        <IconComponent className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" weight="duotone" />
+                                        <span className={`tracking-tight ${isSelected ? 'inline' : 'hidden sm:inline'}`}>
+                                            {tab.label}
+                                        </span>
+                                        {tab.count !== undefined && (
+                                            <span className="text-3xs font-mono px-1.5 py-0.2 rounded-full font-bold border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/10">
+                                                {tab.count}
+                                            </span>
+                                        )}
+                                    </span>
+                                </button>
+                            );
+                        })}
                     </div>
                 </GlassPanel>
-
-                <div className="flex items-center gap-4 text-xs font-mono text-light-text-secondary dark:text-dark-text-secondary text-right">
-                    <span className="flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5 text-emerald-500" weight="duotone" /> Auto-Synchronized</span>
-                    <span className="hidden sm:inline-block text-zinc-300 dark:text-zinc-700">|</span>
-                    <span className="hidden sm:inline-block">Total distance: <strong className="text-light-text dark:text-dark-text">{totalDistance.toLocaleString()} KM</strong></span>
-                </div>
             </div>
 
+            {/* Tab Body Panels */}
             <AnimatePresence mode="wait">
                 
-                {/* 1. PASSPORT STAMPS VIEW PANEL */}
+                {/* 1. PASSPORT STAMPS VIEW PANEL (Compact Multi-Column Grid) */}
                 {activeStatsTab === 'stamps' && (
                     <motion.div 
                         key="stamps-panel"
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.22 }}
-                        className="space-y-6"
+                        transition={{ duration: 0.2 }}
+                        className="space-y-4 sm:space-y-5"
                     >
-                        {/* Interactive Pill filtering controllers */}
-                        <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden p-4 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                             <div className="relative md:col-span-1">
-                                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 w-4 h-4" />
+                        {/* Interactive Pill Filtering Bar */}
+                        <GlassPanel className="wg-glass-card rounded-2xl sm:rounded-[28px] overflow-hidden p-2.5 sm:p-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 border border-black/5 dark:border-white/10">
+                             <div className="relative shrink-0 sm:w-56">
+                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 w-3.5 h-3.5" />
                                  <input
                                      type="text"
-                                     placeholder="Query country or gateway..."
+                                     placeholder="Search stamps..."
                                      value={stampSearch}
                                      onChange={(e) => setStampSearch(e.target.value)}
-                                     className="w-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl pl-10 pr-9 py-2 min-h-[44px] text-xs font-bold text-light-text dark:text-dark-text placeholder-zinc-400 focus:outline-none focus:border-primary-500"
+                                     className="w-full bg-white/70 dark:bg-dark-card/70 border border-black/10 dark:border-white/10 rounded-xl pl-8 pr-7 py-2 min-h-[40px] text-xs font-bold text-light-text dark:text-dark-text placeholder-light-text-secondary/50 focus:outline-none focus:border-primary-500"
                                  />
                                  {stampSearch && (
                                      <button 
                                          onClick={() => setStampSearch('')} 
                                          aria-label="Clear stamp search"
-                                         className="w-8 h-8 min-w-[32px] min-h-[32px] flex items-center justify-center absolute right-1.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-black dark:hover:text-white rounded-lg transition-colors cursor-pointer"
+                                         className="w-6 h-6 flex items-center justify-center absolute right-1.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-black dark:hover:text-white rounded-lg transition-colors cursor-pointer"
                                      >
                                          <X className="w-3.5 h-3.5" />
                                      </button>
                                  )}
                              </div>
 
-                             <div className="md:col-span-3 flex items-center gap-2 overflow-x-auto w-full no-scrollbar py-0.5">
+                             <div className="flex items-center gap-1.5 overflow-x-auto w-full no-scrollbar py-0.5">
                                   {availableRegions.map(region => {
                                       const count = region === 'All' ? visitedData.length : (regionalProgress[region] || 0);
                                       const isSelected = selectedRegion === region;
@@ -1270,28 +1366,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                           <button
                                               key={region}
                                               onClick={() => setSelectedRegion(region)}
-                                              className={`px-3.5 py-2 min-h-[40px] rounded-xl border text-2xs font-mono font-bold uppercase tracking-wide shrink-0 transition-all duration-200 cursor-pointer ${
+                                              className={`px-3 py-1.5 min-h-[40px] rounded-xl border text-2xs font-mono font-bold uppercase tracking-wide shrink-0 transition-all duration-150 cursor-pointer ${
                                                   isSelected
-                                                      ? 'bg-primary-500/15 border-primary-500/30 text-primary-600 dark:text-primary-400 shadow-sm'
-                                                      : 'bg-black/5 dark:bg-white/5 border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/10 dark:hover:bg-white/10'
+                                                      ? 'bg-primary-500/20 border-primary-500/30 text-primary-700 dark:text-primary-300 shadow-xs'
+                                                      : 'bg-white/50 dark:bg-white/[0.04] border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:bg-white/80 dark:hover:bg-white/[0.08]'
                                               }`}
                                           >
-                                              {region} <span className="opacity-60 ml-1 font-bold">({count})</span>
+                                              {region} <span className="opacity-60 font-normal">({count})</span>
                                           </button>
                                       );
                                   })}
                              </div>
                         </GlassPanel>
 
-                        {/* Stamped passports grid container */}
+                        {/* Stamped Passports Compact Multi-Column Grid */}
                         {filteredVisitedData.length === 0 ? (
                             <EmptyState 
-                                icon={<Compass className="w-10 h-10 text-zinc-400" weight="duotone" />}
-                                title="Boundary Search Exhausted"
-                                description="We couldn't resolve any passports stamped for your active filter constraints."
+                                icon={<Compass className="w-8 h-8 text-zinc-400" weight="duotone" />}
+                                title="No Stamps Found"
+                                description="Try adjusting your active filter."
                             />
                         ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 perspective-[1200px]">
+                            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3 sm:gap-4 items-center justify-items-center py-2">
                                 {filteredVisitedData.map(c => (
                                     <PassportStamp key={c.name} country={c} />
                                 ))}
@@ -1300,87 +1396,68 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                     </motion.div>
                 )}
 
-                {/* 2. 3D FLIPBOOK VIEW PANEL */}
-                {activeStatsTab === 'flipbook' && (
-                    <motion.div 
-                        key="flipbook-panel"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.22 }}
-                        className="space-y-6"
-                    >
-                        <StampFlipBook visitedCountries={visitedData} stickerClaims={stickerClaims} />
-                    </motion.div>
-                )}
-
-                {/* 3. LANDMARK STICKERS VIEW PANEL */}
+                {/* 2. LANDMARK STICKERS VIEW PANEL */}
                 {activeStatsTab === 'stickers' && (
                     <motion.div 
                         key="stickers-panel"
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.22 }}
-                        className="space-y-6"
+                        transition={{ duration: 0.2 }}
+                        className="space-y-5"
                     >
-                        {/* Category and unlocked percentages metrics panel */}
-                        <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden p-6 flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-6">
-                            <div className="space-y-1.5">
-                                <span className="inline-block text-2xs font-mono font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2.5 py-1 rounded-lg border border-amber-500/20">
-                                    ★ Collector Rank: {stickerStats.rank}
+                        {/* Sticker Status Overview */}
+                        <GlassPanel className="wg-glass-card rounded-2xl sm:rounded-[28px] overflow-hidden p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 border border-black/5 dark:border-white/10">
+                            <div className="flex items-center gap-3">
+                                <span className="text-2xs font-mono font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2.5 py-1 rounded-lg border border-amber-500/20 shrink-0">
+                                    {stickerStats.rank}
                                 </span>
-                                <h3 className="text-xl font-extrabold text-light-text dark:text-dark-text tracking-tight">Landmark Sticker Album</h3>
-                                <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-semibold">{stickerStats.rankDesc}</p>
+                                <h3 className="text-base sm:text-lg font-bold text-light-text dark:text-dark-text tracking-tight">Landmark Stickers</h3>
                             </div>
 
-                            <div className="flex flex-col items-center justify-center shrink-0 w-full lg:w-48 space-y-2">
-                                <div className="flex justify-between w-full text-2xs font-mono font-bold text-light-text-secondary dark:text-dark-text-secondary">
-                                    <span>ALBUM PROGRESS</span>
-                                    <span className="text-amber-500 font-bold">{stickerStats.percent}%</span>
-                                </div>
-                                <div className="h-3 w-full bg-black/5 dark:bg-white/5 rounded-full overflow-hidden relative border border-black/5 dark:border-white/5">
+                            <div className="flex items-center gap-3 shrink-0 sm:w-64">
+                                <div className="h-2.5 flex-1 bg-black/5 dark:bg-white/5 rounded-full overflow-hidden relative border border-black/5 dark:border-white/5">
                                     <div 
-                                        className="h-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all duration-1000 ease-out rounded-full relative" 
+                                        className="h-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all duration-700 ease-out rounded-full relative" 
                                         style={{ width: `${stickerStats.percent}%` }}
                                     />
                                 </div>
-                                <span className="text-2xs font-mono font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest text-center">
-                                    {stickerStats.unlockedCount} / {stickerStats.totalCount} stickers adhered
+                                <span className="text-2xs font-mono font-bold text-light-text-secondary dark:text-dark-text-secondary shrink-0 whitespace-nowrap">
+                                    {stickerStats.unlockedCount}/{stickerStats.totalCount} ({stickerStats.percent}%)
                                 </span>
                             </div>
                         </GlassPanel>
 
-                        {/* Searching categories filters */}
-                        <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
-                            <div className="flex flex-wrap gap-1.5 p-1 bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5 overflow-x-auto no-scrollbar max-w-full">
+                        {/* Search and Category Filters */}
+                        <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3">
+                            <div className="flex flex-wrap gap-1.5 p-1 bg-white/50 dark:bg-white/[0.04] rounded-2xl border border-black/5 dark:border-white/10 overflow-x-auto no-scrollbar max-w-full">
                                 <button
                                     onClick={() => setSelectedStickerCategory('All')}
-                                    className={`px-3.5 py-2 min-h-[40px] rounded-xl text-xs font-bold uppercase tracking-wide transition-all cursor-pointer whitespace-nowrap ${
+                                    className={`px-3 py-1.5 min-h-[40px] rounded-xl text-xs font-bold uppercase tracking-wide transition-all cursor-pointer whitespace-nowrap ${
                                         selectedStickerCategory === 'All'
-                                            ? 'bg-white dark:bg-dark-card text-light-text dark:text-dark-text shadow-sm font-black'
+                                            ? 'bg-white dark:bg-dark-card text-light-text dark:text-dark-text shadow-xs font-black'
                                             : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
                                     }`}
                                 >
-                                    All Categories
+                                    All
                                 </button>
                                 {STICKER_CATEGORIES.map(cat => {
-                                    const stats = stickerStats.categoryBreakdowns.find(cb => cb.category === cat);
+                                    const catStats = stickerStats.categoryBreakdowns.find(cb => cb.category === cat);
                                     const isSelected = selectedStickerCategory === cat;
                                     return (
                                         <button
                                             key={cat}
                                             onClick={() => setSelectedStickerCategory(cat)}
-                                            className={`px-3.5 py-2 min-h-[40px] rounded-xl text-xs font-bold uppercase tracking-wide transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                                            className={`px-3 py-1.5 min-h-[40px] rounded-xl text-xs font-bold uppercase tracking-wide transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                                                 isSelected
-                                                    ? 'bg-white dark:bg-dark-card text-light-text dark:text-dark-text shadow-sm font-black'
+                                                    ? 'bg-white dark:bg-dark-card text-light-text dark:text-dark-text shadow-xs font-black'
                                                     : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
                                             }`}
                                         >
                                             {cat}
-                                            {stats && stats.unlocked > 0 && (
-                                                <span className={`text-2xs px-1.5 py-0.5 rounded font-bold leading-none ${stats.isCompleted ? 'bg-emerald-500 text-white' : 'bg-amber-500/10 text-amber-500'}`}>
-                                                    {stats.unlocked}
+                                            {catStats && catStats.unlocked > 0 && (
+                                                <span className={`text-2xs px-1.5 py-0.5 rounded font-bold leading-none ${catStats.isCompleted ? 'bg-emerald-500 text-white' : 'bg-amber-500/15 text-amber-600 dark:text-amber-400'}`}>
+                                                    {catStats.unlocked}
                                                 </span>
                                             )}
                                         </button>
@@ -1389,36 +1466,38 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                             </div>
 
                             <div className="relative">
-                                <span className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none text-zinc-400">
-                                    <Search className="w-4 h-4" />
+                                <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-zinc-400">
+                                    <Search className="w-3.5 h-3.5" />
                                 </span>
                                 <input
                                     type="text"
-                                    placeholder="Find landmarks or countries..."
+                                    placeholder="Search stickers..."
                                     value={stickerSearch}
                                     onChange={(e) => setStickerSearch(e.target.value)}
-                                    className="w-full md:w-64 pl-10 pr-4 py-2 min-h-[44px] text-xs rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 outline-none focus:border-primary-500 text-light-text dark:text-dark-text font-medium"
+                                    className="w-full md:w-60 pl-9 pr-4 py-2 min-h-[40px] text-xs rounded-xl bg-white/70 dark:bg-dark-card/70 border border-black/10 dark:border-white/10 outline-none focus:border-primary-500 text-light-text dark:text-dark-text font-medium"
                                 />
                             </div>
                         </div>
 
-                        {/* Booklet breakdown section */}
+                        {/* Category Progress Tiles */}
                         {selectedStickerCategory === 'All' && !stickerSearch && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                                 {stickerStats.categoryBreakdowns.map(item => (
                                     <div 
                                         key={item.category}
                                         onClick={() => setSelectedStickerCategory(item.category)}
-                                        className={`p-4 rounded-2xl border transition-transform duration-180 ease-glass cursor-pointer hover:-translate-y-0.5 active:scale-[0.98] ${
+                                        className={`p-3.5 rounded-2xl border transition-all duration-150 cursor-pointer hover:-translate-y-0.5 min-h-[44px] ${
                                             item.isCompleted 
-                                                ? 'bg-emerald-500/[0.03] dark:bg-emerald-500/10 border-emerald-500/20 hover:bg-emerald-500/[0.05]'
-                                                : 'bg-black/[0.02] dark:bg-white/[0.02] border-black/5 dark:border-white/5 hover:bg-black/5 dark:hover:bg-white/5'
+                                                ? 'bg-emerald-500/[0.04] dark:bg-emerald-500/10 border-emerald-500/20'
+                                                : 'bg-white/50 dark:bg-white/[0.04] border-black/5 dark:border-white/10 hover:bg-white/80 dark:hover:bg-white/[0.08]'
                                         }`}
                                     >
-                                        <span className="text-2xs font-mono font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider">{item.unlocked === item.total ? '🏆 PERFECT' : 'ALBUM SECTION'}</span>
-                                        <h4 className="text-xs font-extrabold uppercase text-light-text dark:text-dark-text mt-0.5 truncate">{item.category}</h4>
-                                        <div className="mt-3 flex items-center justify-between text-xs font-mono text-light-text-secondary dark:text-dark-text-secondary">
-                                            <span>{item.unlocked} of {item.total}</span>
+                                        <div className="flex items-center justify-between">
+                                            <h4 className="text-xs font-bold uppercase text-light-text dark:text-dark-text truncate">{item.category}</h4>
+                                            {item.isCompleted && <span className="text-2xs">🏆</span>}
+                                        </div>
+                                        <div className="mt-2 flex items-center justify-between text-2xs font-mono text-light-text-secondary dark:text-dark-text-secondary">
+                                            <span>{item.unlocked}/{item.total}</span>
                                             <span className={item.isCompleted ? 'text-emerald-500 font-bold' : 'text-amber-500 font-bold'}>{item.percent}%</span>
                                         </div>
                                         <div className="h-1.5 w-full bg-black/5 dark:bg-white/5 rounded-full overflow-hidden mt-1.5">
@@ -1432,14 +1511,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                             </div>
                         )}
 
-                        <div className="p-4 rounded-2xl text-xs bg-primary-500/10 text-primary-700 dark:text-primary-300 border border-primary-500/20 font-semibold flex items-center gap-3">
-                            <Lightbulb weight="duotone" className="w-5 h-5 text-primary-500 shrink-0" />
-                            <span>
-                                <strong>Sticker Verification Tip:</strong> Collect adhesive stamps automatically when you configure past trips within <strong>65km</strong> of any landmark, or trigger manual overrides to document elder memories!
-                            </span>
-                        </div>
-
-                        {/* Landmarks Grid and claims */}
+                        {/* Landmarks Grid */}
                         <div className="space-y-4">
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                 {ICONIC_STICKERS.filter(sticker => {
@@ -1452,38 +1524,25 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                     return matchCategory && matchSearch;
                                 }).map(sticker => (
                                     <StickerStamp 
-                                        key={sticker.id}
+                                        key={sticker.id} 
                                         sticker={sticker}
                                         claim={stickerClaims.get(sticker.id)}
                                         availableTrips={pastTrips}
                                     />
                                 ))}
                             </div>
-                            {ICONIC_STICKERS.filter(sticker => {
-                                const matchCategory = selectedStickerCategory === 'All' || sticker.category === selectedStickerCategory;
-                                    const searchLower = stickerSearch.toLowerCase();
-                                    const matchSearch = !stickerSearch || 
-                                        sticker.name.toLowerCase().includes(searchLower) || 
-                                        sticker.location.toLowerCase().includes(searchLower) || 
-                                        sticker.countryCode.toLowerCase().includes(searchLower);
-                                return matchCategory && matchSearch;
-                            }).length === 0 && (
-                                <div className="p-12 text-center text-zinc-400 font-mono font-bold uppercase tracking-wider border border-dashed border-gray-205 dark:border-zinc-805 rounded-xl">
-                                    No landmarks matched your active filters 🧭
-                                </div>
-                            )}
                         </div>
                     </motion.div>
                 )}
 
-                {/* 4. ACHIEVEMENTS VIEW PANEL */}
+                {/* 3. ACHIEVEMENTS VIEW PANEL */}
                 {activeStatsTab === 'milestones' && (
                     <motion.div 
                         key="milestones-panel"
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.22 }}
+                        transition={{ duration: 0.2 }}
                         className="space-y-6"
                     >
                         <AchievementMilestones 
@@ -1495,7 +1554,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                     </motion.div>
                 )}
 
-                {/* 5. COCKPIT ANALYTICS COCKPIT */}
+                {/* 4. FLIGHT COCKPIT ANALYTICS */}
                 {activeStatsTab === 'analytics' && (
                     <motion.div 
                         key="analytics-panel"
@@ -1503,24 +1562,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                         initial="hidden"
                         animate="show"
                         exit="hidden"
-                        className="space-y-8 animate-fade-in"
+                        className="space-y-6 sm:space-y-8 animate-fade-in"
                     >
-                        <motion.div variants={itemVariants} className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                        {/* Trend Chart & Cabin Donut */}
+                        <motion.div variants={itemVariants} className="grid grid-cols-1 xl:grid-cols-3 gap-6 sm:gap-8">
                             <div className="xl:col-span-2">
                                 <FlightTrendChart data={flightTrendData} />
                             </div>
                             <div className="xl:col-span-1">
-                                <DonutChart title="Preferred Cabin Profile" data={stats.seatCounts} />
+                                <DonutChart title="Cabin Classes" data={stats.seatCounts} />
                             </div>
                         </motion.div>
 
-                        <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                            <StatCard title="Continuous Air Journeys" value={stats.totalFlights} icon="flight_takeoff" color="blue" />
-                            <StatCard title="Accumulated Coverage" value={`${(stats.totalDistance / 1000).toFixed(1)}k km`} subtitle={`${stats.earthCircumnavigations}x Globe Rotations`} icon="public" color="emerald" />
-                            <StatCard title="Total Flight Hours" value={`${stats.totalDurationHours}h`} subtitle={`${stats.daysInAir} Days aloft`} icon="schedule" color="purple" />
-                            <StatCard title="Main Airport Hub" value={stats.topAirports[0]?.label || '-'} subtitle={`${stats.topAirports[0]?.count || 0} landings recorded`} icon="place" color="amber" />
-                        </motion.div>
-
+                        {/* Extreme Flights & Travel Class */}
                         <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             <div className="lg:col-span-1">
                                 <ExtremeFlightCard type="Longest" flight={stats.longestFlight} color="indigo" />
@@ -1529,10 +1583,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                                 <ExtremeFlightCard type="Shortest" flight={stats.shortestFlight} color="rose" />
                             </div>
                             <div className="lg:col-span-1">
-                                <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden p-6 h-full flex flex-col justify-between">
+                                <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden p-6 h-full flex flex-col justify-between border border-black/5 dark:border-white/10">
                                     <div className="flex justify-between items-center mb-4">
-                                        <h3 className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest">Preferred Class Segment</h3>
-                                        <TrendingUp className="w-4 h-4 text-emerald-500" weight="duotone" />
+                                        <h3 className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest">Travel Classes</h3>
+                                        <TrendUp className="w-4 h-4 text-emerald-500" weight="duotone" />
                                     </div>
                                     <div className="flex-1 flex flex-col justify-center space-y-3.5">
                                         {stats.classCounts.map((cabin) => (
@@ -1551,16 +1605,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUserClick, onTripClick }
                             </div>
                         </motion.div>
 
-                        <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            <TopList title="Most Landed Airport Hubs" items={stats.topAirports} icon="apartment" color="amber" />
-                            <TopList title="Primary Registered Airlines" items={stats.topAirlines} icon="flight" color="blue" />
+                        {/* Top Hubs & Airlines */}
+                        <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
+                            <TopList title="Top Airports" items={stats.topAirports} icon="apartment" color="amber" />
+                            <TopList title="Top Airlines" items={stats.topAirlines} icon="flight" color="blue" />
                         </motion.div>
                     </motion.div>
                 )}
             </AnimatePresence>
         </div>
 
-        {/* Live Active Flights dialog modal */}
+        {/* Live Active Flight Modal */}
         <Suspense fallback={null}>
           <FlightTrackerModal isOpen={isFlightTrackerOpen} onClose={() => setIsFlightTrackerOpen(false)} suggestedFlight={todaysFlight} />
         </Suspense>

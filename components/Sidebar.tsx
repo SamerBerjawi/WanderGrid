@@ -416,163 +416,143 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <AnimatePresence>
         {isMoreOpen && (
           <>
-            {/* Backdrop blur dismissal layer */}
+            {/* Backdrop dismissal layer */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="md:hidden fixed inset-0 bg-black/40 dark:bg-black/60 z-modal-backdrop"
+              className="md:hidden fixed inset-0 bg-black/25 dark:bg-black/50 z-modal-backdrop"
               onClick={() => setIsMoreOpen(false)}
             />
-            {/* Elegant Minimalist Floating Menu Box with Liquid Glass */}
+            {/* Floating Liquid Glass Menu Box */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 12, x: 0 }}
+              initial={{ opacity: 0, scale: 0.95, y: 10, x: 0 }}
               animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 12, x: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10, x: 0 }}
               transition={{ type: "spring", stiffness: 450, damping: 32 }}
-              className="md:hidden fixed bottom-safe-menu right-4 w-56 z-modal safe-right"
+              className="md:hidden fixed bottom-safe-menu right-4 w-60 z-modal safe-right"
             >
               <GlassPanel
-                className="wg-glass-card shadow-2xl"
+                className="wg-glass-card shadow-2xl overflow-hidden"
                 overrides={{ borderRadius: 24 }}
-                padding="12px"
+                padding="0px"
               >
-                <div className="flex flex-col gap-1 w-full">
-                  {/* Planner button option */}
-                  <button
-                    onClick={() => {
-                      onNavigate(ViewState.PLANNER);
-                      setIsMoreOpen(false);
-                    }}
-                    className={`flex items-center justify-between w-full p-2.5 px-3 rounded-xl text-left text-xs font-bold font-sans transition-all duration-150 border cursor-pointer ${
-                      currentView === ViewState.PLANNER
-                        ? `${isDark ? PAGE_THEMES[ViewState.PLANNER].activeSidebarDark : PAGE_THEMES[ViewState.PLANNER].activeSidebarLight} ${PAGE_THEMES[ViewState.PLANNER].color}`
-                        : 'text-light-text dark:text-dark-text bg-transparent border-transparent hover:bg-black/5 dark:hover:bg-white/5'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Icon name="map" className={`text-lg ${PAGE_THEMES[ViewState.PLANNER].color}`} />
-                      <span>Planner</span>
-                    </div>
-                    {currentView === ViewState.PLANNER && (
-                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: PAGE_THEMES[ViewState.PLANNER].accentHex }} />
-                    )}
-                  </button>
-
-                  {/* Planner-2 button option */}
-                  <button
-                    onClick={() => {
-                      onNavigate(ViewState.PLANNER_2);
-                      setIsMoreOpen(false);
-                    }}
-                    className={`flex items-center justify-between w-full p-2.5 px-3 rounded-xl text-left text-xs font-bold font-sans transition-all duration-150 border cursor-pointer ${
-                      currentView === ViewState.PLANNER_2
-                        ? `${isDark ? PAGE_THEMES[ViewState.PLANNER_2].activeSidebarDark : PAGE_THEMES[ViewState.PLANNER_2].activeSidebarLight} ${PAGE_THEMES[ViewState.PLANNER_2].color}`
-                        : 'text-light-text dark:text-dark-text bg-transparent border-transparent hover:bg-black/5 dark:hover:bg-white/5'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Icon name="calendar_month" className={`text-lg ${PAGE_THEMES[ViewState.PLANNER_2].color}`} />
-                      <span>Planner-2</span>
-                    </div>
-                    {currentView === ViewState.PLANNER_2 && (
-                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: PAGE_THEMES[ViewState.PLANNER_2].accentHex }} />
-                    )}
-                  </button>
-
-                  {/* Vacation Calendar option */}
-                  <button
-                    onClick={() => {
-                      onNavigate(ViewState.VACATION_CALENDAR);
-                      setIsMoreOpen(false);
-                    }}
-                    className={`flex items-center justify-between w-full p-2.5 px-3 rounded-xl text-left text-xs font-bold font-sans transition-all duration-150 border cursor-pointer ${
-                      currentView === ViewState.VACATION_CALENDAR
-                        ? `${isDark ? PAGE_THEMES[ViewState.VACATION_CALENDAR].activeSidebarDark : PAGE_THEMES[ViewState.VACATION_CALENDAR].activeSidebarLight} ${PAGE_THEMES[ViewState.VACATION_CALENDAR].color}`
-                        : 'text-light-text dark:text-dark-text bg-transparent border-transparent hover:bg-black/5 dark:hover:bg-white/5'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Icon name="calendar_today" className={`text-lg ${PAGE_THEMES[ViewState.VACATION_CALENDAR].color}`} />
-                      <span>Vacation Calendar</span>
-                    </div>
-                    {currentView === ViewState.VACATION_CALENDAR && (
-                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: PAGE_THEMES[ViewState.VACATION_CALENDAR].accentHex }} />
-                    )}
-                  </button>
-
-                  {/* Road Trips option */}
-                  <button
-                    onClick={() => {
-                      onNavigate(ViewState.ROADTRIPS);
-                      setIsMoreOpen(false);
-                    }}
-                    className={`flex items-center justify-between w-full p-2.5 px-3 rounded-xl text-left text-xs font-bold font-sans transition-all duration-150 border cursor-pointer ${
-                      currentView === ViewState.ROADTRIPS
-                        ? `${isDark ? PAGE_THEMES[ViewState.ROADTRIPS].activeSidebarDark : PAGE_THEMES[ViewState.ROADTRIPS].activeSidebarLight} ${PAGE_THEMES[ViewState.ROADTRIPS].color}`
-                        : 'text-light-text dark:text-dark-text bg-transparent border-transparent hover:bg-black/5 dark:hover:bg-white/5'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Icon name="directions_car" className={`text-lg ${PAGE_THEMES[ViewState.ROADTRIPS].color}`} />
-                      <span>Road Trips</span>
-                    </div>
-                    {currentView === ViewState.ROADTRIPS && (
-                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: PAGE_THEMES[ViewState.ROADTRIPS].accentHex }} />
-                    )}
-                  </button>
-
-                  {/* Settings button option */}
-                  <button
-                    onClick={() => {
-                      onNavigate(ViewState.SETTINGS);
-                      setIsMoreOpen(false);
-                    }}
-                    className={`flex items-center justify-between w-full p-2.5 px-3 rounded-xl text-left text-xs font-bold font-sans transition-all duration-150 border cursor-pointer ${
-                      currentView === ViewState.SETTINGS
-                        ? `${isDark ? PAGE_THEMES[ViewState.SETTINGS].activeSidebarDark : PAGE_THEMES[ViewState.SETTINGS].activeSidebarLight} ${PAGE_THEMES[ViewState.SETTINGS].color}`
-                        : 'text-light-text dark:text-dark-text bg-transparent border-transparent hover:bg-black/5 dark:hover:bg-white/5'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Icon name="gear" className={`text-lg ${PAGE_THEMES[ViewState.SETTINGS].color}`} />
-                      <span>Settings</span>
-                    </div>
-                    {currentView === ViewState.SETTINGS && (
-                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: PAGE_THEMES[ViewState.SETTINGS].accentHex }} />
-                    )}
-                  </button>
-
-                  {/* Me (User profile) button option */}
-                  {currentUser && (
-                    <button
-                      onClick={() => {
-                        onNavigate(ViewState.USER_DETAIL, currentUser.id);
-                        setIsMoreOpen(false);
-                      }}
-                      className={`flex items-center justify-between w-full p-2.5 px-3 rounded-xl text-left text-xs font-bold font-sans transition-all duration-150 border cursor-pointer ${
-                        currentView === ViewState.USER_DETAIL
-                          ? `${isDark ? PAGE_THEMES[ViewState.USER_DETAIL].activeSidebarDark : PAGE_THEMES[ViewState.USER_DETAIL].activeSidebarLight} ${PAGE_THEMES[ViewState.USER_DETAIL].color}`
-                          : 'text-light-text dark:text-dark-text bg-transparent border-transparent hover:bg-black/5 dark:hover:bg-white/5'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-6 h-6 rounded-md flex items-center justify-center overflow-hidden shrink-0 shadow-xs border border-white/10">
-                          <img 
-                            src={currentUser.profilePicture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'} 
-                            alt={currentUser.name} 
-                            className="w-full h-full object-cover" 
-                            referrerPolicy="no-referrer" 
+                <div className="flex flex-col gap-1 w-full p-2 bg-white/85 dark:bg-dark-card/90 backdrop-blur-xl border border-black/10 dark:border-white/15 rounded-3xl">
+                  {[
+                    { label: 'Planner', value: ViewState.PLANNER, icon: 'map' },
+                    { label: 'Planner-2', value: ViewState.PLANNER_2, icon: 'calendar_month' },
+                    { label: 'Vacation Calendar', value: ViewState.VACATION_CALENDAR, icon: 'calendar_today' },
+                    { label: 'Road Trips', value: ViewState.ROADTRIPS, icon: 'directions_car' },
+                    { label: 'Settings', value: ViewState.SETTINGS, icon: 'gear' },
+                  ].map((item) => {
+                    const itemTheme = PAGE_THEMES[item.value] || PAGE_THEMES[ViewState.PLANNER];
+                    const isActive = currentView === item.value;
+                    return (
+                      <button
+                        key={item.value}
+                        onClick={() => {
+                          onNavigate(item.value);
+                          setIsMoreOpen(false);
+                        }}
+                        className={`flex items-center justify-between w-full h-11 px-3.5 rounded-2xl text-left text-xs font-bold font-sans transition-all duration-150 cursor-pointer ${
+                          isActive
+                            ? `${isDark ? itemTheme.activeSidebarDark : itemTheme.activeSidebarLight} ${itemTheme.color} shadow-xs`
+                            : 'text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/5'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Icon name={item.icon} className={`text-lg ${itemTheme.color}`} />
+                          <span className={`font-bold ${isActive ? itemTheme.color : 'text-light-text dark:text-dark-text'}`}>
+                            {item.label}
+                          </span>
+                        </div>
+                        {isActive && (
+                          <span 
+                            className="w-1.5 h-1.5 rounded-full" 
+                            style={{ 
+                              backgroundColor: itemTheme.accentHex,
+                              boxShadow: `0 0 6px 0 ${itemTheme.accentHex}` 
+                            }} 
                           />
-                        </div>
-                        <div className="flex flex-col text-left min-w-0">
-                          <span className="truncate max-w-[8rem] text-xs font-bold">{currentUser.name}</span>
-                        </div>
-                      </div>
-                      {currentView === ViewState.USER_DETAIL && (
-                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: PAGE_THEMES[ViewState.USER_DETAIL].accentHex }} />
+                        )}
+                      </button>
+                    );
+                  })}
+
+                  {/* Appearance Switcher */}
+                  <div className="my-1 border-t border-black/5 dark:border-white/10" />
+                  <button
+                    onClick={handleThemeCycle}
+                    className="flex items-center justify-between w-full h-11 px-3.5 rounded-2xl text-left text-xs font-bold font-sans transition-all duration-150 cursor-pointer text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/5"
+                    title={
+                      theme === 'dark' 
+                        ? 'Appearance: Dark Mode (Click for Light)' 
+                        : theme === 'light' 
+                        ? 'Appearance: Light Mode (Click for Auto)' 
+                        : 'Appearance: System Auto (Click for Dark)'
+                    }
+                  >
+                    <div className="flex items-center gap-3">
+                      {theme === 'dark' ? (
+                        <Moon weight="duotone" className="w-5 h-5 text-indigo-400" />
+                      ) : theme === 'light' ? (
+                        <Sun weight="duotone" className="w-5 h-5 text-amber-500" />
+                      ) : (
+                        <Desktop weight="duotone" className="w-5 h-5 text-sky-400" />
                       )}
-                    </button>
+                      <span className="font-bold text-light-text dark:text-dark-text">
+                        Appearance
+                      </span>
+                    </div>
+                    <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/10">
+                      {theme === 'dark' ? 'Dark' : theme === 'light' ? 'Light' : 'Auto'}
+                    </span>
+                  </button>
+
+                  {/* User Profile Option */}
+                  {currentUser && (
+                    <>
+                      <div className="my-1 border-t border-black/5 dark:border-white/10" />
+                      <button
+                        onClick={() => {
+                          onNavigate(ViewState.USER_DETAIL, currentUser.id);
+                          setIsMoreOpen(false);
+                        }}
+                        className={`flex items-center justify-between w-full h-12 px-3.5 rounded-2xl text-left text-xs font-bold font-sans transition-all duration-150 cursor-pointer ${
+                          currentView === ViewState.USER_DETAIL
+                            ? `${isDark ? PAGE_THEMES[ViewState.USER_DETAIL].activeSidebarDark : PAGE_THEMES[ViewState.USER_DETAIL].activeSidebarLight} ${PAGE_THEMES[ViewState.USER_DETAIL].color} shadow-xs`
+                            : 'text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/5'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-7 h-7 rounded-xl flex items-center justify-center overflow-hidden shrink-0 shadow-xs border border-black/10 dark:border-white/15">
+                            <img 
+                              src={currentUser.profilePicture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'} 
+                              alt={currentUser.name} 
+                              className="w-full h-full object-cover" 
+                              referrerPolicy="no-referrer" 
+                            />
+                          </div>
+                          <div className="flex flex-col text-left min-w-0">
+                            <span className="truncate max-w-[9rem] text-xs font-bold text-light-text dark:text-dark-text">
+                              {currentUser.name}
+                            </span>
+                            <span className="text-2xs font-semibold text-light-text-secondary dark:text-dark-text-secondary truncate">
+                              {currentUser.role || 'Explorer'}
+                            </span>
+                          </div>
+                        </div>
+                        {currentView === ViewState.USER_DETAIL && (
+                          <span 
+                            className="w-1.5 h-1.5 rounded-full shrink-0" 
+                            style={{ 
+                              backgroundColor: PAGE_THEMES[ViewState.USER_DETAIL].accentHex,
+                              boxShadow: `0 0 6px 0 ${PAGE_THEMES[ViewState.USER_DETAIL].accentHex}` 
+                            }} 
+                          />
+                        )}
+                      </button>
+                    </>
                   )}
                 </div>
               </GlassPanel>
