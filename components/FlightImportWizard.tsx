@@ -1374,7 +1374,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                 </div>
                             </div>
 
-                            <div className="flex gap-4 pt-4 border-t border-zinc-150/50 dark:border-white/5">
+                            <div className="flex gap-4 pt-4 border-t border-black/5 dark:border-white/10">
                                 <Button variant="secondary" onClick={() => setStep(1)} className="flex-1 py-3 font-bold !rounded-2xl">Cancel & Reupload</Button>
                                 <Button variant="primary" onClick={handleConfirmMapping} className="flex-1 py-3 font-bold !rounded-2xl">
                                     Next: Verify Flight Details
@@ -1434,33 +1434,33 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
 
                         return (
                             <div className="space-y-6">
-                                <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/30 flex gap-3 items-center animate-fade-in">
-                                    <Check className="w-5 h-5 shrink-0" />
-                                    <div className="text-left font-medium-sans">
-                                        <p className="text-xs font-black uppercase text-emerald-600 dark:text-emerald-400">Ingested Spreadsheet Fully Validated</p>
-                                        <p className="text-xs text-zinc-500 dark:text-zinc-400">Smart resolvers successfully mapped <span className="font-bold text-gray-800 dark:text-white">{mappedFlights.length} flights</span>. Dates, carrier codes, and airport locations have been standardized.</p>
+                                <div className="p-4 rounded-2xl bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border border-emerald-500/20 flex gap-3 items-center animate-fade-in">
+                                    <Check className="w-5 h-5 text-emerald-500 shrink-0" weight="bold" />
+                                    <div className="text-left font-sans">
+                                        <p className="text-xs font-bold uppercase text-emerald-600 dark:text-emerald-400">Ingested Spreadsheet Fully Validated</p>
+                                        <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary">Smart resolvers successfully mapped <span className="font-bold text-light-text dark:text-dark-text">{mappedFlights.length} flights</span>. Dates, carrier codes, and airport locations have been standardized.</p>
                                     </div>
                                 </div>
 
                                 {/* Advanced Filters inside Ingestion Dialog */}
-                                <div className="p-4 bg-slate-50 dark:bg-zinc-800/20 border border-zinc-200/50 dark:border-zinc-800 rounded-3xl space-y-3.5 text-left">
-                                    <div className="flex items-center justify-between border-b border-zinc-150 dark:border-white/5 pb-2">
-                                        <span className="text-2xs font-bold uppercase tracking-widest text-zinc-400 flex items-center gap-1.5">
-                                            <Filter className="w-3.5 h-3.5 text-blue-500" /> Advanced Pipeline Filtering
+                                <div className="p-4 bg-white/50 dark:bg-white/[0.03] backdrop-blur-md border border-black/8 dark:border-white/10 rounded-2xl space-y-3.5 text-left font-sans">
+                                    <div className="flex items-center justify-between border-b border-black/5 dark:border-white/5 pb-2">
+                                        <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1.5">
+                                            <Filter className="w-3.5 h-3.5 text-primary-500" /> Advanced Pipeline Filtering
                                         </span>
-                                        <span className="text-xs font-mono font-bold text-zinc-550 mr-1.5">
-                                            Selected: <span className="text-blue-500 font-extrabold">{selectedImportIndexes.size}</span> / {mappedFlights.length} total
+                                        <span className="text-xs font-mono font-bold text-light-text-secondary dark:text-dark-text-secondary mr-1.5">
+                                            Selected: <span className="text-primary-600 dark:text-primary-400 font-bold">{selectedImportIndexes.size}</span> / {mappedFlights.length} total
                                         </span>
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
                                         <div>
-                                            <label className="text-2xs font-bold text-zinc-450 uppercase block mb-1">Search flight text</label>
+                                            <label className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase block mb-1">Search flight text</label>
                                             <input
                                                 type="text"
                                                 value={importSearch}
                                                 onChange={e => setImportSearch(e.target.value)}
-                                                placeholder="e.g. Origin, destination, PNR..."
-                                                className="w-full text-xs p-2 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-blue-500 font-medium"
+                                                placeholder="Origin, destination, PNR..."
+                                                className={`${INPUT_BASE_STYLE} min-h-[40px] text-xs font-medium`}
                                             />
                                         </div>
                                         <div>
@@ -1488,21 +1488,21 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                             </GlassSelect>
                                         </div>
                                         <div>
-                                            <label className="text-2xs font-bold text-zinc-450 uppercase block mb-1">Start Date</label>
+                                            <label className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase block mb-1">Start Date</label>
                                             <input
                                                 type="date"
                                                 value={importStartDateFilter}
                                                 onChange={e => setImportStartDateFilter(e.target.value)}
-                                                className="w-full text-xs p-2 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-blue-500 font-medium cursor-pointer"
+                                                className={`${INPUT_BASE_STYLE} min-h-[40px] text-xs font-medium cursor-pointer`}
                                             />
                                         </div>
                                         <div>
-                                            <label className="text-2xs font-bold text-zinc-450 uppercase block mb-1">End Date</label>
+                                            <label className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase block mb-1">End Date</label>
                                             <input
                                                 type="date"
                                                 value={importEndDateFilter}
                                                 onChange={e => setImportEndDateFilter(e.target.value)}
-                                                className="w-full text-xs p-2 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 focus:outline-none focus:border-blue-500 font-medium cursor-pointer"
+                                                className={`${INPUT_BASE_STYLE} min-h-[40px] text-xs font-medium cursor-pointer`}
                                             />
                                         </div>
                                     </div>
@@ -1510,10 +1510,10 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
 
                                 {/* User attribution */}
                                 {!existingTripId && users.length > 0 && (
-                                    <div className="space-y-2 p-4 bg-slate-50 dark:bg-zinc-800/10 rounded-2xl border border-zinc-150/50 dark:border-white/5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                                        <div className="text-left font-sans">
-                                            <label className="text-2xs font-bold text-slate-400 uppercase tracking-widest block mb-0.5">Assign Passenger Ledger</label>
-                                            <p className="text-xs text-zinc-500 leading-none">Who will be the designated passenger traveler for this trip sequence?</p>
+                                    <div className="space-y-2 p-4 bg-white/50 dark:bg-white/[0.03] backdrop-blur-md rounded-2xl border border-black/8 dark:border-white/10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 font-sans">
+                                        <div className="text-left">
+                                            <label className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider block mb-0.5">Assign Passenger Ledger</label>
+                                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary leading-none">Who will be the designated passenger traveler for this trip sequence?</p>
                                         </div>
                                         <div className="w-full md:w-1/3">
                                             <GlassSelect
@@ -1529,21 +1529,21 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                 )}
 
                                 <div className="flex items-center justify-between ml-1">
-                                    <span className="text-xs font-black text-slate-400 uppercase tracking-widest block text-left">
+                                    <span className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider block text-left">
                                         Import Pipeline Flights ({displayedImportFlights.length} showing)
                                     </span>
                                     <button
                                         type="button"
                                         onClick={handleToggleSelectAll}
-                                        className="text-xs text-blue-500 hover:text-blue-600 font-bold uppercase tracking-wider cursor-pointer"
+                                        className="text-xs text-primary-600 dark:text-primary-400 hover:text-primary-700 font-bold uppercase tracking-wider cursor-pointer"
                                     >
                                         {displayedImportFlights.every(({ index }) => selectedImportIndexes.has(index)) ? '🔒 Deselect All' : '🔓 Select All Visible'}
                                     </button>
                                 </div>
 
-                                <div className="border border-zinc-150/50 dark:border-zinc-800 dark:bg-zinc-900/40 rounded-3xl p-4 max-h-[35vh] overflow-y-auto space-y-3 custom-scrollbar">
+                                <div className="border border-black/10 dark:border-white/10 bg-white/30 dark:bg-white/[0.02] rounded-3xl p-4 max-h-[35vh] overflow-y-auto space-y-3 custom-scrollbar">
                                     {displayedImportFlights.length === 0 ? (
-                                        <div className="p-8 text-center text-zinc-500 font-semibold-sans text-xs">
+                                        <div className="p-8 text-center text-light-text-secondary dark:text-dark-text-secondary font-medium text-xs">
                                             No flights match active pipelining filters.
                                         </div>
                                     ) : (
@@ -1553,35 +1553,36 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                                 <div 
                                                     key={index} 
                                                     onClick={() => handleToggleIndex(index)}
-                                                    className={`p-4 rounded-2xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 text-left cursor-pointer select-none ${
+                                                    className={cn(
+                                                        "p-4 rounded-2xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 text-left cursor-pointer select-none",
                                                         isSelected 
-                                                            ? 'bg-blue-500/5 dark:bg-blue-500/10 border-blue-500 dark:border-blue-450 shadow-xs' 
-                                                            : 'bg-white dark:bg-zinc-900 border-zinc-150/50 dark:border-white/5 opacity-60 hover:opacity-90'
-                                                    }`}
+                                                            ? "bg-primary-500/10 border-primary-500/40 shadow-xs" 
+                                                            : "bg-white/70 dark:bg-white/[0.04] border-black/5 dark:border-white/5 opacity-70 hover:opacity-100"
+                                                    )}
                                                 >
                                                     <div className="flex items-center gap-3 font-sans">
                                                         <input 
                                                             type="checkbox" 
                                                             checked={isSelected}
                                                             onChange={() => {}} // toggled on card container click
-                                                            className="w-4.5 h-4.5 accent-blue-500 rounded cursor-pointer shrink-0"
+                                                            className="w-4.5 h-4.5 accent-primary-500 rounded cursor-pointer shrink-0"
                                                         />
                                                         <div className="space-y-1">
-                                                            <div className="flex items-center gap-2 flex-wrap text-sm font-black text-gray-850 dark:text-zinc-100">
+                                                            <div className="flex items-center gap-2 flex-wrap text-sm font-bold text-light-text dark:text-dark-text">
                                                                 <span>{f.provider}</span>
                                                                 {f.providerCode && (
-                                                                    <span className="text-2xs font-mono font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-550 px-1 py-0.5 rounded">{f.providerCode}</span>
+                                                                    <span className="text-2xs font-mono font-bold bg-primary-500/10 text-primary-600 dark:text-primary-400 px-1.5 py-0.5 rounded">{f.providerCode}</span>
                                                                 )}
-                                                                <span className="text-2xs font-mono font-bold bg-blue-50 dark:bg-blue-950/30 text-blue-600 px-1 py-0.5 rounded uppercase">{f.identifier}</span>
+                                                                <span className="text-2xs font-mono font-bold bg-black/5 dark:bg-white/10 text-light-text-secondary dark:text-dark-text-secondary px-1.5 py-0.5 rounded uppercase">{f.identifier}</span>
                                                                 {f.vehicleModel && (
-                                                                    <span className="text-2xs font-bold text-zinc-400 italic">({f.vehicleModel})</span>
+                                                                    <span className="text-2xs font-normal text-light-text-secondary dark:text-dark-text-secondary italic">({f.vehicleModel})</span>
                                                                 )}
                                                             </div>
-                                                            <div className="flex items-center gap-2 text-xs font-mono font-bold text-zinc-400 uppercase">
-                                                                <span className="text-blue-500">{f.origin}</span>
+                                                            <div className="flex items-center gap-2 text-xs font-mono font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase">
+                                                                <span className="text-primary-600 dark:text-primary-400">{f.origin}</span>
                                                                 <span>&rarr;</span>
-                                                                <span className="text-indigo-500">{f.destination}</span>
-                                                                {f.tailNumber && <span className="text-emerald-500 text-xs">({f.tailNumber})</span>}
+                                                                <span className="text-indigo-600 dark:text-indigo-400">{f.destination}</span>
+                                                                {f.tailNumber && <span className="text-emerald-600 dark:text-emerald-400 text-xs">({f.tailNumber})</span>}
                                                             </div>
                                                             {allExistingFlights.some(ex => 
                                                                 ex.departureDate === f.departureDate && 
@@ -1590,11 +1591,11 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                                             ) && (
                                                                 <div 
                                                                     onClick={(e) => e.stopPropagation()} 
-                                                                    className="mt-2.5 p-2 bg-amber-50 dark:bg-amber-950/15 border border-amber-200 dark:border-amber-900/30 rounded-xl space-y-1.5"
+                                                                    className="mt-2.5 p-2 bg-amber-500/10 border border-amber-500/20 rounded-xl space-y-1.5"
                                                                 >
                                                                     <div className="flex items-center gap-1">
                                                                         <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                                                                        <span className="text-xs font-bold text-amber-700 dark:text-amber-400">Potential Duplicate Flight Found. Resolution choice:</span>
+                                                                        <span className="text-xs font-bold text-amber-700 dark:text-amber-300">Potential Duplicate Flight Found. Resolution choice:</span>
                                                                     </div>
                                                                     <div className="flex gap-1.5">
                                                                         {(['skip', 'merge', 'overwrite'] as const).map(res => (
@@ -1604,11 +1605,12 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                                                                 onClick={() => {
                                                                                     setDuplicateResolutions(prev => ({ ...prev, [index]: res }));
                                                                                 }}
-                                                                                className={`flex-1 text-2xs font-bold uppercase tracking-wider py-1 px-2 rounded-lg border transition-all ${
+                                                                                className={cn(
+                                                                                    "flex-1 text-2xs font-bold uppercase tracking-wider py-1 px-2 rounded-lg border transition-all cursor-pointer",
                                                                                     duplicateResolutions[index] === res 
-                                                                                        ? 'bg-amber-500 text-white border-amber-500 ring-2 ring-amber-500/20' 
-                                                                                        : 'bg-white dark:bg-zinc-800 text-amber-700 dark:text-amber-450 border-amber-200 dark:border-amber-950/40 hover:bg-amber-100/40'
-                                                                                }`}
+                                                                                        ? "bg-amber-500 text-white border-amber-500 shadow-sm" 
+                                                                                        : "bg-white/80 dark:bg-white/10 text-amber-800 dark:text-amber-200 border-black/5 dark:border-white/10 hover:bg-amber-500/10"
+                                                                                )}
                                                                             >
                                                                                 {res}
                                                                             </button>
@@ -1620,8 +1622,8 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                                     </div>
                                                     
                                                     <div className="text-right shrink-0">
-                                                        <p className="text-xs font-black text-gray-800 dark:text-zinc-300">{f.departureDate || 'Jan 1, 2026'}</p>
-                                                        <p className="text-xs text-zinc-500 font-bold uppercase">{f.travelClass || 'Economy'}</p>
+                                                        <p className="text-xs font-bold text-light-text dark:text-dark-text">{f.departureDate || 'Jan 1, 2026'}</p>
+                                                        <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-bold uppercase">{f.travelClass || 'Economy'}</p>
                                                     </div>
                                                 </div>
                                             );
@@ -1629,7 +1631,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                                     )}
                                 </div>
 
-                                <div className="flex gap-4 pt-4 border-t border-zinc-150/50 dark:border-white/5">
+                                <div className="flex gap-4 pt-4 border-t border-black/5 dark:border-white/10">
                                     <Button variant="secondary" onClick={() => setStep(2)} className="flex-1 py-3 font-bold !rounded-2xl">Modify Mapping</Button>
                                      <Button 
                                         variant="primary" 
