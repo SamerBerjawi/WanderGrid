@@ -4,6 +4,7 @@ import {
   CalendarBlank, 
   CaretLeft, 
   CaretRight, 
+  CaretDown,
   Check 
 } from '@phosphor-icons/react';
 import GlassPanel from '../glass/GlassPanel';
@@ -91,6 +92,18 @@ function shiftDays(iso: string, days: number): string {
 
 const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
+const MONTH_SHORT_NAMES = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+];
+
+const YEARS = Array.from({ length: 101 }, (_, i) => 1950 + i);
+
 export interface DatePickerProps {
   label?: string;
   value?: string; // 'YYYY-MM-DD'
@@ -125,9 +138,23 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   id
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [calendarView, setCalendarView] = useState<'days' | 'year' | 'month'>('days');
   const containerRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
+  const activeYearBtnRef = useRef<HTMLButtonElement>(null);
   const [coords, setCoords] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  useEffect(() => {
+    if (calendarView === 'year' && activeYearBtnRef.current) {
+      activeYearBtnRef.current.scrollIntoView({ block: 'center', behavior: 'instant' });
+    }
+  }, [calendarView]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setCalendarView('days');
+    }
+  }, [isOpen]);
 
   const theme = ACCENT_THEMES[accentColor] || ACCENT_THEMES.primary;
 
@@ -334,79 +361,189 @@ export const DatePicker: React.FC<DatePickerProps> = ({
             overrides={{ borderRadius: 24 }}
           >
             <div className="flex flex-col w-full">
-              {/* Popover Header: Month Title & Arrows */}
+              {/* Popover Header: Month / Year Controls & Navigation Arrows */}
               <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/5">
                 <button
                   type="button"
-                  onClick={prevMonth}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (calendarView === 'year') {
+                      setViewYear(y => y - 10);
+                    } else if (calendarView === 'month') {
+                      setViewYear(y => y - 1);
+                    } else {
+                      prevMonth(e);
+                    }
+                  }}
                   className="w-8 h-8 rounded-xl flex items-center justify-center text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
-                  title="Previous month"
+                  title={calendarView === 'year' ? 'Previous 10 years' : 'Previous month'}
                 >
                   <CaretLeft className="w-4 h-4" weight="bold" />
                 </button>
 
-                <h4 className="text-xs font-bold uppercase tracking-wider text-light-text dark:text-dark-text">
-                  {monthTitle}
-                </h4>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCalendarView(v => v === 'month' ? 'days' : 'month');
+                    }}
+                    className={`px-2 py-1 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
+                      calendarView === 'month'
+                        ? 'bg-black/10 dark:bg-white/15 text-light-text dark:text-dark-text font-black'
+                        : 'text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10'
+                    }`}
+                    title="Click to select month"
+                  >
+                    <span>{MONTH_NAMES[viewMonth]}</span>
+                    <CaretDown className={`w-3 h-3 transition-transform duration-200 ${calendarView === 'month' ? 'rotate-180' : ''}`} weight="bold" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCalendarView(v => v === 'year' ? 'days' : 'year');
+                    }}
+                    className={`px-2 py-1 rounded-lg text-xs font-bold font-mono tracking-wider transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
+                      calendarView === 'year'
+                        ? 'bg-black/10 dark:bg-white/15 text-light-text dark:text-dark-text font-black'
+                        : 'text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10'
+                    }`}
+                    title="Click to select year"
+                  >
+                    <span>{viewYear}</span>
+                    <CaretDown className={`w-3 h-3 transition-transform duration-200 ${calendarView === 'year' ? 'rotate-180' : ''}`} weight="bold" />
+                  </button>
+                </div>
 
                 <button
                   type="button"
-                  onClick={nextMonth}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (calendarView === 'year') {
+                      setViewYear(y => y + 10);
+                    } else if (calendarView === 'month') {
+                      setViewYear(y => y + 1);
+                    } else {
+                      nextMonth(e);
+                    }
+                  }}
                   className="w-8 h-8 rounded-xl flex items-center justify-center text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
-                  title="Next month"
+                  title={calendarView === 'year' ? 'Next 10 years' : 'Next month'}
                 >
                   <CaretRight className="w-4 h-4" weight="bold" />
                 </button>
               </div>
 
-              {/* Weekday Header Row */}
-              <div className="grid grid-cols-7 gap-1 text-center py-2">
-                {WEEKDAYS.map((w, idx) => (
-                  <div key={idx} className="text-3xs font-extrabold text-light-text-secondary dark:text-dark-text-secondary">
-                    {w}
-                  </div>
-                ))}
-              </div>
-
-              {/* Days Grid */}
-              <div className="grid grid-cols-7 gap-y-1 gap-x-0 pt-1">
-                {/* Empty leading slots */}
-                {Array.from({ length: firstDayOfWeek }).map((_, i) => (
-                  <div key={`empty-${i}`} className="h-8" />
-                ))}
-
-                {/* Days in Month */}
-                {Array.from({ length: daysInMonth }).map((_, i) => {
-                  const day = i + 1;
-                  const d = new Date(viewYear, viewMonth, day);
-                  const dateStr = toIsoDate(d);
-                  const isSelected = value === dateStr;
-
-                  const isDisabled = Boolean(
-                    (minDate && dateStr < minDate) ||
-                    (maxDate && dateStr > maxDate)
-                  );
-
-                  return (
-                    <div key={dateStr} className="h-8 flex items-center justify-center">
+              {/* Year Selection Grid */}
+              {calendarView === 'year' && (
+                <div className="h-[235px] overflow-y-auto custom-scrollbar p-1 grid grid-cols-4 gap-1.5 pt-2">
+                  {YEARS.map(y => {
+                    const isCurrent = y === viewYear;
+                    return (
                       <button
+                        key={y}
+                        ref={isCurrent ? activeYearBtnRef : null}
                         type="button"
-                        disabled={isDisabled}
-                        onClick={() => handleSelectDate(dateStr)}
-                        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all relative z-10 cursor-pointer ${
-                          isSelected
-                            ? theme.selectedDay
-                            : isDisabled
-                            ? 'opacity-20 cursor-not-allowed text-light-text-secondary dark:text-dark-text-secondary'
-                            : 'text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10'
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setViewYear(y);
+                          setCalendarView('days');
+                        }}
+                        className={`h-9 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center cursor-pointer active:scale-95 ${
+                          isCurrent
+                            ? `${theme.selectedDay} shadow-sm font-extrabold`
+                            : 'hover:bg-black/5 dark:hover:bg-white/10 text-light-text dark:text-dark-text'
                         }`}
                       >
-                        {day}
+                        {y}
                       </button>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Month Selection Grid */}
+              {calendarView === 'month' && (
+                <div className="h-[235px] p-1 grid grid-cols-3 gap-2 items-center pt-2">
+                  {MONTH_SHORT_NAMES.map((m, idx) => {
+                    const isCurrent = idx === viewMonth;
+                    return (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setViewMonth(idx);
+                          setCalendarView('days');
+                        }}
+                        className={`h-11 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center cursor-pointer active:scale-95 ${
+                          isCurrent
+                            ? `${theme.selectedDay} shadow-sm font-extrabold`
+                            : 'hover:bg-black/5 dark:hover:bg-white/10 text-light-text dark:text-dark-text'
+                        }`}
+                      >
+                        {m}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Standard Days Grid View */}
+              {calendarView === 'days' && (
+                <>
+                  {/* Weekday Header Row */}
+                  <div className="grid grid-cols-7 gap-1 text-center py-2">
+                    {WEEKDAYS.map((w, idx) => (
+                      <div key={idx} className="text-3xs font-extrabold text-light-text-secondary dark:text-dark-text-secondary">
+                        {w}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Days Grid */}
+                  <div className="grid grid-cols-7 gap-y-1 gap-x-0 pt-1">
+                    {/* Empty leading slots */}
+                    {Array.from({ length: firstDayOfWeek }).map((_, i) => (
+                      <div key={`empty-${i}`} className="h-8" />
+                    ))}
+
+                    {/* Days in Month */}
+                    {Array.from({ length: daysInMonth }).map((_, i) => {
+                      const day = i + 1;
+                      const d = new Date(viewYear, viewMonth, day);
+                      const dateStr = toIsoDate(d);
+                      const isSelected = value === dateStr;
+
+                      const isDisabled = Boolean(
+                        (minDate && dateStr < minDate) ||
+                        (maxDate && dateStr > maxDate)
+                      );
+
+                      return (
+                        <div key={dateStr} className="h-8 flex items-center justify-center">
+                          <button
+                            type="button"
+                            disabled={isDisabled}
+                            onClick={() => handleSelectDate(dateStr)}
+                            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all relative z-10 cursor-pointer ${
+                              isSelected
+                                ? theme.selectedDay
+                                : isDisabled
+                                ? 'opacity-20 cursor-not-allowed text-light-text-secondary dark:text-dark-text-secondary'
+                                : 'text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10'
+                            }`}
+                          >
+                            {day}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
 
               {/* Popover Footer: Quick Today shortcut & Done button */}
               <div className="flex items-center justify-between pt-3 mt-3 border-t border-black/5 dark:border-white/5">

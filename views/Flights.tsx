@@ -1947,8 +1947,8 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
         return da.getTime() - db.getTime();
       })[0];
     }
-    // Fallback to the most recent flight
-    return flights[0];
+    // Only show upcoming flights, never fallback to previous/past flights
+    return null;
   }, [flights]);
 
   // Aggregate Metrics

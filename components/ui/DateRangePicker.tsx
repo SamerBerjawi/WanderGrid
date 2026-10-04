@@ -1,10 +1,24 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { CaretLeft, CaretRight, CalendarBlank, Check, X } from '@phosphor-icons/react';
+import { CaretLeft, CaretRight, CaretDown, CalendarBlank, Check, X } from '@phosphor-icons/react';
 import GlassPanel from '../glass/GlassPanel';
 import GlassButton from '../glass/GlassButton';
 import { formatDate } from '../../utils/formatters';
 import { SECTION_LABEL_STYLE } from '../../constants';
+
+const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
+const MONTH_SHORT_NAMES = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+];
+
+const YEARS = Array.from({ length: 101 }, (_, i) => 1950 + i);
 
 export type AccentColor = 'emerald' | 'green' | 'blue' | 'sky' | 'amber' | 'orange' | 'primary';
 
@@ -114,8 +128,6 @@ function shiftDays(iso: string, days: number): string {
   return toIsoDate(d);
 }
 
-const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-
 export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   startDate,
   endDate,
@@ -141,9 +153,23 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   const [viewYear, setViewYear] = useState(initialDate.getFullYear());
   const [viewMonth, setViewMonth] = useState(initialDate.getMonth()); // 0-indexed
 
+  const [calendarView, setCalendarView] = useState<'days' | 'year' | 'month'>('days');
   const containerRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
+  const activeYearBtnRef = useRef<HTMLButtonElement>(null);
   const [coords, setCoords] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  useEffect(() => {
+    if (calendarView === 'year' && activeYearBtnRef.current) {
+      activeYearBtnRef.current.scrollIntoView({ block: 'center', behavior: 'instant' });
+    }
+  }, [calendarView]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setCalendarView('days');
+    }
+  }, [isOpen]);
 
   const updatePosition = useCallback(() => {
     if (!containerRef.current) return;
@@ -391,128 +417,238 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
             overrides={{ borderRadius: 24 }}
           >
             <div className="flex flex-col w-full">
-              {/* Popover Header: Month Title & Arrows */}
+              {/* Popover Header: Month / Year Controls & Navigation Arrows */}
               <div className="flex items-center justify-between pb-3 border-b border-black/5 dark:border-white/5">
-            <button
-              type="button"
-              onClick={prevMonth}
-              className="w-8 h-8 rounded-xl flex items-center justify-center text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
-              title="Previous month"
-            >
-              <CaretLeft className="w-4 h-4" weight="bold" />
-            </button>
-
-            <h4 className="text-xs font-bold uppercase tracking-wider text-light-text dark:text-dark-text">
-              {monthTitle}
-            </h4>
-
-            <button
-              type="button"
-              onClick={nextMonth}
-              className="w-8 h-8 rounded-xl flex items-center justify-center text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
-              title="Next month"
-            >
-              <CaretRight className="w-4 h-4" weight="bold" />
-            </button>
-          </div>
-
-          {/* Selection Status Tab Switcher in Popover (Only for Range mode) */}
-          {!singleDate && (
-            <div className="grid grid-cols-2 gap-1.5 p-1 my-3 bg-black/5 dark:bg-white/5 rounded-xl border border-black/5 dark:border-white/5">
-              <button
-                type="button"
-                onClick={() => setActiveTab('start')}
-                className={`py-1.5 px-2 rounded-lg text-2xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                  activeTab === 'start'
-                    ? theme.calendarActiveTab
-                    : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
-                }`}
-              >
-                1. {startLabel}
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('end')}
-                className={`py-1.5 px-2 rounded-lg text-2xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                  activeTab === 'end'
-                    ? theme.calendarActiveTab
-                    : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
-                }`}
-              >
-                2. {endLabel}
-              </button>
-            </div>
-          )}
-
-          {/* Weekday Header Row */}
-          <div className="grid grid-cols-7 gap-1 text-center py-1">
-            {WEEKDAYS.map((w, idx) => (
-              <div key={idx} className="text-3xs font-extrabold text-light-text-secondary/60 dark:text-dark-text-secondary/60">
-                {w}
-              </div>
-            ))}
-          </div>
-
-          {/* Days Grid */}
-          <div className="grid grid-cols-7 gap-y-1.5 gap-x-0 pt-1" onMouseLeave={() => setHoverDate(null)}>
-            {/* Empty leading day slots */}
-            {Array.from({ length: firstDayOfWeek }).map((_, i) => (
-              <div key={`empty-${i}`} className="h-8" />
-            ))}
-
-            {/* Month Days */}
-            {Array.from({ length: daysInMonth }).map((_, i) => {
-              const day = i + 1;
-              const d = new Date(viewYear, viewMonth, day);
-              const dateStr = toIsoDate(d);
-
-              const isStart = startDate === dateStr;
-              const isEnd = !singleDate && endDate === dateStr;
-              const effectiveEnd = (!singleDate && activeTab === 'end' && hoverDate && hoverDate >= startDate) ? hoverDate : endDate;
-
-              const isInRange = Boolean(
-                !singleDate &&
-                startDate &&
-                effectiveEnd &&
-                dateStr > startDate &&
-                dateStr < effectiveEnd
-              );
-
-              const isDisabled = Boolean(
-                (minDate && dateStr < minDate) ||
-                (maxDate && dateStr > maxDate)
-              );
-
-              return (
-                <div
-                  key={dateStr}
-                  onMouseEnter={() => !isDisabled && setHoverDate(dateStr)}
-                  className={`relative h-8 flex items-center justify-center ${
-                    isInRange ? theme.rangeBand : ''
-                  } ${isStart && !singleDate && effectiveEnd && effectiveEnd > startDate ? `rounded-l-full ${theme.rangeBand}` : ''} ${
-                    isEnd && startDate && dateStr > startDate ? `rounded-r-full ${theme.rangeBand}` : ''
-                  }`}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (calendarView === 'year') {
+                      setViewYear(y => y - 10);
+                    } else if (calendarView === 'month') {
+                      setViewYear(y => y - 1);
+                    } else {
+                      prevMonth(e);
+                    }
+                  }}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                  title={calendarView === 'year' ? 'Previous 10 years' : 'Previous month'}
                 >
+                  <CaretLeft className="w-4 h-4" weight="bold" />
+                </button>
+
+                <div className="flex items-center gap-1">
                   <button
                     type="button"
-                    disabled={isDisabled}
-                    onClick={() => handleSelectDate(dateStr)}
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all relative z-10 cursor-pointer ${
-                      isStart
-                        ? theme.startDay
-                        : isEnd
-                        ? theme.endDay
-                        : isDisabled
-                        ? 'opacity-20 cursor-not-allowed text-light-text-secondary dark:text-dark-text-secondary'
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCalendarView(v => v === 'month' ? 'days' : 'month');
+                    }}
+                    className={`px-2 py-1 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
+                      calendarView === 'month'
+                        ? 'bg-black/10 dark:bg-white/15 text-light-text dark:text-dark-text font-black'
                         : 'text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10'
                     }`}
+                    title="Click to select month"
                   >
-                    {day}
+                    <span>{MONTH_NAMES[viewMonth]}</span>
+                    <CaretDown className={`w-3 h-3 transition-transform duration-200 ${calendarView === 'month' ? 'rotate-180' : ''}`} weight="bold" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCalendarView(v => v === 'year' ? 'days' : 'year');
+                    }}
+                    className={`px-2 py-1 rounded-lg text-xs font-bold font-mono tracking-wider transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
+                      calendarView === 'year'
+                        ? 'bg-black/10 dark:bg-white/15 text-light-text dark:text-dark-text font-black'
+                        : 'text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10'
+                    }`}
+                    title="Click to select year"
+                  >
+                    <span>{viewYear}</span>
+                    <CaretDown className={`w-3 h-3 transition-transform duration-200 ${calendarView === 'year' ? 'rotate-180' : ''}`} weight="bold" />
                   </button>
                 </div>
-              );
-            })}
-          </div>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (calendarView === 'year') {
+                      setViewYear(y => y + 10);
+                    } else if (calendarView === 'month') {
+                      setViewYear(y => y + 1);
+                    } else {
+                      nextMonth(e);
+                    }
+                  }}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                  title={calendarView === 'year' ? 'Next 10 years' : 'Next month'}
+                >
+                  <CaretRight className="w-4 h-4" weight="bold" />
+                </button>
+              </div>
+
+              {/* Year Selection Grid */}
+              {calendarView === 'year' && (
+                <div className="h-[250px] overflow-y-auto custom-scrollbar p-1 grid grid-cols-4 gap-1.5 pt-2">
+                  {YEARS.map(y => {
+                    const isCurrent = y === viewYear;
+                    return (
+                      <button
+                        key={y}
+                        ref={isCurrent ? activeYearBtnRef : null}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setViewYear(y);
+                          setCalendarView('days');
+                        }}
+                        className={`h-9 rounded-xl text-xs font-bold font-mono transition-all flex items-center justify-center cursor-pointer active:scale-95 ${
+                          isCurrent
+                            ? `${theme.startDay} shadow-sm font-extrabold`
+                            : 'hover:bg-black/5 dark:hover:bg-white/10 text-light-text dark:text-dark-text'
+                        }`}
+                      >
+                        {y}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Month Selection Grid */}
+              {calendarView === 'month' && (
+                <div className="h-[250px] p-1 grid grid-cols-3 gap-2 items-center pt-2">
+                  {MONTH_SHORT_NAMES.map((m, idx) => {
+                    const isCurrent = idx === viewMonth;
+                    return (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setViewMonth(idx);
+                          setCalendarView('days');
+                        }}
+                        className={`h-11 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center cursor-pointer active:scale-95 ${
+                          isCurrent
+                            ? `${theme.startDay} shadow-sm font-extrabold`
+                            : 'hover:bg-black/5 dark:hover:bg-white/10 text-light-text dark:text-dark-text'
+                        }`}
+                      >
+                        {m}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Standard Days Grid View */}
+              {calendarView === 'days' && (
+                <>
+                  {/* Selection Status Tab Switcher in Popover (Only for Range mode) */}
+                  {!singleDate && (
+                    <div className="grid grid-cols-2 gap-1.5 p-1 my-3 bg-black/5 dark:bg-white/5 rounded-xl border border-black/5 dark:border-white/5">
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('start')}
+                        className={`py-1.5 px-2 rounded-lg text-2xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                          activeTab === 'start'
+                            ? theme.calendarActiveTab
+                            : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
+                        }`}
+                      >
+                        1. {startLabel}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('end')}
+                        className={`py-1.5 px-2 rounded-lg text-2xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                          activeTab === 'end'
+                            ? theme.calendarActiveTab
+                            : 'text-light-text-secondary dark:text-dark-text-secondary opacity-70 hover:opacity-100'
+                        }`}
+                      >
+                        2. {endLabel}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Weekday Header Row */}
+                  <div className="grid grid-cols-7 gap-1 text-center py-1">
+                    {WEEKDAYS.map((w, idx) => (
+                      <div key={idx} className="text-3xs font-extrabold text-light-text-secondary/60 dark:text-dark-text-secondary/60">
+                        {w}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Days Grid */}
+                  <div className="grid grid-cols-7 gap-y-1.5 gap-x-0 pt-1" onMouseLeave={() => setHoverDate(null)}>
+                    {/* Empty leading day slots */}
+                    {Array.from({ length: firstDayOfWeek }).map((_, i) => (
+                      <div key={`empty-${i}`} className="h-8" />
+                    ))}
+
+                    {/* Month Days */}
+                    {Array.from({ length: daysInMonth }).map((_, i) => {
+                      const day = i + 1;
+                      const d = new Date(viewYear, viewMonth, day);
+                      const dateStr = toIsoDate(d);
+
+                      const isStart = startDate === dateStr;
+                      const isEnd = !singleDate && endDate === dateStr;
+                      const effectiveEnd = (!singleDate && activeTab === 'end' && hoverDate && hoverDate >= startDate) ? hoverDate : endDate;
+
+                      const isInRange = Boolean(
+                        !singleDate &&
+                        startDate &&
+                        effectiveEnd &&
+                        dateStr > startDate &&
+                        dateStr < effectiveEnd
+                      );
+
+                      const isDisabled = Boolean(
+                        (minDate && dateStr < minDate) ||
+                        (maxDate && dateStr > maxDate)
+                      );
+
+                      return (
+                        <div
+                          key={dateStr}
+                          onMouseEnter={() => !isDisabled && setHoverDate(dateStr)}
+                          className={`relative h-8 flex items-center justify-center ${
+                            isInRange ? theme.rangeBand : ''
+                          } ${isStart && !singleDate && effectiveEnd && effectiveEnd > startDate ? `rounded-l-full ${theme.rangeBand}` : ''} ${
+                            isEnd && startDate && dateStr > startDate ? `rounded-r-full ${theme.rangeBand}` : ''
+                          }`}
+                        >
+                          <button
+                            type="button"
+                            disabled={isDisabled}
+                            onClick={() => handleSelectDate(dateStr)}
+                            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all relative z-10 cursor-pointer ${
+                              isStart
+                                ? theme.startDay
+                                : isEnd
+                                ? theme.endDay
+                                : isDisabled
+                                ? 'opacity-20 cursor-not-allowed text-light-text-secondary dark:text-dark-text-secondary'
+                                : 'text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/10'
+                            }`}
+                          >
+                            {day}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
 
             {/* Popover Footer: Duration Badge and Action */}
             <div className="flex items-center justify-between pt-3 mt-3 border-t border-black/5 dark:border-white/5">
