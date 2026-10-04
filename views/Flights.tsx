@@ -202,123 +202,549 @@ const AirlineLogo: React.FC<{ provider?: string, fallback: React.ReactNode }> = 
   );
 });
 
-const BundleJourneyTimeline: React.FC<{ flights: Transport[] }> = React.memo(({ flights }) => {
-  if (!flights || flights.length === 0) return null;
+interface BundleJourneyTimelineProps {
+  flights?: Transport[];
+  outbound?: Transport[];
+  returnLegs?: Transport[];
+}
 
-  const totalCost = flights.reduce((sum, f) => sum + (f.cost || 0), 0);
-  const totalDuration = flights.reduce((sum, f) => {
+const formatFlightDuration = (minutes: number) => {
+  const hrs = Math.floor(minutes / 60);
+  const mins = Math.round(minutes % 60);
+  if (hrs === 0) return `${mins}m`;
+  if (mins === 0) return `${hrs}h`;
+  return `${hrs}h ${mins}m`;
+};
+
+const getLayoverMinutes = (f1: Transport, f2: Transport): number => {
+  try {
+    // A layover is strictly a transit connection where the incoming destination matches the outgoing origin
+    if (!f1.destination || !f2.origin || f1.destination !== f2.origin) {
+      return 0;
+    }
+    const arr = getFlightArrivalUtcDate(f1).getTime();
+    const dep = getFlightDepartureUtcDate(f2).getTime();
+    const diff = dep - arr;
+    return diff > 0 ? Math.floor(diff / 60000) : 0;
+  } catch {
+    return 0;
+  }
+};
+
+const getDateDiffDays = (f: Transport): number => {
+  try {
+    if (!f.departureDate || !f.arrivalDate || f.departureDate === f.arrivalDate) return 0;
+    const dep = new Date(f.departureDate);
+    const arr = new Date(f.arrivalDate);
+    const diffTime = arr.getTime() - dep.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays > 0 ? diffDays : 0;
+  } catch {
+    return 0;
+  }
+};
+
+const splitTripFlights = (flights: Transport[]): { outbound: Transport[]; returnLegs: Transport[] } => {
+  if (!flights || flights.length === 0) {
+    return { outbound: [], returnLegs: [] };
+  }
+  if (flights.length === 1) {
+    return { outbound: flights, returnLegs: [] };
+  }
+
+  // Ensure chronological order
+  const sorted = [...flights].sort((a, b) => {
+    return getFlightDepartureUtcDate(a).getTime() - getFlightDepartureUtcDate(b).getTime();
+  });
+
+  const tripOrigin = sorted[0].origin;
+
+  // Check if any flight returns to the initial trip origin
+  const returnsHome = sorted.some((f, idx) => idx > 0 && f.destination === tripOrigin);
+
+  if (!returnsHome) {
+    // Pure one-way or route without a return to initial origin
+    return {
+      outbound: sorted,
+      returnLegs: []
+    };
+  }
+
+  // Find the optimal turnaround point k (1 <= k < sorted.length)
+  // where the outbound journey ends at sorted[k - 1] and the return journey begins at sorted[k].
+  // The turnaround point is the main destination of the trip, representing the primary
+  // destination stay (the maximum interval between consecutive flights where the subsequent slice returns home).
+  let bestK = 1;
+  let maxStayMs = -1;
+
+  for (let k = 1; k < sorted.length; k++) {
+    // For k to be a valid turnaround point, the return journey (sorted[k...]) must return home
+    const returnSlice = sorted.slice(k);
+    const sliceReturnsHome = returnSlice.some(f => f.destination === tripOrigin);
+    if (!sliceReturnsHome) continue;
+
+    const prevArr = getFlightArrivalUtcDate(sorted[k - 1]).getTime();
+    const currDep = getFlightDepartureUtcDate(sorted[k]).getTime();
+    const stayMs = currDep - prevArr;
+
+    if (stayMs > maxStayMs) {
+      maxStayMs = stayMs;
+      bestK = k;
+    }
+  }
+
+  return {
+    outbound: sorted.slice(0, bestK),
+    returnLegs: sorted.slice(bestK)
+  };
+};
+
+const BundleJourneyTimeline: React.FC<BundleJourneyTimelineProps> = React.memo(({ flights = [], outbound, returnLegs }) => {
+  const allFlights = useMemo(() => {
+    if ((outbound && outbound.length > 0) || (returnLegs && returnLegs.length > 0)) {
+      return [...(outbound || []), ...(returnLegs || [])];
+    }
+    return flights;
+  }, [flights, outbound, returnLegs]);
+
+  if (!allFlights || allFlights.length === 0) return null;
+
+  const totalCost = allFlights.reduce((sum, f) => sum + (f.cost || 0), 0);
+  const totalDuration = allFlights.reduce((sum, f) => {
     const d = f.duration || Math.max(0, (getFlightArrivalUtcDate(f).getTime() - getFlightDepartureUtcDate(f).getTime()) / 60000);
     return sum + d;
   }, 0);
-  
-  // Determine if it is Round Trip
-  const isRoundTrip = flights.length > 1 && flights[0].origin === flights[flights.length - 1].destination;
-  const isMultiCity = flights.length > 1 && !isRoundTrip;
+
+  // Intelligently separate into distinct Outbound and Return journeys
+  const journeys = useMemo(() => {
+    // If explicitly provided as separate non-empty outbound & return arrays, respect them
+    if (outbound && outbound.length > 0 && returnLegs && returnLegs.length > 0) {
+      return [
+        { type: 'outbound' as const, label: 'Outbound Journey', legs: outbound },
+        { type: 'return' as const, label: 'Return Journey', legs: returnLegs },
+      ];
+    }
+    if (outbound && outbound.length > 0 && (!returnLegs || returnLegs.length === 0)) {
+      return [
+        { type: 'outbound' as const, label: outbound.length > 1 ? 'Flight Route' : 'Direct Flight', legs: outbound }
+      ];
+    }
+    // Otherwise, split from allFlights using route topology
+    const split = splitTripFlights(allFlights);
+    if (split.returnLegs.length > 0) {
+      return [
+        { type: 'outbound' as const, label: 'Outbound Journey', legs: split.outbound },
+        { type: 'return' as const, label: 'Return Journey', legs: split.returnLegs },
+      ];
+    }
+    return [
+      { type: 'outbound' as const, label: allFlights.length > 1 ? 'Flight Route' : 'Direct Flight', legs: allFlights }
+    ];
+  }, [outbound, returnLegs, allFlights]);
+
+  const destinationStayInfo = useMemo(() => {
+    if (journeys.length < 2) return null;
+    const outboundJourney = journeys.find(j => j.type === 'outbound');
+    const returnJourney = journeys.find(j => j.type === 'return');
+    if (!outboundJourney || !returnJourney || outboundJourney.legs.length === 0 || returnJourney.legs.length === 0) {
+      return null;
+    }
+    const lastOutbound = outboundJourney.legs[outboundJourney.legs.length - 1];
+    const firstReturn = returnJourney.legs[0];
+    const arr = getFlightArrivalUtcDate(lastOutbound).getTime();
+    const dep = getFlightDepartureUtcDate(firstReturn).getTime();
+    const diffMs = dep - arr;
+    if (diffMs <= 0) return null;
+
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+    const destAirport = lastOutbound.destination;
+    const destCity = getCityName(destAirport) || destAirport;
+
+    const durationLabel = diffDays >= 1
+      ? `${diffDays} ${diffDays === 1 ? 'day' : 'days'}`
+      : `${diffHours}h`;
+
+    return {
+      label: `${durationLabel} in ${destCity}`,
+      city: destCity,
+      airport: destAirport,
+      durationLabel
+    };
+  }, [journeys]);
+
+  const isRoundTrip = (outbound && outbound.length > 0 && returnLegs && returnLegs.length > 0) || 
+    (allFlights.length > 1 && allFlights[0].origin === allFlights[allFlights.length - 1].destination);
+  const isMultiCity = allFlights.length > 1 && !isRoundTrip;
 
   let journeyBadge = "One-Way";
-  let journeyColorTag = "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20";
+  let journeyColorTag = "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20";
   if (isRoundTrip) {
     journeyBadge = "Round-Trip";
     journeyColorTag = "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20";
   } else if (isMultiCity) {
-    journeyBadge = `Multi-City (${flights.length} Segments)`;
+    journeyBadge = `Multi-City (${allFlights.length} Segments)`;
     journeyColorTag = "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20";
   }
 
-  // Calculate CO2 offset
   const co2Estimate = Math.round((totalDuration / 60) * 125);
 
   return (
-    <div className="mb-6 group/timeline">
+    <div className="mb-6 flex flex-col gap-4 group/timeline select-none">
       {/* Metrics Banner */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 mb-4 border-b border-zinc-200/30 dark:border-white/5">
-        <div className="flex items-center gap-2">
-          <span className={`px-2.5 py-0.5 text-2xs font-bold uppercase tracking-wider border rounded-md ${journeyColorTag}`}>
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-black/5 dark:border-white/5">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className={`px-2.5 py-0.5 text-2xs font-bold uppercase tracking-wider border rounded-full ${journeyColorTag}`}>
             {journeyBadge}
           </span>
           {co2Estimate > 0 && (
-            <span className="px-2 py-0.5 text-2xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 border border-emerald-500/10 bg-emerald-500/5 rounded-md flex items-center gap-1">
+            <span className="px-2.5 py-0.5 text-2xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 border border-emerald-500/15 bg-emerald-500/5 rounded-full flex items-center gap-1">
               <Sparkles className="w-2.5 h-2.5 text-emerald-500" />
-              {co2Estimate} kg CO₂ / Person
+              {co2Estimate} kg CO₂ / pax
             </span>
           )}
         </div>
-        <div className="flex items-center gap-3 text-xs font-mono font-bold text-zinc-500 dark:text-zinc-400">
-          <div className="flex items-center gap-1">
-            <Clock className="w-3.5 h-3.5 text-zinc-400" />
-            <span>Air Time: <strong className="text-zinc-800 dark:text-zinc-200 font-extrabold">{Math.floor(totalDuration / 60)}h {totalDuration % 60}m</strong></span>
+        <div className="flex items-center gap-3 text-xs font-mono font-bold text-light-text-secondary dark:text-dark-text-secondary">
+          <div className="flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5 text-light-text-secondary dark:text-dark-text-secondary" />
+            <span>Air Time: <strong className="text-light-text dark:text-dark-text font-black">{formatFlightDuration(totalDuration)}</strong></span>
           </div>
           {totalCost > 0 && (
-            <div className="flex items-center gap-1">
-              <DollarSign className="w-3.5 h-3.5 text-zinc-400" />
-              <span>Investment: <strong className="text-zinc-800 dark:text-zinc-200 font-extrabold">${totalCost.toLocaleString()}</strong></span>
+            <div className="flex items-center gap-1.5">
+              <DollarSign className="w-3.5 h-3.5 text-light-text-secondary dark:text-dark-text-secondary" />
+              <span>Investment: <strong className="text-light-text dark:text-dark-text font-black">${totalCost.toLocaleString()}</strong></span>
             </div>
           )}
         </div>
       </div>
 
-      {/* Graphical Route Path */}
-      <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-zinc-200 dark:scrollbar-thumb-zinc-800">
-        <div className="flex items-center gap-0.5 min-w-max pb-2 pt-1 font-sans justify-start">
-          {flights.map((flight, idx) => {
-            const arrTime = flight.arrivalTime || 'TBD';
-            const depTime = flight.departureTime || 'TBD';
-            const durationMinutes = flight.duration || Math.max(0, (getFlightArrivalUtcDate(flight).getTime() - getFlightDepartureUtcDate(flight).getTime()) / 60000);
-            const flightDuration = durationMinutes ? `${Math.floor(durationMinutes / 60)}h ${durationMinutes % 60}m` : 'Direct';
-            
-            return (
-              <React.Fragment key={flight.id}>
-                {/* Node for flight origin */}
-                <div className="flex flex-col items-center group/node relative">
-                  <div className="w-10 h-10 rounded-2xl bg-white dark:bg-zinc-900 border-2 border-zinc-200 dark:border-zinc-800 flex items-center justify-center font-black text-xs text-zinc-800 dark:text-zinc-100 shadow-sm relative z-10 hover:border-blue-500 hover:scale-105 transition-all duration-350">
-                    {flight.origin}
+      {/* DESKTOP TIMELINE (md:flex) */}
+      <div className="hidden md:flex flex-col gap-4">
+        {journeys.map((journey, jIdx) => {
+          const legs = journey.legs;
+          const originCity = getCityName(legs[0].origin) || legs[0].origin;
+          const destCity = getCityName(legs[legs.length - 1].destination) || legs[legs.length - 1].destination;
+          const journeyDuration = legs.reduce((sum, f) => {
+            const d = f.duration || Math.max(0, (getFlightArrivalUtcDate(f).getTime() - getFlightDepartureUtcDate(f).getTime()) / 60000);
+            return sum + d;
+          }, 0);
+
+          return (
+            <React.Fragment key={`desktop-journey-wrap-${jIdx}`}>
+              <div 
+                className="p-4 rounded-2xl bg-white/50 dark:bg-white/[0.04] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-xs flex flex-col gap-4"
+              >
+                {/* Journey Header */}
+                <div className="flex items-center justify-between gap-3 pb-2.5 border-b border-black/5 dark:border-white/5">
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2.5 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider border flex items-center gap-1.5 ${
+                      journey.type === 'outbound' 
+                        ? 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20'
+                        : journey.type === 'return'
+                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                        : 'bg-primary-500/10 text-primary-600 dark:text-primary-400 border-primary-500/20'
+                    }`}>
+                      <Plane className="w-3 h-3 rotate-45" />
+                      <span>{journey.label}</span>
+                    </span>
+                    <span className="text-xs font-black tracking-tight text-light-text dark:text-dark-text">
+                      {originCity} ({legs[0].origin}) → {destCity} ({legs[legs.length - 1].destination})
+                    </span>
                   </div>
-                  <span className="text-2xs font-bold uppercase text-zinc-400 dark:text-zinc-500 mt-2 tracking-wider leading-none">
-                    {getCityName(flight.origin) || flight.origin}
+                  <div className="flex items-center gap-3 text-xs font-mono font-semibold text-light-text-secondary dark:text-dark-text-secondary">
+                    <span>Air Time: <strong className="font-bold text-light-text dark:text-dark-text">{formatFlightDuration(journeyDuration)}</strong></span>
+                    <span className="text-2xs opacity-40">·</span>
+                    <span>{legs.length} {legs.length === 1 ? 'leg' : 'legs'}</span>
+                  </div>
+                </div>
+
+                {/* Track Line & Airport Hubs */}
+                <div className="flex items-center w-full justify-between gap-2 py-1">
+                  {legs.map((flight, idx) => {
+                    const depTime = flight.departureTime || 'TBD';
+                    const arrTime = flight.arrivalTime || 'TBD';
+                    const durationMinutes = flight.duration || Math.max(0, (getFlightArrivalUtcDate(flight).getTime() - getFlightDepartureUtcDate(flight).getTime()) / 60000);
+                    const flightDuration = durationMinutes ? formatFlightDuration(durationMinutes) : 'Direct';
+                    const dateDiff = getDateDiffDays(flight);
+
+                    // Layover before next leg if applicable (strictly within the same journey)
+                    let layoverMinutes = 0;
+                    if (idx < legs.length - 1) {
+                      layoverMinutes = getLayoverMinutes(flight, legs[idx + 1]);
+                    }
+
+                    return (
+                      <React.Fragment key={flight.id || `leg-${idx}`}>
+                        {/* Origin Node for this leg (only for first leg, or connection airport) */}
+                        {idx === 0 && (
+                          <div className="flex flex-col items-center group/node shrink-0 text-center min-w-[76px]">
+                            <div className="w-12 h-12 rounded-2xl bg-white/90 dark:bg-dark-card/90 border border-black/10 dark:border-white/15 flex flex-col items-center justify-center shadow-xs transition-transform group-hover/node:scale-105">
+                              <span className="font-black text-sm text-light-text dark:text-dark-text tracking-tight leading-none">
+                                {flight.origin}
+                              </span>
+                            </div>
+                            <span className="text-xs font-mono font-bold text-sky-600 dark:text-sky-400 mt-2 leading-none">
+                              {depTime}
+                            </span>
+                            <span className="text-2xs font-semibold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary mt-1 max-w-[85px] truncate leading-tight" title={getCityName(flight.origin)}>
+                              {getCityName(flight.origin) || flight.origin}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Connecting Track with Flight Capsule Pill */}
+                        <div className="flex-1 flex flex-col items-center justify-center px-4 relative min-w-[150px] select-none">
+                          {/* Flight Track line */}
+                          <div className="absolute top-6 left-0 right-0 h-[2px] bg-gradient-to-r from-sky-500/25 via-sky-500 to-sky-500/25 dark:from-sky-400/20 dark:via-sky-400/80 dark:to-sky-400/20 z-0" />
+
+                          {/* Flight Capsule Pill */}
+                          <div className="relative z-10 px-3.5 py-1.5 rounded-full bg-white/95 dark:bg-dark-card/95 backdrop-blur-md border border-black/10 dark:border-white/15 shadow-sm flex items-center gap-2 hover:scale-[1.02] transition-transform duration-200">
+                            <div className="w-4 h-4 rounded-md bg-black/5 dark:bg-white/10 flex items-center justify-center overflow-hidden shrink-0">
+                              <AirlineLogo provider={flight.provider} fallback={<Plane className="w-2.5 h-2.5 text-sky-500" />} />
+                            </div>
+                            <span className="font-mono text-xs font-bold text-light-text dark:text-dark-text uppercase tracking-wider leading-none">
+                              {flight.identifier || flight.providerCode || 'Flight'}
+                            </span>
+                            <span className="h-3 w-[1px] bg-black/10 dark:bg-white/15" />
+                            <span className="font-mono text-2xs font-semibold text-light-text-secondary dark:text-dark-text-secondary leading-none">
+                              {flightDuration}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Destination Node */}
+                        <div className="flex flex-col items-center group/node shrink-0 text-center min-w-[76px]">
+                          <div className="w-12 h-12 rounded-2xl bg-white/90 dark:bg-dark-card/90 border border-black/10 dark:border-white/15 flex flex-col items-center justify-center shadow-xs transition-transform group-hover/node:scale-105">
+                            <span className="font-black text-sm text-light-text dark:text-dark-text tracking-tight leading-none">
+                              {flight.destination}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 mt-2 leading-none">
+                            <span className="text-xs font-mono font-bold text-light-text dark:text-dark-text">
+                              {arrTime}
+                            </span>
+                            {dateDiff > 0 && (
+                              <span className="text-3xs font-mono font-bold text-rose-500 dark:text-rose-400 bg-rose-500/10 px-1 py-0.2 rounded">
+                                +{dateDiff}d
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-2xs font-semibold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary mt-1 max-w-[85px] truncate leading-tight" title={getCityName(flight.destination)}>
+                            {getCityName(flight.destination) || flight.destination}
+                          </span>
+
+                          {/* Layover chip below destination if there's a subsequent connecting leg in the same journey */}
+                          {layoverMinutes > 0 && (
+                            <span className="mt-2 px-2.5 py-0.5 rounded-full text-3xs font-mono font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 flex items-center gap-1 shadow-2xs whitespace-nowrap">
+                              <Clock className="w-2.5 h-2.5" />
+                              {formatFlightDuration(layoverMinutes)} layover
+                            </span>
+                          )}
+                        </div>
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Destination Stay indicator between Outbound and Return journeys */}
+              {jIdx === 0 && destinationStayInfo && journeys.length > 1 && (
+                <div className="flex items-center justify-between p-3.5 px-5 rounded-2xl bg-white/70 dark:bg-white/[0.05] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-xs">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center border border-sky-500/20">
+                      <MapPin className="w-4 h-4 text-sky-500" />
+                    </div>
+                    <div>
+                      <span className="font-bold text-sm text-light-text dark:text-dark-text tracking-tight">
+                        {destinationStayInfo.label}
+                      </span>
+                      <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary block font-medium">
+                        Destination Stay · {destinationStayInfo.airport}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full text-2xs font-bold uppercase tracking-wider bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
+                    Destination Stay
                   </span>
-                  <span className="font-mono text-2xs text-zinc-500 dark:text-zinc-550 mt-1 font-bold leading-none">
-                    {depTime}
+                </div>
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
+
+      {/* MOBILE TIMELINE (md:hidden) */}
+      <div className="flex md:hidden flex-col gap-3">
+        {journeys.map((journey, jIdx) => {
+          const legs = journey.legs;
+          const originCity = getCityName(legs[0].origin) || legs[0].origin;
+          const destCity = getCityName(legs[legs.length - 1].destination) || legs[legs.length - 1].destination;
+          const journeyDuration = legs.reduce((sum, f) => {
+            const d = f.duration || Math.max(0, (getFlightArrivalUtcDate(f).getTime() - getFlightDepartureUtcDate(f).getTime()) / 60000);
+            return sum + d;
+          }, 0);
+
+          return (
+            <React.Fragment key={`mobile-journey-wrap-${jIdx}`}>
+              <div 
+                className="p-3.5 rounded-2xl bg-white/50 dark:bg-white/[0.04] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-xs flex flex-col gap-3"
+              >
+                {/* Mobile Journey Header */}
+                <div className="flex items-center justify-between gap-2 pb-2 border-b border-black/5 dark:border-white/5">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className={`px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider border flex items-center gap-1 shrink-0 ${
+                      journey.type === 'outbound' 
+                        ? 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20'
+                        : journey.type === 'return'
+                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                        : 'bg-primary-500/10 text-primary-600 dark:text-primary-400 border-primary-500/20'
+                    }`}>
+                      <Plane className="w-2.5 h-2.5 rotate-45" />
+                      <span>{journey.label}</span>
+                    </span>
+                    <span className="text-xs font-black tracking-tight text-light-text dark:text-dark-text truncate">
+                      {legs[0].origin} → {legs[legs.length - 1].destination}
+                    </span>
+                  </div>
+                  <span className="text-2xs font-mono font-bold text-light-text-secondary dark:text-dark-text-secondary shrink-0">
+                    {formatFlightDuration(journeyDuration)}
                   </span>
                 </div>
 
-                {/* Connecting leg link */}
-                <div className="flex-1 flex flex-col items-center mx-4 relative min-w-[140px] select-none">
-                  {/* Line */}
-                  <div className="absolute top-5 left-0 right-0 h-[2px] bg-gradient-to-r from-blue-500/20 via-blue-500 to-blue-500/20 dark:from-blue-400/15 dark:via-blue-400/80 dark:to-blue-400/15 z-0" />
-                  
-                  {/* Carrier Details badge along connection route */}
-                  <div className="relative z-10 bg-white/95 dark:bg-zinc-900/95 border border-zinc-200 dark:border-zinc-800 px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-sm -mt-1 group-hover/timeline:scale-[1.02] transition-transform duration-300">
-                    <div className="w-4 h-4 rounded-md bg-zinc-50 dark:bg-zinc-850 flex items-center justify-center overflow-hidden shrink-0 shadow-xs">
-                      <AirlineLogo provider={flight.provider} fallback={<Plane className="w-3 h-3 text-zinc-400" />} />
+                {/* Mobile Legs Flow */}
+                <div className="flex flex-col gap-2.5">
+                  {legs.map((flight, idx) => {
+                    const depTime = flight.departureTime || 'TBD';
+                    const arrTime = flight.arrivalTime || 'TBD';
+                    const durationMinutes = flight.duration || Math.max(0, (getFlightArrivalUtcDate(flight).getTime() - getFlightDepartureUtcDate(flight).getTime()) / 60000);
+                    const flightDuration = durationMinutes ? formatFlightDuration(durationMinutes) : 'Direct';
+                    const dateDiff = getDateDiffDays(flight);
+
+                    let layoverMinutes = 0;
+                    if (idx < legs.length - 1) {
+                      layoverMinutes = getLayoverMinutes(flight, legs[idx + 1]);
+                    }
+
+                    return (
+                      <React.Fragment key={flight.id || `m-leg-${idx}`}>
+                        {/* Leg Card */}
+                        <div className="p-3.5 rounded-xl bg-white/80 dark:bg-dark-card/85 backdrop-blur-md border border-black/8 dark:border-white/10 shadow-2xs flex flex-col gap-3">
+                          {/* Leg Header Strip */}
+                          <div className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-2">
+                              <div className="w-5 h-5 rounded-md bg-black/5 dark:bg-white/10 flex items-center justify-center overflow-hidden shrink-0">
+                                <AirlineLogo provider={flight.provider} fallback={<Plane className="w-3 h-3 text-sky-500" />} />
+                              </div>
+                              <span className="font-mono font-bold text-light-text dark:text-dark-text uppercase tracking-wider text-xs">
+                                {flight.identifier || flight.providerCode || 'Flight'}
+                              </span>
+                              {flight.provider && (
+                                <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary truncate max-w-[110px]">
+                                  {flight.provider}
+                                </span>
+                              )}
+                            </div>
+                            <span className="px-2 py-0.5 rounded-md font-mono text-2xs font-semibold bg-black/5 dark:bg-white/10 text-light-text-secondary dark:text-dark-text-secondary">
+                              {flightDuration}
+                            </span>
+                          </div>
+
+                          {/* Departure ──> Arrival Route Block */}
+                          <div className="grid grid-cols-5 items-center gap-2">
+                            {/* Departure */}
+                            <div className="col-span-2 flex flex-col text-left">
+                              <span className="font-mono text-base font-black text-sky-600 dark:text-sky-400 leading-none">
+                                {depTime}
+                              </span>
+                              <span className="font-black text-sm text-light-text dark:text-dark-text mt-1 leading-none">
+                                {flight.origin}
+                              </span>
+                              <span className="text-2xs font-semibold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary mt-0.5 truncate" title={getCityName(flight.origin)}>
+                                {getCityName(flight.origin) || flight.origin}
+                              </span>
+                              {flight.departureTerminal && (
+                                <span className="text-3xs font-mono text-zinc-400 dark:text-zinc-500 mt-0.5">
+                                  T{flight.departureTerminal}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Flight Path Graphic */}
+                            <div className="col-span-1 flex flex-col items-center justify-center px-1">
+                              <div className="w-full flex items-center relative justify-center">
+                                <div className="w-full h-[1.5px] bg-gradient-to-r from-sky-500/20 via-sky-500 to-sky-500/20 dark:from-sky-400/20 dark:via-sky-400 dark:to-sky-400/20" />
+                                <Plane className="w-3.5 h-3.5 text-sky-500 absolute -top-1.5 rotate-45" />
+                              </div>
+                              <span className="text-3xs font-mono text-zinc-400 dark:text-zinc-500 uppercase mt-2">
+                                {flightDuration}
+                              </span>
+                            </div>
+
+                            {/* Arrival */}
+                            <div className="col-span-2 flex flex-col text-right items-end">
+                              <div className="flex items-center gap-1 justify-end leading-none">
+                                <span className="font-mono text-base font-black text-light-text dark:text-dark-text">
+                                  {arrTime}
+                                </span>
+                                {dateDiff > 0 && (
+                                  <span className="text-3xs font-mono font-bold text-rose-500 dark:text-rose-400 bg-rose-500/10 px-1 py-0.2 rounded">
+                                    +{dateDiff}d
+                                  </span>
+                                )}
+                              </div>
+                              <span className="font-black text-sm text-light-text dark:text-dark-text mt-1 leading-none">
+                                {flight.destination}
+                              </span>
+                              <span className="text-2xs font-semibold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary mt-0.5 truncate" title={getCityName(flight.destination)}>
+                                {getCityName(flight.destination) || flight.destination}
+                              </span>
+                              {flight.arrivalTerminal && (
+                                <span className="text-3xs font-mono text-zinc-400 dark:text-zinc-500 mt-0.5">
+                                  T{flight.arrivalTerminal}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Layover Connector Banner within the same journey */}
+                        {layoverMinutes > 0 && (
+                          <div className="flex items-center justify-between p-2 px-3 rounded-xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs font-bold">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <Clock className="w-3.5 h-3.5 shrink-0" />
+                              <span className="font-mono text-xs">{formatFlightDuration(layoverMinutes)} layover</span>
+                              <span className="opacity-75 font-normal text-2xs truncate">in {getCityName(flight.destination) || flight.destination}</span>
+                            </div>
+                            <span className="text-3xs font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 shrink-0">
+                              Connection
+                            </span>
+                          </div>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Mobile Destination Stay indicator between Outbound and Return journeys */}
+              {jIdx === 0 && destinationStayInfo && journeys.length > 1 && (
+                <div className="flex items-center justify-between p-3 px-4 rounded-xl bg-white/70 dark:bg-white/[0.05] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-xs">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center border border-sky-500/20 shrink-0">
+                      <MapPin className="w-3.5 h-3.5 text-sky-500" />
                     </div>
-                    <span className="font-mono text-2xs font-bold text-zinc-750 dark:text-zinc-200 uppercase tracking-widest leading-none">
-                      {flight.identifier}
+                    <span className="font-bold text-xs text-light-text dark:text-dark-text truncate">
+                      {destinationStayInfo.label}
                     </span>
                   </div>
-
-                  <span className="relative z-10 text-2xs font-mono font-bold text-zinc-400 dark:text-zinc-500 mt-3.5 bg-zinc-100/50 dark:bg-zinc-900/50 px-2 py-0.5 rounded-md leading-none select-none border border-zinc-200/35 dark:border-white/5">
-                    {flightDuration}
+                  <span className="px-2 py-0.5 rounded-full text-3xs font-bold uppercase tracking-wider bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 shrink-0">
+                    Destination Stay
                   </span>
                 </div>
-
-                {/* Render Final Node for the last flight destination */}
-                {idx === flights.length - 1 && (
-                  <div className="flex flex-col items-center group/node relative">
-                    <div className="w-10 h-10 rounded-2xl bg-white dark:bg-zinc-900 border-2 border-zinc-200 dark:border-zinc-800 flex items-center justify-center font-black text-xs text-zinc-800 dark:text-zinc-100 shadow-sm relative z-10 hover:border-blue-500 hover:scale-105 transition-all duration-350">
-                      {flight.destination}
-                    </div>
-                    <span className="text-2xs font-bold uppercase text-zinc-400 dark:text-zinc-500 mt-2 tracking-wider leading-none">
-                      {getCityName(flight.destination) || flight.destination}
-                    </span>
-                    <span className="font-mono text-2xs text-zinc-500 dark:text-zinc-550 mt-1 font-bold leading-none">
-                      {arrTime}
-                    </span>
-                  </div>
-                )}
-              </React.Fragment>
-            );
-          })}
-        </div>
+              )}
+            </React.Fragment>
+          );
+        })}
       </div>
     </div>
   );
@@ -1357,9 +1783,10 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
         return da.getTime() - db.getTime();
       });
 
-      // No Outbound and Return split - put everything in outbound and returnLegs empty
-      g.outbound = g.flights;
-      g.returnLegs = [];
+      // Intelligently split into Outbound and Return journeys based on route topology
+      const split = splitTripFlights(g.flights);
+      g.outbound = split.outbound;
+      g.returnLegs = split.returnLegs;
 
       // Sort both itineraries by active sort fields
       const sortFlightsFunc = (a: Transport, b: Transport) => {
@@ -1621,17 +2048,19 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
        daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     }
 
-    // Check if there is a layover to the next flight
+    // Check if there is a connecting layover to the next flight in this journey
     let layoverStr = null;
     if (idx < legsList.length - 1) {
       const nextFlight = legsList[idx + 1];
-      const arrDate = getFlightArrivalUtcDate(flight);
-      const nextDep = getFlightDepartureUtcDate(nextFlight);
-      const diffMs = nextDep.getTime() - arrDate.getTime();
-      if (diffMs > 0 && diffMs < 24 * 60 * 60 * 1000) {
-        const hrs = Math.floor(diffMs / (1000 * 60 * 60));
-        const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-        layoverStr = `${hrs}h ${mins}m layover at ${getCityName(flight.destination)}`;
+      if (flight.destination && nextFlight.origin && flight.destination === nextFlight.origin) {
+        const arrDate = getFlightArrivalUtcDate(flight);
+        const nextDep = getFlightDepartureUtcDate(nextFlight);
+        const diffMs = nextDep.getTime() - arrDate.getTime();
+        if (diffMs > 0) {
+          const hrs = Math.floor(diffMs / (1000 * 60 * 60));
+          const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+          layoverStr = `${hrs}h ${mins}m layover at ${getCityName(flight.destination) || flight.destination}`;
+        }
       }
     }
 
@@ -2859,7 +3288,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                                   </div>
                                 )}
                               </div>
-                              <BundleJourneyTimeline flights={[...outbound, ...returnLegs]} />
+                              <BundleJourneyTimeline flights={[...outbound, ...returnLegs]} outbound={outbound} returnLegs={returnLegs} />
                             </>
                           )}
 
@@ -3369,7 +3798,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                                 </div>
                               )}
                             </div>
-                            <BundleJourneyTimeline flights={[...outbound, ...returnLegs]} />
+                            <BundleJourneyTimeline flights={[...outbound, ...returnLegs]} outbound={outbound} returnLegs={returnLegs} />
                           </>
                         ) : null}
 
