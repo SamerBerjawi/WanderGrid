@@ -14,7 +14,9 @@ import {
     SEGMENTED_TAB_WRAPPER, 
     SEGMENTED_TAB_ACTIVE, 
     SEGMENTED_TAB_INACTIVE, 
-    BTN_SECONDARY_STYLE 
+    BTN_SECONDARY_STYLE,
+    STATUS_PILL_STYLE,
+    INPUT_BASE_STYLE
 } from '../constants';
 import { 
     UploadSimple as Upload, 
@@ -38,7 +40,8 @@ import {
     Gear,
     ArrowsMerge,
     ArrowsClockwise,
-    ShieldCheck
+    ShieldCheck,
+    X
 } from '@phosphor-icons/react';
 
 interface FlightImportWizardProps {
@@ -485,6 +488,17 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
     const [dbTrips, setDbTrips] = useState<Trip[]>([]);
 
     useEffect(() => {
+        if (!isOpen) return;
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                onClose();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isOpen, onClose]);
+
+    useEffect(() => {
         dataService.getFlights().then(setDbFlights).catch(console.error);
         dataService.getTrips().then(setDbTrips).catch(console.error);
     }, []);
@@ -924,36 +938,54 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
 
     return (
         <div 
-            className="fixed inset-0 bg-black/40 dark:bg-black/60 flex items-center justify-center z-modal p-4 safe-top safe-bottom safe-x text-light-text dark:text-dark-text animate-fade-in"
+            className="fixed inset-0 bg-black/40 dark:bg-black/60 flex items-center justify-center z-modal p-4 safe-top safe-bottom safe-x text-light-text dark:text-dark-text animate-fade-in font-sans"
+            onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
         >
-            <GlassPanel className="wg-glass-card shadow-2xl overflow-hidden flex flex-col w-full max-w-6xl h-[85vh] max-h-[calc(85dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] animate-scale-up" overrides={{ borderRadius: 28 }} padding="0px">
-                <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px]">
+            <GlassPanel className="wg-glass-card shadow-2xl overflow-hidden flex flex-col w-full max-w-6xl h-[88vh] max-h-[calc(88dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] animate-scale-up" overrides={{ borderRadius: 28 }} padding="0px">
+                <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px] bg-white/95 dark:bg-dark-card/95 backdrop-blur-2xl">
                 
-                {/* Header section with stepper */}
-                <div className="p-6 border-b border-slate-150/50 dark:border-white/5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gray-50 dark:bg-zinc-800/40">
-                    <div>
-                        <span className="text-2xs font-bold uppercase text-blue-500 tracking-widest flex items-center gap-1.5 mb-1">
-                            <Sparkles className="w-3.5 h-3.5" /> Core Data Ingestion
-                        </span>
-                        <h3 className="text-2xl font-black text-gray-900 dark:text-white leading-none">Smart Flight Spreadsheet Loader</h3>
+                {/* Header section with stepper and close button */}
+                <div className="p-5 sm:p-6 border-b border-black/5 dark:border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">
+                    <div className="flex items-center gap-3.5">
+                        <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white bg-primary-500 shrink-0 shadow-md transition-transform hover:scale-105">
+                            <Plane className="w-6 h-6" weight="duotone" />
+                        </div>
+                        <div>
+                            <span className="text-2xs font-bold uppercase tracking-wider text-primary-600 dark:text-primary-400 flex items-center gap-1.5 mb-0.5">
+                                <Sparkles className="w-3.5 h-3.5" weight="bold" /> Core Data Ingestion
+                            </span>
+                            <h3 className="text-xl sm:text-2xl font-black text-light-text dark:text-dark-text tracking-tight leading-tight">Smart Flight Spreadsheet Loader</h3>
+                        </div>
                     </div>
                     
-                    {/* Stepper display */}
-                    <div className="flex items-center gap-2">
-                        <div className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 ${step === 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-zinc-800 text-zinc-400'}`}>
-                            <span className="w-4 h-4 rounded-full bg-white/20 text-center text-2xs leading-4 font-bold">1</span>
-                            Upload File
+                    <div className="flex items-center gap-3 self-stretch md:self-auto justify-between md:justify-end">
+                        {/* Stepper display */}
+                        <div className="flex items-center gap-1.5 sm:gap-2">
+                            <div className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${step === 1 ? 'bg-primary-500 text-white shadow-sm' : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'}`}>
+                                <span className="w-4 h-4 rounded-full bg-white/20 text-center text-2xs leading-4 font-bold">1</span>
+                                <span>Upload</span>
+                            </div>
+                            <ChevronRight className="w-3.5 h-3.5 text-light-text-secondary/50 dark:text-dark-text-secondary/50" />
+                            <div className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${step === 2 ? 'bg-primary-500 text-white shadow-sm' : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'}`}>
+                                <span className="w-4 h-4 rounded-full bg-white/20 text-center text-2xs leading-4 font-bold">2</span>
+                                <span>Mapping</span>
+                            </div>
+                            <ChevronRight className="w-3.5 h-3.5 text-light-text-secondary/50 dark:text-dark-text-secondary/50" />
+                            <div className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${step === 3 ? 'bg-primary-500 text-white shadow-sm' : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'}`}>
+                                <span className="w-4 h-4 rounded-full bg-white/20 text-center text-2xs leading-4 font-bold">3</span>
+                                <span>Confirm</span>
+                            </div>
                         </div>
-                        <ChevronRight className="w-4 h-4 text-zinc-400" />
-                        <div className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 ${step === 2 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-zinc-800 text-zinc-400'}`}>
-                            <span className="w-4 h-4 rounded-full bg-white/20 text-center text-2xs leading-4 font-bold">2</span>
-                            Field Mapping
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-zinc-400" />
-                        <div className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 ${step === 3 ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-zinc-800 text-zinc-400'}`}>
-                            <span className="w-4 h-4 rounded-full bg-white/20 text-center text-2xs leading-4 font-bold">3</span>
-                            Confirm Flights
-                        </div>
+
+                        {/* Close button */}
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5 transition-colors shrink-0 cursor-pointer ml-1"
+                            aria-label="Close modal"
+                        >
+                            <X className="w-5 h-5" weight="bold" />
+                        </button>
                     </div>
                 </div>
                 
@@ -961,46 +993,44 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                     {step === 1 && (
                         <div className="max-w-xl mx-auto space-y-8 py-6">
                             {/* Toggle import mode selection tabs */}
-                            <div className="flex bg-gray-150 dark:bg-zinc-805 p-1 rounded-2xl relative border border-zinc-200/50 dark:border-white/5 shadow-inner">
+                            <div className={cn(SEGMENTED_TAB_WRAPPER, "max-w-md mx-auto")}>
                                 <button
                                     type="button"
                                     onClick={() => { setImportMode('spreadsheet'); setBackupDataState(null); }}
-                                    className={`flex-1 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
-                                        importMode === 'spreadsheet'
-                                            ? 'bg-blue-600 text-white shadow-md font-extrabold'
-                                            : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
-                                    }`}
+                                    className={cn(
+                                        "flex-1 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2",
+                                        importMode === 'spreadsheet' ? SEGMENTED_TAB_ACTIVE : SEGMENTED_TAB_INACTIVE
+                                    )}
                                 >
-                                    📊 Ingest Spreadsheet (CSV / Excel)
+                                    <span>📊 Ingest Spreadsheet</span>
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => { setImportMode('backup'); }}
-                                    className={`flex-1 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
-                                        importMode === 'backup'
-                                            ? 'bg-amber-600 dark:bg-amber-500 text-white shadow-md font-extrabold'
-                                            : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
-                                    }`}
+                                    className={cn(
+                                        "flex-1 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2",
+                                        importMode === 'backup' ? SEGMENTED_TAB_ACTIVE : SEGMENTED_TAB_INACTIVE
+                                    )}
                                 >
-                                    📥 Restore Backup File (.json)
+                                    <span>📥 Restore Backup</span>
                                 </button>
                             </div>
 
                             {importMode === 'spreadsheet' ? (
-                                <div className="space-y-6 text-center">
+                                <div className="space-y-6 text-center font-sans">
                                     <div className="space-y-2">
                                         <h4 className="text-xl font-bold text-light-text dark:text-dark-text">Ingest Flight Logs via Excel or CSV</h4>
-                                        <p className="text-sm font-medium text-zinc-500 max-w-md mx-auto">
+                                        <p className="text-sm font-medium text-light-text-secondary dark:text-dark-text-secondary max-w-md mx-auto">
                                             Upload standard spreadsheets containing lists of booked business flights or passenger logs, and assign them easily.
                                         </p>
                                     </div>
                                     <div 
                                         onClick={() => fileInputRef.current?.click()}
-                                        className="border-3 border-dashed border-zinc-200 dark:border-zinc-800 hover:border-blue-500 dark:hover:border-blue-500 rounded-3xl p-16 cursor-pointer bg-slate-50/50 dark:bg-zinc-800/10 group transition-all duration-300"
+                                        className="border-2 border-dashed border-black/15 dark:border-white/15 hover:border-primary-500 dark:hover:border-primary-500 rounded-3xl p-14 cursor-pointer bg-white/40 dark:bg-white/[0.03] group transition-all duration-300"
                                     >
-                                        <Upload className="w-12 h-12 text-blue-500 mx-auto mb-4 group-hover:-translate-y-1 transition-transform" />
-                                        <p className="text-base font-black text-gray-800 dark:text-zinc-200 mb-1">Click to browse computer files</p>
-                                        <p className="text-xs text-zinc-500">Supports .csv, .xlsx, .xls</p>
+                                        <Upload className="w-12 h-12 text-primary-500 mx-auto mb-4 group-hover:-translate-y-1 transition-transform" />
+                                        <p className="text-base font-bold text-light-text dark:text-dark-text mb-1">Click to browse computer files</p>
+                                        <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium">Supports .csv, .xlsx, .xls</p>
                                     </div>
                                     <input type="file" ref={fileInputRef} className="hidden" accept=".csv,.xlsx,.xls" onChange={handleFileChange} />
                                 </div>
@@ -1212,40 +1242,38 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
 
                     {step === 2 && (
                         <div className="space-y-6">
-                            <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border border-blue-500/20 flex gap-3 items-center">
-                                <Columns className="w-5 h-5 text-blue-500 shrink-0" />
+                            <div className="p-4 rounded-2xl bg-primary-500/10 border border-primary-500/20 flex gap-3 items-center">
+                                <Columns className="w-5 h-5 text-primary-500 shrink-0" />
                                 <div className="text-left font-sans">
-                                    <p className="text-xs font-black uppercase text-blue-600 dark:text-blue-400">Automated Parser Engaged</p>
-                                    <p className="text-xs text-zinc-500 dark:text-zinc-400">Match targeted fields with your spreadsheet headers in <span className="font-bold text-gray-700 dark:text-white">({fileName})</span>. Our system fuzzily parses carrier lookup names, airport cities vs code, and combined datetimes.</p>
+                                    <p className="text-xs font-bold uppercase text-primary-600 dark:text-primary-400">Automated Parser Engaged</p>
+                                    <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary">Match targeted fields with your spreadsheet headers in <span className="font-bold text-light-text dark:text-dark-text">({fileName})</span>. Our system fuzzily parses carrier lookup names, airport cities vs code, and combined datetimes.</p>
                                 </div>
                             </div>
 
                             {/* Carrier Format Input Toggle */}
-                            <div className="p-4 rounded-3xl bg-slate-50 dark:bg-zinc-800/40 border border-zinc-200/50 dark:border-zinc-805 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-left">
+                            <div className="p-4 rounded-3xl bg-white/50 dark:bg-white/[0.04] border border-black/5 dark:border-white/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-left">
                                 <div>
-                                    <p className="text-xs font-black uppercase text-zinc-800 dark:text-zinc-200">Carrier Code Column Format</p>
-                                    <p className="text-xs text-zinc-500">Is your spreadsheet using 2-letter IATA (DL) or 3-letter ICAO (DAL) codes for airlines?</p>
+                                    <p className="text-xs font-bold uppercase tracking-wider text-light-text dark:text-dark-text">Carrier Code Column Format</p>
+                                    <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary">Is your spreadsheet using 2-letter IATA (DL) or 3-letter ICAO (DAL) codes for airlines?</p>
                                 </div>
-                                <div className="flex bg-gray-200 dark:bg-zinc-800 p-1 rounded-2xl shrink-0 self-stretch sm:self-auto">
+                                <div className={cn(SEGMENTED_TAB_WRAPPER, "shrink-0 self-stretch sm:self-auto")}>
                                     <button
                                         type="button"
                                         onClick={() => setAirlineCodeType('IATA')}
-                                        className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
-                                            airlineCodeType === 'IATA'
-                                                ? 'bg-blue-600 text-white shadow-md'
-                                                : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
-                                        }`}
+                                        className={cn(
+                                            "px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all",
+                                            airlineCodeType === 'IATA' ? SEGMENTED_TAB_ACTIVE : SEGMENTED_TAB_INACTIVE
+                                        )}
                                     >
                                         IATA Code (DL)
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => setAirlineCodeType('ICAO')}
-                                        className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
-                                            airlineCodeType === 'ICAO'
-                                                ? 'bg-blue-600 text-white shadow-md'
-                                                : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
-                                        }`}
+                                        className={cn(
+                                            "px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all",
+                                            airlineCodeType === 'ICAO' ? SEGMENTED_TAB_ACTIVE : SEGMENTED_TAB_INACTIVE
+                                        )}
                                     >
                                         ICAO Code (DAL)
                                     </button>
@@ -1255,18 +1283,18 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full">
                                 {/* Mappings column */}
                                 <div className="lg:col-span-5 space-y-4">
-                                    <span className="text-xs font-black text-slate-400 uppercase tracking-widest block ml-1">Spreadsheet Column Mapping</span>
+                                    <span className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider block ml-1">Spreadsheet Column Mapping</span>
                                     <div className="space-y-3 max-h-[48vh] overflow-y-auto pr-2 custom-scrollbar">
                                         {TARGET_FIELDS.map((tf) => (
-                                            <div key={tf.key} className="flex items-center gap-3 p-3 bg-slate-50/50 dark:bg-zinc-800/10 hover:bg-slate-50 dark:hover:bg-zinc-800/20 rounded-2xl border border-zinc-200/50 dark:border-zinc-850">
-                                                <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-sm shrink-0">
+                                            <div key={tf.key} className="flex items-center gap-3 p-3 bg-white/40 dark:bg-white/[0.02] hover:bg-white/70 dark:hover:bg-white/[0.05] rounded-2xl border border-black/5 dark:border-white/5 transition-colors">
+                                                <div className="w-8 h-8 rounded-lg bg-black/5 dark:bg-white/10 flex items-center justify-center text-sm shrink-0">
                                                     {tf.icons}
                                                 </div>
                                                 <div className="flex-1 text-left min-w-0">
-                                                    <span className="text-xs font-black text-gray-800 dark:text-zinc-200">
-                                                        {tf.label} {tf.required && <span className="text-red-500">*</span>}
+                                                    <span className="text-xs font-bold text-light-text dark:text-dark-text">
+                                                        {tf.label} {tf.required && <span className="text-rose-500">*</span>}
                                                     </span>
-                                                    <p className="text-xs text-zinc-500 truncate">{tf.desc}</p>
+                                                    <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary truncate">{tf.desc}</p>
                                                 </div>
                                                 <div className="w-1/2">
                                                     <GlassSelect
@@ -1286,46 +1314,46 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
 
                                 {/* Live preview visualizer */}
                                 <div className="lg:col-span-7 space-y-4 flex flex-col">
-                                    <span className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5 ml-1">
-                                        <Eye className="w-4 h-4 text-zinc-400" /> Intelligent Preview (First 4 Rows)
+                                    <span className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider flex items-center gap-1.5 ml-1">
+                                        <Eye className="w-4 h-4 text-primary-500" /> Intelligent Preview (First 4 Rows)
                                     </span>
-                                    <div className="border border-zinc-200/50 dark:border-zinc-800 dark:bg-zinc-900/40 rounded-3xl p-4 flex-1 overflow-y-auto max-h-[48vh] space-y-3 custom-scrollbar">
+                                    <div className="border border-black/10 dark:border-white/10 bg-white/30 dark:bg-white/[0.02] rounded-3xl p-4 flex-1 overflow-y-auto max-h-[48vh] space-y-3 custom-scrollbar">
                                         {mappedFlights.slice(0, 4).map((f, index) => (
-                                            <div key={index} className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-205 dark:border-white/5 shadow-sm text-left flex flex-col gap-3">
+                                            <div key={index} className="p-4 rounded-2xl bg-white/80 dark:bg-white/[0.05] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-xs text-left flex flex-col gap-3">
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
-                                                        <span className="text-xs font-black text-gray-900 dark:text-white flex items-center gap-1.5">
-                                                            <Plane className="w-3.5 h-3.5 text-blue-500" />
+                                                        <span className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
+                                                            <Plane className="w-3.5 h-3.5 text-primary-500" />
                                                             {f.provider || 'Unmapped Airline'}
                                                         </span>
                                                         {f.providerCode && (
-                                                            <span className="text-2xs font-mono font-bold bg-blue-100 dark:bg-blue-900/45 px-1.5 py-0.5 rounded text-blue-600 dark:text-blue-400">{f.providerCode}</span>
+                                                            <span className="text-2xs font-mono font-bold bg-primary-500/10 text-primary-600 dark:text-primary-400 px-1.5 py-0.5 rounded">{f.providerCode}</span>
                                                         )}
-                                                        <span className="text-2xs font-mono font-bold bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-500 uppercase tracking-wide">{f.identifier || 'No Flight #'}</span>
+                                                        <span className="text-2xs font-mono font-bold bg-black/5 dark:bg-white/10 text-light-text-secondary dark:text-dark-text-secondary px-1.5 py-0.5 rounded uppercase tracking-wide">{f.identifier || 'No Flight #'}</span>
                                                     </div>
 
                                                     {f.isApproximate && (
-                                                        <span className="text-2xs font-bold uppercase tracking-wide bg-red-100 dark:bg-red-950/40 text-red-600 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                                        <span className="text-2xs font-bold uppercase tracking-wide bg-rose-500/10 text-rose-600 dark:text-rose-400 px-2 py-0.5 rounded-full flex items-center gap-1 border border-rose-500/20">
                                                             <XCircle className="w-2.5 h-2.5" /> Checked Canceled
                                                         </span>
                                                     )}
                                                 </div>
 
-                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 border-t border-b border-zinc-150/50 dark:border-zinc-800 py-2.5 my-0.5">
+                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 border-t border-b border-black/5 dark:border-white/5 py-2.5 my-0.5">
                                                     <div>
-                                                        <span className="text-2xs uppercase font-bold text-zinc-400 block">Departure</span>
-                                                        <span className="text-xs font-black text-blue-600 dark:text-blue-450">{f.origin || '???'}</span>
-                                                        {f.departureTerminal && <span className="text-xs font-bold text-zinc-500"> (T{f.departureTerminal})</span>}
+                                                        <span className="text-2xs uppercase font-bold text-light-text-secondary dark:text-dark-text-secondary block">Departure</span>
+                                                        <span className="text-xs font-bold text-primary-600 dark:text-primary-400">{f.origin || '???'}</span>
+                                                        {f.departureTerminal && <span className="text-xs font-medium text-light-text-secondary dark:text-dark-text-secondary"> (T{f.departureTerminal})</span>}
                                                     </div>
                                                     <div>
-                                                        <span className="text-2xs uppercase font-bold text-zinc-400 block">Arrival</span>
-                                                        <span className="text-xs font-black text-indigo-600 dark:text-indigo-405">{f.destination || '???'}</span>
-                                                        {f.arrivalTerminal && <span className="text-xs font-bold text-zinc-500"> (T{f.arrivalTerminal})</span>}
+                                                        <span className="text-2xs uppercase font-bold text-light-text-secondary dark:text-dark-text-secondary block">Arrival</span>
+                                                        <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">{f.destination || '???'}</span>
+                                                        {f.arrivalTerminal && <span className="text-xs font-medium text-light-text-secondary dark:text-dark-text-secondary"> (T{f.arrivalTerminal})</span>}
                                                     </div>
                                                     <div>
-                                                        <span className="text-2xs uppercase font-bold text-zinc-400 block">Schedule</span>
-                                                        <span className="text-xs font-bold text-gray-800 dark:text-zinc-200">{f.departureDate || 'Unmapped'}</span>
-                                                        <span className="text-xs font-mono text-zinc-500 block">{f.departureTime}</span>
+                                                        <span className="text-2xs uppercase font-bold text-light-text-secondary dark:text-dark-text-secondary block">Schedule</span>
+                                                        <span className="text-xs font-bold text-light-text dark:text-dark-text">{f.departureDate || 'Unmapped'}</span>
+                                                        <span className="text-xs font-mono text-light-text-secondary dark:text-dark-text-secondary block">{f.departureTime}</span>
                                                     </div>
                                                     <div>
                                                         <span className="text-2xs uppercase font-bold text-zinc-400 block">Aircraft / Tail</span>
