@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   MagnifyingGlass as Search, Funnel as Filter, Plus, CalendarBlank as Calendar, MapPin, Trash as Trash2, PencilSimple as Edit2, Check, Square, CheckSquare, PencilSimpleLine as Edit3, CaretRight as ChevronRight, CaretDown as ChevronDown, CaretUp as ChevronUp, WarningCircle as AlertCircle,
-  ArrowRight, Airplane as Plane, AirplaneTakeoff, AirplaneTilt, Bank as Landmark, Trophy as Award, Clock, CurrencyDollar as DollarSign, ChartBar as BarChart2, SuitcaseSimple as Briefcase, FileText, Compass, Heart, Question as HelpCircle, ArrowsClockwise as RefreshCw, UploadSimple as Upload, DownloadSimple as Download, Tag, UserCheck, Star, Sparkle as Sparkles, SquaresFour as Grid, List,
+  ArrowRight, Airplane as Plane, AirplaneTakeoff, AirplaneTilt, Bank as Landmark, Trophy as Award, Clock, ClockCounterClockwise, CurrencyDollar as DollarSign, ChartBar as BarChart2, SuitcaseSimple as Briefcase, FileText, Compass, Heart, Question as HelpCircle, ArrowsClockwise as RefreshCw, UploadSimple as Upload, DownloadSimple as Download, Tag, UserCheck, Star, Sparkle as Sparkles, SquaresFour as Grid, List,
   ArrowUpRight, ArrowDownLeft, FolderPlus, FolderMinus, X
 } from '@phosphor-icons/react';
 import { Card, Button, Input, Select, GlassSelect, Badge, TimeInput, Autocomplete } from '../components/ui';
@@ -11,10 +11,13 @@ import VirtualListItem from '../components/ui/VirtualListItem';
 import { Trip, Transport, User, Carrier, WorkspaceSettings, FlightStatusResponse } from '../types';
 import { getMerchantLogoUrl } from '../utils/brandfetch';
 import { formatDate, formatCurrency } from '../utils/formatters';
-import { CLOSE_BTN_STYLE, MODAL_BACKDROP_STYLE, MODAL_SHELL_STYLE } from '../constants';
+import { 
+  CLOSE_BTN_STYLE, MODAL_BACKDROP_STYLE, MODAL_SHELL_STYLE,
+  INPUT_BASE_STYLE, BTN_PRIMARY_STYLE, BTN_SECONDARY_STYLE 
+} from '../constants';
 import { EmptyState } from '../components/EmptyState';
 import { dataService } from '../services/mockDb';
-import { PassportIdCard, PassportStampsPage, PassportTravelMap } from '../components/FlightyPassport';
+import FlightsHeroBento from '../components/FlightsHeroBento';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { TooltipContent } from '../components/TooltipContent';
 import { motion, AnimatePresence } from 'motion/react';
@@ -459,7 +462,7 @@ const BundleJourneyTimeline: React.FC<BundleJourneyTimelineProps> = React.memo((
                 </div>
 
                 {/* Track Line & Airport Hubs */}
-                <div className="flex items-center w-full justify-between gap-2 py-1">
+                <div className="flex items-start w-full justify-between gap-2 py-1">
                   {legs.map((flight, idx) => {
                     const depTime = flight.departureTime || 'TBD';
                     const arrTime = flight.arrivalTime || 'TBD';
@@ -493,12 +496,12 @@ const BundleJourneyTimeline: React.FC<BundleJourneyTimelineProps> = React.memo((
                         )}
 
                         {/* Connecting Track with Flight Capsule Pill */}
-                        <div className="flex-1 flex flex-col items-center justify-center px-4 relative min-w-[150px] select-none">
+                        <div className="flex-1 flex items-center justify-center px-3 sm:px-4 relative min-w-[140px] select-none h-12">
                           {/* Flight Track line */}
-                          <div className="absolute top-6 left-0 right-0 h-[2px] bg-gradient-to-r from-sky-500/25 via-sky-500 to-sky-500/25 dark:from-sky-400/20 dark:via-sky-400/80 dark:to-sky-400/20 z-0" />
+                          <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-[2px] bg-gradient-to-r from-sky-500/25 via-sky-500 to-sky-500/25 dark:from-sky-400/20 dark:via-sky-400/80 dark:to-sky-400/20 z-0 pointer-events-none" />
 
                           {/* Flight Capsule Pill */}
-                          <div className="relative z-10 px-3.5 py-1.5 rounded-full bg-white/95 dark:bg-dark-card/95 backdrop-blur-md border border-black/10 dark:border-white/15 shadow-sm flex items-center gap-2 hover:scale-[1.02] transition-transform duration-200">
+                          <div className="relative z-10 px-3.5 py-1.5 rounded-full bg-white/95 dark:bg-dark-card/95 backdrop-blur-md border border-black/10 dark:border-white/15 shadow-sm flex items-center gap-2 hover:scale-[1.02] transition-transform duration-200 shrink-0">
                             <div className="w-4 h-4 rounded-md bg-black/5 dark:bg-white/10 flex items-center justify-center overflow-hidden shrink-0">
                               <AirlineLogo provider={flight.provider} fallback={<Plane className="w-2.5 h-2.5 text-sky-500" />} />
                             </div>
@@ -2773,11 +2776,30 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           >
             <div className="flex gap-1 relative items-center">
               {[
-                { id: 'all' as const, label: 'All Flights', count: flights.length },
-                { id: 'upcoming' as const, label: 'Upcoming', count: flights.filter(f => getFlightDepartureUtcDate(f.flight) >= new Date()).length },
-                { id: 'past' as const, label: 'Past', count: flights.filter(f => getFlightDepartureUtcDate(f.flight) < new Date()).length }
+                { 
+                  id: 'all' as const, 
+                  label: 'All Flights', 
+                  count: flights.length,
+                  icon: Plane,
+                  color: 'text-blue-500 dark:text-blue-400'
+                },
+                { 
+                  id: 'upcoming' as const, 
+                  label: 'Upcoming', 
+                  count: flights.filter(f => getFlightDepartureUtcDate(f.flight) >= new Date()).length,
+                  icon: AirplaneTakeoff,
+                  color: 'text-emerald-500 dark:text-emerald-400'
+                },
+                { 
+                  id: 'past' as const, 
+                  label: 'Past', 
+                  count: flights.filter(f => getFlightDepartureUtcDate(f.flight) < new Date()).length,
+                  icon: ClockCounterClockwise,
+                  color: 'text-amber-500 dark:text-amber-400'
+                }
               ].map((tab) => {
                 const isSelected = timeFilter === tab.id;
+                const TabIcon = tab.icon;
                 return (
                   <button
                     key={tab.id}
@@ -2798,7 +2820,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
                       />
                     )}
                     <span className="relative z-10 flex items-center gap-2">
-                      <Clock className="w-4 h-4 shrink-0 text-blue-500" weight="duotone" />
+                      <TabIcon className={`w-4 h-4 shrink-0 ${tab.color}`} weight="duotone" />
                       <span className={`tracking-tight ${isSelected ? 'inline' : 'hidden sm:inline'}`}>{tab.label}</span>
                       <span className="text-2xs font-mono opacity-70">({tab.count})</span>
                     </span>
@@ -2812,348 +2834,94 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
 
       {/* Search & Filters Board inside GlassPanel */}
       <GlassPanel
-        className="wg-glass-card rounded-[28px] overflow-hidden p-6 relative group"
-        overrides={{ borderRadius: 28 }}
+        className="wg-glass-card rounded-[24px] sm:rounded-[28px] overflow-hidden p-3.5 sm:p-5 relative group"
+        overrides={{ borderRadius: 24 }}
       >
         <div className="absolute top-0 left-0 w-48 h-48 bg-blue-500/5 rounded-full blur-3xl pointer-events-none group-hover:scale-125 transition-transform duration-700" />
         <div className="absolute bottom-0 right-0 w-48 h-48 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none group-hover:scale-125 transition-transform duration-700" />
         
-        <div className="space-y-6 relative z-10">
-          {/* Search and Dropdowns */}
-          <div className="flex flex-col xl:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-4.5 top-1/2 -translate-y-1/2 text-blue-500 w-[18px] h-[18px] pointer-events-none opacity-80 animate-none" />
-              <input 
-                type="text"
-                placeholder="Search by airline, code, city, booking locator..."
-                className="w-full pl-12 pr-5 py-3 rounded-2xl bg-white/45 border border-zinc-200/60 focus:border-blue-500/50 focus:bg-white outline-none font-bold text-xs text-zinc-800 dark:bg-black/20 dark:border-white/5 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:bg-black/30 shadow-xs focus:ring-4 focus:ring-blue-500/5 transition-all placeholder:text-zinc-400"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-              />
-            </div>
-            
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Cabin Class Select filter */}
-              <div className="min-w-[140px]">
-                <GlassSelect
-                  aria-label="Filter by cabin class"
-                  value={classFilter}
-                  onChange={e => setClassFilter(e.target.value)}
-                >
-                  <option value="all">Any Cabin</option>
-                  <option value="Economy">Economy</option>
-                  <option value="Premium Economy">Premium Economy</option>
-                  <option value="Business">Business</option>
-                  <option value="First">First Only</option>
-                </GlassSelect>
-              </div>
-
-              {/* Reset Filters button */}
-              {(searchQuery !== '' ||
-                timeFilter !== 'all' ||
-                classFilter !== 'all' ||
-                yearFilter !== 'all' ||
-                colFilterFlight !== '' ||
-                colFilterSector !== '' ||
-                colFilterStatus !== 'all' ||
-                colFilterSeat !== 'all') && (
-                <button
-                  onClick={handleResetFilters}
-                  aria-label="Reset all filters"
-                  className="px-4 py-2 text-xs rounded-xl font-black uppercase tracking-widest bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-500 flex items-center gap-1.5 cursor-pointer transition-all shadow-xs"
-                >
-                  <RefreshCw className="w-3 h-3 animate-spin-slow" />
-                  Reset
-                </button>
-              )}
-            </div>
+        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2.5 sm:gap-3 relative z-10">
+          {/* Search bar */}
+          <div className="flex-1 relative min-w-0">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-blue-500 w-[18px] h-[18px] pointer-events-none opacity-80" />
+            <input 
+              type="text"
+              placeholder="Search by airline, code, city, booking locator..."
+              className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-white/45 border border-zinc-200/60 focus:border-blue-500/50 focus:bg-white outline-none font-bold text-xs text-zinc-800 dark:bg-black/20 dark:border-white/5 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:bg-black/30 shadow-xs focus:ring-4 focus:ring-blue-500/5 transition-all placeholder:text-zinc-400 min-h-[44px]"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+            />
           </div>
-
-          <div className="h-[1px] bg-zinc-200/55 dark:bg-white/5" />
-
-          {/* Year Filter Horizontal Scroll Bar */}
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-black uppercase text-zinc-400 dark:text-zinc-500 tracking-widest shrink-0 select-none">Era Filter:</span>
-            <div className="flex overflow-x-auto gap-2 pb-1 custom-scrollbar items-center flex-1">
-              <button
-                onClick={() => setYearFilter('all')}
-                aria-label="Show all time eras"
-                className={`shrink-0 px-4 py-2 text-xs rounded-xl font-black uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer border ${
-                  yearFilter === 'all' 
-                    ? 'bg-blue-500 text-white border-transparent shadow-lg shadow-blue-500/15' 
-                    : 'bg-white/40 text-zinc-650 dark:text-zinc-400 border-zinc-200/50 dark:border-white/10 hover:bg-white/60 dark:bg-black/20 dark:hover:bg-black/45 shadow-2xs'
-                }`}
+          
+          {/* Controls: Cabin Class Select, Year / Era Dropdown Select, and Reset Button */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Cabin Class Select filter */}
+            <div className="flex-1 md:w-[145px]">
+              <GlassSelect
+                aria-label="Filter by cabin class"
+                value={classFilter}
+                onChange={e => setClassFilter(e.target.value)}
               >
-                All Time
-              </button>
-              
-              <div className="w-[1px] h-4 bg-zinc-250 dark:bg-white/10 shrink-0 mx-1"></div>
-              
-              {uniqueYears.map(yr => (
-                <button
-                  key={yr}
-                  onClick={() => setYearFilter(yr)}
-                  aria-label={`Filter year ${yr}`}
-                  className={`shrink-0 px-4 py-2 text-xs rounded-xl font-black uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer border ${
-                    yearFilter === yr 
-                      ? 'bg-blue-500 text-white border-transparent shadow-lg shadow-blue-500/15' 
-                      : 'bg-white/40 text-zinc-650 dark:text-zinc-400 border-zinc-200/50 dark:border-white/10 hover:bg-white/60 dark:bg-black/20 dark:hover:bg-black/45 shadow-2xs'
-                  }`}
-                >
-                  {yr}
-                </button>
-              ))}
+                <option value="all">Any Cabin</option>
+                <option value="Economy">Economy</option>
+                <option value="Premium Economy">Premium Economy</option>
+                <option value="Business">Business</option>
+                <option value="First">First Only</option>
+              </GlassSelect>
             </div>
+
+            {/* Year / Era Dropdown Select filter */}
+            <div className="flex-1 md:w-[135px]">
+              <GlassSelect
+                aria-label="Filter by year or era"
+                value={yearFilter}
+                onChange={e => setYearFilter(e.target.value)}
+              >
+                <option value="all">All Time</option>
+                {uniqueYears.map(yr => (
+                  <option key={yr} value={yr}>Year {yr}</option>
+                ))}
+              </GlassSelect>
+            </div>
+
+            {/* Reset Filters button */}
+            {(searchQuery !== '' ||
+              timeFilter !== 'all' ||
+              classFilter !== 'all' ||
+              yearFilter !== 'all' ||
+              colFilterFlight !== '' ||
+              colFilterSector !== '' ||
+              colFilterStatus !== 'all' ||
+              colFilterSeat !== 'all') && (
+              <button
+                onClick={handleResetFilters}
+                title="Reset all filters"
+                aria-label="Reset all filters"
+                className="min-h-[44px] px-3.5 py-2 text-xs rounded-xl font-black uppercase tracking-wider bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-500 flex items-center justify-center gap-1.5 cursor-pointer transition-all shadow-xs shrink-0"
+              >
+                <RefreshCw className="w-3.5 h-3.5 animate-spin-slow" />
+                <span className="hidden sm:inline">Reset</span>
+              </button>
+            )}
           </div>
         </div>
       </GlassPanel>
 
-      {/* Unequal Multi-Column Dashboard Section: Integrated Bento Grid (Passport, map, boarding pass, stamps & analytics) */}
-      <div className="grid grid-cols-12 gap-6 items-stretch">
-        
-        {/* Row 1: Passport ID Cover (4 cols) & Live Map (8 cols) */}
-        <div className="col-span-12 lg:col-span-4 flex flex-col">
-          <PassportIdCard flights={filteredFlights.map(f => f.flight)} yearFilter={yearFilter} currentUser={currentUser} />
-        </div>
+      {/* Compact Responsive Hero Bento Showcase */}
+      <FlightsHeroBento
+        flights={flights.map(f => f.flight)}
+        filteredFlights={filteredFlights}
+        nextUpcomingFlight={nextUpcomingFlight}
+        yearFilter={yearFilter}
+        currentUser={currentUser}
+        metrics={metrics}
+        monthlyData={monthlyData}
+        AirlineLogo={AirlineLogo}
+      />
 
-        <div className="col-span-12 lg:col-span-8 flex flex-col">
-          <PassportTravelMap flights={filteredFlights.map(f => f.flight)} yearFilter={yearFilter} />
-        </div>
-
-        {/* Row 2: Boarding Pass Hero Ticket (4 cols), Stamps Page (4 cols), and Flight Insights & Charts combined (4 cols) */}
-        <div className="col-span-12 md:col-span-4 flex flex-col">
-          {nextUpcomingFlight ? (() => {
-            const flight = nextUpcomingFlight.flight;
-            const trip = nextUpcomingFlight.trip;
-            const isFuture = getFlightDepartureUtcDate(flight) >= new Date();
-            const statusInfo = getFlightStatusTags(flight);
-            
-            let daysDiffText = '';
-            if (isFuture) {
-              const depDate = getFlightDepartureUtcDate(flight);
-              const diffTime = Math.abs(depDate.getTime() - new Date().getTime());
-              const dVal = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-              daysDiffText = dVal === 1 ? 'Tomorrow' : `In ${dVal} days`;
-            } else {
-              daysDiffText = 'Completed';
-            }
-
-            return (
-              <div className="relative bg-white/70 dark:bg-zinc-900/40 border border-zinc-200/60 dark:border-white/5 shadow-xl rounded-3xl overflow-hidden backdrop-blur-xl flex flex-col justify-between h-full group transition-all duration-300 hover:shadow-2xl">
-                {/* Perforated ticket punches */}
-                <div className="absolute top-20 -left-3.5 w-7 h-7 bg-zinc-50 dark:bg-zinc-950 rounded-full border border-zinc-200 dark:border-white/5 z-20 shadow-inner" />
-                <div className="absolute top-20 -right-3.5 w-7 h-7 bg-zinc-50 dark:bg-zinc-950 rounded-full border border-zinc-200 dark:border-white/5 z-20 shadow-inner" />
-
-                {/* Ticket Header */}
-                <div className="p-6 pb-5 border-b border-dashed border-zinc-200 dark:border-white/10 relative">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-black uppercase text-blue-600 dark:text-blue-400 tracking-widest">
-                      {isFuture ? 'UPCOMING TICKET' : 'LATEST SERVICE'}
-                    </span>
-                    <span className={`text-2xs font-black uppercase px-2.5 py-0.5 rounded-full ${isFuture ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-405' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'}`}>
-                      {daysDiffText}
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2.5 mt-3.5">
-                    <div className="w-9 h-9 rounded-xl bg-white dark:bg-zinc-800 flex items-center justify-center border border-zinc-200 dark:border-white/5 overflow-hidden shadow-xs shrink-0">
-                      <AirlineLogo provider={flight.provider} fallback={<Plane className="w-4 h-4 text-zinc-400" />} />
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-xs font-black text-zinc-800 dark:text-zinc-200 uppercase leading-none truncate block">
-                        {getCarrierName(flight.provider) || flight.provider}
-                      </span>
-                      <span className="font-mono text-2xs font-bold text-zinc-400 mt-1 leading-none block">
-                        Carrier {flight.identifier} &bull; {flight.travelClass || 'Economy'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Ticket Body: Sector */}
-                <div className="p-6 flex-1 flex flex-col justify-center">
-                  <div className="flex justify-between items-center mb-5">
-                    <div className="flex flex-col">
-                      <span className="font-mono text-2xs font-black text-zinc-400 tracking-wider uppercase">Origin</span>
-                      <span className="text-3xl font-black text-zinc-900 dark:text-white leading-none mt-1">{flight.origin}</span>
-                      <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 truncate mt-1.5 max-w-[80px]" title={getCityName(flight.origin)}>
-                        {getCityName(flight.origin)}
-                      </span>
-                    </div>
-                    
-                    <div className="flex-1 flex flex-col items-center justify-center px-2">
-                      <div className="text-2xs font-black text-zinc-450 dark:text-zinc-400 uppercase tracking-widest mb-1.5">
-                        {flight.duration ? `${Math.floor(flight.duration / 60)}h ${flight.duration % 60}m` : 'Direct'}
-                      </div>
-                      <div className="relative w-full flex items-center justify-center my-1">
-                        <div className="w-full h-[1px] bg-dashed border-t border-zinc-300 dark:border-white/10" />
-                        <Plane className="w-3.5 h-3.5 text-blue-500 rotate-90 absolute" />
-                      </div>
-                      <span className="text-2xs font-black uppercase text-zinc-400 tracking-wider">Non-stop</span>
-                    </div>
-
-                    <div className="flex flex-col items-end">
-                      <span className="font-mono text-2xs font-black text-zinc-400 tracking-wider uppercase">Dest</span>
-                      <span className="text-3xl font-black text-zinc-900 dark:text-white leading-none mt-1">{flight.destination}</span>
-                      <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 truncate mt-1.5 max-w-[80px]" title={getCityName(flight.destination)}>
-                        {getCityName(flight.destination)}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-y-4 gap-x-2 border-t border-zinc-150 dark:border-white/5 pt-4">
-                    <div>
-                      <span className="block text-2xs font-black text-zinc-450 dark:text-zinc-500 uppercase tracking-wider">Departure</span>
-                      <span className="font-mono text-xs font-black text-zinc-700 dark:text-zinc-300 mt-1 block">
-                        {flight.departureDate} &bull; <strong className="text-blue-600 dark:text-blue-400 font-black">{flight.departureTime || 'TBD'}</strong>
-                      </span>
-                    </div>
-                    <div>
-                      <span className="block text-2xs font-black text-zinc-450 dark:text-zinc-500 uppercase tracking-wider">Arrival</span>
-                      <span className="font-mono text-xs font-black text-zinc-700 dark:text-zinc-300 mt-1 block">
-                        {flight.arrivalDate || flight.departureDate} &bull; <strong className="text-zinc-800 dark:text-zinc-200">{flight.arrivalTime || 'TBD'}</strong>
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Simulated Custom High-Fidelity Barcode Section */}
-                <div className="flex justify-between items-center px-6 py-3.5 bg-zinc-50/50 dark:bg-black/30 border-t border-b border-dashed border-zinc-200 dark:border-white/5 select-none">
-                  <div className="flex flex-col">
-                    <span className="text-2xs font-black uppercase text-zinc-400 tracking-wider">Boarding Code</span>
-                    <div className="flex items-end gap-0.5 h-6 mt-1.5 opacity-80 dark:opacity-60">
-                      <div className="w-[1.5px] h-full bg-zinc-900 dark:bg-zinc-250" />
-                      <div className="w-[3px] h-full bg-zinc-900 dark:bg-zinc-250" />
-                      <div className="w-[1px] h-full bg-zinc-900 dark:bg-zinc-250" />
-                      <div className="w-[2px] h-full bg-zinc-900 dark:bg-zinc-250" />
-                      <div className="w-[1px] h-full bg-zinc-900 dark:bg-zinc-250" />
-                      <div className="w-[4px] h-full bg-zinc-900 dark:bg-zinc-250" />
-                      <div className="w-[1px] h-full bg-zinc-900 dark:bg-zinc-250" />
-                      <div className="w-[2.5px] h-full bg-zinc-900 dark:bg-zinc-250" />
-                      <div className="w-[1.5px] h-full bg-zinc-900 dark:bg-zinc-250" />
-                      <div className="w-[3px] h-full bg-zinc-900 dark:bg-zinc-250" />
-                      <div className="w-[1.5px] h-full bg-zinc-905 dark:bg-zinc-250" />
-                      <div className="w-[4px] h-full bg-zinc-900 dark:bg-zinc-250" />
-                      <div className="w-[1px] h-full bg-zinc-900 dark:bg-zinc-250" />
-                      <div className="w-[2.5px] h-full bg-zinc-900 dark:bg-zinc-250" />
-                      <div className="w-[1px] h-full bg-zinc-900 dark:bg-zinc-250" />
-                      <div className="w-[3px] h-full bg-zinc-900 dark:bg-zinc-250" />
-                      <div className="w-[1.5px] h-full bg-zinc-900 dark:bg-zinc-250" />
-                    </div>
-                  </div>
-                  <div className="text-right flex flex-col font-mono text-2xs font-bold text-zinc-400 mt-1">
-                    <span>SECTOR</span>
-                    <span className="text-zinc-800 dark:text-zinc-150 font-black tracking-tighter">GATE {flight.identifier ? flight.identifier.slice(-2).toUpperCase() : 'B5'}</span>
-                  </div>
-                </div>
-
-                {/* Ticket Footer */}
-                <div className="px-6 py-4.5 bg-zinc-50/50 dark:bg-black/20 border-t border-zinc-200/50 dark:border-white/5 flex items-center justify-between">
-                  <div className="flex flex-col min-w-0 mr-2">
-                    <span className="text-2xs font-black uppercase text-zinc-400 tracking-wider">Seat Code</span>
-                    <span className="font-mono text-xs font-black text-zinc-800 dark:text-zinc-250 mt-0.5 truncate block">
-                      {flight.seatNumber ? `Row ${flight.seatNumber}` : 'Unassigned'}
-                    </span>
-                  </div>
-                  <div className="text-right flex flex-col min-w-0">
-                    <span className="text-2xs font-black uppercase text-zinc-400 tracking-wider">Locator</span>
-                    <span className="font-mono text-xs font-black text-zinc-800 dark:text-zinc-205 uppercase mt-0.5 tracking-wider truncate block">
-                      {flight.confirmationCode || 'PNR'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            );
-          })() : (
-            <div className="relative bg-white/70 dark:bg-zinc-900/40 border border-zinc-200/60 dark:border-white/5 shadow-xl rounded-3xl p-6 backdrop-blur-xl flex flex-col justify-center items-center h-full text-center min-h-[300px]">
-              <div className="w-14 h-14 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-500 dark:text-blue-400 mb-4 border border-blue-500/20 shadow-xs">
-                <Compass className="w-6 h-6 animate-spin-slow" />
-              </div>
-              <h3 className="text-sm font-black text-zinc-805 dark:text-white uppercase tracking-wider">Ready for Takeoff</h3>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2 max-w-[180px] leading-relaxed">
-                No scheduled flights found. Register your next expedition ticket to showcase!
-              </p>
-            </div>
-          )}
-        </div>
-
-        <div className="col-span-12 md:col-span-4 flex flex-col">
-          <PassportStampsPage flights={filteredFlights.map(f => f.flight)} yearFilter={yearFilter} />
-        </div>
-
-        <div className="col-span-12 md:col-span-4 flex flex-col">
-          <div className="bg-white/70 dark:bg-zinc-900/40 border border-zinc-200/60 dark:border-white/5 shadow-xl rounded-3xl p-6 backdrop-blur-xl flex flex-col justify-between h-full space-y-5 transition-all duration-300 hover:shadow-2xl">
-            <div>
-              <h3 className="text-xs font-black text-zinc-450 dark:text-zinc-405 uppercase tracking-widest flex items-center gap-2 mb-4 select-none">
-                <BarChart2 className="w-4 h-4 text-blue-500 animate-pulse" />
-                Flight Insights
-              </h3>
-              
-              <div className="grid grid-cols-1 gap-3">
-                {/* 1. Estimated Spend */}
-                <div className="p-3 bg-zinc-50/50 dark:bg-black/15 rounded-2xl border border-zinc-200/40 dark:border-white/5 flex flex-col justify-center transition-all duration-300 hover:bg-white dark:hover:bg-zinc-800/30">
-                  <span className="block text-2xs font-black uppercase text-zinc-400 tracking-wider">Estimated Spend</span>
-                  <div className="text-2xl font-black text-amber-500 dark:text-amber-400 mt-1">
-                    ${metrics.spend.toLocaleString()}
-                  </div>
-                </div>
-
-                {/* 2. Top Carrier */}
-                <div className="p-3 bg-zinc-50/50 dark:bg-black/15 rounded-2xl border border-zinc-200/40 dark:border-white/5 flex flex-col justify-center transition-all duration-300 hover:bg-white dark:hover:bg-zinc-800/30">
-                  <span className="block text-2xs font-black uppercase text-zinc-400 tracking-wider">Top Airline</span>
-                  <div className="text-base font-black text-zinc-800 dark:text-zinc-200 mt-1 truncate" title={metrics.topAirline}>
-                    {metrics.topAirline}
-                  </div>
-                </div>
-
-                {/* 3. Upcoming Trips Left */}
-                <div className="p-3 bg-zinc-50/50 dark:bg-black/15 rounded-2xl border border-zinc-200/40 dark:border-white/5 flex flex-col justify-center transition-all duration-300 hover:bg-white dark:hover:bg-zinc-800/30 w-full">
-                  <span className="block text-2xs font-black uppercase text-zinc-400 tracking-wider">Scheduled Ahead</span>
-                  <div className="text-lg font-black text-emerald-600 dark:text-emerald-400 mt-1 break-words">
-                    {metrics.upcoming} <span className="text-2xs uppercase font-bold text-zinc-400">flights pending</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Embedded Recharts Monthly Flight Frequency Chart */}
-            <div className="pt-4 border-t border-zinc-200/60 dark:border-white/5">
-              <h4 className="text-2xs font-black uppercase text-zinc-400 tracking-wider mb-2.5">Monthly Frequency</h4>
-              <div className="h-28 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={monthlyData} margin={{ top: 5, right: 5, left: -32, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#888888" strokeOpacity={0.08} />
-                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#999999', fontWeight: 700 }} />
-                    <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#999999', fontWeight: 700 }} />
-                    <Tooltip 
-                      cursor={{ fill: 'rgba(59, 130, 246, 0.05)' }}
-                      content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                          const curr = payload[0].payload;
-                          return (
-                            <TooltipContent
-                              title={curr.month}
-                              rows={[
-                                { color: '#3b82f6', label: 'Flights', value: curr.flights }
-                              ]}
-                            />
-                          );
-                        }
-                        return null;
-                      }}
-                    />
-                    <Bar dataKey="flights" name="Flights" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      <div className="flex justify-between items-center bg-white/80 dark:bg-zinc-900/80 border border-zinc-200/50 dark:border-white/5 shadow-md rounded-3xl p-4 sticky top-0 z-30">
-        <h3 className="text-xl font-bold flex items-center gap-2 text-zinc-900 dark:text-zinc-100 pl-4">
+      {/* Flight Board Sticky Control Bar */}
+      <div className="flex justify-between items-center bg-white/80 dark:bg-white/[0.08] backdrop-blur-xl border border-black/10 dark:border-white/10 shadow-md rounded-3xl p-3.5 sm:p-4 sticky top-2 sm:top-4 z-20 mt-4 sm:mt-6 transition-all">
+        <h3 className="text-lg sm:text-xl font-bold flex items-center gap-2 text-light-text dark:text-dark-text pl-2 sm:pl-4">
           <Plane className="w-5 h-5 text-blue-500" />
           Flight Board ({filteredFlights.length})
         </h3>
@@ -4133,98 +3901,119 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
       {/* Edit Bundle Settings Modal */}
       {isEditingBundle && createPortal(
         <div className="fixed inset-0 z-modal flex items-center justify-center p-4 transition-all duration-300 font-sans animate-fade-in">
+          {/* Backdrop Scrim */}
           <div 
-            className="fixed inset-0 bg-black/40 dark:bg-black/60 transition-opacity"
+            className={MODAL_BACKDROP_STYLE}
             onClick={() => {
               setIsEditingBundle(false);
               setEditingBundleId('');
             }}
           />
-          <GlassPanel className="wg-glass-card shadow-2xl overflow-hidden max-w-md w-full z-10" overrides={{ borderRadius: 28 }} padding="0px">
-            <div className="p-6 flex flex-col">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="w-11 h-11 bg-primary-500/10 text-primary-600 dark:text-primary-400 rounded-2xl flex items-center justify-center border border-primary-500/20">
-                  <Compass className="w-5 h-5" />
+          <GlassPanel className="wg-glass-card shadow-2xl overflow-hidden max-w-md w-full z-10 relative flex flex-col" overrides={{ borderRadius: 28 }} padding="0px">
+            {/* Header */}
+            <div className="p-6 pb-5 border-b border-black/5 dark:border-white/10 flex items-center justify-between bg-gradient-to-r from-blue-500/5 via-transparent to-transparent shrink-0">
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="w-11 h-11 bg-gradient-to-tr from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-md shadow-blue-500/20 shrink-0">
+                  <Compass className="w-5 h-5" weight="duotone" />
                 </div>
-                <div>
-                  <h3 className="text-base font-bold text-light-text dark:text-dark-text tracking-tight uppercase">
+                <div className="min-w-0">
+                  <h3 className="text-base font-bold text-light-text dark:text-dark-text tracking-tight uppercase truncate">
                     Edit Bundle Settings
                   </h3>
-                  <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium">
-                    Modify properties of this bundled flight itinerary.
+                  <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium truncate mt-0.5">
+                    Modify properties of this bundled itinerary
                   </p>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEditingBundle(false);
+                  setEditingBundleId('');
+                }}
+                className={CLOSE_BTN_STYLE}
+                aria-label="Close modal"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
-              <div className="space-y-4 mb-6">
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary mb-1.5">
-                    Itinerary Bundle Name
-                  </label>
-                  <input
-                    type="text"
-                    value={formBundleName}
-                    onChange={(e) => setFormBundleName(e.target.value)}
-                    placeholder="e.g. Paris Getaway"
-                    className="w-full px-4 py-2.5 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-2xl text-xs font-bold focus:outline-none focus:border-primary-500 text-light-text dark:text-dark-text min-h-[44px]"
-                    autoFocus
-                  />
-                </div>
+            {/* Body */}
+            <div className="p-6 space-y-5 overflow-y-auto max-h-[calc(85vh-160px)] custom-scrollbar">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                  Itinerary Bundle Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formBundleName}
+                  onChange={(e) => setFormBundleName(e.target.value)}
+                  placeholder="e.g. Paris Getaway"
+                  className={INPUT_BASE_STYLE}
+                  autoFocus
+                />
+              </div>
 
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary mb-1.5">
-                    Destination / Location
-                  </label>
-                  <input
-                    type="text"
-                    value={formBundleLocation}
-                    onChange={(e) => setFormBundleLocation(e.target.value)}
-                    placeholder="e.g. Paris, France"
-                    className="w-full px-4 py-2.5 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-2xl text-xs font-bold focus:outline-none focus:border-primary-500 text-light-text dark:text-dark-text min-h-[44px]"
-                  />
-                </div>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                  Destination / Location
+                </label>
+                <input
+                  type="text"
+                  value={formBundleLocation}
+                  onChange={(e) => setFormBundleLocation(e.target.value)}
+                  placeholder="e.g. Paris, France"
+                  className={INPUT_BASE_STYLE}
+                />
+              </div>
 
-                <div className="p-4 rounded-2xl bg-semantic-red/10 border border-semantic-red/20">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-semantic-red mb-1">
-                    Disassemble Bundle actions
-                  </h4>
-                  <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary leading-relaxed mb-3 font-medium">
-                    Unpack this bundle entirely. The flight legs won&apos;t be deleted, but they will become standalone independent items.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (window.confirm("Are you sure you want to disassemble this entire bundle? The individual flights will remain valid but become independent legs.")) {
-                        handleDisassembleBundle();
-                      }
-                    }}
-                    className="w-full min-h-[44px] py-2 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-semantic-red hover:bg-semantic-red/90 text-white transition-all cursor-pointer text-center"
-                  >
+              {/* Danger Zone: Disassemble Bundle */}
+              <div className="p-4 rounded-2xl bg-rose-500/5 dark:bg-rose-500/10 border border-rose-500/15 space-y-2.5">
+                <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
+                  <FolderMinus className="w-4 h-4 shrink-0" weight="duotone" />
+                  <h4 className="text-xs font-bold uppercase tracking-wider">
                     Disassemble Bundle
-                  </button>
+                  </h4>
                 </div>
-              </div>
-
-              <div className="flex items-center gap-3 w-full justify-end">
+                <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary leading-relaxed font-medium">
+                  Unpack this bundle entirely. The flight legs won&apos;t be deleted, but will become standalone independent items.
+                </p>
                 <button
                   type="button"
                   onClick={() => {
-                    setIsEditingBundle(false);
-                    setEditingBundleId('');
+                    if (window.confirm("Are you sure you want to disassemble this entire bundle? The individual flights will remain valid but become independent legs.")) {
+                      handleDisassembleBundle();
+                    }
                   }}
-                  className="flex-1 min-h-[44px] py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/10 dark:hover:bg-white/10 transition-all cursor-pointer text-center"
+                  className="w-full min-h-[44px] py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 transition-all cursor-pointer text-center flex items-center justify-center gap-2 active:scale-[0.98]"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={!formBundleName.trim()}
-                  onClick={handleSaveBundleSettings}
-                  className="flex-1 min-h-[44px] py-2.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider bg-primary-500 hover:bg-primary-600 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-lg shadow-primary-500/20 transition-all cursor-pointer text-center"
-                >
-                  Save Changes
+                  <FolderMinus className="w-4 h-4" />
+                  <span>Disassemble Bundle</span>
                 </button>
               </div>
+            </div>
+
+            {/* Frosted Sticky Footer */}
+            <div className="p-4 sm:p-5 border-t border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.03] backdrop-blur-md flex items-center justify-between gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEditingBundle(false);
+                  setEditingBundleId('');
+                }}
+                className={`${BTN_SECONDARY_STYLE} flex-1 min-h-[44px] py-2.5 px-4 text-xs font-bold uppercase tracking-wider text-center`}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!formBundleName.trim()}
+                onClick={handleSaveBundleSettings}
+                className={`${BTN_PRIMARY_STYLE} flex-1 min-h-[44px] py-2.5 px-4 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-primary-500/20`}
+              >
+                <span>Save Changes</span>
+                <Check className="w-4 h-4" />
+              </button>
             </div>
           </GlassPanel>
         </div>,

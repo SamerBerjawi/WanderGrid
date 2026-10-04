@@ -4,7 +4,7 @@ import { ComposableMap, Geographies, Geography, Line, Marker } from 'react-simpl
 import { Airplane as Plane, Trophy as Award, Compass, Globe, ShieldCheck as Shield, NavigationArrow as Navigation } from '@phosphor-icons/react';
 import { getCoordinatesSync } from '../services/geocoding';
 
-const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+export const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
 const AIRPORT_COORDS: Record<string, [number, number]> = {
   BEY: [35.49, 33.82],
@@ -81,7 +81,7 @@ const AIRPORT_COUNTRIES: Record<string, string> = {
   BER: 'DE', VIE: 'AT',
 };
 
-const COUNTRY_NAMES: Record<string, string> = {
+export const COUNTRY_NAMES: Record<string, string> = {
   LB: 'LEBANON', CZ: 'CZECH REP.', ES: 'SPAIN', FR: 'FRANCE', US: 'USA', DE: 'GERMANY',
   JO: 'JORDAN', TN: 'TUNISIA', TR: 'TURKEY', DK: 'DENMARK', PT: 'PORTUGAL', GR: 'GREECE',
   OM: 'OMAN', AE: 'U.A.E.', IT: 'ITALY', NL: 'NETHERLANDS', RO: 'ROMANIA', BE: 'BELGIUM',
@@ -90,7 +90,7 @@ const COUNTRY_NAMES: Record<string, string> = {
   KH: 'CAMBODIA', EE: 'ESTONIA', SE: 'SWEDEN', IE: 'IRELAND', EG: 'EGYPT', AT: 'AUSTRIA',
 };
 
-const getFlagEmoji = (countryCode: string) => {
+export const getFlagEmoji = (countryCode: string) => {
   if (!countryCode) return '';
   const code = countryCode.toUpperCase();
   if (code === 'GB-ENG') return '🏴󠁧󠁢󠁥󠁮󠁧󠁿';
