@@ -42,13 +42,63 @@ import { calendarService } from '../services/calendarExport';
 import { User, WorkspaceSettings, EntitlementType, SavedConfig, Trip, BackupSelectionOptions, RestoreOptions } from '../types';
 import { GearSettingsTab } from '../components/GearSettingsTab';
 import { CarriersTab } from '../components/CarriersTab';
+import { cn } from '../lib/utils';
+import { formatDate } from '../utils/formatters';
 import { 
     INPUT_BASE_STYLE, 
     BTN_PRIMARY_STYLE, 
-    BTN_SECONDARY_STYLE 
+    BTN_SECONDARY_STYLE,
+    SEGMENTED_TAB_WRAPPER,
+    SEGMENTED_TAB_ACTIVE,
+    SEGMENTED_TAB_INACTIVE,
+    STATUS_PILL_STYLE 
 } from '../constants';
 
 const FlightImportWizard = React.lazy(() => import('../components/FlightImportWizard').then(m => ({ default: m.FlightImportWizard })));
+
+const CATEGORY_DEFINITIONS: {
+  key: keyof BackupSelectionOptions;
+  label: string;
+  subtitle: string;
+  icon: React.ReactNode;
+}[] = [
+  {
+    key: 'flights',
+    label: 'Flights & Air Itineraries',
+    subtitle: 'Air trips, airline bookings, flight legs & stats',
+    icon: <Airplane className="w-5 h-5" weight="duotone" />
+  },
+  {
+    key: 'roadTrips',
+    label: 'Road Trips & Overland',
+    subtitle: 'Driving journeys, trains, ferries & car rentals',
+    icon: <Car className="w-5 h-5" weight="duotone" />
+  },
+  {
+    key: 'visited',
+    label: 'Travel Atlas (Visited Places)',
+    subtitle: 'Visited cities, country pins & map coordinates',
+    icon: <MapPin className="w-5 h-5" weight="duotone" />
+  },
+  {
+    key: 'users',
+    label: 'Personnel & Team Members',
+    subtitle: 'Workspace profiles, roster & leave balances',
+    icon: <Users className="w-5 h-5" weight="duotone" />
+  },
+  {
+    key: 'calendar',
+    label: 'Vacation Calendar & Entitlements',
+    subtitle: 'Custom events, holiday rules & leave policies',
+    icon: <CalendarBlank className="w-5 h-5" weight="duotone" />
+  },
+  {
+    key: 'settings',
+    label: 'Workspace Settings & Preferences',
+    subtitle: 'Theme, currency, date formatting & integrations',
+    icon: <Gear className="w-5 h-5" weight="duotone" />
+  }
+];
 
 interface SettingsProps {
     onThemeChange?: (theme: 'light' | 'dark' | 'auto') => void;
@@ -59,6 +109,8 @@ type TabType = 'workspace' | 'personnel' | 'integrations' | 'gear' | 'carriers' 
 export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
   const [activeTab, setActiveTab] = useState<TabType>('workspace');
   const [users, setUsers] = useState<User[]>([]);
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [visitedCount, setVisitedCount] = useState<number>(0);
   const [rosterSearch, setRosterSearch] = useState('');
   const [entitlements, setEntitlements] = useState<EntitlementType[]>([]);
   const [savedConfigs, setSavedConfigs] = useState<SavedConfig[]>([]);
@@ -147,12 +199,16 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
         dataService.getUsers(),
         dataService.getEntitlementTypes(),
         dataService.getSavedConfigs(),
-        dataService.getWorkspaceSettings()
-    ]).then(([u, ents, configs, settings]) => {
+        dataService.getWorkspaceSettings(),
+        dataService.getTrips(),
+        dataService.getVisited()
+    ]).then(([u, ents, configs, settings, t, v]) => {
         setUsers(u);
         setEntitlements(ents);
         setSavedConfigs(configs);
         setConfig(settings);
+        setTrips(t || []);
+        setVisitedCount(Array.isArray(v) ? v.length : 0);
         setLoading(false);
     }).catch(err => {
         console.error("Failed to load settings data:", err);
@@ -263,18 +319,74 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
       }
   };
 
+  // --- Computed Metrics for Backup & Restore Granularity ---
+  const currentDbStats = useMemo(() => {
+    const airTrips = trips.filter(isTripAir).length;
+    const roadTrips = trips.filter(isTripRoad).length;
+    const usersCount = users.length;
+    const visited = visitedCount;
+    const calendarCount = entitlements.length + savedConfigs.length;
+    const hasSettings = !!config && Object.keys(config).length > 0;
+    return {
+      flights: airTrips,
+      roadTrips,
+      visited,
+      users: usersCount,
+      calendar: calendarCount,
+      settings: hasSettings ? 1 : 0
+    };
+  }, [trips, users, visitedCount, entitlements, savedConfigs, config]);
+
+  const detectedRestoreStats = useMemo(() => {
+    if (!pendingBackupData) return null;
+    const tList = Array.isArray(pendingBackupData.trips) ? pendingBackupData.trips : [];
+    const fList = Array.isArray(pendingBackupData.flights) ? pendingBackupData.flights : [];
+    const airTrips = tList.filter(isTripAir).length + fList.filter((f: any) => !f.mode || f.mode === 'Flight').length;
+    const roadTrips = tList.filter(isTripRoad).length + fList.filter((f: any) => f.mode && f.mode !== 'Flight').length;
+    const visited = Array.isArray(pendingBackupData.visited) ? pendingBackupData.visited.length : 0;
+    const usersCount = Array.isArray(pendingBackupData.users) ? pendingBackupData.users.length : 0;
+    const calCount = (Array.isArray(pendingBackupData.events) ? pendingBackupData.events.length : 0) +
+                     (Array.isArray(pendingBackupData.entitlements) ? pendingBackupData.entitlements.length : 0) +
+                     (Array.isArray(pendingBackupData.configs) ? pendingBackupData.configs.length : 0);
+    const hasSettings = pendingBackupData.workspaceSettings && typeof pendingBackupData.workspaceSettings === 'object' && Object.keys(pendingBackupData.workspaceSettings).length > 0;
+    return {
+      flights: airTrips,
+      roadTrips,
+      visited,
+      users: usersCount,
+      calendar: calCount,
+      settings: hasSettings ? 1 : 0,
+      version: pendingBackupData.version || null,
+      timestamp: pendingBackupData.timestamp || null
+    };
+  }, [pendingBackupData]);
+
   // --- Import/Export Handlers (Backup JSON) ---
-  const handleExport = async () => { 
-      const json = await dataService.exportFullState();
-      const blob = new Blob([json], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `wandergrid-backup-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+  const handleDownloadBackup = async () => { 
+      const selectedCount = Object.values(backupCategories).filter(Boolean).length;
+      if (selectedCount === 0) return;
+      setIsExporting(true);
+      try {
+          const json = await dataService.exportFullState(backupCategories);
+          const blob = new Blob([json], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `wandergrid-backup-${new Date().toISOString().split('T')[0]}.json`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          setIsBackupModalOpen(false);
+      } catch (err: any) {
+          console.error("Backup export failed:", err);
+      } finally {
+          setIsExporting(false);
+      }
+  };
+
+  const handleExport = () => {
+      setIsBackupModalOpen(true);
   };
 
   const handleImportTrigger = () => fileInputRef.current?.click();
@@ -285,35 +397,64 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
       setPendingFile(file);
       setRestoreStatus('idle');
       setRestoreErrorMessage('');
+      setPendingBackupData(null);
       setIsRestoreModalOpen(true);
+
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+          try {
+              const content = ev.target?.result as string;
+              if (!content) throw new Error('Selected backup file is empty');
+              const parsed = JSON.parse(content.trim().replace(/^\uFEFF/, ''));
+              setPendingBackupData(parsed);
+
+              // Auto-detect populated categories in the backup file
+              const tList = Array.isArray(parsed.trips) ? parsed.trips : [];
+              const fList = Array.isArray(parsed.flights) ? parsed.flights : [];
+              const hasAir = tList.some(isTripAir) || fList.some((f: any) => !f.mode || f.mode === 'Flight');
+              const hasRoad = tList.some(isTripRoad) || fList.some((f: any) => f.mode && f.mode !== 'Flight');
+              const hasVisited = Array.isArray(parsed.visited) && parsed.visited.length > 0;
+              const hasUsers = Array.isArray(parsed.users) && parsed.users.length > 0;
+              const hasCal = (Array.isArray(parsed.events) && parsed.events.length > 0) ||
+                             (Array.isArray(parsed.entitlements) && parsed.entitlements.length > 0) ||
+                             (Array.isArray(parsed.configs) && parsed.configs.length > 0);
+              const hasSettings = parsed.workspaceSettings && typeof parsed.workspaceSettings === 'object' && Object.keys(parsed.workspaceSettings).length > 0;
+
+              setRestoreCategories({
+                  flights: hasAir,
+                  roadTrips: hasRoad,
+                  visited: hasVisited,
+                  users: hasUsers,
+                  calendar: hasCal,
+                  settings: !!hasSettings
+              });
+          } catch (err: any) {
+              setRestoreStatus('error');
+              setRestoreErrorMessage(err.message || 'Invalid or unparseable JSON file');
+          }
+      };
+      reader.readAsText(file);
       e.target.value = ''; 
   };
 
-  const handleConfirmRestore = () => { 
-      if (!pendingFile) return;
-      setRestoreStatus('reading');
-      const reader = new FileReader();
-      reader.onload = async (ev) => {
-          const content = ev.target?.result as string;
-          if (!content) {
-              setRestoreStatus('error');
-              setRestoreErrorMessage('Could not read file payload.');
-              return;
-          }
-          setRestoreStatus('importing');
-          try {
-              await dataService.importFullState(content);
-              setRestoreStatus('success');
-              setTimeout(() => {
-                  setIsRestoreModalOpen(false);
-                  window.location.reload();
-              }, 1200);
-          } catch (err: any) {
-              setRestoreStatus('error');
-              setRestoreErrorMessage(err.message || 'Corrupt schema or unrecognized data format.');
-          }
-      };
-      reader.readAsText(pendingFile);
+  const handleConfirmRestore = async () => { 
+      if (!pendingBackupData) return;
+      setRestoreStatus('importing');
+      try {
+          const content = JSON.stringify(pendingBackupData);
+          await dataService.importFullState(content, {
+              mode: restoreMode,
+              selectedCategories: restoreCategories
+          });
+          setRestoreStatus('success');
+          setTimeout(() => {
+              setIsRestoreModalOpen(false);
+              window.location.reload();
+          }, 1200);
+      } catch (err: any) {
+          setRestoreStatus('error');
+          setRestoreErrorMessage(err.message || 'Corrupt schema or unrecognized data format.');
+      }
   };
 
   const handleCalendarExport = async () => {
@@ -1401,22 +1542,314 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
         </div>
       )}
 
-      {/* MODAL: Restore Backup JSON Confirmation */}
+      {/* MODAL: Granular Backup Export */}
+      <Modal
+        isOpen={isBackupModalOpen}
+        onClose={() => setIsBackupModalOpen(false)}
+        title="Export Workspace Backup"
+        subtitle="Select datasets to include in the snapshot"
+        icon="database"
+        maxWidth="max-w-xl"
+      >
+        <div className="space-y-5 font-sans">
+          {/* Header controls: selection count + Select All / Deselect All */}
+          <div className="flex items-center justify-between px-1">
+            <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+              {Object.values(backupCategories).filter(Boolean).length} of {CATEGORY_DEFINITIONS.length} selected
+            </span>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setBackupCategories({ flights: true, roadTrips: true, visited: true, settings: true, users: true, calendar: true })}
+                className="text-xs font-bold text-primary-500 hover:text-primary-600 transition-colors cursor-pointer"
+              >
+                Select All
+              </button>
+              <span className="text-black/20 dark:text-white/20">•</span>
+              <button
+                type="button"
+                onClick={() => setBackupCategories({ flights: false, roadTrips: false, visited: false, settings: false, users: false, calendar: false })}
+                className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text transition-colors cursor-pointer"
+              >
+                Deselect All
+              </button>
+            </div>
+          </div>
+
+          {/* Category checklist */}
+          <div className="space-y-2 max-h-[50vh] overflow-y-auto custom-scrollbar pr-1">
+            {CATEGORY_DEFINITIONS.map(cat => {
+              const isChecked = !!backupCategories[cat.key];
+              const countVal = currentDbStats[cat.key];
+              const countLabel = cat.key === 'settings' 
+                ? (countVal ? 'Configured' : 'Default')
+                : `${countVal} ${countVal === 1 ? 'item' : 'items'}`;
+
+              return (
+                <div
+                  key={cat.key}
+                  onClick={() => setBackupCategories(prev => ({ ...prev, [cat.key]: !prev[cat.key] }))}
+                  className={cn(
+                    "flex items-center justify-between p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer select-none",
+                    isChecked
+                      ? "bg-primary-500/10 border-primary-500/30 dark:bg-primary-500/15 dark:border-primary-500/40"
+                      : "bg-white/40 dark:bg-white/[0.03] border-black/5 dark:border-white/5 opacity-70 hover:opacity-100"
+                  )}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={cn(
+                      "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors",
+                      isChecked
+                        ? "bg-primary-500 text-white shadow-sm"
+                        : "bg-black/5 dark:bg-white/10 text-light-text-secondary dark:text-dark-text-secondary"
+                    )}>
+                      {cat.icon}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs sm:text-sm font-bold text-light-text dark:text-dark-text truncate">
+                          {cat.label}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-2xs font-mono font-bold bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary shrink-0">
+                          {countLabel}
+                        </span>
+                      </div>
+                      <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary truncate mt-0.5">
+                        {cat.subtitle}
+                      </p>
+                    </div>
+                  </div>
+                  <div className={cn(
+                    "w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-all border",
+                    isChecked
+                      ? "bg-primary-500 border-primary-500 text-white"
+                      : "border-black/20 dark:border-white/20 bg-transparent"
+                  )}>
+                    {isChecked && <Check weight="bold" className="w-3.5 h-3.5" />}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Footer */}
+          <div className="flex items-center justify-between gap-3 pt-4 border-t border-black/5 dark:border-white/5">
+            <button
+              type="button"
+              onClick={() => setIsBackupModalOpen(false)}
+              className={`${BTN_SECONDARY_STYLE} px-5 py-2.5 text-xs font-bold uppercase tracking-wider`}
+            >
+              Cancel
+            </button>
+            <Button
+              variant="primary"
+              onClick={handleDownloadBackup}
+              disabled={Object.values(backupCategories).filter(Boolean).length === 0 || isExporting}
+              className="px-6 py-2.5 rounded-2xl text-xs font-bold uppercase tracking-wider shadow-md"
+              icon={isExporting ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <DownloadSimple className="w-4 h-4" />}
+            >
+              {isExporting ? 'Exporting...' : `Download Backup JSON (${Object.values(backupCategories).filter(Boolean).length})`}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* MODAL: Granular Restore Backup */}
       <Modal 
         isOpen={isRestoreModalOpen} 
         onClose={() => setIsRestoreModalOpen(false)} 
         title="Restore Database Backup"
-        subtitle="Overwrite Current Database State"
+        subtitle={pendingFile ? `File: ${pendingFile.name}` : "Restore previously saved state"}
         icon="settings_backup_restore"
+        maxWidth="max-w-2xl"
       >
         <div className="space-y-6 font-sans">
           {restoreStatus === 'idle' && (
             <>
-              <div className="p-5 rounded-3xl bg-amber-500/10 border border-amber-500/20">
-                <p className="text-xs font-semibold text-amber-700 dark:text-amber-300 leading-relaxed">
-                  Confirm overwriting database state with restore file <span className="font-bold underline">{pendingFile?.name}</span>? All existing trips, flight statistics, and personnel rosters will be replaced.
+              {/* File inspection metadata strip */}
+              {detectedRestoreStats && (
+                <div className="p-4 rounded-2xl bg-white/50 dark:bg-white/[0.04] backdrop-blur-md border border-black/8 dark:border-white/10 flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                    <span className="font-bold text-light-text dark:text-dark-text truncate">
+                      {pendingFile?.name}
+                    </span>
+                    {detectedRestoreStats.version && (
+                      <span className="px-2 py-0.5 rounded-full text-2xs font-mono font-bold bg-primary-500/10 text-primary-600 dark:text-primary-400">
+                        v{detectedRestoreStats.version}
+                      </span>
+                    )}
+                  </div>
+                  {detectedRestoreStats.timestamp && (
+                    <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary font-medium">
+                      Snapshot: {formatDate(detectedRestoreStats.timestamp, 'short-with-year')}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Mode Segmented Switcher */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                  Restore Mode
+                </label>
+                <div className={SEGMENTED_TAB_WRAPPER}>
+                  <button
+                    type="button"
+                    onClick={() => setRestoreMode('merge')}
+                    className={cn(
+                      "flex-1 flex items-center justify-center gap-2 cursor-pointer py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all",
+                      restoreMode === 'merge' ? SEGMENTED_TAB_ACTIVE : SEGMENTED_TAB_INACTIVE
+                    )}
+                  >
+                    <ArrowsMerge className="w-4 h-4" />
+                    <span>Merge with Existing</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRestoreMode('replace')}
+                    className={cn(
+                      "flex-1 flex items-center justify-center gap-2 cursor-pointer py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all",
+                      restoreMode === 'replace' ? SEGMENTED_TAB_ACTIVE : SEGMENTED_TAB_INACTIVE
+                    )}
+                  >
+                    <ArrowsClockwise className="w-4 h-4" />
+                    <span>Replace / Overwrite</span>
+                  </button>
+                </div>
+                <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary font-medium px-1">
+                  {restoreMode === 'merge'
+                    ? 'Non-destructive: Appends new records and updates matching identifiers without deleting existing data.'
+                    : 'Selective Overwrite: Replaces only the chosen categories with the file state. Unselected categories are preserved.'}
                 </p>
               </div>
+
+              {/* Active Session & API Key Protection Banner */}
+              <div className="flex items-center gap-2.5 p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 dark:text-emerald-300 text-xs">
+                <ShieldCheck weight="duotone" className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span className="font-semibold text-2xs leading-relaxed">
+                  Session & Key Guard: Your active logged-in user and workspace API credentials are automatically protected.
+                </span>
+              </div>
+
+              {/* Category selection */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                    Select Categories to Restore
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!detectedRestoreStats) return;
+                        setRestoreCategories({
+                          flights: detectedRestoreStats.flights > 0,
+                          roadTrips: detectedRestoreStats.roadTrips > 0,
+                          visited: detectedRestoreStats.visited > 0,
+                          users: detectedRestoreStats.users > 0,
+                          calendar: detectedRestoreStats.calendar > 0,
+                          settings: detectedRestoreStats.settings > 0,
+                        });
+                      }}
+                      className="text-xs font-bold text-primary-500 hover:text-primary-600 transition-colors cursor-pointer"
+                    >
+                      Select Available
+                    </button>
+                    <span className="text-black/20 dark:text-white/20">•</span>
+                    <button
+                      type="button"
+                      onClick={() => setRestoreCategories({ flights: false, roadTrips: false, visited: false, settings: false, users: false, calendar: false })}
+                      className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text transition-colors cursor-pointer"
+                    >
+                      Deselect All
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2 max-h-[38vh] overflow-y-auto custom-scrollbar pr-1">
+                  {CATEGORY_DEFINITIONS.map(cat => {
+                    const isChecked = !!restoreCategories[cat.key];
+                    const detectedCount = detectedRestoreStats ? detectedRestoreStats[cat.key] : 0;
+                    const isAvailable = detectedCount > 0;
+
+                    return (
+                      <div
+                        key={cat.key}
+                        onClick={() => {
+                          if (!isAvailable) return;
+                          setRestoreCategories(prev => ({ ...prev, [cat.key]: !prev[cat.key] }));
+                        }}
+                        className={cn(
+                          "flex items-center justify-between p-3.5 sm:p-4 rounded-2xl border transition-all select-none",
+                          !isAvailable
+                            ? "bg-black/[0.02] dark:bg-white/[0.02] border-black/5 dark:border-white/5 opacity-40 cursor-not-allowed"
+                            : isChecked
+                              ? "bg-primary-500/10 border-primary-500/30 dark:bg-primary-500/15 dark:border-primary-500/40 cursor-pointer"
+                              : "bg-white/40 dark:bg-white/[0.03] border-black/5 dark:border-white/5 opacity-70 hover:opacity-100 cursor-pointer"
+                        )}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={cn(
+                            "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors",
+                            !isAvailable
+                              ? "bg-black/5 dark:bg-white/5 text-light-text-secondary/40"
+                              : isChecked
+                                ? "bg-primary-500 text-white shadow-sm"
+                                : "bg-black/5 dark:bg-white/10 text-light-text-secondary dark:text-dark-text-secondary"
+                          )}>
+                            {cat.icon}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs sm:text-sm font-bold text-light-text dark:text-dark-text truncate">
+                                {cat.label}
+                              </span>
+                              <span className={cn(
+                                "px-2 py-0.5 rounded-full text-2xs font-mono font-bold shrink-0",
+                                !isAvailable
+                                  ? "bg-black/5 dark:bg-white/5 text-light-text-secondary/50"
+                                  : isChecked
+                                    ? "bg-primary-500/20 text-primary-600 dark:text-primary-300"
+                                    : "bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary"
+                              )}>
+                                {isAvailable
+                                  ? (cat.key === 'settings' ? 'Present' : `${detectedCount} in file`)
+                                  : 'Not in file'}
+                              </span>
+                            </div>
+                            <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary truncate mt-0.5">
+                              {cat.subtitle}
+                            </p>
+                          </div>
+                        </div>
+                        <div className={cn(
+                          "w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-all border",
+                          !isAvailable
+                            ? "border-black/10 dark:border-white/10 opacity-30"
+                            : isChecked
+                              ? "bg-primary-500 border-primary-500 text-white"
+                              : "border-black/20 dark:border-white/20 bg-transparent"
+                        )}>
+                          {isChecked && isAvailable && <Check weight="bold" className="w-3.5 h-3.5" />}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Warning for replace mode */}
+              {restoreMode === 'replace' && (
+                <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-200 text-2xs font-medium leading-relaxed">
+                  <span className="font-bold uppercase tracking-wider block mb-0.5 text-amber-700 dark:text-amber-300">
+                    ⚠️ Replace Mode Alert
+                  </span>
+                  The selected categories will be replaced with data from this snapshot. Any other existing data in WanderGrid will remain unchanged.
+                </div>
+              )}
+
+              {/* Footer action bar */}
               <div className="flex gap-3 justify-end pt-4 border-t border-black/5 dark:border-white/5">
                 <button
                   type="button"
@@ -1428,13 +1861,31 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                 <button
                   type="button"
                   onClick={handleConfirmRestore}
-                  className="px-5 py-2 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold uppercase tracking-wider shadow-md"
+                  disabled={Object.values(restoreCategories).filter(Boolean).length === 0}
+                  className={cn(
+                    "px-5 py-2.5 rounded-2xl text-white text-xs font-bold uppercase tracking-wider shadow-md transition-all flex items-center gap-2 cursor-pointer",
+                    restoreMode === 'replace' 
+                      ? "bg-rose-600 hover:bg-rose-700 shadow-rose-500/20" 
+                      : "bg-primary-500 hover:bg-primary-600 shadow-primary-500/20",
+                    Object.values(restoreCategories).filter(Boolean).length === 0 && "opacity-50 cursor-not-allowed"
+                  )}
                 >
-                  Yes, Overwrite State
+                  {restoreMode === 'replace' ? (
+                    <>
+                      <ArrowsClockwise weight="bold" className="w-4 h-4" />
+                      <span>Overwrite Selected Categories ({Object.values(restoreCategories).filter(Boolean).length})</span>
+                    </>
+                  ) : (
+                    <>
+                      <ArrowsMerge weight="bold" className="w-4 h-4" />
+                      <span>Merge Selected Categories ({Object.values(restoreCategories).filter(Boolean).length})</span>
+                    </>
+                  )}
                 </button>
               </div>
             </>
           )}
+
           {restoreStatus === 'reading' && (
             <div className="text-center py-8">
               <span className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin block mx-auto mb-2" />

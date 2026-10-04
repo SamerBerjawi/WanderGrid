@@ -75,6 +75,7 @@ import { getMerchantLogoUrl } from '../utils/brandfetch';
 import { formatDate, formatDateRange, formatCurrency, getCurrencySymbol, calculateTransportCost } from '../utils/formatters';
 import { EmptyState } from '../components/EmptyState';
 import { isCarRentalBooking, getTransportScheduleTitle, getTransportScheduleLocation, getTransportScheduleEventsForDate } from '../utils/transportSchedule';
+import { invalidateGlobalWanderCache } from '../hooks/useWanderSync';
 
 export const TripItemIcon: React.FC<{ name: string; className?: string }> = React.memo(({ name, className = "w-4 h-4" }) => {
     switch (name) {

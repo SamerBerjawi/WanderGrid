@@ -1,13 +1,21 @@
 import React, { useRef, useState, useMemo, useEffect } from 'react';
 import * as XLSX from 'xlsx';
-import { Trip, Transport, User } from '../types';
+import { Trip, Transport, User, BackupSelectionOptions, RestoreOptions } from '../types';
 import { Button, Input, Select } from './ui';
 import GlassPanel from './glass/GlassPanel';
 import GlassSelect from './glass/GlassSelect';
 import { flightImporter } from '../services/flightImportExport';
-import { dataService } from '../services/mockDb';
+import { dataService, isTripAir, isTripRoad } from '../services/mockDb';
 import { invalidateGlobalWanderCache } from '../hooks/useWanderSync';
 import { getCarrierName, onlineCarrierIcaoToIata } from '../utils/flightData';
+import { cn } from '../lib/utils';
+import { formatDate } from '../utils/formatters';
+import { 
+    SEGMENTED_TAB_WRAPPER, 
+    SEGMENTED_TAB_ACTIVE, 
+    SEGMENTED_TAB_INACTIVE, 
+    BTN_SECONDARY_STYLE 
+} from '../constants';
 import { 
     UploadSimple as Upload, 
     Columns, 
@@ -24,7 +32,13 @@ import {
     Clock, 
     UserCheck, 
     XCircle, 
-    Funnel as Filter
+    Funnel as Filter,
+    Car,
+    Users,
+    Gear,
+    ArrowsMerge,
+    ArrowsClockwise,
+    ShieldCheck
 } from '@phosphor-icons/react';
 
 interface FlightImportWizardProps {
@@ -435,7 +449,26 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
     // Backup restore states
     const [importMode, setImportMode] = useState<'spreadsheet' | 'backup'>('spreadsheet');
     const [backupDataState, setBackupDataState] = useState<string | null>(null);
-    const [backupParsedCount, setBackupParsedCount] = useState<{ trips: number; flights: number; visited?: number } | null>(null);
+    const [backupParsedCount, setBackupParsedCount] = useState<{ 
+        trips: number; 
+        flights: number; 
+        roadTrips?: number;
+        visited?: number;
+        users?: number;
+        calendar?: number;
+        settings?: number;
+        version?: string | null;
+        timestamp?: string | null;
+    } | null>(null);
+    const [wizardRestoreMode, setWizardRestoreMode] = useState<'merge' | 'replace'>('merge');
+    const [wizardRestoreCategories, setWizardRestoreCategories] = useState<Required<BackupSelectionOptions>>({
+        flights: true,
+        roadTrips: true,
+        visited: true,
+        settings: true,
+        users: true,
+        calendar: true
+    });
     const [backupRestoreSuccess, setBackupRestoreSuccess] = useState(false);
     const [backupRestoreError, setBackupRestoreError] = useState('');
 
@@ -655,7 +688,10 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
         if (!backupDataState) return;
         try {
             setBackupRestoreError('');
-            await dataService.importFullState(backupDataState);
+            await dataService.importFullState(backupDataState, {
+                mode: wizardRestoreMode,
+                selectedCategories: wizardRestoreCategories
+            });
             setBackupRestoreSuccess(true);
             setTimeout(() => {
                 onImportComplete([]);
@@ -681,29 +717,39 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
             reader.onload = async (evt) => {
                 try {
                     const content = evt.target?.result as string;
-                    const parsed = JSON.parse(content);
-                    let flightsNum = 0;
-                    let tripsNum = 0;
-                    let visitedNum = 0;
-                    if (parsed.independent_flights && Array.isArray(parsed.independent_flights)) {
-                        flightsNum += parsed.independent_flights.length;
-                    }
-                    if (parsed.flights && Array.isArray(parsed.flights)) {
-                        flightsNum += parsed.flights.length;
-                    }
-                    if (parsed.trips && Array.isArray(parsed.trips)) {
-                        tripsNum = parsed.trips.length;
-                        parsed.trips.forEach((t: any) => {
-                            if (t.transports && Array.isArray(t.transports)) {
-                                flightsNum += t.transports.length;
-                            }
-                        });
-                    }
-                    if (parsed.visited && Array.isArray(parsed.visited)) {
-                        visitedNum = parsed.visited.length;
-                    }
+                    const parsed = JSON.parse(content.trim().replace(/^\uFEFF/, ''));
+                    const tripsList = Array.isArray(parsed.trips) ? parsed.trips : [];
+                    const flightsList = Array.isArray(parsed.flights) ? parsed.flights : [];
+                    
+                    const airTrips = tripsList.filter(isTripAir).length + flightsList.filter((f: any) => !f.mode || f.mode === 'Flight').length;
+                    const roadTrips = tripsList.filter(isTripRoad).length + flightsList.filter((f: any) => f.mode && f.mode !== 'Flight').length;
+                    const visited = Array.isArray(parsed.visited) ? parsed.visited.length : 0;
+                    const usersCount = Array.isArray(parsed.users) ? parsed.users.length : 0;
+                    const calCount = (Array.isArray(parsed.events) ? parsed.events.length : 0) +
+                                     (Array.isArray(parsed.entitlements) ? parsed.entitlements.length : 0) +
+                                     (Array.isArray(parsed.configs) ? parsed.configs.length : 0);
+                    const hasSettings = parsed.workspaceSettings && typeof parsed.workspaceSettings === 'object' && Object.keys(parsed.workspaceSettings).length > 0;
+
                     setBackupDataState(content);
-                    setBackupParsedCount({ trips: tripsNum, flights: flightsNum, visited: visitedNum });
+                    setBackupParsedCount({ 
+                        trips: tripsList.length, 
+                        flights: airTrips, 
+                        roadTrips,
+                        visited,
+                        users: usersCount,
+                        calendar: calCount,
+                        settings: hasSettings ? 1 : 0,
+                        version: parsed.version || null,
+                        timestamp: parsed.timestamp || null
+                    });
+                    setWizardRestoreCategories({
+                        flights: airTrips > 0,
+                        roadTrips: roadTrips > 0,
+                        visited: visited > 0,
+                        users: usersCount > 0,
+                        calendar: calCount > 0,
+                        settings: !!hasSettings
+                    });
                     setImportMode('backup');
                     setBackupRestoreSuccess(false);
                     setBackupRestoreError('');
@@ -943,7 +989,7 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                             {importMode === 'spreadsheet' ? (
                                 <div className="space-y-6 text-center">
                                     <div className="space-y-2">
-                                        <h4 className="text-xl font-black text-gray-950 dark:text-white">Ingest Flight Logs via Excel or CSV</h4>
+                                        <h4 className="text-xl font-bold text-light-text dark:text-dark-text">Ingest Flight Logs via Excel or CSV</h4>
                                         <p className="text-sm font-medium text-zinc-500 max-w-md mx-auto">
                                             Upload standard spreadsheets containing lists of booked business flights or passenger logs, and assign them easily.
                                         </p>
@@ -961,60 +1007,199 @@ export const FlightImportWizard: React.FC<FlightImportWizardProps> = ({
                             ) : (
                                 <div className="space-y-6">
                                     {!backupDataState ? (
-                                        <div className="space-y-6 text-center">
+                                        <div className="space-y-6 text-center font-sans">
                                             <div className="space-y-2">
-                                                <h4 className="text-xl font-black text-gray-950 dark:text-white">Restore Session State from Backup</h4>
-                                                <p className="text-sm font-medium text-zinc-500 max-w-md mx-auto">
-                                                    Restoring database backups lets you retrieve previously cataloged flight boards, travel rosters, historical segments, and settings.
+                                                <h4 className="text-xl font-bold text-light-text dark:text-dark-text">Restore Session State from Backup</h4>
+                                                <p className="text-sm font-medium text-light-text-secondary dark:text-dark-text-secondary max-w-md mx-auto">
+                                                    Restoring database backups lets you selectively retrieve cataloged flights, travel rosters, historical segments, and configurations.
                                                 </p>
                                             </div>
                                             <div 
                                                 onClick={() => fileInputRef.current?.click()}
-                                                className="border-3 border-dashed border-zinc-200 dark:border-zinc-800 hover:border-amber-500 dark:hover:border-amber-500 rounded-3xl p-16 cursor-pointer bg-slate-50/50 dark:bg-zinc-800/10 group transition-all duration-300"
+                                                className="border-2 border-dashed border-black/15 dark:border-white/15 hover:border-primary-500 dark:hover:border-primary-500 rounded-3xl p-14 cursor-pointer bg-white/40 dark:bg-white/[0.03] group transition-all duration-300"
                                             >
-                                                <Upload className="w-12 h-12 text-amber-500 mx-auto mb-4 group-hover:-translate-y-1 transition-transform" />
-                                                <p className="text-base font-black text-gray-800 dark:text-zinc-200 mb-1">Select backup .json file</p>
-                                                <p className="text-xs text-zinc-500">Supports Wandergrid JSON file format</p>
+                                                <Upload className="w-12 h-12 text-primary-500 mx-auto mb-4 group-hover:-translate-y-1 transition-transform" />
+                                                <p className="text-base font-bold text-light-text dark:text-dark-text mb-1">Select backup .json file</p>
+                                                <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary">Supports WanderGrid JSON backup snapshots</p>
                                             </div>
                                             <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleFileChange} />
                                         </div>
                                     ) : (
-                                        <div className="max-w-xl mx-auto text-left space-y-6 p-6 bg-amber-500/5 dark:bg-amber-500/10 rounded-3xl border border-amber-500/20 shadow-md">
-                                            <div className="flex items-start gap-3">
-                                                <span className="text-3xl">📤</span>
-                                                <div>
-                                                    <h4 className="text-lg font-black text-gray-950 dark:text-white">Workspace State Backup Loaded</h4>
-                                                    <p className="text-xs text-zinc-400">File: <span className="font-mono text-zinc-500 dark:text-zinc-300 font-bold">{fileName}</span></p>
+                                        <div className="max-w-2xl mx-auto text-left space-y-6 p-6 rounded-3xl bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl border border-black/8 dark:border-white/10 shadow-lg font-sans">
+                                            {/* File header */}
+                                            <div className="flex items-start justify-between gap-3 pb-4 border-b border-black/5 dark:border-white/5">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-2xl bg-primary-500/10 text-primary-600 dark:text-primary-400 flex items-center justify-center shrink-0">
+                                                        <Upload className="w-5 h-5" />
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="text-base font-bold text-light-text dark:text-dark-text">Workspace Snapshot Loaded</h4>
+                                                        <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-mono truncate">{fileName}</p>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            
-                                            <div className="space-y-2 border-t border-b border-zinc-200/50 dark:border-white/5 py-4">
-                                                <p className="text-sm font-bold text-zinc-850 dark:text-zinc-200">Detected Database Metrics:</p>
-                                                <ul className="text-xs font-bold text-zinc-650 dark:text-zinc-400 list-disc list-inside space-y-1">
-                                                    <li>Trips cataloged: <span className="font-mono text-amber-500">{backupParsedCount?.trips || 0} items</span></li>
-                                                    <li>Total flight legs: <span className="font-mono text-amber-500">{backupParsedCount?.flights || 0} routes</span></li>
-                                                    <li>Travel Atlas (visited): <span className="font-mono text-amber-500">{backupParsedCount?.visited || 0} places</span></li>
-                                                </ul>
+                                                {backupParsedCount?.version && (
+                                                    <span className="px-2.5 py-1 rounded-full text-2xs font-mono font-bold bg-primary-500/10 text-primary-600 dark:text-primary-400 shrink-0">
+                                                        v{backupParsedCount.version}
+                                                    </span>
+                                                )}
                                             </div>
 
-                                            <div className="rounded-2xl p-4 bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs">
-                                                <span className="font-extrabold uppercase tracking-widest block mb-1">⚠️ Crucial Warning</span>
-                                                Restoring from a backup will overwrite your *entire database state*. All current travel configurations, active family member profiles, mapped airports, and ticket schedules will be completely overridden. This process cannot be undone!
+                                            {/* Mode Switcher */}
+                                            <div className="space-y-2">
+                                                <label className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                                                    Restore Mode
+                                                </label>
+                                                <div className={SEGMENTED_TAB_WRAPPER}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setWizardRestoreMode('merge')}
+                                                        className={cn(
+                                                            "flex-1 flex items-center justify-center gap-2 cursor-pointer py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all",
+                                                            wizardRestoreMode === 'merge' ? SEGMENTED_TAB_ACTIVE : SEGMENTED_TAB_INACTIVE
+                                                        )}
+                                                    >
+                                                        <ArrowsMerge className="w-4 h-4" />
+                                                        <span>Merge with Existing</span>
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setWizardRestoreMode('replace')}
+                                                        className={cn(
+                                                            "flex-1 flex items-center justify-center gap-2 cursor-pointer py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all",
+                                                            wizardRestoreMode === 'replace' ? SEGMENTED_TAB_ACTIVE : SEGMENTED_TAB_INACTIVE
+                                                        )}
+                                                    >
+                                                        <ArrowsClockwise className="w-4 h-4" />
+                                                        <span>Replace Selected</span>
+                                                    </button>
+                                                </div>
+                                                <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary font-medium">
+                                                    {wizardRestoreMode === 'merge'
+                                                        ? 'Non-destructive: Merges incoming records with your current trips and roster.'
+                                                        : 'Selective Overwrite: Replaces only the checked categories with data from this snapshot.'}
+                                                </p>
+                                            </div>
+
+                                            {/* Session Guard Notice */}
+                                            <div className="flex items-center gap-2.5 p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 dark:text-emerald-300 text-2xs font-semibold">
+                                                <ShieldCheck weight="duotone" className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                                <span>Active user session and API keys are automatically protected.</span>
+                                            </div>
+
+                                            {/* Granular category checkboxes */}
+                                            <div className="space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                                                        Select Categories
+                                                    </span>
+                                                    <div className="flex items-center gap-3">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                if (!backupParsedCount) return;
+                                                                setWizardRestoreCategories({
+                                                                    flights: backupParsedCount.flights > 0,
+                                                                    roadTrips: (backupParsedCount.roadTrips || 0) > 0,
+                                                                    visited: (backupParsedCount.visited || 0) > 0,
+                                                                    users: (backupParsedCount.users || 0) > 0,
+                                                                    calendar: (backupParsedCount.calendar || 0) > 0,
+                                                                    settings: (backupParsedCount.settings || 0) > 0,
+                                                                });
+                                                            }}
+                                                            className="text-xs font-bold text-primary-500 hover:text-primary-600 transition-colors cursor-pointer"
+                                                        >
+                                                            Select Available
+                                                        </button>
+                                                        <span className="text-black/20 dark:text-white/20">•</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setWizardRestoreCategories({ flights: false, roadTrips: false, visited: false, settings: false, users: false, calendar: false })}
+                                                            className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text transition-colors cursor-pointer"
+                                                        >
+                                                            Deselect All
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[34vh] overflow-y-auto custom-scrollbar pr-1">
+                                                    {[
+                                                        { key: 'flights', label: 'Flights & Itineraries', count: backupParsedCount?.flights || 0, icon: <Plane className="w-4 h-4" /> },
+                                                        { key: 'roadTrips', label: 'Road Trips & Overland', count: backupParsedCount?.roadTrips || 0, icon: <Car className="w-4 h-4" /> },
+                                                        { key: 'visited', label: 'Travel Atlas (Visited)', count: backupParsedCount?.visited || 0, icon: <MapPin className="w-4 h-4" /> },
+                                                        { key: 'users', label: 'Personnel & Roster', count: backupParsedCount?.users || 0, icon: <Users className="w-4 h-4" /> },
+                                                        { key: 'calendar', label: 'Calendar & Leave Policies', count: backupParsedCount?.calendar || 0, icon: <Calendar className="w-4 h-4" /> },
+                                                        { key: 'settings', label: 'Workspace Configuration', count: backupParsedCount?.settings ? 1 : 0, icon: <Gear className="w-4 h-4" /> },
+                                                    ].map(item => {
+                                                        const isChecked = !!wizardRestoreCategories[item.key as keyof BackupSelectionOptions];
+                                                        const isAvailable = item.count > 0;
+                                                        return (
+                                                            <div
+                                                                key={item.key}
+                                                                onClick={() => {
+                                                                    if (!isAvailable) return;
+                                                                    setWizardRestoreCategories(prev => ({ ...prev, [item.key]: !prev[item.key as keyof BackupSelectionOptions] }));
+                                                                }}
+                                                                className={cn(
+                                                                    "flex items-center justify-between p-3 rounded-2xl border transition-all select-none text-xs",
+                                                                    !isAvailable
+                                                                        ? "bg-black/[0.02] dark:bg-white/[0.02] border-black/5 dark:border-white/5 opacity-40 cursor-not-allowed"
+                                                                        : isChecked
+                                                                            ? "bg-primary-500/10 border-primary-500/30 dark:bg-primary-500/15 dark:border-primary-500/40 cursor-pointer"
+                                                                            : "bg-white/40 dark:bg-white/[0.03] border-black/5 dark:border-white/5 opacity-70 hover:opacity-100 cursor-pointer"
+                                                                )}
+                                                            >
+                                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                                    <div className={cn(
+                                                                        "w-8 h-8 rounded-xl flex items-center justify-center shrink-0",
+                                                                        isChecked ? "bg-primary-500 text-white" : "bg-black/5 dark:bg-white/10 text-light-text-secondary"
+                                                                    )}>
+                                                                        {item.icon}
+                                                                    </div>
+                                                                    <div className="min-w-0">
+                                                                        <p className="font-bold text-light-text dark:text-dark-text truncate">{item.label}</p>
+                                                                        <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary font-mono">
+                                                                            {isAvailable ? `${item.count} items` : 'None in file'}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                                <div className={cn(
+                                                                    "w-5 h-5 rounded-md flex items-center justify-center shrink-0 border",
+                                                                    !isAvailable ? "border-black/10 opacity-30" : isChecked ? "bg-primary-500 border-primary-500 text-white" : "border-black/20 dark:border-white/20"
+                                                                )}>
+                                                                    {isChecked && isAvailable && <Check weight="bold" className="w-3 h-3" />}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
                                             </div>
 
                                             {backupRestoreSuccess ? (
-                                                <div className="p-4 rounded-2xl bg-emerald-500/15 border border-emerald-550 text-emerald-600 dark:text-emerald-450 text-sm font-bold text-center">
+                                                <div className="p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-sm font-bold text-center">
                                                     🎉 Database backup successfully restored! Reloading session parameters...
                                                 </div>
                                             ) : (
-                                                <div className="flex gap-4">
-                                                    <Button variant="secondary" onClick={() => { setBackupDataState(null); }} className="flex-1 font-bold">Cancel</Button>
-                                                    <Button variant="danger" onClick={handleProcessBackupRestore} className="flex-1 font-bold">Yes, Restore Backup</Button>
+                                                <div className="flex gap-3 pt-2">
+                                                    <Button 
+                                                        variant="secondary" 
+                                                        onClick={() => { setBackupDataState(null); }} 
+                                                        className="flex-1 font-bold h-11"
+                                                    >
+                                                        Cancel
+                                                    </Button>
+                                                    <Button 
+                                                        variant={wizardRestoreMode === 'replace' ? 'danger' : 'primary'} 
+                                                        onClick={handleProcessBackupRestore} 
+                                                        disabled={Object.values(wizardRestoreCategories).filter(Boolean).length === 0}
+                                                        className="flex-1 font-bold h-11"
+                                                    >
+                                                        {wizardRestoreMode === 'replace' ? 'Overwrite Selected' : 'Merge Selected Data'} ({Object.values(wizardRestoreCategories).filter(Boolean).length})
+                                                    </Button>
                                                 </div>
                                             )}
 
                                             {backupRestoreError && (
-                                                <div className="p-3 bg-rose-100 text-rose-600 rounded-xl text-xs font-bold border border-rose-300">
+                                                <div className="p-3 bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-2xl text-xs font-bold border border-rose-500/20">
                                                     Failed to restore state: {backupRestoreError}
                                                 </div>
                                             )}
