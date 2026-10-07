@@ -329,9 +329,9 @@ export const Modal: React.FC<ModalProps> = ({
 
   return createPortal(
     <div className={cn("fixed inset-0 z-modal flex items-center justify-center p-4 safe-top safe-bottom safe-x transition-all duration-300 font-sans", isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none')}>
-      {/* 1. Translucent Scrim Backdrop (No blur to avoid double-blurring page content) */}
+      {/* 1. Backdrop Blur Overlay */}
       <div
-        className="fixed inset-0 bg-black/40 dark:bg-black/60 transition-opacity"
+        className="fixed inset-0 backdrop-blur-md bg-black/5 dark:bg-black/15 transition-all duration-300"
         onClick={onClose}
       />
 

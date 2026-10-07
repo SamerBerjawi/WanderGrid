@@ -553,9 +553,9 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
 
     return createPortal(
         <div className="fixed inset-0 z-modal overflow-hidden font-sans">
-            {/* 1. Translucent Scrim Backdrop (No blur to avoid double-blurring page content) */}
+            {/* 1. Backdrop Blur Overlay */}
             <div 
-                className={`fixed inset-0 bg-black/40 dark:bg-black/60 transition-opacity duration-300 ${
+                className={`fixed inset-0 backdrop-blur-md bg-black/5 dark:bg-black/15 transition-all duration-300 ${
                     isVisible ? 'opacity-100' : 'opacity-0'
                 }`}
                 onClick={handleClose}
