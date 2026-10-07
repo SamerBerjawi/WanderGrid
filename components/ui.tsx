@@ -488,7 +488,7 @@ interface TabsProps {
 }
 
 export const Tabs: React.FC<TabsProps> = ({ tabs, activeTab, onChange, className }) => (
-  <div className={cn("flex items-center justify-center sm:justify-start overflow-x-auto sm:overflow-visible no-scrollbar p-3 -m-3 shrink-0", className)}>
+  <div className={cn("flex items-center justify-center sm:justify-start overflow-x-auto sm:overflow-visible no-scrollbar py-3 px-2 -my-3 -mx-2 shrink-0", className)}>
     <GlassPanel
       className="wg-glass-pill shadow-lg shadow-black/5 dark:shadow-black/25 shrink-0"
       padding="4px 6px"
@@ -505,7 +505,7 @@ export const Tabs: React.FC<TabsProps> = ({ tabs, activeTab, onChange, className
               type="button"
               onClick={() => onChange(tab.id)}
               className={cn(
-                "relative rounded-full text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none active:scale-95 px-4 sm:px-5 py-2.5",
+                "relative isolate rounded-full text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none active:scale-95 px-3.5 sm:px-5 py-2.5 min-h-[44px]",
                 isActive
                   ? colorStyle.activeText
                   : "text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
@@ -514,7 +514,7 @@ export const Tabs: React.FC<TabsProps> = ({ tabs, activeTab, onChange, className
               {isActive && (
                 <div
                   className={cn(
-                    "absolute inset-0 rounded-full backdrop-blur-md border z-0",
+                    "absolute inset-0 rounded-full backdrop-blur-md border z-0 pointer-events-none",
                     colorStyle.activeBg,
                     colorStyle.activeBorder,
                     colorStyle.activeShadow
@@ -524,7 +524,7 @@ export const Tabs: React.FC<TabsProps> = ({ tabs, activeTab, onChange, className
               )}
               <span className="relative z-10 flex items-center gap-2">
                 {tab.icon && <span className="shrink-0 transition-transform duration-200">{tab.icon}</span>}
-                <span className={cn("tracking-tight", isActive ? "inline" : "hidden sm:inline")}>{tab.label}</span>
+                <span className="tracking-tight font-bold whitespace-nowrap">{tab.label}</span>
               </span>
             </button>
           );

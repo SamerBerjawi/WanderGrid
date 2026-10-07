@@ -1502,7 +1502,7 @@ export const TripDetail2: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
             </div>
 
             {/* Tabs and Content Switcher */}
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 py-1">
                 <Tabs 
                     tabs={[
                         { id: 'planner', label: 'Daily Planner', icon: <CalendarBlank className="w-4 h-4 text-amber-500" weight="duotone" />, color: 'amber' }, 

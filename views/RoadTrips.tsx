@@ -3,7 +3,7 @@ import {
   Plus, MagnifyingGlass as Search, CalendarBlank as Calendar, MapPin, Trash as Trash2, PencilSimple as Edit2, 
   CaretDown as ChevronDown, CaretUp as ChevronUp, Clock, CurrencyDollar as DollarSign, Compass, Car, 
   MapTrifold as Map, ArrowRight, HardDrives as Server, Sparkle as Sparkles, NavigationArrow as Navigation, Train, 
-  Bus, Boat, Info, DotsSixVertical, CheckSquare, Square, X, Check
+  Bus, Boat, Info, DotsSixVertical, CheckSquare, Square, X, Check, ChartBar
 } from '@phosphor-icons/react';
 import { Button, Input, GlassSelect, Badge, TimeInput, Autocomplete, Modal, BentoGrid, BentoCard } from '../components/ui';
 import GlassPanel from '../components/glass/GlassPanel';
@@ -76,7 +76,7 @@ const MODE_META: Record<Extract<TransportMode, 'Train' | 'Bus' | 'Car Rental' | 
   },
   'Car Rental': { 
     label: 'Car Rental', 
-    icon: Navigation, 
+    icon: Car, 
     colorClass: 'text-blue-500 dark:text-blue-400', 
     bgClass: 'bg-blue-500/10 dark:bg-blue-400/5',
     borderClass: 'border-blue-500/20 dark:border-blue-400/10',
@@ -84,7 +84,7 @@ const MODE_META: Record<Extract<TransportMode, 'Train' | 'Bus' | 'Car Rental' | 
   },
   'Personal Car': { 
     label: 'Personal Car', 
-    icon: Navigation, 
+    icon: Car, 
     colorClass: 'text-indigo-500 dark:text-indigo-400', 
     bgClass: 'bg-indigo-500/10 dark:bg-indigo-400/5',
     borderClass: 'border-indigo-500/20 dark:border-indigo-400/10',
@@ -950,24 +950,26 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
               <button
                 type="button"
                 onClick={() => setHubTab('map')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   hubTab === 'map' 
                     ? 'bg-white text-primary-500 shadow-sm dark:bg-dark-card' 
                     : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text'
                 }`}
               >
-                🗺️ Route Map
+                <Map className="w-4 h-4 shrink-0" weight="duotone" />
+                <span>Route Map</span>
               </button>
               <button
                 type="button"
                 onClick={() => setHubTab('chart')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   hubTab === 'chart' 
                     ? 'bg-white text-primary-500 shadow-sm dark:bg-dark-card' 
                     : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text'
                 }`}
               >
-                📊 Mode Analytics
+                <ChartBar className="w-4 h-4 shrink-0" weight="duotone" />
+                <span>Mode Analytics</span>
               </button>
             </div>
 
@@ -1078,17 +1080,23 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
 
                   <div>
                     <span className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest pl-1">Transit travel method</span>
-                    <GlassSelect
-                      value={importMode}
-                      onChange={e => setImportMode(e.target.value as any)}
-                      aria-label="Transit travel method"
-                    >
-                      <option value="Train">🚂 Train / Railway</option>
-                      <option value="Bus">🚌 Bus / coach</option>
-                      <option value="Car Rental">🚙 Car rental</option>
-                      <option value="Personal Car">🚗 Personal car</option>
-                      <option value="Cruise">🚢 Ferry / Cruise</option>
-                    </GlassSelect>
+                    {(() => {
+                      const ModeIcon = MODE_META[importMode]?.icon || Train;
+                      return (
+                        <GlassSelect
+                          value={importMode}
+                          onChange={e => setImportMode(e.target.value as any)}
+                          aria-label="Transit travel method"
+                          leftElement={<ModeIcon className="w-4 h-4 text-primary-500" weight="duotone" />}
+                        >
+                          <option value="Train">Train / Railway</option>
+                          <option value="Bus">Bus / Coach</option>
+                          <option value="Car Rental">Car Rental</option>
+                          <option value="Personal Car">Personal Car</option>
+                          <option value="Cruise">Ferry / Cruise</option>
+                        </GlassSelect>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
@@ -1277,7 +1285,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                         )}
 
                         <div className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl ${modeDetails.bgClass} ${modeDetails.borderClass} border flex items-center justify-center ${modeDetails.colorClass} shrink-0 shadow-sm`}>
-                          <ModeIcon className="w-6 h-6" />
+                          <ModeIcon className="w-6 h-6" weight="duotone" />
                         </div>
                         
                         <div className="flex-1 min-w-0">
@@ -1510,7 +1518,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                       : 'bg-white/60 dark:bg-white/[0.04] border-black/5 dark:border-white/5 hover:bg-black/5 dark:hover:bg-white/10 text-light-text-secondary dark:text-dark-text-secondary'
                   }`}
                 >
-                  <Icon className="w-5 h-5 mb-1" />
+                  <Icon className="w-5 h-5 mb-1" weight="duotone" />
                   <span className="text-2xs font-bold uppercase tracking-wider text-center leading-none">{item.label}</span>
                 </button>
               );
@@ -1751,7 +1759,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                 return (
                   <div key={seg.id || `${seg.origin}-${seg.destination}-${seg.departureDate}-${idx}`} className="p-4 rounded-2xl border border-black/5 dark:border-white/5 bg-white/70 dark:bg-dark-card/80 shadow-sm flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-2xl ${modeMeta?.bgClass || 'bg-primary-500/10'} ${modeMeta?.borderClass || 'border-primary-500/20'} border flex items-center justify-center ${modeMeta?.colorClass || 'text-primary-500'}`}>
-                      <ModeIcon className="w-5 h-5" />
+                      <ModeIcon className="w-5 h-5" weight="duotone" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 text-xs font-bold font-sans">

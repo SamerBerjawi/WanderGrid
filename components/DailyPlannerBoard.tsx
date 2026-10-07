@@ -827,7 +827,7 @@ export const DailyPlannerBoard: React.FC<DailyPlannerBoardProps> = ({
             {/* ============================================================== */}
             {/* DESKTOP & FULL CANVAS GRID: Bento Matrix Canvas                */}
             {/* ============================================================== */}
-            <div className={`overflow-x-auto pb-12 custom-scrollbar ${mobileViewMode === 'canvas' ? 'block' : 'hidden md:block'}`}>
+            <div className={`overflow-x-auto pt-3.5 pb-12 px-2.5 -mx-2.5 custom-scrollbar ${mobileViewMode === 'canvas' ? 'block' : 'hidden md:block'}`}>
                 <div 
                     className="min-w-[980px] grid gap-3 items-stretch font-sans"
                     style={{

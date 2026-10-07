@@ -1581,89 +1581,30 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
             </div>
 
             {/* 3. Floating Liquid-Glass Tab Navigation & Subviews Switcher */}
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                {/* Main Tabs - Centered on mobile */}
-                <div className="flex items-center justify-center sm:justify-start overflow-x-auto sm:overflow-visible no-scrollbar p-3 -m-3 shrink-0 w-full sm:w-auto">
-                    <GlassPanel
-                        className="wg-glass-pill shadow-lg shadow-black/5 dark:shadow-black/25 shrink-0"
-                        padding="4px 6px"
-                        overrides={{ borderRadius: 9999 }}
-                    >
-                        <div className="flex gap-1 relative items-center">
-                            {TRIP_TABS.map((tab) => {
-                                const isSelected = activeTab === tab.id;
-                                const IconComponent = tab.icon;
-                                return (
-                                    <button
-                                        key={tab.id}
-                                        onClick={() => setActiveTab(tab.id)}
-                                        className={`relative rounded-full text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none active:scale-95 min-h-[44px] ${
-                                            isSelected
-                                                ? `${tab.activeText} px-4 sm:px-5 py-2.5`
-                                                : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text px-3 sm:px-4 py-2.5'
-                                        }`}
-                                    >
-                                        {isSelected && (
-                                            <motion.div
-                                                layoutId="activeTripDetailTabIndicator"
-                                                className={`absolute inset-0 rounded-full ${tab.activeBg} backdrop-blur-md border ${tab.activeBorder} ${tab.activeShadow} z-0`}
-                                                style={{ WebkitBackdropFilter: 'blur(12px)' }}
-                                                transition={{ type: "spring", stiffness: 450, damping: 32 }}
-                                            />
-                                        )}
-                                        <span className="relative z-10 flex items-center gap-2">
-                                            <IconComponent className="w-4 h-4 shrink-0" weight="duotone" />
-                                            <span className={`tracking-tight ${isSelected ? 'inline' : 'hidden md:inline'}`}>
-                                                {tab.label}
-                                            </span>
-                                        </span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </GlassPanel>
-                </div>
-
-                {/* Subview switcher when in Daily Planner */}
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 py-1">
+                <Tabs 
+                    tabs={[
+                        { id: 'planner', label: 'Daily Planner', icon: <CalendarBlank className="w-4 h-4 text-amber-500" weight="duotone" />, color: 'amber' }, 
+                        { id: 'route', label: 'Route', icon: <Path className="w-4 h-4 text-blue-500" weight="duotone" />, color: 'blue' },
+                        { id: 'itinerary', label: 'Bookings', icon: <Ticket className="w-4 h-4 text-emerald-500" weight="duotone" />, color: 'emerald' }, 
+                        { id: 'budget', label: 'Cost Breakdown', icon: <Receipt className="w-4 h-4 text-purple-500" weight="duotone" />, color: 'purple' },
+                        { id: 'packing', label: 'Gear', icon: <Backpack className="w-4 h-4 text-teal-500" weight="duotone" />, color: 'teal' },
+                        { id: 'intel', label: 'AI Guide', icon: <Sparkle className="w-4 h-4 text-rose-500" weight="duotone" />, color: 'rose' }
+                    ]} 
+                    activeTab={activeTab} 
+                    onChange={setActiveTab} 
+                />
                 {activeTab === 'planner' && (
-                    <div className="flex items-center justify-center overflow-x-auto no-scrollbar p-3 -m-3 shrink-0 w-full sm:w-auto">
-                        <GlassPanel
-                            className="wg-glass-pill shadow-md shrink-0"
-                            padding="3px 4px"
-                            overrides={{ borderRadius: 9999 }}
-                        >
-                            <div className="flex gap-1 relative items-center">
-                                {PLANNER_SUBVIEWS.map((sub) => {
-                                    const isSubSelected = plannerView === sub.id;
-                                    const SubIcon = sub.icon;
-                                    return (
-                                        <button
-                                            key={sub.id}
-                                            onClick={() => setPlannerView(sub.id as any)}
-                                            className={`relative rounded-full text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none active:scale-95 min-h-[40px] px-3 sm:px-4 py-2 ${
-                                                isSubSelected
-                                                    ? 'text-primary-600 dark:text-primary-400'
-                                                    : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
-                                            }`}
-                                        >
-                                            {isSubSelected && (
-                                                <motion.div
-                                                    layoutId="activePlannerSubViewIndicator"
-                                                    className="absolute inset-0 rounded-full bg-primary-500/15 backdrop-blur-md border border-primary-500/30 z-0"
-                                                    style={{ WebkitBackdropFilter: 'blur(12px)' }}
-                                                    transition={{ type: "spring", stiffness: 450, damping: 32 }}
-                                                />
-                                            )}
-                                            <span className="relative z-10 flex items-center gap-1.5">
-                                                <SubIcon className="w-3.5 h-3.5" weight="duotone" />
-                                                <span>{sub.label}</span>
-                                            </span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </GlassPanel>
-                    </div>
+                    <Tabs 
+                        tabs={[
+                            { id: 'board', label: 'Canvas', icon: <SquaresFour className="w-4 h-4 text-amber-500" weight="duotone" />, color: 'amber' },
+                            { id: 'list', label: 'List', icon: <List className="w-4 h-4 text-blue-500" weight="duotone" />, color: 'blue' },
+                            { id: 'table', label: 'Table', icon: <Table className="w-4 h-4 text-emerald-500" weight="duotone" />, color: 'emerald' },
+                            { id: 'calendar', label: 'Calendar', icon: <CalendarBlank className="w-4 h-4 text-purple-500" weight="duotone" />, color: 'purple' },
+                        ]}
+                        activeTab={plannerView}
+                        onChange={(id) => setPlannerView(id as 'board' | 'list' | 'table' | 'calendar')}
+                    />
                 )}
             </div>
 
