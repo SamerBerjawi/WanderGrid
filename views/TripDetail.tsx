@@ -2366,7 +2366,7 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
 
             {/* BUDGET TAB - LIQUID GLASS */}
             {activeTab === 'budget' && (() => {
-                const targetBudget = (trip.customFields?.find(f => f.key === 'targetBudget')?.value ? Number(trip.customFields.find(f => f.key === 'targetBudget')!.value) : 0) || Math.max(1000, Math.round(totalCost > 0 ? totalCost * 1.15 : 2500));
+                const targetBudget = ((trip as any).customFields?.find((f: any) => f.key === 'targetBudget')?.value ? Number((trip as any).customFields.find((f: any) => f.key === 'targetBudget')!.value) : 0) || Math.max(1000, Math.round(totalCost > 0 ? totalCost * 1.15 : 2500));
                 const circumference = 251.327;
                 const tRatio = totalCost > 0 ? transportCost / totalCost : 0;
                 const sRatio = totalCost > 0 ? stayCost / totalCost : 0;

@@ -244,6 +244,18 @@ app.use(express.static(path.join(__dirname, 'client_build'), {
     }
 }));
 
+// Serve static assets from public directory (PMTiles vector tiles & airport-style icons)
+app.use(express.static(path.join(__dirname, '../public'), {
+    maxAge: '7d',
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.pmtiles')) {
+            res.setHeader('Accept-Ranges', 'bytes');
+            res.setHeader('Content-Type', 'application/vnd.pmtiles');
+            res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+        }
+    }
+}));
+
 // Rate Limiting Configuration
 const apiRateLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
@@ -1049,6 +1061,183 @@ app.get('/api/proxy/airlines', async (req, res) => {
     } catch (err) {
          console.error("Airlines proxy error:", err);
          res.status(500).json({ error: 'Failed to fetch airline metadata' });
+    }
+});
+
+// ==========================================
+// AERODATABOX PROXY (FLIGHT LOOKUPS & AIRCRAFT)
+// ==========================================
+const aeroDataBoxCache = new Map();
+const AERODATABOX_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+const AERODATABOX_ENDPOINTS = {
+    rapidapi: {
+        baseUrl: 'https://aerodatabox.p.rapidapi.com',
+        authHeader: 'x-rapidapi-key'
+    },
+    direct: {
+        baseUrl: 'https://api.aerodatabox.com',
+        authHeader: 'X-Api-Key'
+    }
+};
+
+app.get('/api/proxy/aerodatabox/flights/number/:flightNumber', async (req, res) => {
+    const rawNumber = String(req.params.flightNumber || '').trim().replace(/\s|-/g, '').toUpperCase();
+    if (!rawNumber) {
+        return res.status(400).json({ error: 'Flight number is required.' });
+    }
+
+    const apiKey = (req.get('X-AeroDataBox-Key') || req.query.api_key || process.env.INTEGRATIONS_AERO_DATA_BOX_KEY || '').trim();
+    if (!apiKey) {
+        return res.status(400).json({ error: 'AeroDataBox API key is missing. Please configure it in Settings.' });
+    }
+
+    const endpointMode = (req.get('X-AeroDataBox-Endpoint') || req.query.endpoint || process.env.INTEGRATIONS_AERO_DATA_BOX_ENDPOINT || 'rapidapi').toLowerCase();
+    const config = AERODATABOX_ENDPOINTS[endpointMode] || AERODATABOX_ENDPOINTS.rapidapi;
+
+    const date = String(req.query.date || '').trim();
+    let apiPath = '';
+
+    if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        apiPath = `/flights/number/${encodeURIComponent(rawNumber)}/${date}?dateLocalRole=Both&withAircraftImage=false&withLocation=false`;
+    } else {
+        const now = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        const fmt = (d) => `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+        const fromDate = fmt(new Date(now.getTime() - 2 * 86400000));
+        const toDate = fmt(new Date(now.getTime() + 2 * 86400000));
+        apiPath = `/flights/number/${encodeURIComponent(rawNumber)}/${fromDate}/${toDate}?dateLocalRole=Both&withAircraftImage=false&withLocation=false`;
+    }
+
+    const cacheKey = `${endpointMode}:${rawNumber}:${date || 'window'}`;
+    const cached = aeroDataBoxCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+        res.set('X-Cache', 'HIT');
+        res.set('Cache-Control', `private, max-age=${Math.floor(AERODATABOX_CACHE_TTL_MS / 1000)}`);
+        return res.json(cached.data);
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+
+    try {
+        const upstreamUrl = `${config.baseUrl}${apiPath}`;
+        const headers = { [config.authHeader]: apiKey };
+        if (endpointMode === 'rapidapi') {
+            headers['x-rapidapi-host'] = 'aerodatabox.p.rapidapi.com';
+        }
+
+        const upstream = await fetch(upstreamUrl, {
+            headers,
+            signal: controller.signal
+        });
+        clearTimeout(timeout);
+
+        if (upstream.status === 204) {
+            return res.json([]);
+        }
+
+        if (!upstream.ok) {
+            const errText = await upstream.text().catch(() => '');
+            return res.status(upstream.status).json({
+                error: `AeroDataBox returned HTTP ${upstream.status}`,
+                details: errText
+            });
+        }
+
+        const data = await upstream.json();
+        aeroDataBoxCache.set(cacheKey, { data, expiresAt: Date.now() + AERODATABOX_CACHE_TTL_MS });
+        res.set('X-Cache', 'MISS');
+        res.set('Cache-Control', `private, max-age=${Math.floor(AERODATABOX_CACHE_TTL_MS / 1000)}`);
+        return res.json(data);
+    } catch (error) {
+        clearTimeout(timeout);
+        console.error('[API] AeroDataBox fetch failed:', error);
+        return res.status(error.name === 'AbortError' ? 504 : 502).json({
+            error: error.name === 'AbortError' ? 'AeroDataBox request timed out.' : 'Failed to reach AeroDataBox.'
+        });
+    }
+});
+
+app.get('/api/proxy/aerodatabox/aircrafts/reg/:reg', async (req, res) => {
+    const reg = String(req.params.reg || '').trim();
+    if (!reg) return res.status(400).json({ error: 'Aircraft registration required.' });
+
+    const apiKey = (req.get('X-AeroDataBox-Key') || req.query.api_key || process.env.INTEGRATIONS_AERO_DATA_BOX_KEY || '').trim();
+    if (!apiKey) return res.status(400).json({ error: 'AeroDataBox API key is missing.' });
+
+    const endpointMode = (req.get('X-AeroDataBox-Endpoint') || req.query.endpoint || process.env.INTEGRATIONS_AERO_DATA_BOX_ENDPOINT || 'rapidapi').toLowerCase();
+    const config = AERODATABOX_ENDPOINTS[endpointMode] || AERODATABOX_ENDPOINTS.rapidapi;
+
+    const cacheKey = `reg:${endpointMode}:${reg}`;
+    const cached = aeroDataBoxCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+        res.set('X-Cache', 'HIT');
+        return res.json(cached.data);
+    }
+
+    try {
+        const upstreamUrl = `${config.baseUrl}/aircrafts/reg/${encodeURIComponent(reg)}`;
+        const headers = { [config.authHeader]: apiKey };
+        if (endpointMode === 'rapidapi') headers['x-rapidapi-host'] = 'aerodatabox.p.rapidapi.com';
+
+        const upstream = await fetch(upstreamUrl, { headers });
+        if (upstream.status === 204) return res.json(null);
+        if (!upstream.ok) return res.status(upstream.status).json({ error: 'Aircraft lookup failed.' });
+
+        const data = await upstream.json();
+        aeroDataBoxCache.set(cacheKey, { data, expiresAt: Date.now() + 24 * 60 * 60 * 1000 });
+        res.set('X-Cache', 'MISS');
+        return res.json(data);
+    } catch (e) {
+        return res.status(502).json({ error: 'Failed to contact AeroDataBox for aircraft registration.' });
+    }
+});
+
+// ==========================================
+// OPENAIP VECTOR TILE PROXY (AERONAUTICAL CHARTS)
+// ==========================================
+app.get('/api/proxy/openaip/:z/:x/:y', async (req, res) => {
+    const { z, x, y } = req.params;
+    const apiKey = (req.get('X-OpenAIP-Key') || req.query.key || process.env.INTEGRATIONS_OPEN_AIP_KEY || '').trim();
+    if (!apiKey) {
+        return res.status(403).json({ error: 'OpenAIP API key not configured.' });
+    }
+
+    const cleanY = String(y).replace(/\.pbf$/, '');
+    const upstreamUrl = `https://api.tiles.openaip.net/api/data/openaip/${z}/${x}/${cleanY}.pbf`;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+
+    try {
+        const upstream = await fetch(upstreamUrl, {
+            headers: {
+                'x-openaip-api-key': apiKey,
+                'accept': 'application/vnd.mapbox-vector-tile,application/x-protobuf'
+            },
+            signal: controller.signal
+        });
+        clearTimeout(timeout);
+
+        if (upstream.status === 204) {
+            return res.status(204).end();
+        }
+
+        if (!upstream.ok) {
+            return res.status(upstream.status).end();
+        }
+
+        const buffer = await upstream.arrayBuffer();
+        res.set({
+            'Content-Type': 'application/x-protobuf',
+            'Cache-Control': 'private, max-age=300, stale-while-revalidate=3600',
+            'Access-Control-Allow-Origin': '*'
+        });
+        return res.send(Buffer.from(buffer));
+    } catch (e) {
+        clearTimeout(timeout);
+        return res.status(502).end();
     }
 });
 
@@ -2329,7 +2518,7 @@ app.post('/api/restore', async (req, res) => {
                 ? { ...currentSettings, ...data.workspaceSettings } 
                 : { ...data.workspaceSettings };
                 
-            const keysToCheck = ['aviationStackApiKey', 'brandfetchApiKey', 'googleGeminiApiKey', 'cartoApiKey'];
+            const keysToCheck = ['aviationStackApiKey', 'aeroDataBoxApiKey', 'aeroDataBoxEndpoint', 'openAipApiKey', 'brandfetchApiKey', 'googleGeminiApiKey', 'cartoApiKey'];
             keysToCheck.forEach(k => {
                 if (!mergedSettings[k] && currentSettings && currentSettings[k]) {
                     mergedSettings[k] = currentSettings[k];

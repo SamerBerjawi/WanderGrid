@@ -32,6 +32,9 @@ const DEFAULT_WORKSPACE_SETTINGS: WorkspaceSettings = {
   theme: 'dark',
   workingDays: [1, 2, 3, 4, 5],
   aviationStackApiKey: '',
+  aeroDataBoxApiKey: '',
+  aeroDataBoxEndpoint: 'rapidapi',
+  openAipApiKey: '',
   brandfetchApiKey: '',
   googleGeminiApiKey: '',
   cartoApiKey: '',
@@ -850,7 +853,7 @@ class DataService {
               const mergedSettings = mode === 'merge'
                   ? { ...DEFAULT_WORKSPACE_SETTINGS, ...currentSettings, ...data.workspaceSettings }
                   : { ...DEFAULT_WORKSPACE_SETTINGS, ...data.workspaceSettings };
-              const keysToCheck = ['aviationStackApiKey', 'brandfetchApiKey', 'googleGeminiApiKey', 'cartoApiKey'];
+              const keysToCheck = ['aviationStackApiKey', 'aeroDataBoxApiKey', 'aeroDataBoxEndpoint', 'openAipApiKey', 'brandfetchApiKey', 'googleGeminiApiKey', 'cartoApiKey'];
               keysToCheck.forEach(k => {
                   if (!mergedSettings[k] && currentSettings && currentSettings[k]) {
                       mergedSettings[k] = currentSettings[k];

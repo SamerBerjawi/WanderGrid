@@ -2,6 +2,32 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
+import { Protocol as PmtilesProtocol } from 'pmtiles';
+import {
+    AIRPORT_SOURCE_ID,
+    GLYPHS_URL,
+    AIRPORT_ICON_DEFINITIONS,
+    createAirportOverlaySource,
+    createAirportOverlayLayers
+} from '../services/airportOverlayStyle';
+import {
+    OPENAIP_AIRSPACE_SOURCE_ID,
+    OPENAIP_PATTERN_IMAGES,
+    OPENAIP_SYMBOL_IMAGE_IDS,
+    getOpenAipOverlayLayers,
+    ensureOpenAipIcons,
+    OpenAipOverlayGroup
+} from '../services/openAipStyle';
+
+// Register PMTiles protocol globally once for MapLibre vector tile decoding
+let isPmtilesRegistered = false;
+try {
+    const protocol = new PmtilesProtocol();
+    (maplibregl as any).addProtocol('pmtiles', protocol.tile);
+    isPmtilesRegistered = true;
+} catch (e) {
+    console.warn('[DeckFlightMap] PMTiles registration warning:', e);
+}
 
 // Explicitly register worker URL for Vite ESM bundling compatibility
 if (typeof (maplibregl as any).setWorkerUrl === 'function') {
@@ -44,7 +70,7 @@ import {
 } from '../types/mapAppearance';
 import { getTwilightGradientGeoJSON } from '../services/solarTerminator';
 import { getLatestRainRadarMetadata, RainRadarMetadata } from '../services/rainViewer';
-import { generateAirportRunway, RunwayGeometry, getPhysicalRunways } from '../services/airportRunways';
+import { getPhysicalRunways } from '../services/airportRunways';
 import { buildRouteCorridors, RouteCorridor, getApproxLocalTime, formatAirportDisplayName, resolveLocationMetadata, getRouteTransportSummary, RouteTransportSummary } from '../services/routeCorridor';
 import { getFlagEmoji, getRegion } from '../services/geoData';
 import { fetchMultiModalRoute, getCachedMultiModalRoute } from '../services/multiModalRouting';
@@ -275,7 +301,11 @@ export const createMapLibreStyle = (
     layer: string,
     isDark: boolean,
     cartoApiKey?: string,
-    isGlobe: boolean = false
+    isGlobe: boolean = false,
+    detailedAirports: boolean = false,
+    openAipOverlay: boolean = false,
+    openAipKey?: string,
+    openAipGroups?: OpenAipOverlayGroup[]
 ): maplibregl.StyleSpecification => {
     const keyParam = cartoApiKey ? `?key=${encodeURIComponent(cartoApiKey)}` : '';
     const getCartoTiles = (style: 'dark_all' | 'light_all' | 'voyager') => [
@@ -319,36 +349,58 @@ export const createMapLibreStyle = (
             break;
     }
 
+    const sources: Record<string, any> = {
+        'raster-basemap-source': {
+            type: 'raster',
+            tiles,
+            tileSize: 256,
+            maxzoom,
+            attribution
+        }
+    };
+
+    if (detailedAirports) {
+        sources[AIRPORT_SOURCE_ID] = createAirportOverlaySource();
+    }
+
+    if (openAipOverlay && openAipKey) {
+        const origin = typeof window !== 'undefined' ? window.location.origin : '';
+        sources[OPENAIP_AIRSPACE_SOURCE_ID] = {
+            type: 'vector',
+            tiles: [`${origin}/api/proxy/openaip/{z}/{x}/{y}.pbf?key=${encodeURIComponent(openAipKey)}`],
+            minzoom: 0,
+            maxzoom: 14,
+            attribution: '<a href="https://www.openaip.net" target="_blank" rel="noopener noreferrer">openAIP</a>'
+        };
+    }
+
+    const layers: any[] = [
+        ...(isGlobe ? [] : [
+            {
+                id: 'background-base-layer',
+                type: 'background' as const,
+                paint: {
+                    'background-color': isDark ? '#05070f' : '#f0f4f8'
+                }
+            }
+        ]),
+        {
+            id: 'raster-basemap-layer',
+            type: 'raster' as const,
+            source: 'raster-basemap-source',
+            minzoom: 0,
+            maxzoom
+        },
+        ...(openAipOverlay && openAipKey ? getOpenAipOverlayLayers(openAipGroups, isDark ? 'dark' : 'light') : []),
+        ...(detailedAirports ? createAirportOverlayLayers(isDark) : [])
+    ];
+
     return {
         version: 8,
+        glyphs: GLYPHS_URL,
         ...(isGlobe ? { projection: { type: 'globe' } as any } : {}),
-        sources: {
-            'raster-basemap-source': {
-                type: 'raster',
-                tiles,
-                tileSize: 256,
-                maxzoom,
-                attribution
-            }
-        },
-        layers: [
-            ...(isGlobe ? [] : [
-                {
-                    id: 'background-base-layer',
-                    type: 'background' as const,
-                    paint: {
-                        'background-color': isDark ? '#05070f' : '#f0f4f8'
-                    }
-                }
-            ]),
-            {
-                id: 'raster-basemap-layer',
-                type: 'raster' as const,
-                source: 'raster-basemap-source',
-                minzoom: 0,
-                maxzoom
-            }
-        ]
+        sources,
+        layers
     };
 };
 
@@ -865,15 +917,12 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         flightArcs,
         overlandSegments,
         airportPoints,
-        clusterNodes,
-        detailedRunways
+        clusterNodes
     } = useMemo(() => {
         const flightCorridorsMap = new Map<string, any>();
         const overlandRoutes: any[] = [];
         const pointsMap = new Map<string, any>();
         const airportFreqMap = new Map<string, number>();
-        const runwayGeometries: RunwayGeometry[] = [];
-        const processedRunwayKeys = new Set<string>();
 
         // 1. First pass: Compute frequency of every airport and location across all trips and transports
         enrichedTrips.forEach(trip => {
@@ -1019,13 +1068,6 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                             : baseOriginRadius
                     });
                 }
-
-                // Physical Runways
-                if (isDestAirport && activeAppearance.airportDetail === 'detailed' && !processedRunwayKeys.has(p2)) {
-                    processedRunwayKeys.add(p2);
-                    const rw = generateAirportRunway(t.destination, t.destLat, t.destLng);
-                    if (rw) runwayGeometries.push(rw);
-                }
             });
         });
 
@@ -1064,8 +1106,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             flightArcs: Array.from(flightCorridorsMap.values()),
             overlandSegments: overlandRoutes,
             airportPoints: allAirports,
-            clusterNodes: clusters,
-            detailedRunways: runwayGeometries
+            clusterNodes: clusters
         };
     }, [
         enrichedTrips,
@@ -1074,8 +1115,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         showRoadTracing,
         showFrequencyWeight,
         activeAppearance,
-        clusterMode,
-        runwayDatasetLoaded
+        clusterMode
     ]);
 
     // -------------------------------------------------------------------------
@@ -1569,32 +1609,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             );
         }
 
-        // 7. Detailed Runways Markings
-        if (activeAppearance.airportDetail === 'detailed' && detailedRunways.length > 0) {
-            const allStrips: { path: [number, number, number][]; width: number }[] = [];
-            detailedRunways.forEach(r => {
-                r.runwayPaths.forEach(rp => allStrips.push({ path: rp.stripPath, width: rp.widthMeters }));
-            });
-
-            if (allStrips.length > 0) {
-                layers.push(
-                    new PathLayer({
-                        id: 'runway-strips',
-                        data: allStrips,
-                        getPath: (d: any) => d.path,
-                        getColor: isDark ? [15, 23, 42, 255] : [51, 65, 85, 255],
-                        getWidth: (d: any) => d.width || 45,
-                        widthUnits: 'meters',
-                        widthMinPixels: 2.0,
-                        wrapLongitude: true,
-                        pickable: false,
-                        extensions: [globeHorizonCullExtension]
-                    })
-                );
-            }
-        }
-
-        // 8. Airport & Destination Nodes
+        // 7. Airport & Destination Nodes
         if (showCityMarkers && activeAppearance.airportSize !== 'off') {
             if (clusterMode && clusterNodes.length > 0) {
                 layers.push(
@@ -1726,7 +1741,6 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         scaleMultiplier,
         selectedCorridor,
         hoveredRouteKey,
-        detailedRunways,
         showCityMarkers,
         clusterMode,
         clusterNodes,
@@ -1747,7 +1761,18 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         if (!mapContainerRef.current) return;
 
         const isGlobe = effectiveProjection === 'globe';
-        const style = createMapLibreStyle(currentLayer, isDark, workspaceSettings?.cartoApiKey, isGlobe);
+        const isDetailedAirports = activeAppearance.airportDetail === 'detailed';
+        const isOpenAipOverlay = Boolean(activeAppearance.openAipOverlay);
+        const style = createMapLibreStyle(
+            currentLayer,
+            isDark,
+            workspaceSettings?.cartoApiKey,
+            isGlobe,
+            isDetailedAirports,
+            isOpenAipOverlay,
+            workspaceSettings?.openAipApiKey,
+            activeAppearance.openAipGroups
+        );
 
         const rect = mapContainerRef.current.getBoundingClientRect();
         const width = rect.width || window.innerWidth || 1200;
@@ -1766,6 +1791,50 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             attributionControl: false
         });
 
+        const setupAirportIcons = () => {
+            AIRPORT_ICON_DEFINITIONS.forEach(({ id, path, pixelRatio }) => {
+                if (!map.hasImage(id)) {
+                    map.loadImage(path).then((res) => {
+                        if (res?.data && !map.hasImage(id)) {
+                            map.addImage(id, res.data, { pixelRatio });
+                        }
+                    }).catch(() => {});
+                }
+            });
+        };
+
+        map.on('styleimagemissing', (e) => {
+            const id = e.id;
+            const iconDef = AIRPORT_ICON_DEFINITIONS.find(def => def.id === id);
+            if (iconDef && !map.hasImage(id)) {
+                map.loadImage(iconDef.path).then((res) => {
+                    if (res?.data && !map.hasImage(id)) {
+                        map.addImage(id, res.data, { pixelRatio: iconDef.pixelRatio });
+                    }
+                }).catch(() => {});
+                return;
+            }
+
+            if ((OPENAIP_PATTERN_IMAGES as readonly string[]).includes(id) && !map.hasImage(id)) {
+                map.loadImage(`/openaip-style/patterns/${id}.svg`).then((res) => {
+                    if (res?.data && !map.hasImage(id)) {
+                        map.addImage(id, res.data, { pixelRatio: 2 });
+                    }
+                }).catch(() => {});
+                return;
+            }
+
+            const cleanSymbolId = id.startsWith('dark:') ? id.replace(/^dark:/, '') : id;
+            if ((OPENAIP_SYMBOL_IMAGE_IDS as readonly string[]).includes(cleanSymbolId) && !map.hasImage(id)) {
+                map.loadImage(`/openaip-style/symbols/${cleanSymbolId}.svg`).then((res) => {
+                    if (res?.data && !map.hasImage(id)) {
+                        map.addImage(id, res.data, { pixelRatio: 2 });
+                    }
+                }).catch(() => {});
+                return;
+            }
+        });
+
         try {
             map.setPadding(initialCamera.padding);
         } catch (e) {
@@ -1780,7 +1849,12 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
         map.on('load', () => {
             isMapLoadedRef.current = true;
+            setupAirportIcons();
+            if (isOpenAipOverlay && workspaceSettings?.openAipApiKey) {
+                ensureOpenAipIcons(map, isDark ? 'dark' : 'light');
+            }
             try {
+                setupAirportIcons();
                 if (isGlobe && (map as any).setProjection) {
                     (map as any).setProjection({ type: 'globe' });
                 }
@@ -1891,10 +1965,21 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         const map = mapRef.current;
         if (!map) return;
         const isGlobe = effectiveProjection === 'globe';
-        const nextStyle = createMapLibreStyle(currentLayer, isDark, workspaceSettings?.cartoApiKey, isGlobe);
+        const isDetailedAirports = activeAppearance.airportDetail === 'detailed';
+        const isOpenAipOverlay = Boolean(activeAppearance.openAipOverlay);
+        const nextStyle = createMapLibreStyle(
+            currentLayer,
+            isDark,
+            workspaceSettings?.cartoApiKey,
+            isGlobe,
+            isDetailedAirports,
+            isOpenAipOverlay,
+            workspaceSettings?.openAipApiKey,
+            activeAppearance.openAipGroups
+        );
         map.setStyle(nextStyle);
 
-        // Re-assert projection on styledata to preserve 3D Globe mode across basemap changes
+        // Re-assert projection and ensure airport icons on styledata across style changes
         const onStyleData = () => {
             if ((map as any).setProjection) {
                 try {
@@ -1903,10 +1988,31 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     console.warn('[DeckFlightMap] style change setProjection warning:', e);
                 }
             }
+            AIRPORT_ICON_DEFINITIONS.forEach(({ id, path, pixelRatio }) => {
+                if (!map.hasImage(id)) {
+                    map.loadImage(path).then((res) => {
+                        if (res?.data && !map.hasImage(id)) {
+                            map.addImage(id, res.data, { pixelRatio });
+                        }
+                    }).catch(() => {});
+                }
+            });
+            if (isOpenAipOverlay && workspaceSettings?.openAipApiKey) {
+                ensureOpenAipIcons(map, isDark ? 'dark' : 'light');
+            }
         };
 
         map.once('styledata', onStyleData);
-    }, [currentLayer, isDark, workspaceSettings?.cartoApiKey, effectiveProjection]);
+    }, [
+        currentLayer,
+        isDark,
+        workspaceSettings?.cartoApiKey,
+        workspaceSettings?.openAipApiKey,
+        effectiveProjection,
+        activeAppearance.airportDetail,
+        activeAppearance.openAipOverlay,
+        JSON.stringify(activeAppearance.openAipGroups)
+    ]);
 
     // Synchronize RainViewer precipitation radar directly into MapLibre GL
     useEffect(() => {

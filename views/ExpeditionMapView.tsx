@@ -1576,7 +1576,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                                 }`}
                                             style={appearance.airportDetail === 'detailed' ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
                                         >
-                                            <span className="text-xs font-bold">True Runways</span>
+                                            <span className="text-xs font-bold">Full Layout</span>
                                         </button>
                                     </div>
                                 </div>
@@ -1878,6 +1878,76 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                                             onChange={(e) => handleUpdateAppearance({ ...appearance, rainRadarOpacity: parseFloat(e.target.value) })}
                                                             className="w-full accent-amber-500 cursor-pointer h-1.5 bg-black/10 dark:bg-white/10 rounded-lg"
                                                         />
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* OpenAIP Aeronautical Charts Overlay */}
+                                        <div className="p-4 rounded-2xl bg-white/40 dark:bg-white/[0.03] backdrop-blur-sm border border-black/5 dark:border-white/5 space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <h4 className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
+                                                        <span>OpenAIP Aeronautical Charts</span>
+                                                        {appearance.openAipOverlay && (
+                                                            <span className="flex items-center gap-1 px-2 py-0.5 text-2xs font-bold rounded-full bg-sky-500/20 text-sky-600 dark:text-sky-400 border border-sky-500/30">
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
+                                                                Aero Vector
+                                                            </span>
+                                                        )}
+                                                    </h4>
+                                                    <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5">Airspaces, navaids, waypoints & airfields</p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleUpdateAppearance({ ...appearance, openAipOverlay: !appearance.openAipOverlay })}
+                                                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-black/10 dark:border-white/15 transition-all duration-200 ease-in-out backdrop-blur-md ${appearance.openAipOverlay
+                                                            ? 'bg-sky-500/85 dark:bg-sky-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_10px_rgba(14,165,233,0.3)]'
+                                                            : 'bg-black/15 dark:bg-white/15 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]'
+                                                        }`}
+                                                >
+                                                    <span
+                                                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-white/95 shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.8)] ring-0 transition duration-200 ease-in-out ${appearance.openAipOverlay ? 'translate-x-5' : 'translate-x-0'
+                                                            }`}
+                                                    />
+                                                </button>
+                                            </div>
+
+                                            {appearance.openAipOverlay && (
+                                                <div className="pt-2.5 border-t border-black/5 dark:border-white/5 space-y-2 animate-fade-in">
+                                                    <span className="block text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                                                        Layers
+                                                    </span>
+                                                    <div className="grid grid-cols-2 gap-1.5">
+                                                        {[
+                                                            { id: 'airspaces', label: 'Airspaces' },
+                                                            { id: 'airspaceLabels', label: 'Labels' },
+                                                            { id: 'navaids', label: 'Navaids' },
+                                                            { id: 'reportingPoints', label: 'Waypoints' },
+                                                            { id: 'airports', label: 'Airfields' }
+                                                        ].map(group => {
+                                                            const currentGroups = appearance.openAipGroups || ['airspaces', 'airspaceLabels', 'airports', 'navaids', 'reportingPoints'];
+                                                            const active = currentGroups.includes(group.id as any);
+                                                            return (
+                                                                <button
+                                                                    key={group.id}
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const next = active
+                                                                            ? currentGroups.filter(g => g !== group.id)
+                                                                            : [...currentGroups, group.id as any];
+                                                                        handleUpdateAppearance({ ...appearance, openAipGroups: next });
+                                                                    }}
+                                                                    className={`py-1 px-2 rounded-xl text-2xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                                                                        active
+                                                                            ? 'bg-sky-500/20 text-sky-600 dark:text-sky-400 border border-sky-500/30'
+                                                                            : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
+                                                                    }`}
+                                                                >
+                                                                    {group.label}
+                                                                </button>
+                                                            );
+                                                        })}
                                                     </div>
                                                 </div>
                                             )}

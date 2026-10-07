@@ -41,6 +41,25 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
         });
     };
 
+    const [hasOpenAipKey, setHasOpenAipKey] = useState<boolean>(true);
+    useEffect(() => {
+        try {
+            const raw = localStorage.getItem('wandergrid_workspace_settings');
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                setHasOpenAipKey(Boolean(parsed.openAipApiKey));
+            }
+        } catch {}
+    }, [isOpen]);
+
+    const toggleOpenAipGroup = (group: 'airspaces' | 'airspaceLabels' | 'airports' | 'navaids' | 'reportingPoints') => {
+        const currentGroups = settings.openAipGroups || ['airspaces', 'airspaceLabels', 'airports', 'navaids', 'reportingPoints'];
+        const nextGroups = currentGroups.includes(group)
+            ? currentGroups.filter(g => g !== group)
+            : [...currentGroups, group];
+        updateField('openAipGroups', nextGroups);
+    };
+
     const handleReset = () => {
         onChangeSettings({ ...DEFAULT_MAP_APPEARANCE });
     };
@@ -487,10 +506,10 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <h3 className="text-xs font-bold uppercase tracking-wider text-light-text dark:text-dark-text">Aerodrome Infrastructure</h3>
-                                        <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary">Physical runways & taxiways</p>
+                                        <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary">Runways, taxiways, gates, buildings & lighting</p>
                                     </div>
                                     <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                                        {settings.airportDetail === 'detailed' ? 'True Layout' : 'Beacon'}
+                                        {settings.airportDetail === 'detailed' ? 'Full Layout' : 'Beacon'}
                                     </span>
                                 </div>
 
@@ -515,8 +534,8 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                 : 'border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:border-black/20 dark:hover:border-white/20'
                                         }`}
                                     >
-                                        <p className="text-xs font-bold text-light-text dark:text-dark-text">True Runways</p>
-                                        <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5">Meter-accurate strips</p>
+                                        <p className="text-xs font-bold text-light-text dark:text-dark-text">Full Airport Layout</p>
+                                        <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5">Gates, terminals, lights & taxiways</p>
                                     </button>
                                 </div>
                             </div>
@@ -756,6 +775,76 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                     className="w-full accent-blue-500 cursor-pointer h-1.5 bg-zinc-800 rounded-lg"
                                                 />
                                             </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* OpenAIP Aeronautical Charts Overlay */}
+                                <div className="p-4 rounded-3xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <h4 className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
+                                                <span>OpenAIP Aeronautical Charts</span>
+                                                {settings.openAipOverlay && (
+                                                    <span className="flex items-center gap-1 px-2 py-0.5 text-2xs font-bold uppercase tracking-wider rounded-full bg-sky-500/20 text-sky-400 border border-sky-500/30">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
+                                                        Vector Tiles
+                                                    </span>
+                                                )}
+                                            </h4>
+                                            <p className="text-xs text-zinc-400 mt-0.5">Airspaces, VOR/NDB navaids, waypoints & airfields</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => updateField('openAipOverlay', !settings.openAipOverlay)}
+                                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                                                settings.openAipOverlay ? 'bg-sky-600' : 'bg-zinc-700'
+                                            }`}
+                                        >
+                                            <span
+                                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                                                    settings.openAipOverlay ? 'translate-x-5' : 'translate-x-0'
+                                                }`}
+                                            />
+                                        </button>
+                                    </div>
+
+                                    {settings.openAipOverlay && (
+                                        <div className="pt-2.5 border-t border-black/5 dark:border-white/5 space-y-2.5 animate-fade-in">
+                                            <span className="block text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                                                Active Overlay Layers
+                                            </span>
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                                                {[
+                                                    { id: 'airspaces', label: 'Airspaces' },
+                                                    { id: 'airspaceLabels', label: 'Labels' },
+                                                    { id: 'navaids', label: 'Navaids' },
+                                                    { id: 'reportingPoints', label: 'Waypoints' },
+                                                    { id: 'airports', label: 'Airfields' }
+                                                ].map(group => {
+                                                    const active = (settings.openAipGroups || ['airspaces', 'airspaceLabels', 'airports', 'navaids', 'reportingPoints']).includes(group.id as any);
+                                                    return (
+                                                        <button
+                                                            key={group.id}
+                                                            type="button"
+                                                            onClick={() => toggleOpenAipGroup(group.id as any)}
+                                                            className={`py-1.5 px-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                                                                active
+                                                                    ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30'
+                                                                    : 'bg-black/5 dark:bg-white/5 text-zinc-400 opacity-60 hover:opacity-100'
+                                                            }`}
+                                                        >
+                                                            {group.label}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+
+                                            {!hasOpenAipKey && (
+                                                <p className="text-2xs text-amber-500 dark:text-amber-400 font-medium pt-1">
+                                                    Note: Add your free OpenAIP API key in Settings → Integrations to enable vector tile fetching.
+                                                </p>
+                                            )}
                                         </div>
                                     )}
                                 </div>

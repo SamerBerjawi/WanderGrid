@@ -103,72 +103,89 @@ export const flightTracker = {
 
         if (provider === 'aerodatabox') {
             try {
-                // AeroDataBox API lookup
-                const url = `https://aerodatabox.p.rapidapi.com/flights/number/${cleanIata}/${date || new Date().toISOString().split('T')[0]}`;
-                const res = await fetch(url, {
-                    headers: {
-                        'x-rapidapi-key': apiKey,
-                        'x-rapidapi-host': 'aerodatabox.p.rapidapi.com'
+                // AeroDataBox API lookup via backend proxy (protects key and bypasses CORS)
+                const query = new URLSearchParams();
+                if (date) query.set('date', date);
+
+                const headers: Record<string, string> = {
+                    'X-AeroDataBox-Key': apiKey
+                };
+                try {
+                    const wsSettingsStr = typeof window !== 'undefined' ? localStorage.getItem('wandergrid_workspace_settings') : null;
+                    if (wsSettingsStr) {
+                        const parsed = JSON.parse(wsSettingsStr);
+                        if (parsed.aeroDataBoxEndpoint) {
+                            headers['X-AeroDataBox-Endpoint'] = parsed.aeroDataBoxEndpoint;
+                        }
                     }
-                });
-                if (res.ok) {
-                    const json = await res.json();
-                    if (Array.isArray(json) && json.length > 0) {
-                        const f = json[0];
-                        return {
-                            flight_date: date || new Date().toISOString().split('T')[0],
-                            flight_status: 'landed',
-                            departure: {
-                                airport: f.departure?.airport?.name || 'Departure Airport',
-                                timezone: f.departure?.airport?.timeZone || 'UTC',
-                                iata: f.departure?.airport?.iata || 'DEP',
-                                icao: f.departure?.airport?.icao || '',
-                                terminal: f.departure?.terminal || '',
-                                gate: f.departure?.gate || '',
-                                delay: 0,
-                                scheduled: f.departure?.scheduledTimeLocal || '',
-                                estimated: f.departure?.actualTimeLocal || '',
-                                actual: f.departure?.actualTimeLocal || '',
-                                estimated_runway: '',
-                                actual_runway: ''
-                            },
-                            arrival: {
-                                airport: f.arrival?.airport?.name || 'Arrival Airport',
-                                timezone: f.arrival?.airport?.timeZone || 'UTC',
-                                iata: f.arrival?.airport?.iata || 'ARR',
-                                icao: f.arrival?.airport?.icao || '',
-                                terminal: f.arrival?.terminal || '',
-                                gate: f.arrival?.gate || '',
-                                baggage: '',
-                                delay: 0,
-                                scheduled: f.arrival?.scheduledTimeLocal || '',
-                                estimated: f.arrival?.actualTimeLocal || '',
-                                actual: f.arrival?.actualTimeLocal || '',
-                                estimated_runway: '',
-                                actual_runway: ''
-                            },
-                            airline: {
-                                name: f.airline?.name || 'Airlines',
-                                iata: cleanIata.slice(0, 2),
-                                icao: ''
-                            },
-                            flight: {
-                                number: cleanIata.replace(/^[A-Z]+/g, ''),
-                                iata: cleanIata,
-                                icao: '',
-                                codeshared: null
-                            },
-                            aircraft: {
-                                registration: f.aircraft?.reg || 'N/A',
-                                iata: f.aircraft?.icao || 'N/A',
-                                model: f.aircraft?.model || 'Aircraft',
-                                country: ''
-                            }
-                        };
-                    }
+                } catch {}
+
+                const url = `/api/proxy/aerodatabox/flights/number/${encodeURIComponent(cleanIata)}${query.toString() ? `?${query.toString()}` : ''}`;
+                const res = await fetch(url, { headers });
+                const json = await readApiResponse(res);
+
+                if (Array.isArray(json) && json.length > 0) {
+                    const f = json[0];
+                    const depScheduled = f.departure?.scheduledTime?.local || f.departure?.scheduledTimeLocal || (date ? `${date}T12:00:00` : '');
+                    const depActual = f.departure?.actualTime?.local || f.departure?.revisedTime?.local || f.departure?.actualTimeLocal || depScheduled;
+                    const arrScheduled = f.arrival?.scheduledTime?.local || f.arrival?.scheduledTimeLocal || (date ? `${date}T14:30:00` : '');
+                    const arrActual = f.arrival?.actualTime?.local || f.arrival?.revisedTime?.local || f.arrival?.actualTimeLocal || arrScheduled;
+
+                    return {
+                        flight_date: date || (depScheduled ? depScheduled.split('T')[0] : new Date().toISOString().split('T')[0]),
+                        flight_status: (f.status || 'scheduled').toLowerCase(),
+                        departure: {
+                            airport: f.departure?.airport?.name || f.departure?.airport?.municipalityName || 'Departure Airport',
+                            timezone: f.departure?.airport?.timeZone || 'UTC',
+                            iata: f.departure?.airport?.iata || 'DEP',
+                            icao: f.departure?.airport?.icao || '',
+                            terminal: f.departure?.terminal || '',
+                            gate: f.departure?.gate || '',
+                            delay: 0,
+                            scheduled: depScheduled,
+                            estimated: depActual,
+                            actual: depActual,
+                            estimated_runway: '',
+                            actual_runway: ''
+                        },
+                        arrival: {
+                            airport: f.arrival?.airport?.name || f.arrival?.airport?.municipalityName || 'Arrival Airport',
+                            timezone: f.arrival?.airport?.timeZone || 'UTC',
+                            iata: f.arrival?.airport?.iata || 'ARR',
+                            icao: f.arrival?.airport?.icao || '',
+                            terminal: f.arrival?.terminal || '',
+                            gate: f.arrival?.gate || '',
+                            baggage: f.arrival?.baggageBelt || '',
+                            delay: 0,
+                            scheduled: arrScheduled,
+                            estimated: arrActual,
+                            actual: arrActual,
+                            estimated_runway: '',
+                            actual_runway: ''
+                        },
+                        airline: {
+                            name: f.airline?.name || 'Airlines',
+                            iata: f.airline?.iata || cleanIata.slice(0, 2),
+                            icao: f.airline?.icao || ''
+                        },
+                        flight: {
+                            number: f.number || cleanIata.replace(/^[A-Z]+/g, ''),
+                            iata: f.callSign || cleanIata,
+                            icao: f.airline?.icao ? `${f.airline.icao}${f.number || ''}` : '',
+                            codeshared: null
+                        },
+                        aircraft: {
+                            registration: f.aircraft?.reg || 'N/A',
+                            iata: f.aircraft?.modeS || f.aircraft?.icao || 'N/A',
+                            model: f.aircraft?.model || 'Aircraft',
+                            country: ''
+                        }
+                    };
                 }
-            } catch (e) {
+                throw new Error(`No matching AeroDataBox flights found for ${cleanIata}${date ? ` on ${date}` : ''}.`);
+            } catch (e: any) {
                 console.warn("AeroDataBox call failed", e);
+                throw e;
             }
         }
 

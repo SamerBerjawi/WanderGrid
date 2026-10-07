@@ -28,13 +28,20 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
     const [error, setError] = useState('');
     const [flightData, setFlightData] = useState<FlightStatusResponse | null>(null);
     const [aviationKey, setAviationKey] = useState('');
+    const [aeroDataBoxKey, setAeroDataBoxKey] = useState('');
     const [geminiKey, setGeminiKey] = useState('');
     const [provider, setProvider] = useState<'aviationstack' | 'adsbdb' | 'aerodatabox' | 'ai_guessing'>('ai_guessing');
 
     useEffect(() => {
         dataService.getWorkspaceSettings().then(s => {
             setAviationKey(s.aviationStackApiKey || '');
+            setAeroDataBoxKey(s.aeroDataBoxApiKey || '');
             setGeminiKey(s.googleGeminiApiKey || '');
+            if (s.aeroDataBoxApiKey) {
+                setProvider('aerodatabox');
+            } else if (s.aviationStackApiKey) {
+                setProvider('aviationstack');
+            }
         });
         if (isOpen) {
             if (suggestedFlight) {
@@ -58,7 +65,18 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
         setFlightData(null);
 
         try {
-            const activeKey = provider === 'aerodatabox' ? aviationKey : aviationKey; // Default/custom key mappings
+            let activeKey = '';
+            if (provider === 'aerodatabox') {
+                activeKey = aeroDataBoxKey;
+                if (!activeKey) {
+                    throw new Error("AeroDataBox API key is not configured. Please add your key in Settings.");
+                }
+            } else if (provider === 'aviationstack') {
+                activeKey = aviationKey;
+                if (!activeKey) {
+                    throw new Error("AviationStack API key is not configured. Please add your key in Settings.");
+                }
+            }
             const data = await flightTracker.getFlightStatus(activeKey, iata, flightDate, provider, geminiKey);
             setFlightData(data);
         } catch (e) {

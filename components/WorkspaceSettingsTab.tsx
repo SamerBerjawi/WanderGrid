@@ -22,7 +22,9 @@ import {
     DeviceMobile,
     HardDrive,
     WifiHigh,
-    WifiSlash
+    WifiSlash,
+    Database,
+    Compass
 } from '@phosphor-icons/react';
 import { Card, Button, Input, Select, Modal } from './ui';
 import { User, WorkspaceSettings, SavedConfig } from '../types';
@@ -274,6 +276,90 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                                     type="password"
                                     value={config.aviationStackApiKey || ''} 
                                     onChange={e => setConfig({...config, aviationStackApiKey: e.target.value})} 
+                                    className="!bg-gray-50 dark:!bg-black/20"
+                                />
+                            </div>
+
+                            {/* AeroDataBox API */}
+                            <div className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-white/10 rounded-2xl space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-xl bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 flex items-center justify-center">
+                                            <Database weight="duotone" className="text-xl" />
+                                        </div>
+                                        <div>
+                                            <h5 className="font-bold text-gray-900 dark:text-white text-sm">AeroDataBox API</h5>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400">Flight lookups, terminals, gates & aircraft models</p>
+                                        </div>
+                                    </div>
+                                    <a 
+                                        href="https://aerodatabox.com" 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="text-xs font-bold text-sky-500 hover:underline uppercase tracking-wider flex items-center gap-1"
+                                    >
+                                        Get Key <ArrowSquareOut weight="bold" className="text-xs" />
+                                    </a>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setConfig({ ...config, aeroDataBoxEndpoint: 'rapidapi' })}
+                                        className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                                            (config.aeroDataBoxEndpoint || 'rapidapi') === 'rapidapi'
+                                                ? 'bg-sky-500 text-white shadow-sm'
+                                                : 'bg-black/5 dark:bg-white/5 text-gray-500 dark:text-gray-400'
+                                        }`}
+                                    >
+                                        RapidAPI
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setConfig({ ...config, aeroDataBoxEndpoint: 'direct' })}
+                                        className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                                            config.aeroDataBoxEndpoint === 'direct'
+                                                ? 'bg-sky-500 text-white shadow-sm'
+                                                : 'bg-black/5 dark:bg-white/5 text-gray-500 dark:text-gray-400'
+                                        }`}
+                                    >
+                                        Direct
+                                    </button>
+                                </div>
+                                <Input 
+                                    placeholder={config.aeroDataBoxEndpoint === 'direct' ? "Paste AeroDataBox Direct Key..." : "Paste RapidAPI Key..."} 
+                                    type="password"
+                                    value={config.aeroDataBoxApiKey || ''} 
+                                    onChange={e => setConfig({...config, aeroDataBoxApiKey: e.target.value})} 
+                                    className="!bg-gray-50 dark:!bg-black/20"
+                                />
+                            </div>
+
+                            {/* OpenAIP Aeronautical API */}
+                            <div className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-white/10 rounded-2xl space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                                            <Compass weight="duotone" className="text-xl" />
+                                        </div>
+                                        <div>
+                                            <h5 className="font-bold text-gray-900 dark:text-white text-sm">OpenAIP Aeronautical</h5>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400">Airspaces, navaids & aerodromes vector overlay</p>
+                                        </div>
+                                    </div>
+                                    <a 
+                                        href="https://www.openaip.net" 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="text-xs font-bold text-emerald-500 hover:underline uppercase tracking-wider flex items-center gap-1"
+                                    >
+                                        Get Key <ArrowSquareOut weight="bold" className="text-xs" />
+                                    </a>
+                                </div>
+                                <Input 
+                                    placeholder="Paste OpenAIP API Key..." 
+                                    type="password"
+                                    value={config.openAipApiKey || ''} 
+                                    onChange={e => setConfig({...config, openAipApiKey: e.target.value})} 
                                     className="!bg-gray-50 dark:!bg-black/20"
                                 />
                             </div>

@@ -70,6 +70,10 @@ export interface MapAppearanceSettings {
     rainRadarOpacity?: number; // 0.2 to 1.0
     rainRadarColorScheme?: number; // 1 to 8
 
+    // OpenAIP Aeronautical Chart Overlay
+    openAipOverlay?: boolean;
+    openAipGroups?: ('airspaces' | 'airspaceLabels' | 'airports' | 'navaids' | 'reportingPoints')[];
+
     // Scratch Map Mode Filters & Toggles
     scratchCitySize?: 'off' | 'small' | 'medium' | 'large';
     showLivedCountries?: boolean; // Show/hide lived (current & past) residence highlights
@@ -92,6 +96,8 @@ export const DEFAULT_MAP_APPEARANCE: MapAppearanceSettings = {
     rainRadar: false,
     rainRadarOpacity: 0.85,
     rainRadarColorScheme: 2,
+    openAipOverlay: false,
+    openAipGroups: ['airspaces', 'airspaceLabels', 'airports', 'navaids', 'reportingPoints'],
     scratchCitySize: 'medium',
     showLivedCountries: true,
     showWishlistCountries: true,

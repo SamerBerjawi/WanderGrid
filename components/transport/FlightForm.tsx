@@ -27,6 +27,7 @@ interface FlightFormProps {
     totalSegments: number;
     tripType: 'Round Trip' | 'One-Way' | 'Multi-City';
     apiKey: string;
+    aeroDataBoxKey?: string;
     brandfetchKey: string;
     onUpdate: (updates: Partial<SegmentForm>) => void;
     onRemove?: () => void;
@@ -40,6 +41,7 @@ export const FlightForm: React.FC<FlightFormProps> = ({
     totalSegments,
     tripType,
     apiKey,
+    aeroDataBoxKey,
     brandfetchKey,
     onUpdate,
     onRemove,
@@ -77,17 +79,19 @@ export const FlightForm: React.FC<FlightFormProps> = ({
             return;
         }
 
-        if (!apiKey) {
-            setInlineError("AviationStack API key is not configured in workspace settings.");
-            return;
-        }
+        const activeProvider = aeroDataBoxKey ? 'aerodatabox' : (apiKey ? 'aviationstack' : 'adsbdb');
+        const activeKey = aeroDataBoxKey || apiKey || '';
 
         setIsAutoFilling(true);
         try {
-            const res = await fetch(`https://api.aviationstack.com/v1/flights?access_key=${apiKey}&flight_iata=${fullFlightIata}`);
-            const data = await res.json();
-            if (data.data && data.data.length > 0) {
-                const flight = data.data[0];
+            const flight = await flightTracker.getFlightStatus(
+                activeKey,
+                fullFlightIata,
+                segment.date,
+                activeProvider
+            );
+
+            if (flight) {
                 const updates: Partial<SegmentForm> = {
                     provider: flight.airline?.name || segment.provider,
                     origin: flight.departure?.iata || segment.origin,
@@ -101,12 +105,21 @@ export const FlightForm: React.FC<FlightFormProps> = ({
                 if (flight.departure?.scheduled) {
                     const [dDate, dTime] = flight.departure.scheduled.split('T');
                     updates.date = dDate;
-                    updates.time = dTime.substring(0, 5);
+                    if (dTime) updates.time = dTime.substring(0, 5);
                 }
                 if (flight.arrival?.scheduled) {
                     const [aDate, aTime] = flight.arrival.scheduled.split('T');
                     updates.arrivalDate = aDate;
-                    updates.arrivalTime = aTime.substring(0, 5);
+                    if (aTime) updates.arrivalTime = aTime.substring(0, 5);
+                }
+
+                // Explicit logistics fields from AeroDataBox/telemetry
+                if (flight.departure?.terminal) updates.departureTerminal = flight.departure.terminal;
+                if (flight.departure?.gate) updates.departureGate = flight.departure.gate;
+                if (flight.arrival?.terminal) updates.arrivalTerminal = flight.arrival.terminal;
+                if (flight.arrival?.gate) updates.arrivalGate = flight.arrival.gate;
+                if (flight.aircraft?.registration && flight.aircraft.registration !== 'N/A') {
+                    updates.tailNumber = flight.aircraft.registration;
                 }
 
                 const newDur = calculateDurationMinutes(
@@ -123,7 +136,7 @@ export const FlightForm: React.FC<FlightFormProps> = ({
                 setInlineError("No details found for this flight number and date.");
             }
         } catch (e: any) {
-            setInlineError(e?.message || "Flight lookup failed. Please verify your connection.");
+            setInlineError(e?.message || "Flight lookup failed. Please verify your connection or API key.");
         } finally {
             setIsAutoFilling(false);
         }

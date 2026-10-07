@@ -130,6 +130,9 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
       theme: 'light',
       workingDays: [1, 2, 3, 4, 5],
       aviationStackApiKey: '',
+      aeroDataBoxApiKey: '',
+      aeroDataBoxEndpoint: 'rapidapi',
+      openAipApiKey: '',
       brandfetchApiKey: '',
       googleGeminiApiKey: '',
       cartoApiKey: '',
@@ -1242,6 +1245,150 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                         aria-label="Toggle AviationStack API key visibility"
                       >
                         {visibleKeys['aviation'] ? <EyeSlash className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    }
+                  />
+                </div>
+              </div>
+            </GlassPanel>
+          </div>
+
+          {/* AeroDataBox API */}
+          <div className="flex flex-col overflow-hidden rounded-[28px]">
+            <GlassPanel
+              className="wg-glass-card shadow-glass-card flex flex-col h-full overflow-hidden border border-black/5 dark:border-white/10"
+              overrides={{ borderRadius: 28 }}
+              padding="0px"
+            >
+              <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px]">
+                <div className="p-5 border-b border-black/10 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-sky-500/10 via-indigo-500/5 to-transparent shrink-0">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-sky-500 to-indigo-600 text-white shadow-md shadow-sky-500/20 flex items-center justify-center shrink-0">
+                      <Database className="w-5 h-5" weight="duotone" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-light-text dark:text-dark-text tracking-tight">
+                        AeroDataBox API
+                      </h3>
+                      <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary font-medium truncate mt-0.5">
+                        Flight lookup, gates, terminals, schedules & aircraft telemetry
+                      </p>
+                    </div>
+                  </div>
+                  <a
+                    href="https://aerodatabox.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-mono font-bold text-sky-500 hover:underline flex items-center gap-1 shrink-0"
+                  >
+                    <span>DOCS</span>
+                    <ArrowSquareOut className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+
+                <div className="p-5 sm:p-6 space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="block text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
+                      Gateway Endpoint
+                    </label>
+                    <div className="p-1 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/5 grid grid-cols-2 gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setConfig({ ...config, aeroDataBoxEndpoint: 'rapidapi' })}
+                        className={`py-2 px-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                          (config.aeroDataBoxEndpoint || 'rapidapi') === 'rapidapi'
+                            ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm'
+                            : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
+                        }`}
+                      >
+                        RapidAPI
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfig({ ...config, aeroDataBoxEndpoint: 'direct' })}
+                        className={`py-2 px-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                          config.aeroDataBoxEndpoint === 'direct'
+                            ? 'bg-white dark:bg-dark-card text-primary-500 shadow-sm'
+                            : 'text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
+                        }`}
+                      >
+                        Direct (aerodatabox.com)
+                      </button>
+                    </div>
+                  </div>
+
+                  <Input
+                    label="API Key"
+                    type={visibleKeys['aerodatabox'] ? 'text' : 'password'}
+                    placeholder={config.aeroDataBoxEndpoint === 'direct' ? 'Paste AeroDataBox Direct Key...' : 'Paste RapidAPI Key...'}
+                    value={config.aeroDataBoxApiKey || ''}
+                    onChange={e => setConfig({ ...config, aeroDataBoxApiKey: e.target.value })}
+                    className="font-mono"
+                    rightElement={
+                      <button
+                        type="button"
+                        onClick={() => toggleKeyVisibility('aerodatabox')}
+                        className="text-light-text-secondary hover:text-light-text dark:hover:text-dark-text p-1 cursor-pointer"
+                        aria-label="Toggle AeroDataBox API key visibility"
+                      >
+                        {visibleKeys['aerodatabox'] ? <EyeSlash className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    }
+                  />
+                </div>
+              </div>
+            </GlassPanel>
+          </div>
+
+          {/* OpenAIP Aeronautical API */}
+          <div className="flex flex-col overflow-hidden rounded-[28px]">
+            <GlassPanel
+              className="wg-glass-card shadow-glass-card flex flex-col h-full overflow-hidden border border-black/5 dark:border-white/10"
+              overrides={{ borderRadius: 28 }}
+              padding="0px"
+            >
+              <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px]">
+                <div className="p-5 border-b border-black/10 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent shrink-0">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20 flex items-center justify-center shrink-0">
+                      <Compass className="w-5 h-5" weight="duotone" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-light-text dark:text-dark-text tracking-tight">
+                        OpenAIP Aeronautical Charts
+                      </h3>
+                      <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary font-medium truncate mt-0.5">
+                        Airspaces, navigation aids, waypoints & aerodromes overlay
+                      </p>
+                    </div>
+                  </div>
+                  <a
+                    href="https://www.openaip.net"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-mono font-bold text-emerald-500 hover:underline flex items-center gap-1 shrink-0"
+                  >
+                    <span>DOCS</span>
+                    <ArrowSquareOut className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+
+                <div className="p-5 sm:p-6">
+                  <Input
+                    label="API Key"
+                    type={visibleKeys['openaip'] ? 'text' : 'password'}
+                    placeholder="Paste OpenAIP API Key..."
+                    value={config.openAipApiKey || ''}
+                    onChange={e => setConfig({ ...config, openAipApiKey: e.target.value })}
+                    className="font-mono"
+                    rightElement={
+                      <button
+                        type="button"
+                        onClick={() => toggleKeyVisibility('openaip')}
+                        className="text-light-text-secondary hover:text-light-text dark:hover:text-dark-text p-1 cursor-pointer"
+                        aria-label="Toggle OpenAIP API key visibility"
+                      >
+                        {visibleKeys['openaip'] ? <EyeSlash className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     }
                   />

@@ -303,6 +303,9 @@ export interface WorkspaceSettings {
     theme: 'light' | 'dark' | 'auto';
     workingDays: number[]; // 0=Sun, 1=Mon...
     aviationStackApiKey?: string;
+    aeroDataBoxApiKey?: string;
+    aeroDataBoxEndpoint?: 'rapidapi' | 'direct';
+    openAipApiKey?: string;
     brandfetchApiKey?: string;
     googleGeminiApiKey?: string; // AI Key
     cartoApiKey?: string; // CARTO Maps Key

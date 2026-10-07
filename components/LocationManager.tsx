@@ -1060,12 +1060,16 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
                     } else {
                         finalTransports.push({
                             id: `tr-${Math.random().toString(36).substring(2, 9)}`,
+                            itineraryId: '',
+                            confirmationCode: 'CONF-NEW',
                             origin: seg.startCity,
                             destination: seg.destination,
                             departureDate: seg.date,
+                            departureTime: '12:00',
                             arrivalDate: seg.date,
+                            arrivalTime: '14:00',
                             mode: seg.transportMode,
-                            type: seg.transportMode,
+                            type: 'One-Way',
                             provider: seg.transportMode === 'Train' ? 'Railway Express' : seg.transportMode === 'Bus' ? 'Coach' : 'Rental Partner',
                             identifier: 'CONF-NEW',
                             cost: 0,

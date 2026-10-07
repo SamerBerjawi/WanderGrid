@@ -54,6 +54,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [currencySymbol, setCurrencySymbol] = useState('$');
     const [apiKey, setApiKey] = useState<string>('');
+    const [aeroDataBoxKey, setAeroDataBoxKey] = useState<string>('');
     const [brandfetchKey, setBrandfetchKey] = useState<string>('');
 
     const [bookingCost, setBookingCost] = useState<string>('');
@@ -97,6 +98,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
             if (s) {
                 if (s.currency) setCurrencySymbol(getCurrencySymbol(s.currency));
                 if (s.aviationStackApiKey) setApiKey(s.aviationStackApiKey);
+                if (s.aeroDataBoxApiKey) setAeroDataBoxKey(s.aeroDataBoxApiKey);
                 if (s.brandfetchApiKey) setBrandfetchKey(s.brandfetchApiKey);
                 if (s.defaultLandTransportMethod && (!initialData || initialData.length === 0)) {
                     setMode(s.defaultLandTransportMethod);
@@ -566,6 +568,7 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
                             totalSegments={segments.length}
                             tripType={tripType}
                             apiKey={apiKey}
+                            aeroDataBoxKey={aeroDataBoxKey}
                             brandfetchKey={brandfetchKey}
                             onUpdate={updates => updateSegment(idx, updates)}
                             onRemove={() => removeSegment(idx)}
