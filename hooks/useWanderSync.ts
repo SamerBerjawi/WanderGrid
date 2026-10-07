@@ -129,9 +129,17 @@ export function useWanderSync<T>(
             executeFetch(true).catch(() => {});
         };
 
+        const handleSettingsUpdate = () => {
+            if (queryKey === 'settings') {
+                executeFetch(true).catch(() => {});
+            }
+        };
+
         window.addEventListener('wandergrid_db_updated', handleDbUpdate);
+        window.addEventListener('wandergrid_settings_updated', handleSettingsUpdate);
         return () => {
             window.removeEventListener('wandergrid_db_updated', handleDbUpdate);
+            window.removeEventListener('wandergrid_settings_updated', handleSettingsUpdate);
         };
     }, [executeFetch, queryKey, isEnabled]);
 

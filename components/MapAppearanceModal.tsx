@@ -42,12 +42,14 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
     };
 
     const [hasOpenAipKey, setHasOpenAipKey] = useState<boolean>(true);
+    const [cartoKey, setCartoKey] = useState<string>('');
     useEffect(() => {
         try {
-            const raw = localStorage.getItem('wandergrid_workspace_settings');
+            const raw = localStorage.getItem('wandergrid_workspace_settings') || localStorage.getItem('wandergrid_settings');
             if (raw) {
                 const parsed = JSON.parse(raw);
                 setHasOpenAipKey(Boolean(parsed.openAipApiKey));
+                setCartoKey(parsed.cartoApiKey ? String(parsed.cartoApiKey).trim() : '');
             }
         } catch {}
     }, [isOpen]);
@@ -254,7 +256,18 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                             {/* BASEMAP TILES */}
                             <div>
                                 <div className="flex items-center justify-between mb-3">
-                                    <h3 className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase">Cartographic Basemap</h3>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase">Cartographic Basemap</h3>
+                                        {cartoKey ? (
+                                            <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                                CARTO Active
+                                            </span>
+                                        ) : (
+                                            <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
+                                                Zero-Key Canvas
+                                            </span>
+                                        )}
+                                    </div>
                                     <span className="text-xs font-medium text-light-text-secondary dark:text-dark-text-secondary">4 Curated Tilesets ({isDark ? 'Dark Mode' : 'Light Mode'})</span>
                                 </div>
 
@@ -543,7 +556,10 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
 
                                 <div className="grid grid-cols-2 gap-2.5">
                                     <button
-                                        onClick={() => updateField('airportDetail', 'standard')}
+                                        onClick={() => {
+                                            try { localStorage.setItem('wandergrid_user_customized_airport_detail', 'true'); } catch {}
+                                            updateField('airportDetail', 'standard');
+                                        }}
                                         className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
                                             settings.airportDetail === 'standard'
                                                 ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30 text-light-text dark:text-dark-text'
@@ -555,7 +571,10 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                     </button>
 
                                     <button
-                                        onClick={() => updateField('airportDetail', 'detailed')}
+                                        onClick={() => {
+                                            try { localStorage.setItem('wandergrid_user_customized_airport_detail', 'true'); } catch {}
+                                            updateField('airportDetail', 'detailed');
+                                        }}
                                         className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
                                             settings.airportDetail === 'detailed'
                                                 ? 'border-blue-500 bg-blue-500/10 ring-2 ring-blue-500/30 text-light-text dark:text-dark-text'

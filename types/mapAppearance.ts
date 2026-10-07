@@ -95,7 +95,7 @@ export interface MapAppearanceSettings {
 
 export const DEFAULT_MAP_APPEARANCE: MapAppearanceSettings = {
     basemap: 'default',
-    airportDetail: 'standard',
+    airportDetail: 'detailed',
     projection: 'flat',
     airportSize: 'medium',
     airportMode: 'frequency',
@@ -132,6 +132,9 @@ export const loadMapAppearanceSettings = (): MapAppearanceSettings => {
         const stored = localStorage.getItem(MAP_APPEARANCE_STORAGE_KEY);
         if (stored) {
             const parsed = JSON.parse(stored);
+            if (parsed.airportDetail === 'standard' && !localStorage.getItem('wandergrid_user_customized_airport_detail')) {
+                parsed.airportDetail = 'detailed';
+            }
             return { ...DEFAULT_MAP_APPEARANCE, ...parsed };
         }
     } catch (e) {

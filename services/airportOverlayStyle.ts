@@ -19,9 +19,8 @@ const LIGHT_TAXIWAY_FILL = '#b8c5d6';        // Distinct cool concrete
 const LIGHT_TAXIWAY_OUTLINE = '#64748b';     // Slate-500
 const LIGHT_TAXIWAY_CENTERLINE = '#f59e0b';  // Amber-500 guidance stripe
 
-// Runways: Heavy dark asphalt for maximum contrast against light maps (>9:1 contrast)
-const LIGHT_RUNWAY_FILL = '#334155';         // Slate-700 asphalt
-const LIGHT_RUNWAY_OUTLINE = '#1e293b';      // Slate-800 crisp perimeter
+const LIGHT_RUNWAY_FILL = '#1e293b';         // Deep slate asphalt
+const LIGHT_RUNWAY_OUTLINE = '#334155';      // Clean subtle perimeter border (no black lines)
 
 // Markings & Paint: Brilliant white on dark asphalt
 const LIGHT_MARKING = '#ffffff';
@@ -358,7 +357,7 @@ export const createAirportOverlayLayers = (isDark: boolean): LayerSpecification[
           16, ['case', ['any', ['has', 'width_m'], ['has', 'width']], ['+', ['/', RUNWAY_WIDTH_VALUE, 3.28], 6], 31],
           20, ['case', ['any', ['has', 'width_m'], ['has', 'width']], ['+', ['*', 1.22, RUNWAY_WIDTH_VALUE], 8], 99],
         ],
-        'line-opacity': ['interpolate', ['linear'], ['zoom'], 7, 0, 8, 1],
+        'line-opacity': 0,
       },
     },
     // 10. Runway line fill

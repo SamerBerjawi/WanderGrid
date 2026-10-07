@@ -1343,6 +1343,7 @@ class DataService {
     safeStorage.setItem('wandergrid_settings', JSON.stringify(settings));
     try {
       window.dispatchEvent(new CustomEvent('wandergrid_settings_updated', { detail: settings }));
+      window.dispatchEvent(new CustomEvent('wandergrid_db_updated', { detail: { key: 'settings' } }));
     } catch (e) {}
     await this.fetch('/settings', { method: 'PUT', body: JSON.stringify(settings) }); 
   }

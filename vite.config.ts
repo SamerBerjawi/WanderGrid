@@ -58,13 +58,13 @@ export default defineConfig(({ mode }) => {
                 },
               },
               {
-                urlPattern: /^https:\/\/[a-c]\.basemaps\.cartocdn\.com\//,
+                urlPattern: /^https:\/\/[a-d]\.basemaps\.cartocdn\.com\//,
                 handler: 'CacheFirst',
                 options: {
-                  cacheName: 'carto-basemap-tiles',
+                  cacheName: 'carto-basemap-tiles-v2',
                   expiration: { maxEntries: 600, maxAgeSeconds: 60 * 60 * 24 * 30 },
                   cacheableResponse: {
-                    statuses: [0, 200],
+                    statuses: [200],
                   },
                 },
               },

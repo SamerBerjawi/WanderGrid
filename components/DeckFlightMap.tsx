@@ -56,7 +56,8 @@ import {
     MagnifyingGlassMinus as ZoomOut,
     List,
     Sparkle,
-    Bus
+    Bus,
+    SlidersHorizontal
 } from '@phosphor-icons/react';
 import { Trip, CountryResidenceStatus, PredefinedMapMode, toggleCountryResidenceStatus, WorkspaceSettings } from '../types';
 import { useWanderSync } from '../hooks/useWanderSync';
@@ -79,6 +80,7 @@ import { formatDate } from '../utils/formatters';
 import GlassPanel from './glass/GlassPanel';
 import { globeHorizonCullExtension } from './GlobeHorizonCullExtension';
 import { GlobeAtmosphericBackground } from './GlobeAtmosphericBackground';
+import { MapAppearanceModal } from './MapAppearanceModal';
 
 // --- Country Matching Helper for Scratch Map & Overlays ---
 let geoJsonMemoryCache: any = null;
@@ -307,7 +309,24 @@ export const createMapLibreStyle = (
     openAipKey?: string,
     openAipGroups?: OpenAipOverlayGroup[]
 ): maplibregl.StyleSpecification => {
-    const keyParam = cartoApiKey ? `?key=${encodeURIComponent(cartoApiKey)}` : '';
+    // Synchronously resolve and sanitize CARTO API key from arguments or localStorage
+    let resolvedCartoKey = (cartoApiKey || '').trim();
+    if (!resolvedCartoKey && typeof localStorage !== 'undefined') {
+        try {
+            const raw = localStorage.getItem('wandergrid_workspace_settings') || localStorage.getItem('wandergrid_settings');
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (parsed.cartoApiKey && typeof parsed.cartoApiKey === 'string') {
+                    resolvedCartoKey = parsed.cartoApiKey.trim();
+                }
+            }
+        } catch {}
+    }
+    resolvedCartoKey = resolvedCartoKey.replace(/^['"]|['"]$/g, '').trim();
+    if (resolvedCartoKey.startsWith('key=')) resolvedCartoKey = resolvedCartoKey.slice(4).trim();
+    if (resolvedCartoKey.startsWith('?key=')) resolvedCartoKey = resolvedCartoKey.slice(5).trim();
+
+    const keyParam = resolvedCartoKey ? `?key=${encodeURIComponent(resolvedCartoKey)}&v=2` : '';
     const getCartoTiles = (style: 'dark_all' | 'light_all' | 'voyager') => [
         `https://a.basemaps.cartocdn.com/rastertiles/${style}/{z}/{x}/{y}.png${keyParam}`,
         `https://b.basemaps.cartocdn.com/rastertiles/${style}/{z}/{x}/{y}.png${keyParam}`,
@@ -341,14 +360,36 @@ export const createMapLibreStyle = (
             attribution = 'NASA EOSDIS GIBS';
             break;
         case 'vibrant':
-            tiles = getCartoTiles('voyager');
+            if (resolvedCartoKey) {
+                tiles = getCartoTiles('voyager');
+            } else {
+                tiles = [
+                    'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
+                ];
+                maxzoom = 19;
+                attribution = '© OpenStreetMap contributors';
+            }
             break;
         case 'snow':
-            tiles = getCartoTiles('light_all');
+            if (resolvedCartoKey) {
+                tiles = getCartoTiles('light_all');
+            } else {
+                tiles = ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}'];
+                maxzoom = 16;
+                attribution = 'Esri, HERE, Garmin, © OpenStreetMap contributors';
+            }
             break;
         case 'onyx':
         default:
-            tiles = getCartoTiles('dark_all');
+            if (resolvedCartoKey) {
+                tiles = getCartoTiles('dark_all');
+            } else {
+                tiles = ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'];
+                maxzoom = 16;
+                attribution = 'Esri, HERE, Garmin, © OpenStreetMap contributors';
+            }
             break;
     }
 
@@ -553,7 +594,34 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         []
     );
 
-    // Map Appearance State Management
+    // Synchronous & Reactive CARTO API Key Management
+    const [dynamicCartoKey, setDynamicCartoKey] = useState<string>(() => {
+        if (typeof localStorage === 'undefined') return '';
+        try {
+            const raw = localStorage.getItem('wandergrid_workspace_settings') || localStorage.getItem('wandergrid_settings');
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                return (parsed.cartoApiKey || '').trim();
+            }
+        } catch {}
+        return '';
+    });
+
+    useEffect(() => {
+        const handleSettingsUpdate = (e: Event) => {
+            const detail = (e as CustomEvent)?.detail;
+            if (detail?.cartoApiKey !== undefined) {
+                setDynamicCartoKey(String(detail.cartoApiKey).trim());
+            }
+        };
+        window.addEventListener('wandergrid_settings_updated', handleSettingsUpdate);
+        return () => window.removeEventListener('wandergrid_settings_updated', handleSettingsUpdate);
+    }, []);
+
+    const effectiveCartoKey = (workspaceSettings?.cartoApiKey || dynamicCartoKey).trim();
+
+    // Map Appearance State Management & Customizer Modal
+    const [isAppearanceModalOpen, setIsAppearanceModalOpen] = useState<boolean>(false);
     const [localAppearance, setLocalAppearance] = useState<MapAppearanceSettings>(() => {
         return appearanceSettingsProp || loadMapAppearanceSettings();
     });
@@ -565,6 +633,14 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     }, [appearanceSettingsProp]);
 
     const activeAppearance = appearanceSettingsProp || localAppearance;
+
+    const handleAppearanceChange = (nextSettings: MapAppearanceSettings) => {
+        setLocalAppearance(nextSettings);
+        saveMapAppearanceSettings(nextSettings);
+        if (onChangeAppearanceSettings) {
+            onChangeAppearanceSettings(nextSettings);
+        }
+    };
 
     // Projection & Layer Resolution
     const effectiveProjection = projectionProp !== undefined
@@ -1831,7 +1907,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         const style = createMapLibreStyle(
             currentLayer,
             isDark,
-            workspaceSettings?.cartoApiKey,
+            effectiveCartoKey,
             isGlobe,
             isDetailedAirports,
             isOpenAipOverlay,
@@ -2035,7 +2111,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         const nextStyle = createMapLibreStyle(
             currentLayer,
             isDark,
-            workspaceSettings?.cartoApiKey,
+            effectiveCartoKey,
             isGlobe,
             isDetailedAirports,
             isOpenAipOverlay,
@@ -2071,7 +2147,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     }, [
         currentLayer,
         isDark,
-        workspaceSettings?.cartoApiKey,
+        effectiveCartoKey,
         workspaceSettings?.openAipApiKey,
         effectiveProjection,
         activeAppearance.airportDetail,
@@ -2468,6 +2544,24 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             {/* MapLibre GL 60 FPS Canvas with Interleaved Deck.gl Engine */}
             <div ref={mapContainerRef} className="w-full h-full relative z-10 transition-opacity duration-300 ease-out" />
 
+            {/* Top-Right Floating "Map Layers" Quick Config Pill */}
+            <div className="absolute top-3 right-3 z-20 pointer-events-auto animate-fade-in">
+                <GlassPanel
+                    padding="2px"
+                    overrides={{ borderRadius: 999 }}
+                    className="wg-glass-pill shadow-glass-modal"
+                >
+                    <button
+                        onClick={() => setIsAppearanceModalOpen(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 cursor-pointer text-xs font-bold text-light-text dark:text-dark-text hover:text-primary-500 dark:hover:text-primary-400 transition-colors active:scale-95 rounded-full"
+                        title="Configure Basemaps, Flights, Radar, Terrain & Overlays"
+                    >
+                        <SlidersHorizontal className="w-3.5 h-3.5 text-primary-500" weight="bold" />
+                        <span className="hidden sm:inline">Map Layers</span>
+                    </button>
+                </GlassPanel>
+            </div>
+
             {/* Zoom & View Navigation Controls with Liquid Glass (Bottom Left) */}
             <div className={`absolute bottom-3 md:bottom-6 z-20 flex flex-col gap-2 pointer-events-auto transition-all duration-300 ${isEmbedded ? 'left-3' : (sidebarCollapsed ? 'left-3 md:left-28' : 'left-3 md:left-80')}`}>
                 <GlassPanel
@@ -2503,6 +2597,14 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                             title="Fit View to All Routes"
                         >
                             <Scan className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={() => setIsAppearanceModalOpen(true)}
+                            className="w-10 h-10 flex items-center justify-center text-primary-500 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer transition-colors active:scale-95"
+                            title="Map Layers, Basemaps, Flights & Telemetry Settings"
+                            aria-label="Open Map Appearance Settings"
+                        >
+                            <SlidersHorizontal className="w-4 h-4" weight="bold" />
                         </button>
                         {effectiveProjection === 'globe' && (
                             <button
@@ -3217,6 +3319,14 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     )}
                 </div>
             )}
+
+            {/* Map Appearance, Cartography & Telemetry Customizer Drawer/Modal */}
+            <MapAppearanceModal
+                isOpen={isAppearanceModalOpen}
+                onClose={() => setIsAppearanceModalOpen(false)}
+                settings={activeAppearance}
+                onChangeSettings={handleAppearanceChange}
+            />
         </div>
     );
 };

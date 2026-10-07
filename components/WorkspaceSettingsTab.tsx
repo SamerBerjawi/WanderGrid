@@ -419,7 +419,20 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
                                     placeholder="Optional CARTO API Key..." 
                                     type="password"
                                     value={config.cartoApiKey || ''} 
-                                    onChange={e => setConfig({...config, cartoApiKey: e.target.value})} 
+                                    onChange={e => {
+                                        const val = e.target.value;
+                                        const next = { ...config, cartoApiKey: val };
+                                        setConfig(next);
+                                        try {
+                                            const raw = localStorage.getItem('wandergrid_workspace_settings') || localStorage.getItem('wandergrid_settings');
+                                            const existing = raw ? JSON.parse(raw) : {};
+                                            existing.cartoApiKey = val.trim();
+                                            localStorage.setItem('wandergrid_workspace_settings', JSON.stringify(existing));
+                                            localStorage.setItem('wandergrid_settings', JSON.stringify(existing));
+                                            window.dispatchEvent(new CustomEvent('wandergrid_settings_updated', { detail: existing }));
+                                            window.dispatchEvent(new CustomEvent('wandergrid_db_updated', { detail: { key: 'settings' } }));
+                                        } catch {}
+                                    }} 
                                     className="!bg-gray-50 dark:!bg-black/20"
                                 />
                             </div>

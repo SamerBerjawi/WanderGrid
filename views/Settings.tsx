@@ -1493,7 +1493,20 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                     type={visibleKeys['carto'] ? 'text' : 'password'}
                     placeholder="Paste CARTO API Key..."
                     value={config.cartoApiKey || ''}
-                    onChange={e => setConfig({ ...config, cartoApiKey: e.target.value })}
+                    onChange={e => {
+                      const val = e.target.value;
+                      const next = { ...config, cartoApiKey: val };
+                      setConfig(next);
+                      try {
+                        const raw = localStorage.getItem('wandergrid_workspace_settings') || localStorage.getItem('wandergrid_settings');
+                        const existing = raw ? JSON.parse(raw) : {};
+                        existing.cartoApiKey = val.trim();
+                        localStorage.setItem('wandergrid_workspace_settings', JSON.stringify(existing));
+                        localStorage.setItem('wandergrid_settings', JSON.stringify(existing));
+                        window.dispatchEvent(new CustomEvent('wandergrid_settings_updated', { detail: existing }));
+                        window.dispatchEvent(new CustomEvent('wandergrid_db_updated', { detail: { key: 'settings' } }));
+                      } catch {}
+                    }}
                     className="font-mono"
                     rightElement={
                       <button
