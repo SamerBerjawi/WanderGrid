@@ -31,19 +31,11 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
 }) => {
     const isDark = useDarkMode();
     const [activeTab, setActiveTab] = useState<'atlas' | 'aviation' | 'atmosphere'>('atlas');
-
-    if (!isOpen) return null;
-
-    const updateField = <K extends keyof MapAppearanceSettings>(field: K, value: MapAppearanceSettings[K]) => {
-        onChangeSettings({
-            ...settings,
-            [field]: value
-        });
-    };
-
     const [hasOpenAipKey, setHasOpenAipKey] = useState<boolean>(true);
     const [cartoKey, setCartoKey] = useState<string>('');
+
     useEffect(() => {
+        if (!isOpen) return;
         try {
             const raw = localStorage.getItem('wandergrid_workspace_settings') || localStorage.getItem('wandergrid_settings');
             if (raw) {
@@ -53,6 +45,15 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
             }
         } catch {}
     }, [isOpen]);
+
+    if (!isOpen) return null;
+
+    const updateField = <K extends keyof MapAppearanceSettings>(field: K, value: MapAppearanceSettings[K]) => {
+        onChangeSettings({
+            ...settings,
+            [field]: value
+        });
+    };
 
     const toggleOpenAipGroup = (group: 'airspaces' | 'airspaceLabels' | 'airports' | 'navaids' | 'reportingPoints') => {
         const currentGroups = settings.openAipGroups || ['airspaces', 'airspaceLabels', 'airports', 'navaids', 'reportingPoints'];
