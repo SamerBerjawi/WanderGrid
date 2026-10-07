@@ -6,16 +6,17 @@ export const getEffectiveBasemap = (
     defaultLight?: string,
     defaultDark?: string
 ): 'onyx' | 'citylights' | 'satellite' | 'snow' | 'vibrant' | 'ocean' => {
-    // If an explicit layer style other than 'default' is requested, respect it
+    // If an explicit layer style other than 'default' is requested, respect it unconditionally
     if (basemap && basemap !== 'default') {
-        if (basemap === 'satellite') return 'satellite';
-        if (isDark) {
-            if (basemap === 'citylights') return 'citylights';
-            if (basemap === 'onyx') return 'onyx';
-        } else {
-            if (basemap === 'vibrant') return 'vibrant';
-            if (basemap === 'ocean') return 'ocean';
-            if (basemap === 'snow') return 'snow';
+        if (
+            basemap === 'onyx' ||
+            basemap === 'citylights' ||
+            basemap === 'satellite' ||
+            basemap === 'snow' ||
+            basemap === 'vibrant' ||
+            basemap === 'ocean'
+        ) {
+            return basemap;
         }
     }
 
@@ -39,10 +40,16 @@ export const getEffectiveBasemap = (
     if (isDark) {
         if (resolvedDark === 'citylights') return 'citylights';
         if (resolvedDark === 'satellite') return 'satellite';
+        if (resolvedDark === 'ocean') return 'ocean';
+        if (resolvedDark === 'snow') return 'snow';
+        if (resolvedDark === 'vibrant') return 'vibrant';
         return 'onyx';
     } else {
         if (resolvedLight === 'vibrant') return 'vibrant';
         if (resolvedLight === 'ocean') return 'ocean';
+        if (resolvedLight === 'satellite') return 'satellite';
+        if (resolvedLight === 'citylights') return 'citylights';
+        if (resolvedLight === 'onyx') return 'onyx';
         return 'snow';
     }
 };

@@ -298,6 +298,82 @@ const useDarkMode = () => {
     return isDark;
 };
 
+export const getBasemapTileConfig = (
+    effectiveLayer: 'onyx' | 'citylights' | 'satellite' | 'snow' | 'vibrant' | 'ocean',
+    resolvedCartoKey?: string
+) => {
+    let key = (resolvedCartoKey || '').trim().replace(/^['"]|['"]$/g, '');
+    if (key.startsWith('key=')) key = key.slice(4).trim();
+    if (key.startsWith('?key=')) key = key.slice(5).trim();
+    const keyParam = key ? `?key=${encodeURIComponent(key)}` : '';
+
+    const getCartoTiles = (style: 'dark_all' | 'light_all' | 'voyager') => [
+        `https://a.basemaps.cartocdn.com/rastertiles/${style}/{z}/{x}/{y}.png${keyParam}`,
+        `https://b.basemaps.cartocdn.com/rastertiles/${style}/{z}/{x}/{y}.png${keyParam}`,
+        `https://c.basemaps.cartocdn.com/rastertiles/${style}/{z}/{x}/{y}.png${keyParam}`,
+        `https://d.basemaps.cartocdn.com/rastertiles/${style}/{z}/{x}/{y}.png${keyParam}`
+    ];
+
+    let tiles: string[] = [];
+    let maxzoom = 20;
+    let attribution = '© CARTO, © OpenStreetMap contributors';
+
+    switch (effectiveLayer) {
+        case 'satellite':
+            tiles = [
+                'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                'https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+            ];
+            maxzoom = 19;
+            attribution = 'Source: Esri, Maxar, Earthstar Geographics';
+            break;
+        case 'ocean':
+            tiles = ['https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}'];
+            maxzoom = 10;
+            attribution = 'Source: Esri, GEBCO, NOAA';
+            break;
+        case 'citylights':
+            tiles = ['https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_Black_Marble/default/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.png'];
+            maxzoom = 8;
+            attribution = 'NASA EOSDIS GIBS';
+            break;
+        case 'vibrant':
+            if (key) {
+                tiles = getCartoTiles('voyager');
+            } else {
+                tiles = [
+                    'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
+                ];
+                maxzoom = 19;
+                attribution = '© OpenStreetMap contributors';
+            }
+            break;
+        case 'snow':
+            if (key) {
+                tiles = getCartoTiles('light_all');
+            } else {
+                tiles = ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}'];
+                maxzoom = 16;
+                attribution = 'Esri, HERE, Garmin, © OpenStreetMap contributors';
+            }
+            break;
+        case 'onyx':
+        default:
+            if (key) {
+                tiles = getCartoTiles('dark_all');
+            } else {
+                tiles = ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'];
+                maxzoom = 16;
+                attribution = 'Esri, HERE, Garmin, © OpenStreetMap contributors';
+            }
+            break;
+    }
+
+    return { tiles, maxzoom, attribution };
+};
+
 // MapLibre Style Specification Generator
 export const createMapLibreStyle = (
     layer: string,
@@ -326,75 +402,13 @@ export const createMapLibreStyle = (
     if (resolvedCartoKey.startsWith('key=')) resolvedCartoKey = resolvedCartoKey.slice(4).trim();
     if (resolvedCartoKey.startsWith('?key=')) resolvedCartoKey = resolvedCartoKey.slice(5).trim();
 
-    const keyParam = resolvedCartoKey ? `?key=${encodeURIComponent(resolvedCartoKey)}&v=2` : '';
-    const getCartoTiles = (style: 'dark_all' | 'light_all' | 'voyager') => [
-        `https://a.basemaps.cartocdn.com/rastertiles/${style}/{z}/{x}/{y}.png${keyParam}`,
-        `https://b.basemaps.cartocdn.com/rastertiles/${style}/{z}/{x}/{y}.png${keyParam}`,
-        `https://c.basemaps.cartocdn.com/rastertiles/${style}/{z}/{x}/{y}.png${keyParam}`,
-        `https://d.basemaps.cartocdn.com/rastertiles/${style}/{z}/{x}/{y}.png${keyParam}`
-    ];
-
-    let tiles: string[] = [];
-    let maxzoom = 20;
-    let attribution = '© CARTO, © OpenStreetMap contributors';
-
     const effectiveLayer = getEffectiveBasemap(layer, isDark);
-
-    switch (effectiveLayer) {
-        case 'satellite':
-            tiles = [
-                'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-                'https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-            ];
-            maxzoom = 19;
-            attribution = 'Source: Esri, Maxar, Earthstar Geographics';
-            break;
-        case 'ocean':
-            tiles = ['https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}'];
-            maxzoom = 10;
-            attribution = 'Source: Esri, GEBCO, NOAA';
-            break;
-        case 'citylights':
-            tiles = ['https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_Black_Marble/default/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.png'];
-            maxzoom = 8;
-            attribution = 'NASA EOSDIS GIBS';
-            break;
-        case 'vibrant':
-            if (resolvedCartoKey) {
-                tiles = getCartoTiles('voyager');
-            } else {
-                tiles = [
-                    'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
-                ];
-                maxzoom = 19;
-                attribution = '© OpenStreetMap contributors';
-            }
-            break;
-        case 'snow':
-            if (resolvedCartoKey) {
-                tiles = getCartoTiles('light_all');
-            } else {
-                tiles = ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}'];
-                maxzoom = 16;
-                attribution = 'Esri, HERE, Garmin, © OpenStreetMap contributors';
-            }
-            break;
-        case 'onyx':
-        default:
-            if (resolvedCartoKey) {
-                tiles = getCartoTiles('dark_all');
-            } else {
-                tiles = ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'];
-                maxzoom = 16;
-                attribution = 'Esri, HERE, Garmin, © OpenStreetMap contributors';
-            }
-            break;
-    }
+    const { tiles, maxzoom, attribution } = getBasemapTileConfig(effectiveLayer, resolvedCartoKey);
+    const basemapSourceId = `raster-basemap-source-${effectiveLayer}`;
+    const isLightBasemap = effectiveLayer === 'snow' || effectiveLayer === 'vibrant';
 
     const sources: Record<string, any> = {
-        'raster-basemap-source': {
+        [basemapSourceId]: {
             type: 'raster',
             tiles,
             tileSize: 256,
@@ -424,14 +438,14 @@ export const createMapLibreStyle = (
                 id: 'background-base-layer',
                 type: 'background' as const,
                 paint: {
-                    'background-color': isDark ? '#05070f' : '#f0f4f8'
+                    'background-color': isLightBasemap ? '#f8fafc' : '#05070f'
                 }
             }
         ]),
         {
             id: 'raster-basemap-layer',
             type: 'raster' as const,
-            source: 'raster-basemap-source',
+            source: basemapSourceId,
             minzoom: 0,
             maxzoom
         },
@@ -2110,6 +2124,69 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         const isGlobe = effectiveProjection === 'globe';
         const isDetailedAirports = activeAppearance.airportDetail === 'detailed';
         const isOpenAipOverlay = Boolean(activeAppearance.openAipOverlay);
+        const effectiveLayer = getEffectiveBasemap(currentLayer, isDark);
+        const basemapSourceId = `raster-basemap-source-${effectiveLayer}`;
+        const isLightBasemap = effectiveLayer === 'snow' || effectiveLayer === 'vibrant';
+        const { tiles, maxzoom, attribution } = getBasemapTileConfig(effectiveLayer, effectiveCartoKey);
+
+        // If the map style is already loaded, update the basemap raster source seamlessly in-place
+        if (map.isStyleLoaded()) {
+            const currentLayerObj = map.getLayer('raster-basemap-layer') as any;
+            const currentSourceId = currentLayerObj?.source;
+
+            if (currentSourceId !== basemapSourceId) {
+                try {
+                    // 1. Update background color for 2D flat maps
+                    if (map.getLayer('background-base-layer')) {
+                        map.setPaintProperty('background-base-layer', 'background-color', isLightBasemap ? '#f8fafc' : '#05070f');
+                    }
+
+                    // 2. Register new raster basemap source if not already registered
+                    if (!map.getSource(basemapSourceId)) {
+                        map.addSource(basemapSourceId, {
+                            type: 'raster',
+                            tiles,
+                            tileSize: 256,
+                            maxzoom,
+                            attribution
+                        });
+                    }
+
+                    // 3. Remove old layer and replace with new layer
+                    if (map.getLayer('raster-basemap-layer')) {
+                        map.removeLayer('raster-basemap-layer');
+                    }
+                    if (currentSourceId && currentSourceId !== basemapSourceId && map.getSource(currentSourceId)) {
+                        map.removeSource(currentSourceId);
+                    }
+
+                    // 4. Insert before first overlay layer so basemap stays below all overlays
+                    const existingLayers = map.getStyle().layers || [];
+                    const overlayLayerIds = [
+                        'terrain-hillshade-layer',
+                        'transit-railway-layer',
+                        'noaa-clouds-layer',
+                        'rain-radar-layer',
+                        'airport-runway-line-bg',
+                        'openaip-airspaces'
+                    ];
+                    const firstOverlay = existingLayers.find(l => overlayLayerIds.includes(l.id));
+                    map.addLayer({
+                        id: 'raster-basemap-layer',
+                        type: 'raster',
+                        source: basemapSourceId,
+                        minzoom: 0,
+                        maxzoom
+                    }, firstOverlay?.id);
+
+                    map.triggerRepaint();
+                    return;
+                } catch (e) {
+                    console.warn('[DeckFlightMap] direct basemap update fallback to setStyle:', e);
+                }
+            }
+        }
+
         const nextStyle = createMapLibreStyle(
             currentLayer,
             isDark,
@@ -2124,6 +2201,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
         // Re-assert projection and ensure airport icons on styledata across style changes
         const onStyleData = () => {
+            if (!map.isStyleLoaded()) return;
             if ((map as any).setProjection) {
                 try {
                     (map as any).setProjection({ type: isGlobe ? 'globe' : 'mercator' });
@@ -2145,7 +2223,10 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             }
         };
 
-        map.once('styledata', onStyleData);
+        map.on('styledata', onStyleData);
+        return () => {
+            map.off('styledata', onStyleData);
+        };
     }, [
         currentLayer,
         isDark,

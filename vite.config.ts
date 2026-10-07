@@ -59,9 +59,9 @@ export default defineConfig(({ mode }) => {
               },
               {
                 urlPattern: /^https:\/\/[a-d]\.basemaps\.cartocdn\.com\//,
-                handler: 'CacheFirst',
+                handler: 'NetworkFirst',
                 options: {
-                  cacheName: 'carto-basemap-tiles-v2',
+                  cacheName: 'carto-basemap-tiles-v3',
                   expiration: { maxEntries: 600, maxAgeSeconds: 60 * 60 * 24 * 30 },
                   cacheableResponse: {
                     statuses: [200],
