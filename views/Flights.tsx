@@ -2572,7 +2572,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           className={`transition-all duration-300 group ${isMultiEditing ? 'cursor-pointer' : ''}`}
         >
           {isMultiEditing && (
-            <td className="py-4 pl-4 align-middle text-center w-[4%] bg-white/60 dark:bg-white/[0.04] group-hover:bg-blue-500/10 dark:group-hover:bg-blue-500/10 border-y border-black/5 dark:border-white/10 first:border-l last:border-r first:rounded-l-2xl last:rounded-r-2xl">
+            <td className="py-4 pl-4 align-middle text-center w-[4%] bg-white/60 dark:bg-white/[0.04] group-hover:bg-blue-500/10 dark:group-hover:bg-blue-500/10 first:rounded-l-2xl last:rounded-r-2xl">
               <div 
                 className="flex items-center justify-center select-none"
                 onClick={(e) => {
@@ -2595,7 +2595,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
             </td>
           )}
           {/* 1. FLIGHT & CARRIER */}
-          <td className="py-4 pl-4 align-middle bg-white/60 dark:bg-white/[0.04] group-hover:bg-blue-500/10 dark:group-hover:bg-blue-500/10 border-y border-black/5 dark:border-white/10 first:border-l last:border-r first:rounded-l-2xl last:rounded-r-2xl">
+          <td className="py-4 pl-4 align-middle bg-white/60 dark:bg-white/[0.04] group-hover:bg-blue-500/10 dark:group-hover:bg-blue-500/10 first:rounded-l-2xl last:rounded-r-2xl">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-black/5 dark:bg-white/10 flex items-center justify-center border border-black/10 dark:border-white/10 overflow-hidden shrink-0 shadow-xs">
                 <AirlineLogo provider={flight.provider} fallback={<Plane className="w-4 h-4 text-zinc-400" />} />
@@ -2612,7 +2612,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           </td>
 
           {/* 2. SECTOR / ROUTE */}
-          <td className="py-4 align-middle bg-white/60 dark:bg-white/[0.04] group-hover:bg-blue-500/10 dark:group-hover:bg-blue-500/10 border-y border-black/5 dark:border-white/10 first:border-l last:border-r first:rounded-l-2xl last:rounded-r-2xl">
+          <td className="py-4 align-middle bg-white/60 dark:bg-white/[0.04] group-hover:bg-blue-500/10 dark:group-hover:bg-blue-500/10 first:rounded-l-2xl last:rounded-r-2xl">
             <div className="flex items-center gap-3">
               <div className="flex flex-col min-w-0">
                 <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100 leading-none truncate max-w-[110px]" title={getCityName(flight.origin)}>
@@ -2646,7 +2646,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           </td>
 
           {/* 3. STATUS BADGE */}
-          <td className="py-4 align-middle bg-white/60 dark:bg-white/[0.04] group-hover:bg-blue-500/10 dark:group-hover:bg-blue-500/10 border-y border-black/5 dark:border-white/10 first:border-l last:border-r first:rounded-l-2xl last:rounded-r-2xl">
+          <td className="py-4 align-middle bg-white/60 dark:bg-white/[0.04] group-hover:bg-blue-500/10 dark:group-hover:bg-blue-500/10 first:rounded-l-2xl last:rounded-r-2xl">
             <div className="flex items-center gap-2 origin-left">
               <span className={`px-2 py-0.5 rounded-full text-xs font-black tracking-widest ${statusInfo.bgClass} inline-flex items-center gap-1 shadow-xs`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${statusInfo.dotClass}`} />
@@ -2670,7 +2670,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           </td>
 
           {/* 4. DETAILS ON SCHEDULES */}
-          <td className="py-4 align-middle bg-white/60 dark:bg-white/[0.04] group-hover:bg-blue-500/10 dark:group-hover:bg-blue-500/10 border-y border-black/5 dark:border-white/10 first:border-l last:border-r first:rounded-l-2xl last:rounded-r-2xl">
+          <td className="py-4 align-middle bg-white/60 dark:bg-white/[0.04] group-hover:bg-blue-500/10 dark:group-hover:bg-blue-500/10 first:rounded-l-2xl last:rounded-r-2xl">
             <div className="flex flex-col min-w-[150px]">
               <span className="font-mono text-xs text-zinc-450 dark:text-zinc-550 leading-tight">
                 {statusInfo.depScheduledDate}
@@ -2689,7 +2689,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           </td>
 
           {/* 5. SEAT & EXPERIENCE */}
-          <td className="py-4 align-middle bg-white/60 dark:bg-white/[0.04] group-hover:bg-blue-500/10 dark:group-hover:bg-blue-500/10 border-y border-black/5 dark:border-white/10 first:border-l last:border-r first:rounded-l-2xl last:rounded-r-2xl">
+          <td className="py-4 align-middle bg-white/60 dark:bg-white/[0.04] group-hover:bg-blue-500/10 dark:group-hover:bg-blue-500/10 first:rounded-l-2xl last:rounded-r-2xl">
             <div className="flex flex-col items-start gap-1 leading-none">
               <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200">
                 {flight.travelClass || 'Economy'}
@@ -2705,7 +2705,7 @@ export const Flights: React.FC<FlightsProps> = ({ onTripClick }) => {
           </td>
 
           {/* 6. ACTIONS */}
-          <td className="py-4 text-right pr-4 align-middle bg-white/60 dark:bg-white/[0.04] group-hover:bg-blue-500/10 dark:group-hover:bg-blue-500/10 border-y border-black/5 dark:border-white/10 first:border-l last:border-r first:rounded-l-2xl last:rounded-r-2xl">
+          <td className="py-4 text-right pr-4 align-middle bg-white/60 dark:bg-white/[0.04] group-hover:bg-blue-500/10 dark:group-hover:bg-blue-500/10 first:rounded-l-2xl last:rounded-r-2xl">
             <div className="flex justify-end gap-1.5 opacity-80 md:opacity-0 group-hover:opacity-100 transition-opacity">
               <button onClick={() => openFlightForm({ flight, trip })} className="p-1.5 bg-white/80 dark:bg-white/10 border border-black/10 dark:border-white/10 rounded-lg hover:text-blue-500 hover:border-blue-500/40 dark:hover:border-blue-500/40 hover:shadow-xs transition-colors cursor-pointer" title="Edit Flight Bookings" aria-label="Edit Flight Bookings">
                 <Edit2 className="w-3.5 h-3.5" />
