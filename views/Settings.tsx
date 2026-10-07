@@ -170,7 +170,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
   const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pendingBackupData, setPendingBackupData] = useState<any | null>(null);
-  const [restoreMode, setRestoreMode] = useState<'merge' | 'replace'>('merge');
+  const [restoreMode, setRestoreMode] = useState<'merge' | 'replace'>('replace');
   const [restoreCategories, setRestoreCategories] = useState<Required<BackupSelectionOptions>>({
     flights: true,
     roadTrips: true,
@@ -472,6 +472,8 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                       const primaryUser = pendingBackupData.users.find((u: any) => norm(u.role) === 'admin') || pendingBackupData.users[0];
                       if (primaryUser) {
                           localStorage.setItem('wandergrid_session_user', JSON.stringify(primaryUser));
+                          localStorage.removeItem('wandergrid_session_token');
+                          sessionStorage.removeItem('wandergrid_session_token');
                       }
                   }
               } catch (e) {

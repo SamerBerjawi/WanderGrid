@@ -33,7 +33,7 @@ import { runAfterFirstPaint, mapWithConcurrency } from '../services/utils';
 import { Trip, CountryResidenceStatus, PredefinedMapMode, getResidenceStatuses } from '../types';
 import { Input } from '../components/ui';
 import { LiquidGlassSelect, LiquidGlassMultiSelect } from '../components/LiquidGlassSelect';
-import { getCoordinates, getCoordinatesSync, STATIC_GEO_DATA, calculateDistance } from '../services/geocoding';
+import { getCoordinates, getCoordinatesSync, STATIC_GEO_DATA, calculateDistance, formatProperLocationName } from '../services/geocoding';
 import {
     MapAppearanceSettings,
     DEFAULT_MAP_APPEARANCE,
@@ -365,7 +365,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                         name: isFlightMode
                             ? `Independent: ${flight.provider} ${flight.identifier || 'Flight'}`
                             : `Independent: ${flight.provider} ${flight.identifier || flight.mode || 'Road Trip'}`,
-                        location: `${flight.origin} ➔ ${flight.destination}`,
+                        location: `${formatProperLocationName(flight.origin)} ➔ ${formatProperLocationName(flight.destination)}`,
                         startDate: date,
                         endDate: flight.arrivalDate || date,
                         status: (isPast ? 'Past' : 'Upcoming') as 'Past' | 'Upcoming',
@@ -518,7 +518,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                             placeMap.set(`${item.lat.toFixed(3)},${item.lng.toFixed(3)}`, {
                                 lat: item.lat,
                                 lng: item.lng,
-                                name: item.name
+                                name: formatProperLocationName(item.name)
                             });
                         }
                     });
@@ -577,14 +577,14 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                             placeMap.set(`${tr.originLat.toFixed(3)},${tr.originLng.toFixed(3)}`, {
                                 lat: tr.originLat,
                                 lng: tr.originLng,
-                                name: tr.origin
+                                name: formatProperLocationName(tr.origin)
                             });
                         }
                         if (tr.destLat && tr.destLng && tr.destination) {
                             placeMap.set(`${tr.destLat.toFixed(3)},${tr.destLng.toFixed(3)}`, {
                                 lat: tr.destLat,
                                 lng: tr.destLng,
-                                name: tr.destination
+                                name: formatProperLocationName(tr.destination)
                             });
                         }
                     });
@@ -705,8 +705,8 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
         });
 
         return {
-            origins: Array.from(origins).sort().map(a => ({ label: a, value: a })),
-            destinations: Array.from(destinations).sort().map(a => ({ label: a, value: a }))
+            origins: Array.from(origins).sort().map(a => ({ label: formatProperLocationName(a), value: a })),
+            destinations: Array.from(destinations).sort().map(a => ({ label: formatProperLocationName(a), value: a }))
         };
     }, [trips]);
 

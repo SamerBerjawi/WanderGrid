@@ -718,10 +718,17 @@ class DataService {
                       }
                       return item;
                   });
-                  if (!sessionUserInserted && activeUserRecord) {
+                  const isDemoUser = (currentUserEmail === 'admin@wandergrid.app');
+                  if (!sessionUserInserted && activeUserRecord && !isDemoUser) {
                       newList.push(activeUserRecord);
                   }
                   setCachedStorage(keyName, newList, true);
+
+                  const primaryUser = newList.find((u: any) => (u.role || '').toLowerCase() === 'admin') || newList[0];
+                  if (primaryUser) {
+                      safeStorage.setItem('wandergrid_session_user', JSON.stringify(primaryUser));
+                      safeStorage.removeItem('wandergrid_session_token');
+                  }
               } else {
                   const mergedMap = new Map(existingMap);
                   for (const item of data.users) {

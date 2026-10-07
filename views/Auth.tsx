@@ -91,10 +91,17 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                 // Create an Admin user as initial enrollment on blank slate
                 user = await dataService.register('Admin User', 'admin@wandergrid.app', 'password', 'Admin');
             } else {
-                // Attempt standard default login
-                user = await dataService.login('admin@wandergrid.app', 'password');
+                // Prefer admin user from existing/restored users
+                const targetUser = allUsers.find(u => u.email === 'admin@wandergrid.app')
+                    || allUsers.find(u => u.role === 'Admin')
+                    || allUsers[0];
+                try {
+                    user = await dataService.login(targetUser.email, targetUser.password || 'password');
+                } catch {
+                    user = targetUser;
+                }
                 if (!user) {
-                    user = allUsers[0];
+                    user = targetUser;
                 }
             }
             

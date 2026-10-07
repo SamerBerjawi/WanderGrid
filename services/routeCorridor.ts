@@ -67,11 +67,11 @@ export function getFlagEmoji(countryCode: string): string {
  * Avoids redundancy if the airport name already includes or starts with the city name.
  */
 export function formatAirportDisplayName(name: string, city?: string): string {
-    if (!name) return '';
-    const cleanName = name.trim();
+    if (!name && !city) return '';
+    const cleanName = formatProperLocationName(name?.trim() || '');
     if (!city) return cleanName;
 
-    const cleanCity = city.split(',')[0].trim();
+    const cleanCity = formatProperLocationName(city.split(',')[0].trim());
     if (!cleanCity || cleanCity.toUpperCase() === cleanName.toUpperCase()) {
         return cleanName;
     }
@@ -80,6 +80,9 @@ export function formatAirportDisplayName(name: string, city?: string): string {
     const lowerCity = cleanCity.toLowerCase();
     if (lowerName.startsWith(lowerCity) || lowerName.includes(lowerCity)) {
         return cleanName;
+    }
+    if (lowerCity.startsWith(lowerName) || lowerCity.includes(lowerName)) {
+        return cleanCity;
     }
 
     return `${cleanCity} ${cleanName}`;
@@ -96,8 +99,19 @@ export function resolveLocationMetadata(code: string, fallbackLat?: number, fall
     flag: string;
     coords: [number, number];
 } {
-    const cleanCode = (code || '').toUpperCase().trim();
-    const staticEntry = STATIC_GEO_DATA[cleanCode];
+    const rawTrimmed = (code || '').trim();
+    const cleanCode = rawTrimmed.toUpperCase();
+
+    // Check static geo data (case-insensitive for both uppercase IATA and TitleCase city names)
+    let staticEntry = STATIC_GEO_DATA[cleanCode];
+    if (!staticEntry) {
+        const firstSegment = rawTrimmed.split(',')[0].trim().toUpperCase();
+        const found = Object.entries(STATIC_GEO_DATA).find(([k]) => {
+            const ku = k.toUpperCase();
+            return ku === cleanCode || ku === firstSegment;
+        });
+        if (found) staticEntry = found[1];
+    }
 
     let name = cleanCode;
     let city = cleanCode;
@@ -106,10 +120,10 @@ export function resolveLocationMetadata(code: string, fallbackLat?: number, fall
     let coords: [number, number] = [fallbackLng || 0, fallbackLat || 0];
 
     if (staticEntry) {
-        name = staticEntry.name || cleanCode;
-        city = staticEntry.city || cleanCode;
+        name = staticEntry.name ? formatProperLocationName(staticEntry.name) : (staticEntry.city ? formatProperLocationName(staticEntry.city) : cleanCode);
+        city = staticEntry.city ? formatProperLocationName(staticEntry.city) : cleanCode;
         country = staticEntry.country || 'Global';
-        iso = staticEntry.iso || '';
+        iso = staticEntry.iso || staticEntry.countryCode || '';
         const lat = parseFloat(staticEntry.lat);
         const lon = parseFloat(staticEntry.lon);
         if (!isNaN(lat) && !isNaN(lon)) {
@@ -121,6 +135,29 @@ export function resolveLocationMetadata(code: string, fallbackLat?: number, fall
             const rw = runways[cleanCode][0];
             coords = [rw.start[0], rw.start[1]];
             name = `${cleanCode} Airport`;
+            city = cleanCode;
+        } else {
+            const isPureIata = /^[A-Za-z]{3}$/.test(rawTrimmed);
+            if (isPureIata) {
+                name = cleanCode;
+                city = cleanCode;
+            } else {
+                const proper = formatProperLocationName(rawTrimmed);
+                const segments = proper.split(',').map(s => s.trim()).filter(Boolean);
+                name = proper;
+                city = segments[0] || proper;
+                country = segments.length > 1 ? segments[segments.length - 1] : 'Global';
+            }
+        }
+    }
+
+    if (!iso && country && country !== 'Global') {
+        const countryUpper = country.toUpperCase();
+        const countryMatch = Object.values(STATIC_GEO_DATA).find(
+            (v: any) => v.country && v.country.toUpperCase() === countryUpper && (v.iso || v.countryCode)
+        );
+        if (countryMatch) {
+            iso = countryMatch.iso || countryMatch.countryCode || '';
         }
     }
 

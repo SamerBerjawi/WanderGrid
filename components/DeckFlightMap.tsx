@@ -177,7 +177,7 @@ const getRelativeTimeDiffString = (originLng: number, destLng: number, destCode:
     const destOffset = Math.round(destLng / 15);
     const diff = destOffset - originOffset;
     if (diff === 0) return 'Same local time';
-    const cleanDestCode = (destCode || '').toUpperCase();
+    const cleanDestCode = formatProperLocationName(destCode || '');
     if (diff > 0) return `${cleanDestCode} ${diff}h ahead`;
     return `${cleanDestCode} ${Math.abs(diff)}h behind`;
 };
@@ -187,13 +187,15 @@ const getRelativeTimeDiffString = (originLng: number, destLng: number, destCode:
  * E.g. "Amsterdam · Amsterdam Airport Schiphol", "Los Angeles · Los Angeles Intl."
  */
 const formatAirportCityDotName = (name: string, city?: string): string => {
-    const cleanCity = city ? city.split(',')[0].trim() : '';
-    const cleanName = name ? name.trim() : '';
-    if (cleanCity && cleanName) {
-        if (cleanCity.toUpperCase() === cleanName.toUpperCase()) return cleanName;
-        return `${cleanCity} · ${cleanName}`;
+    const properName = formatProperLocationName(name || '');
+    const properCity = formatProperLocationName(city ? city.split(',')[0].trim() : '');
+    if (properCity && properName) {
+        if (properCity.toUpperCase() === properName.toUpperCase()) return properName;
+        if (properName.toLowerCase().startsWith(properCity.toLowerCase())) return properName;
+        if (properCity.toLowerCase().startsWith(properName.toLowerCase())) return properCity;
+        return `${properCity} · ${properName}`;
     }
-    return cleanCity || cleanName || '';
+    return properCity || properName || '';
 };
 
 const renderRouteModeIcon = (mode: string, className = "w-4 h-4") => {
@@ -988,7 +990,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 if (!pointsMap.has(p1)) {
                     pointsMap.set(p1, {
                         position: [t.originLng, t.originLat, 0],
-                        name: metaOrigin ? metaOrigin.name : t.origin,
+                        name: metaOrigin ? metaOrigin.name : formatProperLocationName(t.origin),
                         city: metaOrigin ? metaOrigin.city : undefined,
                         iata: isOriginAirport ? oCode.toUpperCase() : undefined,
                         isAirport: isOriginAirport,
@@ -1004,7 +1006,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 if (!pointsMap.has(p2)) {
                     pointsMap.set(p2, {
                         position: [t.destLng, t.destLat, 0],
-                        name: metaDest ? metaDest.name : t.destination,
+                        name: metaDest ? metaDest.name : formatProperLocationName(t.destination),
                         city: metaDest ? metaDest.city : undefined,
                         iata: isDestAirport ? dCode.toUpperCase() : undefined,
                         isAirport: isDestAirport,
@@ -2475,17 +2477,25 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                 {/* Origin Block */}
                                 {(() => {
                                     const originTime = getApproxLocalTime(selectedCorridor.originCoords[0]);
-                                    const originDisplay = formatAirportCityDotName(selectedCorridor.originName, selectedCorridor.originCity);
+                                    const originFormatted = formatProperLocationName(selectedCorridor.originCode);
+                                    let originDisplay = formatAirportCityDotName(selectedCorridor.originName, selectedCorridor.originCity);
+                                    if (originDisplay.toLowerCase() === originFormatted.toLowerCase()) {
+                                        originDisplay = (selectedCorridor.originCountry && selectedCorridor.originCountry !== 'Global' && !originFormatted.toLowerCase().includes(selectedCorridor.originCountry.toLowerCase()))
+                                            ? selectedCorridor.originCountry
+                                            : '';
+                                    }
                                     return (
                                         <div className="space-y-1">
-                                            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate block">
-                                                {originDisplay}
-                                            </span>
+                                            {originDisplay && (
+                                                <span className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate block">
+                                                    {originDisplay}
+                                                </span>
+                                            )}
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-2xl leading-none shrink-0">{selectedCorridor.originFlag}</span>
                                                     <span className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white font-sans">
-                                                        {selectedCorridor.originCode.toUpperCase()}
+                                                        {originFormatted}
                                                     </span>
                                                     <ChevronRight className="w-4 h-4 text-gray-400 dark:text-gray-500 ml-0.5" />
                                                 </div>
@@ -2514,17 +2524,25 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                 {/* Destination Block */}
                                 {(() => {
                                     const destTime = getApproxLocalTime(selectedCorridor.destCoords[0]);
-                                    const destDisplay = formatAirportCityDotName(selectedCorridor.destName, selectedCorridor.destCity);
+                                    const destFormatted = formatProperLocationName(selectedCorridor.destCode);
+                                    let destDisplay = formatAirportCityDotName(selectedCorridor.destName, selectedCorridor.destCity);
+                                    if (destDisplay.toLowerCase() === destFormatted.toLowerCase()) {
+                                        destDisplay = (selectedCorridor.destCountry && selectedCorridor.destCountry !== 'Global' && !destFormatted.toLowerCase().includes(selectedCorridor.destCountry.toLowerCase()))
+                                            ? selectedCorridor.destCountry
+                                            : '';
+                                    }
                                     return (
                                         <div className="space-y-1">
-                                            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate block">
-                                                {destDisplay}
-                                            </span>
+                                            {destDisplay && (
+                                                <span className="text-xs text-gray-500 dark:text-gray-400 font-medium truncate block">
+                                                    {destDisplay}
+                                                </span>
+                                            )}
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-2xl leading-none shrink-0">{selectedCorridor.destFlag}</span>
                                                     <span className="text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white font-sans">
-                                                        {selectedCorridor.destCode.toUpperCase()}
+                                                        {destFormatted}
                                                     </span>
                                                     <ChevronRight className="w-4 h-4 text-gray-400 dark:text-gray-500 ml-0.5" />
                                                 </div>
@@ -2606,9 +2624,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                                         </div>
                                                         <div className="min-w-0">
                                                             <div className="flex items-center gap-1.5 flex-wrap">
-                                                                <span className="font-bold text-sm text-gray-900 dark:text-white font-sans">{f.origin.toUpperCase()}</span>
+                                                                <span className="font-bold text-sm text-gray-900 dark:text-white font-sans">{formatProperLocationName(f.origin)}</span>
                                                                 <ArrowRight className="w-3 h-3 text-gray-400 dark:text-gray-500 shrink-0" />
-                                                                <span className="font-bold text-sm text-gray-900 dark:text-white font-sans">{f.destination.toUpperCase()}</span>
+                                                                <span className="font-bold text-sm text-gray-900 dark:text-white font-sans">{formatProperLocationName(f.destination)}</span>
                                                                 {f.identifier && (
                                                                     <span className="text-2xs font-mono font-bold px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/5 text-primary-600 dark:text-primary-400 border border-black/5 dark:border-white/5 ml-1">
                                                                         {f.identifier}
@@ -2686,11 +2704,20 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                 <div className="flex items-center gap-2.5 min-w-0">
                                     <span className="text-xl leading-none shrink-0">{c.originFlag}</span>
                                     <span className="font-bold text-2xl tracking-tight text-gray-900 dark:text-white font-sans shrink-0">
-                                        {c.originCode.toUpperCase()}
+                                        {formatProperLocationName(c.originCode)}
                                     </span>
-                                    <span className="text-xs text-gray-500 dark:text-gray-400 font-normal truncate">
-                                        {formatAirportDisplayName(c.originName, c.originCity)}
-                                    </span>
+                                    {(() => {
+                                        const originDisplay = formatAirportDisplayName(c.originName, c.originCity);
+                                        const originFormatted = formatProperLocationName(c.originCode);
+                                        if (originDisplay && originDisplay.toLowerCase() !== originFormatted.toLowerCase()) {
+                                            return (
+                                                <span className="text-xs text-gray-500 dark:text-gray-400 font-normal truncate">
+                                                    {originDisplay}
+                                                </span>
+                                            );
+                                        }
+                                        return null;
+                                    })()}
                                 </div>
 
                                 {/* Middle Hairline Stats Divider */}
@@ -2706,11 +2733,20 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                 <div className="flex items-center gap-2.5 min-w-0">
                                     <span className="text-xl leading-none shrink-0">{c.destFlag}</span>
                                     <span className="font-bold text-2xl tracking-tight text-gray-900 dark:text-white font-sans shrink-0">
-                                        {c.destCode.toUpperCase()}
+                                        {formatProperLocationName(c.destCode)}
                                     </span>
-                                    <span className="text-xs text-gray-500 dark:text-gray-400 font-normal truncate">
-                                        {formatAirportDisplayName(c.destName, c.destCity)}
-                                    </span>
+                                    {(() => {
+                                        const destDisplay = formatAirportDisplayName(c.destName, c.destCity);
+                                        const destFormatted = formatProperLocationName(c.destCode);
+                                        if (destDisplay && destDisplay.toLowerCase() !== destFormatted.toLowerCase()) {
+                                            return (
+                                                <span className="text-xs text-gray-500 dark:text-gray-400 font-normal truncate">
+                                                    {destDisplay}
+                                                </span>
+                                            );
+                                        }
+                                        return null;
+                                    })()}
                                 </div>
 
                                 {/* Section Divider */}
