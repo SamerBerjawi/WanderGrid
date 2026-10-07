@@ -203,8 +203,21 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
     const [dateFrom, setDateFrom] = useState<string>('');
     const [dateTo, setDateTo] = useState<string>('');
     const [focusCoord, setFocusCoord] = useState<{ lat: number, lng: number } | null>(null);
+    const [hasOpenAipKey, setHasOpenAipKey] = useState<boolean>(true);
+    const [cartoKey, setCartoKey] = useState<string>('');
 
     const isDark = useDarkMode();
+
+    useEffect(() => {
+        try {
+            const raw = localStorage.getItem('wandergrid_workspace_settings') || localStorage.getItem('wandergrid_settings');
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                setHasOpenAipKey(Boolean(parsed.openAipApiKey));
+                setCartoKey(parsed.cartoApiKey ? String(parsed.cartoApiKey).trim() : '');
+            }
+        } catch {}
+    }, [isSidebarOpen]);
 
     const handleSelectViewMode = (mode: PredefinedMapMode) => {
         setViewMode(mode);
@@ -230,6 +243,43 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
     const handleUpdateAppearance = (newSettings: MapAppearanceSettings) => {
         setAppearance(newSettings);
         saveMapAppearanceSettings(newSettings);
+    };
+
+    const applyPreset = (preset: 'command' | 'satellite' | 'minimal') => {
+        if (preset === 'command') {
+            handleUpdateAppearance({
+                ...appearance,
+                projection: 'globe',
+                basemap: isDark ? 'onyx' : 'snow',
+                airportDetail: 'detailed',
+                routeColorMode: 'gradient',
+                routeScale: 'normal',
+                timeOfDay: true,
+                rainRadar: false
+            });
+        } else if (preset === 'satellite') {
+            handleUpdateAppearance({
+                ...appearance,
+                projection: 'globe',
+                basemap: 'satellite',
+                airportDetail: 'standard',
+                routeColorMode: 'default',
+                routeScale: 'normal',
+                timeOfDay: true,
+                rainRadar: false
+            });
+        } else if (preset === 'minimal') {
+            handleUpdateAppearance({
+                ...appearance,
+                projection: 'flat',
+                basemap: isDark ? 'onyx' : 'snow',
+                airportDetail: 'standard',
+                routeColorMode: 'default',
+                routeScale: 'thin',
+                timeOfDay: false,
+                rainRadar: false
+            });
+        }
     };
 
     const handleResetAll = () => {
@@ -903,6 +953,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                         focusTransportCoordinates={focusCoord}
                         appearanceSettings={appearance}
                         onChangeAppearanceSettings={handleUpdateAppearance}
+                        onOpenMissionControl={() => setIsSidebarOpen(true)}
                         isSidebarCollapsed={isSidebarCollapsed}
                     />
                 </Suspense>
@@ -1159,6 +1210,32 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                         </div>
                     </div>
 
+                    {/* Quick Presets Ribbon */}
+                    <div className="px-5 py-2.5 bg-black/[0.02] dark:bg-white/[0.02] border-b border-black/5 dark:border-white/5 flex items-center gap-2 overflow-x-auto custom-scrollbar shrink-0">
+                        <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary shrink-0">Presets:</span>
+                        <button
+                            type="button"
+                            onClick={() => applyPreset('command')}
+                            className="px-2.5 py-1 rounded-xl bg-primary-500/10 hover:bg-primary-500/20 border border-primary-500/20 text-primary-600 dark:text-primary-400 text-xs font-bold shrink-0 transition-all cursor-pointer active:scale-95"
+                        >
+                            🌐 Aviation Command
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => applyPreset('satellite')}
+                            className="px-2.5 py-1 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold shrink-0 transition-all cursor-pointer active:scale-95"
+                        >
+                            🛰️ Earth Orbit
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => applyPreset('minimal')}
+                            className="px-2.5 py-1 rounded-xl bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 border border-black/5 dark:border-white/5 text-light-text-secondary dark:text-dark-text-secondary text-xs font-bold shrink-0 transition-all cursor-pointer active:scale-95"
+                        >
+                            🗺️ Minimal Atlas
+                        </button>
+                    </div>
+
                     {/* Sidebar Navigation Tabs with Unique Accents */}
                     <div className="grid grid-cols-4 border-b border-black/5 dark:border-white/5 px-4 pt-2 gap-1.5 bg-black/[0.02] dark:bg-white/[0.02] shrink-0">
                         {([
@@ -1283,10 +1360,21 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                 {/* BASEMAP PALETTE */}
                                 <div>
                                     <div className="flex items-center justify-between mb-3">
-                                        <h3 className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase">Cartographic Basemap</h3>
+                                        <div className="flex items-center gap-2">
+                                            <h3 className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase">Cartographic Basemap</h3>
+                                            {cartoKey ? (
+                                                <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                                    CARTO Active
+                                                </span>
+                                            ) : (
+                                                <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
+                                                    Zero-Key Canvas
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
 
-                                    <div className="grid grid-cols-3 gap-2.5">
+                                    <div className="grid grid-cols-2 gap-2">
                                         {(isDark ? [
                                             {
                                                 id: 'onyx',
@@ -1313,6 +1401,19 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                                             <span className="text-2xs font-bold text-amber-100 drop-shadow-sm">NASA</span>
                                                         </div>
                                                         <div className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_6px_#f59e0b] z-10" />
+                                                    </div>
+                                                )
+                                            },
+                                            {
+                                                id: 'ocean',
+                                                label: 'Bathymetry',
+                                                renderSwatch: () => (
+                                                    <div className="w-full h-8 rounded-xl border border-cyan-500/30 flex items-center px-2.5 justify-between bg-[#041a2f] relative overflow-hidden">
+                                                        <div className="flex items-center gap-1.5 z-10">
+                                                            <span className="text-2xs">🌊</span>
+                                                            <span className="text-2xs font-bold text-cyan-200">Ocean</span>
+                                                        </div>
+                                                        <div className="w-2 h-2 rounded-full border border-cyan-400/60 z-10" />
                                                     </div>
                                                 )
                                             },
@@ -1372,6 +1473,20 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                                             <span className="text-2xs font-bold text-cyan-900">Bathymetry</span>
                                                         </div>
                                                         <div className="w-2 h-2 rounded-full border border-cyan-500/60 z-10" />
+                                                    </div>
+                                                )
+                                            },
+                                            {
+                                                id: 'satellite',
+                                                label: 'Satellite',
+                                                desc: 'High-res orbital imagery',
+                                                renderSwatch: () => (
+                                                    <div className="w-full h-8 rounded-xl border border-emerald-500/20 flex items-center px-2.5 justify-between bg-gradient-to-r from-[#0a1a14] to-[#0d2a1f] relative overflow-hidden">
+                                                        <div className="flex items-center gap-1.5 z-10">
+                                                            <span className="text-2xs">🛰️</span>
+                                                            <span className="text-2xs font-bold text-emerald-200">Satellite</span>
+                                                        </div>
+                                                        <div className="w-2 h-2 rounded-full border border-emerald-400/50 z-10" />
                                                     </div>
                                                 )
                                             }
@@ -1759,6 +1874,107 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                                 <p className="text-xs font-bold">Route Tracing (Road & Rail)</p>
                                             </div>
                                         </button>
+
+                                        {/* Smooth Flight Dead-Reckoning Interpolation */}
+                                        <div className="p-3 rounded-xl bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm border border-black/5 dark:border-white/10 flex items-center justify-between">
+                                            <div>
+                                                <h4 className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
+                                                    <span>Flight Motion Interpolation</span>
+                                                    {appearance.flightInterpolation !== false && (
+                                                        <span className="px-1.5 py-0.2 rounded-full text-2xs font-bold uppercase bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                                            60 FPS
+                                                        </span>
+                                                    )}
+                                                </h4>
+                                                <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5">Smooth dead-reckoning trajectory smoothing</p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleUpdateAppearance({ ...appearance, flightInterpolation: appearance.flightInterpolation === false ? true : false })}
+                                                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border border-black/10 dark:border-white/15 transition-all duration-200 ease-in-out backdrop-blur-md ${
+                                                    appearance.flightInterpolation !== false ? 'bg-indigo-600' : 'bg-black/15 dark:bg-white/15'
+                                                }`}
+                                            >
+                                                <span
+                                                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
+                                                        appearance.flightInterpolation !== false ? 'translate-x-4' : 'translate-x-0'
+                                                    }`}
+                                                />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* OpenAIP Aeronautical Vector Charts */}
+                                    <div className="p-4 rounded-2xl bg-white/40 dark:bg-white/[0.03] backdrop-blur-sm border border-black/5 dark:border-white/5 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <h4 className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
+                                                    <span>OpenAIP Aero Charts</span>
+                                                    {appearance.openAipOverlay && (
+                                                        <span className="flex items-center gap-1 px-2 py-0.5 text-2xs font-bold rounded-full bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                                                            Vector Charts
+                                                        </span>
+                                                    )}
+                                                </h4>
+                                                <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5">Airspaces, navaids, waypoints & airfields</p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleUpdateAppearance({ ...appearance, openAipOverlay: !appearance.openAipOverlay })}
+                                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-black/10 dark:border-white/15 transition-all duration-200 ease-in-out backdrop-blur-md ${appearance.openAipOverlay
+                                                        ? 'bg-indigo-500/85 dark:bg-indigo-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_10px_rgba(99,102,241,0.3)]'
+                                                        : 'bg-black/15 dark:bg-white/15 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]'
+                                                    }`}
+                                            >
+                                                <span
+                                                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-white/95 shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.8)] ring-0 transition duration-200 ease-in-out ${appearance.openAipOverlay ? 'translate-x-5' : 'translate-x-0'
+                                                        }`}
+                                                />
+                                            </button>
+                                        </div>
+
+                                        {appearance.openAipOverlay && (
+                                            <div className="pt-2.5 border-t border-black/5 dark:border-white/5 space-y-2 animate-fade-in">
+                                                <div className="flex items-center justify-between text-2xs font-bold">
+                                                    <span className="uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Layers</span>
+                                                    <span className={`px-1.5 py-0.2 rounded-full ${hasOpenAipKey ? 'text-emerald-500 bg-emerald-500/10' : 'text-amber-500 bg-amber-500/10'}`}>
+                                                        {hasOpenAipKey ? 'Key Active' : 'Free Key Fallback'}
+                                                    </span>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-1.5">
+                                                    {[
+                                                        { id: 'airspaces', label: 'Airspaces' },
+                                                        { id: 'airspaceLabels', label: 'Labels' },
+                                                        { id: 'navaids', label: 'Navaids' },
+                                                        { id: 'reportingPoints', label: 'Waypoints' },
+                                                        { id: 'airports', label: 'Airfields' }
+                                                    ].map(group => {
+                                                        const currentGroups = appearance.openAipGroups || ['airspaces', 'airspaceLabels', 'airports', 'navaids', 'reportingPoints'];
+                                                        const active = currentGroups.includes(group.id as any);
+                                                        return (
+                                                            <button
+                                                                key={group.id}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const next = active
+                                                                        ? currentGroups.filter(g => g !== group.id)
+                                                                        : [...currentGroups, group.id as any];
+                                                                    handleUpdateAppearance({ ...appearance, openAipGroups: next });
+                                                                }}
+                                                                className={`py-1 px-2 rounded-xl text-2xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                                                                    active
+                                                                        ? 'bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30'
+                                                                        : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
+                                                                }`}
+                                                            >
+                                                                {group.label}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -1844,6 +2060,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                                             </span>
                                                         )}
                                                     </h4>
+                                                    <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5">Precipitation radar telemetry & mosaic</p>
                                                 </div>
                                                 <button
                                                     type="button"
@@ -1863,6 +2080,39 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                             {/* Nested Rain Radar Configuration Options */}
                                             {appearance.rainRadar && (
                                                 <div className="pt-2.5 border-t border-black/5 dark:border-white/5 space-y-3 animate-fade-in">
+                                                    {/* Radar Source Provider */}
+                                                    <div>
+                                                        <span className="block text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary mb-1.5">
+                                                            Radar Telemetry Engine
+                                                        </span>
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleUpdateAppearance({ ...appearance, radarSource: 'rainviewer' })}
+                                                                className={`p-2 rounded-xl text-xs text-left border transition-all cursor-pointer ${
+                                                                    (appearance.radarSource || 'rainviewer') === 'rainviewer'
+                                                                        ? 'border-amber-500/50 bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold ring-1 ring-amber-500/30'
+                                                                        : 'border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-white'
+                                                                }`}
+                                                            >
+                                                                <div className="font-bold">RainViewer</div>
+                                                                <div className="text-2xs opacity-75 font-normal">Global Composite</div>
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleUpdateAppearance({ ...appearance, radarSource: 'noaa_mrms' })}
+                                                                className={`p-2 rounded-xl text-xs text-left border transition-all cursor-pointer ${
+                                                                    appearance.radarSource === 'noaa_mrms'
+                                                                        ? 'border-amber-500/50 bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold ring-1 ring-amber-500/30'
+                                                                        : 'border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-white'
+                                                                }`}
+                                                            >
+                                                                <div className="font-bold">NOAA nowCOAST</div>
+                                                                <div className="text-2xs opacity-75 font-normal">MRMS Reflectivity</div>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
                                                     {/* Opacity Slider */}
                                                     <div>
                                                         <div className="flex items-center justify-between text-2xs font-bold text-light-text dark:text-dark-text mb-1">
@@ -1883,71 +2133,152 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                             )}
                                         </div>
 
-                                        {/* OpenAIP Aeronautical Charts Overlay */}
+                                        {/* Terrain 3D Hillshade (Esri World Hillshade) */}
                                         <div className="p-4 rounded-2xl bg-white/40 dark:bg-white/[0.03] backdrop-blur-sm border border-black/5 dark:border-white/5 space-y-3">
                                             <div className="flex items-center justify-between">
                                                 <div>
                                                     <h4 className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
-                                                        <span>OpenAIP Aeronautical Charts</span>
-                                                        {appearance.openAipOverlay && (
-                                                            <span className="flex items-center gap-1 px-2 py-0.5 text-2xs font-bold rounded-full bg-sky-500/20 text-sky-600 dark:text-sky-400 border border-sky-500/30">
-                                                                <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
-                                                                Aero Vector
+                                                        <span>Terrain 3D Hillshade</span>
+                                                        {appearance.terrainHillshade && (
+                                                            <span className="px-2 py-0.5 text-2xs font-bold rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                                                                Topography
                                                             </span>
                                                         )}
                                                     </h4>
-                                                    <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5">Airspaces, navaids, waypoints & airfields</p>
+                                                    <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5">3D mountain elevation and topographic slope relief</p>
                                                 </div>
                                                 <button
                                                     type="button"
-                                                    onClick={() => handleUpdateAppearance({ ...appearance, openAipOverlay: !appearance.openAipOverlay })}
-                                                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-black/10 dark:border-white/15 transition-all duration-200 ease-in-out backdrop-blur-md ${appearance.openAipOverlay
-                                                            ? 'bg-sky-500/85 dark:bg-sky-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_10px_rgba(14,165,233,0.3)]'
+                                                    onClick={() => handleUpdateAppearance({ ...appearance, terrainHillshade: !appearance.terrainHillshade })}
+                                                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-black/10 dark:border-white/15 transition-all duration-200 ease-in-out backdrop-blur-md ${appearance.terrainHillshade
+                                                            ? 'bg-amber-500/85 dark:bg-amber-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_10px_rgba(245,158,11,0.3)]'
                                                             : 'bg-black/15 dark:bg-white/15 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]'
                                                         }`}
                                                 >
                                                     <span
-                                                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-white/95 shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.8)] ring-0 transition duration-200 ease-in-out ${appearance.openAipOverlay ? 'translate-x-5' : 'translate-x-0'
+                                                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-white/95 shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.8)] ring-0 transition duration-200 ease-in-out ${appearance.terrainHillshade ? 'translate-x-5' : 'translate-x-0'
                                                             }`}
                                                     />
                                                 </button>
                                             </div>
 
-                                            {appearance.openAipOverlay && (
-                                                <div className="pt-2.5 border-t border-black/5 dark:border-white/5 space-y-2 animate-fade-in">
-                                                    <span className="block text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
-                                                        Layers
-                                                    </span>
-                                                    <div className="grid grid-cols-2 gap-1.5">
-                                                        {[
-                                                            { id: 'airspaces', label: 'Airspaces' },
-                                                            { id: 'airspaceLabels', label: 'Labels' },
-                                                            { id: 'navaids', label: 'Navaids' },
-                                                            { id: 'reportingPoints', label: 'Waypoints' },
-                                                            { id: 'airports', label: 'Airfields' }
-                                                        ].map(group => {
-                                                            const currentGroups = appearance.openAipGroups || ['airspaces', 'airspaceLabels', 'airports', 'navaids', 'reportingPoints'];
-                                                            const active = currentGroups.includes(group.id as any);
-                                                            return (
-                                                                <button
-                                                                    key={group.id}
-                                                                    type="button"
-                                                                    onClick={() => {
-                                                                        const next = active
-                                                                            ? currentGroups.filter(g => g !== group.id)
-                                                                            : [...currentGroups, group.id as any];
-                                                                        handleUpdateAppearance({ ...appearance, openAipGroups: next });
-                                                                    }}
-                                                                    className={`py-1 px-2 rounded-xl text-2xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                                                                        active
-                                                                            ? 'bg-sky-500/20 text-sky-600 dark:text-sky-400 border border-sky-500/30'
-                                                                            : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
-                                                                    }`}
-                                                                >
-                                                                    {group.label}
-                                                                </button>
-                                                            );
-                                                        })}
+                                            {appearance.terrainHillshade && (
+                                                <div className="pt-2.5 border-t border-black/5 dark:border-white/5 space-y-3 animate-fade-in">
+                                                    <div>
+                                                        <div className="flex items-center justify-between text-2xs font-bold text-light-text dark:text-dark-text mb-1">
+                                                            <span>Hillshade Intensity</span>
+                                                            <span className="text-amber-500">{Math.round((appearance.terrainHillshadeOpacity || 0.6) * 100)}%</span>
+                                                        </div>
+                                                        <input
+                                                            type="range"
+                                                            min="0.1"
+                                                            max="1.0"
+                                                            step="0.05"
+                                                            value={appearance.terrainHillshadeOpacity || 0.6}
+                                                            onChange={(e) => handleUpdateAppearance({ ...appearance, terrainHillshadeOpacity: parseFloat(e.target.value) })}
+                                                            className="w-full accent-amber-500 cursor-pointer h-1.5 bg-black/10 dark:bg-white/10 rounded-lg"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Global Railway & Transit (OpenRailwayMap) */}
+                                        <div className="p-4 rounded-2xl bg-white/40 dark:bg-white/[0.03] backdrop-blur-sm border border-black/5 dark:border-white/5 space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <h4 className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
+                                                        <span>Global Railway & Transit</span>
+                                                        {appearance.transitOverlay && (
+                                                            <span className="px-2 py-0.5 text-2xs font-bold rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                                                                OpenRailway
+                                                            </span>
+                                                        )}
+                                                    </h4>
+                                                    <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5">High-speed rail, passenger tracks & metro lines</p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleUpdateAppearance({ ...appearance, transitOverlay: !appearance.transitOverlay })}
+                                                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-black/10 dark:border-white/15 transition-all duration-200 ease-in-out backdrop-blur-md ${appearance.transitOverlay
+                                                            ? 'bg-emerald-500/85 dark:bg-emerald-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_10px_rgba(16,185,129,0.3)]'
+                                                            : 'bg-black/15 dark:bg-white/15 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]'
+                                                        }`}
+                                                >
+                                                    <span
+                                                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-white/95 shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.8)] ring-0 transition duration-200 ease-in-out ${appearance.transitOverlay ? 'translate-x-5' : 'translate-x-0'
+                                                            }`}
+                                                    />
+                                                </button>
+                                            </div>
+
+                                            {appearance.transitOverlay && (
+                                                <div className="pt-2.5 border-t border-black/5 dark:border-white/5 space-y-3 animate-fade-in">
+                                                    <div>
+                                                        <div className="flex items-center justify-between text-2xs font-bold text-light-text dark:text-dark-text mb-1">
+                                                            <span>Transit Layer Opacity</span>
+                                                            <span className="text-emerald-500">{Math.round((appearance.transitOverlayOpacity || 0.75) * 100)}%</span>
+                                                        </div>
+                                                        <input
+                                                            type="range"
+                                                            min="0.1"
+                                                            max="1.0"
+                                                            step="0.05"
+                                                            value={appearance.transitOverlayOpacity || 0.75}
+                                                            onChange={(e) => handleUpdateAppearance({ ...appearance, transitOverlayOpacity: parseFloat(e.target.value) })}
+                                                            className="w-full accent-emerald-500 cursor-pointer h-1.5 bg-black/10 dark:bg-white/10 rounded-lg"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Satellite Clouds (NOAA nowCOAST Global Longwave) */}
+                                        <div className="p-4 rounded-2xl bg-white/40 dark:bg-white/[0.03] backdrop-blur-sm border border-black/5 dark:border-white/5 space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <h4 className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
+                                                        <span>Satellite Clouds</span>
+                                                        {appearance.weatherClouds && (
+                                                            <span className="flex items-center gap-1 px-2 py-0.5 text-2xs font-bold rounded-full bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30">
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                                                                NOAA nowCOAST
+                                                            </span>
+                                                        )}
+                                                    </h4>
+                                                    <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5">Real-time global infrared cloud tops</p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleUpdateAppearance({ ...appearance, weatherClouds: !appearance.weatherClouds })}
+                                                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-black/10 dark:border-white/15 transition-all duration-200 ease-in-out backdrop-blur-md ${appearance.weatherClouds
+                                                            ? 'bg-cyan-500/85 dark:bg-cyan-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_10px_rgba(6,182,212,0.3)]'
+                                                            : 'bg-black/15 dark:bg-white/15 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]'
+                                                        }`}
+                                                >
+                                                    <span
+                                                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-white/95 shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.8)] ring-0 transition duration-200 ease-in-out ${appearance.weatherClouds ? 'translate-x-5' : 'translate-x-0'
+                                                            }`}
+                                                    />
+                                                </button>
+                                            </div>
+
+                                            {appearance.weatherClouds && (
+                                                <div className="pt-2.5 border-t border-black/5 dark:border-white/5 space-y-3 animate-fade-in">
+                                                    <div>
+                                                        <div className="flex items-center justify-between text-2xs font-bold text-light-text dark:text-dark-text mb-1">
+                                                            <span>Cloud Layer Opacity</span>
+                                                            <span className="text-cyan-500">{Math.round((appearance.weatherCloudsOpacity || 0.75) * 100)}%</span>
+                                                        </div>
+                                                        <input
+                                                            type="range"
+                                                            min="0.2"
+                                                            max="1.0"
+                                                            step="0.05"
+                                                            value={appearance.weatherCloudsOpacity || 0.75}
+                                                            onChange={(e) => handleUpdateAppearance({ ...appearance, weatherCloudsOpacity: parseFloat(e.target.value) })}
+                                                            className="w-full accent-cyan-500 cursor-pointer h-1.5 bg-black/10 dark:bg-white/10 rounded-lg"
+                                                        />
                                                     </div>
                                                 </div>
                                             )}

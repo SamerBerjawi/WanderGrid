@@ -550,6 +550,7 @@ export interface DeckFlightMapProps {
     initialElevated?: boolean;
     appearanceSettings?: MapAppearanceSettings;
     onChangeAppearanceSettings?: (settings: MapAppearanceSettings) => void;
+    onOpenMissionControl?: () => void;
     isSidebarCollapsed?: boolean;
     embedded?: boolean;
 }
@@ -582,6 +583,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     initialElevated = false,
     appearanceSettings: appearanceSettingsProp,
     onChangeAppearanceSettings,
+    onOpenMissionControl,
     isSidebarCollapsed,
     embedded
 }) => {
@@ -2544,23 +2546,25 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             {/* MapLibre GL 60 FPS Canvas with Interleaved Deck.gl Engine */}
             <div ref={mapContainerRef} className="w-full h-full relative z-10 transition-opacity duration-300 ease-out" />
 
-            {/* Top-Right Floating "Map Layers" Quick Config Pill */}
-            <div className="absolute top-3 right-3 z-20 pointer-events-auto animate-fade-in">
-                <GlassPanel
-                    padding="2px"
-                    overrides={{ borderRadius: 999 }}
-                    className="wg-glass-pill shadow-glass-modal"
-                >
-                    <button
-                        onClick={() => setIsAppearanceModalOpen(true)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 cursor-pointer text-xs font-bold text-light-text dark:text-dark-text hover:text-primary-500 dark:hover:text-primary-400 transition-colors active:scale-95 rounded-full"
-                        title="Configure Basemaps, Flights, Radar, Terrain & Overlays"
+            {/* Top-Right Floating "Mission Control" Quick Config Pill (hidden when delegated to parent view) */}
+            {!onOpenMissionControl && (
+                <div className="absolute top-3 right-3 z-20 pointer-events-auto animate-fade-in">
+                    <GlassPanel
+                        padding="2px"
+                        overrides={{ borderRadius: 999 }}
+                        className="wg-glass-pill shadow-glass-modal"
                     >
-                        <SlidersHorizontal className="w-3.5 h-3.5 text-primary-500" weight="bold" />
-                        <span className="hidden sm:inline">Map Layers</span>
-                    </button>
-                </GlassPanel>
-            </div>
+                        <button
+                            onClick={() => setIsAppearanceModalOpen(true)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 cursor-pointer text-xs font-bold text-light-text dark:text-dark-text hover:text-primary-500 dark:hover:text-primary-400 transition-colors active:scale-95 rounded-full"
+                            title="Mission Control: Basemaps, Flights, Radar, Terrain & Overlays"
+                        >
+                            <SlidersHorizontal className="w-3.5 h-3.5 text-primary-500" weight="bold" />
+                            <span className="hidden sm:inline">Mission Control</span>
+                        </button>
+                    </GlassPanel>
+                </div>
+            )}
 
             {/* Zoom & View Navigation Controls with Liquid Glass (Bottom Left) */}
             <div className={`absolute bottom-3 md:bottom-6 z-20 flex flex-col gap-2 pointer-events-auto transition-all duration-300 ${isEmbedded ? 'left-3' : (sidebarCollapsed ? 'left-3 md:left-28' : 'left-3 md:left-80')}`}>
@@ -2599,10 +2603,10 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                             <Scan className="w-4 h-4" />
                         </button>
                         <button
-                            onClick={() => setIsAppearanceModalOpen(true)}
+                            onClick={() => (onOpenMissionControl ? onOpenMissionControl() : setIsAppearanceModalOpen(true))}
                             className="w-10 h-10 flex items-center justify-center text-primary-500 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer transition-colors active:scale-95"
-                            title="Map Layers, Basemaps, Flights & Telemetry Settings"
-                            aria-label="Open Map Appearance Settings"
+                            title="Mission Control: Basemaps, Flights, Radar & Telemetry Settings"
+                            aria-label="Open Mission Control"
                         >
                             <SlidersHorizontal className="w-4 h-4" weight="bold" />
                         </button>
@@ -3320,13 +3324,15 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 </div>
             )}
 
-            {/* Map Appearance, Cartography & Telemetry Customizer Drawer/Modal */}
-            <MapAppearanceModal
-                isOpen={isAppearanceModalOpen}
-                onClose={() => setIsAppearanceModalOpen(false)}
-                settings={activeAppearance}
-                onChangeSettings={handleAppearanceChange}
-            />
+            {/* Mission Control Drawer (when not externally managed by parent view) */}
+            {!onOpenMissionControl && (
+                <MapAppearanceModal
+                    isOpen={isAppearanceModalOpen}
+                    onClose={() => setIsAppearanceModalOpen(false)}
+                    settings={activeAppearance}
+                    onChangeSettings={handleAppearanceChange}
+                />
+            )}
         </div>
     );
 };

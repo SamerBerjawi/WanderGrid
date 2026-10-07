@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, ArrowCounterClockwise as RotateCcw, MapTrifold as MapIcon, Airplane as Plane, Stack as Layers, Compass, Sparkle as Sparkles, Globe } from '@phosphor-icons/react';
+import { X, ArrowCounterClockwise as RotateCcw, MapTrifold as MapIcon, Airplane as Plane, Stack as Layers, Compass, Sparkle as Sparkles, Globe, SlidersHorizontal } from '@phosphor-icons/react';
 import { MapAppearanceSettings, DEFAULT_MAP_APPEARANCE, getEffectiveBasemap } from '../types/mapAppearance';
 import GlassPanel from './glass/GlassPanel';
 
@@ -106,52 +106,49 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
     };
 
     return createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 safe-top safe-bottom safe-x font-sans select-none">
-            {/* Backdrop Blur Overlay */}
+        <div className="fixed inset-0 z-modal overflow-hidden font-sans select-none pointer-events-auto">
+            {/* 1. Backdrop Scrim */}
             <div 
-                className="fixed inset-0 backdrop-blur-md bg-black/5 dark:bg-black/15 transition-all duration-300" 
+                className="fixed inset-0 bg-black/40 dark:bg-black/60 transition-opacity duration-300" 
                 onClick={onClose} 
             />
 
-            {/* Modal Dialog with Liquid Glass */}
-            <GlassPanel
-                className="wg-glass-card w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[calc(88dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] z-10"
-                padding="0px"
-                overrides={{ borderRadius: 28 }}
-            >
+            {/* 2. Slide-out Drawer Shell on Right */}
+            <div className="fixed inset-y-0 right-0 max-w-full flex pl-6 sm:pl-10">
                 <div 
-                    className="flex flex-col h-full w-full overflow-hidden rounded-[28px]"
+                    className="w-screen max-w-lg bg-white/95 dark:bg-dark-card/95 backdrop-blur-md shadow-glass-modal border-l border-black/10 dark:border-white/15 flex flex-col transform transition-transform duration-300 ease-out"
+                    style={{ WebkitBackdropFilter: 'blur(16px)' }}
                     onClick={(e) => e.stopPropagation()}
                 >
-                {/* Header with WanderGrid Studio Brand */}
-                <div className="p-6 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-primary-500/5 to-transparent shrink-0">
-                    <div className="flex items-center gap-3">
-                        <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white bg-primary-500 shrink-0 shadow-md transition-transform hover:scale-105">
-                            <Sparkles className="w-5 h-5 text-white" />
+                    {/* Header with Mission Control Brand */}
+                    <div className="px-6 py-5 border-b border-black/5 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-primary-500/10 via-transparent to-transparent shrink-0">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white bg-primary-500 shrink-0 shadow-md transition-transform hover:scale-105">
+                                <SlidersHorizontal className="w-5 h-5" weight="bold" />
+                            </div>
+                            <div>
+                                <h2 className="text-base font-bold text-light-text dark:text-dark-text tracking-tight truncate">Mission Control</h2>
+                                <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium truncate mt-0.5">Cartography, Aviation & Telemetry</p>
+                            </div>
                         </div>
-                        <div>
-                            <h2 className="text-lg font-bold text-light-text dark:text-dark-text tracking-tight truncate">WanderGrid Map Studio</h2>
-                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium truncate mt-0.5">Cartography & Telemetry Customizer</p>
-                        </div>
-                    </div>
 
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={handleReset}
-                            className="w-9 h-9 rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
-                            title="Reset to defaults"
-                        >
-                            <RotateCcw className="w-4 h-4" />
-                        </button>
-                        <button
-                            onClick={onClose}
-                            className="w-9 h-9 rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
-                            aria-label="Close modal"
-                        >
-                            <X className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                            <button
+                                onClick={handleReset}
+                                className="w-8 h-8 rounded-xl bg-white/50 dark:bg-white/10 hover:bg-white/80 dark:hover:bg-white/15 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text transition-all duration-150 flex items-center justify-center cursor-pointer border border-black/5 dark:border-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)] active:scale-95 backdrop-blur-md"
+                                title="Reset to defaults"
+                            >
+                                <RotateCcw className="w-4 h-4" />
+                            </button>
+                            <button
+                                onClick={onClose}
+                                className="w-8 h-8 rounded-xl bg-white/50 dark:bg-white/10 hover:bg-white/80 dark:hover:bg-white/15 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text transition-all duration-150 flex items-center justify-center cursor-pointer border border-black/5 dark:border-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)] active:scale-95 backdrop-blur-md"
+                                aria-label="Close drawer"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
                     </div>
-                </div>
 
                 {/* Quick Presets Ribbon */}
                 <div className="px-6 py-3 bg-black/[0.02] dark:bg-white/[0.02] border-b border-black/5 dark:border-white/5 flex items-center gap-2 overflow-x-auto custom-scrollbar">
@@ -1112,9 +1109,9 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                         </div>
                     )}
                 </div>
-                </div>
-            </GlassPanel>
-        </div>,
-        document.body
-    );
+            </div>
+        </div>
+    </div>,
+    document.body
+);
 };
