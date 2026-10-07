@@ -81,7 +81,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
             onChangeSettings({
                 ...settings,
                 projection: 'globe',
-                basemap: isDark ? 'satellite' : 'vibrant',
+                basemap: 'satellite',
                 airportDetail: 'standard',
                 routeColorMode: 'default',
                 routeScale: 'normal',
@@ -254,11 +254,11 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                             {/* BASEMAP TILES */}
                             <div>
                                 <div className="flex items-center justify-between mb-3">
-                                    <h3 className="text-xs font-bold text-zinc-400 tracking-wider uppercase">Cartographic Basemap</h3>
-                                    <span className="text-xs font-medium text-zinc-500">3 Curated Tilesets ({isDark ? 'Dark Mode' : 'Light Mode'})</span>
+                                    <h3 className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase">Cartographic Basemap</h3>
+                                    <span className="text-xs font-medium text-light-text-secondary dark:text-dark-text-secondary">4 Curated Tilesets ({isDark ? 'Dark Mode' : 'Light Mode'})</span>
                                 </div>
 
-                                <div className="grid grid-cols-3 gap-2.5">
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                                     {(isDark ? [
                                         { 
                                             id: 'onyx', 
@@ -287,6 +287,20 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                          <span className="text-xs font-bold text-amber-100 drop-shadow-sm">NASA</span>
                                                     </div>
                                                     <div className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_6px_#f59e0b] z-10" />
+                                                </div>
+                                            )
+                                        },
+                                        { 
+                                            id: 'ocean', 
+                                            label: 'Bathymetry', 
+                                            desc: 'Marine topography',
+                                            renderSwatch: () => (
+                                                <div className="w-full h-8 rounded-xl border border-cyan-500/30 flex items-center px-2.5 justify-between bg-[#041a2f] relative overflow-hidden">
+                                                    <div className="flex items-center gap-1.5 z-10">
+                                                        <span className="text-xs">🌊</span>
+                                                        <span className="text-xs font-bold text-cyan-200">Ocean</span>
+                                                    </div>
+                                                    <div className="w-2 h-2 rounded-full border border-cyan-400/60 z-10" />
                                                 </div>
                                             )
                                         },
@@ -347,6 +361,20 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                         <span className="text-xs font-bold text-cyan-900">Bathymetry</span>
                                                     </div>
                                                     <div className="w-2 h-2 rounded-full border border-cyan-500/60 z-10" />
+                                                </div>
+                                            )
+                                        },
+                                        { 
+                                            id: 'satellite', 
+                                            label: 'Satellite', 
+                                            desc: 'High-res orbital imagery',
+                                            renderSwatch: () => (
+                                                <div className="w-full h-8 rounded-xl border border-emerald-500/20 flex items-center px-2.5 justify-between bg-gradient-to-r from-[#0a1a14] to-[#0d2a1f] relative overflow-hidden">
+                                                    <div className="flex items-center gap-1.5 z-10">
+                                                        <span className="text-xs">🛰️</span>
+                                                        <span className="text-xs font-bold text-emerald-200">Satellite</span>
+                                                    </div>
+                                                    <div className="w-2 h-2 rounded-full border border-emerald-400/50 z-10" />
                                                 </div>
                                             )
                                         }
@@ -636,7 +664,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                     Road & Rail
                                                 </span>
                                             </h4>
-                                            <p className="text-xs text-light-text-secondary dark:text-zinc-400 mt-0.5">
+                                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5">
                                                 Follows real highways (OSRM) and railway tracks (OSM Rail)
                                             </p>
                                         </div>
@@ -644,12 +672,40 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                             type="button"
                                             onClick={() => updateField('routeTracing', settings.routeTracing === false ? true : false)}
                                             className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                                                settings.routeTracing !== false ? 'bg-primary-500' : 'bg-zinc-300 dark:bg-zinc-700'
+                                                settings.routeTracing !== false ? 'bg-primary-500' : 'bg-black/10 dark:bg-white/10'
                                             }`}
                                         >
                                             <span
                                                 className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
                                                     settings.routeTracing !== false ? 'translate-x-5' : 'translate-x-0'
+                                                }`}
+                                            />
+                                        </button>
+                                    </div>
+
+                                    {/* Smooth Flight Motion & Interpolation */}
+                                    <div className="p-3.5 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 flex items-center justify-between">
+                                        <div>
+                                            <h4 className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
+                                                <span>Smooth Flight Motion</span>
+                                                <span className="px-2 py-0.5 text-2xs font-bold uppercase tracking-wider rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                                                    Dead Reckoning
+                                                </span>
+                                            </h4>
+                                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5">
+                                                Interpolates aircraft flight trajectory smoothly between radar fixes
+                                            </p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => updateField('flightInterpolation', settings.flightInterpolation === false ? true : false)}
+                                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                                                settings.flightInterpolation !== false ? 'bg-primary-500' : 'bg-black/10 dark:bg-white/10'
+                                            }`}
+                                        >
+                                            <span
+                                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                                                    settings.flightInterpolation !== false ? 'translate-x-5' : 'translate-x-0'
                                                 }`}
                                             />
                                         </button>
@@ -727,6 +783,157 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                     </div>
                                 </div>
 
+                                {/* Terrain 3D Relief (Esri World Hillshade) */}
+                                <div className="p-4 rounded-3xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <h4 className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
+                                                <span>Terrain 3D Hillshade</span>
+                                                {settings.terrainHillshade && (
+                                                    <span className="px-2 py-0.5 text-2xs font-bold uppercase tracking-wider rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                                                        Topography
+                                                    </span>
+                                                )}
+                                            </h4>
+                                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5">3D mountain elevation and topographic slope relief</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => updateField('terrainHillshade', !settings.terrainHillshade)}
+                                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                                                settings.terrainHillshade ? 'bg-amber-600' : 'bg-black/10 dark:bg-white/10'
+                                            }`}
+                                        >
+                                            <span
+                                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                                                    settings.terrainHillshade ? 'translate-x-5' : 'translate-x-0'
+                                                }`}
+                                            />
+                                        </button>
+                                    </div>
+
+                                    {settings.terrainHillshade && (
+                                        <div className="pt-2.5 border-t border-black/5 dark:border-white/5 space-y-3 animate-fade-in">
+                                            <div>
+                                                <div className="flex items-center justify-between text-xs font-medium text-light-text-secondary dark:text-dark-text-secondary mb-1">
+                                                    <span>Hillshade Intensity</span>
+                                                    <span className="text-amber-600 dark:text-amber-400 font-bold">{Math.round((settings.terrainHillshadeOpacity || 0.6) * 100)}%</span>
+                                                </div>
+                                                <input 
+                                                    type="range" 
+                                                    min="0.1" 
+                                                    max="1.0" 
+                                                    step="0.05"
+                                                    value={settings.terrainHillshadeOpacity || 0.6}
+                                                    onChange={(e) => updateField('terrainHillshadeOpacity', parseFloat(e.target.value))}
+                                                    className="w-full accent-amber-500 cursor-pointer h-1.5 bg-black/10 dark:bg-white/10 rounded-lg"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Global Railway & Transit (OpenRailwayMap) */}
+                                <div className="p-4 rounded-3xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <h4 className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
+                                                <span>Global Railway & Transit</span>
+                                                {settings.transitOverlay && (
+                                                    <span className="px-2 py-0.5 text-2xs font-bold uppercase tracking-wider rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                                                        OpenRailway
+                                                    </span>
+                                                )}
+                                            </h4>
+                                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5">High-speed rail, passenger tracks & metro lines</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => updateField('transitOverlay', !settings.transitOverlay)}
+                                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                                                settings.transitOverlay ? 'bg-emerald-600' : 'bg-black/10 dark:bg-white/10'
+                                            }`}
+                                        >
+                                            <span
+                                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                                                    settings.transitOverlay ? 'translate-x-5' : 'translate-x-0'
+                                                }`}
+                                            />
+                                        </button>
+                                    </div>
+
+                                    {settings.transitOverlay && (
+                                        <div className="pt-2.5 border-t border-black/5 dark:border-white/5 space-y-3 animate-fade-in">
+                                            <div>
+                                                <div className="flex items-center justify-between text-xs font-medium text-light-text-secondary dark:text-dark-text-secondary mb-1">
+                                                    <span>Transit Layer Opacity</span>
+                                                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">{Math.round((settings.transitOverlayOpacity || 0.75) * 100)}%</span>
+                                                </div>
+                                                <input 
+                                                    type="range" 
+                                                    min="0.1" 
+                                                    max="1.0" 
+                                                    step="0.05"
+                                                    value={settings.transitOverlayOpacity || 0.75}
+                                                    onChange={(e) => updateField('transitOverlayOpacity', parseFloat(e.target.value))}
+                                                    className="w-full accent-emerald-500 cursor-pointer h-1.5 bg-black/10 dark:bg-white/10 rounded-lg"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Satellite Clouds (NOAA nowCOAST Global Longwave) */}
+                                <div className="p-4 rounded-3xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <h4 className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
+                                                <span>Satellite Clouds</span>
+                                                {settings.weatherClouds && (
+                                                    <span className="flex items-center gap-1 px-2 py-0.5 text-2xs font-bold uppercase tracking-wider rounded-full bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                                                        NOAA nowCOAST
+                                                    </span>
+                                                )}
+                                            </h4>
+                                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5">Real-time global infrared cloud tops</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => updateField('weatherClouds', !settings.weatherClouds)}
+                                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                                                settings.weatherClouds ? 'bg-cyan-600' : 'bg-black/10 dark:bg-white/10'
+                                            }`}
+                                        >
+                                            <span
+                                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                                                    settings.weatherClouds ? 'translate-x-5' : 'translate-x-0'
+                                                }`}
+                                            />
+                                        </button>
+                                    </div>
+
+                                    {settings.weatherClouds && (
+                                        <div className="pt-2.5 border-t border-black/5 dark:border-white/5 space-y-3 animate-fade-in">
+                                            <div>
+                                                <div className="flex items-center justify-between text-xs font-medium text-light-text-secondary dark:text-dark-text-secondary mb-1">
+                                                    <span>Cloud Layer Opacity</span>
+                                                    <span className="text-cyan-600 dark:text-cyan-400 font-bold">{Math.round((settings.weatherCloudsOpacity || 0.75) * 100)}%</span>
+                                                </div>
+                                                <input 
+                                                    type="range" 
+                                                    min="0.2" 
+                                                    max="1.0" 
+                                                    step="0.05"
+                                                    value={settings.weatherCloudsOpacity || 0.75}
+                                                    onChange={(e) => updateField('weatherCloudsOpacity', parseFloat(e.target.value))}
+                                                    className="w-full accent-cyan-500 cursor-pointer h-1.5 bg-black/10 dark:bg-white/10 rounded-lg"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
                                 {/* Rain Radar */}
                                 <div className="p-4 rounded-3xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 space-y-3">
                                     <div className="flex items-center justify-between">
@@ -734,19 +941,19 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                             <h4 className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
                                                 <span>Doppler Rain Radar</span>
                                                 {settings.rainRadar && (
-                                                    <span className="flex items-center gap-1 px-2 py-0.5 text-2xs font-bold uppercase tracking-wider rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                                    <span className="flex items-center gap-1 px-2 py-0.5 text-2xs font-bold uppercase tracking-wider rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
                                                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                                                         Live Stream
                                                     </span>
                                                 )}
                                             </h4>
-                                            <p className="text-xs text-zinc-400 mt-0.5">Global precipitation radar telemetry</p>
+                                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5">Precipitation radar telemetry & mosaic</p>
                                         </div>
                                         <button
                                             type="button"
                                             onClick={() => updateField('rainRadar', !settings.rainRadar)}
                                             className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                                                settings.rainRadar ? 'bg-blue-600' : 'bg-zinc-700'
+                                                settings.rainRadar ? 'bg-blue-600' : 'bg-black/10 dark:bg-white/10'
                                             }`}
                                         >
                                             <span
@@ -758,12 +965,45 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                     </div>
 
                                     {settings.rainRadar && (
-                                        <div className="pt-2.5 border-t border-white/5 space-y-3 animate-fade-in">
+                                        <div className="pt-2.5 border-t border-black/5 dark:border-white/5 space-y-3 animate-fade-in">
+                                            {/* Radar Source Provider */}
+                                            <div>
+                                                <span className="block text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary mb-1.5">
+                                                    Radar Telemetry Engine
+                                                </span>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => updateField('radarSource', 'rainviewer')}
+                                                        className={`p-2 rounded-xl text-xs font-bold text-left border transition-all cursor-pointer ${
+                                                            (settings.radarSource || 'rainviewer') === 'rainviewer'
+                                                                ? 'border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400 ring-2 ring-blue-500/20'
+                                                                : 'border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-white'
+                                                        }`}
+                                                    >
+                                                        <div className="font-bold">RainViewer</div>
+                                                        <div className="text-2xs opacity-75 font-normal">Global Composite</div>
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => updateField('radarSource', 'noaa_mrms')}
+                                                        className={`p-2 rounded-xl text-xs font-bold text-left border transition-all cursor-pointer ${
+                                                            settings.radarSource === 'noaa_mrms'
+                                                                ? 'border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400 ring-2 ring-blue-500/20'
+                                                                : 'border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-white'
+                                                        }`}
+                                                    >
+                                                        <div className="font-bold">NOAA nowCOAST</div>
+                                                        <div className="text-2xs opacity-75 font-normal">MRMS Reflectivity</div>
+                                                    </button>
+                                                </div>
+                                            </div>
+
                                             {/* Opacity Slider */}
                                             <div>
-                                                <div className="flex items-center justify-between text-xs font-medium text-zinc-300 mb-1">
+                                                <div className="flex items-center justify-between text-xs font-medium text-light-text-secondary dark:text-dark-text-secondary mb-1">
                                                     <span>Radar Intensity</span>
-                                                    <span className="text-blue-400">{Math.round((settings.rainRadarOpacity || 0.85) * 100)}%</span>
+                                                    <span className="text-blue-600 dark:text-blue-400 font-bold">{Math.round((settings.rainRadarOpacity || 0.85) * 100)}%</span>
                                                 </div>
                                                 <input 
                                                     type="range" 
@@ -772,7 +1012,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                     step="0.05"
                                                     value={settings.rainRadarOpacity || 0.85}
                                                     onChange={(e) => updateField('rainRadarOpacity', parseFloat(e.target.value))}
-                                                    className="w-full accent-blue-500 cursor-pointer h-1.5 bg-zinc-800 rounded-lg"
+                                                    className="w-full accent-blue-500 cursor-pointer h-1.5 bg-black/10 dark:bg-white/10 rounded-lg"
                                                 />
                                             </div>
                                         </div>

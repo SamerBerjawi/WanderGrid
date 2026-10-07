@@ -19,6 +19,184 @@ const readApiResponse = async (response: Response): Promise<any> => {
     return payload;
 };
 
+/**
+ * Keyless flight resolution using ADSBdb and adsb.lol open telemetry APIs.
+ * Resolves flight route (origin, destination), airline, and aircraft info without requiring API keys.
+ */
+export async function lookupKeylessFlight(
+    flightIataOrCallsign: string,
+    date?: string
+): Promise<FlightStatusResponse | null> {
+    const clean = flightIataOrCallsign.trim().toUpperCase().replace(/\s/g, '');
+    if (!clean) return null;
+
+    let routeData: any = null;
+    let liveData: any = null;
+    let aircraftData: any = null;
+
+    // 1. Query ADSBdb for flight route (origin, destination, airline)
+    try {
+        const res = await fetch(`/api/proxy/adsbdb/flights/${encodeURIComponent(clean)}`);
+        if (res.ok) {
+            const json = await res.json();
+            routeData = json?.response?.flightroute || null;
+        }
+    } catch {
+        // Direct browser fallback if proxy is unavailable
+        try {
+            const direct = await fetch(`https://api.adsbdb.com/v0/callsign/${encodeURIComponent(clean)}`);
+            if (direct.ok) {
+                const json = await direct.json();
+                routeData = json?.response?.flightroute || null;
+            }
+        } catch {}
+    }
+
+    // 2. Query adsb.lol for live transponder status, tail number & aircraft type
+    try {
+        const res = await fetch(`/api/proxy/adsb-lol/callsign/${encodeURIComponent(clean)}`);
+        if (res.ok) {
+            const json = await res.json();
+            if (Array.isArray(json?.ac) && json.ac.length > 0) {
+                liveData = json.ac[0];
+            }
+        }
+    } catch {
+        try {
+            const direct = await fetch(`https://api.adsb.lol/v2/callsign/${encodeURIComponent(clean)}`);
+            if (direct.ok) {
+                const json = await direct.json();
+                if (Array.isArray(json?.ac) && json.ac.length > 0) {
+                    liveData = json.ac[0];
+                }
+            }
+        } catch {}
+    }
+
+    // 2.b OpenSky Network fallback if adsb.lol has no live transponder
+    if (!liveData) {
+        try {
+            const res = await fetch(`/api/proxy/opensky/states?callsign=${encodeURIComponent(clean)}`);
+            if (res.ok) {
+                const json = await res.json();
+                if (Array.isArray(json?.states) && json.states.length > 0) {
+                    const st = json.states[0];
+                    liveData = {
+                        hex: st[0],
+                        r: st[0],
+                        flight: (st[1] || '').trim(),
+                        lon: st[5],
+                        lat: st[6],
+                        alt_baro: st[7] ? Math.round(st[7] * 3.28084) : 0, // meters to feet
+                        gs: st[9] ? Math.round(st[9] * 1.94384) : 0, // m/s to knots
+                        track: st[10] || 0,
+                        baro_rate: st[11] ? Math.round(st[11] * 196.85) : 0 // m/s to fpm
+                    };
+                }
+            }
+        } catch {}
+    }
+
+    // 3. If hex or registration was found, enrich aircraft details from ADSBdb
+    const hexOrReg = liveData?.hex || liveData?.r;
+    if (hexOrReg) {
+        try {
+            const res = await fetch(`/api/proxy/adsbdb/aircraft/${encodeURIComponent(hexOrReg)}`);
+            if (res.ok) {
+                const json = await res.json();
+                aircraftData = json?.response?.aircraft || null;
+            }
+        } catch {}
+    }
+
+    if (!routeData && !liveData) {
+        return null;
+    }
+
+    const todayDate = date || new Date().toISOString().split('T')[0];
+    const isAirborne = Boolean(liveData && liveData.lat && liveData.lon && (liveData.alt_baro > 500 || liveData.gs > 80));
+
+    const airlineName = routeData?.airline?.name || aircraftData?.registered_owner || 'Commercial Airline';
+    const airlineIata = routeData?.airline?.iata || clean.slice(0, 2);
+    const airlineIcao = routeData?.airline?.icao || (clean.length > 3 && isNaN(Number(clean[2])) ? clean.slice(0, 3) : '');
+    const flightNum = routeData?.callsign_iata?.replace(/^[A-Z]+/g, '') || clean.replace(/^[A-Z]+/g, '');
+
+    const depIata = routeData?.origin?.iata_code || 'DEP';
+    const depIcao = routeData?.origin?.icao_code || '';
+    const depName = routeData?.origin?.name || (routeData?.origin?.municipality ? `${routeData.origin.municipality} Airport` : 'Departure Airport');
+
+    const arrIata = routeData?.destination?.iata_code || 'ARR';
+    const arrIcao = routeData?.destination?.icao_code || '';
+    const arrName = routeData?.destination?.name || (routeData?.destination?.municipality ? `${routeData.destination.municipality} Airport` : 'Arrival Airport');
+
+    const aircraftModel = aircraftData?.type 
+        ? `${aircraftData.manufacturer || ''} ${aircraftData.type}`.trim()
+        : (liveData?.t || 'Commercial Aircraft');
+    const registration = liveData?.r || aircraftData?.registration || 'N/A';
+
+    return {
+        flight_date: todayDate,
+        flight_status: isAirborne ? 'active' : 'scheduled',
+        departure: {
+            airport: depName,
+            timezone: 'UTC',
+            iata: depIata,
+            icao: depIcao,
+            terminal: '',
+            gate: '',
+            delay: 0,
+            scheduled: `${todayDate}T10:00:00Z`,
+            estimated: `${todayDate}T10:00:00Z`,
+            actual: `${todayDate}T10:00:00Z`,
+            estimated_runway: '',
+            actual_runway: ''
+        },
+        arrival: {
+            airport: arrName,
+            timezone: 'UTC',
+            iata: arrIata,
+            icao: arrIcao,
+            terminal: '',
+            gate: '',
+            baggage: '',
+            delay: 0,
+            scheduled: `${todayDate}T13:30:00Z`,
+            estimated: `${todayDate}T13:30:00Z`,
+            actual: `${todayDate}T13:30:00Z`,
+            estimated_runway: '',
+            actual_runway: ''
+        },
+        airline: {
+            name: airlineName,
+            iata: airlineIata,
+            icao: airlineIcao
+        },
+        flight: {
+            number: flightNum,
+            iata: routeData?.callsign_iata || clean,
+            icao: routeData?.callsign_icao || clean,
+            codeshared: null
+        },
+        aircraft: {
+            registration,
+            iata: liveData?.t || aircraftData?.icao_type || 'N/A',
+            model: aircraftModel,
+            country: aircraftData?.registered_owner_country_name || ''
+        },
+        ...(liveData && liveData.lat && liveData.lon ? {
+            live: {
+                updated: new Date().toISOString(),
+                latitude: liveData.lat,
+                longitude: liveData.lon,
+                altitude: liveData.alt_baro || liveData.alt_geom || 0,
+                direction: liveData.track || 0,
+                speed_horizontal: liveData.gs || 0,
+                speed_vertical: liveData.baro_rate || 0,
+                is_ground: Boolean(liveData.alt_baro === 0 || liveData.alt_baro === 'ground')
+            }
+        } : {})
+    };
+}
 
 export const flightTracker = {
     getFlightStatus: async (
@@ -30,77 +208,18 @@ export const flightTracker = {
     ): Promise<FlightStatusResponse> => {
         const cleanIata = flightIata.trim().toUpperCase().replace(/\s/g, '');
 
-        if ((provider === 'aviationstack' || provider === 'aerodatabox') && !apiKey) {
-            throw new Error("An API key is required for the selected flight data provider. Please configure it in Settings.");
-        }
-
-        if (provider === 'adsbdb') {
-            try {
-                // Free public ADSBdb lookup
-                const url = `https://adsbdb.com/api/flights/${cleanIata}`;
-                const corsUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-                const res = await fetch(corsUrl);
-                if (res.ok) {
-                    const json = await res.json();
-                    if (json && json.response) {
-                        const r = json.response;
-                        return {
-                            flight_date: date || new Date().toISOString().split('T')[0],
-                            flight_status: 'landed',
-                            departure: {
-                                airport: r.origin?.name || 'Departure Airport',
-                                timezone: 'UTC',
-                                iata: r.origin?.iata || 'DEP',
-                                icao: r.origin?.icao || 'DEP',
-                                terminal: '',
-                                gate: '',
-                                delay: 0,
-                                scheduled: `${date || new Date().toISOString().split('T')[0]}T12:05:00Z`,
-                                estimated: `${date || new Date().toISOString().split('T')[0]}T12:05:00Z`,
-                                actual: `${date || new Date().toISOString().split('T')[0]}T12:05:00Z`,
-                                estimated_runway: '',
-                                actual_runway: ''
-                            },
-                            arrival: {
-                                airport: r.destination?.name || 'Arrival Airport',
-                                timezone: 'UTC',
-                                iata: r.destination?.iata || 'ARR',
-                                icao: r.destination?.icao || 'ARR',
-                                terminal: '',
-                                gate: '',
-                                baggage: '',
-                                delay: 0,
-                                scheduled: `${date || new Date().toISOString().split('T')[0]}T14:35:00Z`,
-                                estimated: `${date || new Date().toISOString().split('T')[0]}T14:35:00Z`,
-                                actual: `${date || new Date().toISOString().split('T')[0]}T14:35:00Z`,
-                                estimated_runway: '',
-                                actual_runway: ''
-                            },
-                            airline: {
-                                name: r.airline?.name || 'Unknown Airline',
-                                iata: cleanIata.slice(0, 2),
-                                icao: ''
-                            },
-                            flight: {
-                                number: cleanIata.replace(/^[A-Z]+/g, ''),
-                                iata: cleanIata,
-                                icao: '',
-                                codeshared: null
-                            },
-                            aircraft: {
-                                registration: r.aircraft_registration || r.registration || 'N/A',
-                                iata: r.aircraft_type || 'N/A',
-                                model: r.aircraft_model || 'Aircraft',
-                                country: ''
-                            }
-                        };
-                    }
-                }
-            } catch (e) {
-                console.warn("ADSBdb call failed", e);
+        // 1. Keyless Provider or Pre-lookup when no API key is supplied
+        if (provider === 'adsbdb' || provider === 'keyless' || (!apiKey && (provider === 'aerodatabox' || provider === 'aviationstack'))) {
+            const keylessResult = await lookupKeylessFlight(cleanIata, date);
+            if (keylessResult) {
+                return keylessResult;
+            }
+            if (!apiKey) {
+                throw new Error(`Could not find flight ${cleanIata} in open radar. Please enter an API key in Settings for full carrier schedules.`);
             }
         }
 
+        // 2. AeroDataBox Provider
         if (provider === 'aerodatabox') {
             try {
                 // AeroDataBox API lookup via backend proxy (protects key and bypasses CORS)
@@ -182,30 +301,47 @@ export const flightTracker = {
                         }
                     };
                 }
+
+                // If AeroDataBox yielded no results, fallback to keyless lookup rather than hard erroring
+                const keylessFallback = await lookupKeylessFlight(cleanIata, date);
+                if (keylessFallback) {
+                    return keylessFallback;
+                }
+
                 throw new Error(`No matching AeroDataBox flights found for ${cleanIata}${date ? ` on ${date}` : ''}.`);
             } catch (e: any) {
-                console.warn("AeroDataBox call failed", e);
+                console.warn("AeroDataBox call failed, attempting keyless fallback", e);
+                const keylessFallback = await lookupKeylessFlight(cleanIata, date);
+                if (keylessFallback) return keylessFallback;
                 throw e;
             }
         }
 
-        // AviationStack requests are intentionally backend-only. Browser-side calls are
-        // blocked by CORS/mixed-content rules and would expose the workspace API key.
-        const query = new URLSearchParams({ flight_iata: cleanIata });
-        if (date) query.set('flight_date', date);
-        const response = await fetch(`/api/proxy/flight-status?${query.toString()}`, {
-            headers: authenticatedHeaders(apiKey)
-        });
-        const json = await readApiResponse(response);
+        // 3. AviationStack Provider
+        // Requests are backend-only to avoid CORS/mixed-content issues and key exposure
+        try {
+            const query = new URLSearchParams({ flight_iata: cleanIata });
+            if (date) query.set('flight_date', date);
+            const response = await fetch(`/api/proxy/flight-status?${query.toString()}`, {
+                headers: authenticatedHeaders(apiKey)
+            });
+            const json = await readApiResponse(response);
 
-        if (!Array.isArray(json.data) || json.data.length === 0) {
-            throw new Error(`No AviationStack flight record was found for ${cleanIata}${date ? ` on ${date}` : ''}.`);
+            if (Array.isArray(json.data) && json.data.length > 0) {
+                const exactDateMatch = date
+                    ? json.data.find((flight: FlightStatusResponse) => flight.flight_date === date)
+                    : undefined;
+                return (exactDateMatch || json.data[0]) as FlightStatusResponse;
+            }
+        } catch (e) {
+            console.warn("AviationStack call failed, attempting keyless fallback", e);
         }
 
-        const exactDateMatch = date
-            ? json.data.find((flight: FlightStatusResponse) => flight.flight_date === date)
-            : undefined;
-        return (exactDateMatch || json.data[0]) as FlightStatusResponse;
+        // Final keyless fallback attempt
+        const keylessFallback = await lookupKeylessFlight(cleanIata, date);
+        if (keylessFallback) return keylessFallback;
+
+        throw new Error(`No flight record was found for ${cleanIata}${date ? ` on ${date}` : ''}.`);
     },
 
     searchFlightsByRoute: async (

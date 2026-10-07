@@ -834,36 +834,37 @@ export async function searchLocations(query: string): Promise<string[]> {
                 saveCache();
             }
 
-            // Cancel running requests for optimal network utilization
-            if (activeSearchAborts.has('search')) {
-                activeSearchAborts.get('search')?.abort();
-            }
-            const controller = new AbortController();
-            activeSearchAborts.set('search', controller);
+            // Only query Nominatim as a fallback if Open-Meteo returned 0 results
+            if (!meteoResults || meteoResults.length === 0) {
+                if (activeSearchAborts.has('search')) {
+                    activeSearchAborts.get('search')?.abort();
+                }
+                const controller = new AbortController();
+                activeSearchAborts.set('search', controller);
 
-            // Timeout request after 1.5s
-            const timerId = setTimeout(() => controller.abort(), 1500);
+                const timerId = setTimeout(() => controller.abort(), 1500);
 
-            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(trimmedQuery)}&limit=10`, {
-                signal: controller.signal,
-                headers: { 'Accept-Language': 'en' }
-            });
-            clearTimeout(timerId);
-
-            if (res.ok) {
-                const data = await res.json();
-                data.forEach((item: any) => {
-                    const name: string = item.display_name;
-                    if (name.toLowerCase().includes('airport') || name.toLowerCase().includes('aerod')) {
-                        if (!networkAirportSuggestions.includes(name)) networkAirportSuggestions.push(name);
-                    } else {
-                        const rawCity = item.address?.city || item.address?.town || item.address?.village || item.name || (item.display_name ? item.display_name.split(',')[0] : '');
-                        const cleanCity = cleanCityName(rawCity, item.address?.country_code, item.address?.state || item.address?.province);
-                        const country = item.address?.country || '';
-                        const displayName = country ? `${cleanCity}, ${country}` : cleanCity;
-                        if (!networkCitySuggestions.includes(displayName)) networkCitySuggestions.push(displayName);
-                    }
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(trimmedQuery)}&limit=10`, {
+                    signal: controller.signal,
+                    headers: { 'Accept-Language': 'en' }
                 });
+                clearTimeout(timerId);
+
+                if (res.ok) {
+                    const data = await res.json();
+                    data.forEach((item: any) => {
+                        const name: string = item.display_name;
+                        if (name.toLowerCase().includes('airport') || name.toLowerCase().includes('aerod')) {
+                            if (!networkAirportSuggestions.includes(name)) networkAirportSuggestions.push(name);
+                        } else {
+                            const rawCity = item.address?.city || item.address?.town || item.address?.village || item.name || (item.display_name ? item.display_name.split(',')[0] : '');
+                            const cleanCity = cleanCityName(rawCity, item.address?.country_code, item.address?.state || item.address?.province);
+                            const country = item.address?.country || '';
+                            const displayName = country ? `${cleanCity}, ${country}` : cleanCity;
+                            if (!networkCitySuggestions.includes(displayName)) networkCitySuggestions.push(displayName);
+                        }
+                    });
+                }
             }
         } catch (e) {
             // Graceful fallback to offline/cached results

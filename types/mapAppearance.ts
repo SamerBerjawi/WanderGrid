@@ -8,9 +8,9 @@ export const getEffectiveBasemap = (
 ): 'onyx' | 'citylights' | 'satellite' | 'snow' | 'vibrant' | 'ocean' => {
     // If an explicit layer style other than 'default' is requested, respect it
     if (basemap && basemap !== 'default') {
+        if (basemap === 'satellite') return 'satellite';
         if (isDark) {
             if (basemap === 'citylights') return 'citylights';
-            if (basemap === 'satellite') return 'satellite';
             if (basemap === 'onyx') return 'onyx';
         } else {
             if (basemap === 'vibrant') return 'vibrant';
@@ -66,13 +66,25 @@ export interface MapAppearanceSettings {
     // Layers Tab
     timeOfDay: boolean; // Live solar day/night shading
     atmosphere?: boolean; // Subtle 3D globe atmospheric glow, stars & solar cosmos
-    rainRadar: boolean; // Latest RainViewer precipitation
+    rainRadar: boolean; // Latest RainViewer or NOAA precipitation
     rainRadarOpacity?: number; // 0.2 to 1.0
     rainRadarColorScheme?: number; // 1 to 8
+    radarSource?: 'rainviewer' | 'noaa_mrms'; // RainViewer (Global) vs NOAA nowCOAST MRMS (North America HD)
+    weatherClouds?: boolean; // NOAA nowCOAST Global Infrared Satellite Clouds
+    weatherCloudsOpacity?: number; // 0.2 to 1.0
 
     // OpenAIP Aeronautical Chart Overlay
     openAipOverlay?: boolean;
     openAipGroups?: ('airspaces' | 'airspaceLabels' | 'airports' | 'navaids' | 'reportingPoints')[];
+
+    // Terrain, Elevation & Infrastructure Overlays
+    terrainHillshade?: boolean; // Esri World Hillshade 3D relief shading
+    terrainHillshadeOpacity?: number; // 0.1 to 1.0
+    transitOverlay?: boolean; // OpenRailwayMap global transit & rail infrastructure
+    transitOverlayOpacity?: number; // 0.1 to 1.0
+
+    // Motion & Animation Optimization
+    flightInterpolation?: boolean; // Smooth flight progress interpolation
 
     // Scratch Map Mode Filters & Toggles
     scratchCitySize?: 'off' | 'small' | 'medium' | 'large';
@@ -96,8 +108,16 @@ export const DEFAULT_MAP_APPEARANCE: MapAppearanceSettings = {
     rainRadar: false,
     rainRadarOpacity: 0.85,
     rainRadarColorScheme: 2,
+    radarSource: 'rainviewer',
+    weatherClouds: false,
+    weatherCloudsOpacity: 0.75,
     openAipOverlay: false,
     openAipGroups: ['airspaces', 'airspaceLabels', 'airports', 'navaids', 'reportingPoints'],
+    terrainHillshade: false,
+    terrainHillshadeOpacity: 0.6,
+    transitOverlay: false,
+    transitOverlayOpacity: 0.75,
+    flightInterpolation: true,
     scratchCitySize: 'medium',
     showLivedCountries: true,
     showWishlistCountries: true,

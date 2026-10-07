@@ -323,7 +323,10 @@ export const createMapLibreStyle = (
 
     switch (effectiveLayer) {
         case 'satellite':
-            tiles = ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'];
+            tiles = [
+                'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                'https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+            ];
             maxzoom = 19;
             attribution = 'Source: Esri, Maxar, Earthstar Geographics';
             break;
@@ -578,7 +581,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     const [radarMeta, setRadarMeta] = useState<RainRadarMetadata | null>(null);
 
     useEffect(() => {
-        if (!activeAppearance.rainRadar) return;
+        if (!activeAppearance.rainRadar || activeAppearance.radarSource === 'noaa_mrms') return;
         const fetchRadar = () => {
             getLatestRainRadarMetadata(
                 activeAppearance.rainRadarColorScheme || 2,
@@ -591,7 +594,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         fetchRadar();
         const interval = setInterval(fetchRadar, 5 * 60_000);
         return () => clearInterval(interval);
-    }, [activeAppearance.rainRadar, activeAppearance.rainRadarColorScheme]);
+    }, [activeAppearance.rainRadar, activeAppearance.rainRadarColorScheme, activeAppearance.radarSource]);
 
     // Periodic solar terminator refresh (every 60s as the earth rotates)
     const [solarTerminatorTick, setSolarTerminatorTick] = useState(0);
@@ -1151,6 +1154,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             path: [number, number][];
             timestamps: number[];
             color: [number, number, number, number];
+            corridorId?: string;
         }[] = [];
 
         const getPhase = (str: string) => {
@@ -1202,12 +1206,14 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     result.push({
                         path: singlePath,
                         timestamps: singlePath.map((_, i) => phase + (i / numPoints) * duration),
-                        color: cometColor
+                        color: cometColor,
+                        corridorId: arc.corridorId
                     });
                     result.push({
                         path: singlePath,
                         timestamps: singlePath.map((_, i) => phase + duration + (i / numPoints) * duration),
-                        color: cometColor
+                        color: cometColor,
+                        corridorId: arc.corridorId
                     });
                 } catch {
                     // Ignore rare errors on degenerate points
@@ -1607,6 +1613,65 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     extensions: [globeHorizonCullExtension]
                 })
             );
+
+            // 6.6 Live Smooth Flight Motion Interpolation (Aircraft Beacon & Position Tracker)
+            if (activeAppearance.flightInterpolation !== false) {
+                const activeAircraftNodes: any[] = [];
+                animatedTripPaths.forEach((trip: any, idx: number) => {
+                    const ts = trip.timestamps;
+                    const pts = trip.path;
+                    if (!ts || !pts || ts.length < 2) return;
+
+                    for (let i = 0; i < ts.length - 1; i++) {
+                        if (currentTime >= ts[i] && currentTime <= ts[i + 1]) {
+                            const ratio = (currentTime - ts[i]) / (ts[i + 1] - ts[i] || 1);
+                            const lng = pts[i][0] + (pts[i + 1][0] - pts[i][0]) * ratio;
+                            const lat = pts[i][1] + (pts[i + 1][1] - pts[i][1]) * ratio;
+                            activeAircraftNodes.push({
+                                id: `plane-${idx}`,
+                                position: [lng, lat],
+                                color: trip.color,
+                                corridorId: trip.corridorId
+                            });
+                            break;
+                        }
+                    }
+                });
+
+                if (activeAircraftNodes.length > 0) {
+                    layers.push(
+                        new ScatterplotLayer({
+                            id: 'interpolated-aircraft-glow',
+                            data: activeAircraftNodes,
+                            getPosition: (d: any) => d.position,
+                            getFillColor: (d: any) => [d.color[0], d.color[1], d.color[2], 120],
+                            getRadius: 7,
+                            radiusUnits: 'pixels',
+                            pickable: false,
+                            extensions: [globeHorizonCullExtension]
+                        }),
+                        new ScatterplotLayer({
+                            id: 'interpolated-aircraft-nodes',
+                            data: activeAircraftNodes,
+                            getPosition: (d: any) => d.position,
+                            getFillColor: [255, 255, 255, 255],
+                            getLineColor: (d: any) => [d.color[0], d.color[1], d.color[2], 255],
+                            getRadius: 3.5,
+                            radiusUnits: 'pixels',
+                            stroked: true,
+                            lineWidthUnits: 'pixels',
+                            getLineWidth: 1.5,
+                            pickable: true,
+                            onHover: (info: any) => {
+                                if (info.object) {
+                                    setHoveredRouteKey(info.object.corridorId || null);
+                                }
+                            },
+                            extensions: [globeHorizonCullExtension]
+                        })
+                    );
+                }
+            }
         }
 
         // 7. Airport & Destination Nodes
@@ -2014,66 +2079,201 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         JSON.stringify(activeAppearance.openAipGroups)
     ]);
 
-    // Synchronize RainViewer precipitation radar directly into MapLibre GL
+    // Synchronize Terrain Hillshade, Transit, NOAA Clouds and Precipitation Radar directly into MapLibre GL
     useEffect(() => {
         const map = mapRef.current;
         if (!map) return;
 
-        const updateRadarLayer = () => {
+        const syncRasterOverlays = () => {
             if (!map.isStyleLoaded()) return;
 
-            const sourceId = 'rain-radar-source';
-            const layerId = 'rain-radar-layer';
-            const isEnabled = Boolean(activeAppearance.rainRadar && radarMeta?.tileUrl);
-            const opacity = activeAppearance.rainRadarOpacity ?? 0.85;
+            // 1. Terrain Hillshade Layer (Esri World Hillshade 3D Relief)
+            const terrainSourceId = 'terrain-hillshade-source';
+            const terrainLayerId = 'terrain-hillshade-layer';
+            const isTerrainEnabled = Boolean(activeAppearance.terrainHillshade);
+            const terrainOpacity = activeAppearance.terrainHillshadeOpacity ?? 0.6;
+            const terrainTileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}';
 
-            const existingLayer = map.getLayer(layerId);
-            const existingSource = map.getSource(sourceId) as maplibregl.RasterTileSource | undefined;
+            const existingTerrainLayer = map.getLayer(terrainLayerId);
+            const existingTerrainSource = map.getSource(terrainSourceId);
 
-            if (!isEnabled) {
-                if (existingLayer) map.removeLayer(layerId);
-                if (existingSource) map.removeSource(sourceId);
+            if (!isTerrainEnabled) {
+                if (existingTerrainLayer) map.removeLayer(terrainLayerId);
+                if (existingTerrainSource) map.removeSource(terrainSourceId);
+            } else {
+                if (!map.getSource(terrainSourceId)) {
+                    map.addSource(terrainSourceId, {
+                        type: 'raster',
+                        tiles: [terrainTileUrl],
+                        tileSize: 256,
+                        attribution: 'Esri, USGS, NGA'
+                    });
+                }
+                if (!map.getLayer(terrainLayerId)) {
+                    const beforeId = map.getLayer('transit-railway-layer') 
+                        ? 'transit-railway-layer' 
+                        : map.getLayer('noaa-clouds-layer')
+                        ? 'noaa-clouds-layer'
+                        : map.getLayer('rain-radar-layer')
+                        ? 'rain-radar-layer'
+                        : undefined;
+                    map.addLayer({
+                        id: terrainLayerId,
+                        type: 'raster',
+                        source: terrainSourceId,
+                        paint: { 'raster-opacity': terrainOpacity }
+                    }, beforeId);
+                } else {
+                    map.setPaintProperty(terrainLayerId, 'raster-opacity', terrainOpacity);
+                }
+            }
+
+            // 2. Global Transit & Railway Layer (OpenRailwayMap)
+            const transitSourceId = 'transit-railway-source';
+            const transitLayerId = 'transit-railway-layer';
+            const isTransitEnabled = Boolean(activeAppearance.transitOverlay);
+            const transitOpacity = activeAppearance.transitOverlayOpacity ?? 0.75;
+            const transitTileUrl = 'https://a.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png';
+
+            const existingTransitLayer = map.getLayer(transitLayerId);
+            const existingTransitSource = map.getSource(transitSourceId);
+
+            if (!isTransitEnabled) {
+                if (existingTransitLayer) map.removeLayer(transitLayerId);
+                if (existingTransitSource) map.removeSource(transitSourceId);
+            } else {
+                if (!map.getSource(transitSourceId)) {
+                    map.addSource(transitSourceId, {
+                        type: 'raster',
+                        tiles: [transitTileUrl],
+                        tileSize: 256,
+                        attribution: 'OpenRailwayMap'
+                    });
+                }
+                if (!map.getLayer(transitLayerId)) {
+                    const beforeId = map.getLayer('noaa-clouds-layer') 
+                        ? 'noaa-clouds-layer' 
+                        : map.getLayer('rain-radar-layer')
+                        ? 'rain-radar-layer'
+                        : undefined;
+                    map.addLayer({
+                        id: transitLayerId,
+                        type: 'raster',
+                        source: transitSourceId,
+                        paint: { 'raster-opacity': transitOpacity }
+                    }, beforeId);
+                } else {
+                    map.setPaintProperty(transitLayerId, 'raster-opacity', transitOpacity);
+                }
+            }
+
+            // 3. NOAA nowCOAST Global Longwave Satellite Clouds
+            const cloudsSourceId = 'noaa-clouds-source';
+            const cloudsLayerId = 'noaa-clouds-layer';
+            const isCloudsEnabled = Boolean(activeAppearance.weatherClouds);
+            const cloudsOpacity = activeAppearance.weatherCloudsOpacity ?? 0.75;
+            const cloudsTileUrl = 'https://nowcoast.noaa.gov/geoserver/observations/satellite/ows?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&FORMAT=image/png&TRANSPARENT=TRUE&LAYERS=global_longwave_imagery_mosaic&WIDTH=256&HEIGHT=256&SRS=EPSG:3857&BBOX={bbox-epsg-3857}';
+
+            const existingCloudsLayer = map.getLayer(cloudsLayerId);
+            const existingCloudsSource = map.getSource(cloudsSourceId) as maplibregl.RasterTileSource | undefined;
+
+            if (!isCloudsEnabled) {
+                if (existingCloudsLayer) map.removeLayer(cloudsLayerId);
+                if (existingCloudsSource) map.removeSource(cloudsSourceId);
+            } else {
+                if (!map.getSource(cloudsSourceId)) {
+                    map.addSource(cloudsSourceId, {
+                        type: 'raster',
+                        tiles: [cloudsTileUrl],
+                        tileSize: 256,
+                        attribution: 'NOAA nowCOAST'
+                    });
+                }
+                if (!map.getLayer(cloudsLayerId)) {
+                    const beforeId = map.getLayer('rain-radar-layer') ? 'rain-radar-layer' : undefined;
+                    map.addLayer({
+                        id: cloudsLayerId,
+                        type: 'raster',
+                        source: cloudsSourceId,
+                        paint: {
+                            'raster-opacity': cloudsOpacity
+                        }
+                    }, beforeId);
+                } else {
+                    map.setPaintProperty(cloudsLayerId, 'raster-opacity', cloudsOpacity);
+                }
+            }
+
+            // 4. Weather Radar (RainViewer vs NOAA nowCOAST MRMS Base Reflectivity)
+            const radarSourceId = 'rain-radar-source';
+            const radarLayerId = 'rain-radar-layer';
+            const isNoaaMrms = activeAppearance.radarSource === 'noaa_mrms';
+            const noaaRadarTileUrl = 'https://nowcoast.noaa.gov/geoserver/observations/weather_radar/ows?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&FORMAT=image/png&TRANSPARENT=TRUE&LAYERS=base_reflectivity_mosaic&WIDTH=256&HEIGHT=256&SRS=EPSG:3857&BBOX={bbox-epsg-3857}';
+            const targetRadarTileUrl = isNoaaMrms ? noaaRadarTileUrl : radarMeta?.tileUrl;
+            const radarAttribution = isNoaaMrms ? 'NOAA nowCOAST MRMS' : 'RainViewer';
+            const isRadarEnabled = Boolean(activeAppearance.rainRadar && targetRadarTileUrl);
+            const radarOpacity = activeAppearance.rainRadarOpacity ?? 0.85;
+
+            const existingRadarLayer = map.getLayer(radarLayerId);
+            const existingRadarSource = map.getSource(radarSourceId) as maplibregl.RasterTileSource | undefined;
+
+            if (!isRadarEnabled) {
+                if (existingRadarLayer) map.removeLayer(radarLayerId);
+                if (existingRadarSource) map.removeSource(radarSourceId);
                 return;
             }
 
-            const currentTileUrl = existingSource?.tiles?.[0];
-            if (existingSource && currentTileUrl !== radarMeta!.tileUrl) {
-                if (existingLayer) map.removeLayer(layerId);
-                map.removeSource(sourceId);
+            const currentRadarTileUrl = existingRadarSource?.tiles?.[0];
+            if (existingRadarSource && currentRadarTileUrl !== targetRadarTileUrl) {
+                if (existingRadarLayer) map.removeLayer(radarLayerId);
+                map.removeSource(radarSourceId);
             }
 
-            if (!map.getSource(sourceId)) {
-                map.addSource(sourceId, {
+            if (!map.getSource(radarSourceId)) {
+                map.addSource(radarSourceId, {
                     type: 'raster',
-                    tiles: [radarMeta!.tileUrl],
+                    tiles: [targetRadarTileUrl!],
                     tileSize: 256,
-                    attribution: 'RainViewer'
+                    attribution: radarAttribution
                 });
             }
 
-            if (!map.getLayer(layerId)) {
+            if (!map.getLayer(radarLayerId)) {
                 map.addLayer({
-                    id: layerId,
+                    id: radarLayerId,
                     type: 'raster',
-                    source: sourceId,
+                    source: radarSourceId,
                     paint: {
-                        'raster-opacity': opacity
+                        'raster-opacity': radarOpacity
                     }
                 });
             } else {
-                map.setPaintProperty(layerId, 'raster-opacity', opacity);
+                map.setPaintProperty(radarLayerId, 'raster-opacity', radarOpacity);
             }
         };
 
         if (map.isStyleLoaded()) {
-            updateRadarLayer();
+            syncRasterOverlays();
         }
 
-        map.on('styledata', updateRadarLayer);
+        map.on('styledata', syncRasterOverlays);
         return () => {
-            map.off('styledata', updateRadarLayer);
+            map.off('styledata', syncRasterOverlays);
         };
-    }, [activeAppearance.rainRadar, activeAppearance.rainRadarOpacity, radarMeta?.tileUrl, currentLayer, isDark]);
+    }, [
+        activeAppearance.rainRadar, 
+        activeAppearance.rainRadarOpacity, 
+        activeAppearance.radarSource,
+        activeAppearance.weatherClouds,
+        activeAppearance.weatherCloudsOpacity,
+        activeAppearance.terrainHillshade,
+        activeAppearance.terrainHillshadeOpacity,
+        activeAppearance.transitOverlay,
+        activeAppearance.transitOverlayOpacity,
+        radarMeta?.tileUrl, 
+        currentLayer, 
+        isDark
+    ]);
 
     const prevProjectionRef = useRef<string>(effectiveProjection);
 
@@ -2266,7 +2466,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             />
 
             {/* MapLibre GL 60 FPS Canvas with Interleaved Deck.gl Engine */}
-            <div ref={mapContainerRef} className="w-full h-full relative z-10" />
+            <div ref={mapContainerRef} className="w-full h-full relative z-10 transition-opacity duration-300 ease-out" />
 
             {/* Zoom & View Navigation Controls with Liquid Glass (Bottom Left) */}
             <div className={`absolute bottom-3 md:bottom-6 z-20 flex flex-col gap-2 pointer-events-auto transition-all duration-300 ${isEmbedded ? 'left-3' : (sidebarCollapsed ? 'left-3 md:left-28' : 'left-3 md:left-80')}`}>

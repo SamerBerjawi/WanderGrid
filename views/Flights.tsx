@@ -167,6 +167,15 @@ const getAirlineLogoUrlCached = (airlineName: string, currentAttempt: number): s
     const bfUrl = getMerchantLogoUrl(airlineName, sharedBrandfetchKey, overrides, { type: 'icon', fallback: '404' });
     if (bfUrl) steps.push(bfUrl);
   }
+
+  const codeMatch = carriers.find(
+    (c: any) => c.code?.toLowerCase().trim() === airlineName.toLowerCase().trim() ||
+                c.name?.toLowerCase().trim() === airlineName.toLowerCase().trim()
+  );
+  const iataCode = (codeMatch?.code || (airlineName.length === 2 ? airlineName : '')).toUpperCase().trim();
+  if (iataCode && iataCode.length === 2) {
+    steps.push(`https://pics.avs.io/200/200/${iataCode}.png`);
+  }
   
   steps.push(`https://logo.clearbit.com/${domain}`);
   steps.push(`https://asset.brandfetch.io/${domain}/logo?theme=light`);
@@ -187,7 +196,7 @@ const AirlineLogo: React.FC<{ provider?: string, fallback: React.ReactNode }> = 
   if (!currentUrl) return <>{fallback}</>;
 
   const handleError = () => {
-    if (attempt < 3) {
+    if (attempt < 4) {
       setAttempt(prev => prev + 1);
     } else {
       setFailed(true);

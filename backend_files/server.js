@@ -208,6 +208,8 @@ const EXTERNAL_FETCH_TIMEOUT_MS = process.env.EXTERNAL_FETCH_TIMEOUT_MS
 // Global memory caches as robust fail-safe fallbacks
 const memoryAirports = new Map();
 const memoryCarriers = new Map();
+const memoryGeocoding = new Map();
+const openSkyCache = new Map();
 
 let dbReady = false;
 
@@ -440,6 +442,21 @@ const loadGlobalData = async () => {
         }
     });
     console.log(`Successfully preloaded ${crCount} carriers from PostgreSQL database into fast RAM cache.`);
+
+    // Preload top hot geocoding queries into RAM cache for instantaneous 0ms responses
+    try {
+        const geoRes = await pool.query('SELECT query, results FROM geocoding_cache ORDER BY created_at DESC LIMIT 500');
+        let geoCount = 0;
+        geoRes.rows.forEach(row => {
+            if (row.query && row.results) {
+                memoryGeocoding.set(row.query, row.results);
+                geoCount++;
+            }
+        });
+        console.log(`Successfully preloaded ${geoCount} hot geocoding queries into fast RAM cache.`);
+    } catch (geoErr) {
+        console.warn('Could not preload geocoding cache into RAM:', geoErr.message);
+    }
 
   } catch (err) {
     console.warn('Failed to load global datasets from PG database to memory cache; making lazy network fallback fetch...', err.message);
@@ -1195,6 +1212,163 @@ app.get('/api/proxy/aerodatabox/aircrafts/reg/:reg', async (req, res) => {
 });
 
 // ==========================================
+// KEYLESS FLIGHT LOOKUP (ADSBdb & adsb.lol)
+// ==========================================
+const adsbDbCache = new Map();
+const adsbLolCache = new Map();
+
+app.get('/api/proxy/adsbdb/flights/:flightNumber', async (req, res) => {
+    const rawNumber = String(req.params.flightNumber || '').trim().replace(/\s|-/g, '').toUpperCase();
+    if (!rawNumber) return res.status(400).json({ error: 'Flight number is required.' });
+
+    const cacheKey = `flight:${rawNumber}`;
+    const cached = adsbDbCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+        res.set('X-Cache', 'HIT');
+        return res.json(cached.data);
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+
+    try {
+        const upstream = await fetch(`https://api.adsbdb.com/v0/callsign/${encodeURIComponent(rawNumber)}`, {
+            signal: controller.signal,
+            headers: { 'User-Agent': 'WanderGrid/1.0' }
+        });
+        clearTimeout(timeout);
+
+        if (!upstream.ok) {
+            return res.status(upstream.status).json({ error: `ADSBdb returned HTTP ${upstream.status}` });
+        }
+
+        const data = await upstream.json();
+        adsbDbCache.set(cacheKey, { data, expiresAt: Date.now() + 7200000 }); // 2 hours
+        res.set('X-Cache', 'MISS');
+        return res.json(data);
+    } catch (e) {
+        clearTimeout(timeout);
+        return res.status(e.name === 'AbortError' ? 504 : 502).json({ error: 'Failed to reach ADSBdb.' });
+    }
+});
+
+app.get('/api/proxy/adsb-lol/callsign/:callsign', async (req, res) => {
+    const rawCallsign = String(req.params.callsign || '').trim().replace(/\s|-/g, '').toUpperCase();
+    if (!rawCallsign) return res.status(400).json({ error: 'Callsign is required.' });
+
+    const cacheKey = `callsign:${rawCallsign}`;
+    const cached = adsbLolCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+        res.set('X-Cache', 'HIT');
+        return res.json(cached.data);
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+
+    try {
+        const upstream = await fetch(`https://api.adsb.lol/v2/callsign/${encodeURIComponent(rawCallsign)}`, {
+            signal: controller.signal,
+            headers: { 'User-Agent': 'WanderGrid/1.0' }
+        });
+        clearTimeout(timeout);
+
+        if (!upstream.ok) {
+            return res.status(upstream.status).json({ error: `adsb.lol returned HTTP ${upstream.status}` });
+        }
+
+        const data = await upstream.json();
+        adsbLolCache.set(cacheKey, { data, expiresAt: Date.now() + 60000 }); // 1 minute
+        res.set('X-Cache', 'MISS');
+        return res.json(data);
+    } catch (e) {
+        clearTimeout(timeout);
+        return res.status(e.name === 'AbortError' ? 504 : 502).json({ error: 'Failed to reach adsb.lol.' });
+    }
+});
+
+app.get('/api/proxy/adsbdb/aircraft/:hexOrReg', async (req, res) => {
+    const param = String(req.params.hexOrReg || '').trim().toUpperCase();
+    if (!param) return res.status(400).json({ error: 'ICAO hex or registration required.' });
+
+    const cacheKey = `aircraft:${param}`;
+    const cached = adsbDbCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+        res.set('X-Cache', 'HIT');
+        return res.json(cached.data);
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+
+    try {
+        const upstream = await fetch(`https://api.adsbdb.com/v0/aircraft/${encodeURIComponent(param)}`, {
+            signal: controller.signal,
+            headers: { 'User-Agent': 'WanderGrid/1.0' }
+        });
+        clearTimeout(timeout);
+
+        if (!upstream.ok) {
+            return res.status(upstream.status).json({ error: `ADSBdb returned HTTP ${upstream.status}` });
+        }
+
+        const data = await upstream.json();
+        adsbDbCache.set(cacheKey, { data, expiresAt: Date.now() + 86400000 }); // 24 hours
+        res.set('X-Cache', 'MISS');
+        return res.json(data);
+    } catch (e) {
+        clearTimeout(timeout);
+        return res.status(e.name === 'AbortError' ? 504 : 502).json({ error: 'Failed to reach ADSBdb aircraft.' });
+    }
+});
+
+// ==========================================
+// OPENSKY NETWORK LIVE TELEMETRY PROXY (FREE / KEYLESS)
+// ==========================================
+app.get('/api/proxy/opensky/states', async (req, res) => {
+    const { icao24, callsign } = req.query;
+    const cacheKey = `opensky_${icao24 || 'all'}_${callsign || 'all'}`;
+    const cached = openSkyCache.get(cacheKey);
+    if (cached && Date.now() < cached.expiresAt) {
+        res.set('X-Cache', 'HIT');
+        return res.json(cached.data);
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+
+    try {
+        let url = 'https://opensky-network.org/api/states/all';
+        if (icao24) {
+            url += `?icao24=${encodeURIComponent(icao24.toLowerCase())}`;
+        }
+        const upstream = await fetch(url, {
+            signal: controller.signal,
+            headers: { 'User-Agent': 'WanderGrid/1.0' }
+        });
+        clearTimeout(timeout);
+
+        if (!upstream.ok) {
+            return res.status(upstream.status).json({ error: `OpenSky returned HTTP ${upstream.status}` });
+        }
+
+        const data = await upstream.json();
+        // If a specific callsign was requested, filter states
+        if (callsign && data.states && Array.isArray(data.states)) {
+            const cleanCallsign = callsign.trim().toUpperCase();
+            data.states = data.states.filter(s => (s[1] || '').trim().toUpperCase() === cleanCallsign);
+        }
+
+        openSkyCache.set(cacheKey, { data, expiresAt: Date.now() + 10000 }); // 10s TTL
+        res.set('X-Cache', 'MISS');
+        return res.json(data);
+    } catch (e) {
+        clearTimeout(timeout);
+        return res.status(e.name === 'AbortError' ? 504 : 502).json({ error: 'Failed to reach OpenSky Network.' });
+    }
+});
+
+// ==========================================
 // OPENAIP VECTOR TILE PROXY (AERONAUTICAL CHARTS)
 // ==========================================
 app.get('/api/proxy/openaip/:z/:x/:y', async (req, res) => {
@@ -1476,13 +1650,20 @@ const handleGeocodingSearch = async (req, res) => {
         return res.json(localMatches);
     }
 
+    // 2. Instant RAM Cache (0ms)
+    if (memoryGeocoding.has(trimmedQ)) {
+        res.set('X-Cache', 'RAM');
+        return res.json(memoryGeocoding.get(trimmedQ));
+    }
+
     try {
-        // 2. Check persistent PostgreSQL geocoding database cache if not matched locally
+        // 3. Check persistent PostgreSQL geocoding database cache if not matched in RAM
         const cacheLookup = await pool.query('SELECT results, created_at FROM geocoding_cache WHERE query = $1', [trimmedQ]);
         if (cacheLookup.rows.length > 0) {
             const row = cacheLookup.rows[0];
             const age = Date.now() - new Date(row.created_at).getTime();
             if (age < GEOCODE_CACHE_TTL_MS) {
+                memoryGeocoding.set(trimmedQ, row.results);
                 res.set('X-Cache', 'HIT');
                 return res.json(row.results);
             } else {
@@ -1493,7 +1674,7 @@ const handleGeocodingSearch = async (req, res) => {
         console.warn("Geocoding database cache lookup failed:", dbErr.message);
     }
 
-    // 3. Fetch from OpenMeteo geocoding API with robust timeout abort protection
+    // 4. Fetch from OpenMeteo geocoding API with robust timeout abort protection
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
         controller.abort();
@@ -1522,7 +1703,8 @@ const handleGeocodingSearch = async (req, res) => {
             admin1: item.admin1 || ''
         }));
 
-        // 4. Keep results cached in DB for subsequent instantaneous requests (0ms latency)
+        // 5. Keep results cached in both RAM and DB for subsequent instantaneous requests (0ms latency)
+        memoryGeocoding.set(trimmedQ, formattedResults);
         try {
             await pool.query(
                 'INSERT INTO geocoding_cache (query, results) VALUES ($1, $2) ON CONFLICT (query) DO UPDATE SET results = $2',

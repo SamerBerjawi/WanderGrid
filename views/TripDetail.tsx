@@ -193,6 +193,15 @@ const AirlineLogo: React.FC<AirlineLogoProps> = React.memo(({ provider, brandfet
             if (bfUrl) steps.push(bfUrl);
         }
 
+        const codeMatch = carriers.find(
+            (c: any) => c.code?.toLowerCase().trim() === airlineName.toLowerCase().trim() ||
+                        c.name?.toLowerCase().trim() === airlineName.toLowerCase().trim()
+        );
+        const iataCode = (codeMatch?.code || (airlineName.length === 2 ? airlineName : '')).toUpperCase().trim();
+        if (iataCode && iataCode.length === 2) {
+            steps.push(`https://pics.avs.io/200/200/${iataCode}.png`);
+        }
+
         steps.push(`https://logo.clearbit.com/${domain}`);
         steps.push(`https://asset.brandfetch.io/${domain}/logo?theme=light`);
         steps.push(`https://www.google.com/s2/favicons?sz=128&domain=${domain}`);
@@ -208,7 +217,7 @@ const AirlineLogo: React.FC<AirlineLogoProps> = React.memo(({ provider, brandfet
     }, [provider, carriers, brandfetchApiKey]);
 
     const handleError = () => {
-        if (provider && attempt < 3) {
+        if (provider && attempt < 4) {
             const nextAttempt = attempt + 1;
             setAttempt(nextAttempt);
             setLogoUrl(getAirlineLogoUrl(provider, nextAttempt));
