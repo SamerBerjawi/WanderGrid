@@ -1,5 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
     CalendarBlank, 
@@ -11,22 +10,24 @@ import {
     Train, 
     Car, 
     Boat, 
-    Globe,
-    ArrowRight,
-    ArrowUpRight,
-    Bed,
-    Users,
-    Compass,
-    AirplaneTilt,
-    MapTrifold,
-    SuitcaseSimple,
-    Clock,
-    CalendarCheck,
-    MagnifyingGlass,
-    CaretDown,
-    X,
-    Funnel,
-    Check
+    Globe, 
+    ArrowRight, 
+    ArrowUpRight, 
+    Bed, 
+    Users, 
+    Compass, 
+    AirplaneTilt, 
+    MapTrifold, 
+    SuitcaseSimple, 
+    Clock, 
+    MagnifyingGlass, 
+    CaretDown, 
+    X, 
+    Check,
+    Archive,
+    Trash,
+    CheckSquare,
+    Square
 } from '@phosphor-icons/react';
 import GlassPanel from '../components/glass/GlassPanel';
 import { Button } from '../components/ui';
@@ -35,7 +36,6 @@ import { useWanderSync } from '../hooks/useWanderSync';
 import { dataService } from '../services/mockDb';
 import { Trip, User } from '../types';
 import { formatDateRange } from '../utils/formatters';
-import { NewTripDrawer } from '../components/NewTripDrawer';
 import { TripSetupBoard } from '../components/TripSetupBoard';
 
 interface PlannerViewProps {
@@ -119,8 +119,6 @@ const MONTHS = [
     { value: '12', label: 'Dec' },
 ];
 
-
-
 export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: usersProp }) => {
     // 1. Reactive SWR Trips Synchronization
     const { data: tripsData } = useWanderSync<Trip[]>(
@@ -157,6 +155,10 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
         planned: false
     });
 
+    // 6. Proposed Feature: Multi-Select & Bulk Actions
+    const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+    const [selectedTripIds, setSelectedTripIds] = useState<Set<string>>(new Set());
+
     const toggleBucket = (bucket: 'past' | 'confirmed' | 'planned') => {
         setCollapsedBuckets(prev => ({
             ...prev,
@@ -164,7 +166,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
         }));
     };
 
-    // Responsive screen-size detection for clean mobile layout
+    // Responsive screen-size detection for mobile adaptation
     const [isMobile, setIsMobile] = useState(() => (typeof window !== 'undefined' ? window.innerWidth < 640 : false));
 
     useEffect(() => {
@@ -279,7 +281,6 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
         const past: Trip[] = [];
 
         filteredTrips.forEach(trip => {
-            // Trips with past end date (or past start date if no end date), or status explicitly Past
             const hasPastDates = Boolean(
                 (trip.endDate && trip.endDate < today) ||
                 (trip.startDate && trip.startDate < today && (!trip.endDate || trip.endDate < today))
@@ -302,9 +303,63 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
         return { plannedTrips: planned, confirmedTrips: confirmed, pastTrips: past };
     }, [filteredTrips, today]);
 
+    // Proposed Stats Ribbon computation
+    const statsRibbon = useMemo(() => {
+        let totalDays = 0;
+        const allDestinations = new Set<string>();
+
+        trips.forEach(trip => {
+            if (trip.startDate && trip.endDate) {
+                const s = new Date(trip.startDate).getTime();
+                const e = new Date(trip.endDate).getTime();
+                if (!isNaN(s) && !isNaN(e) && e >= s) {
+                    totalDays += Math.round((e - s) / (1000 * 60 * 60 * 24)) + 1;
+                }
+            }
+            if (trip.locations && trip.locations.length > 0) {
+                trip.locations.forEach(l => l.name && allDestinations.add(l.name));
+            } else if (trip.location) {
+                trip.location.split(',').forEach(loc => loc.trim() && allDestinations.add(loc.trim()));
+            }
+        });
+
+        return {
+            totalTrips: trips.length,
+            totalDays,
+            uniqueDestinations: allDestinations.size,
+            upcomingCount: confirmedTrips.length + plannedTrips.length
+        };
+    }, [trips, confirmedTrips.length, plannedTrips.length]);
+
     const handleOpenNewTrip = (status: 'Planning' | 'Upcoming' | 'Past' = 'Planning') => {
         setDrawerStatus(status);
         setIsNewTripOpen(true);
+    };
+
+    const toggleTripSelection = (tripId: string) => {
+        setSelectedTripIds(prev => {
+            const next = new Set(prev);
+            if (next.has(tripId)) {
+                next.delete(tripId);
+            } else {
+                next.add(tripId);
+            }
+            return next;
+        });
+    };
+
+    const handleBulkArchive = async () => {
+        if (selectedTripIds.size === 0) return;
+        const count = selectedTripIds.size;
+        if (!window.confirm(`Are you sure you want to archive/remove ${count} selected expedition${count > 1 ? 's' : ''}?`)) {
+            return;
+        }
+
+        for (const tripId of selectedTripIds) {
+            await dataService.deleteTrip(tripId);
+        }
+        setSelectedTripIds(new Set());
+        setIsMultiSelectMode(false);
     };
 
     if (isNewTripOpen) {
@@ -337,17 +392,37 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                         className="w-7 h-7 sm:w-9 sm:h-9 md:w-12 md:h-12 text-emerald-500 dark:text-emerald-400 shrink-0" 
                         weight="duotone" 
                     />
-                    <h1 className="text-xl sm:text-3xl md:text-5xl font-black text-light-text dark:text-white tracking-tight leading-tight sm:leading-none truncate sm:overflow-visible">
-                        Expedition Planner
-                    </h1>
+                    <div className="min-w-0">
+                        <h1 className="text-xl sm:text-3xl md:text-5xl font-black text-light-text dark:text-white tracking-tight leading-tight sm:leading-none truncate sm:overflow-visible">
+                            Expedition Planner
+                        </h1>
+                    </div>
                 </div>
 
-                {/* Right: + New Trip Button (Aligned Right on Mobile & Desktop) */}
-                <div className="flex items-center justify-end shrink-0">
+                {/* Right: Actions (Aligned Right on Mobile & Desktop) */}
+                <div className="flex items-center justify-end gap-2 shrink-0">
+                    {/* Proposed Multi-Select Mode Toggle Button */}
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setIsMultiSelectMode(!isMultiSelectMode);
+                            if (isMultiSelectMode) setSelectedTripIds(new Set());
+                        }}
+                        className={`min-w-[44px] min-h-[44px] px-3.5 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
+                            isMultiSelectMode
+                                ? 'bg-primary-500 text-white border-primary-500 shadow-sm'
+                                : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text border-black/10 dark:border-white/10'
+                        }`}
+                        title="Toggle bulk selection"
+                    >
+                        <CheckSquare className="w-4 h-4" weight={isMultiSelectMode ? 'fill' : 'duotone'} />
+                        <span className="hidden sm:inline">{isMultiSelectMode ? 'Done' : 'Select'}</span>
+                    </button>
+
                     <Button 
                         variant="primary" 
                         color="emerald"
-                        className="shrink-0"
+                        className="shrink-0 min-h-[44px]"
                         onClick={() => handleOpenNewTrip('Planning')}
                         icon={<Plus className="w-4 h-4" />}
                     >
@@ -357,14 +432,96 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
             </div>
 
             {/* ========================================================================= */}
+            {/* PROPOSED ADDITION: EXPEDITION OVERVIEW STATS RIBBON                        */}
+            {/* ========================================================================= */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full">
+                <GlassPanel
+                    className="wg-glass-card shadow-sm"
+                    padding="12px 16px"
+                    overrides={{ borderRadius: 20 }}
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                            <Compass className="w-5 h-5" weight="duotone" />
+                        </div>
+                        <div className="min-w-0">
+                            <span className="text-[10px] uppercase font-bold tracking-wider text-light-text-secondary dark:text-dark-text-secondary block truncate">
+                                Expeditions
+                            </span>
+                            <span className="text-base sm:text-lg font-black text-light-text dark:text-dark-text font-mono">
+                                {statsRibbon.totalTrips}
+                            </span>
+                        </div>
+                    </div>
+                </GlassPanel>
+
+                <GlassPanel
+                    className="wg-glass-card shadow-sm"
+                    padding="12px 16px"
+                    overrides={{ borderRadius: 20 }}
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-sky-500/15 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
+                            <CalendarBlank className="w-5 h-5" weight="duotone" />
+                        </div>
+                        <div className="min-w-0">
+                            <span className="text-[10px] uppercase font-bold tracking-wider text-light-text-secondary dark:text-dark-text-secondary block truncate">
+                                Days on Road
+                            </span>
+                            <span className="text-base sm:text-lg font-black text-light-text dark:text-dark-text font-mono">
+                                {statsRibbon.totalDays}d
+                            </span>
+                        </div>
+                    </div>
+                </GlassPanel>
+
+                <GlassPanel
+                    className="wg-glass-card shadow-sm"
+                    padding="12px 16px"
+                    overrides={{ borderRadius: 20 }}
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shrink-0">
+                            <MapPin className="w-5 h-5" weight="duotone" />
+                        </div>
+                        <div className="min-w-0">
+                            <span className="text-[10px] uppercase font-bold tracking-wider text-light-text-secondary dark:text-dark-text-secondary block truncate">
+                                Destinations
+                            </span>
+                            <span className="text-base sm:text-lg font-black text-light-text dark:text-dark-text font-mono">
+                                {statsRibbon.uniqueDestinations}
+                            </span>
+                        </div>
+                    </div>
+                </GlassPanel>
+
+                <GlassPanel
+                    className="wg-glass-card shadow-sm"
+                    padding="12px 16px"
+                    overrides={{ borderRadius: 20 }}
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                            <Clock className="w-5 h-5" weight="duotone" />
+                        </div>
+                        <div className="min-w-0">
+                            <span className="text-[10px] uppercase font-bold tracking-wider text-light-text-secondary dark:text-dark-text-secondary block truncate">
+                                Ahead
+                            </span>
+                            <span className="text-base sm:text-lg font-black text-light-text dark:text-dark-text font-mono">
+                                {statsRibbon.upcomingCount}
+                            </span>
+                        </div>
+                    </div>
+                </GlassPanel>
+            </div>
+
+            {/* ========================================================================= */}
             {/* FLOATING MAP-STYLE TAB SELECTOR & MULTI-FILTER BAR                        */}
             {/* ========================================================================= */}
-            {/* ========================================================================= */}
-            {/* RESPONSIVE BAR: TABS (LEFT) & FILTER (RIGHT) ON DESKTOP, STACKED ON MOBILE*/}
-            {/* ========================================================================= */}
             <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3 w-full">
-                {/* 1. Tabs Row (Left on desktop, centered on mobile) - Unclipped for smooth shadow */}
-                <div className="flex items-center justify-center sm:justify-start overflow-x-auto sm:overflow-visible no-scrollbar p-3 -m-3 shrink-0 w-full sm:w-auto">
+                {/* 1. Tabs Row (Left on desktop, centered on mobile) */}
+                <div className="flex items-center justify-center sm:justify-start overflow-x-auto sm:overflow-visible no-scrollbar p-1 shrink-0 w-full sm:w-auto">
                     <GlassPanel
                         className="wg-glass-pill shadow-lg shadow-black/5 dark:shadow-black/25 shrink-0"
                         padding="4px 6px"
@@ -389,7 +546,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                                         key={tabKey}
                                         onClick={() => setActiveTab(tabKey)}
                                         title={config.label}
-                                        className={`relative rounded-full text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none active:scale-95 ${
+                                        className={`relative rounded-full text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none active:scale-95 min-h-[44px] ${
                                             isSelected
                                                 ? `${config.activeText} px-4 sm:px-5 py-2.5`
                                                 : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text px-3 sm:px-5 py-2.5'
@@ -442,23 +599,22 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     placeholder={isMobile ? "Filter trips..." : "Filter by title, subtitle, destination..."}
-                                    className="w-full h-10 sm:h-11 pl-10 pr-9 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 rounded-full text-xs font-semibold text-light-text dark:text-dark-text placeholder-light-text-secondary/60 dark:placeholder-dark-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all"
+                                    className="w-full h-11 pl-10 pr-9 bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 rounded-full text-xs font-semibold text-light-text dark:text-dark-text placeholder-light-text-secondary/60 dark:placeholder-dark-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all min-h-[44px]"
                                 />
                                 {searchQuery && (
                                     <button
                                         type="button"
                                         onClick={() => setSearchQuery('')}
-                                        className="absolute right-3 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text cursor-pointer p-0.5"
+                                        className="absolute right-3 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text cursor-pointer p-1 min-w-[32px] min-h-[32px] flex items-center justify-center"
                                         title="Clear search"
                                     >
-                                        <X className="w-3.5 h-3.5" weight="duotone" />
+                                        <X className="w-4 h-4" weight="duotone" />
                                     </button>
                                 )}
                             </div>
 
-                            {/* Selectors Row: Grid of 3 on mobile (fits properly without scrolling), Flex row on desktop */}
+                            {/* Selectors Row */}
                             <div className={isMobile ? "grid grid-cols-3 gap-1.5 w-full shrink-0" : "flex items-center gap-1.5 sm:gap-2 shrink-0"}>
-                                {/* Year Filter */}
                                 <LiquidGlassSelect
                                     value={selectedYear}
                                     onChange={setSelectedYear}
@@ -473,7 +629,6 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                                     isMobile={isMobile}
                                 />
 
-                                {/* Month Filter */}
                                 <LiquidGlassSelect
                                     value={selectedMonth}
                                     onChange={setSelectedMonth}
@@ -488,7 +643,6 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                                     isMobile={isMobile}
                                 />
 
-                                {/* Destination Filter */}
                                 <LiquidGlassSelect
                                     value={selectedDestination}
                                     onChange={setSelectedDestination}
@@ -510,7 +664,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                                 <button
                                     type="button"
                                     onClick={handleClearFilters}
-                                    className="w-full sm:w-auto h-9 sm:h-11 px-3 sm:px-4 rounded-full bg-rose-500/15 hover:bg-rose-500/25 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shrink-0 active:scale-95 whitespace-nowrap"
+                                    className="w-full sm:w-auto h-11 min-h-[44px] px-3.5 sm:px-4 rounded-full bg-rose-500/15 hover:bg-rose-500/25 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shrink-0 active:scale-95 whitespace-nowrap"
                                     title="Clear all filters"
                                 >
                                     <X className="w-3.5 h-3.5" weight="duotone" />
@@ -523,12 +677,53 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
             </div>
 
             {/* ========================================================================= */}
+            {/* PROPOSED FLOATING BULK ACTIONS TOOLBAR (WHEN MULTI-SELECT ACTIVE)         */}
+            {/* ========================================================================= */}
+            <AnimatePresence>
+                {isMultiSelectMode && selectedTripIds.size > 0 && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 20 }}
+                        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-sticky"
+                    >
+                        <GlassPanel
+                            className="wg-glass-pill shadow-2xl border border-primary-500/30"
+                            padding="8px 16px"
+                            overrides={{ borderRadius: 9999 }}
+                        >
+                            <div className="flex items-center gap-4">
+                                <span className="text-xs font-bold text-light-text dark:text-dark-text">
+                                    <span className="font-mono text-primary-500">{selectedTripIds.size}</span> selected
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={handleBulkArchive}
+                                    className="px-3 py-1.5 rounded-full bg-rose-500 text-white text-xs font-bold flex items-center gap-1.5 hover:bg-rose-600 transition-colors shadow-sm cursor-pointer"
+                                >
+                                    <Archive className="w-3.5 h-3.5" weight="bold" />
+                                    <span>Archive Selected</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedTripIds(new Set())}
+                                    className="text-xs text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text transition-colors cursor-pointer"
+                                >
+                                    Clear
+                                </button>
+                            </div>
+                        </GlassPanel>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* ========================================================================= */}
             {/* 3-COLUMN PANORAMIC BUCKETS: Past, Confirmed, Planned                      */}
             {/* ========================================================================= */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                 
                 {/* --------------------------------------------------------------------- */}
-                {/* BUCKET 1: PAST (Land & Sea / Emerald)                                 */}
+                {/* BUCKET 1: PAST (Emerald)                                              */}
                 {/* --------------------------------------------------------------------- */}
                 {(activeTab === 'all' || activeTab === 'past') && (
                     <div className={`flex flex-col overflow-hidden rounded-[28px] ${activeTab === 'past' ? 'lg:col-span-12' : 'lg:col-span-4'}`}>
@@ -538,7 +733,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                             padding="0px"
                         >
                             <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px]">
-                                {/* Bucket Header Banner - Clickable to collapse/expand */}
+                                {/* Bucket Header Banner */}
                                 <div 
                                     onClick={() => toggleBucket('past')}
                                     className={`p-5 flex items-center justify-between bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent shrink-0 cursor-pointer select-none transition-colors hover:from-emerald-500/15 ${
@@ -573,8 +768,9 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                                             <button
                                                 type="button"
                                                 onClick={() => handleOpenNewTrip('Past')}
-                                                className="w-9 h-9 rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-emerald-500 hover:bg-emerald-500/10 transition-colors cursor-pointer"
+                                                className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-emerald-500 hover:bg-emerald-500/10 transition-colors cursor-pointer"
                                                 title="Log past trip"
+                                                aria-label="Add past trip"
                                             >
                                                 <Plus className="w-4 h-4" />
                                             </button>
@@ -588,9 +784,10 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                                             <button
                                                 type="button"
                                                 onClick={() => toggleBucket('past')}
-                                                className="w-9 h-9 rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-emerald-500 hover:bg-emerald-500/10 transition-colors cursor-pointer"
+                                                className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-emerald-500 hover:bg-emerald-500/10 transition-colors cursor-pointer"
                                                 title={collapsedBuckets.past ? "Expand Past trips" : "Collapse Past trips"}
                                                 aria-expanded={!collapsedBuckets.past}
+                                                aria-label={collapsedBuckets.past ? "Expand Past trips" : "Collapse Past trips"}
                                             >
                                                 <CaretDown className={`w-4 h-4 transition-transform duration-300 ${collapsedBuckets.past ? '-rotate-90' : 'rotate-0'}`} />
                                             </button>
@@ -598,7 +795,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                                     </div>
                                 </div>
 
-                                {/* Bucket Card Inventory - Animated Collapsible */}
+                                {/* Bucket Content */}
                                 <AnimatePresence initial={false}>
                                     {!collapsedBuckets.past && (
                                         <motion.div
@@ -616,7 +813,10 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                                                             key={trip.id} 
                                                             trip={trip} 
                                                             stage="emerald" 
-                                                            onClick={() => onTripClick?.(trip.id)} 
+                                                            isMultiSelectMode={isMultiSelectMode}
+                                                            isSelected={selectedTripIds.has(trip.id)}
+                                                            onToggleSelect={() => toggleTripSelection(trip.id)}
+                                                            onClick={() => isMultiSelectMode ? toggleTripSelection(trip.id) : onTripClick?.(trip.id)} 
                                                         />
                                                     ))
                                                 ) : (
@@ -637,7 +837,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                 )}
 
                 {/* --------------------------------------------------------------------- */}
-                {/* BUCKET 2: CONFIRMED (Aviation / Sky)                                  */}
+                {/* BUCKET 2: CONFIRMED (Sky)                                             */}
                 {/* --------------------------------------------------------------------- */}
                 {(activeTab === 'all' || activeTab === 'confirmed') && (
                     <div className={`flex flex-col overflow-hidden rounded-[28px] ${activeTab === 'confirmed' ? 'lg:col-span-12' : 'lg:col-span-4'}`}>
@@ -647,7 +847,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                             padding="0px"
                         >
                             <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px]">
-                                {/* Bucket Header Banner - Clickable to collapse/expand */}
+                                {/* Bucket Header Banner */}
                                 <div 
                                     onClick={() => toggleBucket('confirmed')}
                                     className={`p-5 flex items-center justify-between bg-gradient-to-r from-sky-500/10 via-sky-500/5 to-transparent shrink-0 cursor-pointer select-none transition-colors hover:from-sky-500/15 ${
@@ -682,8 +882,9 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                                             <button
                                                 type="button"
                                                 onClick={() => handleOpenNewTrip('Upcoming')}
-                                                className="w-9 h-9 rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-sky-500 hover:bg-sky-500/10 transition-colors cursor-pointer"
+                                                className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-sky-500 hover:bg-sky-500/10 transition-colors cursor-pointer"
                                                 title="Add confirmed trip"
+                                                aria-label="Add confirmed trip"
                                             >
                                                 <Plus className="w-4 h-4" />
                                             </button>
@@ -697,9 +898,10 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                                             <button
                                                 type="button"
                                                 onClick={() => toggleBucket('confirmed')}
-                                                className="w-9 h-9 rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-sky-500 hover:bg-sky-500/10 transition-colors cursor-pointer"
+                                                className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-sky-500 hover:bg-sky-500/10 transition-colors cursor-pointer"
                                                 title={collapsedBuckets.confirmed ? "Expand Confirmed trips" : "Collapse Confirmed trips"}
                                                 aria-expanded={!collapsedBuckets.confirmed}
+                                                aria-label={collapsedBuckets.confirmed ? "Expand Confirmed trips" : "Collapse Confirmed trips"}
                                             >
                                                 <CaretDown className={`w-4 h-4 transition-transform duration-300 ${collapsedBuckets.confirmed ? '-rotate-90' : 'rotate-0'}`} />
                                             </button>
@@ -707,7 +909,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                                     </div>
                                 </div>
 
-                                {/* Bucket Card Inventory - Animated Collapsible */}
+                                {/* Bucket Content */}
                                 <AnimatePresence initial={false}>
                                     {!collapsedBuckets.confirmed && (
                                         <motion.div
@@ -725,7 +927,10 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                                                             key={trip.id} 
                                                             trip={trip} 
                                                             stage="sky" 
-                                                            onClick={() => onTripClick?.(trip.id)} 
+                                                            isMultiSelectMode={isMultiSelectMode}
+                                                            isSelected={selectedTripIds.has(trip.id)}
+                                                            onToggleSelect={() => toggleTripSelection(trip.id)}
+                                                            onClick={() => isMultiSelectMode ? toggleTripSelection(trip.id) : onTripClick?.(trip.id)} 
                                                         />
                                                     ))
                                                 ) : (
@@ -746,7 +951,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                 )}
 
                 {/* --------------------------------------------------------------------- */}
-                {/* BUCKET 3: PLANNED (Scratch / Amber)                                   */}
+                {/* BUCKET 3: PLANNED (Amber)                                             */}
                 {/* --------------------------------------------------------------------- */}
                 {(activeTab === 'all' || activeTab === 'planned') && (
                     <div className={`flex flex-col overflow-hidden rounded-[28px] ${activeTab === 'planned' ? 'lg:col-span-12' : 'lg:col-span-4'}`}>
@@ -756,7 +961,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                             padding="0px"
                         >
                             <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px]">
-                                {/* Bucket Header Banner - Clickable to collapse/expand */}
+                                {/* Bucket Header Banner */}
                                 <div 
                                     onClick={() => toggleBucket('planned')}
                                     className={`p-5 flex items-center justify-between bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent shrink-0 cursor-pointer select-none transition-colors hover:from-amber-500/15 ${
@@ -791,8 +996,9 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                                             <button
                                                 type="button"
                                                 onClick={() => handleOpenNewTrip('Planning')}
-                                                className="w-9 h-9 rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-amber-500 hover:bg-amber-500/10 transition-colors cursor-pointer"
+                                                className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-amber-500 hover:bg-amber-500/10 transition-colors cursor-pointer"
                                                 title="Add draft plan"
+                                                aria-label="Add draft plan"
                                             >
                                                 <Plus className="w-4 h-4" />
                                             </button>
@@ -806,9 +1012,10 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                                             <button
                                                 type="button"
                                                 onClick={() => toggleBucket('planned')}
-                                                className="w-9 h-9 rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-amber-500 hover:bg-amber-500/10 transition-colors cursor-pointer"
+                                                className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-amber-500 hover:bg-amber-500/10 transition-colors cursor-pointer"
                                                 title={collapsedBuckets.planned ? "Expand Planned trips" : "Collapse Planned trips"}
                                                 aria-expanded={!collapsedBuckets.planned}
+                                                aria-label={collapsedBuckets.planned ? "Expand Planned trips" : "Collapse Planned trips"}
                                             >
                                                 <CaretDown className={`w-4 h-4 transition-transform duration-300 ${collapsedBuckets.planned ? '-rotate-90' : 'rotate-0'}`} />
                                             </button>
@@ -816,7 +1023,7 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                                     </div>
                                 </div>
 
-                                {/* Bucket Card Inventory - Animated Collapsible */}
+                                {/* Bucket Content */}
                                 <AnimatePresence initial={false}>
                                     {!collapsedBuckets.planned && (
                                         <motion.div
@@ -834,7 +1041,10 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
                                                             key={trip.id} 
                                                             trip={trip} 
                                                             stage="amber" 
-                                                            onClick={() => onTripClick?.(trip.id)} 
+                                                            isMultiSelectMode={isMultiSelectMode}
+                                                            isSelected={selectedTripIds.has(trip.id)}
+                                                            onToggleSelect={() => toggleTripSelection(trip.id)}
+                                                            onClick={() => isMultiSelectMode ? toggleTripSelection(trip.id) : onTripClick?.(trip.id)} 
                                                         />
                                                     ))
                                                 ) : (
@@ -867,10 +1077,20 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onTripClick, users: us
 interface TripCardProps {
     trip: Trip;
     stage: 'sky' | 'emerald' | 'amber';
+    isMultiSelectMode?: boolean;
+    isSelected?: boolean;
+    onToggleSelect?: () => void;
     onClick: () => void;
 }
 
-const TripCard: React.FC<TripCardProps> = ({ trip, stage, onClick }) => {
+const TripCard: React.FC<TripCardProps> = ({ 
+    trip, 
+    stage, 
+    isMultiSelectMode, 
+    isSelected, 
+    onToggleSelect, 
+    onClick 
+}) => {
     // Parse destinations for tags
     const destinationsList = useMemo(() => {
         if (trip.locations && trip.locations.length > 0) {
@@ -955,7 +1175,9 @@ const TripCard: React.FC<TripCardProps> = ({ trip, stage, onClick }) => {
 
     return (
         <GlassPanel
-            className="wg-glass-card shadow-glass-card hover:shadow-2xl transition-all duration-300 w-full cursor-pointer overflow-hidden rounded-[26px] active:scale-[0.99]"
+            className={`wg-glass-card shadow-glass-card hover:shadow-2xl transition-all duration-300 w-full cursor-pointer overflow-hidden rounded-[26px] active:scale-[0.99] ${
+                isSelected ? 'ring-2 ring-primary-500' : ''
+            }`}
             padding="0px"
             overrides={{ borderRadius: 26 }}
             onClick={onClick}
@@ -974,6 +1196,25 @@ const TripCard: React.FC<TripCardProps> = ({ trip, stage, onClick }) => {
                 {/* Top Row: Identity Icon, Title & Micro-Action */}
                 <div className="flex items-start justify-between gap-3 relative z-10 pl-2">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
+                        {/* Optional Multi-Select Checkbox */}
+                        {isMultiSelectMode && (
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onToggleSelect?.();
+                                }}
+                                className="w-8 h-8 rounded-xl flex items-center justify-center text-primary-500 hover:bg-primary-500/10 transition-colors shrink-0"
+                                aria-label={isSelected ? "Deselect trip" : "Select trip"}
+                            >
+                                {isSelected ? (
+                                    <CheckSquare className="w-6 h-6 text-primary-500" weight="fill" />
+                                ) : (
+                                    <Square className="w-6 h-6 text-light-text-secondary dark:text-dark-text-secondary" weight="bold" />
+                                )}
+                            </button>
+                        )}
+
                         {/* Micro-Icon / Emoji Surface */}
                         <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 border shadow-xs transition-transform duration-300 group-hover:scale-105 backdrop-blur-md ${stageConfig.iconBadge}`}>
                             {trip.icon ? (
@@ -997,15 +1238,17 @@ const TripCard: React.FC<TripCardProps> = ({ trip, stage, onClick }) => {
                     </div>
 
                     {/* Right Arrow Micro-Action Trigger */}
-                    <div 
-                        className={`w-10 h-10 min-w-[40px] min-h-[40px] rounded-2xl flex items-center justify-center bg-black/5 dark:bg-white/[0.06] backdrop-blur-md border border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary ${stageConfig.arrowHover} transition-all duration-300 shrink-0 shadow-xs active:scale-95 cursor-pointer`}
-                        aria-label="View trip details"
-                    >
-                        <ArrowUpRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" weight="bold" />
-                    </div>
+                    {!isMultiSelectMode && (
+                        <div 
+                            className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-2xl flex items-center justify-center bg-black/5 dark:bg-white/[0.06] backdrop-blur-md border border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary ${stageConfig.arrowHover} transition-all duration-300 shrink-0 shadow-xs active:scale-95 cursor-pointer`}
+                            aria-label="View trip details"
+                        >
+                            <ArrowUpRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" weight="bold" />
+                        </div>
+                    )}
                 </div>
 
-                {/* Middle Row: Clean Timeline Date Range & Duration (No border, no background) */}
+                {/* Middle Row: Clean Timeline Date Range & Duration */}
                 <div className="flex items-center gap-2.5 text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium flex-wrap relative z-10 pl-2">
                     <div className="flex items-center gap-1.5 min-w-0">
                         <CalendarBlank className={`w-4 h-4 shrink-0 ${stageConfig.calendarColor} opacity-90`} weight="duotone" />
@@ -1023,7 +1266,7 @@ const TripCard: React.FC<TripCardProps> = ({ trip, stage, onClick }) => {
                     )}
                 </div>
 
-                {/* Route Row: Origin ➔ Destination Journey Itinerary with Liquid-Glass Styling */}
+                {/* Route Row: Origin ➔ Destination Journey Itinerary */}
                 <div className="flex items-center gap-2 relative z-10 pl-2 flex-wrap">
                     {destinationsList.length === 0 ? (
                         <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary font-medium italic">
@@ -1142,7 +1385,7 @@ interface EmptyBucketPlaceholderProps {
     onAction: () => void;
 }
 
-const EmptyBucketPlaceholder: React.FC<EmptyBucketPlaceholderProps> = ({ stage, label, actionLabel, onAction }) => {
+const EmptyBucketPlaceholder: React.FC<EmptyBucketPlaceholderProps> = ({ label, actionLabel, onAction }) => {
     return (
         <div className="p-8 rounded-2xl border border-dashed border-black/20 dark:border-white/15 flex flex-col items-center justify-center text-center gap-3 bg-black/[0.01] dark:bg-white/[0.01]">
             <div className="w-10 h-10 rounded-2xl bg-black/5 dark:bg-white/5 flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary">
@@ -1164,7 +1407,7 @@ const EmptyBucketPlaceholder: React.FC<EmptyBucketPlaceholderProps> = ({ stage, 
                 <button
                     type="button"
                     onClick={onAction}
-                    className="px-3.5 py-1.5 rounded-xl text-2xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 transition-all cursor-pointer flex items-center gap-1.5"
+                    className="min-h-[44px] px-3.5 py-1.5 rounded-xl text-2xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 transition-all cursor-pointer flex items-center gap-1.5"
                 >
                     <Plus className="w-3 h-3" />
                     <span>{actionLabel}</span>

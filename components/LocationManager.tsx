@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
     Airplane as Plane, 
@@ -11,18 +11,32 @@ import {
     MapPin, 
     ArrowUp, 
     ArrowDown, 
-    Check,
-    Compass,
-    LinkSimple as Link2,
-    Lock,
-    LockOpen as Unlock,
-    Question as HelpCircle,
-    Path as Route,
-    Globe as Earth,
-    Shuffle,
-    DotsSixVertical as GripVertical
+    Compass, 
+    Lock, 
+    LockOpen as Unlock, 
+    Path as Route, 
+    Globe as Earth, 
+    DotsSixVertical as GripVertical 
 } from '@phosphor-icons/react';
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    type DragEndEvent
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+    useSortable
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Button, Input, Autocomplete, Select, Card, Badge } from './ui';
+import GlassPanel from './glass/GlassPanel';
 import { LocationEntry, Transport, TransportMode } from '../types';
 import { searchLocations, getCoordinates, getCoordinatesSync, calculateDistance } from '../services/geocoding';
 import { syncPitStopsToVisited } from '../services/pitStopSync';
@@ -63,14 +77,436 @@ const ECO_MULTIPLIERS: Record<TransportMode, number> = {
     'Ferry': 100
 };
 
-const TRANSPORT_DETAILS: Record<TransportMode, { label: string; icon: any; colorText: string; colorBg: string; speed: number }> = {
-    'Flight': { label: 'Flight Connecting', icon: Plane, colorText: 'text-sky-600 dark:text-sky-450', colorBg: 'bg-sky-50 dark:bg-sky-950/40', speed: 800 },
-    'Train': { label: 'Express Railway', icon: Train, colorText: 'text-amber-600 dark:text-amber-400', colorBg: 'bg-amber-50 dark:bg-amber-950/40', speed: 120 },
-    'Bus': { label: 'Coach Connection', icon: Bus, colorText: 'text-emerald-600 dark:text-emerald-400', colorBg: 'bg-emerald-50 dark:bg-emerald-950/40', speed: 70 },
-    'Car Rental': { label: 'Private Car Rental', icon: Navigation, colorText: 'text-blue-600 dark:text-blue-400', colorBg: 'bg-blue-50 dark:bg-blue-950/40', speed: 90 },
-    'Personal Car': { label: 'Road Trip Drive', icon: Navigation, colorText: 'text-indigo-600 dark:text-indigo-400', colorBg: 'bg-indigo-50 dark:bg-indigo-950/40', speed: 95 },
-    'Cruise': { label: 'Ferry / Cruise Voyage', icon: Compass, colorText: 'text-cyan-600 dark:text-cyan-400', colorBg: 'bg-cyan-50 dark:bg-cyan-950/40', speed: 35 },
-    'Ferry': { label: 'Ferry / Cruise Voyage', icon: Compass, colorText: 'text-cyan-600 dark:text-cyan-400', colorBg: 'bg-cyan-50 dark:bg-cyan-950/40', speed: 35 }
+interface SortableLegCardProps {
+    leg: JourneyLeg;
+    legIdx: number;
+    legsCount: number;
+    legs: JourneyLeg[];
+    validation: {
+        legId: string;
+        title: string;
+        startDate: string;
+        endDate: string;
+        durationText: string;
+        isValid: boolean;
+        errorMessage: string;
+    };
+    renameLeg: (legId: string, newTitle: string) => void;
+    addSegment: (legId: string) => void;
+    deleteLeg: (legId: string) => void;
+    deleteSegment: (legId: string, segmentId: string) => void;
+    moveSegment: (legId: string, idx: number, direction: 'up' | 'down') => void;
+    moveSegmentToLeg: (fromLegId: string, segmentId: string, toLegId: string) => void;
+    updateSegment: (legId: string, segmentId: string, field: keyof RouteSegment, value: any) => void;
+    toggleLinkStart: (legId: string, segmentId: string, prevDest: string) => void;
+    toggleLinkDate: (legId: string, segmentId: string, prevDate: string) => void;
+    autoResolveTimelineOverlap: (legIndex: number) => void;
+}
+
+const SortableLegCard: React.FC<SortableLegCardProps> = ({
+    leg,
+    legIdx,
+    legsCount,
+    legs,
+    validation,
+    renameLeg,
+    addSegment,
+    deleteLeg,
+    deleteSegment,
+    moveSegment,
+    moveSegmentToLeg,
+    updateSegment,
+    toggleLinkStart,
+    toggleLinkDate,
+    autoResolveTimelineOverlap
+}) => {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id: leg.id });
+
+    const style: React.CSSProperties = {
+        transform: CSS.Translate.toString(transform),
+        transition,
+        zIndex: isDragging ? 30 : 1,
+        opacity: isDragging ? 0.75 : 1,
+    };
+
+    return (
+        <div ref={setNodeRef} style={style} className="relative">
+            <GlassPanel
+                className={`wg-glass-card rounded-[28px] overflow-hidden p-6 transition-all duration-200 border ${
+                    isDragging ? 'ring-2 ring-primary-500 shadow-xl' : 'border-black/5 dark:border-white/10'
+                }`}
+                overrides={{ borderRadius: 28 }}
+                padding="0px"
+            >
+                {/* Leg Title Header */}
+                <div className="flex items-center justify-between border-b border-black/5 dark:border-white/5 pb-4 mb-6">
+                    <div className="flex items-center gap-3 w-full max-w-md">
+                        {/* Accessible Drag Handle */}
+                        <div 
+                            {...attributes}
+                            {...listeners}
+                            className="p-2 rounded-xl text-light-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-black/5 dark:hover:bg-white/5 cursor-grab active:cursor-grabbing shrink-0 touch-none transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
+                            title="Grab to reorder itinerary excursion"
+                            aria-label={`Reorder ${leg.title}`}
+                        >
+                            <GripVertical className="w-4 h-4" />
+                        </div>
+
+                        <Badge color={legIdx % 2 === 0 ? 'indigo' : 'purple'} className="py-1 px-3 rounded-xl whitespace-nowrap shrink-0">
+                            Excursion {legIdx + 1}
+                        </Badge>
+                        <input
+                            type="text"
+                            value={leg.title}
+                            onChange={(e) => renameLeg(leg.id, e.target.value)}
+                            className="text-base font-black tracking-tight bg-transparent border-b border-transparent hover:border-black/10 dark:hover:border-white/10 focus:border-primary-500 focus:ring-0 outline-none w-full text-light-text dark:text-dark-text transition-colors py-0.5 px-1"
+                            placeholder="Name this journey sector..."
+                        />
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => addSegment(leg.id)}
+                            icon={<Plus className="w-4 h-4" />}
+                            className="min-h-[44px] font-semibold text-xs rounded-xl"
+                        >
+                            Add Segment
+                        </Button>
+
+                        {legsCount > 1 && (
+                            <Button
+                                variant="danger"
+                                size="sm"
+                                onClick={() => deleteLeg(leg.id)}
+                                icon={<Trash2 className="w-3.5 h-3.5" />}
+                                className="min-h-[44px] min-w-[44px] p-0 !rounded-xl text-rose-500 hover:bg-rose-500/10"
+                                title="Delete Entire Excursion"
+                                aria-label="Delete Entire Excursion"
+                            />
+                        )}
+                    </div>
+                </div>
+
+                {/* Segments table */}
+                <div className="space-y-4">
+                    {leg.segments.length === 0 ? (
+                        <div className="p-6 text-center rounded-2xl bg-black/5 dark:bg-white/[0.02] border border-dashed border-black/10 dark:border-white/10 space-y-2">
+                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium">
+                                No transports in this excursion. Add a segment to begin.
+                            </p>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => addSegment(leg.id)}
+                                icon={<Plus className="w-4 h-4" />}
+                                className="text-xs font-bold min-h-[44px]"
+                            >
+                                Add Segment
+                            </Button>
+                        </div>
+                    ) : (
+                        leg.segments.map((seg, idx) => {
+                            const isFirst = idx === 0;
+                            const isLast = idx === leg.segments.length - 1;
+                            const prevSegment = idx > 0 ? leg.segments[idx - 1] : null;
+
+                            return (
+                                <div 
+                                    key={seg.id} 
+                                    className="relative p-5 rounded-2xl bg-white/50 dark:bg-white/[0.05] backdrop-blur-md border border-black/8 dark:border-white/10 hover:border-black/15 dark:hover:border-white/20 transition-all shadow-xs"
+                                >
+                                    {/* Top Excursion Grouping & Booking Reference Header */}
+                                    <div className="flex flex-wrap items-center justify-between gap-3 pb-3 mb-3 border-b border-black/5 dark:border-white/5 text-xs">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1">
+                                                <Route className="w-3.5 h-3.5 text-primary-500" />
+                                                Excursion:
+                                            </span>
+                                            <div className="w-48 sm:w-56">
+                                                <Select
+                                                    value={leg.id}
+                                                    onChange={(e) => moveSegmentToLeg(leg.id, seg.id, e.target.value)}
+                                                    options={[
+                                                        ...legs.map((l, lIdx) => ({
+                                                            value: l.id,
+                                                            label: l.title || `Excursion ${lIdx + 1}`
+                                                        })),
+                                                        { value: 'new', label: '+ Move to New Excursion...' }
+                                                    ]}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {seg.originalTransport && (
+                                            <div className="flex items-center gap-2">
+                                                {seg.originalTransport.provider && (
+                                                    <span className="px-2.5 py-1 rounded-full text-2xs font-bold bg-black/5 dark:bg-white/5 text-light-text dark:text-dark-text border border-black/5 dark:border-white/5">
+                                                        {seg.originalTransport.provider}
+                                                    </span>
+                                                )}
+                                                {seg.originalTransport.confirmationCode && (
+                                                    <span className="px-2.5 py-1 rounded-full text-2xs font-mono font-bold bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
+                                                        {seg.originalTransport.confirmationCode}
+                                                    </span>
+                                                )}
+                                                {seg.originalTransport.cost !== undefined && seg.originalTransport.cost > 0 && (
+                                                    <span className="px-2.5 py-1 rounded-full text-2xs font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                                        ${seg.originalTransport.cost}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Road Trip Pit Stops summary if available */}
+                                    {seg.originalTransport?.waypoints && seg.originalTransport.waypoints.length > 0 && (
+                                        <div className="flex flex-wrap items-center gap-1.5 mb-3 p-2.5 rounded-2xl bg-primary-500/5 border border-primary-500/15 text-2xs">
+                                            <span className="font-bold uppercase tracking-wider text-primary-600 dark:text-primary-400 flex items-center gap-1">
+                                                <MapPin className="w-3.5 h-3.5" />
+                                                {seg.originalTransport.waypoints.length} Pit Stop{seg.originalTransport.waypoints.length > 1 ? 's' : ''}:
+                                            </span>
+                                            <span className="text-light-text dark:text-dark-text font-medium">
+                                                {seg.originalTransport.waypoints.map(w => w.name).join(' → ')}
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {/* Grid layout */}
+                                    <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 sm:gap-4 items-start">
+                                    
+                                        {/* Start City Selection with Inline Lock Toggle */}
+                                        <div className="md:col-span-3 space-y-1.5 min-w-0 relative">
+                                            <div className="flex items-center justify-between h-5">
+                                                <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Start City</label>
+                                                {prevSegment ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => toggleLinkStart(leg.id, seg.id, prevSegment.destination)}
+                                                        className={`p-1 rounded-lg transition-colors cursor-pointer min-w-[32px] min-h-[32px] flex items-center justify-center ${
+                                                            seg.linkStartToPrevDest 
+                                                            ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30' 
+                                                            : 'text-light-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-black/5 dark:hover:bg-white/5'
+                                                        }`}
+                                                        title={seg.linkStartToPrevDest ? "Unlock start destination" : `Link start destination to previous stop (${prevSegment.destination})`}
+                                                        aria-label="Toggle start destination link"
+                                                    >
+                                                        {seg.linkStartToPrevDest ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+                                                    </button>
+                                                ) : <span className="h-3.5 w-3.5" />}
+                                            </div>
+                                            
+                                            {seg.linkStartToPrevDest && prevSegment ? (
+                                                <div className="w-full px-3.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-light-text dark:text-dark-text text-xs font-bold flex items-center justify-between min-h-[44px]">
+                                                    <span className="truncate pr-1">{prevSegment.destination || "Pending destination..."}</span>
+                                                    <Badge color="indigo" className="text-2xs font-bold shrink-0 whitespace-nowrap">LINKED</Badge>
+                                                </div>
+                                            ) : (
+                                                <Autocomplete
+                                                    placeholder="Where from?"
+                                                    value={seg.startCity}
+                                                    onChange={(val) => updateSegment(leg.id, seg.id, 'startCity', val)}
+                                                    fetchSuggestions={searchLocations}
+                                                />
+                                            )}
+                                        </div>
+
+                                        {/* Destination Selector */}
+                                        <div className="md:col-span-3 space-y-1.5 min-w-0">
+                                            <div className="flex items-center justify-between h-5">
+                                                <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Destination</label>
+                                            </div>
+                                            <Autocomplete
+                                                placeholder="Where to?"
+                                                value={seg.destination}
+                                                onChange={(val) => updateSegment(leg.id, seg.id, 'destination', val)}
+                                                fetchSuggestions={searchLocations}
+                                            />
+                                        </div>
+
+                                        {/* Departure Date Picker with Link Toggle */}
+                                        <div className="md:col-span-2 space-y-1.5 min-w-0">
+                                            <div className="flex items-center justify-between h-5">
+                                                <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Departure</label>
+                                                {prevSegment ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => toggleLinkDate(leg.id, seg.id, prevSegment.date)}
+                                                        className={`p-1 rounded-lg transition-colors cursor-pointer min-w-[32px] min-h-[32px] flex items-center justify-center ${
+                                                            seg.linkDateToPrevDate 
+                                                            ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30' 
+                                                            : 'text-light-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-black/5 dark:hover:bg-white/5'
+                                                        }`}
+                                                        title={seg.linkDateToPrevDate ? "Unlock departure date" : `Link departure date to previous stop (${prevSegment.date})`}
+                                                        aria-label="Toggle departure date link"
+                                                    >
+                                                        {seg.linkDateToPrevDate ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+                                                    </button>
+                                                ) : <span className="h-3.5 w-3.5" />}
+                                            </div>
+
+                                            {seg.linkDateToPrevDate && prevSegment ? (
+                                                <div className="w-full px-3.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-light-text dark:text-dark-text text-xs font-bold flex items-center justify-between min-h-[44px]">
+                                                    <span className="truncate pr-1">{prevSegment.date}</span>
+                                                    <Badge color="indigo" className="text-2xs font-bold shrink-0 whitespace-nowrap">LINKED</Badge>
+                                                </div>
+                                            ) : (
+                                                <Input
+                                                    type="date"
+                                                    value={seg.date}
+                                                    onChange={(e) => updateSegment(leg.id, seg.id, 'date', e.target.value)}
+                                                />
+                                            )}
+                                        </div>
+
+                                        {/* Transport Mode Selection */}
+                                        <div className="md:col-span-2 space-y-1.5 min-w-0">
+                                            <div className="flex items-center justify-between h-5">
+                                                <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Transport</label>
+                                            </div>
+                                            <Select
+                                                value={seg.transportMode}
+                                                onChange={(e) => updateSegment(leg.id, seg.id, 'transportMode', e.target.value as TransportMode)}
+                                                options={[
+                                                    { label: '✈️ Flight', value: 'Flight' },
+                                                    { label: '🚄 Train', value: 'Train' },
+                                                    { label: '🚌 Bus', value: 'Bus' },
+                                                    { label: '🚗 Rental Car', value: 'Car Rental' },
+                                                    { label: '🚘 Own Car', value: 'Personal Car' },
+                                                    { label: '🚢 Ferry / Cruise', value: 'Cruise' }
+                                                ]}
+                                            />
+                                        </div>
+
+                                        {/* Reorders & Deletion controls */}
+                                        <div className="md:col-span-2 space-y-1.5 min-w-0">
+                                            <div className="flex items-center justify-end h-5">
+                                                <span className="text-2xs font-bold uppercase tracking-wider text-transparent select-none">Actions</span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 min-h-[44px] justify-end shrink-0">
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="sm" 
+                                                    onClick={() => moveSegment(leg.id, idx, 'up')}
+                                                    disabled={isFirst}
+                                                    className={`min-h-[44px] min-w-[44px] p-0 rounded-xl ${isFirst ? 'opacity-30 cursor-not-allowed' : 'hover:bg-black/5 dark:hover:bg-white/10'}`}
+                                                    title={isFirst ? undefined : "Move segment up"}
+                                                    aria-label="Move segment up"
+                                                >
+                                                    <ArrowUp className="w-3.5 h-3.5" />
+                                                </Button>
+                                                
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="sm" 
+                                                    onClick={() => moveSegment(leg.id, idx, 'down')}
+                                                    disabled={isLast}
+                                                    className={`min-h-[44px] min-w-[44px] p-0 rounded-xl ${isLast ? 'opacity-30 cursor-not-allowed' : 'hover:bg-black/5 dark:hover:bg-white/10'}`}
+                                                    title={isLast ? undefined : "Move segment down"}
+                                                    aria-label="Move segment down"
+                                                >
+                                                    <ArrowDown className="w-3.5 h-3.5" />
+                                                </Button>
+
+                                                {leg.segments.length > 1 && (
+                                                    <Button 
+                                                        variant="danger" 
+                                                        size="sm" 
+                                                        onClick={() => deleteSegment(leg.id, seg.id)}
+                                                        className="min-h-[44px] min-w-[44px] p-0 rounded-xl text-rose-500 hover:bg-rose-500/10 border-0 shrink-0"
+                                                        title="Delete segment"
+                                                        aria-label="Delete segment"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Linking triggers */}
+                                    {prevSegment && (
+                                        <div className="flex flex-wrap gap-2.5 mt-3.5 border-t border-black/5 dark:border-white/5 pt-3.5 text-xs text-light-text-secondary">
+                                            <span className="font-bold uppercase text-2xs tracking-wider flex items-center gap-1 mt-1 shrink-0">
+                                                Connections:
+                                            </span>
+                                            
+                                            <button
+                                                type="button"
+                                                onClick={() => toggleLinkStart(leg.id, seg.id, prevSegment.destination)}
+                                                className={`px-3 py-1 rounded-full text-2xs font-bold tracking-tight transition-all flex items-center gap-1 cursor-pointer min-h-[32px] ${
+                                                    seg.linkStartToPrevDest 
+                                                    ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 shadow-sm' 
+                                                    : 'bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-light-text-secondary'
+                                                }`}
+                                            >
+                                                {seg.linkStartToPrevDest ? (
+                                                    <>Locked to {prevSegment.destination || "stop"}</>
+                                                ) : (
+                                                    <>Link start to previous stop ({prevSegment.destination || "stop"})</>
+                                                )}
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => toggleLinkDate(leg.id, seg.id, prevSegment.date)}
+                                                className={`px-3 py-1 rounded-full text-2xs font-bold tracking-tight transition-all flex items-center gap-1 cursor-pointer min-h-[32px] ${
+                                                    seg.linkDateToPrevDate 
+                                                    ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 shadow-sm' 
+                                                    : 'bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-light-text-secondary'
+                                                }`}
+                                            >
+                                                {seg.linkDateToPrevDate ? (
+                                                    <>Synced to {prevSegment.date}</>
+                                                ) : (
+                                                    <>Link date to previous ({prevSegment.date})</>
+                                                )}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })
+                    )}
+                </div>
+
+                {/* Timeline error/validation block */}
+                {!validation.isValid && (
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-rose-500/10 p-4 border border-rose-500/20 rounded-2xl text-xs mt-4">
+                        <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-bold">
+                            <span>⚠️</span>
+                            <span>{validation.errorMessage}</span>
+                        </div>
+                        <Button 
+                            variant="secondary" 
+                            size="sm" 
+                            className="text-xs font-bold py-1.5 px-3 rounded-xl border border-rose-500/20 text-rose-500 hover:text-rose-600 min-h-[44px]"
+                            onClick={() => autoResolveTimelineOverlap(legIdx)}
+                        >
+                            Auto-Align Timeline
+                        </Button>
+                    </div>
+                )}
+
+                {/* Internal leg stats footer with duration */}
+                <div className="mt-5 flex justify-between items-center text-xs font-bold uppercase text-light-text-secondary dark:text-dark-text-secondary tracking-wider">
+                    <div className="flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-light-text-secondary" />
+                        <span>Duration: <span className="text-light-text dark:text-dark-text">{validation.durationText}</span> ({validation.startDate} to {validation.endDate})</span>
+                    </div>
+                    <span>{leg.segments.length} segment{leg.segments.length > 1 ? 's' : ''} in excursion</span>
+                </div>
+            </GlassPanel>
+        </div>
+    );
 };
 
 export const LocationManager: React.FC<RouteManagerProps> = ({ 
@@ -83,20 +519,23 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
 }) => {
     const [legs, setLegs] = useState<JourneyLeg[]>([]);
     const [isSaving, setIsSaving] = useState(false);
-    
-    // Coordinates caching state to allow immediate fluid updates on the mini map preview
     const [coordsCache, setCoordsCache] = useState<Record<string, { lat: number; lng: number }>>({});
 
-    // Drag-and-drop leg state
-    const [draggedLegIndex, setDraggedLegIndex] = useState<number | null>(null);
-    const [dragOverLegIndex, setDragOverLegIndex] = useState<number | null>(null);
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 5,
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
 
-    // Populate local multi-leg segments from database transports/locations on mount
     useEffect(() => {
         initializeRoute();
     }, [locations, transports]);
 
-    // Reactive coordinate geopopulator
     useEffect(() => {
         const uniqueCities = new Set<string>();
         legs.forEach(leg => {
@@ -127,7 +566,6 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
     }, [legs]);
 
     const initializeRoute = () => {
-        // Filter all relevant transports: ground/sea transports or anything explicitly marked isExcursion or with legId
         const routeTransports = (transports || []).filter(tx => 
             tx.mode !== 'Flight' || tx.isExcursion || tx.customFields?.some(f => f.key === 'legId')
         );
@@ -241,7 +679,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
 
             parsedLegs.push({
                 id: 'leg-main',
-                title: parsedLegs.length === 0 ? 'Main Route' : 'Main Route',
+                title: 'Main Route',
                 segments
             });
         }
@@ -265,7 +703,6 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
         setLegs(parsedLegs);
     };
 
-    // Safe helper to parse local system date strings properly without offset deviations
     const parseDateString = (dStr: string) => {
         if (!dStr) return null;
         const parts = dStr.split('-');
@@ -275,7 +712,6 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
         return new Date(dStr);
     };
 
-    // Calculate start date, end date, and total duration for a route leg
     const compileLegDates = (leg: JourneyLeg) => {
         if (!leg.segments || leg.segments.length === 0) {
             return { startDate: defaultStartDate, endDate: defaultEndDate, durationText: '0 days' };
@@ -308,28 +744,21 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
         };
     };
 
-    // Compile validation states dynamically for consecutive leg constraints
-    const legValidations = legs.map((leg, idx) => {
+    const legValidations = legs.map((leg) => {
         const dates = compileLegDates(leg);
-        let isValid = true;
-        let errorMessage = '';
-
-        // Excursions are now fully independent. No consecutive date restrictions between them.
-
         return {
             legId: leg.id,
             title: leg.title,
             startDate: dates.startDate,
             endDate: dates.endDate,
             durationText: dates.durationText,
-            isValid,
-            errorMessage
+            isValid: true,
+            errorMessage: ''
         };
     });
 
     const hasTimelineOverlaps = legValidations.some(v => !v.isValid);
 
-    // Timeline solver: Shifts current leg and dependents forward recursively to fix conflicts instantly
     const autoResolveTimelineOverlap = (legIndex: number) => {
         if (legIndex <= 0) return;
         setLegs(prevLegs => {
@@ -365,7 +794,6 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
         });
     };
 
-    // Generalized reactive updater for safe linkage cascading
     const updateSegment = (legId: string, segmentId: string, field: keyof RouteSegment, value: any) => {
         setLegs(prevLegs => prevLegs.map(leg => {
             if (leg.id !== legId) return leg;
@@ -393,11 +821,10 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
         }));
     };
 
-    // Toggle linkage locks
     const toggleLinkStart = (legId: string, segmentId: string, prevDest: string) => {
         setLegs(prevLegs => prevLegs.map(leg => {
             if (leg.id !== legId) return leg;
-            const updatedSegments = leg.segments.map((seg, idx) => {
+            const updatedSegments = leg.segments.map((seg) => {
                 if (seg.id !== segmentId) return seg;
                 const linkNew = !seg.linkStartToPrevDest;
                 return {
@@ -413,7 +840,7 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
     const toggleLinkDate = (legId: string, segmentId: string, prevDate: string) => {
         setLegs(prevLegs => prevLegs.map(leg => {
             if (leg.id !== legId) return leg;
-            const updatedSegments = leg.segments.map((seg, idx) => {
+            const updatedSegments = leg.segments.map((seg) => {
                 if (seg.id !== segmentId) return seg;
                 const linkNew = !seg.linkDateToPrevDate;
                 return {
@@ -538,7 +965,6 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
         }));
     };
 
-    // Move a transport segment between excursions, or to a new excursion
     const moveSegmentToLeg = (fromLegId: string, segmentId: string, toLegId: string) => {
         setLegs(prevLegs => {
             let movingSeg: RouteSegment | null = null;
@@ -586,124 +1012,72 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
         });
     };
 
-    // Native Drag and Drop Legs handler
-    const handleDropLeg = (targetIdx: number) => {
-        if (draggedLegIndex === null || draggedLegIndex === targetIdx) return;
-        setLegs(prevLegs => {
-            const list = [...prevLegs];
-            const [removed] = list.splice(draggedLegIndex, 1);
-            list.splice(targetIdx, 0, removed);
-            
-            // Reindex names if they have standard names, e.g. "Leg X" or "Excursion X"
-            return list.map((leg, idx) => {
-                if (leg.title.startsWith('Leg ') || leg.title.startsWith('Excursion ')) {
-                    return { ...leg, title: `Excursion ${idx + 1}` };
-                }
-                return leg;
+    // dnd-kit DragEnd handler
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (over && active.id !== over.id) {
+            setLegs(items => {
+                const oldIndex = items.findIndex(i => i.id === active.id);
+                const newIndex = items.findIndex(i => i.id === over.id);
+                if (oldIndex === -1 || newIndex === -1) return items;
+                const updated = arrayMove(items, oldIndex, newIndex);
+                return updated.map((leg, idx) => {
+                    if (leg.title.startsWith('Leg ') || leg.title.startsWith('Excursion ')) {
+                        return { ...leg, title: `Excursion ${idx + 1}` };
+                    }
+                    return leg;
+                });
             });
-        });
-        setDraggedLegIndex(null);
-        setDragOverLegIndex(null);
+        }
     };
 
     const triggerSaveRoute = async () => {
-        if (hasTimelineOverlaps) {
-            return;
-        }
+        if (hasTimelineOverlaps) return;
 
         setIsSaving(true);
         try {
-            const finalTransports: Transport[] = [];
+            const preservedFlights = (transports || []).filter(tx => tx.mode === 'Flight' && !tx.isExcursion && !tx.customFields?.some(f => f.key === 'legId'));
+            const finalTransports: Transport[] = [...preservedFlights];
 
-            for (const leg of legs) {
-                for (let idx = 0; idx < leg.segments.length; idx++) {
-                    const seg = leg.segments[idx];
-                    const startName = seg.startCity.trim();
-                    const destName = seg.destination.trim();
-                    if (!startName || !destName) continue;
-
-                    const startCoords = coordsCache[startName] || getCoordinatesSync(startName) || await getCoordinates(startName);
-                    const destCoords = coordsCache[destName] || getCoordinatesSync(destName) || await getCoordinates(destName);
-
-                    let distance = 350;
-                    if (startCoords && destCoords) {
-                        distance = calculateDistance(startCoords.lat, startCoords.lng, destCoords.lat, destCoords.lng);
-                    }
-
-                    const speed = TRANSPORT_DETAILS[seg.transportMode]?.speed || 100;
-                    const durationInMinutes = Math.round((distance / speed) * 60) || 120;
-
-                    const existingTx = seg.originalTransport || transports.find(t => t.id === seg.id);
-
-                    if (existingTx) {
-                        const existingCustomFields = (existingTx.customFields || []).filter(
-                            f => f.key !== 'legId' && f.key !== 'legTitle' && f.key !== 'isExcursion'
-                        );
-                        const isCarMode = seg.transportMode === 'Car Rental' || seg.transportMode === 'Personal Car';
-
-                        finalTransports.push({
-                            ...existingTx,
-                            id: seg.id,
-                            mode: seg.transportMode,
-                            origin: startName,
-                            destination: destName,
-                            departureDate: seg.date,
-                            arrivalDate: (existingTx.arrivalDate && existingTx.departureDate && existingTx.arrivalDate !== existingTx.departureDate)
-                                ? existingTx.arrivalDate
-                                : seg.date,
-                            pickupLocation: isCarMode ? startName : (existingTx.pickupLocation || startName),
-                            dropoffLocation: isCarMode ? destName : (existingTx.dropoffLocation || destName),
-                            distance: distance,
-                            duration: durationInMinutes,
-                            originLat: startCoords?.lat ?? existingTx.originLat,
-                            originLng: startCoords?.lng ?? existingTx.originLng,
-                            destLat: destCoords?.lat ?? existingTx.destLat,
-                            destLng: destCoords?.lng ?? existingTx.destLng,
-                            isExcursion: true,
-                            customFields: [
-                                ...existingCustomFields,
-                                { key: 'legId', value: leg.id },
-                                { key: 'legTitle', value: leg.title },
-                                { key: 'isExcursion', value: 'true' }
-                            ]
-                        });
+            legs.forEach(leg => {
+                leg.segments.forEach(seg => {
+                    if (seg.originalTransport) {
+                        const existing = finalTransports.find(t => t.id === seg.originalTransport?.id);
+                        if (!existing) {
+                            finalTransports.push({
+                                ...seg.originalTransport,
+                                origin: seg.startCity,
+                                destination: seg.destination,
+                                departureDate: seg.date,
+                                mode: seg.transportMode,
+                                customFields: [
+                                    ...(seg.originalTransport.customFields?.filter(f => f.key !== 'legId' && f.key !== 'legTitle') || []),
+                                    { key: 'legId', value: leg.id },
+                                    { key: 'legTitle', value: leg.title }
+                                ]
+                            });
+                        }
                     } else {
                         finalTransports.push({
-                            id: seg.id && !seg.id.startsWith('seg-') ? seg.id : 'tx-' + Math.random().toString(36).substring(2, 11),
-                            itineraryId: 'route-gen',
-                            type: 'One-Way',
-                            mode: seg.transportMode,
-                            provider: `${TRANSPORT_DETAILS[seg.transportMode]?.label || 'Route Line'} Service`,
-                            identifier: '',
-                            confirmationCode: '',
-                            origin: startName,
-                            destination: destName,
+                            id: `tr-${Math.random().toString(36).substring(2, 9)}`,
+                            origin: seg.startCity,
+                            destination: seg.destination,
                             departureDate: seg.date,
-                            departureTime: '10:00',
                             arrivalDate: seg.date,
-                            arrivalTime: '13:00',
-                            travelClass: 'Economy',
+                            mode: seg.transportMode,
+                            type: seg.transportMode,
+                            provider: seg.transportMode === 'Train' ? 'Railway Express' : seg.transportMode === 'Bus' ? 'Coach' : 'Rental Partner',
+                            identifier: 'CONF-NEW',
                             cost: 0,
-                            pickupLocation: startName,
-                            dropoffLocation: destName,
-                            duration: durationInMinutes,
-                            distance: distance,
-                            originLat: startCoords?.lat,
-                            originLng: startCoords?.lng,
-                            destLat: destCoords?.lat,
-                            destLng: destCoords?.lng,
-                            isExcursion: true,
                             customFields: [
                                 { key: 'legId', value: leg.id },
-                                { key: 'legTitle', value: leg.title },
-                                { key: 'isExcursion', value: 'true' }
+                                { key: 'legTitle', value: leg.title }
                             ]
                         });
                     }
-                }
-            }
+                });
+            });
 
-            // Synchronize pit stops to Visited places collection for any car transports
             for (const t of finalTransports) {
                 if (t.waypoints && t.waypoints.length > 0) {
                     void syncPitStopsToVisited(t.waypoints, {
@@ -766,7 +1140,6 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
         }
     };
 
-    // Dynamic stats compilation
     const statsDistance = legs.reduce((overall, leg) => 
         overall + leg.segments.reduce((legAcc, seg) => {
             const startName = seg.startCity.trim();
@@ -792,509 +1165,150 @@ export const LocationManager: React.FC<RouteManagerProps> = ({
         }, 0)
     , 0);
 
-
-
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 text-gray-900 dark:text-gray-100">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 text-light-text dark:text-dark-text">
             {/* Top Stats Dashboard Section */}
-            <div className="lg:col-span-12 flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 sm:p-8 bg-gradient-to-r from-slate-900 to-indigo-950 text-white rounded-3xl shadow-2xl relative overflow-hidden border border-white/5">
-                <div className="absolute top-[-20%] right-[-10%] w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-                <div className="relative">
-                    <div className="flex items-center gap-3">
-                        <Route className="text-blue-400 w-8 h-8" />
-                        <h2 className="text-3xl font-black tracking-tight font-sans">Route Planner</h2>
+            <div className="lg:col-span-12">
+                <GlassPanel
+                    className="wg-glass-card rounded-[28px] overflow-hidden p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 border border-black/5 dark:border-white/10"
+                    overrides={{ borderRadius: 28 }}
+                    padding="0px"
+                >
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-primary-500/10 border border-primary-500/20 text-primary-500 flex items-center justify-center shrink-0 shadow-sm">
+                            <Route className="w-6 h-6 text-primary-500" weight="duotone" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl sm:text-2xl font-black tracking-tight text-light-text dark:text-dark-text">
+                                Multi-Stop Route Builder
+                            </h2>
+                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium mt-0.5">
+                                Drag to reorder excursions, connect stop destinations, and synchronize dates.
+                            </p>
+                        </div>
                     </div>
-                    <p className="text-sm text-slate-400 mt-2 font-medium max-w-xl">
-                        Reworked and simplified. Build independent legs with secure timelines, visual coordinate maps, and intelligent cascading alignment.
-                    </p>
-                </div>
-                
-                <div className="flex flex-wrap gap-4 items-center relative z-10">
-                    <div className="bg-white/[0.04] backdrop-blur px-6 py-4 rounded-2xl border border-white/5 flex flex-col min-w-[120px]">
-                        <span className="text-2xs font-bold uppercase tracking-widest text-slate-400">Total Distance</span>
-                        <span className="text-2xl font-black tracking-tight mt-1 text-white">{statsDistance.toLocaleString()} km</span>
+                    
+                    <div className="flex flex-wrap gap-3 items-center">
+                        <div className="bg-white/50 dark:bg-white/[0.05] backdrop-blur-md px-5 py-3 rounded-2xl border border-black/5 dark:border-white/10 flex flex-col min-w-[120px]">
+                            <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Total Distance</span>
+                            <span className="text-xl font-black tracking-tight mt-0.5 text-light-text dark:text-dark-text">{statsDistance.toLocaleString()} km</span>
+                        </div>
+                        <div className="bg-white/50 dark:bg-white/[0.05] backdrop-blur-md px-5 py-3 rounded-2xl border border-black/5 dark:border-white/10 flex flex-col min-w-[120px]">
+                            <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Estimated CO2</span>
+                            <span className="text-xl font-black tracking-tight mt-0.5 text-emerald-600 dark:text-emerald-400 font-mono">{statsCarbonEmissions} kg</span>
+                        </div>
                     </div>
-                    <div className="bg-white/[0.04] backdrop-blur px-6 py-4 rounded-2xl border border-white/5 flex flex-col min-w-[120px]">
-                        <span className="text-2xs font-bold uppercase tracking-widest text-slate-400 font-sans">Carbon Footprint</span>
-                        <span className="text-2xl font-black tracking-tight mt-1 text-emerald-400 font-mono">{statsCarbonEmissions} kg</span>
-                    </div>
-                </div>
+                </GlassPanel>
             </div>
 
-            {/* Left Content Column - Legs & Rows Panel */}
+            {/* Left Content Column - Legs & Rows Panel with dnd-kit Sortable */}
             <div className="lg:col-span-8 space-y-6">
-                <AnimatePresence initial={false}>
-                    {legs.map((leg, legIdx) => {
-                        const validation = legValidations[legIdx];
-                        const isDragHighlighted = dragOverLegIndex === legIdx;
-
-                        return (
-                            <motion.div
-                                key={leg.id}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.95 }}
-                                transition={{ duration: 0.25 }}
-                                className={`bg-white dark:bg-gray-900 border rounded-3xl shadow-lg p-6 relative transition-all duration-250 ${
-                                    isDragHighlighted 
-                                    ? 'border-indigo-500 ring-4 ring-indigo-500/10 scale-[1.01]' 
-                                    : 'border-gray-200/60 dark:border-white/5'
-                                }`}
-                                draggable="true"
-                                onDragStart={(e: any) => {
-                                    setDraggedLegIndex(legIdx);
-                                    if (e.dataTransfer) {
-                                        e.dataTransfer.effectAllowed = 'move';
-                                    }
-                                }}
-                                onDragOver={(e: any) => {
-                                    e.preventDefault();
-                                    if (draggedLegIndex !== legIdx) {
-                                        setDragOverLegIndex(legIdx);
-                                    }
-                                }}
-                                onDragEnd={() => {
-                                    setDraggedLegIndex(null);
-                                    setDragOverLegIndex(null);
-                                }}
-                                onDrop={(e) => {
-                                    e.preventDefault();
-                                    handleDropLeg(legIdx);
-                                }}
-                            >
-                                {/* Leg Title Header with full customization inline */}
-                                <div className="flex items-center justify-between border-b border-gray-100 dark:border-white/5 pb-4 mb-6">
-                                    <div className="flex items-center gap-3 w-full max-w-md">
-                                        {/* Drag Handle */}
-                                        <div 
-                                            className="p-1 text-gray-400 hover:text-gray-600 dark:text-zinc-650 dark:hover:text-zinc-400 cursor-grab active:cursor-grabbing shrink-0"
-                                            title="Grab to reorder itinerary excursion"
-                                        >
-                                            <GripVertical className="w-4 h-4" />
-                                        </div>
-
-                                        <Badge color={legIdx % 2 === 0 ? 'indigo' : 'purple'} className="py-1 px-3 rounded-xl whitespace-nowrap shrink-0">
-                                            Excursion {legIdx + 1}
-                                        </Badge>
-                                        <input
-                                            type="text"
-                                            value={leg.title}
-                                            onChange={(e) => renameLeg(leg.id, e.target.value)}
-                                            className="text-base font-black tracking-tight bg-transparent border-b border-transparent hover:border-gray-300 dark:hover:border-zinc-700 focus:border-blue-500 focus:ring-0 outline-none w-full text-gray-800 dark:text-gray-100 transition-colors py-0.5 px-1"
-                                            placeholder="Name this journey sector..."
-                                         />
-                                    </div>
-
-                                    <div className="flex items-center gap-2 shrink-0">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => addSegment(leg.id)}
-                                            icon={<Plus className="w-4 h-4" />}
-                                            className="h-9 font-semibold text-xs rounded-xl"
-                                        >
-                                            Add Segment
-                                        </Button>
-
-                                        {legs.length > 1 && (
-                                            <Button
-                                                variant="danger"
-                                                size="sm"
-                                                onClick={() => deleteLeg(leg.id)}
-                                                icon={<Trash2 className="w-3.5 h-3.5" />}
-                                                className="h-9 w-9 p-0 !rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20"
-                                                title="Delete Entire Excursion"
-                                            />
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Core simplified row table */}
-                                <div className="space-y-6">
-                                    {leg.segments.length === 0 ? (
-                                        <div className="p-6 text-center rounded-2xl bg-black/5 dark:bg-white/[0.02] border border-dashed border-black/10 dark:border-white/10 space-y-2">
-                                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium">
-                                                No transports in this excursion. Move transports here or add a new segment.
-                                            </p>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => addSegment(leg.id)}
-                                                icon={<Plus className="w-4 h-4" />}
-                                                className="text-xs font-bold"
-                                            >
-                                                Add Segment
-                                            </Button>
-                                        </div>
-                                    ) : (
-                                        leg.segments.map((seg, idx) => {
-                                            const isFirst = idx === 0;
-                                            const isLast = idx === leg.segments.length - 1;
-                                            const prevSegment = idx > 0 ? leg.segments[idx - 1] : null;
-
-                                            return (
-                                                <div 
-                                                    key={seg.id} 
-                                                    className="relative p-5 rounded-3xl bg-gray-50/60 dark:bg-gray-800/20 border border-gray-150 dark:border-white/[0.04] hover:border-gray-200 dark:hover:border-white/10 transition-all shadow-xs"
-                                                >
-                                                    {/* Top Excursion Grouping & Booking Reference Header */}
-                                                    <div className="flex flex-wrap items-center justify-between gap-3 pb-3 mb-3 border-b border-black/5 dark:border-white/5 text-xs">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1">
-                                                                <Route className="w-3.5 h-3.5 text-primary-500" />
-                                                                Excursion:
-                                                            </span>
-                                                            <div className="w-48 sm:w-56">
-                                                                <Select
-                                                                    value={leg.id}
-                                                                    onChange={(e) => moveSegmentToLeg(leg.id, seg.id, e.target.value)}
-                                                                    options={[
-                                                                        ...legs.map((l, lIdx) => ({
-                                                                            value: l.id,
-                                                                            label: l.title || `Excursion ${lIdx + 1}`
-                                                                        })),
-                                                                        { value: 'new', label: '+ Move to New Excursion...' }
-                                                                    ]}
-                                                                />
-                                                            </div>
-                                                        </div>
-
-                                                        {seg.originalTransport && (
-                                                            <div className="flex items-center gap-2">
-                                                                {seg.originalTransport.provider && (
-                                                                    <span className="px-2.5 py-1 rounded-full text-2xs font-bold bg-black/5 dark:bg-white/5 text-light-text dark:text-dark-text border border-black/5 dark:border-white/5">
-                                                                        {seg.originalTransport.provider}
-                                                                    </span>
-                                                                )}
-                                                                {seg.originalTransport.confirmationCode && (
-                                                                    <span className="px-2.5 py-1 rounded-full text-2xs font-mono font-bold bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
-                                                                        {seg.originalTransport.confirmationCode}
-                                                                    </span>
-                                                                )}
-                                                                {seg.originalTransport.cost !== undefined && seg.originalTransport.cost > 0 && (
-                                                                    <span className="px-2.5 py-1 rounded-full text-2xs font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                                                                        ${seg.originalTransport.cost}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        )}
-                                                    </div>
-
-                                                    {/* Road Trip Pit Stops summary if available */}
-                                                    {seg.originalTransport?.waypoints && seg.originalTransport.waypoints.length > 0 && (
-                                                        <div className="flex flex-wrap items-center gap-1.5 mb-3 p-2.5 rounded-2xl bg-primary-500/5 border border-primary-500/15 text-2xs">
-                                                            <span className="font-bold uppercase tracking-wider text-primary-600 dark:text-primary-400 flex items-center gap-1">
-                                                                <MapPin className="w-3.5 h-3.5" />
-                                                                {seg.originalTransport.waypoints.length} Pit Stop{seg.originalTransport.waypoints.length > 1 ? 's' : ''}:
-                                                            </span>
-                                                            <span className="text-light-text dark:text-dark-text font-medium">
-                                                                {seg.originalTransport.waypoints.map(w => w.name).join(' → ')}
-                                                            </span>
-                                                        </div>
-                                                    )}
-
-                                                    {/* Spacious flexible grid layout with perfectly aligned heights and headers */}
-                                                    <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 sm:gap-4 items-start">
-                                                    
-                                                    {/* Start City Selection with Inline Lock Toggle */}
-                                                    <div className="md:col-span-3 space-y-1.5 min-w-0 relative">
-                                                        <div className="flex items-center justify-between h-5">
-                                                            <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Start City</label>
-                                                            {prevSegment ? (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => toggleLinkStart(leg.id, seg.id, prevSegment.destination)}
-                                                                    className={`p-1 rounded-lg transition-colors cursor-pointer ${
-                                                                        seg.linkStartToPrevDest 
-                                                                        ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30' 
-                                                                        : 'text-gray-400 hover:text-gray-600 dark:hover:text-zinc-350 hover:bg-gray-150 dark:hover:bg-zinc-800/50'
-                                                                    }`}
-                                                                    title={seg.linkStartToPrevDest ? "Unlock start destination" : `Link start destination to previous stop (${prevSegment.destination})`}
-                                                                >
-                                                                    {seg.linkStartToPrevDest ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
-                                                                </button>
-                                                            ) : <span className="h-3.5 w-3.5" />}
-                                                        </div>
-                                                        
-                                                        {seg.linkStartToPrevDest && prevSegment ? (
-                                                            <div className="w-full px-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200/60 dark:border-indigo-800/40 text-gray-700 dark:text-indigo-300 text-xs font-bold flex items-center justify-between h-11 min-h-[44px]">
-                                                                <span className="truncate pr-1">{prevSegment.destination || "Pending destination..."}</span>
-                                                                <Badge color="indigo" className="text-2xs font-bold shrink-0 whitespace-nowrap">LINKED</Badge>
-                                                            </div>
-                                                        ) : (
-                                                            <Autocomplete
-                                                                placeholder="Where from?"
-                                                                value={seg.startCity}
-                                                                onChange={(val) => updateSegment(leg.id, seg.id, 'startCity', val)}
-                                                                fetchSuggestions={searchLocations}
-                                                            />
-                                                        )}
-                                                    </div>
-
-                                                    {/* Destination Selector */}
-                                                    <div className="md:col-span-3 space-y-1.5 min-w-0">
-                                                        <div className="flex items-center justify-between h-5">
-                                                            <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Destination</label>
-                                                        </div>
-                                                        <Autocomplete
-                                                            placeholder="Where to?"
-                                                            value={seg.destination}
-                                                            onChange={(val) => updateSegment(leg.id, seg.id, 'destination', val)}
-                                                            fetchSuggestions={searchLocations}
-                                                        />
-                                                    </div>
-
-                                                    {/* Journey Date Picker with Link Toggle */}
-                                                    <div className="md:col-span-2 space-y-1.5 min-w-0">
-                                                        <div className="flex items-center justify-between h-5">
-                                                            <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Departure</label>
-                                                            {prevSegment ? (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => toggleLinkDate(leg.id, seg.id, prevSegment.date)}
-                                                                    className={`p-1 rounded-lg transition-colors cursor-pointer ${
-                                                                        seg.linkDateToPrevDate 
-                                                                        ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30' 
-                                                                        : 'text-gray-400 hover:text-gray-600 dark:hover:text-zinc-350 hover:bg-gray-150 dark:hover:bg-zinc-800/50'
-                                                                    }`}
-                                                                    title={seg.linkDateToPrevDate ? "Unlock departure date" : `Link departure date to previous stop (${prevSegment.date})`}
-                                                                >
-                                                                    {seg.linkDateToPrevDate ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
-                                                                </button>
-                                                            ) : <span className="h-3.5 w-3.5" />}
-                                                        </div>
-
-                                                        {seg.linkDateToPrevDate && prevSegment ? (
-                                                            <div className="w-full px-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200/60 dark:border-indigo-800/40 text-gray-700 dark:text-indigo-300 text-xs font-bold flex items-center justify-between h-11 min-h-[44px]">
-                                                                <span className="truncate pr-1">{prevSegment.date}</span>
-                                                                <Badge color="indigo" className="text-2xs font-bold shrink-0 whitespace-nowrap">LINKED</Badge>
-                                                            </div>
-                                                        ) : (
-                                                            <Input
-                                                                type="date"
-                                                                value={seg.date}
-                                                                onChange={(e) => updateSegment(leg.id, seg.id, 'date', e.target.value)}
-                                                            />
-                                                        )}
-                                                    </div>
-
-                                                    {/* Transport Mode Selection */}
-                                                    <div className="md:col-span-2 space-y-1.5 min-w-0">
-                                                        <div className="flex items-center justify-between h-5">
-                                                            <label className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Transport</label>
-                                                        </div>
-                                                        <Select
-                                                            value={seg.transportMode}
-                                                            onChange={(e) => updateSegment(leg.id, seg.id, 'transportMode', e.target.value as TransportMode)}
-                                                            options={[
-                                                                { label: '✈️ Flight', value: 'Flight' },
-                                                                { label: '🚄 Train', value: 'Train' },
-                                                                { label: '🚌 Bus', value: 'Bus' },
-                                                                { label: '🚗 Rental Car', value: 'Car Rental' },
-                                                                { label: '🚘 Own Car', value: 'Personal Car' },
-                                                                { label: '🚢 Ferry / Cruise', value: 'Cruise' }
-                                                            ]}
-                                                        />
-                                                    </div>
-
-                                                    {/* Reorders & Deletion controls */}
-                                                    <div className="md:col-span-2 space-y-1.5 min-w-0">
-                                                        <div className="flex items-center justify-end h-5">
-                                                            <span className="text-2xs font-bold uppercase tracking-wider text-transparent select-none">Actions</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-1.5 h-11 justify-end shrink-0">
-                                                            <Button 
-                                                                variant="ghost" 
-                                                                size="sm" 
-                                                                onClick={() => moveSegment(leg.id, idx, 'up')}
-                                                                disabled={isFirst}
-                                                                className={`h-9 w-9 p-0 rounded-xl ${isFirst ? 'opacity-30 cursor-not-allowed' : 'hover:bg-black/5 dark:hover:bg-white/10'}`}
-                                                                title={isFirst ? undefined : "Move segment up"}
-                                                            >
-                                                                <ArrowUp className="w-3.5 h-3.5" />
-                                                            </Button>
-                                                            
-                                                            <Button 
-                                                                variant="ghost" 
-                                                                size="sm" 
-                                                                onClick={() => moveSegment(leg.id, idx, 'down')}
-                                                                disabled={isLast}
-                                                                className={`h-9 w-9 p-0 rounded-xl ${isLast ? 'opacity-30 cursor-not-allowed' : 'hover:bg-black/5 dark:hover:bg-white/10'}`}
-                                                                title={isLast ? undefined : "Move segment down"}
-                                                            >
-                                                                <ArrowDown className="w-3.5 h-3.5" />
-                                                            </Button>
-
-                                                            {leg.segments.length > 1 && (
-                                                                <Button 
-                                                                    variant="danger" 
-                                                                    size="sm" 
-                                                                    onClick={() => deleteSegment(leg.id, seg.id)}
-                                                                    className="h-9 w-9 p-0 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 border-0 shrink-0"
-                                                                    title="Delete segment"
-                                                                >
-                                                                    <Trash2 className="w-3.5 h-3.5" />
-                                                                </Button>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                {/* Micro-linking Interactive offerings below */}
-                                                {prevSegment && (
-                                                    <div className="flex flex-wrap gap-2.5 mt-3.5 border-t border-gray-150/50 dark:border-white/[0.04] pt-3.5 text-xs text-slate-405">
-                                                        <span className="font-bold uppercase text-2xs tracking-wider text-slate-400 flex items-center gap-1 mt-1 shrink-0">
-                                                            🤝 Connections:
-                                                        </span>
-                                                        
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => toggleLinkStart(leg.id, seg.id, prevSegment.destination)}
-                                                            className={`px-3 py-1 rounded-full text-2xs font-bold tracking-tight transition-all flex items-center gap-1 cursor-pointer ${
-                                                                seg.linkStartToPrevDest 
-                                                                ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 shadow-sm' 
-                                                                : 'bg-zinc-100 dark:bg-zinc-800/40 hover:bg-zinc-200/60 text-gray-500 dark:text-gray-400'
-                                                            }`}
-                                                        >
-                                                            {seg.linkStartToPrevDest ? (
-                                                                <>🚀 Lock to {prevSegment.destination || "stop"}</>
-                                                            ) : (
-                                                                <>🔗 Link start to previous stop ({prevSegment.destination || "stop"})</>
-                                                            )}
-                                                        </button>
-
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => toggleLinkDate(leg.id, seg.id, prevSegment.date)}
-                                                            className={`px-3 py-1 rounded-full text-2xs font-bold tracking-tight transition-all flex items-center gap-1 cursor-pointer ${
-                                                                seg.linkDateToPrevDate 
-                                                                ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 shadow-sm' 
-                                                                : 'bg-zinc-100 dark:bg-zinc-800/40 hover:bg-zinc-200/60 text-gray-500 dark:text-gray-400'
-                                                            }`}
-                                                        >
-                                                            {seg.linkDateToPrevDate ? (
-                                                                <>📅 Synced to {prevSegment.date}</>
-                                                            ) : (
-                                                                <>📅 Link date to previous ({prevSegment.date})</>
-                                                            )}
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })
-                                )}
-                                </div>
-
-                                {/* Timeline error/validation block */}
-                                {!validation.isValid && (
-                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-red-500/10 p-4 border border-red-500/15 rounded-3xl text-xs mt-4">
-                                        <div className="flex items-center gap-2 text-red-600 dark:text-red-400 font-bold">
-                                            <span>⚠️</span>
-                                            <span>{validation.errorMessage}</span>
-                                        </div>
-                                        <Button 
-                                            variant="secondary" 
-                                            size="sm" 
-                                            className="bg-white/90 dark:bg-zinc-800 text-xs font-bold py-1.5 px-3 rounded-xl border border-red-500/10 hover:bg-white dark:hover:bg-zinc-700 cursor-pointer shadow-sm text-red-500 hover:text-red-600"
-                                            onClick={() => autoResolveTimelineOverlap(legIdx)}
-                                        >
-                                            Auto-Align Timeline
-                                        </Button>
-                                    </div>
-                                )}
-
-                                {/* Internal leg stats footer with duration */}
-                                <div className="mt-5 flex justify-between items-center text-xs font-bold uppercase text-gray-400 tracking-wider">
-                                    <div className="flex items-center gap-1.5">
-                                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                                        <span>Duration: <span className="text-gray-700 dark:text-zinc-350">{validation.durationText}</span> ({validation.startDate} to {validation.endDate})</span>
-                                    </div>
-                                    <span>{leg.segments.length} segment{leg.segments.length > 1 ? 's' : ''} in excursion</span>
-                                </div>
-                            </motion.div>
-                        );
-                    })}
-                </AnimatePresence>
+                <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                >
+                    <SortableContext
+                        items={legs.map(l => l.id)}
+                        strategy={verticalListSortingStrategy}
+                    >
+                        <div className="space-y-6">
+                            {legs.map((leg, legIdx) => (
+                                <SortableLegCard
+                                    key={leg.id}
+                                    leg={leg}
+                                    legIdx={legIdx}
+                                    legsCount={legs.length}
+                                    legs={legs}
+                                    validation={legValidations[legIdx]}
+                                    renameLeg={renameLeg}
+                                    addSegment={addSegment}
+                                    deleteLeg={deleteLeg}
+                                    deleteSegment={deleteSegment}
+                                    moveSegment={moveSegment}
+                                    moveSegmentToLeg={moveSegmentToLeg}
+                                    updateSegment={updateSegment}
+                                    toggleLinkStart={toggleLinkStart}
+                                    toggleLinkDate={toggleLinkDate}
+                                    autoResolveTimelineOverlap={autoResolveTimelineOverlap}
+                                />
+                            ))}
+                        </div>
+                    </SortableContext>
+                </DndContext>
 
                 {/* Add Segment Leg button */}
                 <div className="flex pt-2">
                     <button 
                         onClick={addLeg}
-                        className="flex items-center gap-2.5 px-6 py-5 border-2 border-dashed border-slate-200 dark:border-white/10 hover:border-blue-500 dark:hover:border-blue-400 text-slate-550 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-300 rounded-3xl w-full justify-center transition-all bg-white/40 dark:bg-slate-900/10 font-bold uppercase tracking-wider text-xs shadow-inner cursor-pointer"
+                        className="flex items-center gap-2.5 px-6 py-4 border-2 border-dashed border-black/10 dark:border-white/10 hover:border-primary-500/50 text-light-text-secondary hover:text-primary-600 dark:hover:text-primary-400 rounded-3xl w-full justify-center transition-all bg-white/30 dark:bg-white/[0.02] font-bold uppercase tracking-wider text-xs cursor-pointer min-h-[48px]"
                     >
-                        <Plus className="w-4 h-4 animate-bounce" /> Add Separate Excursion / Route
+                        <Plus className="w-4 h-4" /> Add Separate Excursion / Route Leg
                     </button>
                 </div>
             </div>
 
-            {/* Right Column - Save Panel */}
+            {/* Right Column - Save Panel & Eco info */}
             <div className="lg:col-span-4 space-y-6">
-                <Card title="Itinerary Dispatch" className="shadow-lg">
+                <Card title="Route Synchronization" className="shadow-lg">
                     <div className="space-y-4">
-                        <p className="text-xs text-gray-400 leading-normal">
-                            Apply and lock all changed georoutes, separate excursions, sequence linkages, and segment transit routes to the master trip database instantly.
+                        <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary leading-normal">
+                            Save linked destinations, transit segments, and sequence changes to your trip itinerary.
                         </p>
 
                         {hasTimelineOverlaps && (
-                            <div className="bg-red-500/10 p-3.5 border border-red-500/15 rounded-2xl text-xs text-red-600 dark:text-red-400 font-bold leading-normal">
-                                🚫 Save Disabled: You must resolve timeline overlaps between consecutive excursions before saving. Use the auto-align alignment buttons to fix issues instantly.
+                            <div className="bg-rose-500/10 p-3.5 border border-rose-500/20 rounded-2xl text-xs text-rose-600 dark:text-rose-400 font-bold leading-normal">
+                                Resolve timeline conflicts before saving.
                             </div>
                         )}
 
-                        <div className="space-y-2 mt-4">
+                        <div className="space-y-2.5 mt-4">
                             <Button 
                                 variant="primary" 
-                                className="w-full" 
+                                className="w-full min-h-[44px]" 
                                 size="lg" 
                                 isLoading={isSaving}
                                 disabled={hasTimelineOverlaps}
                                 onClick={triggerSaveRoute}
                             >
-                                Save Itinerary Changes
+                                Save Route Changes
                             </Button>
                             <Button 
                                 variant="outline" 
-                                className="w-full !border-gray-200 hover:!border-gray-300 dark:!border-white/10 dark:hover:!border-white/15 text-gray-500 hover:text-gray-700" 
+                                className="w-full min-h-[44px]" 
                                 size="lg"
                                 onClick={onCancel}
                             >
-                                Discard Unsaved Changes
+                                Discard Changes
                             </Button>
                         </div>
                     </div>
                 </Card>
 
-                <Card title="WanderGrid Carbon Offset Program" className="shadow-lg">
+                <Card title="Carbon Footprint Analysis" className="shadow-lg">
                     <div className="space-y-4">
-                        <div className="flex gap-3 bg-emerald-500/10 p-4 rounded-3xl border border-emerald-500/15">
-                            <Earth className="w-6 h-6 text-emerald-500 shrink-0 animate-spin-slow" />
+                        <div className="flex gap-3 bg-emerald-500/10 p-4 rounded-2xl border border-emerald-500/20">
+                            <Earth className="w-6 h-6 text-emerald-500 shrink-0" weight="duotone" />
                             <div>
-                                <div className="text-xs font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-widest leading-none">Carbon Offset Registered</div>
-                                <div className="text-xs text-gray-500 mt-1.5 leading-normal">
-                                    This route produces a total estimated overhead of <span className="font-bold text-emerald-600 dark:text-emerald-450">{statsCarbonEmissions} kg CO2</span>.
+                                <div className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">Estimated Emissions</div>
+                                <div className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-1">
+                                    This route produces an estimated <span className="font-bold text-emerald-600 dark:text-emerald-400">{statsCarbonEmissions} kg CO2</span>.
                                 </div>
                             </div>
                         </div>
 
-                        <div className="space-y-3">
-                            <div className="flex justify-between items-center text-xs border-b border-gray-150/40 dark:border-white/5 pb-2.5 font-sans font-medium">
-                                <span className="text-gray-400">Carbon offset rating</span>
-                                <span className="font-bold text-emerald-600 dark:text-emerald-500">Gold Certified</span>
+                        <div className="space-y-2.5 text-xs">
+                            <div className="flex justify-between items-center border-b border-black/5 dark:border-white/5 pb-2">
+                                <span className="text-light-text-secondary dark:text-dark-text-secondary">Rail & Bus Efficiency</span>
+                                <span className="font-bold text-emerald-600 dark:text-emerald-400">High Reduction</span>
                             </div>
-                            <div className="flex justify-between items-center text-xs border-b border-gray-150/40 dark:border-white/5 pb-2.5 font-sans font-medium">
-                                <span className="text-gray-400 font-sans">Eco Contribution</span>
-                                <span className="font-bold text-gray-600 dark:text-zinc-350">$0.00 (Sponsored)</span>
-                            </div>
-                            <div className="flex justify-between items-center text-xs font-sans font-medium">
-                                <span className="text-gray-400">Mitigation projects</span>
-                                <span className="font-bold text-gray-600 dark:text-zinc-300">Amazon Reforestation</span>
+                            <div className="flex justify-between items-center border-b border-black/5 dark:border-white/5 pb-2">
+                                <span className="text-light-text-secondary dark:text-dark-text-secondary">Average Segment Distance</span>
+                                <span className="font-bold text-light-text dark:text-dark-text">
+                                    {legs.length > 0 ? Math.round(statsDistance / Math.max(1, legs.reduce((a, l) => a + l.segments.length, 0))) : 0} km
+                                </span>
                             </div>
                         </div>
-                        
-                        <p className="text-xs text-zinc-400 leading-normal bg-zinc-50 dark:bg-zinc-950/40 p-3.5 rounded-2xl border border-gray-150/50 dark:border-white/5">
-                            🌳 WanderGrid matches every flight, rail, and road trip emissions with GoldStandard carbon-offset investments. Enjoy carbon-neutral travel tracking automatically.
-                        </p>
                     </div>
                 </Card>
             </div>

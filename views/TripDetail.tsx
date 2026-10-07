@@ -78,6 +78,23 @@ import { EmptyState } from '../components/EmptyState';
 import { DailyPlannerBoard } from '../components/DailyPlannerBoard';
 import { invalidateGlobalWanderCache } from '../hooks/useWanderSync';
 import { isCarRentalBooking, getTransportScheduleTitle, getTransportScheduleLocation, getTransportScheduleEventsForDate } from '../utils/transportSchedule';
+import { motion } from 'motion/react';
+
+const TRIP_TABS = [
+    { id: 'planner', label: 'Daily Planner', icon: CalendarBlank, activeText: 'text-amber-500', activeBg: 'bg-amber-500/15', activeBorder: 'border-amber-500/30' },
+    { id: 'route', label: 'Route', icon: Path, activeText: 'text-blue-500', activeBg: 'bg-blue-500/15', activeBorder: 'border-blue-500/30' },
+    { id: 'itinerary', label: 'Bookings', icon: Ticket, activeText: 'text-emerald-500', activeBg: 'bg-emerald-500/15', activeBorder: 'border-emerald-500/30' },
+    { id: 'budget', label: 'Cost Breakdown', icon: Receipt, activeText: 'text-purple-500', activeBg: 'bg-purple-500/15', activeBorder: 'border-purple-500/30' },
+    { id: 'packing', label: 'Gear', icon: Backpack, activeText: 'text-teal-500', activeBg: 'bg-teal-500/15', activeBorder: 'border-teal-500/30' },
+    { id: 'intel', label: 'AI Guide', icon: Sparkle, activeText: 'text-rose-500', activeBg: 'bg-rose-500/15', activeBorder: 'border-rose-500/30' }
+] as const;
+
+const PLANNER_SUBVIEWS = [
+    { id: 'board', label: 'Canvas', icon: SquaresFour },
+    { id: 'list', label: 'List', icon: List },
+    { id: 'table', label: 'Table', icon: Table },
+    { id: 'calendar', label: 'Calendar', icon: CalendarBlank }
+] as const;
 
 export const TripItemIcon: React.FC<{ name: string; className?: string }> = React.memo(({ name, className = "w-4 h-4" }) => {
     switch (name) {
@@ -1412,115 +1429,141 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
 
     return (
         <div className="w-full max-w-[1680px] mx-auto pt-2 sm:pt-4 px-1 sm:px-4 md:px-6 lg:px-8 flex flex-col gap-5 sm:gap-6 animate-fadeIn pb-16">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-                {/* Left Card: Trip Header Info, Stats, Actions */}
-                {(() => {
-                    const vibe = getWeatherVibeStyle(weather?.current_weather?.weathercode);
-                    return (
-                        <GlassPanel className="lg:col-span-8 wg-glass-card rounded-[28px] overflow-hidden p-6 lg:p-8 flex flex-col justify-between relative transition-all duration-500">
-                            <div className={`absolute inset-0 bg-gradient-to-br ${vibe.bg} pointer-events-none transition-all duration-500`} />
-                            <div className="relative flex flex-col gap-6 h-full justify-between z-10">
-                                <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-                                    <div className="flex items-start gap-4">
-                                        <button 
-                                            onClick={onBack} 
-                                            aria-label="Back to planner" 
-                                            className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-2xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:text-primary-500 hover:bg-black/10 dark:hover:bg-white/10 transition-all shrink-0 cursor-pointer"
-                                        >
-                                            <ArrowLeft className="w-5 h-5" />
-                                        </button>
-                                        <div>
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-3xl md:text-4xl">{trip.icon || '✈️'}</span>
-                                                <h1 className="text-2xl md:text-4xl font-black text-light-text dark:text-dark-text tracking-tight">{trip.name}</h1>
-                                            </div>
-                                            <div className="flex flex-wrap gap-3 mt-4 items-center">
-                                                {/* Address Info block with customized address icon */}
-                                                <div className="flex items-center gap-2 px-3 py-1.5 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-full text-xs md:text-sm font-bold text-light-text dark:text-dark-text shadow-sm">
-                                                    <MapPin className="w-4 h-4 text-primary-500" weight="duotone" />
-                                                    <span>{trip.location}</span>
-                                                </div>
-
-                                                {/* Date Info block with customized calendar icon */}
-                                                <div className="flex items-center gap-2 px-3 py-1.5 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-full text-xs md:text-sm font-bold text-light-text dark:text-dark-text shadow-sm">
-                                                    <CalendarBlank className="w-4 h-4 text-purple-500" weight="duotone" />
-                                                    <span>{formatDateRange(trip.startDate, trip.endDate, settings)}</span>
-                                                </div>
-
-                                                {/* Weather Condition Info block with customized dynamic weather icon */}
-                                                {weather && weather.current_weather && (
-                                                    <div className={`flex items-center gap-2 px-3 py-1.5 border rounded-full text-xs md:text-sm font-bold shadow-sm transition-all duration-300 ${vibe.pillBg}`}>
-                                                        <TripItemIcon name={vibe.icon} className="w-4 h-4" />
-                                                        <span>
-                                                            {Math.round(weather.current_weather.temperature)}°C · {getWeatherDescription(weather.current_weather.weathercode)}
-                                                            {weather.daily?.temperature_2m_max?.length > 0 && weather.daily?.temperature_2m_min?.length > 0 && (
-                                                                <span className="opacity-80 ml-1.5 text-xs font-normal">
-                                                                    (H: {Math.round(weather.daily.temperature_2m_max[0])}° L: {Math.round(weather.daily.temperature_2m_min[0])}°)
-                                                                </span>
-                                                            )}
-                                                        </span>
-                                                    </div>
-                                                )}
-                                                {weatherLoading && (
-                                                    <div className="flex items-center gap-2 px-3 py-1.5 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-full text-xs md:text-sm font-bold text-light-text-secondary animate-pulse">
-                                                        <div className="w-3.5 h-3.5 rounded-full border-2 border-gray-300 border-t-purple-600 animate-spin" />
-                                                        <span>Syncing weather...</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <div className="flex flex-wrap gap-1.5 md:flex-col">
-                                            <Button size="sm" variant="secondary" onClick={() => setIsCinematicOpen(true)} icon={<FilmStrip className="w-4 h-4" weight="duotone" />}>Cinematic View</Button>
-                                            <Button size="sm" variant="secondary" onClick={() => {
-                                                const ics = calendarService.generateIcsContent([trip], 'WanderGrid');
-                                                calendarService.downloadIcs(ics, `trip-${trip.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.ics`);
-                                            }} icon={<CalendarBlank className="w-4 h-4" weight="duotone" />}>ICS Calendar</Button>
-                                            <Button size="sm" variant="secondary" onClick={() => setIsEditTripOpen(true)} icon={<PencilSimple className="w-4 h-4" weight="duotone" />}>Edit Settings</Button>
-                                        </div>
-                                    </div>
+            {/* 1. Unboxed Hero Header: Title Left, Actions Right (Planner Standard) */}
+            {(() => {
+                const vibe = getWeatherVibeStyle(weather?.current_weather?.weathercode);
+                return (
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full pt-1 pb-1">
+                        {/* Left: Back Button + Trip Icon + Scaled Title + Live Info Pills */}
+                        <div className="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0">
+                            <button 
+                                onClick={onBack} 
+                                aria-label="Back to planner" 
+                                className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-2xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 flex items-center justify-center text-light-text-secondary dark:text-dark-text-secondary hover:text-primary-500 hover:bg-black/10 dark:hover:bg-white/10 transition-all shrink-0 cursor-pointer"
+                            >
+                                <ArrowLeft className="w-5 h-5" />
+                            </button>
+                            <div className="min-w-0">
+                                <div className="flex items-center gap-2.5 sm:gap-3">
+                                    <span className="text-2xl sm:text-4xl shrink-0">{trip.icon || '✈️'}</span>
+                                    <h1 className="text-xl sm:text-3xl md:text-5xl font-black text-light-text dark:text-dark-text tracking-tight leading-tight truncate">
+                                        {trip.name}
+                                    </h1>
                                 </div>
+                                <div className="flex flex-wrap items-center gap-2 mt-2">
+                                    {/* Location Info Pill */}
+                                    <div className="flex items-center gap-1.5 px-3 py-1 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-full text-xs font-bold text-light-text dark:text-dark-text shadow-xs">
+                                        <MapPin className="w-3.5 h-3.5 text-primary-500" weight="duotone" />
+                                        <span>{trip.location}</span>
+                                    </div>
 
-                                {/* Stat Cards */}
-                                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mt-4">
-                                    <div className={`p-4 ${CARD_ELEVATED_STYLE} text-center flex flex-col justify-center`}>
-                                        <span className="text-xl md:text-2xl font-black text-emerald-600 dark:text-emerald-400">{formatCurrency(totalCost)}</span>
-                                        <span className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider mt-0.5">Total Cost</span>
+                                    {/* Date Info Pill */}
+                                    <div className="flex items-center gap-1.5 px-3 py-1 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-full text-xs font-bold text-light-text dark:text-dark-text shadow-xs">
+                                        <CalendarBlank className="w-3.5 h-3.5 text-purple-500" weight="duotone" />
+                                        <span>{formatDateRange(trip.startDate, trip.endDate, settings)}</span>
                                     </div>
-                                    <div className={`p-4 ${CARD_ELEVATED_STYLE} text-center flex flex-col justify-center`}>
-                                        <span className="text-xl md:text-2xl font-black text-semantic-blue">{totalTransportLegs}</span>
-                                        <span className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider mt-0.5">Transport Legs</span>
-                                    </div>
-                                    <div className={`p-4 ${CARD_ELEVATED_STYLE} text-center flex flex-col justify-center`}>
-                                        <span className="text-xl md:text-2xl font-black text-amber-500">{totalNightsBooked}</span>
-                                        <span className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider mt-0.5">Nights Booked</span>
-                                    </div>
-                                    <div className={`p-4 ${CARD_ELEVATED_STYLE} text-center flex flex-col justify-center`}>
-                                        <span className="text-xl md:text-2xl font-black text-purple-600 dark:text-purple-400">{excursionsCount}</span>
-                                        <span className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider mt-0.5">Excursions</span>
-                                    </div>
-                                    <div className={`p-4 ${CARD_ELEVATED_STYLE} text-center flex flex-col justify-center col-span-2 sm:col-span-1`}>
-                                        <span className="text-xl md:text-2xl font-black text-light-text dark:text-dark-text">{totalDistance > 0 ? `${Math.round(totalDistance).toLocaleString()} km` : '0 km'}</span>
-                                        <span className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider mt-0.5">Total Distance</span>
-                                    </div>
+
+                                    {/* Weather Condition Pill */}
+                                    {weather && weather.current_weather && (
+                                        <div className={`flex items-center gap-1.5 px-3 py-1 border rounded-full text-xs font-bold shadow-xs transition-all ${vibe.pillBg}`}>
+                                            <TripItemIcon name={vibe.icon} className="w-3.5 h-3.5" />
+                                            <span>
+                                                {Math.round(weather.current_weather.temperature)}°C · {getWeatherDescription(weather.current_weather.weathercode)}
+                                                {weather.daily?.temperature_2m_max?.length > 0 && weather.daily?.temperature_2m_min?.length > 0 && (
+                                                    <span className="opacity-80 ml-1 font-normal">
+                                                        (H: {Math.round(weather.daily.temperature_2m_max[0])}° L: {Math.round(weather.daily.temperature_2m_min[0])}°)
+                                                    </span>
+                                                )}
+                                            </span>
+                                        </div>
+                                    )}
+                                    {weatherLoading && (
+                                        <div className="flex items-center gap-2 px-3 py-1 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-full text-xs font-bold text-light-text-secondary animate-pulse">
+                                            <div className="w-3.5 h-3.5 rounded-full border-2 border-gray-300 border-t-purple-600 animate-spin" />
+                                            <span>Weather syncing...</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
-                        </GlassPanel>
-                    );
-                })()}
+                        </div>
 
-                {/* Right Card: Beautiful interactive 2D Map Overview card of the configured routes */}
-                <GlassPanel className="lg:col-span-4 wg-glass-card rounded-[28px] overflow-hidden min-h-[300px] h-full relative flex flex-col">
-                    <div className="absolute top-4 left-4 z-10 flex items-center gap-1.5 bg-black/40 text-white backdrop-blur px-3 py-1.5 rounded-full border border-white/10 shadow-sm pointer-events-none">
-                        <Compass className="w-4 h-4 text-primary-500" weight="duotone" />
-                        <span className="text-2xs font-bold uppercase tracking-wider">Route Map Overview 2D</span>
+                        {/* Right: Actions Aligned Right on Mobile & Desktop */}
+                        <div className="flex items-center gap-2 justify-end shrink-0">
+                            <Button 
+                                size="sm" 
+                                variant="secondary" 
+                                onClick={() => setIsCinematicOpen(true)} 
+                                icon={<FilmStrip className="w-4 h-4" weight="duotone" />}
+                                className="min-h-[44px]"
+                            >
+                                <span className="hidden sm:inline">Cinematic View</span>
+                                <span className="sm:hidden">Cinematic</span>
+                            </Button>
+                            <Button 
+                                size="sm" 
+                                variant="secondary" 
+                                onClick={() => {
+                                    const ics = calendarService.generateIcsContent([trip], 'WanderGrid');
+                                    calendarService.downloadIcs(ics, `trip-${trip.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.ics`);
+                                }} 
+                                icon={<CalendarBlank className="w-4 h-4" weight="duotone" />}
+                                className="min-h-[44px]"
+                            >
+                                <span className="hidden sm:inline">ICS Calendar</span>
+                                <span className="sm:hidden">ICS</span>
+                            </Button>
+                            <Button 
+                                size="sm" 
+                                variant="secondary" 
+                                onClick={() => setIsEditTripOpen(true)} 
+                                icon={<PencilSimple className="w-4 h-4" weight="duotone" />}
+                                className="min-h-[44px]"
+                            >
+                                <span className="hidden sm:inline">Edit Settings</span>
+                                <span className="sm:hidden">Edit</span>
+                            </Button>
+                        </div>
                     </div>
-                    <div className="w-full h-full min-h-[300px] flex-1 relative">
+                );
+            })()}
+
+            {/* 2. Top Bento: 5 Stat Cards + Embedded 2D Route Map Overview */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-stretch">
+                {/* 5 Stat Cards */}
+                <div className="lg:col-span-8 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4">
+                    <GlassPanel className="wg-glass-card rounded-[24px] p-4 sm:p-5 flex flex-col justify-center text-center border border-black/5 dark:border-white/10" overrides={{ borderRadius: 24 }} padding="0px">
+                        <span className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 truncate">{formatCurrency(totalCost)}</span>
+                        <span className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider mt-1">Total Cost</span>
+                    </GlassPanel>
+                    <GlassPanel className="wg-glass-card rounded-[24px] p-4 sm:p-5 flex flex-col justify-center text-center border border-black/5 dark:border-white/10" overrides={{ borderRadius: 24 }} padding="0px">
+                        <span className="text-xl sm:text-2xl font-black text-sky-600 dark:text-sky-400">{totalTransportLegs}</span>
+                        <span className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider mt-1">Transport Legs</span>
+                    </GlassPanel>
+                    <GlassPanel className="wg-glass-card rounded-[24px] p-4 sm:p-5 flex flex-col justify-center text-center border border-black/5 dark:border-white/10" overrides={{ borderRadius: 24 }} padding="0px">
+                        <span className="text-xl sm:text-2xl font-black text-amber-500">{totalNightsBooked}</span>
+                        <span className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider mt-1">Nights Booked</span>
+                    </GlassPanel>
+                    <GlassPanel className="wg-glass-card rounded-[24px] p-4 sm:p-5 flex flex-col justify-center text-center border border-black/5 dark:border-white/10" overrides={{ borderRadius: 24 }} padding="0px">
+                        <span className="text-xl sm:text-2xl font-black text-purple-600 dark:text-purple-400">{excursionsCount}</span>
+                        <span className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider mt-1">Excursions</span>
+                    </GlassPanel>
+                    <GlassPanel className="wg-glass-card rounded-[24px] p-4 sm:p-5 flex flex-col justify-center text-center col-span-2 sm:col-span-1 border border-black/5 dark:border-white/10" overrides={{ borderRadius: 24 }} padding="0px">
+                        <span className="text-xl sm:text-2xl font-black text-light-text dark:text-dark-text truncate">{totalDistance > 0 ? `${Math.round(totalDistance).toLocaleString()} km` : '0 km'}</span>
+                        <span className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider mt-1">Total Distance</span>
+                    </GlassPanel>
+                </div>
+
+                {/* Right Card: Embedded 2D Route Map Overview */}
+                <GlassPanel className="lg:col-span-4 wg-glass-card rounded-[28px] overflow-hidden min-h-[180px] h-full relative flex flex-col border border-black/5 dark:border-white/10" overrides={{ borderRadius: 28 }} padding="0px">
+                    <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 bg-black/40 text-white backdrop-blur px-3 py-1 rounded-full border border-white/10 shadow-sm pointer-events-none text-2xs font-bold uppercase tracking-wider">
+                        <Compass className="w-3.5 h-3.5 text-primary-500" weight="duotone" />
+                        <span>Route Map 2D</span>
+                    </div>
+                    <div className="w-full h-full min-h-[180px] flex-1 relative">
                         <Suspense fallback={
-                            <div className="w-full h-full flex flex-col items-center justify-center bg-transparent text-zinc-400 space-y-3">
-                                <span className="w-8 h-8 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin"></span>
-                                <span className="text-2xs font-bold uppercase tracking-wider">Rasterizing Route Vector...</span>
+                            <div className="w-full h-full flex flex-col items-center justify-center bg-transparent text-zinc-400 space-y-2">
+                                <span className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></span>
+                                <span className="text-2xs font-bold uppercase tracking-wider">Rasterizing...</span>
                             </div>
                         }>
                             <DeckFlightMap 
@@ -1537,33 +1580,93 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
                 </GlassPanel>
             </div>
 
-            {/* Tabs and Content Switcher */}
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                <Tabs 
-                    tabs={[
-                        { id: 'planner', label: 'Daily Planner', icon: <CalendarBlank className="w-4 h-4 text-amber-500" weight="duotone" />, color: 'amber' }, 
-                        { id: 'route', label: 'Route', icon: <Path className="w-4 h-4 text-blue-500" weight="duotone" />, color: 'blue' },
-                        { id: 'itinerary', label: 'Bookings', icon: <Ticket className="w-4 h-4 text-emerald-500" weight="duotone" />, color: 'emerald' }, 
-                        { id: 'budget', label: 'Cost Breakdown', icon: <Receipt className="w-4 h-4 text-purple-500" weight="duotone" />, color: 'purple' },
-                        { id: 'packing', label: 'Gear', icon: <Backpack className="w-4 h-4 text-teal-500" weight="duotone" />, color: 'teal' },
-                        { id: 'intel', label: 'AI Guide', icon: <Sparkle className="w-4 h-4 text-rose-500" weight="duotone" />, color: 'rose' }
-                    ]} 
-                    activeTab={activeTab} 
-                    onChange={setActiveTab} 
-                />
+            {/* 3. Floating Liquid-Glass Tab Navigation & Subviews Switcher */}
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                {/* Main Tabs - Centered on mobile */}
+                <div className="flex items-center justify-center sm:justify-start overflow-x-auto sm:overflow-visible no-scrollbar p-3 -m-3 shrink-0 w-full sm:w-auto">
+                    <GlassPanel
+                        className="wg-glass-pill shadow-lg shadow-black/5 dark:shadow-black/25 shrink-0"
+                        padding="4px 6px"
+                        overrides={{ borderRadius: 9999 }}
+                    >
+                        <div className="flex gap-1 relative items-center">
+                            {TRIP_TABS.map((tab) => {
+                                const isSelected = activeTab === tab.id;
+                                const IconComponent = tab.icon;
+                                return (
+                                    <button
+                                        key={tab.id}
+                                        onClick={() => setActiveTab(tab.id)}
+                                        className={`relative rounded-full text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none active:scale-95 min-h-[44px] ${
+                                            isSelected
+                                                ? `${tab.activeText} px-4 sm:px-5 py-2.5`
+                                                : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text px-3 sm:px-4 py-2.5'
+                                        }`}
+                                    >
+                                        {isSelected && (
+                                            <motion.div
+                                                layoutId="activeTripDetailTabIndicator"
+                                                className={`absolute inset-0 rounded-full ${tab.activeBg} backdrop-blur-md border ${tab.activeBorder} ${tab.activeShadow} z-0`}
+                                                style={{ WebkitBackdropFilter: 'blur(12px)' }}
+                                                transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                                            />
+                                        )}
+                                        <span className="relative z-10 flex items-center gap-2">
+                                            <IconComponent className="w-4 h-4 shrink-0" weight="duotone" />
+                                            <span className={`tracking-tight ${isSelected ? 'inline' : 'hidden md:inline'}`}>
+                                                {tab.label}
+                                            </span>
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </GlassPanel>
+                </div>
+
+                {/* Subview switcher when in Daily Planner */}
                 {activeTab === 'planner' && (
-                    <Tabs
-                        tabs={[
-                            { id: 'board', label: 'Canvas', icon: <SquaresFour className="w-4 h-4 text-amber-500" weight="duotone" />, color: 'amber' },
-                            { id: 'list', label: 'List', icon: <List className="w-4 h-4 text-blue-500" weight="duotone" />, color: 'blue' },
-                            { id: 'table', label: 'Table', icon: <Table className="w-4 h-4 text-emerald-500" weight="duotone" />, color: 'emerald' },
-                            { id: 'calendar', label: 'Calendar', icon: <CalendarBlank className="w-4 h-4 text-purple-500" weight="duotone" />, color: 'purple' },
-                        ]}
-                        activeTab={plannerView}
-                        onChange={(id) => setPlannerView(id as 'board' | 'list' | 'table' | 'calendar')}
-                    />
+                    <div className="flex items-center justify-center overflow-x-auto no-scrollbar p-3 -m-3 shrink-0 w-full sm:w-auto">
+                        <GlassPanel
+                            className="wg-glass-pill shadow-md shrink-0"
+                            padding="3px 4px"
+                            overrides={{ borderRadius: 9999 }}
+                        >
+                            <div className="flex gap-1 relative items-center">
+                                {PLANNER_SUBVIEWS.map((sub) => {
+                                    const isSubSelected = plannerView === sub.id;
+                                    const SubIcon = sub.icon;
+                                    return (
+                                        <button
+                                            key={sub.id}
+                                            onClick={() => setPlannerView(sub.id as any)}
+                                            className={`relative rounded-full text-xs font-bold transition-all duration-200 flex items-center justify-center cursor-pointer select-none active:scale-95 min-h-[40px] px-3 sm:px-4 py-2 ${
+                                                isSubSelected
+                                                    ? 'text-primary-600 dark:text-primary-400'
+                                                    : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
+                                            }`}
+                                        >
+                                            {isSubSelected && (
+                                                <motion.div
+                                                    layoutId="activePlannerSubViewIndicator"
+                                                    className="absolute inset-0 rounded-full bg-primary-500/15 backdrop-blur-md border border-primary-500/30 z-0"
+                                                    style={{ WebkitBackdropFilter: 'blur(12px)' }}
+                                                    transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                                                />
+                                            )}
+                                            <span className="relative z-10 flex items-center gap-1.5">
+                                                <SubIcon className="w-3.5 h-3.5" weight="duotone" />
+                                                <span>{sub.label}</span>
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </GlassPanel>
+                    </div>
                 )}
             </div>
+
 
             {activeTab === 'intel' && (
                 <div className="animate-fade-in">
@@ -2321,120 +2424,206 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
             )}
 
             {/* BUDGET TAB - LIQUID GLASS */}
-            {activeTab === 'budget' && (
-                <div className="space-y-8 animate-fade-in">
-                    
-                    {/* Summary Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {/* Total Cost Card (Emerald Gradient) */}
-                        <GlassPanel className="p-8 rounded-[28px] wg-glass-card bg-gradient-to-br from-emerald-500/80 to-teal-600/80 text-white shadow-2xl relative overflow-hidden group">
-                            <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/20 rounded-full blur-3xl group-hover:scale-110 transition-transform"></div>
-                            <p className="text-xs font-bold text-emerald-100 uppercase tracking-widest mb-2">Total Trip Cost</p>
-                            <h2 className="text-5xl font-black tracking-tight">{formatCurrency(totalCost)}</h2>
-                        </GlassPanel>
+            {activeTab === 'budget' && (() => {
+                const targetBudget = (trip.customFields?.find(f => f.key === 'targetBudget')?.value ? Number(trip.customFields.find(f => f.key === 'targetBudget')!.value) : 0) || Math.max(1000, Math.round(totalCost > 0 ? totalCost * 1.15 : 2500));
+                const circumference = 251.327;
+                const tRatio = totalCost > 0 ? transportCost / totalCost : 0;
+                const sRatio = totalCost > 0 ? stayCost / totalCost : 0;
+                const aRatio = totalCost > 0 ? activityCost / totalCost : 0;
+                const tDash = tRatio * circumference;
+                const sDash = sRatio * circumference;
+                const aDash = aRatio * circumference;
+                const tOffset = 0;
+                const sOffset = -tDash;
+                const aOffset = -(tDash + sDash);
 
-                        {/* Cost Per Person */}
-                        <GlassPanel className="p-8 rounded-[28px] wg-glass-card relative">
-                            <p className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest mb-2">Cost Per Person</p>
-                            <h2 className="text-4xl font-black text-light-text dark:text-dark-text">{formatCurrency(costPerPerson)}</h2>
-                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-2">{(trip.participants || []).length} Travelers</p>
-                        </GlassPanel>
-
-                        {/* Daily Average */}
-                        <GlassPanel className="p-8 rounded-[28px] wg-glass-card relative">
-                            <p className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest mb-2">Daily Average</p>
-                            <h2 className="text-4xl font-black text-light-text dark:text-dark-text">{formatCurrency(costPerDay)}</h2>
-                            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-2">{duration} Days</p>
-                        </GlassPanel>
-                    </div>
-
-                    {/* Lower Section Grid */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        {/* Donut Chart Section */}
-                        <GlassPanel className="lg:col-span-1 wg-glass-card rounded-[28px] p-8 flex flex-col items-center justify-center relative">
-                            <h4 className="absolute top-8 left-8 text-xs font-black text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest">Expense Distribution</h4>
-                            
-                            <div className="relative w-64 h-64 mt-4">
-                                <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
-                                    {/* Background Circle */}
-                                    <circle cx="50" cy="50" r="40" fill="transparent" stroke="currentColor" strokeWidth="12" className="text-black/10 dark:text-white/10" />
-                                    
-                                    {/* Segments - Simplified visualization logic */}
-                                    <circle cx="50" cy="50" r="40" fill="transparent" stroke="#3b82f6" strokeWidth="12" 
-                                        strokeDasharray={`${(transportCost/totalCost)*251} 251`} className="transition-all duration-1000" />
-                                </svg>
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <span className="text-3xl font-black text-light-text dark:text-dark-text">100%</span>
+                return (
+                    <div className="space-y-6 animate-fade-in">
+                        {/* Target Budget Comparison (Proposed Missing Feature) */}
+                        <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden p-6 border border-black/5 dark:border-white/10" overrides={{ borderRadius: 28 }} padding="0px">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-black/5 dark:border-white/5">
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="text-base font-bold text-light-text dark:text-dark-text tracking-tight">Target Budget & Variance</h3>
+                                        <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
+                                            Live Tracker
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5 font-medium">
+                                        Comparison of actual expenses against target trip threshold.
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <span className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border ${
+                                        totalCost <= targetBudget
+                                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                                            : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
+                                    }`}>
+                                        <span className={`w-2 h-2 rounded-full ${totalCost <= targetBudget ? 'bg-emerald-500' : 'bg-rose-500 animate-pulse'}`} />
+                                        {totalCost <= targetBudget 
+                                            ? `${formatCurrency(targetBudget - totalCost)} Remaining` 
+                                            : `${formatCurrency(totalCost - targetBudget)} Over Target`}
+                                    </span>
                                 </div>
                             </div>
-
-                            <div className="flex gap-4 mt-8">
-                                <div className="flex items-center gap-2">
-                                    <span className="w-3 h-3 rounded-full bg-blue-500"></span>
-                                    <span className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary">Transport</span>
+                            <div className="pt-4 space-y-2">
+                                <div className="w-full bg-black/5 dark:bg-white/5 h-3 rounded-full overflow-hidden p-0.5 border border-black/5 dark:border-white/5">
+                                    <div 
+                                        className={`h-full rounded-full transition-all duration-700 ${
+                                            totalCost <= targetBudget 
+                                                ? 'bg-gradient-to-r from-emerald-500 to-teal-500' 
+                                                : 'bg-gradient-to-r from-amber-500 to-rose-500'
+                                        }`}
+                                        style={{ width: `${Math.min(100, Math.round((totalCost / Math.max(1, targetBudget)) * 100))}%` }}
+                                    />
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="w-3 h-3 rounded-full bg-amber-500"></span>
-                                    <span className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary">Stays</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="w-3 h-3 rounded-full bg-purple-500"></span>
-                                    <span className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary">Activities</span>
+                                <div className="flex justify-between items-center text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider">
+                                    <span>Actual: {formatCurrency(totalCost)}</span>
+                                    <span>Target Ceiling: {formatCurrency(targetBudget)} ({Math.round((totalCost / Math.max(1, targetBudget)) * 100)}%)</span>
                                 </div>
                             </div>
                         </GlassPanel>
 
-                        {/* Itemized List Section */}
-                        <div className="lg:col-span-2 space-y-4">
-                            <h4 className="text-xs font-black text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest mb-4">Itemized Expenses</h4>
-                            
-                            {/* Transportation Row */}
-                            <GlassPanel className="wg-glass-card rounded-2xl p-6 flex items-center justify-between group">
-                                <div className="flex items-center gap-5">
-                                    <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
-                                        <AirplaneTilt className="w-6 h-6" weight="duotone" />
-                                    </div>
-                                    <div>
-                                        <h4 className="font-bold text-light-text dark:text-dark-text text-lg">Transportation</h4>
-                                        <p className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider">{bookingTransports.length} Bookings</p>
-                                    </div>
-                                </div>
-                                <div className="text-xl font-bold text-light-text dark:text-dark-text">{formatCurrency(transportCost)}</div>
+                        {/* Summary Cards */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {/* Total Cost Card */}
+                            <GlassPanel className="p-6 sm:p-8 rounded-[28px] wg-glass-card border border-black/5 dark:border-white/10 relative overflow-hidden" overrides={{ borderRadius: 28 }} padding="0px">
+                                <p className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest mb-1.5">Total Trip Cost</p>
+                                <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-emerald-600 dark:text-emerald-400">{formatCurrency(totalCost)}</h2>
+                                <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-1 font-medium">All logged transports, stays & excursions</p>
                             </GlassPanel>
 
-                            {/* Accommodation Row */}
-                            <GlassPanel className="wg-glass-card rounded-2xl p-6 flex items-center justify-between group">
-                                <div className="flex items-center gap-5">
-                                    <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
-                                        <Buildings className="w-6 h-6" weight="duotone" />
-                                    </div>
-                                    <div>
-                                        <h4 className="font-bold text-light-text dark:text-dark-text text-lg">Accommodation</h4>
-                                        <p className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider">{trip.accommodations?.length || 0} Properties</p>
-                                    </div>
-                                </div>
-                                <div className="text-xl font-bold text-light-text dark:text-dark-text">{formatCurrency(stayCost)}</div>
+                            {/* Cost Per Person */}
+                            <GlassPanel className="p-6 sm:p-8 rounded-[28px] wg-glass-card border border-black/5 dark:border-white/10 relative" overrides={{ borderRadius: 28 }} padding="0px">
+                                <p className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest mb-1.5">Cost Per Person</p>
+                                <h2 className="text-3xl sm:text-4xl font-black text-light-text dark:text-dark-text">{formatCurrency(costPerPerson)}</h2>
+                                <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-1 font-medium">{(trip.participants || []).length || 1} Travelers in party</p>
                             </GlassPanel>
 
-                            {/* Activities Row */}
-                            <GlassPanel className="wg-glass-card rounded-2xl p-6 flex items-center justify-between group">
-                                <div className="flex items-center gap-5">
-                                    <div className="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-500 flex items-center justify-center">
-                                        <Ticket className="w-6 h-6" weight="duotone" />
-                                    </div>
-                                    <div>
-                                        <h4 className="font-bold text-light-text dark:text-dark-text text-lg">Activities & Tours</h4>
-                                        <p className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider">{trip.activities?.length || 0} Items</p>
-                                    </div>
-                                </div>
-                                <div className="text-xl font-bold text-light-text dark:text-dark-text">{formatCurrency(activityCost)}</div>
+                            {/* Daily Average */}
+                            <GlassPanel className="p-6 sm:p-8 rounded-[28px] wg-glass-card border border-black/5 dark:border-white/10 relative" overrides={{ borderRadius: 28 }} padding="0px">
+                                <p className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest mb-1.5">Daily Average</p>
+                                <h2 className="text-3xl sm:text-4xl font-black text-light-text dark:text-dark-text">{formatCurrency(costPerDay)}</h2>
+                                <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-1 font-medium">{duration} Total Days</p>
                             </GlassPanel>
                         </div>
+
+                        {/* Lower Section Grid */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            {/* Donut Chart Section - Accurate 3-segment SVG Donut */}
+                            <GlassPanel className="lg:col-span-1 wg-glass-card rounded-[28px] p-6 sm:p-8 flex flex-col items-center justify-between relative border border-black/5 dark:border-white/10" overrides={{ borderRadius: 28 }} padding="0px">
+                                <h4 className="w-full text-left text-2xs font-black text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest">
+                                    Expense Distribution
+                                </h4>
+                                
+                                <div className="relative w-56 h-56 my-6">
+                                    <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
+                                        <circle cx="50" cy="50" r="40" fill="transparent" stroke="currentColor" strokeWidth="12" className="text-black/5 dark:text-white/10" />
+                                        {tDash > 0 && (
+                                            <circle cx="50" cy="50" r="40" fill="transparent" stroke="#3b82f6" strokeWidth="12" 
+                                                strokeDasharray={`${tDash} ${circumference}`}
+                                                strokeDashoffset={tOffset}
+                                                className="transition-all duration-700" />
+                                        )}
+                                        {sDash > 0 && (
+                                            <circle cx="50" cy="50" r="40" fill="transparent" stroke="#f59e0b" strokeWidth="12" 
+                                                strokeDasharray={`${sDash} ${circumference}`}
+                                                strokeDashoffset={sOffset}
+                                                className="transition-all duration-700" />
+                                        )}
+                                        {aDash > 0 && (
+                                            <circle cx="50" cy="50" r="40" fill="transparent" stroke="#a855f7" strokeWidth="12" 
+                                                strokeDasharray={`${aDash} ${circumference}`}
+                                                strokeDashoffset={aOffset}
+                                                className="transition-all duration-700" />
+                                        )}
+                                    </svg>
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                        <span className="text-xl font-black text-light-text dark:text-dark-text">{formatCurrency(totalCost)}</span>
+                                        <span className="text-3xs uppercase tracking-widest font-bold text-light-text-secondary dark:text-dark-text-secondary">Total Spend</span>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-wrap justify-center gap-3 w-full pt-4 border-t border-black/5 dark:border-white/5">
+                                    <div className="flex items-center gap-1.5 text-xs font-bold text-light-text dark:text-dark-text">
+                                        <span className="w-3 h-3 rounded-full bg-blue-500"></span>
+                                        <span>Transport {Math.round(tRatio * 100)}%</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 text-xs font-bold text-light-text dark:text-dark-text">
+                                        <span className="w-3 h-3 rounded-full bg-amber-500"></span>
+                                        <span>Stays {Math.round(sRatio * 100)}%</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 text-xs font-bold text-light-text dark:text-dark-text">
+                                        <span className="w-3 h-3 rounded-full bg-purple-500"></span>
+                                        <span>Activities {Math.round(aRatio * 100)}%</span>
+                                    </div>
+                                </div>
+                            </GlassPanel>
+
+                            {/* Itemized List Section */}
+                            <div className="lg:col-span-2 space-y-4">
+                                <h4 className="text-2xs font-black text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest">Itemized Breakdown</h4>
+                                
+                                {/* Transportation Row */}
+                                <GlassPanel className="wg-glass-card rounded-2xl p-5 sm:p-6 flex items-center justify-between border border-black/5 dark:border-white/10" overrides={{ borderRadius: 16 }} padding="0px">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center border border-blue-500/20 shrink-0">
+                                            <AirplaneTilt className="w-6 h-6" weight="duotone" />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-light-text dark:text-dark-text text-base">Transportation</h4>
+                                            <p className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider mt-0.5">{bookingTransports.length} Bookings</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-lg sm:text-xl font-black text-light-text dark:text-dark-text">{formatCurrency(transportCost)}</div>
+                                </GlassPanel>
+
+                                {/* Accommodation Row */}
+                                <GlassPanel className="wg-glass-card rounded-2xl p-5 sm:p-6 flex items-center justify-between border border-black/5 dark:border-white/10" overrides={{ borderRadius: 16 }} padding="0px">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center border border-amber-500/20 shrink-0">
+                                            <Buildings className="w-6 h-6" weight="duotone" />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-light-text dark:text-dark-text text-base">Accommodation</h4>
+                                            <p className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider mt-0.5">{trip.accommodations?.length || 0} Properties</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-lg sm:text-xl font-black text-light-text dark:text-dark-text">{formatCurrency(stayCost)}</div>
+                                </GlassPanel>
+
+                                {/* Activities Row */}
+                                <GlassPanel className="wg-glass-card rounded-2xl p-5 sm:p-6 flex items-center justify-between border border-black/5 dark:border-white/10" overrides={{ borderRadius: 16 }} padding="0px">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-500 flex items-center justify-center border border-purple-500/20 shrink-0">
+                                            <Ticket className="w-6 h-6" weight="duotone" />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-light-text dark:text-dark-text text-base">Activities & Tours</h4>
+                                            <p className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-wider mt-0.5">{trip.activities?.length || 0} Scheduled Items</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-lg sm:text-xl font-black text-light-text dark:text-dark-text">{formatCurrency(activityCost)}</div>
+                                </GlassPanel>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            )}
+                );
+            })()}
 
             {/* Modals */}
+            {trip && isImportWizardOpen && (
+                <React.Suspense fallback={null}>
+                    <FlightImportWizard 
+                        isOpen={isImportWizardOpen}
+                        onClose={() => setIsImportWizardOpen(false)}
+                        onImportComplete={loadData}
+                        users={users}
+                        existingTripId={trip.id}
+                    />
+                </React.Suspense>
+            )}
+
             <Modal 
                 isOpen={isTransportModalOpen} 
                 onClose={() => setIsTransportModalOpen(false)} 

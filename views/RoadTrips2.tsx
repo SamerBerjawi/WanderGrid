@@ -1,45 +1,27 @@
 import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { 
-  Plus, MagnifyingGlass as Search, CalendarBlank as Calendar, MapPin, Trash as Trash2, PencilSimple as Edit2, 
+  Plus, MagnifyingGlass as Search, Funnel as Filter, CalendarBlank as Calendar, MapPin, Trash as Trash2, PencilSimple as Edit2, 
   CaretDown as ChevronDown, CaretUp as ChevronUp, Clock, CurrencyDollar as DollarSign, Compass, Car, 
   MapTrifold as Map, ArrowRight, HardDrives as Server, Sparkle as Sparkles, NavigationArrow as Navigation, Train, 
-  Bus, Boat, Info, DotsSixVertical, CheckSquare, Square, X, Check
+  Bus, Question as HelpCircle, ArrowsClockwise as RefreshCw, Leaf, Anchor, Boat, SquaresFour as Grid, Info
 } from '@phosphor-icons/react';
-import { Button, Input, GlassSelect, Badge, TimeInput, Autocomplete, Modal, BentoGrid, BentoCard } from '../components/ui';
+import { Card, Button, Input, Select, GlassSelect, Badge, TimeInput, Autocomplete, Modal, BentoGrid, BentoCard } from '../components/ui';
 import GlassPanel from '../components/glass/GlassPanel';
 import { INPUT_BASE_STYLE } from '../constants';
-import { Trip, Transport, TransportMode, RoadTripWaypoint } from '../types';
+import { Trip, Transport, TransportMode, RoadTripWaypoint, ViewState } from '../types';
 import { dataService } from '../services/mockDb';
 import { motion, AnimatePresence } from 'motion/react';
-import { searchLocations } from '../services/geocoding';
+import { getCoordinates, getCoordinatesSync, searchLocations } from '../services/geocoding';
 import { formatDate, formatCurrency } from '../utils/formatters';
 import { EmptyState } from '../components/EmptyState';
+import { syncPitStopsToVisited } from '../services/pitStopSync';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { TooltipContent } from '../components/TooltipContent';
-
-// Drag & Drop via @dnd-kit for Waypoints
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-  useSortable,
-  arrayMove
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 
 const DeckFlightMap = lazy(() => import('../components/DeckFlightMap').then(m => ({ default: m.DeckFlightMap || m.default })));
 
 const useDarkMode = () => {
-  const [isDark, setIsDark] = useState(typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : false);
+  const [isDark, setIsDark] = useState(document.documentElement.classList.contains('dark'));
   useEffect(() => {
     const observer = new MutationObserver(() => {
       setIsDark(document.documentElement.classList.contains('dark'));
@@ -56,7 +38,7 @@ const MODE_META: Record<Extract<TransportMode, 'Train' | 'Bus' | 'Car Rental' | 
   colorClass: string;
   bgClass: string;
   borderClass: string;
-  ecoRating: string;
+  ecoRating: string; // Description of ecological index
 }> = {
   'Train': { 
     label: 'Train / Railway', 
@@ -108,61 +90,6 @@ const MODE_META: Record<Extract<TransportMode, 'Train' | 'Bus' | 'Car Rental' | 
   }
 };
 
-// Proposed Feature: Sortable Waypoint Item Component for DnD
-interface SortableWaypointItemProps {
-  waypoint: RoadTripWaypoint;
-  onRemove: (id: string) => void;
-}
-
-const SortableWaypointItem: React.FC<SortableWaypointItemProps> = ({ waypoint, onRemove }) => {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: waypoint.id
-  });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className="text-xs flex items-center justify-between gap-2 p-2.5 bg-white/70 dark:bg-dark-card/80 border border-black/8 dark:border-white/10 rounded-xl shadow-xs group"
-    >
-      <div className="flex items-center gap-2 min-w-0">
-        <button
-          type="button"
-          {...attributes}
-          {...listeners}
-          className="p-1 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text cursor-grab active:cursor-grabbing shrink-0"
-          aria-label="Drag to reorder waypoint"
-        >
-          <DotsSixVertical className="w-4 h-4" />
-        </button>
-        <span className="font-semibold text-light-text dark:text-dark-text truncate">{waypoint.name}</span>
-        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary-500/10 text-primary-600 dark:text-primary-400 shrink-0">
-          {waypoint.type}
-        </span>
-        {waypoint.notes && (
-          <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary italic truncate hidden sm:inline">
-            "{waypoint.notes}"
-          </span>
-        )}
-      </div>
-      <button
-        type="button"
-        onClick={() => onRemove(waypoint.id)}
-        className="w-7 h-7 rounded-lg flex items-center justify-center text-light-text-secondary hover:text-rose-500 hover:bg-rose-500/10 transition-colors shrink-0 cursor-pointer"
-        aria-label="Remove waypoint"
-      >
-        <X className="w-3.5 h-3.5" />
-      </button>
-    </div>
-  );
-};
-
 export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ onTripClick }) => {
   const [roadTrips, setRoadTrips] = useState<any[]>([]);
   const [trips, setTrips] = useState<Trip[]>([]);
@@ -177,10 +104,6 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
   
   // Track expanded cards for waypoints/timeline toggle
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
-
-  // Proposed Feature: Multi-Select Bulk Actions Mode
-  const [isMultiEditing, setIsMultiEditing] = useState(false);
-  const [selectedTripIds, setSelectedTripIds] = useState<Set<string>>(new Set());
 
   // Editing state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -215,23 +138,6 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
   const [importMode, setImportMode] = useState<'Train' | 'Bus' | 'Car Rental' | 'Personal Car' | 'Cruise' | 'Ferry'>('Train');
   const [importState, setImportState] = useState<{ status: 'idle' | 'loading' | 'success' | 'error'; message: string }>({ status: 'idle', message: '' });
   const [pendingSuggestions, setPendingSuggestions] = useState<any[] | null>(null);
-
-  // Dnd-kit Sensors for Waypoints
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
-
-  const handleWaypointDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (over && active.id !== over.id) {
-      setFormWaypoints((items) => {
-        const oldIndex = items.findIndex((i) => i.id === active.id);
-        const newIndex = items.findIndex((i) => i.id === over.id);
-        return arrayMove(items, oldIndex, newIndex);
-      });
-    }
-  };
 
   const chartData = useMemo(() => {
     const sums: Record<string, { distance: number; timeMinutes: number; count: number }> = {
@@ -293,6 +199,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
       throw new Error("Trip must have at least 2 locations in the Visual Route Planner to auto-detect and import route segments.");
     }
 
+    // Sort locations chronologically
     locations.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
 
     const suggestions: any[] = [];
@@ -302,12 +209,14 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
       const locA = locations[i];
       const locB = locations[i + 1];
 
+      // Check for existing transport between consecutive locations to avoid duplicating
       const alreadyExists = currentTransports.some(tr => 
-        tr.origin?.toLowerCase().trim() === locA.name?.toLowerCase().trim() &&
-        tr.destination?.toLowerCase().trim() === locB.name?.toLowerCase().trim()
+        tr.origin.toLowerCase().trim() === locA.name.toLowerCase().trim() &&
+        tr.destination.toLowerCase().trim() === locB.name.toLowerCase().trim()
       );
 
       if (!alreadyExists) {
+        // Estimate distance based on speed
         const speeds: Record<string, number> = {
           'Train': 120,
           'Bus': 70,
@@ -318,11 +227,12 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
         };
         const avgSpeed = speeds[defaultMode] || 80;
         
+        // Calculate duration based on time between locations, capped to a reasonable duration
         const dateA = new Date(locA.endDate || locA.startDate);
         const dateB = new Date(locB.startDate);
         let diffHours = Math.abs(dateB.getTime() - dateA.getTime()) / (1000 * 60 * 60);
-        if (isNaN(diffHours) || diffHours <= 0) diffHours = 4;
-        if (diffHours > 24) diffHours = 6;
+        if (isNaN(diffHours) || diffHours <= 0) diffHours = 4; // default 4 hours
+        if (diffHours > 24) diffHours = 6; // cap to 6 hours for a single transit segment
 
         const durationMinutes = Math.round(diffHours * 60);
         const calculatedDistance = Math.round(diffHours * avgSpeed);
@@ -341,7 +251,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
           provider: defaultMode === 'Train' ? 'National Rail' : (defaultMode === 'Bus' ? 'Coach Express' : 'Road Link'),
           identifier: `${defaultMode.toUpperCase()}-${Math.floor(Math.random() * 900 + 100)}`,
           confirmationCode: `AUTO-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-          cost: 45,
+          cost: 45, // reasonable guess
           notes: `Automatically imported from trip visual route segment.`,
           waypoints: [],
           duration: durationMinutes,
@@ -390,10 +300,12 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
       const trip = trips.find(t => t.id === tripId);
       if (!trip) throw new Error("Trip not found");
 
+      // Save each segment independently in flights
       for (const seg of pendingSuggestions) {
         await dataService.addFlight(seg);
       }
 
+      // Add to trip transports list
       const updatedTransports = [...(trip.transports || []), ...pendingSuggestions];
       await dataService.updateTrip({
         ...trip,
@@ -402,7 +314,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
 
       setImportState({
         status: 'success',
-        message: `Success! Synchronized and imported ${pendingSuggestions.length} new land segment(s).`
+        message: `Success! Synchronized and imported ${pendingSuggestions.length} new land segment(s) into this master registry.`
       });
       setPendingSuggestions(null);
 
@@ -416,6 +328,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
     }
   };
 
+  // Fetch initial data
   const loadData = async () => {
     try {
       setLoading(true);
@@ -443,48 +356,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
     }));
   };
 
-  const toggleSelectSegment = (id: string) => {
-    setSelectedTripIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const handleBulkDelete = async () => {
-    if (selectedTripIds.size === 0) return;
-    const count = selectedTripIds.size;
-    if (!window.confirm(`Are you sure you want to delete ${count} selected road trip record${count > 1 ? 's' : ''}?`)) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-      for (const id of selectedTripIds) {
-        const item = roadTrips.find(r => r.id === id);
-        await dataService.deleteFlight(id);
-        if (item?.tripId) {
-          const linkedTrip = trips.find(t => t.id === item.tripId);
-          if (linkedTrip && linkedTrip.transports) {
-            const updated = linkedTrip.transports.filter(tx => tx.id !== id);
-            await dataService.updateTrip({ ...linkedTrip, transports: updated });
-          }
-        }
-      }
-      setSelectedTripIds(new Set());
-      setIsMultiEditing(false);
-      window.dispatchEvent(new CustomEvent('wandergrid_db_updated'));
-      await loadData();
-    } catch (err: any) {
-      console.error(err);
-      alert(err.message || 'Failed to bulk delete records.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Compute analytics
+  // Compute analytics based on current matching road trips
   const stats = useMemo(() => {
     let totalKm = 0;
     let totalMinutes = 0;
@@ -492,8 +364,10 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
     let totalTrainAndBusCount = 0;
     
     roadTrips.forEach(tr => {
+      // Parse cost
       if (tr.cost) totalExpense += parseFloat(tr.cost) || 0;
       
+      // Attempt to estimate duration if missing
       let durationMinutes = tr.duration || 0;
       if (!durationMinutes && tr.departureDate && tr.arrivalDate) {
         const dep = new Date(`${tr.departureDate}T${tr.departureTime || '00:00'}`);
@@ -503,8 +377,10 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
       }
       totalMinutes += durationMinutes;
 
+      // Estimate distance in km based on duration if missing
       let distanceKm = tr.distance || 0;
       if (!distanceKm && durationMinutes > 0) {
+        // Approximate average speeds (km/h)
         const speeds: Record<string, number> = {
           'Train': 120,
           'Bus': 70,
@@ -523,6 +399,8 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
       }
     });
 
+    // Assume 1km of flight is ~115g CO2, whereas trains average 14g, buses 28g.
+    // Savings = (Flight emissions - Actual emissions) * distance
     let flightsHypotheticalCo2Kg = (totalKm * 115) / 1000;
     let actualCo2Kg = 0;
     roadTrips.forEach(tr => {
@@ -545,6 +423,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
     });
 
     const co2SavedKg = Math.max(0, Math.round(flightsHypotheticalCo2Kg - actualCo2Kg));
+    // 1 standard tree absorbs roughly 22kg CO2 per year
     const treeEquivalent = Math.round(co2SavedKg / 22);
 
     return {
@@ -560,6 +439,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
   // Filter schedules
   const filteredRoadTrips = useMemo(() => {
     return roadTrips.filter(tr => {
+      // 1. Keyword query search
       const query = searchQuery.toLowerCase().trim();
       const matchesSearch = !query || 
         (tr.origin || '').toLowerCase().includes(query) ||
@@ -569,11 +449,13 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
         (tr.confirmationCode || '').toLowerCase().includes(query) ||
         (tr.notes || '').toLowerCase().includes(query);
 
+      // 2. Mode category filter
       const matchesMode = modeFilter === 'All' || 
         tr.mode === modeFilter || 
         (modeFilter === 'Cruise' && tr.mode === 'Ferry') ||
         (modeFilter === 'Ferry' && tr.mode === 'Cruise');
 
+      // 3. Status filter
       const now = new Date();
       now.setHours(0,0,0,0);
       const depDate = new Date(tr.departureDate);
@@ -586,6 +468,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
 
       return matchesSearch && matchesMode && matchesStatus;
     }).sort((a, b) => {
+      // 4. In-memory sorting
       if (sortBy === 'date-asc') {
         const timeA = new Date(`${a.departureDate}T${a.departureTime || '00:00'}`).getTime();
         const timeB = new Date(`${b.departureDate}T${b.departureTime || '00:00'}`).getTime();
@@ -608,12 +491,14 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
     });
   }, [roadTrips, searchQuery, modeFilter, statusFilter, sortBy]);
 
+  // Reset modal fields for create
   const handleOpenCreateModal = () => {
     setEditingTransport(null);
     setFormMode('Train');
     setFormOrigin('');
     setFormDestination('');
     
+    // Default to current date
     const todayStr = new Date().toISOString().split('T')[0];
     setFormDepDate(todayStr);
     setFormDepTime('12:00');
@@ -635,6 +520,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
     setIsModalOpen(true);
   };
 
+  // Open modal for editing
   const handleOpenEditModal = (tr: any) => {
     setEditingTransport(tr);
     setFormMode(tr.mode || 'Train');
@@ -659,39 +545,75 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
     setIsModalOpen(true);
   };
 
+  // Save changes
   const handleSaveTransport = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formOrigin.trim() || !formDestination.trim() || !formDepDate) {
-      alert("Origin, destination, and departure date are required fields.");
+      alert("Origin city, Destination city, and Departure Date are required.");
       return;
     }
 
     try {
       setLoading(true);
-
-      const targetTrip = trips.find(t => t.id === formTripId);
-      const isLinkedToTrip = formTripId !== 'unassigned' && Boolean(targetTrip);
-
-      let durationMinutes = 0;
-      if (formDepDate && formArrDate) {
-        const dep = new Date(`${formDepDate}T${formDepTime || '00:00'}`);
-        const arr = new Date(`${formArrDate}T${formArrTime || '00:00'}`);
-        const diffMs = arr.getTime() - dep.getTime();
-        if (diffMs > 0) durationMinutes = Math.floor(diffMs / 60000);
+      const isNew = !editingTransport;
+      
+      // Compute estimated travel duration (in minutes)
+      const depDateTime = new Date(`${formDepDate}T${formDepTime || '00:00'}`);
+      const arrDateTime = new Date(`${formArrDate || formDepDate}T${formArrTime || '00:00'}`);
+      let calculatedDuration = 0;
+      if (arrDateTime.getTime() > depDateTime.getTime()) {
+        calculatedDuration = Math.round((arrDateTime.getTime() - depDateTime.getTime()) / 60000);
       }
 
+      // Estimate distance based on mode and minutes
       const speeds: Record<string, number> = {
-        'Train': 120, 'Bus': 70, 'Car Rental': 90, 'Personal Car': 95, 'Cruise': 30, 'Ferry': 40
+        'Train': 120,
+        'Bus': 70,
+        'Car Rental': 90,
+        'Personal Car': 95,
+        'Cruise': 30,
+        'Ferry': 40
       };
-      const avgSpeed = speeds[formMode] || 80;
-      const estimatedDistance = durationMinutes > 0 ? Math.round((durationMinutes / 60) * avgSpeed) : 0;
+      const kmSpeed = speeds[formMode] || 80;
+      const calculatedDistance = Math.round((calculatedDuration / 60) * kmSpeed);
+
+      // Resolve coordinates on-the-fly for persistence
+      let originLat = editingTransport?.originLat;
+      let originLng = editingTransport?.originLng;
+      let destLat = editingTransport?.destLat;
+      let destLng = editingTransport?.destLng;
+
+      try {
+        const originCoords = await getCoordinates(formOrigin.trim());
+        if (originCoords) {
+          originLat = originCoords.lat;
+          originLng = originCoords.lng;
+        }
+      } catch (err) {
+        console.warn("Could not geocode origin", err);
+      }
+
+      try {
+        const destCoords = await getCoordinates(formDestination.trim());
+        if (destCoords) {
+          destLat = destCoords.lat;
+          destLng = destCoords.lng;
+        }
+      } catch (err) {
+        console.warn("Could not geocode destination", err);
+      }
 
       const transportPayload: any = {
-        id: editingTransport ? editingTransport.id : `land-${crypto.randomUUID()}`,
-        type: 'One-Way',
+        id: isNew ? `land-trip-${Math.random().toString(36).substring(2, 11)}` : editingTransport.id,
+        itineraryId: editingTransport?.itineraryId || 'roadtrip-ref',
+        type: editingTransport?.type || 'One-Way',
         mode: formMode,
         origin: formOrigin.trim(),
         destination: formDestination.trim(),
+        originLat,
+        originLng,
+        destLat,
+        destLng,
         departureDate: formDepDate,
         departureTime: formDepTime,
         arrivalDate: formArrDate || formDepDate,
@@ -699,50 +621,84 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
         provider: formProvider.trim(),
         identifier: formIdentifier.trim(),
         confirmationCode: formConfirmationCode.trim(),
-        cost: formCost ? parseFloat(formCost) : undefined,
-        notes: formNotes.trim(),
+        cost: formCost ? parseFloat(formCost) || undefined : undefined,
+        notes: formNotes,
         waypoints: formWaypoints,
-        duration: durationMinutes,
-        distance: estimatedDistance,
-        tripId: isLinkedToTrip ? formTripId : undefined,
-        tripName: isLinkedToTrip ? targetTrip?.name : undefined
+        duration: calculatedDuration,
+        distance: calculatedDistance,
+        tripId: formTripId === 'unassigned' ? undefined : formTripId,
       };
 
-      if (editingTransport) {
-        await dataService.updateFlight(transportPayload);
-      } else {
-        await dataService.addFlight(transportPayload);
+      // Ensure if we link this to a trip, we also add it to that trip's transports array in the db,
+      // and update the trip!
+      
+      if (formTripId !== 'unassigned') {
+        const selectedTrip = trips.find(t => t.id === formTripId);
+        if (selectedTrip) {
+          const tripTransports = selectedTrip.transports ? [...selectedTrip.transports] : [];
+          // Remove old version if updating
+          const index = tripTransports.findIndex(tx => tx.id === transportPayload.id);
+          if (index >= 0) {
+            tripTransports[index] = transportPayload;
+          } else {
+            tripTransports.push(transportPayload);
+          }
+          await dataService.updateTrip({
+            ...selectedTrip,
+            transports: tripTransports
+          });
+        }
       }
 
-      if (isLinkedToTrip && targetTrip) {
-        const currentTransports = targetTrip.transports || [];
-        const updatedTransports = editingTransport
-          ? currentTransports.map(t => t.id === editingTransport.id ? transportPayload : t)
-          : [...currentTransports, transportPayload];
+      // Also persist independently in the general transports table using `addFlight`/`updateFlight` API proxy endpoints.
+      if (isNew) {
+        await dataService.addFlight(transportPayload);
+      } else {
+        await dataService.updateFlight(transportPayload);
+      }
 
-        await dataService.updateTrip({
-          ...targetTrip,
-          transports: updatedTransports
+      // If we switched from a previously assigned trip, clean it up from there
+      if (!isNew && editingTransport.tripId && editingTransport.tripId !== formTripId) {
+        const oldTrip = trips.find(t => t.id === editingTransport.tripId);
+        if (oldTrip && oldTrip.transports) {
+          const updatedOldTransports = oldTrip.transports.filter(tx => tx.id !== editingTransport.id);
+          await dataService.updateTrip({
+            ...oldTrip,
+            transports: updatedOldTransports
+          });
+        }
+      }
+
+      // Sync waypoints to user's Visited places
+      if (formWaypoints && formWaypoints.length > 0) {
+        void syncPitStopsToVisited(formWaypoints, {
+          date: formDepDate,
+          origin: formOrigin,
+          destination: formDestination
         });
       }
 
-      setIsModalOpen(false);
+      // Dispatch invalidation to invoke global Window sync
       window.dispatchEvent(new CustomEvent('wandergrid_db_updated'));
-      await loadData();
+      setIsModalOpen(false);
+      loadData();
     } catch (err: any) {
       console.error(err);
-      alert(err.message || 'Failed saving land journey record.');
+      alert(err.message || 'Error occurred while saving travel ticket.');
     } finally {
       setLoading(false);
     }
   };
 
+  // Delete transport ticket
   const handleDeleteTransport = async (id: string, tripId?: string) => {
-    if (!window.confirm("Are you sure you want to delete this land journey?")) return;
+    if (!confirm("Are you sure you want to delete this land travel?")) return;
     try {
       setLoading(true);
+      // Delete independent
       await dataService.deleteFlight(id);
 
+      // If associated to a trip, remove it from the trip's transports list
       if (tripId) {
         const linkedTrip = trips.find(t => t.id === tripId);
         if (linkedTrip && linkedTrip.transports) {
@@ -764,6 +720,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
     }
   };
 
+  // Add waypoint row
   const handleAddWaypoint = () => {
     if (!newWaypointName.trim()) return;
     const waypoint: RoadTripWaypoint = {
@@ -778,20 +735,18 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
     setNewWaypointNotes('');
   };
 
+  // Remove waypoint row
   const handleRemoveWaypoint = (id: string) => {
     setFormWaypoints(prev => prev.filter(w => w.id !== id));
   };
 
   return (
     <div className="w-full max-w-[1680px] mx-auto pt-2 sm:pt-4 px-1 sm:px-4 md:px-6 lg:px-8 flex flex-col gap-5 sm:gap-6 animate-fadeIn pb-16 text-light-text dark:text-dark-text">
-      
-      {/* ========================================================================= */}
-      {/* HERO HEADER: Title Aligned Left, Button Aligned Right on Mobile & Desktop */}
-      {/* ========================================================================= */}
+      {/* Universal Page Blueprint Hero Header */}
       <div className="flex flex-row items-center justify-between gap-2.5 sm:gap-4 w-full pt-1 pb-1">
-        {/* Left: Pure Icon + Responsive Scaled Title */}
+        {/* Left: Pure Icon + Responsive Scaled Title (Aligned Left) */}
         <div className="flex items-center justify-start gap-2 sm:gap-3 md:gap-4 min-w-0">
-          <Car weight="duotone" className="w-7 h-7 sm:w-9 sm:h-9 md:w-12 md:h-12 text-violet-500 dark:text-violet-400 shrink-0" />
+          <Car weight="duotone" className="w-6 h-6 sm:w-9 sm:h-9 md:w-12 md:h-12 text-violet-500 dark:text-violet-400 shrink-0" />
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h1 className="text-xl sm:text-3xl md:text-5xl font-black text-light-text dark:text-dark-text tracking-tight leading-tight sm:leading-none truncate sm:overflow-visible">
@@ -806,49 +761,27 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
             </p>
           </div>
         </div>
-
-        {/* Right: Actions */}
-        <div className="flex items-center justify-end shrink-0 gap-2">
-          {/* Proposed Multi-Select Mode Toggle */}
-          <button
-            type="button"
-            onClick={() => {
-              setIsMultiEditing(!isMultiEditing);
-              if (isMultiEditing) setSelectedTripIds(new Set());
-            }}
-            className={`min-w-[44px] min-h-[44px] px-3.5 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
-              isMultiEditing
-                ? 'bg-primary-500 text-white border-primary-500 shadow-sm'
-                : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text border-black/10 dark:border-white/10'
-            }`}
-            title="Toggle bulk selection"
-          >
-            <CheckSquare className="w-4 h-4" weight={isMultiEditing ? 'fill' : 'duotone'} />
-            <span className="hidden sm:inline">{isMultiEditing ? 'Done' : 'Select'}</span>
-          </button>
-
-          <Button 
-            variant="primary" 
-            color="emerald"
-            onClick={handleOpenCreateModal} 
-            className="shrink-0 min-h-[44px]"
-            icon={<Plus className="w-4 h-4" />}
-            aria-label="Add Land Journey"
-          >
-            <span className="hidden sm:inline">Add Land Journey</span>
-            <span className="sm:hidden">Add</span>
-          </Button>
-        </div>
+        <Button 
+          variant="primary" 
+          color="emerald"
+          onClick={handleOpenCreateModal} 
+          className="shrink-0 min-h-[44px]"
+          icon={<Plus className="w-4 h-4" />}
+          aria-label="Add Land Journey"
+        >
+          <span className="hidden sm:inline">Add Land Journey</span>
+          <span className="sm:hidden">Add</span>
+        </Button>
       </div>
 
       {errorMessage && (
-        <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-xs text-red-500 flex items-center gap-2">
+        <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-500/10 text-xs text-red-500 flex items-center gap-2">
           <Info className="w-4 h-4 mr-1 text-red-500" />
           <span>{errorMessage}</span>
         </div>
       )}
 
-      {/* Bento Metric Boxes */}
+      {/* Bento Metric Boxes (MagicUI Bento Grid) */}
       <BentoGrid className="grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Metric 1 */}
         <BentoCard
@@ -894,7 +827,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
           <div className="flex items-center justify-between w-full">
             <div className="space-y-1">
               <span className="text-2xs font-bold uppercase text-emerald-500 tracking-wider flex items-center gap-1">
-                Eco Optimization
+                <Leaf className="w-3 h-3 text-emerald-500 animate-pulse" /> Eco Optimization
               </span>
               <div className="text-2xl md:text-3xl font-black font-mono leading-none text-emerald-600 dark:text-emerald-400">
                 {stats.co2SavedKg.toLocaleString()} <span className="text-sm font-bold opacity-80">kg</span>
@@ -902,7 +835,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
               <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-1">~{stats.treeEquivalent} trees offset</p>
             </div>
             <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 dark:bg-emerald-400/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 dark:text-emerald-400 shrink-0">
-              <Train className="w-5 h-5" />
+              <Leaf className="w-5 h-5" />
             </div>
           </div>
         </BentoCard>
@@ -928,32 +861,28 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
       </BentoGrid>
 
       {/* Interactive Map & Insights Hud Card */}
-      <GlassPanel
-        className="wg-glass-card shadow-glass-card rounded-[28px] overflow-hidden border border-black/8 dark:border-white/10"
-        overrides={{ borderRadius: 28 }}
-        padding="0px"
-      >
-        <div className="p-5 md:p-6 border-b border-black/5 dark:border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-emerald-500/5 to-transparent">
+      <Card noPadding className="shadow-lg border border-zinc-200/50 dark:border-white/5 overflow-hidden rounded-3xl">
+        <div className="p-5 md:p-6 border-b border-zinc-100 dark:border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-zinc-50/50 dark:bg-zinc-950/20">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/25">
-              <Map className="w-5 h-5" weight="duotone" />
+            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center border border-emerald-500/20">
+              <Map className="w-5 h-5 animate-pulse" />
             </div>
             <div>
-              <h3 className="text-sm font-black text-light-text dark:text-dark-text tracking-tight leading-none">Interactive Travel Hub</h3>
-              <p className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary mt-1 uppercase tracking-wider">Map Network & Mode Emissions Analysis</p>
+              <h3 className="text-sm font-black text-zinc-900 dark:text-zinc-50 tracking-tight leading-none">Interactive Travel Hub</h3>
+              <p className="text-2xs font-bold text-zinc-400 mt-1 uppercase tracking-wider">Map Network & Mode Emissions Analysis</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Sub-tabs inside Hub */}
-            <div className="flex bg-black/5 dark:bg-white/5 p-1 rounded-2xl border border-black/5 dark:border-white/5">
+            {/* Sub-tabs inside the Hub */}
+            <div className="flex bg-zinc-100 dark:bg-white/5 p-1 rounded-xl border border-zinc-200/50 dark:border-white/5">
               <button
                 type="button"
                 onClick={() => setHubTab('map')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   hubTab === 'map' 
-                    ? 'bg-white text-primary-500 shadow-sm dark:bg-dark-card' 
-                    : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text'
+                    ? 'bg-white text-zinc-950 shadow-sm dark:bg-white/10 dark:text-white' 
+                    : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'
                 }`}
               >
                 🗺️ Route Map
@@ -961,10 +890,10 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
               <button
                 type="button"
                 onClick={() => setHubTab('chart')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   hubTab === 'chart' 
-                    ? 'bg-white text-primary-500 shadow-sm dark:bg-dark-card' 
-                    : 'text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text'
+                    ? 'bg-white text-zinc-950 shadow-sm dark:bg-white/10 dark:text-white' 
+                    : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'
                 }`}
               >
                 📊 Mode Analytics
@@ -974,7 +903,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
             <Button 
               variant="secondary" 
               onClick={() => setIsHubExpanded(!isHubExpanded)}
-              className="min-h-[44px] min-w-[44px] rounded-xl px-2.5 flex items-center justify-center"
+              className="h-8 rounded-xl px-2 flex items-center gap-1 text-xs border border-zinc-200/50 dark:border-white/5"
             >
               {isHubExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               <span className="sr-only">Toggle Panel</span>
@@ -983,13 +912,13 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
         </div>
 
         {isHubExpanded && (
-          <div className="grid grid-cols-1 md:grid-cols-12 border-t border-black/5 dark:border-white/5">
-            <div className="md:col-span-8 h-[400px] border-r border-black/5 dark:border-white/5 relative">
+          <div className="grid grid-cols-1 md:grid-cols-12 border-t border-zinc-100 dark:border-white/5">
+            <div className="md:col-span-8 h-[400px] border-r border-zinc-100 dark:border-white/5 relative">
               {hubTab === 'map' ? (
                 <Suspense fallback={
-                  <div className="w-full h-full flex flex-col items-center justify-center bg-black/5 dark:bg-white/5 space-y-4">
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-950/70 border border-white/5 space-y-4">
                     <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-                    <p className="text-2xs font-bold uppercase tracking-[0.2em] text-light-text-secondary dark:text-dark-text-secondary">Rendering Vector Engine...</p>
+                    <p className="text-2xs font-bold uppercase tracking-[0.2em] text-zinc-400">Booting Real-Time Vector Engine...</p>
                   </div>
                 }>
                   <DeckFlightMap
@@ -1005,8 +934,8 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
               ) : (
                 <div className="w-full h-full p-6 flex flex-col justify-between">
                   <div>
-                    <h4 className="text-xs font-black uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Transit Footprint Bar Chart</h4>
-                    <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary">Shows travel distance (km) and total time spent (hours) across car, bus, train, ferry, and cruise modes.</p>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-zinc-400">Transit Footprint Bar Chart</h4>
+                    <p className="text-xs text-zinc-500">Shows integrated travel distance (km) and total time spent (hours) across car, bus, train, ferry, and cruise modes.</p>
                   </div>
                   <div className="w-full h-[280px]">
                     <ResponsiveContainer width="100%" height="100%">
@@ -1046,24 +975,24 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
               )}
             </div>
 
-            {/* Right sidebar: Smart Sync Engine */}
-            <div className="md:col-span-4 p-5 md:p-6 bg-black/[0.02] dark:bg-white/[0.02] flex flex-col justify-between space-y-4">
+            {/* Right sidebar inside the Hub: Smart Sync Engine! */}
+            <div className="md:col-span-4 p-5 md:p-6 bg-zinc-50/10 dark:bg-black/10 flex flex-col justify-between space-y-4">
               <div className="space-y-3">
                 <div className="flex items-center gap-1.5 text-xs font-bold uppercase text-emerald-500 tracking-wider">
                   <Sparkles className="w-4 h-4" /> 
                   <span>Smart Sync Engine</span>
                 </div>
-                <h4 className="text-xs font-bold text-light-text dark:text-dark-text leading-tight">
+                <h4 className="text-xs font-bold text-zinc-800 dark:text-zinc-200 leading-tight">
                   Auto-Detect land segments from planned Trip itineraries
                 </h4>
-                <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary leading-relaxed">
-                  Select an existing Trip. Our engine crawls the trip's sequential Route Planner stops and generates connected transit segments using your chosen travel mode.
+                <p className="text-xs text-zinc-500 leading-relaxed">
+                  Select any of your existing Trips. Our engine will crawl the trip's sequential visual route planner stops and generate connected transit segments using your chosen travel mode.
                 </p>
 
                 {/* Dropdowns */}
                 <div className="space-y-2 pt-2">
                   <div>
-                    <span className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest pl-1">Target Trip planner</span>
+                    <span className="text-2xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest pl-1">Target Trip planner</span>
                     <GlassSelect
                       value={importTripId}
                       onChange={e => setImportTripId(e.target.value)}
@@ -1077,7 +1006,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                   </div>
 
                   <div>
-                    <span className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary uppercase tracking-widest pl-1">Transit travel method</span>
+                    <span className="text-2xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest pl-1">Transit travel method</span>
                     <GlassSelect
                       value={importMode}
                       onChange={e => setImportMode(e.target.value as any)}
@@ -1100,7 +1029,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                     importState.status === 'success'
                       ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
                       : importState.status === 'error'
-                      ? 'bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400'
+                      ? 'bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400'
                       : 'bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400'
                   }`}>
                     {importState.message}
@@ -1108,23 +1037,22 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                 )}
                 <Button
                   type="button"
-                  variant="primary"
                   onClick={handleTriggerImport}
                   disabled={!importTripId || importState.status === 'loading'}
-                  className="w-full min-h-[44px] flex items-center justify-center rounded-xl text-xs font-bold shrink-0 cursor-pointer shadow-md disabled:opacity-50"
+                  className="w-full bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-emerald-600 dark:hover:bg-emerald-700 h-9 p-0 flex items-center justify-center rounded-xl text-xs font-bold leading-none shrink-0 cursor-pointer shadow-md disabled:opacity-50"
                 >
-                  {importState.status === 'loading' ? 'Syncing segments...' : '⚡ Auto-Sync Segments'}
+                  {importState.status === 'loading' ? 'Syncing segments...' : '⚡ Automatically Sync segments'}
                 </Button>
               </div>
             </div>
           </div>
         )}
-      </GlassPanel>
+      </Card>
 
       {/* Filter and Command Deck */}
       <GlassPanel className="wg-glass-card rounded-[28px] overflow-hidden p-4 sm:p-5 flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between shadow-glass-card">
         <div className="flex-1 relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-light-text-secondary dark:text-dark-text-secondary pointer-events-none" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 dark:text-zinc-500" />
           <input 
             type="text" 
             placeholder="Search land journey by station, operator, tickets, notes..."
@@ -1177,49 +1105,10 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
         </div>
       </GlassPanel>
 
-      {/* Proposed Floating Bulk Actions Toolbar */}
-      <AnimatePresence>
-        {isMultiEditing && selectedTripIds.size > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-sticky"
-          >
-            <GlassPanel
-              className="wg-glass-pill shadow-2xl border border-primary-500/30"
-              padding="8px 16px"
-              overrides={{ borderRadius: 9999 }}
-            >
-              <div className="flex items-center gap-4">
-                <span className="text-xs font-bold text-light-text dark:text-dark-text">
-                  <span className="font-mono text-primary-500">{selectedTripIds.size}</span> selected
-                </span>
-                <button
-                  type="button"
-                  onClick={handleBulkDelete}
-                  className="px-3.5 py-1.5 rounded-full bg-rose-500 text-white text-xs font-bold flex items-center gap-1.5 hover:bg-rose-600 transition-colors shadow-sm cursor-pointer"
-                >
-                  <Trash2 className="w-3.5 h-3.5" weight="bold" />
-                  <span>Delete Selected</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedTripIds(new Set())}
-                  className="text-xs text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text transition-colors cursor-pointer"
-                >
-                  Clear
-                </button>
-              </div>
-            </GlassPanel>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {loading && (
         <div className="flex flex-col items-center justify-center py-16 gap-3">
           <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-          <span className="text-xs font-bold text-light-text-secondary uppercase tracking-widest">Querying database...</span>
+          <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Querying database...</span>
         </div>
       )}
 
@@ -1243,62 +1132,47 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                 const isExpanded = !!expandedCards[tr.id];
                 const modeDetails = MODE_META[tr.mode as keyof typeof MODE_META] || MODE_META['Train'];
                 const ModeIcon = modeDetails.icon;
-                const isSelected = selectedTripIds.has(tr.id);
                 
+                // If it is from internal trip itinerary planners, show badge indicating Draft
                 const isDraftPlannedRoute = tr.itineraryId === 'route-gen' || tr.itineraryId === 'route-booked';
                 
                 return (
                   <GlassPanel
                     key={tr.id}
                     className={`wg-glass-card rounded-[28px] overflow-hidden shadow-glass-card transition-all duration-300 ${
-                      isSelected ? 'ring-2 ring-primary-500' : ''
-                    } ${
                       isDraftPlannedRoute 
                         ? 'border-dashed border-emerald-500/30' 
                         : ''
                     }`}
                   >
                     <div className="p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                      {/* Left: Multi-select checkbox + Icon & Route */}
+                      {/* Left side: Icon & Origin/Destination */}
                       <div className="flex flex-1 items-center gap-4 min-w-0">
-                        {isMultiEditing && (
-                          <button
-                            type="button"
-                            onClick={() => toggleSelectSegment(tr.id)}
-                            className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-xl flex items-center justify-center text-primary-500 hover:bg-primary-500/10 transition-colors shrink-0 cursor-pointer"
-                            aria-label={isSelected ? "Deselect segment" : "Select segment"}
-                          >
-                            {isSelected ? (
-                              <CheckSquare className="w-6 h-6 text-primary-500" weight="fill" />
-                            ) : (
-                              <Square className="w-6 h-6 text-light-text-secondary dark:text-dark-text-secondary" weight="bold" />
-                            )}
-                          </button>
-                        )}
-
-                        <div className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl ${modeDetails.bgClass} ${modeDetails.borderClass} border flex items-center justify-center ${modeDetails.colorClass} shrink-0 shadow-sm`}>
+                        <div className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl ${modeDetails.bgClass} ${modeDetails.borderClass} border flex items-center justify-center ${modeDetails.colorClass} shrink-0`}>
                           <ModeIcon className="w-6 h-6" />
                         </div>
                         
                         <div className="flex-1 min-w-0">
+                          {/* Station/City route string */}
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm md:text-base font-black tracking-tight text-light-text dark:text-dark-text truncate">
+                            <span className="text-sm md:text-base font-black font-sans tracking-tight text-zinc-950 dark:text-zinc-50 truncate">
                               {tr.origin}
                             </span>
-                            <ArrowRight className="w-4 h-4 text-light-text-secondary dark:text-dark-text-secondary shrink-0" />
-                            <span className="text-sm md:text-base font-black tracking-tight text-light-text dark:text-dark-text truncate">
+                            <ArrowRight className="w-4 h-4 text-zinc-400" />
+                            <span className="text-sm md:text-base font-black font-sans tracking-tight text-zinc-950 dark:text-zinc-50 truncate">
                               {tr.destination}
                             </span>
                           </div>
 
-                          <div className="flex items-center gap-2 flex-wrap text-xs text-light-text-secondary dark:text-dark-text-secondary mt-1">
+                          {/* Carrier details and identification */}
+                          <div className="flex items-center gap-2 flex-wrap text-xs text-zinc-500 mt-1">
                             {tr.provider && (
-                              <span className="font-bold text-light-text dark:text-dark-text pr-1.5 border-r border-black/10 dark:border-white/10 leading-none">
+                              <span className="font-bold text-zinc-700 dark:text-zinc-300 pr-1.5 border-r border-zinc-200 dark:border-white/10 leading-none">
                                 {tr.provider}
                               </span>
                             )}
                             {tr.identifier && (
-                              <span className="font-mono pr-1.5 border-r border-black/10 dark:border-white/10 leading-none">
+                              <span className="font-mono pr-1.5 border-r border-zinc-200 dark:border-white/10 leading-none">
                                 {tr.identifier}
                               </span>
                             )}
@@ -1307,40 +1181,42 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                         </div>
                       </div>
 
-                      {/* Middle: Timing, Date & Distance */}
-                      <div className="flex items-center gap-6 justify-between md:justify-center pr-3 border-black/5 dark:border-white/5 md:border-r shrink-0">
+                      {/* Middle side: Timing, Date & Distance estimation */}
+                      <div className="flex items-center gap-6 justify-between md:justify-center pr-3 border-zinc-200 dark:border-white/10 md:border-r shrink-0">
                         <div className="text-left md:text-center space-y-1">
-                          <div className="flex items-center gap-1.5 md:justify-center text-xs font-bold text-light-text dark:text-dark-text leading-none">
+                          <div className="flex items-center gap-1.5 md:justify-center text-xs font-bold text-zinc-700 dark:text-zinc-300 leading-none">
                             <Calendar className="w-3.5 h-3.5 text-blue-500" />
                             <span>{formatDate(tr.departureDate, 'short-with-year')}</span>
                           </div>
                           
                           {tr.departureTime && (
-                            <div className="text-xs font-sans font-medium text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1 leading-none justify-start md:justify-center">
-                              <Clock className="w-3 h-3 text-light-text-secondary" />
+                            <div className="text-xs font-sans font-medium text-zinc-400 flex items-center gap-1 leading-none justify-start md:justify-center">
+                              <Clock className="w-3 h-3 text-zinc-400" />
                               <span>{tr.departureTime} - {tr.arrivalTime || 'Arrival'}</span>
-                              {tr.duration && <span className="text-light-text dark:text-dark-text font-bold">({Math.round(tr.duration / 60)}h {tr.duration % 60}m)</span>}
+                              {tr.duration && <span className="text-zinc-500 font-bold">({Math.round(tr.duration / 60)}h {tr.duration % 60}m)</span>}
                             </div>
                           )}
                         </div>
 
                         {tr.distance && (
                           <div className="hidden lg:flex flex-col items-center">
-                            <span className="text-xs font-black font-mono tracking-tight text-light-text dark:text-dark-text">{tr.distance} km</span>
-                            <span className="text-2xs font-bold text-light-text-secondary uppercase tracking-widest mt-0.5">EST. DISTANCE</span>
+                            <span className="text-xs font-black font-mono tracking-tight">{tr.distance} km</span>
+                            <span className="text-2xs font-bold text-zinc-500 uppercase tracking-widest mt-0.5">EST. DISTANCE</span>
                           </div>
                         )}
                       </div>
 
-                      {/* Right: Cost, Trip context & Actions */}
+                      {/* Right side: Cost, Trip context and Actions toggle button */}
                       <div className="flex items-center justify-between md:justify-end gap-3 shrink-0">
+                        {/* Cost & Trip badges */}
                         <div className="flex flex-col items-start md:items-end justify-center">
                           {tr.cost ? (
-                            <span className="text-sm md:text-base font-black font-mono text-light-text dark:text-dark-text">{formatCurrency(parseFloat(tr.cost) || 0)}</span>
+                            <span className="text-sm md:text-base font-black font-mono text-zinc-900 dark:text-zinc-100">{formatCurrency(parseFloat(tr.cost) || 0)}</span>
                           ) : (
-                            <span className="text-xs font-bold text-light-text-secondary">No cost</span>
+                            <span className="text-xs font-bold text-zinc-400">No cost</span>
                           )}
                           
+                          {/* Associate trip link trigger */}
                           {tr.tripId ? (
                             <button
                               type="button"
@@ -1352,15 +1228,16 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                               <ChevronDown className="w-3 h-3 rotate-[270deg]" />
                             </button>
                           ) : (
-                            <span className="text-2xs font-bold text-light-text-secondary uppercase tracking-wider mt-1">Independent Travel</span>
+                            <span className="text-2xs font-bold text-zinc-400 uppercase tracking-wider mt-1">Independent Travel</span>
                           )}
                         </div>
 
+                        {/* Dropdown Toggle for details */}
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
                             onClick={(e) => handleToggleCard(tr.id, e)}
-                            className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 text-light-text-secondary hover:text-light-text transition-all cursor-pointer"
+                            className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center bg-gray-100 dark:bg-white/5 border border-zinc-200/50 dark:border-white/5 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-150 transition-all cursor-pointer"
                             aria-label="Toggle Stops & Route Waypoints"
                             title="Toggle Stops & Route Waypoints"
                           >
@@ -1372,7 +1249,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                               <button
                                 type="button"
                                 onClick={() => handleOpenEditModal(tr)}
-                                className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center bg-blue-500/10 dark:bg-blue-400/10 text-blue-500 hover:bg-blue-500 hover:text-white border border-blue-500/20 transition-all cursor-pointer"
+                                className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center bg-blue-500/10 dark:bg-blue-400/5 text-blue-500 hover:bg-blue-500 hover:text-white border border-blue-500/20 transition-all cursor-pointer"
                                 aria-label="Edit Itinerary Details"
                                 title="Edit Itinerary Details"
                               >
@@ -1381,7 +1258,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                               <button
                                 type="button"
                                 onClick={() => handleDeleteTransport(tr.id, tr.tripId)}
-                                className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center bg-rose-500/10 dark:bg-rose-400/10 text-rose-500 hover:bg-rose-600 hover:text-white border border-rose-500/20 transition-all cursor-pointer"
+                                className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center bg-red-500/10 dark:bg-red-400/5 text-red-500 hover:bg-red-600 hover:text-white border border-red-500/20 transition-all cursor-pointer"
                                 aria-label="Delete Travel Record"
                                 title="Delete Travel Record"
                               >
@@ -1401,13 +1278,13 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                           animate={{ height: "auto", opacity: 1 }}
                           exit={{ height: 0, opacity: 0 }}
                           transition={{ duration: 0.2 }}
-                          className="border-t border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02] p-5 md:p-6"
+                          className="border-t border-zinc-200/50 dark:border-white/5 bg-zinc-50/50 dark:bg-zinc-950/20 p-5 md:p-6"
                         >
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             {/* Waypoints block */}
                             <div className="md:col-span-2 space-y-4">
-                              <div className="flex items-center justify-between border-b border-black/5 dark:border-white/5 pb-2">
-                                <span className="text-xs font-black uppercase tracking-wider text-light-text-secondary flex items-center gap-1.5">
+                              <div className="flex items-center justify-between border-b pb-2">
+                                <span className="text-xs font-black uppercase tracking-wider text-zinc-500 flex items-center gap-1.5">
                                   <Map className="w-3.5 h-3.5 text-blue-500" /> Planned Waypoints & Stops
                                 </span>
                                 {tr.waypoints && tr.waypoints.length > 0 && (
@@ -1417,54 +1294,56 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
 
                               {tr.waypoints && tr.waypoints.length > 0 ? (
                                 <div className="relative pl-6 space-y-4">
-                                  <div className="absolute left-2.5 top-2.5 bottom-2.5 w-0.5 bg-black/10 dark:bg-white/10" />
+                                  {/* Line background */}
+                                  <div className="absolute left-2.5 top-2.5 bottom-2.5 w-0.5 bg-zinc-200 dark:bg-white/10" />
 
-                                  {tr.waypoints.map((wp: RoadTripWaypoint) => (
+                                  {tr.waypoints.map((wp: RoadTripWaypoint, idx: number) => (
                                     <div key={wp.id} className="relative flex items-start gap-3 text-xs">
-                                      <div className="absolute -left-[21px] top-1 w-3.5 h-3.5 rounded-full border-2 border-emerald-500 bg-white dark:bg-dark-card flex items-center justify-center shadow-sm">
+                                      {/* bullet circle */}
+                                      <div className="absolute -left-[21px] top-1 w-3.5 h-3.5 rounded-full border-2 border-emerald-500 bg-white dark:bg-zinc-950 flex items-center justify-center shadow-sm">
                                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                                       </div>
 
                                       <div className="flex-1">
                                         <div className="flex items-center gap-2">
-                                          <span className="font-bold text-light-text dark:text-dark-text">{wp.name}</span>
-                                          <Badge variant="secondary" className="text-2xs px-1.5 py-0.5 bg-black/5 dark:bg-white/5 uppercase font-sans font-bold">
+                                          <span className="font-bold text-zinc-900 dark:text-zinc-150">{wp.name}</span>
+                                          <Badge variant="secondary" className="text-2xs px-1.5 py-0.5 bg-zinc-100 dark:bg-white/5 uppercase font-sans font-bold">
                                             {wp.type}
                                           </Badge>
                                         </div>
                                         {wp.notes && (
-                                          <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5 italic">{wp.notes}</p>
+                                          <p className="text-xs text-zinc-500 mt-0.5 italic">{wp.notes}</p>
                                         )}
                                       </div>
                                     </div>
                                   ))}
                                 </div>
                               ) : (
-                                <div className="text-center py-6 border border-dashed border-black/15 dark:border-white/10 rounded-2xl bg-black/[0.01] dark:bg-white/[0.01]">
-                                  <p className="text-xs text-light-text-secondary">No scheduled waypoints/stops added yet on this roadtrip drive.</p>
+                                <div className="text-center py-6 border border-dashed rounded-2xl bg-white/30 dark:bg-black/10">
+                                  <p className="text-xs text-zinc-400">No scheduled waypoints/stops added yet on this roadtrip drive.</p>
                                 </div>
                               )}
                             </div>
 
                             {/* Additional Information details card */}
-                            <div className="bg-white/40 dark:bg-white/[0.04] rounded-2xl p-4 border border-black/5 dark:border-white/5 space-y-3">
-                              <span className="text-2xs font-bold uppercase tracking-widest text-light-text-secondary">Itinerary Diagnostics</span>
+                            <div className="bg-white/40 dark:bg-black/10 rounded-2xl p-4 border border-zinc-200/50 dark:border-white/5 space-y-3">
+                              <span className="text-2xs font-bold uppercase tracking-widest text-zinc-400">Itinerary Diagnostics</span>
                               
                               <div className="space-y-2 text-xs">
                                 {tr.confirmationCode && (
-                                  <div className="flex justify-between items-center text-light-text dark:text-dark-text">
+                                  <div className="flex justify-between items-center text-zinc-650 dark:text-zinc-300">
                                     <span>Booking ticket:</span>
                                     <span className="font-mono font-bold">{tr.confirmationCode}</span>
                                   </div>
                                 )}
-                                <div className="flex justify-between items-center text-light-text dark:text-dark-text">
+                                <div className="flex justify-between items-center text-zinc-650 dark:text-zinc-300">
                                   <span>CO2 Multiplier:</span>
-                                  <span className="text-light-text-secondary">{modeDetails.ecoRating}</span>
+                                  <span className="text-zinc-500">{modeDetails.ecoRating}</span>
                                 </div>
                                 {tr.notes && (
-                                  <div className="space-y-1 border-t border-dashed border-black/10 dark:border-white/10 pt-2">
-                                    <span className="font-bold text-2xs text-light-text-secondary">DRIVE NOTES</span>
-                                    <p className="text-xs text-light-text-secondary whitespace-pre-line leading-relaxed italic">
+                                  <div className="space-y-1 border-t border-dashed pt-2">
+                                    <span className="font-bold text-2xs text-zinc-400">DRIVE NOTES</span>
+                                    <p className="text-xs text-zinc-500 whitespace-pre-line leading-relaxed italic">
                                       "{tr.notes}"
                                     </p>
                                   </div>
@@ -1504,10 +1383,10 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                   key={modeKey}
                   type="button"
                   onClick={() => setFormMode(modeKey)}
-                  className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-all cursor-pointer min-h-[56px] ${
+                  className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-all cursor-pointer ${
                     isActive 
-                      ? 'bg-primary-500/15 border-primary-500/40 text-primary-600 dark:text-primary-400 shadow-sm' 
-                      : 'bg-white/60 dark:bg-white/[0.04] border-black/5 dark:border-white/5 hover:bg-black/5 dark:hover:bg-white/10 text-light-text-secondary dark:text-dark-text-secondary'
+                      ? 'bg-primary-500/10 border-primary-500/30 text-primary-600 dark:text-primary-400 shadow-sm' 
+                      : 'bg-white dark:bg-dark-card border-black/5 dark:border-white/5 hover:bg-black/5 dark:hover:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary'
                   }`}
                 >
                   <Icon className="w-5 h-5 mb-1" />
@@ -1536,7 +1415,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
           </div>
 
           {/* Departure Arrival timeline input */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-5 rounded-3xl bg-white/40 dark:bg-white/[0.03] border border-black/5 dark:border-white/5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-5 rounded-3xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5">
             <div className="space-y-3">
               <span className="text-xs font-bold uppercase tracking-wider text-primary-600 dark:text-primary-400 block">Departure Timeline</span>
               <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
@@ -1620,43 +1499,33 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
             />
           </div>
 
-          {/* Waypoint segment designer box with Proposed DnD-Kit Sorting */}
-          <div className="p-5 rounded-3xl bg-white/40 dark:bg-white/[0.03] border border-black/5 dark:border-white/5 space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1.5">
-                <Map className="w-4 h-4 text-emerald-500" /> Waypoints & Pit Stops (Drag to reorder)
-              </span>
-              <span className="text-2xs font-mono text-light-text-secondary">
-                {formWaypoints.length} stop{formWaypoints.length !== 1 ? 's' : ''}
-              </span>
-            </div>
+          {/* Waypoint segment designer box */}
+          <div className="p-5 rounded-3xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 space-y-4">
+            <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1.5">
+              <Map className="w-4 h-4 text-emerald-500" /> Waypoint segment designer (Stops, Sightseeing, Food, Lodging)
+            </span>
 
-            {/* Sortable Waypoints via @dnd-kit */}
+            {/* current waypoints pills inside modal */}
             {formWaypoints.length > 0 && (
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleWaypointDragEnd}
-              >
-                <SortableContext
-                  items={formWaypoints.map(w => w.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
-                    {formWaypoints.map(wp => (
-                      <SortableWaypointItem
-                        key={wp.id}
-                        waypoint={wp}
-                        onRemove={handleRemoveWaypoint}
-                      />
-                    ))}
+              <div className="flex flex-wrap gap-2 py-1 max-h-32 overflow-y-auto custom-scrollbar">
+                {formWaypoints.map(wp => (
+                  <div key={wp.id} className="text-xs flex items-center gap-1.5 px-3 py-1 bg-white dark:bg-dark-card border border-black/5 dark:border-white/5 rounded-xl font-medium animate-fade-in text-light-text dark:text-dark-text shadow-sm">
+                    <span>{wp.name}</span>
+                    <span className="text-2xs font-bold uppercase opacity-60">({wp.type})</span>
+                    <button 
+                      type="button" 
+                      onClick={() => handleRemoveWaypoint(wp.id)} 
+                      className="hover:text-rose-500 hover:scale-110 ml-1 cursor-pointer"
+                    >
+                      ✕
+                    </button>
                   </div>
-                </SortableContext>
-              </DndContext>
+                ))}
+              </div>
             )}
 
             {/* Waypoint insertion row */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end bg-white/60 dark:bg-white/[0.04] p-3 rounded-2xl border border-black/5 dark:border-white/5">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end bg-white dark:bg-dark-card p-3 rounded-2xl border border-black/5 dark:border-white/5">
               <div className="md:col-span-5">
                 <Input 
                   label="Waypoint location" 
@@ -1692,7 +1561,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                 <Button 
                   type="button" 
                   onClick={handleAddWaypoint} 
-                  className="h-10 w-full min-h-[40px] p-0 flex items-center justify-center rounded-xl"
+                  className="h-10 w-full p-0 flex items-center justify-center rounded-xl"
                 >
                   Add
                 </Button>
@@ -1704,7 +1573,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
           <div className="flex flex-col gap-2">
             <span className="block text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Overall Itinerary notes / Driving directions</span>
             <textarea
-              className="w-full px-4 py-3 rounded-2xl bg-white/40 dark:bg-white/[0.03] border border-black/5 dark:border-white/5 text-xs focus:bg-white dark:focus:bg-dark-card focus:border-primary-500 outline-none text-light-text dark:text-dark-text placeholder-light-text-secondary/50 dark:placeholder-dark-text-secondary/50 font-medium"
+              className="w-full px-4 py-3 rounded-2xl bg-light-fill dark:bg-dark-fill/50 border border-black/5 dark:border-white/5 text-xs focus:bg-white dark:focus:bg-dark-card focus:border-primary-500 outline-none text-light-text dark:text-dark-text placeholder-light-text-secondary/50 dark:placeholder-dark-text-secondary/50 font-medium"
               rows={3}
               placeholder="Insert any relevant ticket details, driving rules, parking arrangements, or maps notes."
               value={formNotes}
@@ -1714,10 +1583,10 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
 
           {/* Actions Footer */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-black/5 dark:border-white/5">
-            <Button variant="secondary" type="button" onClick={() => setIsModalOpen(false)} className="min-h-[44px]">
+            <Button variant="secondary" type="button" onClick={() => setIsModalOpen(false)}>
               Cancel
             </Button>
-            <Button variant="primary" type="submit" className="min-h-[44px]">
+            <Button variant="primary" type="submit">
               {editingTransport ? "Save Itinerary" : "Create Journey"}
             </Button>
           </div>
@@ -1749,7 +1618,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                 const modeMeta = MODE_META[seg.mode as keyof typeof MODE_META];
                 const ModeIcon = modeMeta?.icon || Train;
                 return (
-                  <div key={seg.id || `${seg.origin}-${seg.destination}-${seg.departureDate}-${idx}`} className="p-4 rounded-2xl border border-black/5 dark:border-white/5 bg-white/70 dark:bg-dark-card/80 shadow-sm flex items-center gap-3">
+                  <div key={seg.id || `${seg.origin}-${seg.destination}-${seg.departureDate}-${idx}`} className="p-4 rounded-2xl border border-black/5 dark:border-white/5 bg-white dark:bg-dark-card shadow-sm flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-2xl ${modeMeta?.bgClass || 'bg-primary-500/10'} ${modeMeta?.borderClass || 'border-primary-500/20'} border flex items-center justify-center ${modeMeta?.colorClass || 'text-primary-500'}`}>
                       <ModeIcon className="w-5 h-5" />
                     </div>
@@ -1775,14 +1644,13 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-black/5 dark:border-white/5">
-            <Button variant="secondary" onClick={() => setPendingSuggestions(null)} className="min-h-[44px]">
+            <Button variant="secondary" onClick={() => setPendingSuggestions(null)}>
               Cancel
             </Button>
             {pendingSuggestions && pendingSuggestions.length > 0 && (
               <Button 
                 variant="primary" 
                 onClick={handleConfirmSaveSuggestions}
-                className="min-h-[44px]"
               >
                 Save All Segments
               </Button>
@@ -1794,3 +1662,5 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
     </div>
   );
 };
+
+export const RoadTrips2 = RoadTrips;

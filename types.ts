@@ -326,7 +326,9 @@ export enum ViewState {
   MAP = 'map',
   GAMIFICATION = 'gamification',
   FLIGHTS = 'flights',
+  FLIGHTS_2 = 'flights_2',
   ROADTRIPS = 'roadtrips',
+  ROADTRIPS_2 = 'roadtrips_2',
   TRAVEL_ATLAS = 'travel_atlas',
   VACATION_CALENDAR = 'vacation_calendar'
 }

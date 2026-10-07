@@ -17,7 +17,9 @@ const TripDetail = lazy(() => import('./views/TripDetail').then(m => ({ default:
 const TripDetail2 = lazy(() => import('./views/TripDetail2').then(m => ({ default: m.TripDetail2 })));
 const ExpeditionMapView = lazy(() => import('./views/ExpeditionMapView').then(m => ({ default: m.ExpeditionMapView })));
 const Flights = lazy(() => import('./views/Flights').then(m => ({ default: m.Flights })));
+const Flights2 = lazy(() => import('./views/Flights2').then(m => ({ default: m.Flights2 })));
 const RoadTrips = lazy(() => import('./views/RoadTrips').then(m => ({ default: m.RoadTrips })));
+const RoadTrips2 = lazy(() => import('./views/RoadTrips2').then(m => ({ default: m.RoadTrips2 })));
 const TravelAtlas = lazy(() => import('./views/TravelAtlas').then(m => ({ default: m.TravelAtlas })));
 const VacationCalendar = lazy(() => import('./views/VacationCalendar').then(m => ({ default: m.VacationCalendar })));
 const Auth = lazy(() => import('./views/Auth').then(m => ({ default: m.Auth })));
@@ -36,7 +38,9 @@ const getUrlState = () => {
         if (path === '/map' || queryView === 'map') return { view: ViewState.MAP };
         if (path === '/gamification' || queryView === 'gamification') return { view: ViewState.DASHBOARD };
         if (path === '/flights' || queryView === 'flights') return { view: ViewState.FLIGHTS };
+        if (path === '/flights-2' || path === '/flights2' || queryView === 'flights-2') return { view: ViewState.FLIGHTS_2 };
         if (path === '/roadtrips' || queryView === 'roadtrips') return { view: ViewState.ROADTRIPS };
+        if (path === '/roadtrips-2' || path === '/roadtrips2' || queryView === 'roadtrips-2') return { view: ViewState.ROADTRIPS_2 };
         if (path === '/atlas' || path === '/travel-atlas' || queryView === 'atlas') return { view: ViewState.TRAVEL_ATLAS };
         if (path === '/calendar' || path === '/vacation-calendar' || queryView === 'calendar') return { view: ViewState.VACATION_CALENDAR };
         
@@ -86,7 +90,9 @@ export default function App() {
           case ViewState.MAP: path = '/map'; break;
           case ViewState.GAMIFICATION: path = '/gamification'; break;
           case ViewState.FLIGHTS: path = '/flights'; break;
+          case ViewState.FLIGHTS_2: path = '/flights-2'; break;
           case ViewState.ROADTRIPS: path = '/roadtrips'; break;
+          case ViewState.ROADTRIPS_2: path = '/roadtrips-2'; break;
           case ViewState.TRAVEL_ATLAS: path = '/atlas'; break;
           case ViewState.VACATION_CALENDAR: path = '/calendar'; break;
           case ViewState.USER_DETAIL: path = id ? `/user/${id}` : '/'; break;
@@ -288,8 +294,12 @@ export default function App() {
         return <Dashboard onUserClick={handleUserClick} onTripClick={handleTripClick} />;
       case ViewState.FLIGHTS:
         return <Flights onTripClick={handleTripClick} />;
+      case ViewState.FLIGHTS_2:
+        return <Flights2 onTripClick={handleTripClick} />;
       case ViewState.ROADTRIPS:
         return <RoadTrips onTripClick={handleTripClick} />;
+      case ViewState.ROADTRIPS_2:
+        return <RoadTrips2 onTripClick={handleTripClick} />;
       case ViewState.TRAVEL_ATLAS:
         return <TravelAtlas onTripClick={handleTripClick} />;
       case ViewState.VACATION_CALENDAR:
