@@ -58,6 +58,7 @@ export interface MapAppearanceSettings {
     // Atlas & Cartography
     basemap: BasemapMode;
     airportDetail: 'standard' | 'detailed'; // standard circles vs detailed runway markings
+    airportsOnly?: boolean; // Solo aerodrome focus: only display airports on the map (hides flights, roads, visited cities, weather & territories)
     projection: 'flat' | 'globe';
 
     // Flights Tab
@@ -103,6 +104,7 @@ export interface MapAppearanceSettings {
 export const DEFAULT_MAP_APPEARANCE: MapAppearanceSettings = {
     basemap: 'default',
     airportDetail: 'detailed',
+    airportsOnly: false,
     projection: 'flat',
     airportSize: 'medium',
     airportMode: 'frequency',
@@ -121,9 +123,9 @@ export const DEFAULT_MAP_APPEARANCE: MapAppearanceSettings = {
     openAipOverlay: false,
     openAipGroups: ['airspaces', 'airspaceLabels', 'airports', 'navaids', 'reportingPoints'],
     terrainHillshade: false,
-    terrainHillshadeOpacity: 0.6,
+    terrainHillshadeOpacity: 0.8,
     transitOverlay: false,
-    transitOverlayOpacity: 0.75,
+    transitOverlayOpacity: 0.4,
     flightInterpolation: true,
     scratchCitySize: 'medium',
     showLivedCountries: true,
@@ -154,6 +156,7 @@ export const saveMapAppearanceSettings = (settings: MapAppearanceSettings): void
     if (typeof window === 'undefined') return;
     try {
         localStorage.setItem(MAP_APPEARANCE_STORAGE_KEY, JSON.stringify(settings));
+        window.dispatchEvent(new CustomEvent('wandergrid_map_appearance_updated', { detail: settings }));
     } catch (e) {
         console.warn('Failed to save map appearance settings:', e);
     }

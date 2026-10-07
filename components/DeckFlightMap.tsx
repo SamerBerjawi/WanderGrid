@@ -421,11 +421,13 @@ export const createMapLibreStyle = (
         sources[AIRPORT_SOURCE_ID] = createAirportOverlaySource();
     }
 
-    if (openAipOverlay && openAipKey) {
-        const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const sanitizedOpenAipKey = (openAipKey || '').trim();
+    const canEnableOpenAip = Boolean(openAipOverlay && sanitizedOpenAipKey);
+
+    if (canEnableOpenAip) {
         sources[OPENAIP_AIRSPACE_SOURCE_ID] = {
             type: 'vector',
-            tiles: [`${origin}/api/proxy/openaip/{z}/{x}/{y}.pbf?key=${encodeURIComponent(openAipKey)}`],
+            tiles: [`https://api.tiles.openaip.net/api/data/openaip/{z}/{x}/{y}.pbf?apiKey=${encodeURIComponent(sanitizedOpenAipKey)}`],
             minzoom: 0,
             maxzoom: 14,
             attribution: '<a href="https://www.openaip.net" target="_blank" rel="noopener noreferrer">openAIP</a>'
@@ -449,7 +451,7 @@ export const createMapLibreStyle = (
             minzoom: 0,
             maxzoom
         },
-        ...(openAipOverlay && openAipKey ? getOpenAipOverlayLayers(openAipGroups, isDark ? 'dark' : 'light') : []),
+        ...(canEnableOpenAip ? getOpenAipOverlayLayers(openAipGroups, isDark ? 'dark' : 'light') : []),
         ...(detailedAirports ? createAirportOverlayLayers(isDark) : [])
     ];
 
@@ -635,6 +637,22 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     }, []);
 
     const effectiveCartoKey = (workspaceSettings?.cartoApiKey || dynamicCartoKey).trim();
+    const effectiveOpenAipKey = useMemo(() => {
+        const fromSettings = (workspaceSettings?.openAipApiKey || '').trim();
+        if (fromSettings) return fromSettings;
+        try {
+            const raw = typeof localStorage !== 'undefined'
+                ? (localStorage.getItem('wandergrid_workspace_settings') || localStorage.getItem('wandergrid_settings'))
+                : null;
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (parsed.openAipApiKey && typeof parsed.openAipApiKey === 'string') {
+                    return parsed.openAipApiKey.trim();
+                }
+            }
+        } catch {}
+        return '';
+    }, [workspaceSettings?.openAipApiKey]);
 
     // Map Appearance State Management & Customizer Modal
     const [isAppearanceModalOpen, setIsAppearanceModalOpen] = useState<boolean>(false);
@@ -647,6 +665,17 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             setLocalAppearance(appearanceSettingsProp);
         }
     }, [appearanceSettingsProp]);
+
+    useEffect(() => {
+        const handleAppearanceSync = (e: Event) => {
+            const detail = (e as CustomEvent)?.detail;
+            if (detail) {
+                setLocalAppearance(prev => ({ ...prev, ...detail }));
+            }
+        };
+        window.addEventListener('wandergrid_map_appearance_updated', handleAppearanceSync);
+        return () => window.removeEventListener('wandergrid_map_appearance_updated', handleAppearanceSync);
+    }, []);
 
     const activeAppearance = appearanceSettingsProp || localAppearance;
 
@@ -1550,13 +1579,13 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         return hoveredRouteKey === d.corridorId ? [255, 255, 255, 255] : d.color;
                     },
                     getWidth: (d: any) => {
-                        const base = effectiveProjection === 'globe' ? 1.3 : 1.5;
-                        if (selectedCorridor && d.corridorId === selectedCorridor.id) return base * 2.0;
-                        return hoveredRouteKey === d.corridorId ? base + 1.0 : base;
+                        const base = effectiveProjection === 'globe' ? 1.0 : 1.2;
+                        if (selectedCorridor && d.corridorId === selectedCorridor.id) return base * 1.5;
+                        return hoveredRouteKey === d.corridorId ? base + 0.8 : base;
                     },
                     widthUnits: 'pixels',
-                    widthMinPixels: effectiveProjection === 'globe' ? 1.0 : 1.2,
-                    widthMaxPixels: 6,
+                    widthMinPixels: effectiveProjection === 'globe' ? 0.8 : 1.0,
+                    widthMaxPixels: 4,
                     capRounded: true,
                     jointRounded: true,
                     wrapLongitude: true,
@@ -2247,19 +2276,33 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             if (!map.isStyleLoaded()) return;
 
             // 1. Terrain Hillshade Layer (Esri World Hillshade 3D Relief)
-            const terrainSourceId = 'terrain-hillshade-source';
+            const terrainSourceId = `terrain-hillshade-source-${isDark ? 'dark' : 'light'}`;
             const terrainLayerId = 'terrain-hillshade-layer';
             const isTerrainEnabled = Boolean(activeAppearance.terrainHillshade);
-            const terrainOpacity = activeAppearance.terrainHillshadeOpacity ?? 0.6;
-            const terrainTileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}';
+            const terrainOpacity = activeAppearance.terrainHillshadeOpacity ?? 0.8;
+            const terrainTileUrl = isDark
+                ? 'https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade_Dark/MapServer/tile/{z}/{y}/{x}'
+                : 'https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}';
 
             const existingTerrainLayer = map.getLayer(terrainLayerId);
             const existingTerrainSource = map.getSource(terrainSourceId);
 
             if (!isTerrainEnabled) {
                 if (existingTerrainLayer) map.removeLayer(terrainLayerId);
-                if (existingTerrainSource) map.removeSource(terrainSourceId);
+                ['terrain-hillshade-source-dark', 'terrain-hillshade-source-light', 'terrain-hillshade-source'].forEach(id => {
+                    if (map.getSource(id)) map.removeSource(id);
+                });
             } else {
+                const oppositeSourceId = `terrain-hillshade-source-${isDark ? 'light' : 'dark'}`;
+                if (map.getSource(oppositeSourceId)) {
+                    if (existingTerrainLayer) map.removeLayer(terrainLayerId);
+                    map.removeSource(oppositeSourceId);
+                }
+                if (map.getSource('terrain-hillshade-source')) {
+                    if (map.getLayer(terrainLayerId)) map.removeLayer(terrainLayerId);
+                    map.removeSource('terrain-hillshade-source');
+                }
+
                 if (!map.getSource(terrainSourceId)) {
                     map.addSource(terrainSourceId, {
                         type: 'raster',
@@ -2280,18 +2323,24 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         id: terrainLayerId,
                         type: 'raster',
                         source: terrainSourceId,
-                        paint: { 'raster-opacity': terrainOpacity }
+                        paint: {
+                            'raster-opacity': terrainOpacity,
+                            'raster-contrast': 0.45,
+                            'raster-resampling': 'linear'
+                        }
                     }, beforeId);
                 } else {
                     map.setPaintProperty(terrainLayerId, 'raster-opacity', terrainOpacity);
+                    map.setPaintProperty(terrainLayerId, 'raster-contrast', 0.45);
                 }
             }
 
-            // 2. Global Transit & Railway Layer (OpenRailwayMap)
+            // 2. Global Transit & Railway Layer (OpenRailwayMap - Minimal Hairline Styling)
             const transitSourceId = 'transit-railway-source';
             const transitLayerId = 'transit-railway-layer';
             const isTransitEnabled = Boolean(activeAppearance.transitOverlay);
-            const transitOpacity = activeAppearance.transitOverlayOpacity ?? 0.75;
+            const rawTransitOpacity = activeAppearance.transitOverlayOpacity ?? 0.4;
+            const effectiveTransitOpacity = rawTransitOpacity * 0.45;
             const transitTileUrl = 'https://a.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png';
 
             const existingTransitLayer = map.getLayer(transitLayerId);
@@ -2319,10 +2368,17 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         id: transitLayerId,
                         type: 'raster',
                         source: transitSourceId,
-                        paint: { 'raster-opacity': transitOpacity }
+                        paint: {
+                            'raster-opacity': effectiveTransitOpacity,
+                            'raster-contrast': -0.15,
+                            'raster-saturation': -0.4,
+                            'raster-resampling': 'linear'
+                        }
                     }, beforeId);
                 } else {
-                    map.setPaintProperty(transitLayerId, 'raster-opacity', transitOpacity);
+                    map.setPaintProperty(transitLayerId, 'raster-opacity', effectiveTransitOpacity);
+                    map.setPaintProperty(transitLayerId, 'raster-contrast', -0.15);
+                    map.setPaintProperty(transitLayerId, 'raster-saturation', -0.4);
                 }
             }
 

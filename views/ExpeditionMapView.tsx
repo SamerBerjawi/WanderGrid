@@ -26,6 +26,7 @@ import {
     Moon
 } from '@phosphor-icons/react';
 const DeckFlightMap = lazy(() => import('../components/DeckFlightMap').then(m => ({ default: m.DeckFlightMap || m.default })));
+import { MapAppearanceModal } from '../components/MapAppearanceModal';
 import { motion } from 'motion/react';
 import GlassPanel from '../components/glass/GlassPanel';
 import { dataService } from '../services/mockDb';
@@ -1172,1252 +1173,157 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                 </div>
             </div>
 
-            {/* 4. SLIDE-IN RIGHT SIDEBAR CONTROL PANEL */}
-            <div
-                className={`fixed md:absolute top-0 right-0 h-full w-full sm:w-[500px] md:w-[540px] max-w-full border-l border-black/10 dark:border-white/10 shadow-glass-modal z-modal flex flex-col transition-transform duration-300 ease-out select-none ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full pointer-events-none'
-                    }`}
-            >
-                <GlassPanel
-                    className="wg-glass-card h-full w-full text-light-text dark:text-dark-text flex flex-col"
-                    padding="0px"
-                    overrides={{ borderRadius: 0 }}
-                >
-                    {/* Sidebar Header */}
-                    <div className="flex items-center justify-between px-6 pt-[calc(1.25rem+env(safe-area-inset-top,0px))] md:pt-5 pb-4 border-b border-black/5 dark:border-white/5 bg-gradient-to-r from-primary-500/10 via-transparent to-transparent shrink-0">
-                        <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-xl bg-primary-500/15 dark:bg-primary-500/25 border border-primary-500/30 dark:border-primary-400/40 flex items-center justify-center text-primary-600 dark:text-primary-400 shrink-0 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_6px_rgba(234,88,12,0.15)] backdrop-blur-md">
-                                <SlidersHorizontal className="w-4 h-4" />
-                            </div>
-                            <div>
-                                <h2 className="text-sm font-bold text-light-text dark:text-dark-text tracking-tight">Mission Control</h2>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center gap-1.5">
-                            <button
-                                onClick={handleRefresh}
-                                className="w-8 h-8 rounded-xl bg-white/50 dark:bg-white/10 hover:bg-white/80 dark:hover:bg-white/15 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text transition-all duration-150 flex items-center justify-center cursor-pointer border border-black/5 dark:border-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)] active:scale-95 backdrop-blur-md"
-                                title="Reset Camera & Telemetry"
-                            >
-                                <RefreshCw className="w-4 h-4" />
-                            </button>
-                            <button
-                                onClick={() => setIsSidebarOpen(false)}
-                                className="w-8 h-8 rounded-xl bg-white/50 dark:bg-white/10 hover:bg-white/80 dark:hover:bg-white/15 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text transition-all duration-150 flex items-center justify-center cursor-pointer border border-black/5 dark:border-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)] active:scale-95 backdrop-blur-md"
-                            >
-                                <X className="w-4 h-4" />
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Quick Presets Ribbon */}
-                    <div className="px-5 py-2.5 bg-black/[0.02] dark:bg-white/[0.02] border-b border-black/5 dark:border-white/5 flex items-center gap-2 overflow-x-auto custom-scrollbar shrink-0">
-                        <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary shrink-0">Presets:</span>
-                        <button
-                            type="button"
-                            onClick={() => applyPreset('command')}
-                            className="px-2.5 py-1 rounded-xl bg-primary-500/10 hover:bg-primary-500/20 border border-primary-500/20 text-primary-600 dark:text-primary-400 text-xs font-bold shrink-0 transition-all cursor-pointer active:scale-95"
-                        >
-                            🌐 Aviation Command
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => applyPreset('satellite')}
-                            className="px-2.5 py-1 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold shrink-0 transition-all cursor-pointer active:scale-95"
-                        >
-                            🛰️ Earth Orbit
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => applyPreset('minimal')}
-                            className="px-2.5 py-1 rounded-xl bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 border border-black/5 dark:border-white/5 text-light-text-secondary dark:text-dark-text-secondary text-xs font-bold shrink-0 transition-all cursor-pointer active:scale-95"
-                        >
-                            🗺️ Minimal Atlas
-                        </button>
-                    </div>
-
-                    {/* Sidebar Navigation Tabs with Unique Accents */}
-                    <div className="grid grid-cols-4 border-b border-black/5 dark:border-white/5 px-4 pt-2 gap-1.5 bg-black/[0.02] dark:bg-white/[0.02] shrink-0">
-                        {([
-                            {
-                                id: 'cartography',
-                                label: 'Cartography',
-                                icon: Globe,
-                                activeClass: 'text-sky-700 dark:text-sky-300 bg-sky-500/15 dark:bg-sky-500/25 backdrop-blur-md border border-sky-500/35 dark:border-sky-400/45 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(14,165,233,0.15)]',
-                                iconColor: 'text-sky-600 dark:text-sky-400',
-                            },
-                            {
-                                id: 'aviation',
-                                label: 'Sectors & Arcs',
-                                icon: Plane,
-                                activeClass: 'text-indigo-700 dark:text-indigo-300 bg-indigo-500/15 dark:bg-indigo-500/25 backdrop-blur-md border border-indigo-500/35 dark:border-indigo-400/45 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(99,102,241,0.15)]',
-                                iconColor: 'text-indigo-600 dark:text-indigo-400',
-                            },
-                            {
-                                id: 'atmosphere',
-                                label: 'Atmosphere',
-                                icon: Moon,
-                                activeClass: 'text-amber-700 dark:text-amber-300 bg-amber-500/15 dark:bg-amber-500/25 backdrop-blur-md border border-amber-500/35 dark:border-amber-400/45 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(245,158,11,0.15)]',
-                                iconColor: 'text-amber-600 dark:text-amber-400',
-                            },
-                            {
-                                id: 'filters',
-                                label: 'Filters',
-                                icon: Filter,
-                                activeClass: 'text-emerald-700 dark:text-emerald-300 bg-emerald-500/15 dark:bg-emerald-500/25 backdrop-blur-md border border-emerald-500/35 dark:border-emerald-400/45 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(16,185,129,0.15)]',
-                                iconColor: 'text-emerald-600 dark:text-emerald-400',
-                            }
-                        ] as const).map((tab) => {
-                            const isActive = activeSidebarTab === tab.id;
-                            return (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => setActiveSidebarTab(tab.id)}
-                                    className={`flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-t-xl text-xs font-bold transition-all duration-200 cursor-pointer relative truncate ${isActive
-                                            ? tab.activeClass
-                                            : `${tab.iconColor} opacity-75 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/5`
-                                        }`}
-                                    style={isActive ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
-                                    title={tab.label}
-                                >
-                                    <tab.icon className={`w-4 h-4 shrink-0 ${tab.iconColor}`} />
-                                    <span className="truncate">{tab.label}</span>
-                                </button>
-                            );
-                        })}
-                    </div>
-
-                    {/* Sidebar Content (Scrollable) */}
-                    <div className="flex-1 overflow-y-auto p-6 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] md:pb-6 space-y-6 custom-scrollbar">
-                        {/* TAB 1: CARTOGRAPHY (PROJECTION & BASEMAPS) - SKY ACCENT */}
-                        {activeSidebarTab === 'cartography' && (
-                            <div className="space-y-6">
-                                {/* PROJECTION */}
-                                <div className="p-4 rounded-2xl bg-white/40 dark:bg-white/[0.03] backdrop-blur-sm border border-black/5 dark:border-white/5 space-y-2.5">
-                                    <div className="flex items-center justify-between">
-                                        <h4 className="text-xs font-bold uppercase tracking-wider text-light-text dark:text-dark-text">Projection Engine</h4>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => handleUpdateAppearance({ ...appearance, projection: 'globe' })}
-                                            className={`p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer transition-all duration-150 active:scale-[0.98] ${
-                                                appearance.projection === 'globe'
-                                                    ? 'bg-sky-500/15 dark:bg-sky-500/25 backdrop-blur-md border-sky-500/40 dark:border-sky-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(14,165,233,0.15)] text-sky-700 dark:text-sky-300 font-bold'
-                                                    : 'bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
-                                            }`}
-                                            style={appearance.projection === 'globe' ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
-                                        >
-                                            <Globe className={`w-4 h-4 shrink-0 transition-colors duration-200 ${
-                                                appearance.projection === 'globe' ? 'text-sky-500 dark:text-sky-400' : 'text-light-text-secondary dark:text-dark-text-secondary'
-                                            }`} />
-                                            <span className="text-xs font-bold leading-tight truncate">3D Globe</span>
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            onClick={() => handleUpdateAppearance({ ...appearance, projection: 'flat' })}
-                                            className={`p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer transition-all duration-150 active:scale-[0.98] ${
-                                                appearance.projection === 'flat'
-                                                    ? 'bg-sky-500/15 dark:bg-sky-500/25 backdrop-blur-md border-sky-500/40 dark:border-sky-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(14,165,233,0.15)] text-sky-700 dark:text-sky-300 font-bold'
-                                                    : 'bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
-                                            }`}
-                                            style={appearance.projection === 'flat' ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
-                                        >
-                                            <MapIcon className={`w-4 h-4 shrink-0 transition-colors duration-200 ${
-                                                appearance.projection === 'flat' ? 'text-sky-500 dark:text-sky-400' : 'text-light-text-secondary dark:text-dark-text-secondary'
-                                            }`} />
-                                            <span className="text-xs font-bold leading-tight truncate">2D Flat Map</span>
-                                        </button>
-                                    </div>
-
-                                    {appearance.projection === 'globe' && (
-                                        <div className="pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between">
-                                            <div className="flex items-center gap-1.5">
-                                                <Sparkles className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400" />
-                                                <span className="text-xs font-semibold text-light-text dark:text-dark-text">Atmospheric Cosmos</span>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleUpdateAppearance({ ...appearance, atmosphere: appearance.atmosphere === false ? true : false })}
-                                                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border border-black/10 dark:border-white/15 transition-all duration-200 ease-in-out backdrop-blur-md ${
-                                                    appearance.atmosphere !== false
-                                                        ? 'bg-sky-500/85 dark:bg-sky-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_8px_rgba(14,165,233,0.3)]'
-                                                        : 'bg-black/15 dark:bg-white/15'
-                                                }`}
-                                            >
-                                                <span
-                                                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
-                                                        appearance.atmosphere !== false ? 'translate-x-4' : 'translate-x-0'
-                                                    }`}
-                                                />
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* BASEMAP PALETTE */}
-                                <div>
-                                    <div className="flex items-center justify-between mb-3">
-                                        <div className="flex items-center gap-2">
-                                            <h3 className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase">Cartographic Basemap</h3>
-                                            {cartoKey ? (
-                                                <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                                                    CARTO Active
-                                                </span>
-                                            ) : (
-                                                <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
-                                                    Zero-Key Canvas
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {(isDark ? [
-                                            {
-                                                id: 'onyx',
-                                                label: 'Onyx',
-                                                renderSwatch: () => (
-                                                    <div className="w-full h-8 rounded-xl border border-white/15 flex items-center px-2.5 justify-between bg-gradient-to-r from-black via-zinc-950 to-zinc-900 relative overflow-hidden">
-                                                        <div className="flex items-center gap-1.5 z-10">
-                                                            <span className="text-2xs">🌑</span>
-                                                            <span className="text-2xs font-bold text-white drop-shadow">Onyx</span>
-                                                        </div>
-                                                        <div className="w-2 h-2 rounded-full border border-white/40 z-10" />
-                                                    </div>
-                                                )
-                                            },
-                                            {
-                                                id: 'citylights',
-                                                label: 'NASA Lights',
-                                                renderSwatch: () => (
-                                                    <div className="w-full h-8 rounded-xl border border-amber-500/30 flex items-center px-2.5 justify-between bg-[#040711] relative overflow-hidden">
-                                                        <div className="absolute top-1.5 right-12 w-1.5 h-1.5 rounded-full bg-amber-400/90 shadow-[0_0_6px_#f59e0b] animate-pulse" />
-                                                        <div className="absolute bottom-1.5 right-7 w-1 h-1 rounded-full bg-amber-300/80 shadow-[0_0_4px_#f59e0b]" />
-                                                        <div className="flex items-center gap-1.5 z-10">
-                                                            <span className="text-2xs">✨</span>
-                                                            <span className="text-2xs font-bold text-amber-100 drop-shadow-sm">NASA</span>
-                                                        </div>
-                                                        <div className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_6px_#f59e0b] z-10" />
-                                                    </div>
-                                                )
-                                            },
-                                            {
-                                                id: 'ocean',
-                                                label: 'Bathymetry',
-                                                renderSwatch: () => (
-                                                    <div className="w-full h-8 rounded-xl border border-cyan-500/30 flex items-center px-2.5 justify-between bg-[#041a2f] relative overflow-hidden">
-                                                        <div className="flex items-center gap-1.5 z-10">
-                                                            <span className="text-2xs">🌊</span>
-                                                            <span className="text-2xs font-bold text-cyan-200">Ocean</span>
-                                                        </div>
-                                                        <div className="w-2 h-2 rounded-full border border-cyan-400/60 z-10" />
-                                                    </div>
-                                                )
-                                            },
-                                            {
-                                                id: 'satellite',
-                                                label: 'Satellite',
-                                                renderSwatch: () => (
-                                                    <div className="w-full h-8 rounded-xl border border-emerald-500/20 flex items-center px-2.5 justify-between bg-gradient-to-r from-[#0a1a14] to-[#0d2a1f] relative overflow-hidden">
-                                                        <div className="flex items-center gap-1.5 z-10">
-                                                            <span className="text-2xs">🛰️</span>
-                                                            <span className="text-2xs font-bold text-emerald-200">Satellite</span>
-                                                        </div>
-                                                        <div className="w-2 h-2 rounded-full border border-emerald-400/50 z-10" />
-                                                    </div>
-                                                )
-                                            }
-                                        ] : [
-                                            {
-                                                id: 'snow',
-                                                label: 'Snow',
-                                                desc: 'Clean high-contrast white',
-                                                renderSwatch: () => (
-                                                    <div className="w-full h-8 rounded-xl border border-black/10 flex items-center px-2.5 justify-between bg-gradient-to-r from-zinc-100 via-white to-zinc-200 relative overflow-hidden">
-                                                        <div className="flex items-center gap-1.5 z-10">
-                                                            <span className="text-2xs">❄️</span>
-                                                            <span className="text-2xs font-bold text-zinc-800">Snow</span>
-                                                        </div>
-                                                        <div className="w-2 h-2 rounded-full border border-zinc-400 z-10" />
-                                                    </div>
-                                                )
-                                            },
-                                            {
-                                                id: 'vibrant',
-                                                label: 'Vibrant',
-                                                desc: 'Parks, water & terrain',
-                                                renderSwatch: () => (
-                                                    <div className="w-full h-8 rounded-xl border border-emerald-500/30 flex items-center px-2.5 justify-between bg-gradient-to-r from-[#e0f2fe] via-[#ecfdf5] to-[#fef3c7] relative overflow-hidden">
-                                                        <div className="flex items-center gap-1.5 z-10">
-                                                            <span className="text-2xs">🎨</span>
-                                                            <span className="text-2xs font-bold text-emerald-800">Vibrant</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-1 z-10">
-                                                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_4px_#38bdf8]" title="Water" />
-                                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_4px_#34d399]" title="Parks" />
-                                                        </div>
-                                                    </div>
-                                                )
-                                            },
-                                            {
-                                                id: 'ocean',
-                                                label: 'Bathymetry',
-                                                desc: 'Marine sea floor topography',
-                                                renderSwatch: () => (
-                                                    <div className="w-full h-8 rounded-xl border border-cyan-500/30 flex items-center px-2.5 justify-between bg-gradient-to-r from-[#e0f7fa] to-[#b2ebf2] relative overflow-hidden">
-                                                        <div className="flex items-center gap-1.5 z-10">
-                                                            <span className="text-2xs">🌊</span>
-                                                            <span className="text-2xs font-bold text-cyan-900">Bathymetry</span>
-                                                        </div>
-                                                        <div className="w-2 h-2 rounded-full border border-cyan-500/60 z-10" />
-                                                    </div>
-                                                )
-                                            },
-                                            {
-                                                id: 'satellite',
-                                                label: 'Satellite',
-                                                desc: 'High-res orbital imagery',
-                                                renderSwatch: () => (
-                                                    <div className="w-full h-8 rounded-xl border border-emerald-500/20 flex items-center px-2.5 justify-between bg-gradient-to-r from-[#0a1a14] to-[#0d2a1f] relative overflow-hidden">
-                                                        <div className="flex items-center gap-1.5 z-10">
-                                                            <span className="text-2xs">🛰️</span>
-                                                            <span className="text-2xs font-bold text-emerald-200">Satellite</span>
-                                                        </div>
-                                                        <div className="w-2 h-2 rounded-full border border-emerald-400/50 z-10" />
-                                                    </div>
-                                                )
-                                            }
-                                        ]).map(b => {
-                                            const effectiveBasemap = getEffectiveBasemap(appearance.basemap, isDark);
-                                            const isSelected = effectiveBasemap === b.id;
-                                            return (
-                                                <button
-                                                    key={b.id}
-                                                    onClick={() => handleUpdateAppearance({ ...appearance, basemap: b.id as any })}
-                                                    className={`p-2.5 rounded-2xl border transition-all duration-150 text-left flex flex-col justify-between gap-2 cursor-pointer active:scale-[0.98] ${isSelected
-                                                            ? 'border-sky-500/40 bg-sky-500/15 dark:bg-sky-500/25 backdrop-blur-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(14,165,233,0.15)] ring-1 ring-sky-500/30'
-                                                            : 'border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm hover:border-black/15 dark:hover:border-white/20'
-                                                        }`}
-                                                    style={isSelected ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
-                                                >
-                                                    {b.renderSwatch()}
-                                                    <div>
-                                                        <p className="text-xs font-bold text-light-text dark:text-dark-text truncate">{b.label}</p>
-                                                    </div>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-
-                                {/* PREDEFINED EXPEDITION VIEW MODES */}
-                                <div className="p-4 rounded-2xl bg-white/40 dark:bg-white/[0.03] backdrop-blur-sm border border-black/5 dark:border-white/5 space-y-2.5">
-                                    <div className="flex items-center justify-between">
-                                        <h4 className="text-xs font-bold uppercase tracking-wider text-light-text dark:text-dark-text">Expedition View Mode</h4>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {(['flights', 'land_sea', 'scratch', 'all'] as PredefinedMapMode[]).map((modeKey) => {
-                                            const config = MAP_MODE_THEMES[modeKey];
-                                            const isSelected = viewMode === modeKey;
-                                            const IconComponent = config.icon;
-                                            return (
-                                                <button
-                                                    key={modeKey}
-                                                    type="button"
-                                                    onClick={() => handleSelectViewMode(modeKey)}
-                                                    className={`p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer transition-all duration-150 active:scale-[0.98] ${isSelected
-                                                            ? `${config.cardActiveBg} backdrop-blur-md border ${config.cardActiveBorder} ${config.cardActiveText} font-bold ${config.cardActiveShadow}`
-                                                            : 'bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
-                                                        }`}
-                                                    style={isSelected ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
-                                                >
-                                                    <IconComponent className={`w-4 h-4 shrink-0 transition-colors duration-200 ${isSelected ? config.color : 'text-light-text-secondary dark:text-dark-text-secondary'}`} />
-                                                    <span className="text-xs font-bold leading-tight truncate">{config.label}</span>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-
-                                {/* SCRATCH EXPLORED CITIES & PINS */}
-                                <div className="p-4 rounded-2xl bg-white/40 dark:bg-white/[0.03] backdrop-blur-sm border border-black/5 dark:border-white/5 space-y-3">
-                                    <div className="flex items-center justify-between">
-                                        <h4 className="text-xs font-bold uppercase tracking-wider text-light-text dark:text-dark-text">Scratch City Pins</h4>
-                                    </div>
-
-                                    <div className="grid grid-cols-4 gap-1.5">
-                                        {[
-                                            { id: 'off', label: 'Hidden' },
-                                            { id: 'small', label: 'Micro' },
-                                            { id: 'medium', label: 'Normal' },
-                                            { id: 'large', label: 'Expansive' }
-                                        ].map(sz => (
-                                            <button
-                                                key={sz.id}
-                                                type="button"
-                                                onClick={() => handleUpdateAppearance({ ...appearance, scratchCitySize: sz.id as any })}
-                                                className={`py-2 rounded-xl text-xs font-semibold text-center border transition-all duration-150 cursor-pointer active:scale-[0.98] ${(appearance.scratchCitySize || 'medium') === sz.id
-                                                        ? 'bg-sky-500/20 dark:bg-sky-500/30 backdrop-blur-md text-sky-700 dark:text-sky-300 font-bold border border-sky-500/40 dark:border-sky-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(14,165,233,0.15)]'
-                                                        : 'bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
-                                                    }`}
-                                                style={(appearance.scratchCitySize || 'medium') === sz.id ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
-                                            >
-                                                {sz.label}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* SCRATCH HIGHLIGHT TOGGLES (LIVED & WISHLIST) */}
-                                <div className="p-4 rounded-2xl bg-white/40 dark:bg-white/[0.03] backdrop-blur-sm border border-black/5 dark:border-white/5 space-y-3">
-                                    <h4 className="text-xs font-bold uppercase tracking-wider text-light-text dark:text-dark-text">Territory Highlights</h4>
-
-                                    {/* Lived Residences Toggle */}
-                                    <div className="flex items-center justify-between pt-1">
-                                        <div className="flex items-center gap-2.5">
-                                            <div className="w-7 h-7 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-sm">
-                                                🏠
-                                            </div>
-                                            <p className="text-xs font-bold text-light-text dark:text-dark-text">Lived Residences</p>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleUpdateAppearance({
-                                                ...appearance,
-                                                showLivedCountries: appearance.showLivedCountries === false ? true : false
-                                            })}
-                                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-black/10 dark:border-white/15 transition-all duration-200 ease-in-out backdrop-blur-md ${appearance.showLivedCountries !== false
-                                                    ? 'bg-emerald-500/85 dark:bg-emerald-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_10px_rgba(16,185,129,0.3)]'
-                                                    : 'bg-black/15 dark:bg-white/15 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]'
-                                                }`}
-                                        >
-                                            <span
-                                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-white/95 shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.8)] ring-0 transition duration-200 ease-in-out ${appearance.showLivedCountries !== false ? 'translate-x-5' : 'translate-x-0'
-                                                    }`}
-                                            />
-                                        </button>
-                                    </div>
-
-                                    <div className="h-px bg-black/5 dark:bg-white/5" />
-
-                                    {/* Layover Territories Toggle */}
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2.5">
-                                            <div className="w-7 h-7 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-sm">
-                                                🛫
-                                            </div>
-                                            <p className="text-xs font-bold text-light-text dark:text-dark-text">Layover Territories</p>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleUpdateAppearance({
-                                                ...appearance,
-                                                showLayoverCountries: appearance.showLayoverCountries === false ? true : false
-                                            })}
-                                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-black/10 dark:border-white/15 transition-all duration-200 ease-in-out backdrop-blur-md ${appearance.showLayoverCountries !== false
-                                                    ? 'bg-amber-500/85 dark:bg-amber-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_10px_rgba(245,158,11,0.3)]'
-                                                    : 'bg-black/15 dark:bg-white/15 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]'
-                                                }`}
-                                        >
-                                            <span
-                                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-white/95 shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.8)] ring-0 transition duration-200 ease-in-out ${appearance.showLayoverCountries !== false ? 'translate-x-5' : 'translate-x-0'
-                                                    }`}
-                                            />
-                                        </button>
-                                    </div>
-
-                                    <div className="h-px bg-black/5 dark:bg-white/5" />
-
-                                    {/* Wishlist Destinations Toggle */}
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2.5">
-                                            <div className="w-7 h-7 rounded-lg bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-sm">
-                                                🌟
-                                            </div>
-                                            <p className="text-xs font-bold text-light-text dark:text-dark-text">Wishlist Destinations</p>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleUpdateAppearance({
-                                                ...appearance,
-                                                showWishlistCountries: appearance.showWishlistCountries === false ? true : false
-                                            })}
-                                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-black/10 dark:border-white/15 transition-all duration-200 ease-in-out backdrop-blur-md ${appearance.showWishlistCountries !== false
-                                                    ? 'bg-rose-500/85 dark:bg-rose-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_10px_rgba(244,63,94,0.3)]'
-                                                    : 'bg-black/15 dark:bg-white/15 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]'
-                                                }`}
-                                        >
-                                            <span
-                                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-white/95 shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.8)] ring-0 transition duration-200 ease-in-out ${appearance.showWishlistCountries !== false ? 'translate-x-5' : 'translate-x-0'
-                                                    }`}
-                                            />
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* TAB 2: AVIATION (FLIGHTS, RUNWAYS & ARCS) - INDIGO ACCENT */}
-                        {activeSidebarTab === 'aviation' && (
-                            <div className="space-y-6">
-                                {/* AERODROME RUNWAY INFRASTRUCTURE */}
-                                <div className="p-4 rounded-2xl bg-white/40 dark:bg-white/[0.03] backdrop-blur-sm border border-black/5 dark:border-white/5 shadow-sm space-y-3">
-                                    <div className="flex items-center justify-between">
-                                        <h3 className="text-xs font-bold uppercase tracking-wider text-light-text dark:text-dark-text">Aerodrome Markings</h3>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-2.5">
-                                        <button
-                                            type="button"
-                                            onClick={() => handleUpdateAppearance({ ...appearance, airportDetail: 'standard' })}
-                                            className={`p-3 rounded-xl border text-center transition-all duration-150 cursor-pointer active:scale-[0.98] flex items-center justify-center ${appearance.airportDetail === 'standard'
-                                                    ? 'bg-indigo-500/15 dark:bg-indigo-500/25 backdrop-blur-md border border-indigo-500/40 dark:border-indigo-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(99,102,241,0.15)] text-indigo-700 dark:text-indigo-300 font-bold'
-                                                    : 'border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
-                                                }`}
-                                            style={appearance.airportDetail === 'standard' ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
-                                        >
-                                            <span className="text-xs font-bold">Minimal Beacon</span>
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            onClick={() => handleUpdateAppearance({ ...appearance, airportDetail: 'detailed' })}
-                                            className={`p-3 rounded-xl border text-center transition-all duration-150 cursor-pointer active:scale-[0.98] flex items-center justify-center ${appearance.airportDetail === 'detailed'
-                                                    ? 'bg-indigo-500/15 dark:bg-indigo-500/25 backdrop-blur-md border border-indigo-500/40 dark:border-indigo-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(99,102,241,0.15)] text-indigo-700 dark:text-indigo-300 font-bold'
-                                                    : 'border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
-                                                }`}
-                                            style={appearance.airportDetail === 'detailed' ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
-                                        >
-                                            <span className="text-xs font-bold">Full Layout</span>
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {/* AIRPORT HUB SIZING */}
-                                <div>
-                                    <div className="flex items-center justify-between mb-2">
-                                        <h3 className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase">Airport Hub Nodes</h3>
-                                    </div>
-
-                                    <div className="grid grid-cols-4 gap-1.5 mb-2.5">
-                                        {[
-                                            { id: 'off', label: 'Hidden' },
-                                            { id: 'small', label: 'Micro' },
-                                            { id: 'medium', label: 'Normal' },
-                                            { id: 'large', label: 'Expansive' }
-                                        ].map((sz) => (
-                                            <button
-                                                key={sz.id}
-                                                onClick={() => handleUpdateAppearance({ ...appearance, airportSize: sz.id as any })}
-                                                className={`py-2 rounded-xl text-xs font-semibold text-center border transition-all duration-150 cursor-pointer active:scale-[0.98] ${appearance.airportSize === sz.id
-                                                        ? 'bg-indigo-500/20 dark:bg-indigo-500/30 backdrop-blur-md text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-500/40 dark:border-indigo-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(99,102,241,0.15)]'
-                                                        : 'bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
-                                                    }`}
-                                                style={appearance.airportSize === sz.id ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
-                                            >
-                                                {sz.label}
-                                            </button>
-                                        ))}
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <button
-                                            onClick={() => handleUpdateAppearance({ ...appearance, airportMode: 'frequency' })}
-                                            className={`py-2 px-3 rounded-xl border text-xs font-semibold transition-all duration-150 cursor-pointer active:scale-[0.98] ${appearance.airportMode === 'frequency'
-                                                    ? 'bg-indigo-500/15 dark:bg-indigo-500/25 backdrop-blur-md border border-indigo-500/40 dark:border-indigo-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(99,102,241,0.15)] text-indigo-700 dark:text-indigo-300 font-bold'
-                                                    : 'border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
-                                                }`}
-                                            style={appearance.airportMode === 'frequency' ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
-                                        >
-                                            Weighted by Traffic
-                                        </button>
-                                        <button
-                                            onClick={() => handleUpdateAppearance({ ...appearance, airportMode: 'uniform' })}
-                                            className={`py-2 px-3 rounded-xl border text-xs font-semibold transition-all duration-150 cursor-pointer active:scale-[0.98] ${appearance.airportMode === 'uniform'
-                                                    ? 'bg-indigo-500/15 dark:bg-indigo-500/25 backdrop-blur-md border border-indigo-500/40 dark:border-indigo-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(99,102,241,0.15)] text-indigo-700 dark:text-indigo-300 font-bold'
-                                                    : 'border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
-                                                }`}
-                                            style={appearance.airportMode === 'uniform' ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
-                                        >
-                                            Uniform Scale
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {/* ROUTE ARCS STYLING */}
-                                <div className="space-y-4 pt-3 border-t border-black/5 dark:border-white/5">
-                                    <h3 className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase">Route Presentation</h3>
-
-                                    {/* Color Palette */}
-                                    <div>
-                                        <span className="text-xs text-light-text dark:text-dark-text font-semibold mb-2 block">Color Palette</span>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            {[
-                                                { id: 'gradient', label: 'Aurora Gradient' },
-                                                { id: 'frequency', label: 'Heatmap Density' },
-                                                { id: 'default', label: 'Warm Amber' }
-                                            ].map((cl) => (
-                                                <button
-                                                    key={cl.id}
-                                                    onClick={() => handleUpdateAppearance({ ...appearance, routeColorMode: cl.id as any })}
-                                                    className={`py-2 px-2.5 rounded-xl border text-center transition-all duration-150 cursor-pointer active:scale-[0.98] ${appearance.routeColorMode === cl.id
-                                                            ? 'bg-indigo-500/15 dark:bg-indigo-500/25 backdrop-blur-md border border-indigo-500/40 dark:border-indigo-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(99,102,241,0.15)] font-bold text-indigo-700 dark:text-indigo-300'
-                                                            : 'border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
-                                                        }`}
-                                                    style={appearance.routeColorMode === cl.id ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
-                                                >
-                                                    <span className="text-xs font-bold">{cl.label}</span>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* Scale */}
-                                    <div>
-                                        <span className="text-xs text-light-text dark:text-dark-text font-semibold mb-2 block">Stroke Weight</span>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            {[
-                                                { id: 'thin', label: 'Fine (1px)' },
-                                                { id: 'normal', label: 'Balanced (2px)' },
-                                                { id: 'thick', label: 'Bold (3.5px)' }
-                                            ].map((sc) => (
-                                                <button
-                                                    key={sc.id}
-                                                    onClick={() => handleUpdateAppearance({ ...appearance, routeScale: sc.id as any })}
-                                                    className={`py-2 rounded-xl border text-center transition-all duration-150 cursor-pointer active:scale-[0.98] ${appearance.routeScale === sc.id
-                                                            ? 'bg-indigo-500/15 dark:bg-indigo-500/25 backdrop-blur-md border border-indigo-500/40 dark:border-indigo-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(99,102,241,0.15)] text-indigo-700 dark:text-indigo-300 font-bold'
-                                                            : 'border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
-                                                        }`}
-                                                    style={appearance.routeScale === sc.id ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
-                                                >
-                                                    <span className="text-xs">{sc.label}</span>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* ADVANCED ROUTE DYNAMICS */}
-                                <div className="space-y-2.5 pt-3 border-t border-black/5 dark:border-white/5">
-                                    <h3 className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase">Motion & Dynamics</h3>
-
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <button
-                                            onClick={() => setShowIndependentFlights(!showIndependentFlights)}
-                                            className={`p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer transition-all duration-150 active:scale-[0.98] ${showIndependentFlights
-                                                    ? 'bg-indigo-500/15 dark:bg-indigo-500/25 backdrop-blur-md border border-indigo-500/40 dark:border-indigo-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(99,102,241,0.15)] text-indigo-700 dark:text-indigo-300 font-bold'
-                                                    : 'bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
-                                                }`}
-                                            style={showIndependentFlights ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
-                                        >
-                                            <Plane className="w-4 h-4 text-indigo-500 shrink-0" />
-                                            <span className="text-xs font-bold">Flights Only</span>
-                                        </button>
-
-                                        <button
-                                            onClick={() => setShowLandSeaRoutes(!showLandSeaRoutes)}
-                                            className={`p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer transition-all duration-150 active:scale-[0.98] ${showLandSeaRoutes
-                                                    ? 'bg-amber-500/15 dark:bg-amber-500/25 backdrop-blur-md border border-amber-500/40 dark:border-amber-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(245,158,11,0.15)] text-amber-700 dark:text-amber-300 font-bold'
-                                                    : 'bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
-                                                }`}
-                                            style={showLandSeaRoutes ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
-                                        >
-                                            <Zap className="w-4 h-4 text-amber-500 shrink-0" />
-                                            <span className="text-xs font-bold">Overland Transit</span>
-                                        </button>
-
-                                        <button
-                                            onClick={() => setAnimateRoutes(!animateRoutes)}
-                                            className={`p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer transition-all duration-150 active:scale-[0.98] ${animateRoutes
-                                                    ? 'bg-cyan-500/15 dark:bg-cyan-500/25 backdrop-blur-md border border-cyan-500/40 dark:border-cyan-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(6,182,212,0.15)] text-cyan-700 dark:text-cyan-300 font-bold'
-                                                    : 'bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
-                                                }`}
-                                            style={animateRoutes ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
-                                        >
-                                            <Play className="w-4 h-4 text-cyan-500 shrink-0" />
-                                            <span className="text-xs font-bold">Comet Flow</span>
-                                        </button>
-
-                                        <button
-                                            onClick={() => setClusterMode(!clusterMode)}
-                                            className={`p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer transition-all duration-150 active:scale-[0.98] ${clusterMode
-                                                    ? 'bg-purple-500/15 dark:bg-purple-500/25 backdrop-blur-md border border-purple-500/40 dark:border-purple-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(168,85,247,0.15)] text-purple-700 dark:text-purple-300 font-bold'
-                                                    : 'bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
-                                                }`}
-                                            style={clusterMode ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
-                                        >
-                                            <Layers className="w-4 h-4 text-purple-500 shrink-0" />
-                                            <span className="text-xs font-bold">Cluster Hubs</span>
-                                        </button>
-                                    </div>
-
-                                    <div className="space-y-2 pt-2 border-t border-black/5 dark:border-white/5">
-                                        {/* Unified Route Tracing (Road, Rail & Sea) */}
-                                        <button
-                                            onClick={() => {
-                                                const newVal = !(showRoadTracing || appearance.routeTracing !== false);
-                                                setShowRoadTracing(newVal);
-                                                localStorage.setItem('wandergrid_road_tracing', String(newVal));
-                                                handleUpdateAppearance({ ...appearance, routeTracing: newVal });
-                                            }}
-                                            className={`w-full p-2.5 rounded-xl border text-left flex items-center gap-2.5 cursor-pointer transition-all duration-150 active:scale-[0.98] ${showRoadTracing || appearance.routeTracing !== false
-                                                    ? 'bg-indigo-500/15 dark:bg-indigo-500/25 backdrop-blur-md border border-indigo-500/40 dark:border-indigo-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(99,102,241,0.15)] text-indigo-700 dark:text-indigo-300 font-bold'
-                                                    : 'bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:border-black/15 dark:hover:border-white/20'
-                                                }`}
-                                            style={(showRoadTracing || appearance.routeTracing !== false) ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
-                                        >
-                                            <Radio className="w-4 h-4 text-indigo-500 shrink-0" />
-                                            <div className="min-w-0 flex-1 leading-none">
-                                                <p className="text-xs font-bold">Route Tracing (Road & Rail)</p>
-                                            </div>
-                                        </button>
-
-                                        {/* Smooth Flight Dead-Reckoning Interpolation */}
-                                        <div className="p-3 rounded-xl bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm border border-black/5 dark:border-white/10 flex items-center justify-between">
-                                            <div>
-                                                <h4 className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
-                                                    <span>Flight Motion Interpolation</span>
-                                                    {appearance.flightInterpolation !== false && (
-                                                        <span className="px-1.5 py-0.2 rounded-full text-2xs font-bold uppercase bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                                                            60 FPS
-                                                        </span>
-                                                    )}
-                                                </h4>
-                                                <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5">Smooth dead-reckoning trajectory smoothing</p>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleUpdateAppearance({ ...appearance, flightInterpolation: appearance.flightInterpolation === false ? true : false })}
-                                                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border border-black/10 dark:border-white/15 transition-all duration-200 ease-in-out backdrop-blur-md ${
-                                                    appearance.flightInterpolation !== false ? 'bg-indigo-600' : 'bg-black/15 dark:bg-white/15'
-                                                }`}
-                                            >
-                                                <span
-                                                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
-                                                        appearance.flightInterpolation !== false ? 'translate-x-4' : 'translate-x-0'
-                                                    }`}
-                                                />
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* OpenAIP Aeronautical Vector Charts */}
-                                    <div className="p-4 rounded-2xl bg-white/40 dark:bg-white/[0.03] backdrop-blur-sm border border-black/5 dark:border-white/5 space-y-3">
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <h4 className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
-                                                    <span>OpenAIP Aero Charts</span>
-                                                    {appearance.openAipOverlay && (
-                                                        <span className="flex items-center gap-1 px-2 py-0.5 text-2xs font-bold rounded-full bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30">
-                                                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
-                                                            Vector Charts
-                                                        </span>
-                                                    )}
-                                                </h4>
-                                                <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5">Airspaces, navaids, waypoints & airfields</p>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleUpdateAppearance({ ...appearance, openAipOverlay: !appearance.openAipOverlay })}
-                                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-black/10 dark:border-white/15 transition-all duration-200 ease-in-out backdrop-blur-md ${appearance.openAipOverlay
-                                                        ? 'bg-indigo-500/85 dark:bg-indigo-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_10px_rgba(99,102,241,0.3)]'
-                                                        : 'bg-black/15 dark:bg-white/15 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]'
-                                                    }`}
-                                            >
-                                                <span
-                                                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-white/95 shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.8)] ring-0 transition duration-200 ease-in-out ${appearance.openAipOverlay ? 'translate-x-5' : 'translate-x-0'
-                                                        }`}
-                                                />
-                                            </button>
-                                        </div>
-
-                                        {appearance.openAipOverlay && (
-                                            <div className="pt-2.5 border-t border-black/5 dark:border-white/5 space-y-2 animate-fade-in">
-                                                <div className="flex items-center justify-between text-2xs font-bold">
-                                                    <span className="uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Layers</span>
-                                                    <span className={`px-1.5 py-0.2 rounded-full ${hasOpenAipKey ? 'text-emerald-500 bg-emerald-500/10' : 'text-amber-500 bg-amber-500/10'}`}>
-                                                        {hasOpenAipKey ? 'Key Active' : 'Free Key Fallback'}
-                                                    </span>
-                                                </div>
-                                                <div className="grid grid-cols-2 gap-1.5">
-                                                    {[
-                                                        { id: 'airspaces', label: 'Airspaces' },
-                                                        { id: 'airspaceLabels', label: 'Labels' },
-                                                        { id: 'navaids', label: 'Navaids' },
-                                                        { id: 'reportingPoints', label: 'Waypoints' },
-                                                        { id: 'airports', label: 'Airfields' }
-                                                    ].map(group => {
-                                                        const currentGroups = appearance.openAipGroups || ['airspaces', 'airspaceLabels', 'airports', 'navaids', 'reportingPoints'];
-                                                        const active = currentGroups.includes(group.id as any);
-                                                        return (
-                                                            <button
-                                                                key={group.id}
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    const next = active
-                                                                        ? currentGroups.filter(g => g !== group.id)
-                                                                        : [...currentGroups, group.id as any];
-                                                                    handleUpdateAppearance({ ...appearance, openAipGroups: next });
-                                                                }}
-                                                                className={`py-1 px-2 rounded-xl text-2xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                                                                    active
-                                                                        ? 'bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30'
-                                                                        : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
-                                                                }`}
-                                                            >
-                                                                {group.label}
-                                                            </button>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* TAB 3: ATMOSPHERE (SOLAR & WEATHER TELEMETRY) - AMBER ACCENT */}
-                        {activeSidebarTab === 'atmosphere' && (
-                            <div className="space-y-6">
-                                <div>
-                                    <h3 className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase mb-3">
-                                        Atmospheric Overlays
-                                    </h3>
-
-                                    <div className="space-y-3">
-                                        {/* 3D Celestial Cosmos */}
-                                        <div className="p-4 rounded-2xl bg-white/40 dark:bg-white/[0.03] backdrop-blur-sm border border-black/5 dark:border-white/5 space-y-2">
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <h4 className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
-                                                        <span>Celestial Cosmos</span>
-                                                        {appearance.atmosphere !== false && (
-                                                            <span className="px-2 py-0.5 text-2xs font-bold rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
-                                                                Stars, Sun & Halo
-                                                            </span>
-                                                        )}
-                                                    </h4>
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleUpdateAppearance({ ...appearance, atmosphere: appearance.atmosphere === false ? true : false })}
-                                                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-black/10 dark:border-white/15 transition-all duration-200 ease-in-out backdrop-blur-md ${appearance.atmosphere !== false
-                                                            ? 'bg-sky-500/85 dark:bg-sky-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_10px_rgba(14,165,233,0.3)]'
-                                                            : 'bg-black/15 dark:bg-white/15 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]'
-                                                        }`}
-                                                >
-                                                    <span
-                                                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-white/95 shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.8)] ring-0 transition duration-200 ease-in-out ${appearance.atmosphere !== false ? 'translate-x-5' : 'translate-x-0'
-                                                            }`}
-                                                    />
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        {/* Time of Day */}
-                                        <div className="p-4 rounded-2xl bg-white/40 dark:bg-white/[0.03] backdrop-blur-sm border border-black/5 dark:border-white/5 space-y-2">
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <h4 className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
-                                                        <span>Solar Twilight Shading</span>
-                                                        {appearance.timeOfDay && (
-                                                            <span className="px-2 py-0.5 text-2xs font-bold rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                                                                14-Band Penumbra
-                                                            </span>
-                                                        )}
-                                                    </h4>
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleUpdateAppearance({ ...appearance, timeOfDay: !appearance.timeOfDay })}
-                                                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-black/10 dark:border-white/15 transition-all duration-200 ease-in-out backdrop-blur-md ${appearance.timeOfDay
-                                                            ? 'bg-amber-500/85 dark:bg-amber-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_10px_rgba(245,158,11,0.3)]'
-                                                            : 'bg-black/15 dark:bg-white/15 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]'
-                                                        }`}
-                                                >
-                                                    <span
-                                                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-white/95 shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.8)] ring-0 transition duration-200 ease-in-out ${appearance.timeOfDay ? 'translate-x-5' : 'translate-x-0'
-                                                            }`}
-                                                    />
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        {/* Rain Radar */}
-                                        <div className="p-4 rounded-2xl bg-white/40 dark:bg-white/[0.03] backdrop-blur-sm border border-black/5 dark:border-white/5 space-y-3">
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <h4 className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
-                                                        <span>Doppler Rain Radar</span>
-                                                        {appearance.rainRadar && (
-                                                            <span className="flex items-center gap-1 px-2 py-0.5 text-2xs font-bold rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                                                Live Stream
-                                                            </span>
-                                                        )}
-                                                    </h4>
-                                                    <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5">Precipitation radar telemetry & mosaic</p>
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleUpdateAppearance({ ...appearance, rainRadar: !appearance.rainRadar })}
-                                                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-black/10 dark:border-white/15 transition-all duration-200 ease-in-out backdrop-blur-md ${appearance.rainRadar
-                                                            ? 'bg-amber-500/85 dark:bg-amber-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_10px_rgba(245,158,11,0.3)]'
-                                                            : 'bg-black/15 dark:bg-white/15 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]'
-                                                        }`}
-                                                >
-                                                    <span
-                                                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-white/95 shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.8)] ring-0 transition duration-200 ease-in-out ${appearance.rainRadar ? 'translate-x-5' : 'translate-x-0'
-                                                            }`}
-                                                    />
-                                                </button>
-                                            </div>
-
-                                            {/* Nested Rain Radar Configuration Options */}
-                                            {appearance.rainRadar && (
-                                                <div className="pt-2.5 border-t border-black/5 dark:border-white/5 space-y-3 animate-fade-in">
-                                                    {/* Radar Source Provider */}
-                                                    <div>
-                                                        <span className="block text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary mb-1.5">
-                                                            Radar Telemetry Engine
-                                                        </span>
-                                                        <div className="grid grid-cols-2 gap-2">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleUpdateAppearance({ ...appearance, radarSource: 'rainviewer' })}
-                                                                className={`p-2 rounded-xl text-xs text-left border transition-all cursor-pointer ${
-                                                                    (appearance.radarSource || 'rainviewer') === 'rainviewer'
-                                                                        ? 'border-amber-500/50 bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold ring-1 ring-amber-500/30'
-                                                                        : 'border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-white'
-                                                                }`}
-                                                            >
-                                                                <div className="font-bold">RainViewer</div>
-                                                                <div className="text-2xs opacity-75 font-normal">Global Composite</div>
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleUpdateAppearance({ ...appearance, radarSource: 'noaa_mrms' })}
-                                                                className={`p-2 rounded-xl text-xs text-left border transition-all cursor-pointer ${
-                                                                    appearance.radarSource === 'noaa_mrms'
-                                                                        ? 'border-amber-500/50 bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold ring-1 ring-amber-500/30'
-                                                                        : 'border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-white'
-                                                                }`}
-                                                            >
-                                                                <div className="font-bold">NOAA nowCOAST</div>
-                                                                <div className="text-2xs opacity-75 font-normal">MRMS Reflectivity</div>
-                                                            </button>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Opacity Slider */}
-                                                    <div>
-                                                        <div className="flex items-center justify-between text-2xs font-bold text-light-text dark:text-dark-text mb-1">
-                                                            <span>Radar Intensity</span>
-                                                            <span className="text-amber-500">{Math.round((appearance.rainRadarOpacity || 0.85) * 100)}%</span>
-                                                        </div>
-                                                        <input
-                                                            type="range"
-                                                            min="0.2"
-                                                            max="1.0"
-                                                            step="0.05"
-                                                            value={appearance.rainRadarOpacity || 0.85}
-                                                            onChange={(e) => handleUpdateAppearance({ ...appearance, rainRadarOpacity: parseFloat(e.target.value) })}
-                                                            className="w-full accent-amber-500 cursor-pointer h-1.5 bg-black/10 dark:bg-white/10 rounded-lg"
-                                                        />
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Terrain 3D Hillshade (Esri World Hillshade) */}
-                                        <div className="p-4 rounded-2xl bg-white/40 dark:bg-white/[0.03] backdrop-blur-sm border border-black/5 dark:border-white/5 space-y-3">
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <h4 className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
-                                                        <span>Terrain 3D Hillshade</span>
-                                                        {appearance.terrainHillshade && (
-                                                            <span className="px-2 py-0.5 text-2xs font-bold rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-                                                                Topography
-                                                            </span>
-                                                        )}
-                                                    </h4>
-                                                    <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5">3D mountain elevation and topographic slope relief</p>
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleUpdateAppearance({ ...appearance, terrainHillshade: !appearance.terrainHillshade })}
-                                                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-black/10 dark:border-white/15 transition-all duration-200 ease-in-out backdrop-blur-md ${appearance.terrainHillshade
-                                                            ? 'bg-amber-500/85 dark:bg-amber-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_10px_rgba(245,158,11,0.3)]'
-                                                            : 'bg-black/15 dark:bg-white/15 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]'
-                                                        }`}
-                                                >
-                                                    <span
-                                                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-white/95 shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.8)] ring-0 transition duration-200 ease-in-out ${appearance.terrainHillshade ? 'translate-x-5' : 'translate-x-0'
-                                                            }`}
-                                                    />
-                                                </button>
-                                            </div>
-
-                                            {appearance.terrainHillshade && (
-                                                <div className="pt-2.5 border-t border-black/5 dark:border-white/5 space-y-3 animate-fade-in">
-                                                    <div>
-                                                        <div className="flex items-center justify-between text-2xs font-bold text-light-text dark:text-dark-text mb-1">
-                                                            <span>Hillshade Intensity</span>
-                                                            <span className="text-amber-500">{Math.round((appearance.terrainHillshadeOpacity || 0.6) * 100)}%</span>
-                                                        </div>
-                                                        <input
-                                                            type="range"
-                                                            min="0.1"
-                                                            max="1.0"
-                                                            step="0.05"
-                                                            value={appearance.terrainHillshadeOpacity || 0.6}
-                                                            onChange={(e) => handleUpdateAppearance({ ...appearance, terrainHillshadeOpacity: parseFloat(e.target.value) })}
-                                                            className="w-full accent-amber-500 cursor-pointer h-1.5 bg-black/10 dark:bg-white/10 rounded-lg"
-                                                        />
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Global Railway & Transit (OpenRailwayMap) */}
-                                        <div className="p-4 rounded-2xl bg-white/40 dark:bg-white/[0.03] backdrop-blur-sm border border-black/5 dark:border-white/5 space-y-3">
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <h4 className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
-                                                        <span>Global Railway & Transit</span>
-                                                        {appearance.transitOverlay && (
-                                                            <span className="px-2 py-0.5 text-2xs font-bold rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                                                                OpenRailway
-                                                            </span>
-                                                        )}
-                                                    </h4>
-                                                    <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5">High-speed rail, passenger tracks & metro lines</p>
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleUpdateAppearance({ ...appearance, transitOverlay: !appearance.transitOverlay })}
-                                                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-black/10 dark:border-white/15 transition-all duration-200 ease-in-out backdrop-blur-md ${appearance.transitOverlay
-                                                            ? 'bg-emerald-500/85 dark:bg-emerald-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_10px_rgba(16,185,129,0.3)]'
-                                                            : 'bg-black/15 dark:bg-white/15 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]'
-                                                        }`}
-                                                >
-                                                    <span
-                                                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-white/95 shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.8)] ring-0 transition duration-200 ease-in-out ${appearance.transitOverlay ? 'translate-x-5' : 'translate-x-0'
-                                                            }`}
-                                                    />
-                                                </button>
-                                            </div>
-
-                                            {appearance.transitOverlay && (
-                                                <div className="pt-2.5 border-t border-black/5 dark:border-white/5 space-y-3 animate-fade-in">
-                                                    <div>
-                                                        <div className="flex items-center justify-between text-2xs font-bold text-light-text dark:text-dark-text mb-1">
-                                                            <span>Transit Layer Opacity</span>
-                                                            <span className="text-emerald-500">{Math.round((appearance.transitOverlayOpacity || 0.75) * 100)}%</span>
-                                                        </div>
-                                                        <input
-                                                            type="range"
-                                                            min="0.1"
-                                                            max="1.0"
-                                                            step="0.05"
-                                                            value={appearance.transitOverlayOpacity || 0.75}
-                                                            onChange={(e) => handleUpdateAppearance({ ...appearance, transitOverlayOpacity: parseFloat(e.target.value) })}
-                                                            className="w-full accent-emerald-500 cursor-pointer h-1.5 bg-black/10 dark:bg-white/10 rounded-lg"
-                                                        />
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Satellite Clouds (NOAA nowCOAST Global Longwave) */}
-                                        <div className="p-4 rounded-2xl bg-white/40 dark:bg-white/[0.03] backdrop-blur-sm border border-black/5 dark:border-white/5 space-y-3">
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <h4 className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
-                                                        <span>Satellite Clouds</span>
-                                                        {appearance.weatherClouds && (
-                                                            <span className="flex items-center gap-1 px-2 py-0.5 text-2xs font-bold rounded-full bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30">
-                                                                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-                                                                NOAA nowCOAST
-                                                            </span>
-                                                        )}
-                                                    </h4>
-                                                    <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5">Real-time global infrared cloud tops</p>
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleUpdateAppearance({ ...appearance, weatherClouds: !appearance.weatherClouds })}
-                                                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-black/10 dark:border-white/15 transition-all duration-200 ease-in-out backdrop-blur-md ${appearance.weatherClouds
-                                                            ? 'bg-cyan-500/85 dark:bg-cyan-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_10px_rgba(6,182,212,0.3)]'
-                                                            : 'bg-black/15 dark:bg-white/15 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]'
-                                                        }`}
-                                                >
-                                                    <span
-                                                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-white/95 shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.8)] ring-0 transition duration-200 ease-in-out ${appearance.weatherClouds ? 'translate-x-5' : 'translate-x-0'
-                                                            }`}
-                                                    />
-                                                </button>
-                                            </div>
-
-                                            {appearance.weatherClouds && (
-                                                <div className="pt-2.5 border-t border-black/5 dark:border-white/5 space-y-3 animate-fade-in">
-                                                    <div>
-                                                        <div className="flex items-center justify-between text-2xs font-bold text-light-text dark:text-dark-text mb-1">
-                                                            <span>Cloud Layer Opacity</span>
-                                                            <span className="text-cyan-500">{Math.round((appearance.weatherCloudsOpacity || 0.75) * 100)}%</span>
-                                                        </div>
-                                                        <input
-                                                            type="range"
-                                                            min="0.2"
-                                                            max="1.0"
-                                                            step="0.05"
-                                                            value={appearance.weatherCloudsOpacity || 0.75}
-                                                            onChange={(e) => handleUpdateAppearance({ ...appearance, weatherCloudsOpacity: parseFloat(e.target.value) })}
-                                                            className="w-full accent-cyan-500 cursor-pointer h-1.5 bg-black/10 dark:bg-white/10 rounded-lg"
-                                                        />
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* TAB 4: FILTERS & TIMELINE - EMERALD ACCENT */}
-                        {activeSidebarTab === 'filters' && (
-                            <div className="space-y-5">
-                                {/* Status Filter */}
-                                <div>
-                                    <label className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase block mb-2">
-                                        Trip Status
-                                    </label>
-                                    <div className="grid grid-cols-4 gap-1.5">
-                                        {[
-                                            { id: 'all', label: 'All' },
-                                            { id: 'Past', label: 'Past' },
-                                            { id: 'Upcoming', label: 'Upcoming' },
-                                            { id: 'Planning', label: 'Planning' }
-                                        ].map((s) => (
-                                            <button
-                                                key={s.id}
-                                                onClick={() => setStatusFilter(s.id as any)}
-                                                className={`py-2 rounded-xl text-xs font-semibold tracking-wide transition-all duration-150 text-center cursor-pointer active:scale-[0.98] ${statusFilter === s.id
-                                                        ? 'bg-emerald-500/20 dark:bg-emerald-500/30 backdrop-blur-md text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-500/40 dark:border-emerald-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(16,185,129,0.15)]'
-                                                        : 'bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm border border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
-                                                    }`}
-                                                style={statusFilter === s.id ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
-                                            >
-                                                {s.label}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Year Filter */}
-                                <div>
-                                    <label className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase block mb-2">
-                                        Operation Year
-                                    </label>
-                                    <LiquidGlassSelect
-                                        value={yearFilter}
-                                        onChange={setYearFilter}
-                                        options={[
-                                            { value: 'all', label: 'All Years' },
-                                            ...years.map(y => ({ value: y, label: y }))
-                                        ]}
-                                        placeholder="All Years"
-                                        icon={Calendar}
-                                        fullWidth
-                                    />
-                                </div>
-
-                                {/* Departure Station */}
-                                <div>
-                                    <label className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase block mb-2">
-                                        Departure Hub
-                                    </label>
-                                    <LiquidGlassMultiSelect
-                                        placeholder="Any Departure Hub"
-                                        options={uniqueAirports.origins}
-                                        value={depFilter}
-                                        onChange={setDepFilter}
-                                        icon={Plane}
-                                        searchable
-                                        fullWidth
-                                    />
-                                </div>
-
-                                {/* Arrival Station */}
-                                <div>
-                                    <label className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase block mb-2">
-                                        Arrival Hub
-                                    </label>
-                                    <LiquidGlassMultiSelect
-                                        placeholder="Any Arrival Hub"
-                                        options={uniqueAirports.destinations}
-                                        value={arrFilter}
-                                        onChange={setArrFilter}
-                                        icon={MapPin}
-                                        searchable
-                                        fullWidth
-                                    />
-                                </div>
-
-                                {/* Date Range */}
-                                <div>
-                                    <label className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase block mb-2">
-                                        Date Range
-                                    </label>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div>
-                                            <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold block mb-1">From</span>
-                                            <input
-                                                type="date"
-                                                value={dateFrom}
-                                                onChange={(e) => setDateFrom(e.target.value)}
-                                                className="w-full h-10 sm:h-11 px-3 text-xs font-bold bg-black/5 dark:bg-white/5 text-light-text dark:text-dark-text border border-black/5 dark:border-white/10 rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all cursor-pointer"
-                                            />
-                                        </div>
-                                        <div>
-                                            <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold block mb-1">To</span>
-                                            <input
-                                                type="date"
-                                                value={dateTo}
-                                                onChange={(e) => setDateTo(e.target.value)}
-                                                className="w-full h-10 sm:h-11 px-3 text-xs font-bold bg-black/5 dark:bg-white/5 text-light-text dark:text-dark-text border border-black/5 dark:border-white/10 rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all cursor-pointer"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Reset Active Filters Action */}
-                                {(statusFilter !== 'all' || yearFilter !== 'all' || depFilter.length > 0 || arrFilter.length > 0 || dateFrom || dateTo) && (
+            {/* 4. UNIFIED MISSION CONTROL DRAWER */}
+            <MapAppearanceModal
+                isOpen={isSidebarOpen}
+                onClose={() => setIsSidebarOpen(false)}
+                settings={appearance}
+                onChangeSettings={handleUpdateAppearance}
+                onResetCamera={handleRefresh}
+                viewMode={viewMode}
+                onSelectViewMode={handleSelectViewMode}
+                showIndependentFlights={showIndependentFlights}
+                onToggleIndependentFlights={() => setShowIndependentFlights(!showIndependentFlights)}
+                showLandSeaRoutes={showLandSeaRoutes}
+                onToggleLandSeaRoutes={() => setShowLandSeaRoutes(!showLandSeaRoutes)}
+                animateRoutes={animateRoutes}
+                onToggleAnimateRoutes={() => setAnimateRoutes(!animateRoutes)}
+                clusterMode={clusterMode}
+                onToggleClusterMode={() => setClusterMode(!clusterMode)}
+                showRoadTracing={showRoadTracing}
+                onToggleRoadTracing={() => {
+                    const newVal = !(showRoadTracing || appearance.routeTracing !== false);
+                    setShowRoadTracing(newVal);
+                    localStorage.setItem('wandergrid_road_tracing', String(newVal));
+                    handleUpdateAppearance({ ...appearance, routeTracing: newVal });
+                }}
+                filterTabContent={
+                    <div className="space-y-5">
+                        {/* Status Filter */}
+                        <div>
+                            <label className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase block mb-2">
+                                Trip Status
+                            </label>
+                            <div className="grid grid-cols-4 gap-1.5">
+                                {[
+                                    { id: 'all', label: 'All' },
+                                    { id: 'Past', label: 'Past' },
+                                    { id: 'Upcoming', label: 'Upcoming' },
+                                    { id: 'Planning', label: 'Planning' }
+                                ].map((s) => (
                                     <button
-                                        type="button"
-                                        onClick={() => {
-                                            setStatusFilter('all');
-                                            setYearFilter('all');
-                                            setDepFilter([]);
-                                            setArrFilter([]);
-                                            setDateFrom('');
-                                            setDateTo('');
-                                        }}
-                                        className="w-full py-2.5 rounded-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98]"
+                                        key={s.id}
+                                        onClick={() => setStatusFilter(s.id as any)}
+                                        className={`py-2 rounded-xl text-xs font-semibold tracking-wide transition-all duration-150 text-center cursor-pointer active:scale-[0.98] ${statusFilter === s.id
+                                                ? 'bg-emerald-500/20 dark:bg-emerald-500/30 backdrop-blur-md text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-500/40 dark:border-emerald-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(16,185,129,0.15)]'
+                                                : 'bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm border border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
+                                            }`}
+                                        style={statusFilter === s.id ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
                                     >
-                                        <X className="w-3.5 h-3.5" weight="bold" />
-                                        <span>Reset All Filters</span>
+                                        {s.label}
                                     </button>
-                                )}
+                                ))}
                             </div>
+                        </div>
+
+                        {/* Year Filter */}
+                        <div>
+                            <label className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase block mb-2">
+                                Operation Year
+                            </label>
+                            <LiquidGlassSelect
+                                value={yearFilter}
+                                onChange={setYearFilter}
+                                options={[
+                                    { value: 'all', label: 'All Years' },
+                                    ...years.map(y => ({ value: y, label: y }))
+                                ]}
+                                placeholder="All Years"
+                                icon={Calendar}
+                                fullWidth
+                            />
+                        </div>
+
+                        {/* Departure Station */}
+                        <div>
+                            <label className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase block mb-2">
+                                Departure Hub
+                            </label>
+                            <LiquidGlassMultiSelect
+                                placeholder="Any Departure Hub"
+                                options={uniqueAirports.origins}
+                                value={depFilter}
+                                onChange={setDepFilter}
+                                icon={Plane}
+                                searchable
+                                fullWidth
+                            />
+                        </div>
+
+                        {/* Arrival Station */}
+                        <div>
+                            <label className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase block mb-2">
+                                Arrival Hub
+                            </label>
+                            <LiquidGlassMultiSelect
+                                placeholder="Any Arrival Hub"
+                                options={uniqueAirports.destinations}
+                                value={arrFilter}
+                                onChange={setArrFilter}
+                                icon={MapPin}
+                                searchable
+                                fullWidth
+                            />
+                        </div>
+
+                        {/* Date Range */}
+                        <div>
+                            <label className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase block mb-2">
+                                Date Range
+                            </label>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold block mb-1">From</span>
+                                    <input
+                                        type="date"
+                                        value={dateFrom}
+                                        onChange={(e) => setDateFrom(e.target.value)}
+                                        className="w-full h-10 sm:h-11 px-3 text-xs font-bold bg-black/5 dark:bg-white/5 text-light-text dark:text-dark-text border border-black/5 dark:border-white/10 rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all cursor-pointer"
+                                    />
+                                </div>
+                                <div>
+                                    <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold block mb-1">To</span>
+                                    <input
+                                        type="date"
+                                        value={dateTo}
+                                        onChange={(e) => setDateTo(e.target.value)}
+                                        className="w-full h-10 sm:h-11 px-3 text-xs font-bold bg-black/5 dark:bg-white/5 text-light-text dark:text-dark-text border border-black/5 dark:border-white/10 rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all cursor-pointer"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Reset Active Filters Action */}
+                        {(statusFilter !== 'all' || yearFilter !== 'all' || depFilter.length > 0 || arrFilter.length > 0 || dateFrom || dateTo) && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setStatusFilter('all');
+                                    setYearFilter('all');
+                                    setDepFilter([]);
+                                    setArrFilter([]);
+                                    setDateFrom('');
+                                    setDateTo('');
+                                }}
+                                className="w-full py-2.5 rounded-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98]"
+                            >
+                                <X className="w-3.5 h-3.5" weight="bold" />
+                                <span>Reset All Filters</span>
+                            </button>
                         )}
                     </div>
-                </GlassPanel>
-            </div>
+                }
+            />
         </div>
     );
 };
