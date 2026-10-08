@@ -263,9 +263,16 @@ const SortableLegCard: React.FC<SortableLegCardProps> = ({
                                                         ${seg.originalTransport.cost}
                                                     </span>
                                                 )}
+                                                {seg.originalTransport.distance !== undefined && seg.originalTransport.distance > 0 && (
+                                                    <span className="px-2.5 py-1 rounded-full text-2xs font-mono font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                                                        {seg.originalTransport.distance.toLocaleString()} km
+                                                        {seg.originalTransport.duration ? ` · ${Math.floor(seg.originalTransport.duration / 60)}h ${seg.originalTransport.duration % 60}m` : ''}
+                                                    </span>
+                                                )}
                                             </div>
                                         )}
                                     </div>
+
 
                                     {/* Road Trip Pit Stops summary if available */}
                                     {seg.originalTransport?.waypoints && seg.originalTransport.waypoints.length > 0 && (

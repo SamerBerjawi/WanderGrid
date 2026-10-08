@@ -12,8 +12,10 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const { fetchUpstream } = require('./upstream');
 const { resolveIcaoCallsign } = require('./carrierMapping');
+const { handleRouteProxy } = require('./routeProxy');
 
 const pbkdf2Async = util.promisify(crypto.pbkdf2);
+
 
 
 // --- Centralized Structured JSON Logger ---
@@ -1345,9 +1347,15 @@ app.get('/api/proxy/adsbdb/aircraft/:hexOrReg', async (req, res) => {
     }
 });
 
+// ==========================================
+// P-02: REAL ROAD ROUTING PROXY (FOSSGIS / OSRM)
+// ==========================================
+app.get('/api/proxy/route', handleRouteProxy);
+app.get('/api/route', handleRouteProxy);
 
 // ==========================================
 // OPENSKY NETWORK LIVE TELEMETRY PROXY (FREE / KEYLESS)
+
 // ==========================================
 app.get('/api/proxy/opensky/states', async (req, res) => {
     const { icao24, callsign } = req.query;

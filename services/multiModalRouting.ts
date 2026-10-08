@@ -125,8 +125,47 @@ export async function fetchRailGeometry(
     return null;
 }
 
+export interface RouteResult {
+    geometry: [number, number, number][];
+    distanceKm: number;
+    durationMin: number;
+    attribution?: string;
+    fixMapUrl?: string;
+}
+
 /**
- * Fetches highway road geometry from OSRM.
+ * Real routing via backend FOSSGIS / OSRM proxy (P-02)
+ */
+export async function fetchRoute(
+    profile: 'car' | 'bike' | 'foot' = 'car',
+    coords: [number, number][] // [[lng, lat], ...]
+): Promise<RouteResult | null> {
+    if (!coords || coords.length < 2) return null;
+    const coordsStr = coords.map(([lng, lat]) => `${lng},${lat}`).join(';');
+    try {
+        const res = await fetch(`/api/proxy/route?profile=${encodeURIComponent(profile)}&coords=${encodeURIComponent(coordsStr)}`);
+        if (!res.ok) {
+            console.warn(`[Route] Backend route proxy error HTTP ${res.status}`);
+            return null;
+        }
+        const data = await res.json();
+        if (data.ok && Array.isArray(data.geometry)) {
+            return {
+                geometry: data.geometry,
+                distanceKm: data.distanceKm,
+                durationMin: data.durationMin,
+                attribution: data.attribution,
+                fixMapUrl: data.fixMapUrl
+            };
+        }
+    } catch (err) {
+        console.warn('[Route] Failed to fetch route from proxy:', err);
+    }
+    return null;
+}
+
+/**
+ * Fetches highway road geometry from backend routing proxy.
  */
 export async function fetchHighwayGeometry(
     startLat: number,
@@ -134,28 +173,13 @@ export async function fetchHighwayGeometry(
     endLat: number,
     endLng: number
 ): Promise<[number, number, number][] | null> {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
-
-    try {
-        const url = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?overview=full&geometries=geojson`;
-        const res = await fetch(url, { signal: controller.signal });
-        clearTimeout(timeoutId);
-
-        if (res.ok) {
-            const data = await res.json();
-            if (data?.routes?.[0]?.geometry?.coordinates) {
-                const coords: [number, number][] = data.routes[0].geometry.coordinates;
-                return coords.map(c => [c[0], c[1], 0]);
-            }
-        }
-    } catch (e) {
-    } finally {
-        clearTimeout(timeoutId);
+    const route = await fetchRoute('car', [[startLng, startLat], [endLng, endLat]]);
+    if (route?.geometry) {
+        return route.geometry;
     }
-
     return null;
 }
+
 
 /**
  * Unified Multi-Modal Geometry Dispatcher (Road & Rail only)

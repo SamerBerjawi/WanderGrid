@@ -11,8 +11,10 @@ import { INPUT_BASE_STYLE } from '../constants';
 import { Trip, Transport, TransportMode, RoadTripWaypoint } from '../types';
 import { dataService } from '../services/mockDb';
 import { motion, AnimatePresence } from 'motion/react';
-import { searchLocations } from '../services/geocoding';
+import { searchLocations, getCoordinates } from '../services/geocoding';
+import { fetchRoute } from '../services/multiModalRouting';
 import { formatDate, formatCurrency } from '../utils/formatters';
+
 import { EmptyState } from '../components/EmptyState';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { TooltipContent } from '../components/TooltipContent';
@@ -200,8 +202,13 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
   const [formCost, setFormCost] = useState('');
   const [formNotes, setFormNotes] = useState('');
   const [formTripId, setFormTripId] = useState('unassigned');
+  const [formDistance, setFormDistance] = useState('');
+  const [isDistanceEstimated, setIsDistanceEstimated] = useState(false);
+  const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
+  const [routeAttribution, setRouteAttribution] = useState<string | null>(null);
   
   // Waypoints in current form
+
   const [formWaypoints, setFormWaypoints] = useState<RoadTripWaypoint[]>([]);
   const [newWaypointName, setNewWaypointName] = useState('');
   const [newWaypointType, setNewWaypointType] = useState<RoadTripWaypoint['type']>('Stop');
@@ -627,6 +634,9 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
     setFormNotes('');
     setFormTripId('unassigned');
     setFormWaypoints([]);
+    setFormDistance('');
+    setIsDistanceEstimated(false);
+    setRouteAttribution(null);
     
     setNewWaypointName('');
     setNewWaypointType('Stop');
@@ -651,12 +661,84 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
     setFormNotes(tr.notes || '');
     setFormTripId(tr.tripId || 'unassigned');
     setFormWaypoints(tr.waypoints || []);
+    setFormDistance(tr.distance ? String(tr.distance) : '');
+    setIsDistanceEstimated(false);
+    setRouteAttribution(null);
     
     setNewWaypointName('');
     setNewWaypointType('Stop');
     setNewWaypointNotes('');
     
     setIsModalOpen(true);
+  };
+
+  const handleCalculateRoute = async () => {
+    if (!formOrigin.trim() || !formDestination.trim()) {
+      alert("Please enter origin and destination cities first.");
+      return;
+    }
+    setIsCalculatingRoute(true);
+    try {
+      const [originCoord, destCoord] = await Promise.all([
+        getCoordinates(formOrigin),
+        getCoordinates(formDestination)
+      ]);
+
+      if (!originCoord || !destCoord) {
+        throw new Error("Could not find geographic coordinates for origin or destination.");
+      }
+
+      const coords: [number, number][] = [[originCoord.lng, originCoord.lat]];
+
+      for (const wp of formWaypoints) {
+        if (wp.coordinates?.lat && wp.coordinates?.lng) {
+          coords.push([wp.coordinates.lng, wp.coordinates.lat]);
+        } else if (wp.name) {
+          const wpCoord = await getCoordinates(wp.name);
+          if (wpCoord) coords.push([wpCoord.lng, wpCoord.lat]);
+        }
+      }
+
+
+      coords.push([destCoord.lng, destCoord.lat]);
+
+      const profile = (formMode === 'Car Rental' || formMode === 'Personal Car' || formMode === 'Bus') ? 'car' : 'car';
+      const route = await fetchRoute(profile, coords);
+
+      if (route && route.distanceKm > 0) {
+        setFormDistance(String(route.distanceKm));
+        setIsDistanceEstimated(false);
+        setRouteAttribution(route.attribution || '© OpenStreetMap contributors · routing by FOSSGIS');
+
+        if (formDepDate && formDepTime && route.durationMin > 0) {
+          const depDateObj = new Date(`${formDepDate}T${formDepTime}`);
+          const arrDateObj = new Date(depDateObj.getTime() + route.durationMin * 60000);
+          setFormArrDate(arrDateObj.toISOString().split('T')[0]);
+          setFormArrTime(arrDateObj.toTimeString().substring(0, 5));
+        }
+      } else {
+        throw new Error("Routing service did not return a valid route.");
+      }
+    } catch (err: any) {
+      console.warn("[RoadTrips] Routing calculation fallback to estimation:", err);
+      const speeds: Record<string, number> = {
+        'Train': 120, 'Bus': 70, 'Car Rental': 90, 'Personal Car': 95, 'Cruise': 30, 'Ferry': 40
+      };
+      let durationMinutes = 0;
+      if (formDepDate && formArrDate) {
+        const dep = new Date(`${formDepDate}T${formDepTime || '00:00'}`);
+        const arr = new Date(`${formArrDate}T${formArrTime || '00:00'}`);
+        const diffMs = arr.getTime() - dep.getTime();
+        if (diffMs > 0) durationMinutes = Math.floor(diffMs / 60000);
+      }
+      const avgSpeed = speeds[formMode] || 80;
+      const fallbackDist = durationMinutes > 0 ? Math.round((durationMinutes / 60) * avgSpeed) : 100;
+      setFormDistance(String(fallbackDist));
+      setIsDistanceEstimated(true);
+      setRouteAttribution(null);
+    } finally {
+      setIsCalculatingRoute(false);
+    }
   };
 
   const handleSaveTransport = async (e: React.FormEvent) => {
@@ -685,6 +767,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
       };
       const avgSpeed = speeds[formMode] || 80;
       const estimatedDistance = durationMinutes > 0 ? Math.round((durationMinutes / 60) * avgSpeed) : 0;
+      const finalDistance = formDistance ? parseFloat(formDistance) : estimatedDistance;
 
       const transportPayload: any = {
         id: editingTransport ? editingTransport.id : `land-${crypto.randomUUID()}`,
@@ -703,7 +786,8 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
         notes: formNotes.trim(),
         waypoints: formWaypoints,
         duration: durationMinutes,
-        distance: estimatedDistance,
+        distance: finalDistance,
+
         tripId: isLinkedToTrip ? formTripId : undefined,
         tripName: isLinkedToTrip ? targetTrip?.name : undefined
       };
@@ -1601,6 +1685,64 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
               value={formConfirmationCode}
               onChange={e => setFormConfirmationCode(e.target.value)}
             />
+          </div>
+
+          {/* Real Routing & Distance Calculation */}
+          <div className="p-5 rounded-3xl bg-white/40 dark:bg-white/[0.03] border border-black/5 dark:border-white/5 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary flex items-center gap-1.5">
+                <Navigation className="w-4 h-4 text-primary-500" />
+                Distance & Routing Intelligence
+              </span>
+              {formDistance && (
+                <span className={`px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider ${
+                  isDistanceEstimated 
+                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                    : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                }`}>
+                  {isDistanceEstimated ? 'Estimated' : 'OSRM Verified'}
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+              <div className="md:col-span-2">
+                <Input 
+                  label="Distance (km)"
+                  placeholder="e.g. 465"
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={formDistance}
+                  onChange={e => {
+                    setFormDistance(e.target.value);
+                    setIsDistanceEstimated(false);
+                  }}
+                />
+              </div>
+              <Button
+                type="button"
+                variant="primary"
+                onClick={handleCalculateRoute}
+                disabled={isCalculatingRoute || !formOrigin.trim() || !formDestination.trim()}
+                className="min-h-[44px] w-full flex items-center justify-center gap-1.5"
+              >
+                <Navigation className="w-4 h-4" />
+                <span>{isCalculatingRoute ? 'Routing...' : 'Calculate Route'}</span>
+              </Button>
+            </div>
+            {routeAttribution && (
+              <div className="flex items-center justify-between text-2xs text-light-text-secondary dark:text-dark-text-secondary pt-1">
+                <span>{routeAttribution}</span>
+                <a 
+                  href="https://www.openstreetmap.org/fixthemap" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="text-primary-500 hover:underline inline-flex items-center gap-0.5"
+                >
+                  Fix the map
+                </a>
+              </div>
+            )}
           </div>
 
           {/* Associated Trip linking dropdown */}

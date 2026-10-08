@@ -67,3 +67,39 @@ Each item is independently isolated with its own feature flag, branch/commit his
 
 ---
 
+## P-02 · Real Road Routing → Real Distance & Duration
+
+- **Status**: Done
+- **Branch**: `gev/P02-real-routing`
+- **Commit**: `[GEV-P02]`
+- **Feature Flag**: `GEV_P02_ROUTING` (default: ON)
+- **Files Added**:
+  - `backend_files/routeProxy.js`
+  - `backend_files/test/route.test.js`
+- **Files Modified**:
+  - `backend_files/server.js`
+  - `services/multiModalRouting.ts`
+  - `views/RoadTrips.tsx`
+  - `components/LocationManager.tsx`
+- **Endpoints**:
+  - `GET /api/proxy/route` (FOSSGIS / OSRM proxy, 10 min cache, 1 req/s upstream rate gate, max leg 600km, max total 2500km, 8MB maxBytes, 12s timeout)
+  - `GET /api/route` (alias)
+- **Env Vars**: `VITE_FF_GEV_P02_ROUTING`
+- **Dependencies Added**: None
+- **DB Changes**: None
+- **VERIFY Results**:
+  - Paris → Lyon road route verified: OSRM returns code "Ok", ~465.8 km distance, ~4.9h duration.
+  - Public demo server (`router.project-osrm.org`) direct browser calls removed; routed through backend proxy.
+  - In-flight request coalescing verified via P-00.
+  - Haversine bounds validation verified.
+  - Road Trips add/edit form features "Calculate Route" with real distance + arrival time and "OSRM Verified" badge, falling back to "Estimated".
+  - Attribution added: `© OpenStreetMap contributors · routing by FOSSGIS` with "Fix the map" link.
+- **Exact Removal Recipe**:
+  ```bash
+  rm backend_files/routeProxy.js backend_files/test/route.test.js
+  git revert <sha>
+  ```
+
+---
+
+
