@@ -2621,6 +2621,66 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         isDark
     ]);
 
+    // P-04d: 3D Terrain Elevation Mesh (AWS Terrarium DEM)
+    const prevTerrain3dRef = useRef<boolean>(false);
+    useEffect(() => {
+        if (activeAppearance.terrain3d && !prevTerrain3dRef.current && FEATURE_FLAGS.GEV_P04D_TERRAIN) {
+            const map = mapRef.current;
+            if (map && map.getPitch() < 15) {
+                map.easeTo({ pitch: 45, duration: 800 });
+            }
+        }
+        prevTerrain3dRef.current = Boolean(activeAppearance.terrain3d);
+    }, [activeAppearance.terrain3d]);
+
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !(map as any).setTerrain) return;
+
+        const syncTerrain = () => {
+            if (!map.isStyleLoaded()) return;
+
+            const isTerrain3dEnabled = Boolean(FEATURE_FLAGS.GEV_P04D_TERRAIN && activeAppearance.terrain3d);
+            const exaggeration = activeAppearance.terrain3dExaggeration ?? 1.0;
+            const terrainSourceId = 'aws-terrarium-dem-source';
+
+            try {
+                if (isTerrain3dEnabled) {
+                    if (!map.getSource(terrainSourceId)) {
+                        map.addSource(terrainSourceId, {
+                            type: 'raster-dem',
+                            tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+                            encoding: 'terrarium',
+                            tileSize: 256,
+                            maxzoom: 15,
+                            attribution: 'Mapzen / AWS Elevation Tiles'
+                        });
+                    }
+                    (map as any).setTerrain({
+                        source: terrainSourceId,
+                        exaggeration: exaggeration
+                    });
+                } else {
+                    (map as any).setTerrain(null);
+                    if (map.getSource(terrainSourceId)) {
+                        map.removeSource(terrainSourceId);
+                    }
+                }
+            } catch (err) {
+                console.warn('[DeckFlightMap] Failed to sync 3D terrain:', err);
+            }
+        };
+
+        if (map.isStyleLoaded()) {
+            syncTerrain();
+        }
+
+        map.on('styledata', syncTerrain);
+        return () => {
+            map.off('styledata', syncTerrain);
+        };
+    }, [activeAppearance.terrain3d, activeAppearance.terrain3dExaggeration, currentLayer]);
+
     const prevProjectionRef = useRef<string>(effectiveProjection);
 
     // Synchronize Projection dynamically (Flat Mercator vs 3D Globe)

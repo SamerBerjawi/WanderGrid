@@ -211,5 +211,33 @@ Each item is independently isolated with its own feature flag, branch/commit his
   git revert <sha>
   ```
 
+---
+
+## P-04d · 3D Terrain + Elevation via AWS Terrarium DEM
+
+- **Status**: Done
+- **Branch**: `gev/P04d-terrain`
+- **Commit**: `[GEV-P04d]`
+- **Feature Flag**: `GEV_P04D_TERRAIN` (default: OFF, user opt-in)
+- **Files Added**: None
+- **Files Modified**:
+  - `components/DeckFlightMap.tsx` (added `aws-terrarium-dem-source` raster-dem source, `map.setTerrain()` sync, auto-pitch tilt on activation)
+  - `components/MapAppearanceModal.tsx` (added 3D Terrain Mesh toggle and exaggeration slider in Tab 3 Overlays)
+- **Endpoints**: External AWS Elevation Tiles (`https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png`)
+- **Env Vars**: `VITE_FF_GEV_P04D_TERRAIN`
+- **Dependencies Added**: None (native MapLibre GL 6.4.1 `setTerrain` support)
+- **DB Changes**: None
+- **VERIFY Results**:
+  - MapLibre GL 6.4.1 raster-dem source with `encoding: 'terrarium'` successfully loads elevation data.
+  - Calling `map.setTerrain({ source, exaggeration })` renders 3D physical elevation topography.
+  - Auto-tilts camera pitch to 45° on first activation if current view is flat.
+  - Smooth removal via `map.setTerrain(null)` and source cleanup when disabled.
+  - Exaggeration slider (0.5x - 2.5x) updates elevation multiplier dynamically.
+- **Exact Removal Recipe**:
+  ```bash
+  git revert <sha>
+  ```
+
+
 
 
