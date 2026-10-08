@@ -641,7 +641,12 @@ export interface DeckFlightMapProps {
 }
 
 const syncAirportOverlayOnMap = (map: maplibregl.Map, isDetailedAirports: boolean, isDark: boolean) => {
-    if (!map.isStyleLoaded()) return;
+    if (!map.isStyleLoaded()) {
+        const retry = () => syncAirportOverlayOnMap(map, isDetailedAirports, isDark);
+        map.once('styledata', retry);
+        map.once('load', retry);
+        return;
+    }
     if (isDetailedAirports) {
         if (!map.getSource(AIRPORT_SOURCE_ID)) {
             try {
@@ -659,6 +664,12 @@ const syncAirportOverlayOnMap = (map: maplibregl.Map, isDetailedAirports: boolea
                     } catch (e) {
                         console.warn(`[DeckFlightMap] error adding airport layer ${layer.id}:`, e);
                     }
+                } else if (layer.paint) {
+                    Object.entries(layer.paint).forEach(([prop, val]) => {
+                        try {
+                            map.setPaintProperty(layer.id, prop as any, val);
+                        } catch {}
+                    });
                 }
             });
         }
@@ -1894,63 +1905,61 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 })
             );
 
-            // 6.6 Live Smooth Flight Motion Interpolation (Aircraft Beacon & Position Tracker)
-            if (activeAppearance.flightInterpolation !== false) {
-                const activeAircraftNodes: any[] = [];
-                animatedTripPaths.forEach((trip: any, idx: number) => {
-                    const ts = trip.timestamps;
-                    const pts = trip.path;
-                    if (!ts || !pts || ts.length < 2) return;
+            // 6.6 Live Smooth Flight Motion Interpolation (Default Aircraft Beacon & Position Tracker for Comet Mode)
+            const activeAircraftNodes: any[] = [];
+            animatedTripPaths.forEach((trip: any, idx: number) => {
+                const ts = trip.timestamps;
+                const pts = trip.path;
+                if (!ts || !pts || ts.length < 2) return;
 
-                    for (let i = 0; i < ts.length - 1; i++) {
-                        if (currentTime >= ts[i] && currentTime <= ts[i + 1]) {
-                            const ratio = (currentTime - ts[i]) / (ts[i + 1] - ts[i] || 1);
-                            const lng = pts[i][0] + (pts[i + 1][0] - pts[i][0]) * ratio;
-                            const lat = pts[i][1] + (pts[i + 1][1] - pts[i][1]) * ratio;
-                            activeAircraftNodes.push({
-                                id: `plane-${idx}`,
-                                position: [lng, lat],
-                                color: trip.color,
-                                corridorId: trip.corridorId
-                            });
-                            break;
-                        }
+                for (let i = 0; i < ts.length - 1; i++) {
+                    if (currentTime >= ts[i] && currentTime <= ts[i + 1]) {
+                        const ratio = (currentTime - ts[i]) / (ts[i + 1] - ts[i] || 1);
+                        const lng = pts[i][0] + (pts[i + 1][0] - pts[i][0]) * ratio;
+                        const lat = pts[i][1] + (pts[i + 1][1] - pts[i][1]) * ratio;
+                        activeAircraftNodes.push({
+                            id: `plane-${idx}`,
+                            position: [lng, lat],
+                            color: trip.color,
+                            corridorId: trip.corridorId
+                        });
+                        break;
                     }
-                });
-
-                if (activeAircraftNodes.length > 0) {
-                    layers.push(
-                        new ScatterplotLayer({
-                            id: 'interpolated-aircraft-glow',
-                            data: activeAircraftNodes,
-                            getPosition: (d: any) => d.position,
-                            getFillColor: (d: any) => [d.color[0], d.color[1], d.color[2], 120],
-                            getRadius: 7,
-                            radiusUnits: 'pixels',
-                            pickable: false,
-                            extensions: [globeHorizonCullExtension]
-                        }),
-                        new ScatterplotLayer({
-                            id: 'interpolated-aircraft-nodes',
-                            data: activeAircraftNodes,
-                            getPosition: (d: any) => d.position,
-                            getFillColor: [255, 255, 255, 255],
-                            getLineColor: (d: any) => [d.color[0], d.color[1], d.color[2], 255],
-                            getRadius: 3.5,
-                            radiusUnits: 'pixels',
-                            stroked: true,
-                            lineWidthUnits: 'pixels',
-                            getLineWidth: 1.5,
-                            pickable: true,
-                            onHover: (info: any) => {
-                                if (info.object) {
-                                    setHoveredRouteKey(info.object.corridorId || null);
-                                }
-                            },
-                            extensions: [globeHorizonCullExtension]
-                        })
-                    );
                 }
+            });
+
+            if (activeAircraftNodes.length > 0) {
+                layers.push(
+                    new ScatterplotLayer({
+                        id: 'interpolated-aircraft-glow',
+                        data: activeAircraftNodes,
+                        getPosition: (d: any) => d.position,
+                        getFillColor: (d: any) => [d.color[0], d.color[1], d.color[2], 120],
+                        getRadius: 7,
+                        radiusUnits: 'pixels',
+                        pickable: false,
+                        extensions: [globeHorizonCullExtension]
+                    }),
+                    new ScatterplotLayer({
+                        id: 'interpolated-aircraft-nodes',
+                        data: activeAircraftNodes,
+                        getPosition: (d: any) => d.position,
+                        getFillColor: [255, 255, 255, 255],
+                        getLineColor: (d: any) => [d.color[0], d.color[1], d.color[2], 255],
+                        getRadius: 3.5,
+                        radiusUnits: 'pixels',
+                        stroked: true,
+                        lineWidthUnits: 'pixels',
+                        getLineWidth: 1.5,
+                        pickable: true,
+                        onHover: (info: any) => {
+                            if (info.object) {
+                                setHoveredRouteKey(info.object.corridorId || null);
+                            }
+                        },
+                        extensions: [globeHorizonCullExtension]
+                    })
+                );
             }
         }
 
@@ -2433,13 +2442,14 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     const firstOverlay = existingLayers.find(l => 
                         overlayLayerIds.includes(l.id) || l.id.startsWith('airport-overlay-')
                     );
+                    const beforeId = firstOverlay?.id || (existingLayers.length > 0 ? existingLayers[0].id : undefined);
                     map.addLayer({
                         id: 'raster-basemap-layer',
                         type: 'raster',
                         source: basemapSourceId,
                         minzoom: 0,
                         maxzoom: 24
-                    }, firstOverlay?.id);
+                    }, beforeId);
 
                     lastAppliedStyleKeyRef.current = nextStyleKey;
                     map.triggerRepaint();
@@ -2719,6 +2729,11 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 }
 
                 if (!map.getLayer(radarLayerId)) {
+                    const beforeId = map.getLayer('airport-overlay-taxiway-outline')
+                        ? 'airport-overlay-taxiway-outline'
+                        : map.getLayer('airport-overlay-apron')
+                        ? 'airport-overlay-apron'
+                        : undefined;
                     map.addLayer({
                         id: radarLayerId,
                         type: 'raster',
@@ -2726,7 +2741,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         paint: {
                             'raster-opacity': radarOpacity
                         }
-                    });
+                    }, beforeId);
                 } else {
                     map.setPaintProperty(radarLayerId, 'raster-opacity', radarOpacity);
                 }

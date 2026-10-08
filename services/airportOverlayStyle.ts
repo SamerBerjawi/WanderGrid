@@ -200,6 +200,8 @@ export const AIRPORT_ICON_DEFINITIONS = [
 export const createAirportOverlaySource = (): SourceSpecification => ({
   type: 'vector',
   url: AIRPORT_PMTILES_URL,
+  minzoom: 9,
+  maxzoom: 14,
   attribution: '© OpenStreetMap contributors',
 });
 

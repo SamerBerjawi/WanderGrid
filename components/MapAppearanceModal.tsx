@@ -957,34 +957,6 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                     <p className="text-xs font-bold">Route Tracing (Road & Rail)</p>
                                                 </div>
                                             </button>
-
-                                            {/* Flight Motion Interpolation */}
-                                            <div className="p-3 rounded-xl bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm border border-black/5 dark:border-white/10 flex items-center justify-between">
-                                                <div>
-                                                    <h4 className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
-                                                        <span>Flight Motion Interpolation</span>
-                                                        {settings.flightInterpolation !== false && (
-                                                            <span className="px-1.5 py-0.2 rounded-full text-2xs font-bold uppercase bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                                                                60 FPS
-                                                            </span>
-                                                        )}
-                                                    </h4>
-                                                    <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5">Smooth dead-reckoning trajectory smoothing</p>
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => updateField('flightInterpolation', settings.flightInterpolation === false ? true : false)}
-                                                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border border-black/10 dark:border-white/15 transition-all duration-200 ease-in-out backdrop-blur-md ${
-                                                        settings.flightInterpolation !== false ? 'bg-indigo-600' : 'bg-black/15 dark:bg-white/15'
-                                                    }`}
-                                                >
-                                                    <span
-                                                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
-                                                            settings.flightInterpolation !== false ? 'translate-x-4' : 'translate-x-0'
-                                                        }`}
-                                                    />
-                                                </button>
-                                            </div>
                                         </div>
 
                                         {/* OpenAIP Aeronautical Vector Charts */}
