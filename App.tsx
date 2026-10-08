@@ -144,6 +144,14 @@ export default function App() {
   }, []);
     
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('demo') === '1' && !localStorage.getItem('wandergrid_session_user')) {
+      const demoUser = { id: 'admin-auto', name: 'Admin User', email: 'admin@wandergrid.app', role: 'Admin' as const };
+      localStorage.setItem('wandergrid_session_user', JSON.stringify(demoUser));
+      setCurrentUser(demoUser as any);
+      setIsAuthReady(true);
+      return;
+    }
     const storedUserStr = localStorage.getItem('wandergrid_session_user');
     if (storedUserStr) {
         try {

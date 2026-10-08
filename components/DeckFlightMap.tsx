@@ -386,6 +386,28 @@ export const getBasemapTileConfig = (
     return { tiles, maxzoom, attribution };
 };
 
+export const computeStyleKey = (
+    layer: string,
+    dark: boolean,
+    cartoKey?: string,
+    proj?: string,
+    airportDetail?: string,
+    openAip?: boolean,
+    openAipKey?: string,
+    openAipGroups?: any
+): string => {
+    return [
+        layer,
+        dark ? 'dark' : 'light',
+        cartoKey || '',
+        proj || 'mercator',
+        airportDetail || '',
+        openAip ? 'openaip' : '',
+        openAipKey || '',
+        JSON.stringify(openAipGroups || [])
+    ].join('|');
+};
+
 // MapLibre Style Specification Generator
 export const createMapLibreStyle = (
     layer: string,
@@ -769,6 +791,12 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
     const baseRequestedLayer = (activeLayerProp as DeckLayerType) || activeAppearance.basemap || 'default';
     const currentLayer = fallbackLayer || baseRequestedLayer;
+
+    const currentLayerRef = useRef(currentLayer);
+    currentLayerRef.current = currentLayer;
+    const isDarkRef = useRef(isDark);
+    isDarkRef.current = isDark;
+    const lastAppliedStyleKeyRef = useRef<string>('');
 
     // Reset fallback on manual basemap/appearance change
     useEffect(() => {
@@ -1998,6 +2026,17 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             activeAppearance.openAipGroups
         );
 
+        lastAppliedStyleKeyRef.current = computeStyleKey(
+            currentLayer,
+            isDark,
+            effectiveCartoKey,
+            effectiveProjection,
+            activeAppearance.airportDetail || '',
+            isOpenAipOverlay,
+            effectiveOpenAipKey || '',
+            activeAppearance.openAipGroups
+        );
+
         const rect = mapContainerRef.current.getBoundingClientRect();
         const width = rect.width || window.innerWidth || 1200;
         const height = rect.height || window.innerHeight || 800;
@@ -2075,6 +2114,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         map.on('error', (e: any) => {
             if (!FEATURE_FLAGS.GEV_P04A_BASEMAP_FALLBACK) return;
             if (hasFallenBackRef.current) return;
+
+            const effectiveLayer = getEffectiveBasemap(currentLayerRef.current, isDarkRef.current);
+            if (effectiveLayer !== 'satellite') return;
 
             const sourceId = String(e?.sourceId || '');
             const errObj = e?.error || {};
@@ -2229,6 +2271,23 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         const isDetailedAirports = activeAppearance.airportDetail === 'detailed';
         const isOpenAipOverlay = Boolean(activeAppearance.openAipOverlay && effectiveOpenAipKey);
         const effectiveLayer = getEffectiveBasemap(currentLayer, isDark);
+
+        const nextStyleKey = computeStyleKey(
+            currentLayer,
+            isDark,
+            effectiveCartoKey,
+            effectiveProjection,
+            activeAppearance.airportDetail || '',
+            isOpenAipOverlay,
+            effectiveOpenAipKey || '',
+            activeAppearance.openAipGroups
+        );
+
+        // Avoid re-applying unchanged style or triggering setStyle during initial mount
+        if (lastAppliedStyleKeyRef.current === nextStyleKey) {
+            return;
+        }
+
         const basemapSourceId = `raster-basemap-source-${effectiveLayer}`;
         const isLightBasemap = effectiveLayer === 'snow' || effectiveLayer === 'vibrant';
         const { tiles, maxzoom, attribution } = getBasemapTileConfig(effectiveLayer, effectiveCartoKey);
@@ -2284,6 +2343,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         maxzoom
                     }, firstOverlay?.id);
 
+                    lastAppliedStyleKeyRef.current = nextStyleKey;
                     map.triggerRepaint();
                     return;
                 } catch (e) {
@@ -2292,6 +2352,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             }
         }
 
+        lastAppliedStyleKeyRef.current = nextStyleKey;
         const nextStyle = createMapLibreStyle(
             currentLayer,
             isDark,
@@ -2304,7 +2365,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         );
         map.setStyle(nextStyle);
 
-        // Re-assert projection and ensure airport icons on styledata across style changes
+        // Re-assert projection, icons, and deck.gl overlay on styledata across style changes
         const onStyleData = () => {
             if (!map.isStyleLoaded()) return;
             if ((map as any).setProjection) {
@@ -2325,6 +2386,17 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             });
             if (isOpenAipOverlay && effectiveOpenAipKey) {
                 ensureOpenAipIcons(map, isDark ? 'dark' : 'light');
+            }
+            if (overlayRef.current) {
+                try {
+                    if (!(map as any)._controls?.includes(overlayRef.current)) {
+                        map.addControl(overlayRef.current as any);
+                    }
+                    overlayRef.current.setProps({ layers: deckLayersRef.current });
+                    map.triggerRepaint();
+                } catch (e) {
+                    // Ignore
+                }
             }
         };
 
@@ -2663,7 +2735,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         exaggeration: exaggeration
                     });
                 } else {
-                    (map as any).setTerrain(null);
+                    if ((map as any).getTerrain?.()) {
+                        (map as any).setTerrain(null);
+                    }
                     if (map.getSource(terrainSourceId)) {
                         map.removeSource(terrainSourceId);
                     }

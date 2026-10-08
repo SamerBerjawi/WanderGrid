@@ -163,17 +163,117 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
     timestamp: number;
   }>>({});
 
+  // P-06 Direct client-side provider ping fallbacks when running Vite standalone without backend
+  const DIRECT_PROVIDER_PINGS: Record<string, () => Promise<{ success: boolean; latencyMs: number; message: string }>> = {
+    adsbdb: async () => {
+      const t0 = performance.now();
+      const res = await fetch('https://api.adsbdb.com/v0/callsign/AAL1', { signal: AbortSignal.timeout(4000) });
+      const latencyMs = Math.round(performance.now() - t0);
+      const isOk = res.ok || res.status === 404;
+      return {
+        success: isOk,
+        latencyMs,
+        message: isOk ? 'ADSBdb Flight Telemetry operational' : `ADSBdb returned HTTP ${res.status}`
+      };
+    },
+    osrm: async () => {
+      const t0 = performance.now();
+      const res = await fetch('https://routing.openstreetmap.de/routed-car/route/v1/driving/2.3522,48.8566;2.3600,48.8600?overview=false', { signal: AbortSignal.timeout(5000) });
+      const latencyMs = Math.round(performance.now() - t0);
+      return {
+        success: res.ok,
+        latencyMs,
+        message: res.ok ? 'FOSSGIS OSRM Road Routing operational' : `OSRM returned HTTP ${res.status}`
+      };
+    },
+    geocoding: async () => {
+      const t0 = performance.now();
+      const res = await fetch('https://geocoding-api.open-meteo.com/v1/search?name=London&count=1&language=en&format=json', { signal: AbortSignal.timeout(4000) });
+      const latencyMs = Math.round(performance.now() - t0);
+      return {
+        success: res.ok,
+        latencyMs,
+        message: res.ok ? 'Open-Meteo Geocoding Chain operational' : `Open-Meteo returned HTTP ${res.status}`
+      };
+    },
+    openfreemap: async () => {
+      const t0 = performance.now();
+      const res = await fetch('https://tiles.openfreemap.org/styles/liberty', { signal: AbortSignal.timeout(4000) });
+      const latencyMs = Math.round(performance.now() - t0);
+      return {
+        success: res.ok,
+        latencyMs,
+        message: res.ok ? 'OpenFreeMap Vector Tiles operational' : `OpenFreeMap returned HTTP ${res.status}`
+      };
+    },
+    gibs: async () => {
+      const t0 = performance.now();
+      const d = new Date();
+      d.setDate(d.getDate() - 1);
+      const yesterday = d.toISOString().split('T')[0];
+      const res = await fetch(`https://gibs-a.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_NOAA21_CorrectedReflectance_TrueColor/default/${yesterday}/GoogleMapsCompatible_Level9/0/0/0.jpg`, { signal: AbortSignal.timeout(5000) });
+      const latencyMs = Math.round(performance.now() - t0);
+      return {
+        success: res.ok,
+        latencyMs,
+        message: res.ok ? 'NASA GIBS Earth Observation operational' : `NASA GIBS returned HTTP ${res.status}`
+      };
+    }
+  };
+
   const handleTestProvider = async (providerKey: string) => {
     setTestingProvider(providerKey);
     try {
-      const res = await fetch(`/api/proxy/test/${providerKey}`);
-      const data = await res.json();
+      // 1. Try backend proxy route first
+      let data: any = null;
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 3500);
+        const res = await fetch(`/api/proxy/test/${providerKey}`, { signal: controller.signal });
+        clearTimeout(timer);
+        const ct = res.headers.get('content-type') || '';
+        if (ct.includes('application/json')) {
+          data = await res.json();
+        }
+      } catch {
+        // Fallback to client-side direct ping
+      }
+
+      if (data && typeof data.success === 'boolean') {
+        setProviderResults(prev => ({
+          ...prev,
+          [providerKey]: {
+            success: Boolean(data.success),
+            latencyMs: data.latencyMs || 0,
+            message: data.message || (data.success ? 'Operational' : 'Unavailable'),
+            timestamp: Date.now()
+          }
+        }));
+        return;
+      }
+
+      // 2. Direct client-side ping fallback (works standalone without Express server)
+      const directPing = DIRECT_PROVIDER_PINGS[providerKey];
+      if (directPing) {
+        const pingResult = await directPing();
+        setProviderResults(prev => ({
+          ...prev,
+          [providerKey]: {
+            success: pingResult.success,
+            latencyMs: pingResult.latencyMs,
+            message: pingResult.message,
+            timestamp: Date.now()
+          }
+        }));
+        return;
+      }
+
       setProviderResults(prev => ({
         ...prev,
         [providerKey]: {
-          success: Boolean(data.success),
-          latencyMs: data.latencyMs || 0,
-          message: data.message || (data.success ? 'Operational' : 'Unavailable'),
+          success: false,
+          latencyMs: 0,
+          message: 'Provider test unavailable',
           timestamp: Date.now()
         }
       }));

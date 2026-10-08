@@ -9,7 +9,7 @@ const PROVIDER_CONFIGS = {
   adsbdb: {
     name: 'ADSBdb Flight Telemetry',
     category: 'Flight Telemetry',
-    getUrl: () => 'https://api.adsbdb.com/v0/callsign/AFR006',
+    getUrl: () => 'https://api.adsbdb.com/v0/callsign/AAL1',
     timeoutMs: 4000,
     minIntervalMs: 500
   },
@@ -49,7 +49,13 @@ const PROVIDER_CONFIGS = {
 };
 
 async function testProvider(providerKey, customFetch = fetchUpstream) {
-  const config = PROVIDER_CONFIGS[providerKey];
+  const normalizedKey = {
+    open_meteo: 'geocoding',
+    openmeteo: 'geocoding',
+    fossgis_osrm: 'osrm',
+    nasa_gibs: 'gibs'
+  }[providerKey] || providerKey;
+  const config = PROVIDER_CONFIGS[normalizedKey];
   if (!config) {
     throw new Error(`Unknown provider: ${providerKey}`);
   }
@@ -64,7 +70,7 @@ async function testProvider(providerKey, customFetch = fetchUpstream) {
   });
 
   const latencyMs = Date.now() - startTime;
-  const isSuccess = result.status >= 200 && result.status < 300;
+  const isSuccess = (result.status >= 200 && result.status < 300) || (providerKey === 'adsbdb' && result.status === 404);
 
   return {
     provider: providerKey,

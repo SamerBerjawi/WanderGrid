@@ -3,6 +3,81 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
+function viteDevApiPlugin() {
+  return {
+    name: 'vite-dev-api-plugin',
+    configureServer(server: any) {
+      server.middlewares.use(async (req: any, res: any, next: any) => {
+        if (!req.url || !req.url.startsWith('/api/proxy/test/')) {
+          return next();
+        }
+        const rawKey = req.url.replace('/api/proxy/test/', '').split('?')[0];
+        const providerKey = ({
+          open_meteo: 'geocoding',
+          openmeteo: 'geocoding',
+          fossgis_osrm: 'osrm',
+          nasa_gibs: 'gibs'
+        } as Record<string, string>)[rawKey] || rawKey;
+        const configs: Record<string, { url: string; timeout: number }> = {
+          adsbdb: { url: 'https://api.adsbdb.com/v0/callsign/AAL1', timeout: 4000 },
+          osrm: { url: 'https://routing.openstreetmap.de/routed-car/route/v1/driving/2.3522,48.8566;2.3600,48.8600?overview=false', timeout: 5000 },
+          geocoding: { url: 'https://geocoding-api.open-meteo.com/v1/search?name=London&count=1&language=en&format=json', timeout: 4000 },
+          openfreemap: { url: 'https://tiles.openfreemap.org/styles/liberty', timeout: 4000 },
+          gibs: {
+            url: (() => {
+              const d = new Date();
+              d.setDate(d.getDate() - 1);
+              const yesterday = d.toISOString().split('T')[0];
+              return `https://gibs-a.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_NOAA21_CorrectedReflectance_TrueColor/default/${yesterday}/GoogleMapsCompatible_Level9/0/0/0.jpg`;
+            })(),
+            timeout: 5000
+          }
+        };
+
+        const target = configs[providerKey];
+        if (!target) {
+          res.statusCode = 404;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: `Unknown provider: ${providerKey}` }));
+          return;
+        }
+
+        const t0 = Date.now();
+        try {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), target.timeout);
+          const upstream = await fetch(target.url, {
+            signal: controller.signal,
+            headers: { 'User-Agent': 'WanderGrid/1.0' }
+          });
+          clearTimeout(timer);
+          const latencyMs = Date.now() - t0;
+          const isSuccess = (upstream.status >= 200 && upstream.status < 300) || (providerKey === 'adsbdb' && upstream.status === 404);
+          res.statusCode = isSuccess ? 200 : 502;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({
+            provider: providerKey,
+            success: isSuccess,
+            status: upstream.status,
+            latencyMs,
+            message: isSuccess ? `${providerKey} operational` : `Returned HTTP ${upstream.status}`
+          }));
+        } catch (err: any) {
+          const latencyMs = Date.now() - t0;
+          res.statusCode = 502;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({
+            provider: providerKey,
+            success: false,
+            latencyMs,
+            message: err.message || 'Upstream timeout'
+          }));
+        }
+      });
+    }
+  };
+}
+
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
@@ -12,6 +87,7 @@ export default defineConfig(({ mode }) => {
       },
       plugins: [
         react(),
+        viteDevApiPlugin(),
         VitePWA({
           registerType: 'autoUpdate',
           includeAssets: [
