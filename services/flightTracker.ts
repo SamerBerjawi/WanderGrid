@@ -34,22 +34,15 @@ export async function lookupKeylessFlight(
     let liveData: any = null;
     let aircraftData: any = null;
 
-    // 1. Query ADSBdb for flight route (origin, destination, airline)
+    // 1. Query ADSBdb for flight route (origin, destination, airline) via backend proxy (P-00 / P-01)
     try {
-        const res = await fetch(`/api/proxy/adsbdb/flights/${encodeURIComponent(clean)}`);
+        const res = await fetch(`/api/proxy/adsbdb/callsign/${encodeURIComponent(clean)}`);
         if (res.ok) {
             const json = await res.json();
             routeData = json?.response?.flightroute || null;
         }
-    } catch {
-        // Direct browser fallback if proxy is unavailable
-        try {
-            const direct = await fetch(`https://api.adsbdb.com/v0/callsign/${encodeURIComponent(clean)}`);
-            if (direct.ok) {
-                const json = await direct.json();
-                routeData = json?.response?.flightroute || null;
-            }
-        } catch {}
+    } catch (err) {
+        console.warn('[FlightTracker] ADSBdb proxy route lookup failed:', err);
     }
 
     // 2. Query adsb.lol for live transponder status, tail number & aircraft type
@@ -61,17 +54,7 @@ export async function lookupKeylessFlight(
                 liveData = json.ac[0];
             }
         }
-    } catch {
-        try {
-            const direct = await fetch(`https://api.adsb.lol/v2/callsign/${encodeURIComponent(clean)}`);
-            if (direct.ok) {
-                const json = await direct.json();
-                if (Array.isArray(json?.ac) && json.ac.length > 0) {
-                    liveData = json.ac[0];
-                }
-            }
-        } catch {}
-    }
+    } catch {}
 
     // 2.b OpenSky Network fallback if adsb.lol has no live transponder
     if (!liveData) {
@@ -135,34 +118,33 @@ export async function lookupKeylessFlight(
     const registration = liveData?.r || aircraftData?.registration || 'N/A';
 
     return {
+        source: 'adsbdb-route',
         flight_date: todayDate,
-        flight_status: isAirborne ? 'active' : 'scheduled',
+        flight_status: isAirborne ? 'active' : undefined,
         departure: {
             airport: depName,
-            timezone: 'UTC',
             iata: depIata,
             icao: depIcao,
             terminal: '',
             gate: '',
             delay: 0,
-            scheduled: `${todayDate}T10:00:00Z`,
-            estimated: `${todayDate}T10:00:00Z`,
-            actual: `${todayDate}T10:00:00Z`,
+            scheduled: undefined,
+            estimated: undefined,
+            actual: undefined,
             estimated_runway: '',
             actual_runway: ''
         },
         arrival: {
             airport: arrName,
-            timezone: 'UTC',
             iata: arrIata,
             icao: arrIcao,
             terminal: '',
             gate: '',
             baggage: '',
             delay: 0,
-            scheduled: `${todayDate}T13:30:00Z`,
-            estimated: `${todayDate}T13:30:00Z`,
-            actual: `${todayDate}T13:30:00Z`,
+            scheduled: undefined,
+            estimated: undefined,
+            actual: undefined,
             estimated_runway: '',
             actual_runway: ''
         },
@@ -183,6 +165,7 @@ export async function lookupKeylessFlight(
             model: aircraftModel,
             country: aircraftData?.registered_owner_country_name || ''
         },
+
         ...(liveData && liveData.lat && liveData.lon ? {
             live: {
                 updated: new Date().toISOString(),

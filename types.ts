@@ -404,36 +404,37 @@ export type PredefinedMapMode = 'flights' | 'land_sea' | 'scratch' | 'all';
 
 // --- Live Flight Tracking Types ---
 export interface FlightStatusResponse {
-    flight_date: string;
-    flight_status: 'scheduled' | 'active' | 'landed' | 'cancelled' | 'incident' | 'diverted';
+    source?: 'adsbdb-route' | 'aviationstack' | 'aerodatabox' | 'mock' | 'ai_guessing' | string;
+    flight_date?: string;
+    flight_status?: 'scheduled' | 'active' | 'landed' | 'cancelled' | 'incident' | 'diverted' | 'route-verified' | string;
     departure: {
         airport: string;
-        timezone: string;
+        timezone?: string;
         iata: string;
         icao: string;
-        terminal: string;
-        gate: string;
-        delay: number;
-        scheduled: string;
-        estimated: string;
-        actual: string;
-        estimated_runway: string;
-        actual_runway: string;
+        terminal?: string;
+        gate?: string;
+        delay?: number;
+        scheduled?: string;
+        estimated?: string;
+        actual?: string;
+        estimated_runway?: string;
+        actual_runway?: string;
     };
     arrival: {
         airport: string;
-        timezone: string;
+        timezone?: string;
         iata: string;
         icao: string;
-        terminal: string;
-        gate: string;
-        baggage: string;
-        delay: number;
-        scheduled: string;
-        estimated: string;
-        actual: string;
-        estimated_runway: string;
-        actual_runway: string;
+        terminal?: string;
+        gate?: string;
+        baggage?: string;
+        delay?: number;
+        scheduled?: string;
+        estimated?: string;
+        actual?: string;
+        estimated_runway?: string;
+        actual_runway?: string;
     };
     airline: {
         name: string;
@@ -444,14 +445,15 @@ export interface FlightStatusResponse {
         number: string;
         iata: string;
         icao: string;
-        codeshared: any;
+        codeshared?: any;
     };
-    aircraft: {
-       registration: string;
-       iata: string;
-       model: string;
-       country: string;
+    aircraft?: {
+       registration?: string;
+       iata?: string;
+       model?: string;
+       country?: string;
     };
+
     live?: {
         updated: string;
         latitude: number;

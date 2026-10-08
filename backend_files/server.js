@@ -10,8 +10,11 @@ const jwt = require('jsonwebtoken');
 const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
+const { fetchUpstream } = require('./upstream');
+const { resolveIcaoCallsign } = require('./carrierMapping');
 
 const pbkdf2Async = util.promisify(crypto.pbkdf2);
+
 
 // --- Centralized Structured JSON Logger ---
 const logger = {
@@ -1214,43 +1217,59 @@ app.get('/api/proxy/aerodatabox/aircrafts/reg/:reg', async (req, res) => {
 // ==========================================
 // KEYLESS FLIGHT LOOKUP (ADSBdb & adsb.lol)
 // ==========================================
-const adsbDbCache = new Map();
 const adsbLolCache = new Map();
 
-app.get('/api/proxy/adsbdb/flights/:flightNumber', async (req, res) => {
-    const rawNumber = String(req.params.flightNumber || '').trim().replace(/\s|-/g, '').toUpperCase();
-    if (!rawNumber) return res.status(400).json({ error: 'Flight number is required.' });
+// P-01: ADSBdb Callsign Route Lookup (Cached 24h, 8s timeout, host gate 200ms)
+const handleAdsbDbCallsign = async (req, res) => {
+    const rawInput = String(req.params.callsign || req.params.flightNumber || '').trim().replace(/\s|-/g, '').toUpperCase();
+    if (!rawInput) return res.status(400).json({ ok: false, error: 'Callsign or flight number required' });
 
-    const cacheKey = `flight:${rawNumber}`;
-    const cached = adsbDbCache.get(cacheKey);
-    if (cached && cached.expiresAt > Date.now()) {
-        res.set('X-Cache', 'HIT');
-        return res.json(cached.data);
+    // Convert IATA flight number (e.g. UA123) to ICAO callsign (e.g. UAL123)
+    const callsign = resolveIcaoCallsign(rawInput);
+    if (!callsign) {
+        return res.status(400).json({
+            ok: false,
+            error: 'unsupported',
+            message: `Carrier code in '${rawInput}' cannot be mapped to an ICAO callsign`
+        });
     }
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4000);
 
     try {
-        const upstream = await fetch(`https://api.adsbdb.com/v0/callsign/${encodeURIComponent(rawNumber)}`, {
-            signal: controller.signal,
-            headers: { 'User-Agent': 'WanderGrid/1.0' }
+        const result = await fetchUpstream({
+            key: `adsbdb:callsign:${callsign}`,
+            url: `https://api.adsbdb.com/v0/callsign/${encodeURIComponent(callsign)}`,
+            ttlMs: 24 * 3600 * 1000, // 24 hours
+            staleMs: 7 * 24 * 3600 * 1000, // 7 days stale on network error
+            timeoutMs: 8000,
+            negativeTtlMs: 24 * 3600 * 1000,
+            hostGate: { minIntervalMs: 200 }, // ~5 req/s rate-gate
         });
-        clearTimeout(timeout);
 
-        if (!upstream.ok) {
-            return res.status(upstream.status).json({ error: `ADSBdb returned HTTP ${upstream.status}` });
+        if (result.outcome === 'hit') res.set('X-Cache', 'HIT');
+        else if (result.outcome === 'stale') res.set('X-Cache', 'STALE');
+        else if (result.outcome === 'miss') res.set('X-Cache', 'MISS');
+
+        if (result.outcome === 'notfound' || result.status === 404) {
+            return res.status(404).json({ ok: false, error: 'Flight or callsign not found in ADSBdb' });
         }
 
-        const data = await upstream.json();
-        adsbDbCache.set(cacheKey, { data, expiresAt: Date.now() + 7200000 }); // 2 hours
-        res.set('X-Cache', 'MISS');
-        return res.json(data);
-    } catch (e) {
-        clearTimeout(timeout);
-        return res.status(e.name === 'AbortError' ? 504 : 502).json({ error: 'Failed to reach ADSBdb.' });
+        if (!result.ok) {
+            return res.status(result.status || 502).json({
+                ok: false,
+                error: result.error || 'Failed to reach ADSBdb',
+                answered: result.answered
+            });
+        }
+
+        return res.json(result.data);
+    } catch (err) {
+        logger.warn('ADSBdb proxy exception', { error: err.message, callsign });
+        return res.status(502).json({ ok: false, error: 'Internal error communicating with ADSBdb' });
     }
-});
+};
+
+app.get('/api/proxy/adsbdb/callsign/:callsign', handleAdsbDbCallsign);
+app.get('/api/proxy/adsbdb/flights/:flightNumber', handleAdsbDbCallsign);
 
 app.get('/api/proxy/adsb-lol/callsign/:callsign', async (req, res) => {
     const rawCallsign = String(req.params.callsign || '').trim().replace(/\s|-/g, '').toUpperCase();
@@ -1287,40 +1306,45 @@ app.get('/api/proxy/adsb-lol/callsign/:callsign', async (req, res) => {
     }
 });
 
+// P-01: ADSBdb Aircraft Lookup (Cached 24h, 8s timeout, host gate 200ms)
 app.get('/api/proxy/adsbdb/aircraft/:hexOrReg', async (req, res) => {
     const param = String(req.params.hexOrReg || '').trim().toUpperCase();
-    if (!param) return res.status(400).json({ error: 'ICAO hex or registration required.' });
-
-    const cacheKey = `aircraft:${param}`;
-    const cached = adsbDbCache.get(cacheKey);
-    if (cached && cached.expiresAt > Date.now()) {
-        res.set('X-Cache', 'HIT');
-        return res.json(cached.data);
-    }
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4000);
+    if (!param) return res.status(400).json({ ok: false, error: 'ICAO hex or registration required' });
 
     try {
-        const upstream = await fetch(`https://api.adsbdb.com/v0/aircraft/${encodeURIComponent(param)}`, {
-            signal: controller.signal,
-            headers: { 'User-Agent': 'WanderGrid/1.0' }
+        const result = await fetchUpstream({
+            key: `adsbdb:aircraft:${param}`,
+            url: `https://api.adsbdb.com/v0/aircraft/${encodeURIComponent(param)}`,
+            ttlMs: 24 * 3600 * 1000, // 24 hours
+            staleMs: 7 * 24 * 3600 * 1000,
+            timeoutMs: 8000,
+            negativeTtlMs: 24 * 3600 * 1000,
+            hostGate: { minIntervalMs: 200 },
         });
-        clearTimeout(timeout);
 
-        if (!upstream.ok) {
-            return res.status(upstream.status).json({ error: `ADSBdb returned HTTP ${upstream.status}` });
+        if (result.outcome === 'hit') res.set('X-Cache', 'HIT');
+        else if (result.outcome === 'stale') res.set('X-Cache', 'STALE');
+        else if (result.outcome === 'miss') res.set('X-Cache', 'MISS');
+
+        if (result.outcome === 'notfound' || result.status === 404) {
+            return res.status(404).json({ ok: false, error: 'Aircraft not found in ADSBdb' });
         }
 
-        const data = await upstream.json();
-        adsbDbCache.set(cacheKey, { data, expiresAt: Date.now() + 86400000 }); // 24 hours
-        res.set('X-Cache', 'MISS');
-        return res.json(data);
-    } catch (e) {
-        clearTimeout(timeout);
-        return res.status(e.name === 'AbortError' ? 504 : 502).json({ error: 'Failed to reach ADSBdb aircraft.' });
+        if (!result.ok) {
+            return res.status(result.status || 502).json({
+                ok: false,
+                error: result.error || 'Failed to reach ADSBdb aircraft',
+                answered: result.answered
+            });
+        }
+
+        return res.json(result.data);
+    } catch (err) {
+        logger.warn('ADSBdb aircraft proxy exception', { error: err.message, param });
+        return res.status(502).json({ ok: false, error: 'Internal error communicating with ADSBdb' });
     }
 });
+
 
 // ==========================================
 // OPENSKY NETWORK LIVE TELEMETRY PROXY (FREE / KEYLESS)

@@ -377,9 +377,16 @@ export const FlightForm: React.FC<FlightFormProps> = ({
                                 <span className="font-bold text-primary-500">{sf.airline?.iata || ''}{sf.flight?.number}</span>
                                 <span className="text-light-text-secondary">{sf.airline?.name}</span>
                             </div>
-                            <span className="font-mono font-bold text-light-text dark:text-dark-text">
-                                {sf.departure?.scheduled?.split('T')[1]?.substring(0, 5) || '--:--'} &rarr; {sf.arrival?.scheduled?.split('T')[1]?.substring(0, 5) || '--:--'}
-                            </span>
+                            {sf.source === 'adsbdb-route' || (!sf.departure?.scheduled && !sf.arrival?.scheduled) ? (
+                                <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                    Route verified · no schedule data
+                                </span>
+                            ) : (
+                                <span className="font-mono font-bold text-light-text dark:text-dark-text">
+                                    {sf.departure?.scheduled?.split('T')[1]?.substring(0, 5) || '--:--'} &rarr; {sf.arrival?.scheduled?.split('T')[1]?.substring(0, 5) || '--:--'}
+                                </span>
+                            )}
+
                         </div>
                     ))}
                 </div>

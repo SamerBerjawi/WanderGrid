@@ -209,13 +209,20 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
                                     {flightData.airline.name} {flightData.flight.iata}
                                 </h3>
                                 <p className="text-gray-500 dark:text-gray-400 text-sm font-bold mt-1">
-                                    {formatDate(flightData.flight_date, 'weekday-long')}
+                                    {flightData.flight_date ? formatDate(flightData.flight_date, 'weekday-long') : 'Verified Route'}
                                 </p>
                             </div>
-                            <div className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg ${getStatusColor(flightData.flight_status)}`}>
-                                {flightData.flight_status}
-                            </div>
+                            {flightData.source === 'adsbdb-route' && !flightData.flight_status ? (
+                                <div className="px-3 py-1.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shadow-xs">
+                                    Route verified · no schedule data
+                                </div>
+                            ) : (
+                                <div className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg ${getStatusColor(flightData.flight_status)}`}>
+                                    {flightData.flight_status || 'Scheduled'}
+                                </div>
+                            )}
                         </div>
+
 
                         {/* Route Display */}
                         <div className="relative flex justify-between items-center p-6 bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-white/5 shadow-lg">
@@ -240,57 +247,64 @@ export const FlightTrackerModal: React.FC<FlightTrackerModalProps> = ({ isOpen, 
                         </div>
 
                         {/* Times & Gates */}
-                        <div className="grid grid-cols-2 gap-6">
-                            {/* Departure */}
-                            <div className="p-5 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
-                                <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4 border-b border-gray-200 dark:border-white/10 pb-2">Departure</h4>
-                                <div className="space-y-3">
-                                    <div className="flex justify-between">
-                                        <span className="text-sm text-gray-500 font-medium">Scheduled</span>
-                                        <span className="font-mono font-bold text-gray-900 dark:text-white">{formatTime(flightData.departure.scheduled)}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-sm text-gray-500 font-medium">Actual</span>
-                                        <span className="font-mono font-bold text-blue-600 dark:text-blue-400">{formatTime(flightData.departure.actual || flightData.departure.estimated)}</span>
-                                    </div>
-                                    <div className="pt-2 flex gap-2">
-                                        <div className="flex-1 bg-white dark:bg-gray-900 p-2 rounded-xl text-center shadow-sm">
-                                            <span className="block text-2xs font-bold text-gray-400 uppercase">Terminal</span>
-                                            <span className="font-bold text-gray-800 dark:text-white">{flightData.departure.terminal || '-'}</span>
+                        {flightData.source === 'adsbdb-route' && !flightData.departure.scheduled ? (
+                            <div className="p-4 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 text-center text-xs text-light-text-secondary dark:text-dark-text-secondary font-medium">
+                                Origin, destination, airline and airframe verified via ADSBdb community radar. Carrier schedule timings require AviationStack or AeroDataBox.
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-2 gap-6">
+                                {/* Departure */}
+                                <div className="p-5 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
+                                    <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4 border-b border-gray-200 dark:border-white/10 pb-2">Departure</h4>
+                                    <div className="space-y-3">
+                                        <div className="flex justify-between">
+                                            <span className="text-sm text-gray-500 font-medium">Scheduled</span>
+                                            <span className="font-mono font-bold text-gray-900 dark:text-white">{formatTime(flightData.departure.scheduled)}</span>
                                         </div>
-                                        <div className="flex-1 bg-white dark:bg-gray-900 p-2 rounded-xl text-center shadow-sm">
-                                            <span className="block text-2xs font-bold text-gray-400 uppercase">Gate</span>
-                                            <span className="font-bold text-gray-800 dark:text-white">{flightData.departure.gate || '-'}</span>
+                                        <div className="flex justify-between">
+                                            <span className="text-sm text-gray-500 font-medium">Actual</span>
+                                            <span className="font-mono font-bold text-blue-600 dark:text-blue-400">{formatTime(flightData.departure.actual || flightData.departure.estimated)}</span>
+                                        </div>
+                                        <div className="pt-2 flex gap-2">
+                                            <div className="flex-1 bg-white dark:bg-gray-900 p-2 rounded-xl text-center shadow-sm">
+                                                <span className="block text-2xs font-bold text-gray-400 uppercase">Terminal</span>
+                                                <span className="font-bold text-gray-800 dark:text-white">{flightData.departure.terminal || '-'}</span>
+                                            </div>
+                                            <div className="flex-1 bg-white dark:bg-gray-900 p-2 rounded-xl text-center shadow-sm">
+                                                <span className="block text-2xs font-bold text-gray-400 uppercase">Gate</span>
+                                                <span className="font-bold text-gray-800 dark:text-white">{flightData.departure.gate || '-'}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* Arrival */}
-                            <div className="p-5 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
-                                <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4 border-b border-gray-200 dark:border-white/10 pb-2">Arrival</h4>
-                                <div className="space-y-3">
-                                    <div className="flex justify-between">
-                                        <span className="text-sm text-gray-500 font-medium">Scheduled</span>
-                                        <span className="font-mono font-bold text-gray-900 dark:text-white">{formatTime(flightData.arrival.scheduled)}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-sm text-gray-500 font-medium">Estimated</span>
-                                        <span className="font-mono font-bold text-blue-600 dark:text-blue-400">{formatTime(flightData.arrival.actual || flightData.arrival.estimated)}</span>
-                                    </div>
-                                    <div className="pt-2 flex gap-2">
-                                        <div className="flex-1 bg-white dark:bg-gray-900 p-2 rounded-xl text-center shadow-sm">
-                                            <span className="block text-2xs font-bold text-gray-400 uppercase">Terminal</span>
-                                            <span className="font-bold text-gray-800 dark:text-white">{flightData.arrival.terminal || '-'}</span>
+                                {/* Arrival */}
+                                <div className="p-5 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
+                                    <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4 border-b border-gray-200 dark:border-white/10 pb-2">Arrival</h4>
+                                    <div className="space-y-3">
+                                        <div className="flex justify-between">
+                                            <span className="text-sm text-gray-500 font-medium">Scheduled</span>
+                                            <span className="font-mono font-bold text-gray-900 dark:text-white">{formatTime(flightData.arrival.scheduled)}</span>
                                         </div>
-                                        <div className="flex-1 bg-white dark:bg-gray-900 p-2 rounded-xl text-center shadow-sm">
-                                            <span className="block text-2xs font-bold text-gray-400 uppercase">Gate</span>
-                                            <span className="font-bold text-gray-800 dark:text-white">{flightData.arrival.gate || '-'}</span>
+                                        <div className="flex justify-between">
+                                            <span className="text-sm text-gray-500 font-medium">Estimated</span>
+                                            <span className="font-mono font-bold text-blue-600 dark:text-blue-400">{formatTime(flightData.arrival.actual || flightData.arrival.estimated)}</span>
+                                        </div>
+                                        <div className="pt-2 flex gap-2">
+                                            <div className="flex-1 bg-white dark:bg-gray-900 p-2 rounded-xl text-center shadow-sm">
+                                                <span className="block text-2xs font-bold text-gray-400 uppercase">Terminal</span>
+                                                <span className="font-bold text-gray-800 dark:text-white">{flightData.arrival.terminal || '-'}</span>
+                                            </div>
+                                            <div className="flex-1 bg-white dark:bg-gray-900 p-2 rounded-xl text-center shadow-sm">
+                                                <span className="block text-2xs font-bold text-gray-400 uppercase">Gate</span>
+                                                <span className="font-bold text-gray-800 dark:text-white">{flightData.arrival.gate || '-'}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
+
 
                         {/* Aircraft Info */}
                         {flightData.aircraft && (
