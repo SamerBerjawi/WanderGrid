@@ -184,4 +184,32 @@ Each item is independently isolated with its own feature flag, branch/commit his
   git revert <sha>
   ```
 
+---
+
+## P-04c · NASA GIBS Recent Satellite (Daily True-Color Mosaic)
+
+- **Status**: Done
+- **Branch**: `gev/P04c-gibs-daily`
+- **Commit**: `[GEV-P04c]`
+- **Feature Flag**: `GEV_P04C_GIBS_DAILY` (default: OFF, user opt-in)
+- **Files Added**: None
+- **Files Modified**:
+  - `types/mapAppearance.ts` (added `gibsDaily`, `gibsDailyDate`, `gibsDailyOpacity`, date stepper utilities)
+  - `components/DeckFlightMap.tsx` (added `nasa-gibs-daily-source` and `nasa-gibs-daily-layer` in `syncRasterOverlays`, floating date stepper pill)
+  - `components/MapAppearanceModal.tsx` (added toggle, date stepper, and opacity slider in Tab 3 Overlays)
+- **Endpoints**: External NASA EOSDIS GIBS WMTS endpoints (`https://gibs-{s}.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_NOAA21_CorrectedReflectance_TrueColor/default/{YYYY-MM-DD}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`)
+- **Env Vars**: `VITE_FF_GEV_P04C_GIBS_DAILY`
+- **Dependencies Added**: None
+- **DB Changes**: None
+- **VERIFY Results**:
+  - Daily VIIRS Level 9 true-color imagery tiles render cleanly with sub-domain round-robin `['a', 'b', 'c']`.
+  - Date stepping updates imagery date dynamically without map reload.
+  - Floating Liquid Glass date stepper pill appears on the map with Apple HIG 44px min touch targets and disable state preventing future dates.
+  - Opacity slider and toggle in Mission Control / Map Appearance Modal work smoothly.
+- **Exact Removal Recipe**:
+  ```bash
+  git revert <sha>
+  ```
+
+
 

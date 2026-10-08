@@ -14,9 +14,11 @@ import {
     Funnel as Filter,
     Play,
     Radio,
-    Lightning as Zap
+    Lightning as Zap,
+    CaretLeft,
+    CaretRight
 } from '@phosphor-icons/react';
-import { MapAppearanceSettings, DEFAULT_MAP_APPEARANCE, getEffectiveBasemap } from '../types/mapAppearance';
+import { MapAppearanceSettings, DEFAULT_MAP_APPEARANCE, getEffectiveBasemap, getYesterdayDateString, adjustDateString } from '../types/mapAppearance';
 import { FEATURE_FLAGS } from '../config/featureFlags';
 import GlassPanel from './glass/GlassPanel';
 
@@ -1328,6 +1330,99 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                     </div>
                                                 )}
                                             </div>
+
+                                            {/* NASA GIBS Recent Satellite (Daily True-Color Mosaic) (P-04c) */}
+                                            {FEATURE_FLAGS.GEV_P04C_GIBS_DAILY && (
+                                                <div className="p-4 rounded-2xl bg-white/40 dark:bg-white/[0.03] backdrop-blur-sm border border-black/5 dark:border-white/5 space-y-3">
+                                                    <div className="flex items-center justify-between">
+                                                        <div>
+                                                            <h4 className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
+                                                                <span>Recent Satellite Mosaic</span>
+                                                                {settings.gibsDaily && (
+                                                                    <span className="flex items-center gap-1 px-2 py-0.5 text-2xs font-bold rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                                                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                                                        NASA GIBS VIIRS
+                                                                    </span>
+                                                                )}
+                                                            </h4>
+                                                            <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5">Daily true-color optical satellite imagery (yesterday & prior)</p>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => updateField('gibsDaily', !settings.gibsDaily)}
+                                                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-black/10 dark:border-white/15 transition-all duration-200 ease-in-out backdrop-blur-md ${
+                                                                settings.gibsDaily
+                                                                    ? 'bg-emerald-500/85 dark:bg-emerald-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_10px_rgba(16,185,129,0.3)]'
+                                                                    : 'bg-black/15 dark:bg-white/15 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]'
+                                                            }`}
+                                                            aria-label="Toggle NASA GIBS Daily Satellite"
+                                                        >
+                                                            <span
+                                                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-white/95 shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.8)] ring-0 transition duration-200 ease-in-out ${
+                                                                    settings.gibsDaily ? 'translate-x-5' : 'translate-x-0'
+                                                                }`}
+                                                            />
+                                                        </button>
+                                                    </div>
+
+                                                    {settings.gibsDaily && (
+                                                        <div className="pt-2.5 border-t border-black/5 dark:border-white/5 space-y-3 animate-fade-in">
+                                                            {/* Date Stepper */}
+                                                            <div className="flex items-center justify-between">
+                                                                <span className="text-2xs font-bold text-light-text dark:text-dark-text">Imagery Date</span>
+                                                                <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 rounded-xl p-1 border border-black/5 dark:border-white/5">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            const cur = settings.gibsDailyDate || getYesterdayDateString();
+                                                                            updateField('gibsDailyDate', adjustDateString(cur, -1));
+                                                                        }}
+                                                                        className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-black/10 dark:hover:bg-white/10 text-light-text dark:text-dark-text transition-colors cursor-pointer"
+                                                                        aria-label="Previous day imagery"
+                                                                    >
+                                                                        <CaretLeft size={16} weight="bold" />
+                                                                    </button>
+                                                                    <span className="px-2 font-mono font-bold text-xs text-light-text dark:text-dark-text">
+                                                                        {settings.gibsDailyDate || getYesterdayDateString()}
+                                                                    </span>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            const cur = settings.gibsDailyDate || getYesterdayDateString();
+                                                                            const yesterday = getYesterdayDateString();
+                                                                            if (cur < yesterday) {
+                                                                                updateField('gibsDailyDate', adjustDateString(cur, 1));
+                                                                            }
+                                                                        }}
+                                                                        disabled={(settings.gibsDailyDate || getYesterdayDateString()) >= getYesterdayDateString()}
+                                                                        className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-black/10 dark:hover:bg-white/10 text-light-text dark:text-dark-text disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                                                                        aria-label="Next day imagery"
+                                                                    >
+                                                                        <CaretRight size={16} weight="bold" />
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Opacity Slider */}
+                                                            <div>
+                                                                <div className="flex items-center justify-between text-2xs font-bold text-light-text dark:text-dark-text mb-1">
+                                                                    <span>Layer Opacity</span>
+                                                                    <span className="text-emerald-500">{Math.round((settings.gibsDailyOpacity || 0.9) * 100)}%</span>
+                                                                </div>
+                                                                <input
+                                                                    type="range"
+                                                                    min="0.2"
+                                                                    max="1.0"
+                                                                    step="0.05"
+                                                                    value={settings.gibsDailyOpacity || 0.9}
+                                                                    onChange={(e) => updateField('gibsDailyOpacity', parseFloat(e.target.value))}
+                                                                    className="w-full accent-emerald-500 cursor-pointer h-1.5 bg-black/10 dark:bg-white/10 rounded-lg"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

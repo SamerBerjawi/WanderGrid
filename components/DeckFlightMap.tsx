@@ -49,6 +49,7 @@ import {
     Clock,
     CalendarBlank as Calendar,
     CaretRight as ChevronRight,
+    CaretLeft,
     Train,
     Boat as Ship,
     Car,
@@ -70,7 +71,9 @@ import {
     DEFAULT_MAP_APPEARANCE,
     loadMapAppearanceSettings,
     saveMapAppearanceSettings,
-    getEffectiveBasemap
+    getEffectiveBasemap,
+    getYesterdayDateString,
+    adjustDateString
 } from '../types/mapAppearance';
 import { getTwilightGradientGeoJSON } from '../services/solarTerminator';
 import { getLatestRainRadarMetadata, RainRadarMetadata } from '../services/rainViewer';
@@ -2504,35 +2507,91 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             if (!isRadarEnabled) {
                 if (existingRadarLayer) map.removeLayer(radarLayerId);
                 if (existingRadarSource) map.removeSource(radarSourceId);
-                return;
-            }
-
-            const currentRadarTileUrl = existingRadarSource?.tiles?.[0];
-            if (existingRadarSource && currentRadarTileUrl !== targetRadarTileUrl) {
-                if (existingRadarLayer) map.removeLayer(radarLayerId);
-                map.removeSource(radarSourceId);
-            }
-
-            if (!map.getSource(radarSourceId)) {
-                map.addSource(radarSourceId, {
-                    type: 'raster',
-                    tiles: [targetRadarTileUrl!],
-                    tileSize: 256,
-                    attribution: radarAttribution
-                });
-            }
-
-            if (!map.getLayer(radarLayerId)) {
-                map.addLayer({
-                    id: radarLayerId,
-                    type: 'raster',
-                    source: radarSourceId,
-                    paint: {
-                        'raster-opacity': radarOpacity
-                    }
-                });
             } else {
-                map.setPaintProperty(radarLayerId, 'raster-opacity', radarOpacity);
+                const currentRadarTileUrl = existingRadarSource?.tiles?.[0];
+                if (existingRadarSource && currentRadarTileUrl !== targetRadarTileUrl) {
+                    if (existingRadarLayer) map.removeLayer(radarLayerId);
+                    map.removeSource(radarSourceId);
+                }
+
+                if (!map.getSource(radarSourceId)) {
+                    map.addSource(radarSourceId, {
+                        type: 'raster',
+                        tiles: [targetRadarTileUrl!],
+                        tileSize: 256,
+                        attribution: radarAttribution
+                    });
+                }
+
+                if (!map.getLayer(radarLayerId)) {
+                    map.addLayer({
+                        id: radarLayerId,
+                        type: 'raster',
+                        source: radarSourceId,
+                        paint: {
+                            'raster-opacity': radarOpacity
+                        }
+                    });
+                } else {
+                    map.setPaintProperty(radarLayerId, 'raster-opacity', radarOpacity);
+                }
+            }
+
+            // 5. NASA GIBS Daily Satellite Mosaic (P-04c)
+            const gibsSourceId = 'nasa-gibs-daily-source';
+            const gibsLayerId = 'nasa-gibs-daily-layer';
+            const isGibsDailyEnabled = Boolean(FEATURE_FLAGS.GEV_P04C_GIBS_DAILY && activeAppearance.gibsDaily);
+            const gibsDate = activeAppearance.gibsDailyDate || getYesterdayDateString();
+            const gibsOpacity = activeAppearance.gibsDailyOpacity ?? 0.9;
+            const gibsTileUrls = ['a', 'b', 'c'].map(
+                s => `https://gibs-${s}.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_NOAA21_CorrectedReflectance_TrueColor/default/${gibsDate}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`
+            );
+
+            const existingGibsLayer = map.getLayer(gibsLayerId);
+            const existingGibsSource = map.getSource(gibsSourceId) as maplibregl.RasterTileSource | undefined;
+
+            if (!isGibsDailyEnabled) {
+                if (existingGibsLayer) map.removeLayer(gibsLayerId);
+                if (existingGibsSource) map.removeSource(gibsSourceId);
+            } else {
+                const currentGibsUrl = existingGibsSource?.tiles?.[0];
+                if (existingGibsSource && currentGibsUrl !== gibsTileUrls[0]) {
+                    if (existingGibsLayer) map.removeLayer(gibsLayerId);
+                    map.removeSource(gibsSourceId);
+                }
+
+                if (!map.getSource(gibsSourceId)) {
+                    map.addSource(gibsSourceId, {
+                        type: 'raster',
+                        tiles: gibsTileUrls,
+                        tileSize: 256,
+                        maxzoom: 9,
+                        attribution: 'NASA EOSDIS GIBS'
+                    });
+                }
+
+                if (!map.getLayer(gibsLayerId)) {
+                    const beforeId = map.getLayer('terrain-hillshade-layer')
+                        ? 'terrain-hillshade-layer'
+                        : map.getLayer('transit-railway-layer')
+                        ? 'transit-railway-layer'
+                        : map.getLayer('noaa-clouds-layer')
+                        ? 'noaa-clouds-layer'
+                        : map.getLayer('rain-radar-layer')
+                        ? 'rain-radar-layer'
+                        : undefined;
+                    map.addLayer({
+                        id: gibsLayerId,
+                        type: 'raster',
+                        source: gibsSourceId,
+                        paint: {
+                            'raster-opacity': gibsOpacity,
+                            'raster-resampling': 'linear'
+                        }
+                    }, beforeId);
+                } else {
+                    map.setPaintProperty(gibsLayerId, 'raster-opacity', gibsOpacity);
+                }
             }
         };
 
@@ -2553,6 +2612,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         activeAppearance.terrainHillshadeOpacity,
         activeAppearance.transitOverlay,
         activeAppearance.transitOverlayOpacity,
+        activeAppearance.gibsDaily,
+        activeAppearance.gibsDailyDate,
+        activeAppearance.gibsDailyOpacity,
         activeAppearance.airportsOnly,
         radarMeta?.tileUrl, 
         currentLayer, 
@@ -2781,6 +2843,68 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* P-04c NASA GIBS Recent Satellite Daily Date Stepper Pill */}
+            {FEATURE_FLAGS.GEV_P04C_GIBS_DAILY && activeAppearance.gibsDaily && (
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 pointer-events-auto animate-fade-in">
+                    <GlassPanel
+                        padding="2px"
+                        overrides={{ borderRadius: 999 }}
+                        className="wg-glass-pill shadow-glass-modal flex items-center gap-1.5 px-3 py-1 bg-white/70 dark:bg-white/10 text-xs font-semibold"
+                    >
+                        <div className="flex items-center gap-1.5 text-emerald-500 font-bold pr-1 border-r border-black/10 dark:border-white/10">
+                            <Globe className="w-3.5 h-3.5" weight="bold" />
+                            <span className="hidden sm:inline">NASA GIBS</span>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const cur = activeAppearance.gibsDailyDate || getYesterdayDateString();
+                                handleAppearanceChange({
+                                    ...activeAppearance,
+                                    gibsDailyDate: adjustDateString(cur, -1)
+                                });
+                            }}
+                            className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-light-text dark:text-dark-text transition-colors cursor-pointer"
+                            title="Previous Day"
+                            aria-label="Previous day"
+                        >
+                            <CaretLeft size={16} weight="bold" />
+                        </button>
+                        <span className="px-2 font-mono font-bold text-xs text-light-text dark:text-dark-text tracking-wide select-none">
+                            {activeAppearance.gibsDailyDate || getYesterdayDateString()}
+                        </span>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const cur = activeAppearance.gibsDailyDate || getYesterdayDateString();
+                                const yesterday = getYesterdayDateString();
+                                if (cur < yesterday) {
+                                    handleAppearanceChange({
+                                        ...activeAppearance,
+                                        gibsDailyDate: adjustDateString(cur, 1)
+                                    });
+                                }
+                            }}
+                            disabled={(activeAppearance.gibsDailyDate || getYesterdayDateString()) >= getYesterdayDateString()}
+                            className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-light-text dark:text-dark-text disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                            title="Next Day"
+                            aria-label="Next day"
+                        >
+                            <ChevronRight size={16} weight="bold" />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => handleAppearanceChange({ ...activeAppearance, gibsDaily: false })}
+                            className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-light-text-secondary dark:text-dark-text-secondary transition-colors cursor-pointer ml-0.5"
+                            title="Close NASA GIBS Overlay"
+                            aria-label="Close NASA GIBS Overlay"
+                        >
+                            <X size={14} weight="bold" />
+                        </button>
+                    </GlassPanel>
+                </div>
+            )}
 
             {/* Top-Right Floating "Mission Control" Quick Config Pill (hidden when delegated to parent view) */}
             {!onOpenMissionControl && (

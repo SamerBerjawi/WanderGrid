@@ -102,6 +102,15 @@ export interface MapAppearanceSettings {
     // Motion & Animation Optimization
     flightInterpolation?: boolean; // Smooth flight progress interpolation
 
+    // NASA GIBS Recent Satellite (Daily True-Color Mosaic) (P-04c)
+    gibsDaily?: boolean;
+    gibsDailyDate?: string;
+    gibsDailyOpacity?: number;
+
+    // 3D Terrain Elevation via AWS Terrarium DEM (P-04d)
+    terrain3d?: boolean;
+    terrain3dExaggeration?: number;
+
     // Scratch Map Mode Filters & Toggles
     scratchCitySize?: 'off' | 'small' | 'medium' | 'large';
     showLivedCountries?: boolean; // Show/hide lived (current & past) residence highlights
@@ -133,6 +142,11 @@ export const DEFAULT_MAP_APPEARANCE: MapAppearanceSettings = {
     terrainHillshadeOpacity: 0.8,
     transitOverlay: false,
     transitOverlayOpacity: 0.4,
+    gibsDaily: false,
+    gibsDailyDate: '',
+    gibsDailyOpacity: 0.9,
+    terrain3d: false,
+    terrain3dExaggeration: 1.0,
     flightInterpolation: true,
     scratchCitySize: 'medium',
     showLivedCountries: true,
@@ -168,3 +182,20 @@ export const saveMapAppearanceSettings = (settings: MapAppearanceSettings): void
         console.warn('Failed to save map appearance settings:', e);
     }
 };
+
+export function getYesterdayDateString(): string {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().split('T')[0];
+}
+
+export function adjustDateString(dateStr: string, deltaDays: number): string {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return getYesterdayDateString();
+    d.setDate(d.getDate() + deltaDays);
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (d > yesterday) return yesterday.toISOString().split('T')[0];
+    return d.toISOString().split('T')[0];
+}
+
