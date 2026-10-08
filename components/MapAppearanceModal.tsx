@@ -180,11 +180,9 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
 
     return createPortal(
         <div className="fixed inset-0 z-modal overflow-hidden font-sans select-none pointer-events-auto">
-            {/* 1. Translucent Scrim Backdrop (clean darkening without double-blur) */}
+            {/* 1. Transparent click-outside dismiss backdrop (zero dimming effect, preserving full map brilliance) */}
             <div 
-                className={`fixed inset-0 bg-black/40 dark:bg-black/60 transition-opacity duration-300 ${
-                    isVisible ? 'opacity-100' : 'opacity-0'
-                }`}
+                className="fixed inset-0 bg-transparent"
                 onClick={handleClose}
             />
 
