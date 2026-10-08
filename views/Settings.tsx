@@ -44,6 +44,7 @@ import { GearSettingsTab } from '../components/GearSettingsTab';
 import { CarriersTab } from '../components/CarriersTab';
 import { cn } from '../lib/utils';
 import { formatDate } from '../utils/formatters';
+import { FEATURE_FLAGS } from '../config/featureFlags';
 import { 
     INPUT_BASE_STYLE, 
     BTN_PRIMARY_STYLE, 
@@ -151,6 +152,51 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
   const [visibleKeys, setVisibleKeys] = useState<Record<string, boolean>>({});
   const toggleKeyVisibility = (key: string) => {
     setVisibleKeys(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  // P-06 Live Data Providers Diagnostics State
+  const [testingProvider, setTestingProvider] = useState<string | null>(null);
+  const [providerResults, setProviderResults] = useState<Record<string, {
+    success: boolean;
+    latencyMs: number;
+    message: string;
+    timestamp: number;
+  }>>({});
+
+  const handleTestProvider = async (providerKey: string) => {
+    setTestingProvider(providerKey);
+    try {
+      const res = await fetch(`/api/proxy/test/${providerKey}`);
+      const data = await res.json();
+      setProviderResults(prev => ({
+        ...prev,
+        [providerKey]: {
+          success: Boolean(data.success),
+          latencyMs: data.latencyMs || 0,
+          message: data.message || (data.success ? 'Operational' : 'Unavailable'),
+          timestamp: Date.now()
+        }
+      }));
+    } catch (err: any) {
+      setProviderResults(prev => ({
+        ...prev,
+        [providerKey]: {
+          success: false,
+          latencyMs: 0,
+          message: err.message || 'Connection failed',
+          timestamp: Date.now()
+        }
+      }));
+    } finally {
+      setTestingProvider(null);
+    }
+  };
+
+  const handleTestAllProviders = async () => {
+    const keys = ['adsbdb', 'osrm', 'geocoding', 'openfreemap', 'gibs'];
+    for (const key of keys) {
+      await handleTestProvider(key);
+    }
   };
 
   // Calendar copy feedback
@@ -1523,6 +1569,148 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
               </div>
             </GlassPanel>
           </div>
+
+          {/* P-06: Telemetry & Upstream Data Providers (GEV Modular Architecture) */}
+          {FEATURE_FLAGS.GEV_P06_INTEGRATIONS && (
+            <div className="md:col-span-2 flex flex-col overflow-hidden rounded-[28px]">
+              <GlassPanel
+                className="wg-glass-card shadow-glass-card flex flex-col h-full overflow-hidden border border-black/5 dark:border-white/10"
+                overrides={{ borderRadius: 28 }}
+                padding="0px"
+              >
+                <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px]">
+                  <div className="p-5 border-b border-black/10 dark:border-white/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gradient-to-r from-emerald-500/10 via-cyan-500/5 to-transparent shrink-0">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20 flex items-center justify-center shrink-0">
+                        <ArrowsClockwise className="w-5 h-5" weight="duotone" />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold text-light-text dark:text-dark-text tracking-tight">
+                          External Telemetry & Routing Providers
+                        </h3>
+                        <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary font-medium truncate mt-0.5">
+                          Real-time health monitoring and latency diagnostics for upstream services
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleTestAllProviders}
+                      disabled={testingProvider !== null}
+                      className="min-w-[44px] min-h-[44px] px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-light-text dark:text-dark-text border border-black/10 dark:border-white/10 flex items-center gap-2 cursor-pointer transition-all active:scale-95 disabled:opacity-50"
+                    >
+                      <ArrowsClockwise className={`w-3.5 h-3.5 ${testingProvider ? 'animate-spin text-primary-500' : ''}`} />
+                      <span>{testingProvider ? 'Testing...' : 'Test All Services'}</span>
+                    </button>
+                  </div>
+
+                  <div className="p-5 sm:p-6 divide-y divide-black/5 dark:divide-white/5">
+                    {[
+                      {
+                        key: 'adsbdb',
+                        name: 'ADSBdb Flight Telemetry',
+                        desc: 'Keyless aircraft route lookup and ICAO callsign resolution (P-01)',
+                        badge: 'Route Only',
+                        docs: 'https://adsbdb.com'
+                      },
+                      {
+                        key: 'osrm',
+                        name: 'FOSSGIS OSRM Road Routing',
+                        desc: 'Turn-by-turn road geometries, actual distances and drive durations (P-02)',
+                        badge: 'FOSSGIS OSRM',
+                        docs: 'https://routing.openstreetmap.de'
+                      },
+                      {
+                        key: 'geocoding',
+                        name: 'Open-Meteo Geocoding Chain',
+                        desc: 'Multi-provider chain with Photon & Nominatim fallback and timezone resolver (P-03)',
+                        badge: '3-Tier Chain',
+                        docs: 'https://open-meteo.com/en/docs/geocoding-api'
+                      },
+                      {
+                        key: 'openfreemap',
+                        name: 'OpenFreeMap Vector Tiles',
+                        desc: 'Self-hosted open vector styles with Liberty, Bright, and Positron palettes (P-04b)',
+                        badge: 'Vector Basemap',
+                        docs: 'https://openfreemap.org'
+                      },
+                      {
+                        key: 'gibs',
+                        name: 'NASA GIBS Earth Observation',
+                        desc: 'Level 9 daily true-color VIIRS optical satellite mosaics (P-04c)',
+                        badge: 'NASA EOSDIS',
+                        docs: 'https://earthdata.nasa.gov/eosdis'
+                      }
+                    ].map(item => {
+                      const result = providerResults[item.key];
+                      const isTesting = testingProvider === item.key;
+                      return (
+                        <div key={item.key} className="py-4 first:pt-0 last:pb-0 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-sm font-bold text-light-text dark:text-dark-text tracking-tight">
+                                {item.name}
+                              </h4>
+                              <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary border border-black/5 dark:border-white/5">
+                                {item.badge}
+                              </span>
+                              <a
+                                href={item.docs}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-light-text-secondary hover:text-primary-500 transition-colors p-1"
+                                title="View Documentation"
+                              >
+                                <ArrowSquareOut className="w-3 h-3" />
+                              </a>
+                            </div>
+                            <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5 font-medium">
+                              {item.desc}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
+                            {result && (
+                              <div className="flex items-center gap-2">
+                                <span className={`px-2.5 py-1 rounded-full text-2xs font-mono font-bold uppercase tracking-wider border flex items-center gap-1.5 ${
+                                  result.success
+                                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                                    : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
+                                }`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${result.success ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+                                  <span>{result.success ? 'Operational' : 'Unavailable'}</span>
+                                </span>
+                                {result.latencyMs > 0 && (
+                                  <span className="text-2xs font-mono text-light-text-secondary dark:text-dark-text-secondary">
+                                    {result.latencyMs}ms
+                                  </span>
+                                )}
+                              </div>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => handleTestProvider(item.key)}
+                              disabled={isTesting || testingProvider !== null}
+                              className="min-w-[44px] min-h-[44px] px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-light-text dark:text-dark-text border border-black/10 dark:border-white/5 flex items-center justify-center cursor-pointer transition-all active:scale-95 disabled:opacity-40"
+                              aria-label={`Test ${item.name} connection`}
+                            >
+                              {isTesting ? (
+                                <span className="w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <span>Test</span>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </GlassPanel>
+            </div>
+          )}
 
         </div>
       )}

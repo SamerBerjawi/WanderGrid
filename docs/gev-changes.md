@@ -266,6 +266,36 @@ Each item is independently isolated with its own feature flag, branch/commit his
   git revert <sha>
   ```
 
+---
+
+## P-06 · Integrations Panel in Settings
+
+- **Status**: Done
+- **Branch**: `gev/P06-integrations`
+- **Commit**: `[GEV-P06]`
+- **Feature Flag**: `GEV_P06_INTEGRATIONS` (default: ON)
+- **Files Added**:
+  - `backend_files/integrationsTester.js` (core health checker for external data sources)
+  - `backend_files/test/integrations.test.js` (4 unit tests verifying test definitions, responses, and error handling)
+- **Files Modified**:
+  - `backend_files/server.js` (mounted `GET /api/proxy/test/:provider` endpoint)
+  - `views/Settings.tsx` (added "External Telemetry & Routing Providers" Liquid Glass card in Integrations tab with individual & batch test triggers, latency readouts, and status pills)
+- **Endpoints**: `GET /api/proxy/test/:provider` (supports `adsbdb`, `osrm`, `geocoding`, `openfreemap`, `gibs`)
+- **Env Vars**: `VITE_FF_GEV_P06_INTEGRATIONS`
+- **Dependencies Added**: None
+- **DB Changes**: None
+- **VERIFY Results**:
+  - Backend tester verifies ADSBdb, FOSSGIS OSRM, Open-Meteo geocoding, OpenFreeMap styles, and NASA GIBS WMTS.
+  - Returns honest HTTP 200/502 with latency in milliseconds.
+  - Settings UI renders responsive Liquid Glass card with Apple HIG 44px touch targets.
+  - "Test All Services" executes concurrent tests and updates status pills with live animation.
+- **Exact Removal Recipe**:
+  ```bash
+  rm backend_files/integrationsTester.js backend_files/test/integrations.test.js
+  git revert <sha>
+  ```
+
+
 
 
 

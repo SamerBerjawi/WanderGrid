@@ -14,6 +14,7 @@ const { fetchUpstream } = require('./upstream');
 const { resolveIcaoCallsign } = require('./carrierMapping');
 const { handleRouteProxy } = require('./routeProxy');
 const { searchGeocodingChain } = require('./geocodingChain');
+const { testProvider } = require('./integrationsTester');
 
 const pbkdf2Async = util.promisify(crypto.pbkdf2);
 
@@ -1354,6 +1355,18 @@ app.get('/api/proxy/adsbdb/aircraft/:hexOrReg', async (req, res) => {
 // ==========================================
 app.get('/api/proxy/route', handleRouteProxy);
 app.get('/api/route', handleRouteProxy);
+
+// ==========================================
+// P-06: INTEGRATIONS TEST ENDPOINT (/api/proxy/test/:provider)
+// ==========================================
+app.get('/api/proxy/test/:provider', async (req, res) => {
+    try {
+        const result = await testProvider(req.params.provider);
+        return res.status(result.success ? 200 : 502).json(result);
+    } catch (err) {
+        return res.status(400).json({ error: err.message });
+    }
+});
 
 // ==========================================
 // OPENSKY NETWORK LIVE TELEMETRY PROXY (FREE / KEYLESS)
