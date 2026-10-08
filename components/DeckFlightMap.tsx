@@ -702,7 +702,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     const [radarMeta, setRadarMeta] = useState<RainRadarMetadata | null>(null);
 
     useEffect(() => {
-        if (!activeAppearance.rainRadar || activeAppearance.radarSource === 'noaa_mrms') return;
+        if (!activeAppearance.rainRadar) return;
         const fetchRadar = () => {
             getLatestRainRadarMetadata(
                 activeAppearance.rainRadarColorScheme || 2,
@@ -715,7 +715,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         fetchRadar();
         const interval = setInterval(fetchRadar, 5 * 60_000);
         return () => clearInterval(interval);
-    }, [activeAppearance.rainRadar, activeAppearance.rainRadarColorScheme, activeAppearance.radarSource]);
+    }, [activeAppearance.rainRadar, activeAppearance.rainRadarColorScheme]);
 
     // Periodic solar terminator refresh (every 60s as the earth rotates)
     const [solarTerminatorTick, setSolarTerminatorTick] = useState(0);
@@ -1421,7 +1421,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         const isElevatedActive = effectiveProjection === 'globe' && elevatedRoutes;
 
         // 1. Solar Twilight Shading (High-Contrast Progressive Multi-Band Gradient)
-        if (activeAppearance.timeOfDay && twilightData) {
+        if (!activeAppearance.airportsOnly && activeAppearance.timeOfDay && twilightData) {
             const isSatellite = currentLayer === 'satellite' || currentLayer === 'ocean';
             layers.push(
                 new GeoJsonLayer({
@@ -1457,7 +1457,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
 
         // 3. Country Residence Polygons (Scratch Map)
-        if (geoJsonData && (showCountries || viewMode === 'scratch')) {
+        if (!activeAppearance.airportsOnly && geoJsonData && (showCountries || viewMode === 'scratch')) {
             const showLived = activeAppearance.showLivedCountries !== false;
             const showWishlist = activeAppearance.showWishlistCountries !== false;
             const showLayover = activeAppearance.showLayoverCountries !== false;
@@ -1542,7 +1542,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         }
 
         // 4. Scratch Map City / Place Pins
-        if (viewMode === 'scratch' && activeAppearance.scratchCitySize !== 'off' && visitedPlaces.length > 0) {
+        if (!activeAppearance.airportsOnly && viewMode === 'scratch' && activeAppearance.scratchCitySize !== 'off' && visitedPlaces.length > 0) {
             layers.push(
                 new ScatterplotLayer({
                     id: 'scratch-visited-places',
@@ -1566,7 +1566,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         }
 
         // 5. Overland & Maritime Routes (PathLayer for High-Speed Rail & Road Geometries)
-        if (overlandSegments.length > 0 && viewMode !== 'scratch') {
+        if (!activeAppearance.airportsOnly && overlandSegments.length > 0 && viewMode !== 'scratch') {
             layers.push(
                 new PathLayer({
                     id: 'overland-routes',
@@ -1609,7 +1609,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         }
 
         // 6. GPU Great-Circle Flight Arcs (AirTrail Benchmark Architecture)
-        if (flightArcs.length > 0 && showFlightRoutes && viewMode !== 'scratch') {
+        if (!activeAppearance.airportsOnly && flightArcs.length > 0 && showFlightRoutes && viewMode !== 'scratch') {
             // Arc height elevation: on 3D globe, default to 0.25 (or 0.45 if elevated) to soar above sphere curvature
             const arcHeight = effectiveProjection === 'globe' ? (isElevatedActive ? 0.45 : 0.25) : 0;
 
@@ -1710,7 +1710,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         }
 
         // 6.5 Animated Comet Flow Layer (Deck.gl TripsLayer)
-        if (animateRoutes && animatedTripPaths.length > 0) {
+        if (!activeAppearance.airportsOnly && animateRoutes && animatedTripPaths.length > 0) {
             layers.push(
                 new TripsLayer({
                     id: 'comet-flow-layer',
@@ -1796,7 +1796,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         }
 
         // 7. Airport & Destination Nodes
-        if (showCityMarkers && activeAppearance.airportSize !== 'off') {
+        if ((showCityMarkers || activeAppearance.airportsOnly) && activeAppearance.airportSize !== 'off') {
             if (clusterMode && clusterNodes.length > 0) {
                 layers.push(
                     new ScatterplotLayer({
@@ -1948,7 +1948,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
         const isGlobe = effectiveProjection === 'globe';
         const isDetailedAirports = activeAppearance.airportDetail === 'detailed';
-        const isOpenAipOverlay = Boolean(activeAppearance.openAipOverlay);
+        const isOpenAipOverlay = Boolean(activeAppearance.openAipOverlay && effectiveOpenAipKey);
         const style = createMapLibreStyle(
             currentLayer,
             isDark,
@@ -1956,7 +1956,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             isGlobe,
             isDetailedAirports,
             isOpenAipOverlay,
-            workspaceSettings?.openAipApiKey,
+            effectiveOpenAipKey,
             activeAppearance.openAipGroups
         );
 
@@ -2036,7 +2036,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         map.on('load', () => {
             isMapLoadedRef.current = true;
             setupAirportIcons();
-            if (isOpenAipOverlay && workspaceSettings?.openAipApiKey) {
+            if (isOpenAipOverlay && effectiveOpenAipKey) {
                 ensureOpenAipIcons(map, isDark ? 'dark' : 'light');
             }
             try {
@@ -2152,7 +2152,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         if (!map) return;
         const isGlobe = effectiveProjection === 'globe';
         const isDetailedAirports = activeAppearance.airportDetail === 'detailed';
-        const isOpenAipOverlay = Boolean(activeAppearance.openAipOverlay);
+        const isOpenAipOverlay = Boolean(activeAppearance.openAipOverlay && effectiveOpenAipKey);
         const effectiveLayer = getEffectiveBasemap(currentLayer, isDark);
         const basemapSourceId = `raster-basemap-source-${effectiveLayer}`;
         const isLightBasemap = effectiveLayer === 'snow' || effectiveLayer === 'vibrant';
@@ -2223,7 +2223,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             isGlobe,
             isDetailedAirports,
             isOpenAipOverlay,
-            workspaceSettings?.openAipApiKey,
+            effectiveOpenAipKey,
             activeAppearance.openAipGroups
         );
         map.setStyle(nextStyle);
@@ -2247,7 +2247,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     }).catch(() => {});
                 }
             });
-            if (isOpenAipOverlay && workspaceSettings?.openAipApiKey) {
+            if (isOpenAipOverlay && effectiveOpenAipKey) {
                 ensureOpenAipIcons(map, isDark ? 'dark' : 'light');
             }
         };
@@ -2260,7 +2260,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         currentLayer,
         isDark,
         effectiveCartoKey,
-        workspaceSettings?.openAipApiKey,
+        effectiveOpenAipKey,
         effectiveProjection,
         activeAppearance.airportDetail,
         activeAppearance.openAipOverlay,
@@ -2338,7 +2338,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             // 2. Global Transit & Railway Layer (OpenRailwayMap - Minimal Hairline Styling)
             const transitSourceId = 'transit-railway-source';
             const transitLayerId = 'transit-railway-layer';
-            const isTransitEnabled = Boolean(activeAppearance.transitOverlay);
+            const isTransitEnabled = Boolean(activeAppearance.transitOverlay && !activeAppearance.airportsOnly);
             const rawTransitOpacity = activeAppearance.transitOverlayOpacity ?? 0.4;
             const effectiveTransitOpacity = rawTransitOpacity * 0.45;
             const transitTileUrl = 'https://a.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png';
@@ -2385,7 +2385,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             // 3. NOAA nowCOAST Global Longwave Satellite Clouds
             const cloudsSourceId = 'noaa-clouds-source';
             const cloudsLayerId = 'noaa-clouds-layer';
-            const isCloudsEnabled = Boolean(activeAppearance.weatherClouds);
+            const isCloudsEnabled = Boolean(activeAppearance.weatherClouds && !activeAppearance.airportsOnly);
             const cloudsOpacity = activeAppearance.weatherCloudsOpacity ?? 0.75;
             const cloudsTileUrl = 'https://nowcoast.noaa.gov/geoserver/observations/satellite/ows?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&FORMAT=image/png&TRANSPARENT=TRUE&LAYERS=global_longwave_imagery_mosaic&WIDTH=256&HEIGHT=256&SRS=EPSG:3857&BBOX={bbox-epsg-3857}';
 
@@ -2419,14 +2419,12 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 }
             }
 
-            // 4. Weather Radar (RainViewer vs NOAA nowCOAST MRMS Base Reflectivity)
+            // 4. Global Weather Radar (RainViewer Real-time Telemetry)
             const radarSourceId = 'rain-radar-source';
             const radarLayerId = 'rain-radar-layer';
-            const isNoaaMrms = activeAppearance.radarSource === 'noaa_mrms';
-            const noaaRadarTileUrl = 'https://nowcoast.noaa.gov/geoserver/observations/weather_radar/ows?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&FORMAT=image/png&TRANSPARENT=TRUE&LAYERS=base_reflectivity_mosaic&WIDTH=256&HEIGHT=256&SRS=EPSG:3857&BBOX={bbox-epsg-3857}';
-            const targetRadarTileUrl = isNoaaMrms ? noaaRadarTileUrl : radarMeta?.tileUrl;
-            const radarAttribution = isNoaaMrms ? 'NOAA nowCOAST MRMS' : 'RainViewer';
-            const isRadarEnabled = Boolean(activeAppearance.rainRadar && targetRadarTileUrl);
+            const targetRadarTileUrl = radarMeta?.tileUrl;
+            const radarAttribution = 'RainViewer';
+            const isRadarEnabled = Boolean(activeAppearance.rainRadar && targetRadarTileUrl && !activeAppearance.airportsOnly);
             const radarOpacity = activeAppearance.rainRadarOpacity ?? 0.85;
 
             const existingRadarLayer = map.getLayer(radarLayerId);
@@ -2478,13 +2476,13 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     }, [
         activeAppearance.rainRadar, 
         activeAppearance.rainRadarOpacity, 
-        activeAppearance.radarSource,
         activeAppearance.weatherClouds,
         activeAppearance.weatherCloudsOpacity,
         activeAppearance.terrainHillshade,
         activeAppearance.terrainHillshadeOpacity,
         activeAppearance.transitOverlay,
         activeAppearance.transitOverlayOpacity,
+        activeAppearance.airportsOnly,
         radarMeta?.tileUrl, 
         currentLayer, 
         isDark

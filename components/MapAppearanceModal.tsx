@@ -118,44 +118,6 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
         onChangeSettings({ ...DEFAULT_MAP_APPEARANCE });
     };
 
-    // Quick Presets matching ExpeditionMapView Mission Control
-    const applyPreset = (preset: 'command' | 'satellite' | 'minimal') => {
-        if (preset === 'command') {
-            onChangeSettings({
-                ...settings,
-                projection: 'globe',
-                basemap: isDark ? 'onyx' : 'snow',
-                airportDetail: 'detailed',
-                routeColorMode: 'gradient',
-                routeScale: 'normal',
-                timeOfDay: true,
-                rainRadar: false
-            });
-        } else if (preset === 'satellite') {
-            onChangeSettings({
-                ...settings,
-                projection: 'globe',
-                basemap: 'satellite',
-                airportDetail: 'standard',
-                routeColorMode: 'default',
-                routeScale: 'normal',
-                timeOfDay: true,
-                rainRadar: false
-            });
-        } else if (preset === 'minimal') {
-            onChangeSettings({
-                ...settings,
-                projection: 'flat',
-                basemap: isDark ? 'onyx' : 'snow',
-                airportDetail: 'standard',
-                routeColorMode: 'default',
-                routeScale: 'thin',
-                timeOfDay: false,
-                rainRadar: false
-            });
-        }
-    };
-
     const tabs = [
         {
             id: 'cartography' as const,
@@ -234,32 +196,6 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                     <X className="w-4 h-4" />
                                 </button>
                             </div>
-                        </div>
-
-                        {/* Quick Presets Ribbon */}
-                        <div className="px-5 py-2.5 bg-black/[0.02] dark:bg-white/[0.02] border-b border-black/5 dark:border-white/5 flex items-center gap-2 overflow-x-auto custom-scrollbar shrink-0">
-                            <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary shrink-0">Presets:</span>
-                            <button
-                                type="button"
-                                onClick={() => applyPreset('command')}
-                                className="px-2.5 py-1 rounded-xl bg-primary-500/10 hover:bg-primary-500/20 border border-primary-500/20 text-primary-600 dark:text-primary-400 text-xs font-bold shrink-0 transition-all cursor-pointer active:scale-95"
-                            >
-                                🌐 Aviation Command
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => applyPreset('satellite')}
-                                className="px-2.5 py-1 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold shrink-0 transition-all cursor-pointer active:scale-95"
-                            >
-                                🛰️ Earth Orbit
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => applyPreset('minimal')}
-                                className="px-2.5 py-1 rounded-xl bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 border border-black/5 dark:border-white/5 text-light-text-secondary dark:text-dark-text-secondary text-xs font-bold shrink-0 transition-all cursor-pointer active:scale-95"
-                            >
-                                🗺️ Minimal Atlas
-                            </button>
                         </div>
 
                         {/* Sidebar Navigation Tabs */}
@@ -697,6 +633,39 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                 <span className="text-xs font-bold">Full Layout</span>
                                             </button>
                                         </div>
+
+                                        {/* Solo Mode: Only show airports on the map and nothing else */}
+                                        <div className="pt-2.5 border-t border-black/5 dark:border-white/5 flex items-center justify-between">
+                                            <div className="min-w-0 pr-3">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-xs font-bold text-light-text dark:text-dark-text">Airports Only</span>
+                                                    {settings.airportsOnly && (
+                                                        <span className="px-1.5 py-0.2 rounded-full text-2xs font-bold uppercase tracking-wider bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                                                            Solo Focus
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5">
+                                                    Only show airports on map (hides flights, roads, cities, rain & territories)
+                                                </p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => updateField('airportsOnly', !settings.airportsOnly)}
+                                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-black/10 dark:border-white/15 transition-all duration-200 ease-in-out backdrop-blur-md ${
+                                                    settings.airportsOnly
+                                                        ? 'bg-indigo-500/85 dark:bg-indigo-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_10px_rgba(99,102,241,0.3)]'
+                                                        : 'bg-black/15 dark:bg-white/15 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]'
+                                                }`}
+                                                aria-label="Toggle airports only solo mode"
+                                            >
+                                                <span
+                                                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-white/95 shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.8)] ring-0 transition duration-200 ease-in-out ${
+                                                        settings.airportsOnly ? 'translate-x-5' : 'translate-x-0'
+                                                    }`}
+                                                />
+                                            </button>
+                                        </div>
                                     </div>
 
                                     {/* AIRPORT HUB SIZING */}
@@ -952,9 +921,22 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                     <div className="flex items-center justify-between text-2xs font-bold">
                                                         <span className="uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Layers</span>
                                                         <span className={`px-1.5 py-0.2 rounded-full ${hasOpenAipKey ? 'text-emerald-500 bg-emerald-500/10' : 'text-amber-500 bg-amber-500/10'}`}>
-                                                            {hasOpenAipKey ? 'Key Active' : 'Free Proxy Fallback'}
+                                                            {hasOpenAipKey ? 'Key Active' : 'Key Required'}
                                                         </span>
                                                     </div>
+
+                                                    {!hasOpenAipKey && (
+                                                        <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-start gap-2 text-2xs text-amber-700 dark:text-amber-300 leading-tight">
+                                                            <span className="text-sm shrink-0">⚠️</span>
+                                                            <div>
+                                                                <span className="font-bold">OpenAIP Key Required:</span> Register a free key at{' '}
+                                                                <a href="https://www.openaip.net" target="_blank" rel="noopener noreferrer" className="underline font-semibold hover:text-amber-900 dark:hover:text-amber-100">
+                                                                    openaip.net
+                                                                </a>{' '}
+                                                                and add it in <strong>Settings → Integrations</strong> to display aeronautical vector charts.
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                     <div className="grid grid-cols-2 gap-1.5">
                                                         {[
                                                             { id: 'airspaces', label: 'Airspaces' },
@@ -1073,7 +1055,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                             {settings.rainRadar && (
                                                                 <span className="flex items-center gap-1 px-2 py-0.5 text-2xs font-bold rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
                                                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                                                    Live Stream
+                                                                    RainViewer Global
                                                                 </span>
                                                             )}
                                                         </h4>
@@ -1098,38 +1080,6 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
 
                                                 {settings.rainRadar && (
                                                     <div className="pt-2.5 border-t border-black/5 dark:border-white/5 space-y-3 animate-fade-in">
-                                                        <div>
-                                                            <span className="block text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary mb-1.5">
-                                                                Radar Telemetry Engine
-                                                            </span>
-                                                            <div className="grid grid-cols-2 gap-2">
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => updateField('radarSource', 'rainviewer')}
-                                                                    className={`p-2 rounded-xl text-xs text-left border transition-all cursor-pointer ${
-                                                                        (settings.radarSource || 'rainviewer') === 'rainviewer'
-                                                                            ? 'border-amber-500/50 bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold ring-1 ring-amber-500/30'
-                                                                            : 'border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-white'
-                                                                    }`}
-                                                                >
-                                                                    <div className="font-bold">RainViewer</div>
-                                                                    <div className="text-2xs opacity-75 font-normal">Global Composite</div>
-                                                                </button>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => updateField('radarSource', 'noaa_mrms')}
-                                                                    className={`p-2 rounded-xl text-xs text-left border transition-all cursor-pointer ${
-                                                                        settings.radarSource === 'noaa_mrms'
-                                                                            ? 'border-amber-500/50 bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold ring-1 ring-amber-500/30'
-                                                                            : 'border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-white'
-                                                                    }`}
-                                                                >
-                                                                    <div className="font-bold">NOAA nowCOAST</div>
-                                                                    <div className="text-2xs opacity-75 font-normal">MRMS Reflectivity</div>
-                                                                </button>
-                                                            </div>
-                                                        </div>
-
                                                         <div>
                                                             <div className="flex items-center justify-between text-2xs font-bold text-light-text dark:text-dark-text mb-1">
                                                                 <span>Radar Intensity</span>

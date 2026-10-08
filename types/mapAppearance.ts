@@ -74,10 +74,9 @@ export interface MapAppearanceSettings {
     // Layers Tab
     timeOfDay: boolean; // Live solar day/night shading
     atmosphere?: boolean; // Subtle 3D globe atmospheric glow, stars & solar cosmos
-    rainRadar: boolean; // Latest RainViewer or NOAA precipitation
+    rainRadar: boolean; // Global RainViewer precipitation radar
     rainRadarOpacity?: number; // 0.2 to 1.0
     rainRadarColorScheme?: number; // 1 to 8
-    radarSource?: 'rainviewer' | 'noaa_mrms'; // RainViewer (Global) vs NOAA nowCOAST MRMS (North America HD)
     weatherClouds?: boolean; // NOAA nowCOAST Global Infrared Satellite Clouds
     weatherCloudsOpacity?: number; // 0.2 to 1.0
 
@@ -117,7 +116,6 @@ export const DEFAULT_MAP_APPEARANCE: MapAppearanceSettings = {
     rainRadar: false,
     rainRadarOpacity: 0.85,
     rainRadarColorScheme: 2,
-    radarSource: 'rainviewer',
     weatherClouds: false,
     weatherCloudsOpacity: 0.75,
     openAipOverlay: false,

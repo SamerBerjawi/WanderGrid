@@ -246,43 +246,6 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
         saveMapAppearanceSettings(newSettings);
     };
 
-    const applyPreset = (preset: 'command' | 'satellite' | 'minimal') => {
-        if (preset === 'command') {
-            handleUpdateAppearance({
-                ...appearance,
-                projection: 'globe',
-                basemap: isDark ? 'onyx' : 'snow',
-                airportDetail: 'detailed',
-                routeColorMode: 'gradient',
-                routeScale: 'normal',
-                timeOfDay: true,
-                rainRadar: false
-            });
-        } else if (preset === 'satellite') {
-            handleUpdateAppearance({
-                ...appearance,
-                projection: 'globe',
-                basemap: 'satellite',
-                airportDetail: 'standard',
-                routeColorMode: 'default',
-                routeScale: 'normal',
-                timeOfDay: true,
-                rainRadar: false
-            });
-        } else if (preset === 'minimal') {
-            handleUpdateAppearance({
-                ...appearance,
-                projection: 'flat',
-                basemap: isDark ? 'onyx' : 'snow',
-                airportDetail: 'standard',
-                routeColorMode: 'default',
-                routeScale: 'thin',
-                timeOfDay: false,
-                rainRadar: false
-            });
-        }
-    };
-
     const handleResetAll = () => {
         handleUpdateAppearance({ ...DEFAULT_MAP_APPEARANCE });
         handleSelectViewMode('all');
