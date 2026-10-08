@@ -68,7 +68,7 @@ import { dataService } from '../services/mockDb';
 import { flightImporter } from '../services/flightImportExport';
 import { calendarService } from '../services/calendarExport';
 import { Trip, User, Transport, Accommodation, WorkspaceSettings, Activity, TransportMode, LocationEntry, EntitlementType, PublicHoliday, SavedConfig, PackingItem, Carrier } from '../types';
-import { searchLocations, resolvePlaceName, getCoordinates, formatProperLocationName } from '../services/geocoding';
+import { searchLocations, resolvePlaceName, getCoordinates, getCoordinatesSync, formatProperLocationName } from '../services/geocoding';
 import { GoogleGenAI } from "@google/genai";
 const DeckFlightMap = React.lazy(() => import('../components/DeckFlightMap').then(m => ({ default: m.DeckFlightMap || m.default })));
 const FlightImportWizard = React.lazy(() => import('../components/FlightImportWizard').then(m => ({ default: m.FlightImportWizard })));
@@ -1070,7 +1070,8 @@ export const TripDetail: React.FC<TripDetailProps> = ({ tripId, onBack }) => {
         }
     };
     const fetchLocationSuggestions = async (query: string): Promise<string[]> => {
-        return searchLocations(query);
+        const destCoords = trip?.location ? getCoordinatesSync(trip.location) : undefined;
+        return searchLocations(query, destCoords ? { lat: destCoords.lat, lon: destCoords.lng } : undefined);
     };
     const getDayEvents = (dateStr: string) => {
         return getTransportScheduleEventsForDate(trip?.transports, dateStr);

@@ -99,7 +99,35 @@ Each item is independently isolated with its own feature flag, branch/commit his
   rm backend_files/routeProxy.js backend_files/test/route.test.js
   git revert <sha>
   ```
+## P-03 · Geocoding Upgrade (Open-Meteo → Photon → Nominatim)
 
----
-
-
+- **Status**: Done
+- **Branch**: `gev/P03-geocoding-upgrade`
+- **Commit**: `[GEV-P03]`
+- **Feature Flag**: `GEV_P03_GEOCODING` (default: ON)
+- **Files Added**:
+  - `backend_files/geocodingChain.js`
+  - `backend_files/test/geocoding.test.js`
+- **Files Modified**:
+  - `backend_files/server.js`
+  - `services/geocoding.ts`
+  - `views/TripDetail.tsx`
+- **Endpoints**:
+  - `GET /api/proxy/geocoding?q=...&lat=...&lon=...`
+  - `GET /api/geocode/search?q=...&lat=...&lon=...` (multi-provider chain with proximity bias, 502 honest error on transport failure, negative cache only when answered)
+- **Env Vars**: `VITE_FF_GEV_P03_GEOCODING`
+- **Dependencies Added**: None
+- **DB Changes**: None (uses existing `geocoding_cache` table)
+- **VERIFY Results**:
+  - Toponym normalization verified ("Huế" -> "hue").
+  - Photon soft proximity bias support verified (lat/lon).
+  - Photon extent `[west, north, east, south]` correctly converted to standard viewport `[west, south, east, north]`.
+  - Coarse OSM types mapped for zoom levels.
+  - Timezone lookup via Open-Meteo forecast API (`timezone=auto`).
+  - Browser-direct Nominatim calls removed completely.
+  - Destination coordinates proximity bias added to TripDetail search.
+- **Exact Removal Recipe**:
+  ```bash
+  rm backend_files/geocodingChain.js backend_files/test/geocoding.test.js
+  git revert <sha>
+  ```

@@ -405,13 +405,22 @@ export function calculateArrivalTime(originIata: string, destIata: string, depDa
 const activeSearchAborts = new Map<string, AbortController>();
 const searchQueriesCache = new Map<string, string[]>();
 
-async function fetchOpenMeteoGeocoding(query: string): Promise<any[]> {
+async function fetchOpenMeteoGeocoding(query: string, bias?: { lat?: number; lon?: number }): Promise<any[]> {
+    let queryParams = `q=${encodeURIComponent(query)}`;
+    if (bias && Number.isFinite(bias.lat) && Number.isFinite(bias.lon)) {
+        queryParams += `&lat=${bias.lat}&lon=${bias.lon}`;
+    }
+
     try {
-        // 1. Fetch from backend geocoding search endpoint first (with PostgreSQL caching, local search, and logging)
-        const res = await fetchWithTimeout(`/api/geocode/search?q=${encodeURIComponent(query)}`, {}, 3000);
+        // 1. Fetch from backend geocoding search endpoint first (P-03 Multi-provider chain: Open-Meteo -> Photon -> Nominatim)
+        const res = await fetchWithTimeout(`/api/geocode/search?${queryParams}`, {}, 5000);
         if (res.ok) {
             const data = await res.json();
             if (Array.isArray(data)) return data;
+            if (data && Array.isArray(data.results)) return data.results;
+        } else if (res.status === 502) {
+            console.warn(`[Geocoding] Upstream geocoding services did not answer for query: "${query}"`);
+            return [];
         }
     } catch (e) {
         console.warn("Backend geocoding search failed, trying fallback proxy...", e);
@@ -419,10 +428,11 @@ async function fetchOpenMeteoGeocoding(query: string): Promise<any[]> {
 
     try {
         // Fallback to proxy route
-        const res = await fetchWithTimeout(`/api/proxy/geocoding?q=${encodeURIComponent(query)}`, {}, 3000);
+        const res = await fetchWithTimeout(`/api/proxy/geocoding?${queryParams}`, {}, 5000);
         if (res.ok) {
             const data = await res.json();
             if (Array.isArray(data)) return data;
+            if (data && Array.isArray(data.results)) return data.results;
         }
     } catch (e) {
         console.warn("Backend geocoding proxy failed. Falling back to direct client-side fetch...", e);
@@ -724,16 +734,17 @@ export function cleanCityName(rawName: string, countryCode?: string, adminRegion
     return name || formatPlaceName(rawName.trim());
 }
 
-export async function searchLocations(query: string): Promise<string[]> {
+export async function searchLocations(query: string, bias?: { lat?: number; lon?: number }): Promise<string[]> {
     if (!query) return [];
     const trimmedQuery = query.trim();
     if (trimmedQuery.length < 2) return [];
 
     const lowerQuery = trimmedQuery.toLowerCase();
+    const memoKey = `${lowerQuery}${bias && Number.isFinite(bias.lat) && Number.isFinite(bias.lon) ? `:${bias.lat.toFixed(2)},${bias.lon.toFixed(2)}` : ''}`;
     
     // Check local memory cache first for instant sub-millisecond snapping
-    if (searchQueriesCache.has(lowerQuery)) {
-        return searchQueriesCache.get(lowerQuery)!;
+    if (searchQueriesCache.has(memoKey)) {
+        return searchQueriesCache.get(memoKey)!;
     }
 
     const citySuggestions = new Set<string>();
@@ -794,20 +805,22 @@ export async function searchLocations(query: string): Promise<string[]> {
         });
     } catch (e) {}
 
-    // 4. Osm/Nominatim and Open-Meteo network query matching with abort logic
+    // 4. Multi-provider backend geocoding chain (Open-Meteo -> Photon -> Nominatim with proximity bias)
     let networkCitySuggestions: string[] = [];
     let networkAirportSuggestions: string[] = [];
-    if (trimmedQuery.length >= 3) {
+    if (trimmedQuery.length >= 2) {
         try {
-            // Try Open-Meteo first for high reliability and unblocking
-            const meteoResults = await fetchOpenMeteoGeocoding(trimmedQuery);
-            if (meteoResults && meteoResults.length > 0) {
-                meteoResults.forEach((item: any, idx: number) => {
+            const chainResults = await fetchOpenMeteoGeocoding(trimmedQuery, bias);
+            if (chainResults && chainResults.length > 0) {
+                chainResults.forEach((item: any, idx: number) => {
                     const cleanCity = cleanCityName(item.name, item.country_code, item.admin1);
                     const country = item.country || '';
-                    const displayName = country ? `${cleanCity}, ${country}` : cleanCity;
-                    if (!networkCitySuggestions.includes(displayName)) {
-                        networkCitySuggestions.push(displayName);
+                    const displayName = item.displayName || (country ? `${cleanCity}, ${country}` : cleanCity);
+                    
+                    if (item.types?.includes('airport') || item.name?.toLowerCase().includes('airport') || item.name?.toLowerCase().includes('aerod')) {
+                        if (!networkAirportSuggestions.includes(displayName)) networkAirportSuggestions.push(displayName);
+                    } else {
+                        if (!networkCitySuggestions.includes(displayName)) networkCitySuggestions.push(displayName);
                     }
 
                     // Hydrate cache with exact lookup data so it is instant afterwards
@@ -815,11 +828,14 @@ export async function searchLocations(query: string): Promise<string[]> {
                         lat: item.latitude,
                         lng: item.longitude,
                         lon: item.longitude,
-                        tz: item.timezone || 'UTC',
+                        tz: item.timezone || undefined, // Never default silently to UTC
                         city: cleanCity,
                         country: item.country,
                         countryCode: item.country_code?.toUpperCase(),
-                        name: cleanCity
+                        name: cleanCity,
+                        viewport: item.viewport,
+                        types: item.types,
+                        provider: item.provider
                     };
                     internalCache.set(displayName.trim(), cacheData);
                     internalCache.set(displayName.trim().toUpperCase(), cacheData);
@@ -833,41 +849,8 @@ export async function searchLocations(query: string): Promise<string[]> {
                 });
                 saveCache();
             }
-
-            // Only query Nominatim as a fallback if Open-Meteo returned 0 results
-            if (!meteoResults || meteoResults.length === 0) {
-                if (activeSearchAborts.has('search')) {
-                    activeSearchAborts.get('search')?.abort();
-                }
-                const controller = new AbortController();
-                activeSearchAborts.set('search', controller);
-
-                const timerId = setTimeout(() => controller.abort(), 1500);
-
-                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(trimmedQuery)}&limit=10`, {
-                    signal: controller.signal,
-                    headers: { 'Accept-Language': 'en' }
-                });
-                clearTimeout(timerId);
-
-                if (res.ok) {
-                    const data = await res.json();
-                    data.forEach((item: any) => {
-                        const name: string = item.display_name;
-                        if (name.toLowerCase().includes('airport') || name.toLowerCase().includes('aerod')) {
-                            if (!networkAirportSuggestions.includes(name)) networkAirportSuggestions.push(name);
-                        } else {
-                            const rawCity = item.address?.city || item.address?.town || item.address?.village || item.name || (item.display_name ? item.display_name.split(',')[0] : '');
-                            const cleanCity = cleanCityName(rawCity, item.address?.country_code, item.address?.state || item.address?.province);
-                            const country = item.address?.country || '';
-                            const displayName = country ? `${cleanCity}, ${country}` : cleanCity;
-                            if (!networkCitySuggestions.includes(displayName)) networkCitySuggestions.push(displayName);
-                        }
-                    });
-                }
-            }
         } catch (e) {
-            // Graceful fallback to offline/cached results
+            console.warn("[Geocoding] Network chain search error:", e);
         }
     }
 
@@ -1003,7 +986,7 @@ export function getCoordinatesSync(location: string): { lat: number; lng: number
   return undefined;
 }
 
-export async function getCoordinates(location: string): Promise<{ lat: number; lng: number; tz?: string; city?: string; country?: string; countryCode?: string } | undefined> {
+export async function getCoordinates(location: string, bias?: { lat?: number; lon?: number }): Promise<{ lat: number; lng: number; tz?: string; city?: string; country?: string; countryCode?: string; viewport?: [number, number, number, number]; types?: string[] } | undefined> {
   if (!location) return undefined;
   loadCache();
 
@@ -1049,7 +1032,9 @@ export async function getCoordinates(location: string): Promise<{ lat: number; l
           tz: cached.tz,
           city: cached.city,
           country: cached.country,
-          countryCode: cached.countryCode || cached.iso
+          countryCode: cached.countryCode || cached.iso,
+          viewport: cached.viewport,
+          types: cached.types
       };
   }
 
@@ -1070,15 +1055,14 @@ export async function getCoordinates(location: string): Promise<{ lat: number; l
       }
   }
 
-  // E. Live network query (Open-Meteo + Nominatim fallback)
+  // E. Live network query via backend multi-provider geocoding chain (Open-Meteo -> Photon -> Nominatim)
   try {
     const isIataLike = cleanLocation.length === 3 && cleanLocation === cleanLocation.toUpperCase();
     const searchQuery = isIataLike ? `${cleanLocation} airport` : cleanLocation;
 
-    // Try Open-Meteo as primary (unblocked, reliable, fast, has timezone data)
-    const meteoData = await fetchOpenMeteoGeocoding(searchQuery);
-    if (meteoData && meteoData.length > 0) {
-        const item = meteoData[0];
+    const chainData = await fetchOpenMeteoGeocoding(searchQuery, bias);
+    if (chainData && chainData.length > 0) {
+        const item = chainData[0];
         const lat = item.latitude;
         const lng = item.longitude;
         // Sanity check: valid numbers, in-range, and reject (0,0)
@@ -1090,42 +1074,14 @@ export async function getCoordinates(location: string): Promise<{ lat: number; l
                 tz: item.timezone || undefined,
                 city: item.name,
                 country: item.country,
-                countryCode: item.country_code?.toUpperCase()
+                countryCode: item.country_code?.toUpperCase(),
+                viewport: item.viewport,
+                types: item.types,
+                provider: item.provider
             };
             internalCache.set(cleanLocation, entry);
             saveCache();
             return { ...entry, lat, lng };
-        }
-    }
-    
-    await throttleNetwork();
-    const res = await fetchWithTimeout(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&addressdetails=1&limit=1`, {
-        headers: { 
-            'Accept-Language': 'en',
-            'User-Agent': 'WanderGridTravelMap/1.0 (contact: berjawi@gmail.com)'
-        }
-    }, 3000);
-    if (res.ok) {
-        const data = await res.json();
-        if (data.length > 0) {
-          const item = data[0];
-          const lat = parseFloat(item.lat), lng = parseFloat(item.lon);
-          // Sanity check: valid numbers, in-range, and reject (0,0)
-          if (!isNaN(lat) && !isNaN(lng) && (lat !== 0 || lng !== 0) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-            const address = item.address || {};
-            const entry = {
-              lat,
-              lng,
-              lon: lng,
-              tz: undefined,
-              city: address.city || address.town || address.village || address.municipality || item.display_name?.split(',')[0]?.trim(),
-              country: address.country,
-              countryCode: address.country_code?.toUpperCase()
-            };
-            internalCache.set(cleanLocation, entry);
-            saveCache();
-            return { ...entry, lat, lng };
-          }
         }
     }
   } catch (e) {
@@ -1367,27 +1323,9 @@ async function resolvePlaceNameRaw(query: string): Promise<{ city: string, count
             return obj;
         }
 
-        // Nominatim backup
-        await throttleNetwork();
-        const res = await fetchWithTimeout(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&addressdetails=1&limit=1`, {
-            headers: { 'Accept-Language': 'en' }
-        }, 3000);
-        if (res.ok) {
-            const data = await res.json();
-            if (data.length > 0) {
-                const r = data[0], a = r.address || {};
-                const rawCity = a.city || a.town || a.village || cleanQuery;
-                const cleanCity = cleanCityName(rawCity, a.country_code, a.state || a.province);
-                const country = a.country || '';
-                const code = a.country_code?.toUpperCase() || '';
-                const displayName = country ? `${cleanCity}, ${country}` : cleanCity;
-                const obj = { city: cleanCity, country, countryCode: code, displayName };
-                internalCache.set(cleanQuery, obj);
-                saveCache();
-                return obj;
-            }
-        }
-    } catch (e) {}
+    } catch (e) {
+        console.warn('[geocoding] getCityCountryInfo live lookup failed:', e);
+    }
 
     // 6. Last-ditch: if everything failed
     if (uppercaseQuery.length === 2 && COUNTRY_REGION_MAP[uppercaseQuery]) {

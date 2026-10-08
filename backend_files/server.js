@@ -13,8 +13,10 @@ const rateLimit = require('express-rate-limit');
 const { fetchUpstream } = require('./upstream');
 const { resolveIcaoCallsign } = require('./carrierMapping');
 const { handleRouteProxy } = require('./routeProxy');
+const { searchGeocodingChain } = require('./geocodingChain');
 
 const pbkdf2Async = util.promisify(crypto.pbkdf2);
+
 
 
 
@@ -1669,92 +1671,97 @@ function searchLocalAirportData(q) {
 
 // Single multi-endpoint controller supporting /api/proxy/geocoding and /api/geocode/search with PostgreSQL-backed caching
 const handleGeocodingSearch = async (req, res) => {
-    const { q } = req.query;
+    const { q, lat, lon } = req.query;
     if (!q || !q.trim()) {
-        return res.json([]);
+        return res.json({ ok: true, answered: true, results: [] });
     }
     const trimmedQ = q.trim().toLowerCase();
+    const biasLat = lat ? parseFloat(lat) : undefined;
+    const biasLon = lon ? parseFloat(lon) : undefined;
+    const cacheKey = `${trimmedQ}${Number.isFinite(biasLat) && Number.isFinite(biasLon) ? `:${biasLat.toFixed(2)},${biasLon.toFixed(2)}` : ''}`;
     
     // 1. Search local airport data first beforehand to avoid external api/geocoding cache contamination for common trips & flights
     const localMatches = searchLocalAirportData(trimmedQ);
     if (localMatches) {
         res.set('X-Cache', 'LOCAL_AIRPORT');
-        return res.json(localMatches);
+        res.set('X-Answered', 'true');
+        return res.json({ ok: true, answered: true, provider: 'local_airport', results: localMatches });
     }
 
     // 2. Instant RAM Cache (0ms)
-    if (memoryGeocoding.has(trimmedQ)) {
+    if (memoryGeocoding.has(cacheKey)) {
         res.set('X-Cache', 'RAM');
-        return res.json(memoryGeocoding.get(trimmedQ));
+        res.set('X-Answered', 'true');
+        const cached = memoryGeocoding.get(cacheKey);
+        return res.json({ ok: true, answered: true, provider: 'cache', results: cached });
     }
 
     try {
         // 3. Check persistent PostgreSQL geocoding database cache if not matched in RAM
-        const cacheLookup = await pool.query('SELECT results, created_at FROM geocoding_cache WHERE query = $1', [trimmedQ]);
+        const cacheLookup = await pool.query('SELECT results, created_at FROM geocoding_cache WHERE query = $1', [cacheKey]);
         if (cacheLookup.rows.length > 0) {
             const row = cacheLookup.rows[0];
             const age = Date.now() - new Date(row.created_at).getTime();
             if (age < GEOCODE_CACHE_TTL_MS) {
-                memoryGeocoding.set(trimmedQ, row.results);
+                memoryGeocoding.set(cacheKey, row.results);
                 res.set('X-Cache', 'HIT');
-                return res.json(row.results);
+                res.set('X-Answered', 'true');
+                return res.json({ ok: true, answered: true, provider: 'cache', results: row.results });
             } else {
-                console.log(`[GEOCODE] Cache expired for query: ${trimmedQ}`);
+                console.log(`[GEOCODE] Cache expired for query: ${cacheKey}`);
             }
         }
     } catch (dbErr) {
         console.warn("Geocoding database cache lookup failed:", dbErr.message);
     }
 
-    // 4. Fetch from OpenMeteo geocoding API with robust timeout abort protection
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-        controller.abort();
-    }, EXTERNAL_FETCH_TIMEOUT_MS);
-
+    // 4. Multi-provider geocoding chain: Open-Meteo -> Photon -> Nominatim (P-03)
     try {
-        const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(trimmedQ)}&count=10&language=en&format=json`;
-        const response = await fetch(url, { signal: controller.signal });
-        clearTimeout(timeoutId);
+        const chainRes = await searchGeocodingChain(trimmedQ, { lat: biasLat, lon: biasLon });
 
-        if (!response.ok) {
-            throw new Error(`Open-Meteo returned status ${response.status}`);
+        if (!chainRes.ok || !chainRes.answered) {
+            res.set('X-Answered', 'false');
+            return res.status(502).json({
+                ok: false,
+                answered: false,
+                error: chainRes.error || 'Geocoding services did not answer',
+                results: []
+            });
         }
 
-        const data = await response.json();
-        const results = data.results || [];
-
-        // Fill in defaults for coordinates mapping so results match formatting
-        const formattedResults = results.map(item => ({
-            name: item.name,
-            latitude: item.latitude,
-            longitude: item.longitude,
-            country: item.country || '',
-            country_code: item.country_code || '',
-            timezone: item.timezone || 'UTC',
-            admin1: item.admin1 || ''
-        }));
+        const results = chainRes.results || [];
 
         // 5. Keep results cached in both RAM and DB for subsequent instantaneous requests (0ms latency)
-        memoryGeocoding.set(trimmedQ, formattedResults);
+        memoryGeocoding.set(cacheKey, results);
         try {
             await pool.query(
                 'INSERT INTO geocoding_cache (query, results) VALUES ($1, $2) ON CONFLICT (query) DO UPDATE SET results = $2',
-                [trimmedQ, JSON.stringify(formattedResults)]
+                [cacheKey, JSON.stringify(results)]
             );
         } catch (dbWriteErr) {
             console.warn("Could not write geocoding result to cache:", dbWriteErr.message);
         }
 
         res.set('X-Cache', 'MISS');
-        res.json(formattedResults);
+        res.set('X-Answered', 'true');
+        return res.json({
+            ok: true,
+            answered: true,
+            provider: chainRes.provider || 'none',
+            results
+        });
     } catch (err) {
-        clearTimeout(timeoutId);
-        console.error("Geocoding API error or timeout:", err.message);
-        // Fast-fail: return empty results instead of hanging or freezing the client UI
-        res.json([]);
+        console.error("Geocoding chain exception:", err.message);
+        res.set('X-Answered', 'false');
+        return res.status(502).json({
+            ok: false,
+            answered: false,
+            error: err.message || 'Geocoding failed due to internal error',
+            results: []
+        });
     }
 };
+
 
 // Route handlers for geocoding search
 app.get('/api/proxy/geocoding', handleGeocodingSearch);
