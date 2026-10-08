@@ -83,6 +83,7 @@ import { getFlagEmoji, getRegion } from '../services/geoData';
 import { fetchMultiModalRoute, getCachedMultiModalRoute } from '../services/multiModalRouting';
 import { dataService } from '../services/mockDb';
 import { formatDate } from '../utils/formatters';
+import { DataCreditsPopover } from './DataCreditsPopover';
 import GlassPanel from './glass/GlassPanel';
 import { globeHorizonCullExtension } from './GlobeHorizonCullExtension';
 import { GlobeAtmosphericBackground } from './GlobeAtmosphericBackground';
@@ -3046,6 +3047,14 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         )}
                     </div>
                 </GlassPanel>
+            </div>
+
+            {/* P-07: Dynamic Data Credits Popover (Bottom Right) */}
+            <div className="absolute bottom-3 right-3 md:bottom-6 md:right-6 z-20 pointer-events-auto">
+                <DataCreditsPopover
+                    currentBasemap={currentLayer}
+                    activeAppearance={activeAppearance}
+                />
             </div>
 
             {/* Top-Center Floating "Back to previous view" Button with Liquid Glass (Positioned just below Tab Selector) */}

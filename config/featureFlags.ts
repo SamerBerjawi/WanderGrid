@@ -44,6 +44,9 @@ export const FEATURE_FLAGS = {
 
   // P-06: Integrations panel in Settings
   GEV_P06_INTEGRATIONS: getEnvFlag('VITE_FF_GEV_P06_INTEGRATIONS', true),
+
+  // P-07: Dynamic data credits popover
+  GEV_P07_DATA_CREDITS: getEnvFlag('VITE_FF_GEV_P07_DATA_CREDITS', true),
 } as const;
 
 export type FeatureFlagKey = keyof typeof FEATURE_FLAGS;

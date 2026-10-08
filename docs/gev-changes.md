@@ -295,6 +295,35 @@ Each item is independently isolated with its own feature flag, branch/commit his
   git revert <sha>
   ```
 
+---
+
+## P-07 · Dynamic Data Credits Popover
+
+- **Status**: Done
+- **Branch**: `gev/P07-data-credits`
+- **Commit**: `[GEV-P07]`
+- **Feature Flag**: `GEV_P07_DATA_CREDITS` (default: ON)
+- **Files Added**:
+  - `components/DataCreditsPopover.tsx` (Liquid Glass dynamic attribution popover component with layer-aware credit calculation)
+- **Files Modified**:
+  - `config/featureFlags.ts` (added `GEV_P07_DATA_CREDITS` flag)
+  - `components/DeckFlightMap.tsx` (rendered `<DataCreditsPopover />` in bottom-right corner of map)
+- **Endpoints**: None
+- **Env Vars**: `VITE_FF_GEV_P07_DATA_CREDITS`
+- **Dependencies Added**: None
+- **DB Changes**: None
+- **VERIFY Results**:
+  - Popover calculates active credits dynamically based on current basemap, active terrain, satellite, radar, cloud, and transit layers.
+  - Floating Liquid Glass pill trigger (`Info` icon) styled with `wg-glass-pill` and Apple HIG 44px min touch target.
+  - Smooth animated dialog (`motion.div` with spring transition) with keyboard ESC and outside click listeners.
+  - Outbound license/documentation links open safely with `rel="noopener noreferrer"`.
+- **Exact Removal Recipe**:
+  ```bash
+  rm components/DataCreditsPopover.tsx
+  git revert <sha>
+  ```
+
+
 
 
 
