@@ -352,6 +352,8 @@ export const getBasemapTileConfig = (
         case 'vibrant':
             if (key) {
                 tiles = getCartoTiles('voyager');
+                maxzoom = 20;
+                attribution = '© CARTO, © OpenStreetMap contributors';
             } else {
                 tiles = [
                     'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -365,6 +367,8 @@ export const getBasemapTileConfig = (
         case 'snow':
             if (key) {
                 tiles = getCartoTiles('light_all');
+                maxzoom = 20;
+                attribution = '© CARTO, © OpenStreetMap contributors';
             } else {
                 tiles = ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}'];
                 maxzoom = 16;
@@ -375,6 +379,8 @@ export const getBasemapTileConfig = (
         default:
             if (key) {
                 tiles = getCartoTiles('dark_all');
+                maxzoom = 20;
+                attribution = '© CARTO, © OpenStreetMap contributors';
             } else {
                 tiles = ['https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'];
                 maxzoom = 16;
@@ -491,7 +497,7 @@ export const createMapLibreStyle = (
             type: 'raster' as const,
             source: basemapSourceId,
             minzoom: 0,
-            maxzoom
+            maxzoom: 24
         },
         ...(canEnableOpenAip ? getOpenAipOverlayLayers(openAipGroups, isDark ? 'dark' : 'light') : []),
         ...(detailedAirports ? createAirportOverlayLayers(isDark) : [])
@@ -612,6 +618,72 @@ export interface DeckFlightMapProps {
     isSidebarCollapsed?: boolean;
     embedded?: boolean;
 }
+
+const syncAirportOverlayOnMap = (map: maplibregl.Map, isDetailedAirports: boolean, isDark: boolean) => {
+    if (!map.isStyleLoaded()) return;
+    if (isDetailedAirports) {
+        if (!map.getSource(AIRPORT_SOURCE_ID)) {
+            try {
+                map.addSource(AIRPORT_SOURCE_ID, createAirportOverlaySource());
+            } catch (e) {
+                console.warn('[DeckFlightMap] error adding airport source:', e);
+            }
+        }
+        if (map.getSource(AIRPORT_SOURCE_ID)) {
+            const airportLayers = createAirportOverlayLayers(isDark);
+            airportLayers.forEach(layer => {
+                if (!map.getLayer(layer.id)) {
+                    try {
+                        map.addLayer(layer);
+                    } catch (e) {
+                        console.warn(`[DeckFlightMap] error adding airport layer ${layer.id}:`, e);
+                    }
+                }
+            });
+        }
+    } else {
+        const airportLayers = createAirportOverlayLayers(isDark);
+        airportLayers.forEach(layer => {
+            if (map.getLayer(layer.id)) {
+                try { map.removeLayer(layer.id); } catch (e) {}
+            }
+        });
+        if (map.getSource(AIRPORT_SOURCE_ID)) {
+            try { map.removeSource(AIRPORT_SOURCE_ID); } catch (e) {}
+        }
+    }
+};
+
+const syncOpenAipOverlayOnMap = (
+    map: maplibregl.Map,
+    isOpenAipOverlay: boolean,
+    isDark: boolean,
+    openAipKey?: string,
+    openAipGroups?: OpenAipOverlayGroup[]
+) => {
+    if (!map.isStyleLoaded()) return;
+    const sanitizedKey = (openAipKey || '').trim();
+    if (!isOpenAipOverlay || !sanitizedKey) return;
+    if (!map.getSource(OPENAIP_AIRSPACE_SOURCE_ID)) {
+        try {
+            map.addSource(OPENAIP_AIRSPACE_SOURCE_ID, {
+                type: 'vector',
+                tiles: [`https://api.tiles.openaip.net/api/data/openaip/{z}/{x}/{y}.pbf?apiKey=${encodeURIComponent(sanitizedKey)}`],
+                minzoom: 0,
+                maxzoom: 14,
+                attribution: '<a href="https://www.openaip.net" target="_blank" rel="noopener noreferrer">openAIP</a>'
+            });
+        } catch (e) {}
+    }
+    if (map.getSource(OPENAIP_AIRSPACE_SOURCE_ID)) {
+        const openAipLayers = getOpenAipOverlayLayers(openAipGroups, isDark ? 'dark' : 'light');
+        openAipLayers.forEach(layer => {
+            if (!map.getLayer(layer.id)) {
+                try { map.addLayer(layer); } catch (e) {}
+            }
+        });
+    }
+};
 
 export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     trips,
@@ -2153,8 +2225,10 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         map.on('load', () => {
             isMapLoadedRef.current = true;
             setupAirportIcons();
+            syncAirportOverlayOnMap(map, isDetailedAirports, isDark);
             if (isOpenAipOverlay && effectiveOpenAipKey) {
                 ensureOpenAipIcons(map, isDark ? 'dark' : 'light');
+                syncOpenAipOverlayOnMap(map, isOpenAipOverlay, isDark, effectiveOpenAipKey, activeAppearance.openAipGroups);
             }
             try {
                 setupAirportIcons();
@@ -2331,16 +2405,19 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         'transit-railway-layer',
                         'noaa-clouds-layer',
                         'rain-radar-layer',
-                        'airport-runway-line-bg',
+                        'airport-overlay-taxiway-outline',
+                        'airport-overlay-apron',
                         'openaip-airspaces'
                     ];
-                    const firstOverlay = existingLayers.find(l => overlayLayerIds.includes(l.id));
+                    const firstOverlay = existingLayers.find(l => 
+                        overlayLayerIds.includes(l.id) || l.id.startsWith('airport-overlay-')
+                    );
                     map.addLayer({
                         id: 'raster-basemap-layer',
                         type: 'raster',
                         source: basemapSourceId,
                         minzoom: 0,
-                        maxzoom
+                        maxzoom: 24
                     }, firstOverlay?.id);
 
                     lastAppliedStyleKeyRef.current = nextStyleKey;
@@ -2365,7 +2442,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         );
         map.setStyle(nextStyle);
 
-        // Re-assert projection, icons, and deck.gl overlay on styledata across style changes
+        // Re-assert projection, icons, overlays, and airport vector layers on styledata across style changes
         const onStyleData = () => {
             if (!map.isStyleLoaded()) return;
             if ((map as any).setProjection) {
@@ -2384,8 +2461,10 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     }).catch(() => {});
                 }
             });
+            syncAirportOverlayOnMap(map, isDetailedAirports, isDark);
             if (isOpenAipOverlay && effectiveOpenAipKey) {
                 ensureOpenAipIcons(map, isDark ? 'dark' : 'light');
+                syncOpenAipOverlayOnMap(map, isOpenAipOverlay, isDark, effectiveOpenAipKey, activeAppearance.openAipGroups);
             }
             if (overlayRef.current) {
                 try {
@@ -2401,8 +2480,12 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         };
 
         map.on('styledata', onStyleData);
+        map.on('idle', onStyleData);
+        map.on('style.load', onStyleData);
         return () => {
             map.off('styledata', onStyleData);
+            map.off('idle', onStyleData);
+            map.off('style.load', onStyleData);
         };
     }, [
         currentLayer,
@@ -2414,6 +2497,23 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         activeAppearance.openAipOverlay,
         JSON.stringify(activeAppearance.openAipGroups)
     ]);
+
+    // Synchronize airport overlay details and dark/light theme palette
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map) return;
+        const isDetailedAirports = activeAppearance.airportDetail === 'detailed';
+        const trySync = () => {
+            if (!map.isStyleLoaded()) return;
+            syncAirportOverlayOnMap(map, isDetailedAirports, isDark);
+            map.triggerRepaint();
+        };
+        trySync();
+        map.on('idle', trySync);
+        return () => {
+            map.off('idle', trySync);
+        };
+    }, [activeAppearance.airportDetail, isDark]);
 
     // Synchronize Terrain Hillshade, Transit, NOAA Clouds and Precipitation Radar directly into MapLibre GL
     useEffect(() => {

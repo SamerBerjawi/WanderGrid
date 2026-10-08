@@ -5,7 +5,7 @@ import type { LayerSpecification, SourceSpecification } from 'maplibre-gl';
 
 export const AIRPORT_SOURCE_ID = 'airport-overlay';
 export const AIRPORT_PMTILES_URL = 'pmtiles:///airport-overlay.pmtiles';
-export const GLYPHS_URL = 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf';
+export const GLYPHS_URL = 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf';
 
 // ============================================================================
 // LIGHT MODE COLOR PALETTE (High-Contrast, Aeronautical Grade)
@@ -678,7 +678,7 @@ export const createAirportOverlayLayers = (isDark: boolean): LayerSpecification[
         'icon-text-fit': 'both',
         'icon-text-fit-padding': [2, 2, 0, 2],
         'text-field': ['get', 'name'],
-        'text-font': ['Noto Sans Bold', 'Noto Sans Regular'],
+        'text-font': ['Noto Sans Bold'],
         'text-size': ['interpolate', ['exponential', 1.2], ['zoom'], 14, 8, 16, 11],
         'text-anchor': 'center',
         'icon-anchor': 'center',
@@ -700,7 +700,7 @@ export const createAirportOverlayLayers = (isDark: boolean): LayerSpecification[
       filter: ['==', ['get', 'type'], 'terminal'],
       layout: {
         'text-field': ['coalesce', ['get', 'name:en'], ['get', 'name']],
-        'text-font': ['Noto Sans Bold', 'Noto Sans Regular'],
+        'text-font': ['Noto Sans Bold'],
         'text-size': ['interpolate', ['linear'], ['zoom'], 13, AIRPORT_TERMINAL_LABEL_SIZE_Z13, 16, AIRPORT_TERMINAL_LABEL_SIZE_Z16],
         visibility: 'visible',
       },
@@ -721,7 +721,7 @@ export const createAirportOverlayLayers = (isDark: boolean): LayerSpecification[
       filter: ['all', taxiwayAerowayFilter, ['!=', ['geometry-type'], 'Polygon']],
       layout: {
         'text-field': '{ref}',
-        'text-font': ['Noto Sans Bold', 'Noto Sans Regular'],
+        'text-font': ['Noto Sans Bold'],
         'text-size': ['interpolate', ['exponential', 1], ['zoom'], 13, 8, 20, 18],
         'text-anchor': 'center',
         'symbol-placement': 'line',
@@ -744,7 +744,7 @@ export const createAirportOverlayLayers = (isDark: boolean): LayerSpecification[
       filter: ['all', ['==', ['get', 'aeroway'], 'runway'], ['!=', ['geometry-type'], 'Polygon']],
       layout: {
         'text-field': '{ref}',
-        'text-font': ['Noto Sans Bold', 'Noto Sans Regular'],
+        'text-font': ['Noto Sans Bold'],
         'text-size': ['interpolate', ['exponential', 1.2], ['zoom'], 12, 9, 18, 28],
         'text-anchor': 'center',
         'symbol-placement': 'line',
@@ -767,7 +767,7 @@ export const createAirportOverlayLayers = (isDark: boolean): LayerSpecification[
       filter: ['==', ['get', 'aeroway'], 'runway_designator'],
       layout: {
         'text-field': ['get', 'ref'],
-        'text-font': ['Noto Sans Bold', 'Noto Sans Regular'],
+        'text-font': ['Noto Sans Bold'],
         'text-size': ['interpolate', ['linear'], ['zoom'], 14, 12, 18, 22],
         'text-rotation-alignment': 'map',
         'text-rotate': ['get', 'bearing'],
@@ -801,7 +801,7 @@ export const createAirportOverlayLayers = (isDark: boolean): LayerSpecification[
           ['coalesce', ['get', 'iata'], ['get', 'icao']],
           { 'font-scale': 0.84 },
         ],
-        'text-font': ['Noto Sans Bold', 'Noto Sans Regular'],
+        'text-font': ['Noto Sans Bold'],
         'text-size': ['interpolate', ['linear'], ['zoom'], 9, 12, 12, 14, 15, 18],
         'text-line-height': 1,
         'text-letter-spacing': 0.02,
