@@ -93,6 +93,32 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
     const [internalCometFlow, setInternalCometFlow] = useState(true);
     const [internalCluster, setInternalCluster] = useState(false);
 
+    const [isVisible, setIsVisible] = useState(false);
+
+    useEffect(() => {
+        if (isOpen) {
+            const timer = setTimeout(() => setIsVisible(true), 20);
+            return () => clearTimeout(timer);
+        } else {
+            setIsVisible(false);
+        }
+    }, [isOpen]);
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && isOpen) {
+                handleClose();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isOpen]);
+
+    const handleClose = () => {
+        setIsVisible(false);
+        setTimeout(onClose, 250);
+    };
+
     useEffect(() => {
         if (!isOpen) return;
         try {
@@ -105,7 +131,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
         } catch {}
     }, [isOpen]);
 
-    if (!isOpen) return null;
+    if (!isOpen && !isVisible) return null;
 
     const updateField = <K extends keyof MapAppearanceSettings>(field: K, value: MapAppearanceSettings[K]) => {
         onChangeSettings({
@@ -156,50 +182,54 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
         <div className="fixed inset-0 z-modal overflow-hidden font-sans select-none pointer-events-auto">
             {/* 1. Translucent Scrim Backdrop (clean darkening without double-blur) */}
             <div 
-                className="fixed inset-0 bg-black/40 dark:bg-black/60 transition-opacity duration-300"
-                onClick={onClose}
+                className={`fixed inset-0 bg-black/40 dark:bg-black/60 transition-opacity duration-300 ${
+                    isVisible ? 'opacity-100' : 'opacity-0'
+                }`}
+                onClick={handleClose}
             />
 
-            {/* 2. Slide-out Drawer Shell on Right */}
-            <div className="fixed inset-y-0 right-0 max-w-full flex pl-6 sm:pl-10">
+            {/* 2. Slide-out Floating Shell with Liquid Glass (Floating 28px standard) */}
+            <div className="fixed top-[calc(0.75rem+env(safe-area-inset-top,0px))] sm:top-4 right-[calc(0.75rem+env(safe-area-inset-right,0px))] sm:right-4 bottom-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:bottom-4 z-modal flex max-w-full pl-0 sm:pl-10 pointer-events-none">
                 <div 
-                    className="w-screen max-w-lg sm:w-[500px] md:w-[540px] bg-white/95 dark:bg-dark-card/95 backdrop-blur-md shadow-glass-modal border-l border-black/10 dark:border-white/15 flex flex-col transform transition-transform duration-300 ease-out"
-                    style={{ WebkitBackdropFilter: 'blur(16px)' }}
+                    className={`w-screen max-w-lg sm:w-[500px] md:w-[540px] h-full flex flex-col transform transition-transform duration-300 ease-out pointer-events-auto ${
+                        isVisible ? 'translate-x-0' : 'translate-x-full'
+                    }`}
                     onClick={(e) => e.stopPropagation()}
                 >
                     <GlassPanel
-                        className="wg-glass-card h-full w-full text-light-text dark:text-dark-text flex flex-col"
+                        className="wg-glass-card shadow-2xl h-full w-full flex flex-col overflow-hidden"
                         padding="0px"
-                        overrides={{ borderRadius: 0 }}
+                        overrides={{ borderRadius: 28 }}
                     >
-                        {/* Header with Mission Control Brand */}
-                        <div className="flex items-center justify-between px-6 pt-[calc(1.25rem+env(safe-area-inset-top,0px))] md:pt-5 pb-4 border-b border-black/5 dark:border-white/5 bg-gradient-to-r from-primary-500/10 via-transparent to-transparent shrink-0">
-                            <div className="flex items-center gap-2.5">
-                                <div className="w-8 h-8 rounded-xl bg-primary-500/15 dark:bg-primary-500/25 border border-primary-500/30 dark:border-primary-400/40 flex items-center justify-center text-primary-600 dark:text-primary-400 shrink-0 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_6px_rgba(234,88,12,0.15)] backdrop-blur-md">
-                                    <SlidersHorizontal className="w-4 h-4" />
+                        <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px] text-light-text dark:text-dark-text">
+                            {/* Header with Mission Control Brand */}
+                            <div className="flex items-center justify-between px-6 pt-[calc(1.25rem+env(safe-area-inset-top,0px))] md:pt-5 pb-4 border-b border-black/5 dark:border-white/5 bg-gradient-to-r from-primary-500/10 via-transparent to-transparent shrink-0">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="w-8 h-8 rounded-xl bg-primary-500/15 dark:bg-primary-500/25 border border-primary-500/30 dark:border-primary-400/40 flex items-center justify-center text-primary-600 dark:text-primary-400 shrink-0 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_6px_rgba(234,88,12,0.15)] backdrop-blur-md">
+                                        <SlidersHorizontal className="w-4 h-4" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-sm font-bold text-light-text dark:text-dark-text tracking-tight">Mission Control</h2>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h2 className="text-sm font-bold text-light-text dark:text-dark-text tracking-tight">Mission Control</h2>
-                                </div>
-                            </div>
 
-                            <div className="flex items-center gap-1.5">
-                                <button
-                                    onClick={handleReset}
-                                    className="w-8 h-8 rounded-xl bg-white/50 dark:bg-white/10 hover:bg-white/80 dark:hover:bg-white/15 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text transition-all duration-150 flex items-center justify-center cursor-pointer border border-black/5 dark:border-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)] active:scale-95 backdrop-blur-md"
-                                    title="Reset Camera & Telemetry"
-                                >
-                                    <RefreshCw className="w-4 h-4" />
-                                </button>
-                                <button
-                                    onClick={onClose}
-                                    className="w-8 h-8 rounded-xl bg-white/50 dark:bg-white/10 hover:bg-white/80 dark:hover:bg-white/15 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text transition-all duration-150 flex items-center justify-center cursor-pointer border border-black/5 dark:border-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)] active:scale-95 backdrop-blur-md"
-                                    aria-label="Close Mission Control"
-                                >
-                                    <X className="w-4 h-4" />
-                                </button>
+                                <div className="flex items-center gap-1.5">
+                                    <button
+                                        onClick={handleReset}
+                                        className="w-8 h-8 rounded-xl bg-white/50 dark:bg-white/10 hover:bg-white/80 dark:hover:bg-white/15 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text transition-all duration-150 flex items-center justify-center cursor-pointer border border-black/5 dark:border-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)] active:scale-95 backdrop-blur-md"
+                                        title="Reset Camera & Telemetry"
+                                    >
+                                        <RefreshCw className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                        onClick={handleClose}
+                                        className="w-8 h-8 rounded-xl bg-white/50 dark:bg-white/10 hover:bg-white/80 dark:hover:bg-white/15 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text transition-all duration-150 flex items-center justify-center cursor-pointer border border-black/5 dark:border-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)] active:scale-95 backdrop-blur-md"
+                                        aria-label="Close Mission Control"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
                             </div>
-                        </div>
 
                         {/* Sidebar Navigation Tabs */}
                         <div className={`grid ${tabs.length === 4 ? 'grid-cols-4' : 'grid-cols-3'} border-b border-black/5 dark:border-white/5 px-4 pt-2 gap-1.5 bg-black/[0.02] dark:bg-white/[0.02] shrink-0`}>
@@ -1489,6 +1519,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                     {filterTabContent}
                                 </div>
                             )}
+                        </div>
                         </div>
                     </GlassPanel>
                 </div>
