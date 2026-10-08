@@ -57,8 +57,11 @@ import {
     List,
     Sparkle,
     Bus,
-    SlidersHorizontal
+    SlidersHorizontal,
+    Warning
 } from '@phosphor-icons/react';
+import { motion, AnimatePresence } from 'motion/react';
+import { FEATURE_FLAGS } from '../config/featureFlags';
 import { Trip, CountryResidenceStatus, PredefinedMapMode, toggleCountryResidenceStatus, WorkspaceSettings } from '../types';
 import { useWanderSync } from '../hooks/useWanderSync';
 import { getCoordinatesSync, formatPlaceName, formatProperLocationName } from '../services/geocoding';
@@ -739,7 +742,24 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     }, [elevatedRoutesProp]);
 
     const elevatedRoutes = elevatedRoutesProp !== undefined ? elevatedRoutesProp : localElevatedRoutes;
-    const currentLayer = (activeLayerProp as DeckLayerType) || activeAppearance.basemap || 'default';
+    
+    // P-04a Basemap Auto-Fallback state (swaps Esri -> OSM on tile failures)
+    const [fallbackLayer, setFallbackLayer] = useState<string | null>(null);
+    const [basemapToastMessage, setBasemapToastMessage] = useState<string | null>(null);
+    const tileFailureCountRef = useRef<number>(0);
+    const tileFailureTimerRef = useRef<any>(null);
+    const hasFallenBackRef = useRef<boolean>(false);
+
+    const baseRequestedLayer = (activeLayerProp as DeckLayerType) || activeAppearance.basemap || 'default';
+    const currentLayer = fallbackLayer || baseRequestedLayer;
+
+    // Reset fallback on manual basemap/appearance change
+    useEffect(() => {
+        tileFailureCountRef.current = 0;
+        hasFallenBackRef.current = false;
+        setFallbackLayer(null);
+        setBasemapToastMessage(null);
+    }, [baseRequestedLayer, activeAppearance.basemap]);
 
     // MapLibre Container & Instance Refs
     const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -2033,6 +2053,43 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             layers: deckLayersRef.current
         });
 
+        // P-04a Basemap Auto-Fallback on tile failures (swaps Esri Satellite -> OSM on 2 tile errors)
+        map.on('error', (e: any) => {
+            if (!FEATURE_FLAGS.GEV_P04A_BASEMAP_FALLBACK) return;
+            if (hasFallenBackRef.current) return;
+
+            const sourceId = String(e?.sourceId || '');
+            const errObj = e?.error || {};
+            const errMessage = String(errObj.message || '');
+            const url = String(errObj.url || '');
+            const status = Number(errObj.status);
+
+            const isSatelliteOrEsriError =
+                sourceId.includes('satellite') ||
+                sourceId.includes('arcgis') ||
+                errMessage.includes('arcgisonline') ||
+                url.includes('arcgisonline') ||
+                (sourceId.startsWith('raster-basemap-source') && (status >= 400 || errMessage.toLowerCase().includes('tile')));
+
+            if (isSatelliteOrEsriError) {
+                tileFailureCountRef.current += 1;
+                if (tileFailureTimerRef.current) clearTimeout(tileFailureTimerRef.current);
+                tileFailureTimerRef.current = setTimeout(() => {
+                    tileFailureCountRef.current = 0;
+                }, 10000);
+
+                if (tileFailureCountRef.current >= 2) {
+                    hasFallenBackRef.current = true;
+                    console.warn('[DeckFlightMap] Satellite tile requests failed (2 errors). Triggering auto-fallback to street map.');
+                    setFallbackLayer('vibrant');
+                    setBasemapToastMessage('Satellite unavailable — using street map');
+                    setTimeout(() => {
+                        setBasemapToastMessage(null);
+                    }, 6000);
+                }
+            }
+        });
+
         map.on('load', () => {
             isMapLoadedRef.current = true;
             setupAirportIcons();
@@ -2680,6 +2737,36 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
             {/* MapLibre GL 60 FPS Canvas with Interleaved Deck.gl Engine */}
             <div ref={mapContainerRef} className="w-full h-full relative z-10 transition-opacity duration-300 ease-out" />
+
+            {/* P-04a Basemap Fallback Toast (One toast per outage, liquid glass styling) */}
+            <AnimatePresence>
+                {basemapToastMessage && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                        transition={{ duration: 0.2 }}
+                        className="fixed top-4 left-1/2 -translate-x-1/2 z-toast pointer-events-auto"
+                    >
+                        <GlassPanel
+                            padding="0px"
+                            overrides={{ borderRadius: 999 }}
+                            className="wg-glass-pill flex items-center gap-2.5 px-4 py-2 bg-amber-500/15 dark:bg-amber-950/40 border border-amber-500/30 text-amber-700 dark:text-amber-300 shadow-xl text-xs font-semibold select-none"
+                        >
+                            <Warning size={18} weight="bold" className="text-amber-500 shrink-0" />
+                            <span>{basemapToastMessage}</span>
+                            <button
+                                type="button"
+                                onClick={() => setBasemapToastMessage(null)}
+                                className="ml-1 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors text-amber-600 dark:text-amber-400 cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"
+                                aria-label="Dismiss basemap notification"
+                            >
+                                <X size={14} weight="bold" />
+                            </button>
+                        </GlassPanel>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Top-Right Floating "Mission Control" Quick Config Pill (hidden when delegated to parent view) */}
             {!onOpenMissionControl && (

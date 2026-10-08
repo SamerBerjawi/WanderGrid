@@ -131,3 +131,29 @@ Each item is independently isolated with its own feature flag, branch/commit his
   rm backend_files/geocodingChain.js backend_files/test/geocoding.test.js
   git revert <sha>
   ```
+
+---
+
+## P-04a · Basemap Auto-Fallback on Tile Failures
+
+- **Status**: Done
+- **Branch**: `gev/P04a-basemap-fallback`
+- **Commit**: `[GEV-P04a]`
+- **Feature Flag**: `GEV_P04A_BASEMAP_FALLBACK` (default: ON)
+- **Files Added**: None
+- **Files Modified**:
+  - `components/DeckFlightMap.tsx`
+- **Endpoints**: None
+- **Env Vars**: `VITE_FF_GEV_P04A_BASEMAP_FALLBACK`
+- **Dependencies Added**: None
+- **DB Changes**: None
+- **VERIFY Results**:
+  - MapLibre `error` event listener monitors tile load failures from Esri / satellite basemap sources.
+  - After 2 tile failures within a 10s window, switches automatically to OSM street map (`vibrant`).
+  - Displays a one-time non-intrusive Liquid Glass toast banner (`z-toast`, `wg-glass-pill` with Apple HIG 44px dismiss button).
+  - Resets failure count and fallback state on manual basemap selection change.
+- **Exact Removal Recipe**:
+  ```bash
+  git revert <sha>
+  ```
+
