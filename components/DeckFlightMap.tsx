@@ -34,6 +34,23 @@ if (typeof (maplibregl as any).setWorkerUrl === 'function') {
     (maplibregl as any).setWorkerUrl(maplibreWorkerUrl);
 }
 
+// Initialize MapLibre RTL text plugin for Arabic, Hebrew, and other RTL complex scripts
+try {
+    if (typeof (maplibregl as any).setRTLTextPlugin === 'function') {
+        const rtlStatus = typeof (maplibregl as any).getRTLTextPluginStatus === 'function'
+            ? (maplibregl as any).getRTLTextPluginStatus()
+            : 'unavailable';
+        if (rtlStatus === 'unavailable') {
+            const pluginUrl = typeof window !== 'undefined' && window.location?.origin
+                ? `${window.location.origin}/vendor/mapbox-gl-rtl-text.min.js`
+                : '/vendor/mapbox-gl-rtl-text.min.js';
+            (maplibregl as any).setRTLTextPlugin(pluginUrl, false);
+        }
+    }
+} catch (e) {
+    console.warn('[DeckFlightMap] RTL plugin initialization warning:', e);
+}
+
 import { MapboxOverlay } from '@deck.gl/mapbox';
 import { ArcLayer, ScatterplotLayer, GeoJsonLayer, PathLayer, BitmapLayer, TextLayer } from '@deck.gl/layers';
 import { TileLayer, TripsLayer } from '@deck.gl/geo-layers';
