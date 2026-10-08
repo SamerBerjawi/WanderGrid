@@ -238,6 +238,35 @@ Each item is independently isolated with its own feature flag, branch/commit his
   git revert <sha>
   ```
 
+---
+
+## P-05 · Self-Host Static Data + Service-Worker Tile Caching
+
+- **Status**: Done
+- **Branch**: `gev/P05-static-and-tile-cache`
+- **Commit**: `[GEV-P05]`
+- **Feature Flag**: `GEV_P05_STATIC_AND_TILE_CACHE` (default: ON)
+- **Files Added**:
+  - `public/data/ne_110m_admin_0_countries.geojson` (819 KB Natural Earth country borders)
+  - `public/data/ne_50m_admin_0_map_units.geojson` (3.0 MB Natural Earth UK sub-units)
+- **Files Modified**:
+  - `components/DeckFlightMap.tsx` (swapped live external raw.githubusercontent fetches for local `/data/*.geojson` paths with graceful remote fallbacks)
+  - `vite.config.ts` (added Workbox caching rules for OpenFreeMap tiles, AWS Terrarium DEM tiles, NASA GIBS tiles, and local GeoJSON datasets)
+- **Endpoints**: `/data/ne_110m_admin_0_countries.geojson`, `/data/ne_50m_admin_0_map_units.geojson`
+- **Env Vars**: `VITE_FF_GEV_P05_STATIC_AND_TILE_CACHE`
+- **Dependencies Added**: None
+- **DB Changes**: None
+- **VERIFY Results**:
+  - Natural Earth GeoJSON is served directly from the application's local origin `/data/`.
+  - Zero live network requests to `raw.githubusercontent.com` in standard execution, eliminating rate limits and obeying AGENTS.md §1.
+  - Workbox service worker caches raster/vector tiles and DEM elevation tiles with strict LRU bounds (`maxEntries` 300-600, 14-30 days TTL).
+- **Exact Removal Recipe**:
+  ```bash
+  rm -rf public/data
+  git revert <sha>
+  ```
+
+
 
 
 

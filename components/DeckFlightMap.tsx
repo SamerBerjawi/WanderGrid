@@ -874,14 +874,14 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         };
 
         const loadGeoJson = async () => {
-            const countriesHighResUrl = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson';
-            const mapUnitsHighResUrl = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_map_units.geojson';
-            const countriesStdResUrl = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson';
+            // P-05: Vendored local Natural Earth datasets (zero GitHub raw network calls in production)
+            const countriesLocalUrl = '/data/ne_110m_admin_0_countries.geojson';
+            const mapUnitsLocalUrl = '/data/ne_50m_admin_0_map_units.geojson';
 
             try {
                 const [countriesRes, mapUnitsRes] = await Promise.allSettled([
-                    fetch(countriesHighResUrl),
-                    fetch(mapUnitsHighResUrl)
+                    fetch(countriesLocalUrl),
+                    fetch(mapUnitsLocalUrl)
                 ]);
 
                 if (countriesRes.status === 'fulfilled' && countriesRes.value.ok) {
@@ -896,10 +896,11 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     return;
                 }
             } catch {
-                // Fallback to standard
+                // Fallback to remote if local dev server doesn't host static files
             }
 
             try {
+                const countriesStdResUrl = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson';
                 const res = await fetch(countriesStdResUrl);
                 if (res.ok) {
                     const raw = await res.json();

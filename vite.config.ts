@@ -101,6 +101,50 @@ export default defineConfig(({ mode }) => {
                   },
                 },
               },
+              {
+                urlPattern: /^https:\/\/tiles\.openfreemap\.org\//,
+                handler: 'StaleWhileRevalidate',
+                options: {
+                  cacheName: 'openfreemap-tiles',
+                  expiration: { maxEntries: 600, maxAgeSeconds: 60 * 60 * 24 * 14 },
+                  cacheableResponse: {
+                    statuses: [0, 200],
+                  },
+                },
+              },
+              {
+                urlPattern: /^https:\/\/s3\.amazonaws\.com\/elevation-tiles-prod\/terrarium\//,
+                handler: 'CacheFirst',
+                options: {
+                  cacheName: 'aws-terrarium-dem-tiles',
+                  expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 30 },
+                  cacheableResponse: {
+                    statuses: [0, 200],
+                  },
+                },
+              },
+              {
+                urlPattern: /^https:\/\/gibs-[a-c]\.earthdata\.nasa\.gov\/wmts\//,
+                handler: 'CacheFirst',
+                options: {
+                  cacheName: 'nasa-gibs-tiles',
+                  expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 3 },
+                  cacheableResponse: {
+                    statuses: [0, 200],
+                  },
+                },
+              },
+              {
+                urlPattern: /\/data\/.*\.geojson$/,
+                handler: 'StaleWhileRevalidate',
+                options: {
+                  cacheName: 'local-geojson-data',
+                  expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 30 },
+                  cacheableResponse: {
+                    statuses: [0, 200],
+                  },
+                },
+              },
             ],
           },
         }),
