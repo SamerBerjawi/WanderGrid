@@ -345,7 +345,11 @@ export const getBasemapTileConfig = (
             attribution = 'Source: Esri, GEBCO, NOAA';
             break;
         case 'citylights':
-            tiles = ['https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_Black_Marble/default/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.png'];
+            tiles = [
+                'https://gibs-a.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_Black_Marble/default/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.png',
+                'https://gibs-b.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_Black_Marble/default/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.png',
+                'https://gibs-c.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_Black_Marble/default/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.png'
+            ];
             maxzoom = 8;
             attribution = 'NASA EOSDIS GIBS';
             break;
@@ -1704,7 +1708,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         }
 
         // 5. Overland & Maritime Routes (PathLayer for High-Speed Rail & Road Geometries)
-        if (!activeAppearance.airportsOnly && overlandSegments.length > 0 && viewMode !== 'scratch') {
+        if (!activeAppearance.airportsOnly && overlandSegments.length > 0 && showLandSeaRoutes && viewMode !== 'scratch') {
             layers.push(
                 new PathLayer({
                     id: 'overland-routes',
@@ -1717,13 +1721,13 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         return hoveredRouteKey === d.corridorId ? [255, 255, 255, 255] : d.color;
                     },
                     getWidth: (d: any) => {
-                        const base = effectiveProjection === 'globe' ? 1.0 : 1.2;
+                        const base = effectiveProjection === 'globe' ? 1.6 : 1.2;
                         if (selectedCorridor && d.corridorId === selectedCorridor.id) return base * 1.5;
                         return hoveredRouteKey === d.corridorId ? base + 0.8 : base;
                     },
                     widthUnits: 'pixels',
-                    widthMinPixels: effectiveProjection === 'globe' ? 0.8 : 1.0,
-                    widthMaxPixels: 4,
+                    widthMinPixels: effectiveProjection === 'globe' ? 1.2 : 1.0,
+                    widthMaxPixels: 6,
                     capRounded: true,
                     jointRounded: true,
                     wrapLongitude: true,
@@ -1748,8 +1752,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
         // 6. GPU Great-Circle Flight Arcs (AirTrail Benchmark Architecture)
         if (!activeAppearance.airportsOnly && flightArcs.length > 0 && showFlightRoutes && viewMode !== 'scratch') {
-            // Arc height elevation: on 3D globe, default to 0.25 (or 0.45 if elevated) to soar above sphere curvature
-            const arcHeight = effectiveProjection === 'globe' ? (isElevatedActive ? 0.45 : 0.25) : 0;
+            // Arc height elevation: on 3D globe, conform naturally to globe curvature (0.035 or 0.08 if elevated)
+            const arcHeight = effectiveProjection === 'globe' ? (isElevatedActive ? 0.08 : 0.035) : 0;
 
             // Visible Arc Layer
             layers.push(

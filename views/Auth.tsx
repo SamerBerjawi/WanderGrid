@@ -3,7 +3,7 @@ import { Button, Input } from '../components/ui';
 import GlassPanel from '../components/glass/GlassPanel';
 import { RocketLaunch } from '@phosphor-icons/react';
 import { dataService } from '../services/mockDb';
-import { User } from '../types';
+import { User, Trip, VisitedItem } from '../types';
 
 interface AuthProps {
     onLogin: (user: User) => void;
@@ -106,6 +106,97 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             }
             
             if (user) {
+                // If the database has zero trips, seed an initial illustrative expedition dataset so routes, scratch map, and 3D globe are populated
+                const existingTrips = await dataService.getTrips();
+                if (existingTrips.length === 0) {
+                    const sampleTrips: Trip[] = [
+                        {
+                            id: 'trip-demo-euro-asia',
+                            name: 'Grand Intercontinental Expedition',
+                            location: 'Paris, France',
+                            startDate: '2025-06-01',
+                            endDate: '2025-06-25',
+                            status: 'Upcoming',
+                            privacy: 'Public',
+                            participants: [user.id || 'admin-1'],
+                            transports: [
+                                {
+                                    id: 'tr-demo-1',
+                                    itineraryId: 'itin-demo-1',
+                                    type: 'One-Way',
+                                    mode: 'Flight',
+                                    provider: 'Air France',
+                                    identifier: 'AF007',
+                                    confirmationCode: 'AF7XYZ',
+                                    origin: 'JFK',
+                                    destination: 'CDG',
+                                    originLat: 40.6413,
+                                    originLng: -73.7781,
+                                    destLat: 49.0097,
+                                    destLng: 2.5479,
+                                    departureDate: '2025-06-01',
+                                    departureTime: '18:30',
+                                    arrivalDate: '2025-06-02',
+                                    arrivalTime: '08:00',
+                                    travelClass: 'Business'
+                                },
+                                {
+                                    id: 'tr-demo-2',
+                                    itineraryId: 'itin-demo-2',
+                                    type: 'One-Way',
+                                    mode: 'Train',
+                                    provider: 'Eurostar',
+                                    identifier: 'ES9310',
+                                    confirmationCode: 'EST931',
+                                    origin: 'Paris',
+                                    destination: 'Amsterdam',
+                                    originLat: 48.8566,
+                                    originLng: 2.3522,
+                                    destLat: 52.3676,
+                                    destLng: 4.9041,
+                                    departureDate: '2025-06-06',
+                                    departureTime: '10:20',
+                                    arrivalDate: '2025-06-06',
+                                    arrivalTime: '13:45',
+                                    travelClass: 'First'
+                                },
+                                {
+                                    id: 'tr-demo-3',
+                                    itineraryId: 'itin-demo-3',
+                                    type: 'One-Way',
+                                    mode: 'Flight',
+                                    provider: 'KLM',
+                                    identifier: 'KL861',
+                                    confirmationCode: 'KLM861',
+                                    origin: 'AMS',
+                                    destination: 'NRT',
+                                    originLat: 52.3105,
+                                    originLng: 4.7683,
+                                    destLat: 35.7720,
+                                    destLng: 140.3929,
+                                    departureDate: '2025-06-12',
+                                    departureTime: '14:40',
+                                    arrivalDate: '2025-06-13',
+                                    arrivalTime: '08:50',
+                                    travelClass: 'Economy'
+                                }
+                            ]
+                        }
+                    ];
+                    for (const trip of sampleTrips) {
+                        await dataService.addTrip(trip);
+                    }
+                    const sampleVisited: VisitedItem[] = [
+                        { id: 'v-demo-1', type: 'country', code: 'US', name: 'United States', residenceStatus: 'lived_current' },
+                        { id: 'v-demo-2', type: 'country', code: 'FR', name: 'France', residenceStatus: 'visited' },
+                        { id: 'v-demo-3', type: 'country', code: 'NL', name: 'Netherlands', residenceStatus: 'visited' },
+                        { id: 'v-demo-4', type: 'country', code: 'JP', name: 'Japan', residenceStatus: 'visited' },
+                        { id: 'v-demo-5', type: 'country', code: 'GB', name: 'United Kingdom', residenceStatus: 'lived_past' }
+                    ];
+                    for (const v of sampleVisited) {
+                        await dataService.addVisited(v);
+                    }
+                }
                 onLogin(user);
             } else {
                 setError('Failed to initialize demo session');
@@ -119,10 +210,10 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
 
     if (isCheckingSetup) {
         return (
-            <div className="flex min-h-screen items-center justify-center p-6 bg-slate-900">
+            <div className="flex min-h-screen items-center justify-center p-6 bg-light-bg dark:bg-dark-bg">
                 <div className="text-center space-y-4">
                     <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                    <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-500">Checking Security Database...</p>
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-light-text-secondary dark:text-dark-text-secondary">Checking Security Database...</p>
                 </div>
             </div>
         );
@@ -141,10 +232,10 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                         alt="WanderGrid" 
                         className="w-16 h-16 mx-auto rounded-2xl shadow-lg mb-6 object-contain" 
                     />
-                    <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight mb-2">
+                    <h2 className="text-2xl font-black text-light-text dark:text-dark-text tracking-tight mb-2">
                         {mode === 'setup_admin' ? 'Initial System Setup' : mode === 'signin' ? 'Welcome Back' : 'Join WanderGrid'}
                     </h2>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
+                    <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary font-medium">
                         {mode === 'setup_admin' 
                             ? 'Configure the primary Administrator account.' 
                             : mode === 'signin' 

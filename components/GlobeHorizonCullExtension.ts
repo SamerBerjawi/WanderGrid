@@ -55,21 +55,22 @@ export class GlobeHorizonCullExtension extends LayerExtension {
                     if (vGlobeHorizon_Mode > 0.5) {
                         vec3 P = vGlobeHorizon_WorldPos;
                         vec3 C = vGlobeHorizon_CamPos;
+
+                        // 1. Surface and near-surface back-face test:
+                        // Outward normal is P. Vector towards camera is (C - P).
+                        // If dot(P, C - P) < 0, the point faces away from the camera behind the geometric horizon.
+                        if (dot(P, C - P) < 0.0) {
+                            discard;
+                        }
+
+                        // 2. Aerial ray penetration test for elevated flight arcs:
+                        // Does the ray from camera C to elevated point P pass through the Earth sphere (radius 256)?
                         vec3 V = P - C;
                         float vSq = dot(V, V);
-
-                        // Parameter t of closest approach of line of sight (C + t*V) to Earth center (0, 0, 0)
                         float t = -dot(C, V) / max(vSq, 1e-6);
-
-                        // If closest approach is strictly between camera and fragment (0 < t < 1),
-                        // check whether the line of sight penetrates the Earth sphere.
-                        if (t > 0.0 && t < 1.0) {
+                        if (t > 0.001 && t < 0.999) {
                             vec3 Q = C + t * V;
-                            // Earth radius in Deck.gl globe space is GLOBE_RADIUS = 256.0.
-                            // 256.0 * 0.998 = 255.488 (squared = 65274.1).
-                            // If the ray passes within 255.488 of the center, the Earth sphere occludes it.
-                            // If the ray passes at or above 255.488, the fragment is in space/atmosphere and remains visible.
-                            if (dot(Q, Q) < 65274.1) {
+                            if (dot(Q, Q) < 65536.0) {
                                 discard;
                             }
                         }

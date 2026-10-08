@@ -144,24 +144,53 @@ export async function fetchRoute(
     const coordsStr = coords.map(([lng, lat]) => `${lng},${lat}`).join(';');
     try {
         const res = await fetch(`/api/proxy/route?profile=${encodeURIComponent(profile)}&coords=${encodeURIComponent(coordsStr)}`);
-        if (!res.ok) {
-            console.warn(`[Route] Backend route proxy error HTTP ${res.status}`);
-            return null;
+        if (res.ok) {
+            const contentType = res.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                const data = await res.json();
+                if (data.ok && Array.isArray(data.geometry)) {
+                    return {
+                        geometry: data.geometry,
+                        distanceKm: data.distanceKm,
+                        durationMin: data.durationMin,
+                        attribution: data.attribution,
+                        fixMapUrl: data.fixMapUrl
+                    };
+                }
+            }
         }
-        const data = await res.json();
-        if (data.ok && Array.isArray(data.geometry)) {
-            return {
-                geometry: data.geometry,
-                distanceKm: data.distanceKm,
-                durationMin: data.durationMin,
-                attribution: data.attribution,
-                fixMapUrl: data.fixMapUrl
-            };
-        }
-    } catch (err) {
-        console.warn('[Route] Failed to fetch route from proxy:', err);
+    } catch {
+        // Fallback to direct routing if backend proxy is unavailable
     }
-    return null;
+
+    // Direct public OSRM fallback if backend proxy is unreachable in client-only mode
+    try {
+        const osrmUrl = `https://routing.openstreetmap.de/routed-car/route/v1/driving/${coordsStr}?overview=full&geometries=geojson`;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3500);
+        const osrmRes = await fetch(osrmUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (osrmRes.ok) {
+            const data = await osrmRes.json();
+            const route = data?.routes?.[0];
+            if (route?.geometry?.coordinates) {
+                const geometry: [number, number, number][] = route.geometry.coordinates.map((c: [number, number]) => [c[0], c[1], 0]);
+                return {
+                    geometry,
+                    distanceKm: Math.round((route.distance || 0) / 1000),
+                    durationMin: Math.round((route.duration || 0) / 60),
+                    attribution: '© OpenStreetMap contributors, OSRM'
+                };
+            }
+        }
+    } catch {}
+
+    // Fallback: direct connection points
+    return {
+        geometry: coords.map(([lng, lat]) => [lng, lat, 0]),
+        distanceKm: 0,
+        durationMin: 0
+    };
 }
 
 /**

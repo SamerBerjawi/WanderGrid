@@ -941,7 +941,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                     key={modeKey}
                                     onClick={() => handleSelectViewMode(modeKey)}
                                     title={`${config.label} (${metrics.count} expeditions • ${metrics.distanceStr})`}
-                                    className={`relative rounded-full text-xs font-bold transition-all duration-200 flex flex-col items-center justify-center cursor-pointer select-none active:scale-95 ${isSelected
+                                    className={`relative min-h-[44px] min-w-[44px] rounded-full text-xs font-bold transition-all duration-200 flex flex-col items-center justify-center cursor-pointer select-none active:scale-95 ${isSelected
                                             ? `${config.activeText} px-4 sm:px-6 py-2`
                                             : `${config.color} hover:opacity-100 opacity-85 px-3 sm:px-5 py-2`
                                         }`}
@@ -967,7 +967,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                                 {metrics.count}
                                             </span>
                                         </span>
-                                        <span className="text-[10px] font-mono tracking-tight font-bold text-black dark:text-white">
+                                        <span className="text-[10px] font-mono tracking-tight font-bold text-light-text dark:text-dark-text">
                                             {metrics.distanceStr}
                                         </span>
                                     </span>
@@ -1124,7 +1124,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                                     {metrics.count}
                                                 </span>
                                             </span>
-                                            <span className="text-[8.5px] font-mono tracking-tight font-bold text-black dark:text-white mt-0.5">
+                                            <span className="text-[8.5px] font-mono tracking-tight font-bold text-light-text dark:text-dark-text mt-0.5">
                                                 {metrics.distanceStr}
                                             </span>
                                         </span>
