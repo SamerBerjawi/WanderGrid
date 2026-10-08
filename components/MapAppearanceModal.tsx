@@ -17,6 +17,7 @@ import {
     Lightning as Zap
 } from '@phosphor-icons/react';
 import { MapAppearanceSettings, DEFAULT_MAP_APPEARANCE, getEffectiveBasemap } from '../types/mapAppearance';
+import { FEATURE_FLAGS } from '../config/featureFlags';
 import GlassPanel from './glass/GlassPanel';
 
 const useDarkMode = () => {
@@ -364,7 +365,35 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                             <div className="w-2 h-2 rounded-full border border-emerald-400/50 z-10" />
                                                         </div>
                                                     )
-                                                }
+                                                },
+                                                ...(FEATURE_FLAGS.GEV_P04B_OPENFREEMAP ? [
+                                                    {
+                                                        id: 'ofm_positron',
+                                                        label: 'Positron Vector',
+                                                        renderSwatch: () => (
+                                                            <div className="w-full h-8 rounded-xl border border-white/20 flex items-center px-2.5 justify-between bg-white/10 relative overflow-hidden">
+                                                                <div className="flex items-center gap-1.5 z-10">
+                                                                    <span className="text-2xs">🧭</span>
+                                                                    <span className="text-2xs font-bold text-white drop-shadow">Positron</span>
+                                                                </div>
+                                                                <div className="w-2 h-2 rounded-full border border-sky-400 z-10" />
+                                                            </div>
+                                                        )
+                                                    },
+                                                    {
+                                                        id: 'ofm_liberty',
+                                                        label: 'Liberty Vector',
+                                                        renderSwatch: () => (
+                                                            <div className="w-full h-8 rounded-xl border border-emerald-500/30 flex items-center px-2.5 justify-between bg-gradient-to-r from-sky-900/40 via-emerald-900/40 to-amber-900/40 relative overflow-hidden">
+                                                                <div className="flex items-center gap-1.5 z-10">
+                                                                    <span className="text-2xs">🗽</span>
+                                                                    <span className="text-2xs font-bold text-emerald-200 drop-shadow">Liberty</span>
+                                                                </div>
+                                                                <div className="w-2 h-2 rounded-full border border-emerald-400/60 z-10" />
+                                                            </div>
+                                                        )
+                                                    }
+                                                ] : [])
                                             ] : [
                                                 {
                                                     id: 'snow',
@@ -420,7 +449,51 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                             <div className="w-2 h-2 rounded-full border border-emerald-400/50 z-10" />
                                                         </div>
                                                     )
-                                                }
+                                                },
+                                                ...(FEATURE_FLAGS.GEV_P04B_OPENFREEMAP ? [
+                                                    {
+                                                        id: 'ofm_liberty',
+                                                        label: 'Liberty Vector',
+                                                        renderSwatch: () => (
+                                                            <div className="w-full h-8 rounded-xl border border-emerald-500/30 flex items-center px-2.5 justify-between bg-gradient-to-r from-sky-100 via-emerald-100 to-amber-100 relative overflow-hidden">
+                                                                <div className="flex items-center gap-1.5 z-10">
+                                                                    <span className="text-2xs">🗽</span>
+                                                                    <span className="text-2xs font-bold text-emerald-900">Liberty</span>
+                                                                </div>
+                                                                <div className="flex items-center gap-1 z-10">
+                                                                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                                                </div>
+                                                            </div>
+                                                        )
+                                                    },
+                                                    {
+                                                        id: 'ofm_bright',
+                                                        label: 'Bright Vector',
+                                                        renderSwatch: () => (
+                                                            <div className="w-full h-8 rounded-xl border border-amber-500/30 flex items-center px-2.5 justify-between bg-gradient-to-r from-amber-100 via-yellow-100 to-orange-100 relative overflow-hidden">
+                                                                <div className="flex items-center gap-1.5 z-10">
+                                                                    <span className="text-2xs">☀️</span>
+                                                                    <span className="text-2xs font-bold text-amber-900">Bright</span>
+                                                                </div>
+                                                                <div className="w-2 h-2 rounded-full border border-amber-500/60 z-10" />
+                                                            </div>
+                                                        )
+                                                    },
+                                                    {
+                                                        id: 'ofm_positron',
+                                                        label: 'Positron Vector',
+                                                        renderSwatch: () => (
+                                                            <div className="w-full h-8 rounded-xl border border-black/10 flex items-center px-2.5 justify-between bg-gradient-to-r from-zinc-100 to-white relative overflow-hidden">
+                                                                <div className="flex items-center gap-1.5 z-10">
+                                                                    <span className="text-2xs">🧭</span>
+                                                                    <span className="text-2xs font-bold text-zinc-800">Positron</span>
+                                                                </div>
+                                                                <div className="w-2 h-2 rounded-full border border-sky-500/50 z-10" />
+                                                            </div>
+                                                        )
+                                                    }
+                                                ] : [])
                                             ]).map(b => {
                                                 const effectiveBasemap = getEffectiveBasemap(settings.basemap, isDark);
                                                 const isSelected = effectiveBasemap === b.id;

@@ -157,3 +157,31 @@ Each item is independently isolated with its own feature flag, branch/commit his
   git revert <sha>
   ```
 
+---
+
+## P-04b · OpenFreeMap Vector Basemaps
+
+- **Status**: Done
+- **Branch**: `gev/P04b-openfreemap`
+- **Commit**: `[GEV-P04b]`
+- **Feature Flag**: `GEV_P04B_OPENFREEMAP` (default: ON)
+- **Files Added**: None
+- **Files Modified**:
+  - `types/mapAppearance.ts`
+  - `components/DeckFlightMap.tsx`
+  - `components/MapAppearanceModal.tsx`
+- **Endpoints**: None (external OpenFreeMap vector styles: `https://tiles.openfreemap.org/styles/{liberty,bright,positron}`)
+- **Env Vars**: `VITE_FF_GEV_P04B_OPENFREEMAP`
+- **Dependencies Added**: None
+- **DB Changes**: None
+- **VERIFY Results**:
+  - OpenFreeMap vector style JSON URLs verified: `liberty`, `bright`, `positron` return HTTP 200 with vector tiles.
+  - Required attribution verified and mapped: `OpenFreeMap Data © OpenStreetMap contributors`.
+  - Added to MapAppearanceModal basemap options in both light and dark modes with Liquid Glass swatches.
+  - Existing CARTO/Esri basemaps completely preserved.
+- **Exact Removal Recipe**:
+  ```bash
+  git revert <sha>
+  ```
+
+

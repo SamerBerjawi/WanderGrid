@@ -1,11 +1,11 @@
-export type BasemapMode = 'default' | 'onyx' | 'snow' | 'vibrant' | 'satellite' | 'ocean' | 'citylights';
+export type BasemapMode = 'default' | 'onyx' | 'snow' | 'vibrant' | 'satellite' | 'ocean' | 'citylights' | 'ofm_liberty' | 'ofm_bright' | 'ofm_positron';
 
 export const getEffectiveBasemap = (
     basemap: string | undefined,
     isDark: boolean,
     defaultLight?: string,
     defaultDark?: string
-): 'onyx' | 'citylights' | 'satellite' | 'snow' | 'vibrant' | 'ocean' => {
+): 'onyx' | 'citylights' | 'satellite' | 'snow' | 'vibrant' | 'ocean' | 'ofm_liberty' | 'ofm_bright' | 'ofm_positron' => {
     // If an explicit layer style other than 'default' is requested, respect it unconditionally
     if (basemap && basemap !== 'default') {
         if (
@@ -14,7 +14,10 @@ export const getEffectiveBasemap = (
             basemap === 'satellite' ||
             basemap === 'snow' ||
             basemap === 'vibrant' ||
-            basemap === 'ocean'
+            basemap === 'ocean' ||
+            basemap === 'ofm_liberty' ||
+            basemap === 'ofm_bright' ||
+            basemap === 'ofm_positron'
         ) {
             return basemap;
         }
@@ -43,6 +46,9 @@ export const getEffectiveBasemap = (
         if (resolvedDark === 'ocean') return 'ocean';
         if (resolvedDark === 'snow') return 'snow';
         if (resolvedDark === 'vibrant') return 'vibrant';
+        if (resolvedDark === 'ofm_liberty') return 'ofm_liberty';
+        if (resolvedDark === 'ofm_bright') return 'ofm_bright';
+        if (resolvedDark === 'ofm_positron') return 'ofm_positron';
         return 'onyx';
     } else {
         if (resolvedLight === 'vibrant') return 'vibrant';
@@ -50,6 +56,9 @@ export const getEffectiveBasemap = (
         if (resolvedLight === 'satellite') return 'satellite';
         if (resolvedLight === 'citylights') return 'citylights';
         if (resolvedLight === 'onyx') return 'onyx';
+        if (resolvedLight === 'ofm_liberty') return 'ofm_liberty';
+        if (resolvedLight === 'ofm_bright') return 'ofm_bright';
+        if (resolvedLight === 'ofm_positron') return 'ofm_positron';
         return 'snow';
     }
 };

@@ -302,7 +302,7 @@ const useDarkMode = () => {
 };
 
 export const getBasemapTileConfig = (
-    effectiveLayer: 'onyx' | 'citylights' | 'satellite' | 'snow' | 'vibrant' | 'ocean',
+    effectiveLayer: 'onyx' | 'citylights' | 'satellite' | 'snow' | 'vibrant' | 'ocean' | 'ofm_liberty' | 'ofm_bright' | 'ofm_positron',
     resolvedCartoKey?: string
 ) => {
     let key = (resolvedCartoKey || '').trim().replace(/^['"]|['"]$/g, '');
@@ -322,6 +322,11 @@ export const getBasemapTileConfig = (
     let attribution = '© CARTO, © OpenStreetMap contributors';
 
     switch (effectiveLayer) {
+        case 'ofm_liberty':
+        case 'ofm_bright':
+        case 'ofm_positron':
+            attribution = 'OpenFreeMap Data © OpenStreetMap contributors';
+            break;
         case 'satellite':
             tiles = [
                 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
@@ -387,7 +392,16 @@ export const createMapLibreStyle = (
     openAipOverlay: boolean = false,
     openAipKey?: string,
     openAipGroups?: OpenAipOverlayGroup[]
-): maplibregl.StyleSpecification => {
+): string | maplibregl.StyleSpecification => {
+    const effectiveLayer = getEffectiveBasemap(layer, isDark);
+
+    // OpenFreeMap vector basemaps (P-04b)
+    if (FEATURE_FLAGS.GEV_P04B_OPENFREEMAP) {
+        if (effectiveLayer === 'ofm_liberty') return 'https://tiles.openfreemap.org/styles/liberty';
+        if (effectiveLayer === 'ofm_bright') return 'https://tiles.openfreemap.org/styles/bright';
+        if (effectiveLayer === 'ofm_positron') return 'https://tiles.openfreemap.org/styles/positron';
+    }
+
     // Synchronously resolve and sanitize CARTO API key from arguments or localStorage
     let resolvedCartoKey = (cartoApiKey || '').trim();
     if (!resolvedCartoKey && typeof localStorage !== 'undefined') {
@@ -405,10 +419,9 @@ export const createMapLibreStyle = (
     if (resolvedCartoKey.startsWith('key=')) resolvedCartoKey = resolvedCartoKey.slice(4).trim();
     if (resolvedCartoKey.startsWith('?key=')) resolvedCartoKey = resolvedCartoKey.slice(5).trim();
 
-    const effectiveLayer = getEffectiveBasemap(layer, isDark);
     const { tiles, maxzoom, attribution } = getBasemapTileConfig(effectiveLayer, resolvedCartoKey);
     const basemapSourceId = `raster-basemap-source-${effectiveLayer}`;
-    const isLightBasemap = effectiveLayer === 'snow' || effectiveLayer === 'vibrant';
+    const isLightBasemap = effectiveLayer === 'snow' || effectiveLayer === 'vibrant' || effectiveLayer === 'ofm_bright' || effectiveLayer === 'ofm_positron';
 
     const sources: Record<string, any> = {
         [basemapSourceId]: {
@@ -2215,12 +2228,13 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         const isLightBasemap = effectiveLayer === 'snow' || effectiveLayer === 'vibrant';
         const { tiles, maxzoom, attribution } = getBasemapTileConfig(effectiveLayer, effectiveCartoKey);
 
-        // If the map style is already loaded, update the basemap raster source seamlessly in-place
-        if (map.isStyleLoaded()) {
+        // If the map style is already loaded, update the basemap raster source seamlessly in-place (unless using OFM vector styles)
+        const isOfmVector = effectiveLayer.startsWith('ofm_');
+        if (map.isStyleLoaded() && !isOfmVector) {
             const currentLayerObj = map.getLayer('raster-basemap-layer') as any;
             const currentSourceId = currentLayerObj?.source;
 
-            if (currentSourceId !== basemapSourceId) {
+            if (currentSourceId && currentSourceId !== basemapSourceId) {
                 try {
                     // 1. Update background color for 2D flat maps
                     if (map.getLayer('background-base-layer')) {
