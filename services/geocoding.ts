@@ -50,25 +50,47 @@ const cleanupContaminatedCache = () => {
         'BER', 'BER AIRPORT', 'BERLIN', 'BERLIN, GERMANY', 'BERLIN BRANDENBURG', 'BERLIN BRANDENBURG AIRPORT (BER)',
         'MAN', 'MAN AIRPORT', 'MANCHESTER', 'MANCHESTER, UNITED KINGDOM', 'MANCHESTER AIRPORT (MAN)',
         'TUN', 'TUN AIRPORT', 'TUNIS', 'TUNIS, TUNISIA', 'TUNIS CARTHAGE', 'TUNIS CARTHAGE AIRPORT', 'TUNIS CARTHAGE AIRPORT (TUN)',
-        'NAPLES', 'NAPOLI', 'CAPRI', 'VATICAN', 'VATICAN CITY', 'ROME', 'ROME, ITALY'
+        'NAPLES', 'NAPOLI', 'CAPRI', 'VATICAN', 'VATICAN CITY', 'ROME', 'ROME, ITALY',
+        'MALMÖ', 'MALMO', 'MALMÖ, SWEDEN', 'MALMO, SWEDEN', 'MALMÖN', 'MMX', 'MMX AIRPORT'
     ];
     let cleanedAny = false;
     contaminatedKeys.forEach(k => {
-        if (internalCache.has(k)) {
-            internalCache.delete(k);
-            cleanedAny = true;
-        }
-        const u = k.toUpperCase();
-        if (internalCache.has(u)) {
-            internalCache.delete(u);
-            cleanedAny = true;
-        }
-        const l = k.toLowerCase();
-        if (internalCache.has(l)) {
-            internalCache.delete(l);
-            cleanedAny = true;
-        }
+        [k, k.toUpperCase(), k.toLowerCase()].forEach(variant => {
+            if (internalCache.has(variant)) {
+                const val = internalCache.get(variant);
+                if (k.startsWith('MALM') || k.startsWith('MMX')) {
+                    if (val && (parseFloat(val.lat) > 57 || val.city?.toLowerCase() === 'stockholm')) {
+                        internalCache.delete(variant);
+                        cleanedAny = true;
+                    }
+                } else {
+                    internalCache.delete(variant);
+                    cleanedAny = true;
+                }
+            }
+        });
     });
+
+    // Also purge contaminated keys from localStorage coordCache ('wandergrid_coord_cache')
+    try {
+        if (typeof localStorage !== 'undefined') {
+            const rawCoord = localStorage.getItem('wandergrid_coord_cache');
+            if (rawCoord) {
+                const map = new Map<string, any>(JSON.parse(rawCoord));
+                let coordDirty = false;
+                for (const [key, val] of map.entries()) {
+                    if (/malm[öo]/i.test(key) && val?.lat > 57) {
+                        map.delete(key);
+                        coordDirty = true;
+                    }
+                }
+                if (coordDirty) {
+                    localStorage.setItem('wandergrid_coord_cache', JSON.stringify(Array.from(map.entries())));
+                }
+            }
+        }
+    } catch {}
+
     if (cleanedAny) {
         saveCache();
     }
@@ -306,8 +328,14 @@ export const STATIC_GEO_DATA: Record<string, any> = {
     "Colombo": { "lat": "6.9271", "lon": "79.8612", "city": "Colombo", "country": "Sri Lanka", "countryCode": "LK" },
     "Cambodia": { "lat": "12.5657", "lon": "104.9910", "city": "Phnom Penh", "country": "Cambodia", "countryCode": "KH" },
     "Phnom Penh": { "lat": "11.5564", "lon": "104.9282", "city": "Phnom Penh", "country": "Cambodia", "countryCode": "KH" },
-    "Stockholm": { "lat": "59.3293", "lon": "18.0686", "city": "Stockholm", "country": "Sweden", "countryCode": "SE" },
-    "Sweden": { "lat": "60.1282", "lon": "18.6435", "city": "Stockholm", "country": "Sweden", "countryCode": "SE" },
+    "Stockholm": { "lat": "59.3293", "lon": "18.0686", "city": "Stockholm", "country": "Sweden", "countryCode": "SE", "tz": "Europe/Stockholm" },
+    "Sweden": { "lat": "60.1282", "lon": "18.6435", "city": "Sweden", "country": "Sweden", "countryCode": "SE" },
+    "Malmö": { "lat": "55.6059", "lon": "13.0007", "city": "Malmö", "country": "Sweden", "countryCode": "SE", "tz": "Europe/Stockholm" },
+    "Malmo": { "lat": "55.6059", "lon": "13.0007", "city": "Malmö", "country": "Sweden", "countryCode": "SE", "tz": "Europe/Stockholm" },
+    "MMX": { "lat": "55.5362", "lon": "13.3697", "name": "Malmö Airport", "city": "Malmö", "country": "Sweden", "tz": "Europe/Stockholm", "iso": "SE" },
+    "Gothenburg": { "lat": "57.7089", "lon": "11.9746", "city": "Gothenburg", "country": "Sweden", "countryCode": "SE", "tz": "Europe/Stockholm" },
+    "Göteborg": { "lat": "57.7089", "lon": "11.9746", "city": "Gothenburg", "country": "Sweden", "countryCode": "SE", "tz": "Europe/Stockholm" },
+    "GOT": { "lat": "57.6628", "lon": "12.2798", "name": "Göteborg Landvetter", "city": "Gothenburg", "country": "Sweden", "tz": "Europe/Stockholm", "iso": "SE" },
     "Tunis": { "lat": "36.8065", "lon": "10.1815", "city": "Tunis", "country": "Tunisia", "countryCode": "TN" },
     "Tunisia": { "lat": "33.8869", "lon": "9.5375", "city": "Tunis", "country": "Tunisia", "countryCode": "TN" },
 };
@@ -714,6 +742,8 @@ export function cleanCityName(rawName: string, countryCode?: string, adminRegion
     else if (lower === 'tokyo') name = 'Tokyo';
     else if (lower === 'new york city' || lower === 'nyc') name = 'New York';
     else if (lower === 'washington dc' || lower === 'washington d.c.') name = 'Washington';
+    else if (lower === 'malmo') name = 'Malmö';
+    else if (lower === 'göteborg' || lower === 'goteborg') name = 'Gothenburg';
     else {
         // Capitalize first letter of each word properly
         if (name.length > 0) {
@@ -769,14 +799,36 @@ export async function searchLocations(query: string, bias?: { lat?: number; lon?
     });
 
     // 2. Offline-first local database query matching based on keywords or city name
+    const queryParts = lowerQuery.split(',').map(s => s.trim()).filter(Boolean);
+    const queryCity = queryParts[0] || lowerQuery;
+
     LOCAL_GEO_MAP.forEach(item => {
         const cleanCity = cleanCityName(item.city, item.countryCode);
         const formatted = `${cleanCity}, ${item.country}`;
-        const cityMatch = item.city.toLowerCase().includes(lowerQuery) || cleanCity.toLowerCase().includes(lowerQuery);
-        const countryMatch = item.country.toLowerCase().includes(lowerQuery);
-        const keywordMatch = item.keywords.some(kw => kw.includes(lowerQuery) || lowerQuery.includes(kw));
+        const itemCityLower = item.city.toLowerCase();
+        const cleanCityLower = cleanCity.toLowerCase();
+        const itemCountryLower = item.country.toLowerCase();
 
-        if (cityMatch || countryMatch || keywordMatch) {
+        // City match: query matches or starts with city, or city starts with query
+        const cityMatch = 
+            itemCityLower === queryCity || 
+            itemCityLower.startsWith(queryCity) || 
+            cleanCityLower.startsWith(queryCity) ||
+            (queryCity.length >= 3 && itemCityLower.includes(queryCity));
+
+        // Country match: ONLY if user explicitly typed country name alone or as second token
+        const countryMatch = 
+            (queryParts.length === 1 && itemCountryLower === lowerQuery) ||
+            (queryParts.length > 1 && itemCountryLower === queryParts[1]);
+
+        // Keyword match: must match city part or exact keyword (never let country keyword hijack a different city!)
+        const keywordMatch = item.keywords.some(kw => 
+            kw === queryCity || 
+            kw === lowerQuery || 
+            (queryCity.length >= 3 && kw.startsWith(queryCity))
+        );
+
+        if (cityMatch || (countryMatch && queryParts.length === 1) || keywordMatch) {
             citySuggestions.add(formatted);
         }
     });
@@ -955,7 +1007,14 @@ export function getCoordinatesSync(location: string): { lat: number; lng: number
 
   // D. Quick local keyword map lookup
   const lowerLoc = cleanLocation.toLowerCase();
-  const localMatch = LOCAL_GEO_MAP.find(item => item.city.toLowerCase() === lowerLoc || item.keywords.includes(lowerLoc));
+  const locCityPart = cleanLocation.includes(',') ? cleanLocation.split(',')[0].trim() : '';
+  const locCityLower = locCityPart ? locCityPart.toLowerCase() : '';
+  const localMatch = LOCAL_GEO_MAP.find(item => 
+      item.city.toLowerCase() === lowerLoc || 
+      (locCityLower && item.city.toLowerCase() === locCityLower) ||
+      item.keywords.includes(lowerLoc) ||
+      (locCityLower && item.keywords.includes(locCityLower))
+  );
   if (localMatch) {
       const staticMatch = Object.values(STATIC_GEO_DATA).find(ap => ap.city?.toLowerCase() === localMatch.city.toLowerCase());
       if (staticMatch) {
@@ -971,13 +1030,13 @@ export function getCoordinatesSync(location: string): { lat: number; lng: number
   }
 
   // If we can match by city/country directly in static data
-  const directMatch = STATIC_GEO_DATA[cleanLocation];
+  const directMatch = STATIC_GEO_DATA[cleanLocation] || (locCityPart ? STATIC_GEO_DATA[locCityPart] : undefined);
   if (directMatch?.lat) {
       return {
           lat: parseFloat(directMatch.lat),
           lng: parseFloat(directMatch.lon || directMatch.lng),
           tz: directMatch.tz,
-          city: directMatch.city,
+          city: directMatch.city || directMatch.name,
           country: directMatch.country,
           countryCode: directMatch.countryCode || directMatch.iso
       };
@@ -1040,7 +1099,14 @@ export async function getCoordinates(location: string, bias?: { lat?: number; lo
 
   // D. Quick local keyword map lookup
   const lowerLoc = cleanLocation.toLowerCase();
-  const localMatch = LOCAL_GEO_MAP.find(item => item.city.toLowerCase() === lowerLoc || item.keywords.includes(lowerLoc));
+  const locCityPart = cleanLocation.includes(',') ? cleanLocation.split(',')[0].trim() : '';
+  const locCityLower = locCityPart ? locCityPart.toLowerCase() : '';
+  const localMatch = LOCAL_GEO_MAP.find(item => 
+      item.city.toLowerCase() === lowerLoc || 
+      (locCityLower && item.city.toLowerCase() === locCityLower) ||
+      item.keywords.includes(lowerLoc) ||
+      (locCityLower && item.keywords.includes(locCityLower))
+  );
   if (localMatch) {
       const staticMatch = Object.values(STATIC_GEO_DATA).find(ap => ap.city?.toLowerCase() === localMatch.city.toLowerCase());
       if (staticMatch) {
@@ -1053,6 +1119,19 @@ export async function getCoordinates(location: string, bias?: { lat?: number; lo
               countryCode: localMatch.countryCode
           };
       }
+  }
+
+  // Check direct match in static data before external network fetch
+  const directMatch = STATIC_GEO_DATA[cleanLocation] || (locCityPart ? STATIC_GEO_DATA[locCityPart] : undefined);
+  if (directMatch?.lat) {
+      return {
+          lat: parseFloat(directMatch.lat),
+          lng: parseFloat(directMatch.lon || directMatch.lng),
+          tz: directMatch.tz,
+          city: directMatch.city || directMatch.name,
+          country: directMatch.country,
+          countryCode: directMatch.countryCode || directMatch.iso
+      };
   }
 
   // E. Live network query via backend multi-provider geocoding chain (Open-Meteo -> Photon -> Nominatim)
@@ -1111,7 +1190,9 @@ export const LOCAL_GEO_MAP: Array<{ keywords: string[]; city: string; country: s
     { keywords: ['qatar', 'doha', 'doh'], city: 'Doha', country: 'Qatar', countryCode: 'QA' },
     { keywords: ['sri lanka', 'colombo', 'cmb'], city: 'Colombo', country: 'Sri Lanka', countryCode: 'LK' },
     { keywords: ['cambodia', 'phnom penh', 'pnh', 'siem reap', 'rep'], city: 'Phnom Penh', country: 'Cambodia', countryCode: 'KH' },
-    { keywords: ['sweden', 'stockholm', 'arn'], city: 'Stockholm', country: 'Sweden', countryCode: 'SE' },
+    { keywords: ['malmö', 'malmo', 'mmx', 'skåne', 'skane', 'öresund', 'oresund'], city: 'Malmö', country: 'Sweden', countryCode: 'SE' },
+    { keywords: ['gothenburg', 'göteborg', 'goteborg', 'got', 'landvetter'], city: 'Gothenburg', country: 'Sweden', countryCode: 'SE' },
+    { keywords: ['stockholm', 'arn', 'arlanda', 'bma', 'bromma'], city: 'Stockholm', country: 'Sweden', countryCode: 'SE' },
     { keywords: ['germany', 'berlin', 'munich', 'frankfurt', 'fra', 'hamburg', 'cologne', 'german'], city: 'Berlin', country: 'Germany', countryCode: 'DE' },
     { keywords: ['netherlands', 'amsterdam', 'schiphol', 'ams', 'rotterdam', 'dutch'], city: 'Amsterdam', country: 'Netherlands', countryCode: 'NL' },
     { keywords: ['belgium', 'brussels', 'bruges', 'antwerp', 'belgian'], city: 'Brussels', country: 'Belgium', countryCode: 'BE' },

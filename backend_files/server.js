@@ -413,10 +413,10 @@ const loadGlobalData = async () => {
   try {
     console.log('Loading global memory caches from PostgreSQL database... (eliminating raw GitHub web requests on startup)');
     
-    // Clear any potentially contaminated geocoding cache records for BER, MAN, and TUN to restore correct city mappings.
+    // Clear any potentially contaminated geocoding cache records for BER, MAN, TUN, and Malmö to restore correct city mappings.
     try {
-        await pool.query("DELETE FROM geocoding_cache WHERE query IN ('ber', 'ber airport', 'man', 'man airport', 'manchester', 'tun', 'tun airport', 'tunis', 'tunis, tunisia', 'tunis carthage', 'tunis carthage airport', 'naples', 'napoli', 'capri', 'vatican', 'vatican city', 'rome', 'rome, italy')");
-        console.log('[SYSTEM-CLEANUP] Cleaned up any potentially contaminated geocoding_cache values for BER, MAN, TUN, Naples, Napoli, Capri, Vatican, and Rome.');
+        await pool.query("DELETE FROM geocoding_cache WHERE query IN ('ber', 'ber airport', 'man', 'man airport', 'manchester', 'tun', 'tun airport', 'tunis', 'tunis, tunisia', 'tunis carthage', 'tunis carthage airport', 'naples', 'napoli', 'capri', 'vatican', 'vatican city', 'rome', 'rome, italy', 'malmö', 'malmo', 'malmö, sweden', 'malmo, sweden', 'malmön', 'mmx')");
+        console.log('[SYSTEM-CLEANUP] Cleaned up any potentially contaminated geocoding_cache values for BER, MAN, TUN, Naples, Napoli, Capri, Vatican, Rome, and Malmö.');
     } catch (cleanErr) {
         console.warn('System cleanup query failed:', cleanErr.message);
     }
@@ -1541,6 +1541,8 @@ const STATIC_GEO_COORDS = {
     "CMB": { "lat": "7.1807", "lon": "79.8837", "name": "Bandaranaike Intl", "city": "Colombo", "country": "Sri Lanka", "tz": "Asia/Colombo", "iso": "LK" },
     "PNH": { "lat": "11.5466", "lon": "104.8460", "name": "Phnom Penh Intl", "city": "Phnom Penh", "country": "Cambodia", "tz": "Asia/Phnom_Penh", "iso": "KH" },
     "ARN": { "lat": "59.6519", "lon": "17.9186", "name": "Stockholm Arlanda", "city": "Stockholm", "country": "Sweden", "tz": "Europe/Stockholm", "iso": "SE" },
+    "MMX": { "lat": "55.5362", "lon": "13.3697", "name": "Malmö Airport", "city": "Malmö", "country": "Sweden", "tz": "Europe/Stockholm", "iso": "SE" },
+    "GOT": { "lat": "57.6628", "lon": "12.2798", "name": "Göteborg Landvetter", "city": "Gothenburg", "country": "Sweden", "tz": "Europe/Stockholm", "iso": "SE" },
     "Paris": { "lat": "48.8566", "lon": "2.3522", "city": "Paris", "country": "France", "iso": "FR" },
     "London": { "lat": "51.5074", "lon": "-0.1278", "city": "London", "country": "England", "iso": "GB-ENG" },
     "Manchester": { "lat": "53.4808", "lon": "-2.2426", "city": "Manchester", "country": "England", "iso": "GB-ENG" },
@@ -1574,8 +1576,12 @@ const STATIC_GEO_COORDS = {
     "Colombo": { "lat": "6.9271", "lon": "79.8612", "city": "Colombo", "country": "Sri Lanka", "iso": "LK" },
     "Cambodia": { "lat": "12.5657", "lon": "104.9910", "city": "Phnom Penh", "country": "Cambodia", "iso": "KH" },
     "Phnom Penh": { "lat": "11.5564", "lon": "104.9282", "city": "Phnom Penh", "country": "Cambodia", "iso": "KH" },
-    "Stockholm": { "lat": "59.3293", "lon": "18.0686", "city": "Stockholm", "country": "Sweden", "iso": "SE" },
-    "Sweden": { "lat": "60.1282", "lon": "18.6435", "city": "Stockholm", "country": "Sweden", "iso": "SE" },
+    "Stockholm": { "lat": "59.3293", "lon": "18.0686", "city": "Stockholm", "country": "Sweden", "iso": "SE", "tz": "Europe/Stockholm" },
+    "Sweden": { "lat": "60.1282", "lon": "18.6435", "city": "Sweden", "country": "Sweden", "iso": "SE" },
+    "Malmö": { "lat": "55.6059", "lon": "13.0007", "city": "Malmö", "country": "Sweden", "iso": "SE", "tz": "Europe/Stockholm" },
+    "Malmo": { "lat": "55.6059", "lon": "13.0007", "city": "Malmö", "country": "Sweden", "iso": "SE", "tz": "Europe/Stockholm" },
+    "Gothenburg": { "lat": "57.7089", "lon": "11.9746", "city": "Gothenburg", "country": "Sweden", "iso": "SE", "tz": "Europe/Stockholm" },
+    "Göteborg": { "lat": "57.7089", "lon": "11.9746", "city": "Gothenburg", "country": "Sweden", "iso": "SE", "tz": "Europe/Stockholm" },
     "Tunis": { "lat": "36.8065", "lon": "10.1815", "city": "Tunis", "country": "Tunisia", "iso": "TN", "tz": "Africa/Tunis" },
     "Tunisia": { "lat": "33.8869", "lon": "9.5375", "city": "Tunis", "country": "Tunisia", "iso": "TN", "tz": "Africa/Tunis" }
 };
@@ -1664,8 +1670,30 @@ function searchLocalAirportData(q) {
     }
     
     // C. Search static city labels directly
+    const queryCityPart = queryLower.split(',')[0].trim();
     for (const [key, details] of Object.entries(STATIC_GEO_COORDS)) {
-        if (key.length > 3 && (key.toLowerCase() === queryLower || queryLower.includes(key.toLowerCase()) || key.toLowerCase().includes(queryLower))) {
+        if (key.length <= 3) continue;
+        const keyLower = key.toLowerCase();
+        const isCountryEntry = (details.country || '').toLowerCase() === keyLower;
+
+        // Country entries only match if the query is specifically the country itself
+        if (isCountryEntry) {
+            if (queryLower === keyLower) {
+                results.push({
+                    name: details.city || key,
+                    latitude: parseFloat(details.lat),
+                    longitude: parseFloat(details.lon),
+                    country: details.country || '',
+                    country_code: details.iso || '',
+                    timezone: details.tz || 'UTC',
+                    admin1: details.city || ''
+                });
+            }
+            continue;
+        }
+
+        // City entries match exact, city part, or prefix
+        if (keyLower === queryLower || keyLower === queryCityPart || queryLower.startsWith(keyLower + ' ') || queryLower.startsWith(keyLower + ',')) {
             // Avoid adding duplicate cities
             if (!results.some(r => r.name.toLowerCase() === (details.city || key).toLowerCase())) {
                 results.push({

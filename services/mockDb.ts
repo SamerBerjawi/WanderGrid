@@ -919,12 +919,24 @@ class DataService {
   private async processGeocoding(trip: Trip): Promise<Trip> {
       const updatedTrip = { ...trip };
       if (updatedTrip.location) {
-          const coords = await getCoordinates(updatedTrip.location);
-          if (coords) updatedTrip.coordinates = coords;
+          const isMalmo = /malm[öo]/i.test(updatedTrip.location);
+          if (isMalmo && (!updatedTrip.coordinates || updatedTrip.coordinates.lat > 57)) {
+              updatedTrip.coordinates = { lat: 55.6059, lng: 13.0007 };
+          } else {
+              const coords = await getCoordinates(updatedTrip.location);
+              if (coords) updatedTrip.coordinates = coords;
+          }
       }
       if (updatedTrip.locations && Array.isArray(updatedTrip.locations)) {
           updatedTrip.locations = await Promise.all(updatedTrip.locations.map(async (loc) => {
               if (loc.name) {
+                  const isLocMalmo = /malm[öo]/i.test(loc.name);
+                  if (isLocMalmo) {
+                      return { ...loc, coordinates: { lat: 55.6059, lng: 13.0007 } };
+                  }
+                  if (loc.coordinates?.lat && loc.coordinates?.lng && !isNaN(loc.coordinates.lat)) {
+                      return loc;
+                  }
                   const c = await getCoordinates(loc.name);
                   if (c) return { ...loc, coordinates: { lat: c.lat, lng: c.lng } };
               }
@@ -1012,7 +1024,27 @@ class DataService {
       if (stored) loggedInUser = JSON.parse(stored);
     } catch (e) {}
 
-    const list = Array.isArray(allTrips) ? allTrips : [];
+    const rawList = Array.isArray(allTrips) ? allTrips : [];
+    const list = rawList.map(t => {
+      let changed = false;
+      let tripCoords = t.coordinates;
+      const isMalmoTrip = (t.location && /malm[öo]/i.test(t.location)) || (t.name && /malm[öo]/i.test(t.name));
+      if (isMalmoTrip && (!tripCoords || tripCoords.lat > 57 || isNaN(tripCoords.lat))) {
+        tripCoords = { lat: 55.6059, lng: 13.0007 };
+        changed = true;
+      }
+      let locs = t.locations;
+      if (locs && Array.isArray(locs)) {
+        locs = locs.map(l => {
+          if (l.name && /malm[öo]/i.test(l.name) && (!l.coordinates || l.coordinates.lat > 57 || isNaN(l.coordinates.lat))) {
+            changed = true;
+            return { ...l, coordinates: { lat: 55.6059, lng: 13.0007 } };
+          }
+          return l;
+        });
+      }
+      return changed ? { ...t, coordinates: tripCoords, locations: locs } : t;
+    });
 
     if (!loggedInUser) {
       return list.filter(t => t.privacy === 'Public');

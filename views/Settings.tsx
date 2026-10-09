@@ -930,11 +930,12 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                           { id: '3d', label: '3D', desc: '3D Perspective' },
                           { id: 'satellite', label: 'Satellite', desc: 'Orbital Photoreal' }
                         ].map(b => {
+                          const lightVal = config.defaultBasemapLight as string;
                           const isSelected = (config.defaultBasemapLight || 'liberty') === b.id ||
-                            (b.id === 'positron' && (config.defaultBasemapLight === 'snow' || config.defaultBasemapLight === 'ofm_positron')) ||
-                            (b.id === 'liberty' && config.defaultBasemapLight === 'ofm_liberty') ||
-                            (b.id === 'bright' && config.defaultBasemapLight === 'ofm_bright') ||
-                            (b.id === '3d' && config.defaultBasemapLight === 'liberty-3d');
+                            (b.id === 'positron' && (lightVal === 'snow' || lightVal === 'ofm_positron')) ||
+                            (b.id === 'liberty' && lightVal === 'ofm_liberty') ||
+                            (b.id === 'bright' && lightVal === 'ofm_bright') ||
+                            (b.id === '3d' && lightVal === 'liberty-3d');
 
                           return (
                             <button

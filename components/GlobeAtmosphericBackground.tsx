@@ -170,8 +170,8 @@ export const GlobeAtmosphericBackground: FC<GlobeAtmosphericBackgroundProps> = (
                         bgGrad.addColorStop(0.5, '#010710');
                         bgGrad.addColorStop(1, '#01040a');
                         break;
-                    case 'onyx':
-                        // Sleek carbon onyx
+                    case 'dark':
+                        // Sleek carbon onyx / dark
                         bgGrad.addColorStop(0, '#05070e');
                         bgGrad.addColorStop(0.5, '#020409');
                         bgGrad.addColorStop(1, '#010205');

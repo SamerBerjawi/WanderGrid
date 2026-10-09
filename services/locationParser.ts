@@ -9,7 +9,7 @@
  * - Normalization & city cleaning via cleanCityName
  */
 
-import { cleanCityName, formatProperLocationName } from './geocoding';
+import { cleanCityName, formatProperLocationName, STATIC_GEO_DATA, LOCAL_GEO_MAP } from './geocoding';
 import { getFlagEmoji } from './geoData';
 
 export interface ParsedLocationItem {
@@ -21,6 +21,7 @@ export interface ParsedLocationItem {
   displayName: string;
   lat?: number;
   lng?: number;
+  population?: number;
 }
 
 // In-memory 0ms cache for autocomplete
@@ -90,8 +91,8 @@ export function parseGoogleMapsUrl(input: string): {
 }
 
 /**
- * Searches location suggestions using Photon (Komoot OpenStreetMap)
- * with 0ms in-memory cache and automatic city name cleaning.
+ * Searches location suggestions using Open-Meteo & Photon (Komoot OpenStreetMap)
+ * with 0ms in-memory cache, population ranking, and offline database fallback.
  * Zero API keys, zero AI required.
  */
 export async function searchLocationSuggestions(query: string): Promise<ParsedLocationItem[]> {
@@ -132,98 +133,154 @@ export async function searchLocationSuggestions(query: string): Promise<ParsedLo
   }
 
   const results: ParsedLocationItem[] = [];
+  const seen = new Set<string>();
 
-  // 1. Try Photon (Komoot) OpenStreetMap autocomplete engine
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 2500);
-    
-    const res = await fetch(
-      `https://photon.komoot.io/api/?q=${encodeURIComponent(trimmed)}&limit=8&lang=en`,
-      { signal: controller.signal }
-    );
-    clearTimeout(timer);
+  // 1. Check offline static cities first for instant sub-millisecond snapping
+  const queryLower = trimmed.toLowerCase();
+  const queryCityPart = queryLower.split(',')[0].trim();
 
-    if (res.ok) {
-      const data = await res.json();
-      if (data?.features && Array.isArray(data.features)) {
-        const seen = new Set<string>();
+  for (const [key, details] of Object.entries(STATIC_GEO_DATA)) {
+    if (key.length <= 3) continue;
+    const keyLower = key.toLowerCase();
+    const isCountry = (details.country || '').toLowerCase() === keyLower;
+    if (isCountry && queryLower !== keyLower) continue;
 
-        for (const feature of data.features) {
-          const props = feature.properties || {};
-          const coords = feature.geometry?.coordinates || [0, 0];
-          const rawCity = props.city || props.town || props.village || props.name || props.municipality || '';
-          const country = props.country || '';
-          const countryCode = (props.countrycode || '').toUpperCase();
-          const state = props.state || '';
-
-          if (!rawCity) continue;
-
-          // Clean city name using the robust WanderGrid/Crystal city normalizer
-          const city = cleanCityName(rawCity, countryCode, state);
-          const flag = countryCode ? getFlagEmoji(countryCode) : '📍';
-          const signature = `${city.toLowerCase()}|${country.toLowerCase()}`;
-
-          if (!seen.has(signature)) {
-            seen.add(signature);
-            const displayName = country ? `${flag} ${city}, ${country}` : `${flag} ${city}`;
-
-            results.push({
-              id: `${coords[1]}:${coords[0]}:${city}`,
-              name: city,
-              country,
-              countryCode,
-              flag,
-              displayName,
-              lat: coords[1],
-              lng: coords[0]
-            });
-          }
-        }
+    if (keyLower === queryLower || keyLower === queryCityPart || keyLower.startsWith(queryCityPart)) {
+      const city = cleanCityName(details.city || key, details.countryCode);
+      const country = details.country || '';
+      const countryCode = details.countryCode || '';
+      const sig = `${city.toLowerCase()}|${country.toLowerCase()}`;
+      if (!seen.has(sig)) {
+        seen.add(sig);
+        const flag = countryCode ? getFlagEmoji(countryCode) : '📍';
+        results.push({
+          id: `static:${details.lat}:${details.lon || details.lng}:${city}`,
+          name: city,
+          country,
+          countryCode,
+          flag,
+          displayName: country ? `${flag} ${city}, ${country}` : `${flag} ${city}`,
+          lat: parseFloat(details.lat),
+          lng: parseFloat(details.lon || details.lng),
+          population: 1000000
+        });
       }
     }
-  } catch {
-    // Network or CORS issue, fall back gracefully
   }
 
-  // 2. Fallback to Open-Meteo geocoding if Photon had no entries
-  if (results.length === 0) {
+  // 2. Query Open-Meteo (primary for global cities & population weighting) and Photon (for POIs/landmarks)
+  const openMeteoPromise = (async () => {
     try {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 2500);
+      const timer = setTimeout(() => controller.abort(), 2800);
       const res = await fetch(
-        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(trimmed)}&count=6&language=en&format=json`,
+        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(trimmed)}&count=8&language=en&format=json`,
         { signal: controller.signal }
       );
       clearTimeout(timer);
-
       if (res.ok) {
         const data = await res.json();
-        if (data?.results && Array.isArray(data.results)) {
-          for (const item of data.results) {
-            const city = cleanCityName(item.name, item.country_code, item.admin1);
-            const country = item.country || '';
-            const countryCode = (item.country_code || '').toUpperCase();
-            const flag = countryCode ? getFlagEmoji(countryCode) : '📍';
-            const displayName = country ? `${flag} ${city}, ${country}` : `${flag} ${city}`;
-
-            results.push({
-              id: `${item.latitude}:${item.longitude}:${city}`,
-              name: city,
-              country,
-              countryCode,
-              flag,
-              displayName,
-              lat: item.latitude,
-              lng: item.longitude
-            });
-          }
-        }
+        return data?.results || [];
       }
-    } catch {
-      // Graceful fail-safe
+    } catch {}
+    return [];
+  })();
+
+  const photonPromise = (async () => {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 2800);
+      const res = await fetch(
+        `https://photon.komoot.io/api/?q=${encodeURIComponent(trimmed)}&limit=8&lang=en`,
+        { signal: controller.signal }
+      );
+      clearTimeout(timer);
+      if (res.ok) {
+        const data = await res.json();
+        return data?.features || [];
+      }
+    } catch {}
+    return [];
+  })();
+
+  const [meteoResults, photonFeatures] = await Promise.all([openMeteoPromise, photonPromise]);
+
+  // Process Open-Meteo entries (sorted by population)
+  if (Array.isArray(meteoResults)) {
+    for (const item of meteoResults) {
+      const city = cleanCityName(item.name, item.country_code, item.admin1);
+      const country = item.country || '';
+      const countryCode = (item.country_code || '').toUpperCase();
+      const sig = `${city.toLowerCase()}|${country.toLowerCase()}`;
+
+      if (!seen.has(sig)) {
+        seen.add(sig);
+        const flag = countryCode ? getFlagEmoji(countryCode) : '📍';
+        const displayName = country ? `${flag} ${city}, ${country}` : `${flag} ${city}`;
+
+        results.push({
+          id: `${item.latitude}:${item.longitude}:${city}`,
+          name: city,
+          country,
+          countryCode,
+          flag,
+          displayName,
+          lat: item.latitude,
+          lng: item.longitude,
+          population: item.population || 0
+        });
+      }
     }
   }
+
+  // Supplement with Photon features (landmarks, POIs, venues)
+  if (Array.isArray(photonFeatures)) {
+    for (const feature of photonFeatures) {
+      const props = feature.properties || {};
+      const coords = feature.geometry?.coordinates || [0, 0];
+      const rawCity = props.city || props.town || props.village || props.name || props.municipality || '';
+      const country = props.country || '';
+      const countryCode = (props.countrycode || '').toUpperCase();
+      const state = props.state || '';
+
+      if (!rawCity) continue;
+
+      const city = cleanCityName(rawCity, countryCode, state);
+      const sig = `${city.toLowerCase()}|${country.toLowerCase()}`;
+
+      if (!seen.has(sig)) {
+        seen.add(sig);
+        const flag = countryCode ? getFlagEmoji(countryCode) : '📍';
+        const displayName = country ? `${flag} ${city}, ${country}` : `${flag} ${city}`;
+
+        results.push({
+          id: `${coords[1]}:${coords[0]}:${city}`,
+          name: city,
+          country,
+          countryCode,
+          flag,
+          displayName,
+          lat: coords[1],
+          lng: coords[0],
+          population: 0
+        });
+      }
+    }
+  }
+
+  // Rank results: items whose name directly matches query or high population rank first
+  results.sort((a, b) => {
+    const aLower = a.name.toLowerCase();
+    const bLower = b.name.toLowerCase();
+    const aExact = aLower === queryCityPart;
+    const bExact = bLower === queryCityPart;
+    if (aExact && !bExact) return -1;
+    if (!aExact && bExact) return 1;
+
+    const aPop = a.population || 0;
+    const bPop = b.population || 0;
+    return bPop - aPop;
+  });
 
   // Cache deduplicated suggestions
   if (SUGGESTION_CACHE.size >= MAX_CACHE_ENTRIES) {
