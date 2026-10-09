@@ -8,30 +8,49 @@ const pendingFetches = new Set<string>();
 
 const STORAGE_KEY = 'wandergrid_overland_routes_v3';
 
-// Load stored routes from persistent storage on startup, purging any poisoned <= 2-point straight lines
+// Checks if a geometry is effectively a straight line (e.g. 2 points or un-routed great-circle chord)
+export function isStraightLineRoute(pts: [number, number, number][]): boolean {
+    if (!Array.isArray(pts) || pts.length <= 2) return true;
+    const start = pts[0];
+    const end = pts[pts.length - 1];
+    const dx = end[0] - start[0];
+    const dy = end[1] - start[1];
+    const lenSq = dx * dx + dy * dy;
+    if (lenSq < 1e-8) return true;
+
+    // Check maximum perpendicular deviation from the line segment joining start & end
+    let maxDevSq = 0;
+    for (let i = 1; i < pts.length - 1; i++) {
+        const px = pts[i][0] - start[0];
+        const py = pts[i][1] - start[1];
+        const cross = dx * py - dy * px;
+        const devSq = (cross * cross) / lenSq;
+        if (devSq > maxDevSq) maxDevSq = devSq;
+    }
+    // If maximum perpendicular deviation is < 0.0015 deg (~150m), it's essentially a straight chord, not a road route
+    return Math.sqrt(maxDevSq) < 0.0015;
+}
+
+// Load stored routes from persistent storage on startup, purging any poisoned straight lines
 try {
     if (typeof window !== 'undefined') {
         localStorage.removeItem('wandergrid_multimodal_routes_v1');
-        
-        // Inspect current and previous storage versions
-        const legacyStored = localStorage.getItem('wandergrid_overland_routes_v2');
-        const stored = localStorage.getItem(STORAGE_KEY) || legacyStored;
+        localStorage.removeItem('wandergrid_overland_routes_v2');
 
+        const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
             const parsed = JSON.parse(stored);
             const sanitized: Record<string, [number, number, number][]> = {};
-            
+
             Object.entries(parsed).forEach(([k, v]) => {
                 const pts = v as [number, number, number][];
-                // Only keep real traced curves with > 2 points (purge 2-point straight fallbacks)
-                if (Array.isArray(pts) && pts.length > 2) {
+                // Only keep real traced curves with actual deviation (purge straight fallbacks)
+                if (Array.isArray(pts) && pts.length > 2 && !isStraightLineRoute(pts)) {
                     multiModalCache.set(k, pts);
                     sanitized[k] = pts;
                 }
             });
 
-            // Clean legacy and write back sanitized routes
-            localStorage.removeItem('wandergrid_overland_routes_v2');
             localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
         }
     }
@@ -40,8 +59,8 @@ try {
 }
 
 const saveRouteToCache = (key: string, points: [number, number, number][]) => {
-    // Never cache 2-point straight line fallbacks as traced routes
-    if (!points || points.length <= 2) return;
+    // Never cache straight line fallbacks as traced routes
+    if (!points || points.length <= 2 || isStraightLineRoute(points)) return;
 
     multiModalCache.set(key, points);
     try {
@@ -49,7 +68,7 @@ const saveRouteToCache = (key: string, points: [number, number, number][]) => {
             const data: Record<string, [number, number, number][]> = {};
             let count = 0;
             multiModalCache.forEach((val, k) => {
-                if (count < 500 && val.length > 2) {
+                if (count < 500 && val.length > 2 && !isStraightLineRoute(val)) {
                     data[k] = val;
                     count++;
                 }
@@ -451,19 +470,18 @@ export async function fetchHighwayGeometry(
     allCoords.push([endLng, endLat]);
 
     const route = await fetchRoute('car', allCoords);
-    if (route && !route.isFallback && route.geometry && route.geometry.length > 2) {
+    if (route && !route.isFallback && route.geometry && route.geometry.length > 2 && !isStraightLineRoute(route.geometry)) {
         return route.geometry;
     }
 
     if (allCoords.length > 2) {
         const directRoute = await fetchRoute('car', [[startLng, startLat], [endLng, endLat]]);
-        if (directRoute && !directRoute.isFallback && directRoute.geometry && directRoute.geometry.length > 2) {
+        if (directRoute && !directRoute.isFallback && directRoute.geometry && directRoute.geometry.length > 2 && !isStraightLineRoute(directRoute.geometry)) {
             return directRoute.geometry;
         }
     }
 
-    // Smooth geographic corridor fallback (never 2-point straight lines)
-    return generateSmoothRailCorridor(startLat, startLng, endLat, endLng, waypoints);
+    return null;
 }
 
 /**
@@ -561,8 +579,8 @@ export function getCachedMultiModalRoute(
 
     const key = buildRouteKey(mode, startLat, startLng, endLat, endLng, waypoints);
     const cached = multiModalCache.get(key);
-    // Never return 2-point straight fallbacks from cache
-    if (cached && cached.length > 2) {
+    // Never return straight fallbacks from cache
+    if (cached && cached.length > 2 && !isStraightLineRoute(cached)) {
         return cached;
     }
     return null;

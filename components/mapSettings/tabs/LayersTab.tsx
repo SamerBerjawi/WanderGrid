@@ -141,7 +141,7 @@ export const LayersTab: React.FC<LayersTabProps> = ({
         )}
       </SettingsSection>
 
-      {/* 3. INFRASTRUCTURE & AVIATION */}
+      {/* 3. RAIL */}
       <SettingsSection accentColor="indigo">
         {/* Rail lines */}
         <SettingRow
@@ -173,9 +173,12 @@ export const LayersTab: React.FC<LayersTabProps> = ({
             />
           )}
         </SettingRow>
+      </SettingsSection>
 
+      {/* 4. AVIATION (OpenAIP) */}
+      <SettingsSection accentColor="sky">
         {/* Aviation charts (OpenAIP) */}
-        <div className="pt-1.5 border-t border-black/5 dark:border-white/5">
+        <div>
           <SettingRow
             label={MAP_SETTINGS_LABELS.layersTab.aviationCharts}
             helper={!hasOpenAipKey ? MAP_SETTINGS_LABELS.layersTab.openAipKeyRequired : undefined}

@@ -49,7 +49,7 @@ export const MAP_SETTINGS_LABELS = {
   layersTab: {
     rainRadar: 'Rain radar',
     opacity: 'Opacity',
-    reliefShading: 'Relief shading',
+    reliefShading: 'Mountain projection',
     strength: 'Strength',
     terrain3d: '3D elevation',
     heightExaggeration: 'Height exaggeration',
@@ -69,8 +69,6 @@ export const MAP_SETTINGS_LABELS = {
     showFlights: 'Flights',
     showLandSea: 'Land & sea',
     showScratch: 'Scratch map',
-    flightRoutes: 'Flight routes',
-    landSeaRoutes: 'Land & sea routes',
 
     // Airports
     airportsSection: 'Airports',

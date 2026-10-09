@@ -64,7 +64,13 @@ export function generateAirportRunway(
     const cleanCode = (code || '').toUpperCase().trim();
     const dataset = runwayDatasetCache;
     if (!dataset) return null;
-    const realRunways = dataset[cleanCode];
+    let realRunways = dataset[cleanCode];
+    if (!realRunways) {
+        const match = cleanCode.match(/\b([A-Z]{3,4})\b/);
+        if (match && dataset[match[1]]) {
+            realRunways = dataset[match[1]];
+        }
+    }
 
     // Cities and non-airport locations MUST NOT have runway visualizations
     if (!realRunways || realRunways.length === 0) {

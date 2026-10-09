@@ -1135,10 +1135,6 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                 onResetAll={handleResetAll}
                 viewMode={viewMode}
                 onSelectViewMode={handleSelectViewMode}
-                showIndependentFlights={showIndependentFlights}
-                onToggleIndependentFlights={() => setShowIndependentFlights(!showIndependentFlights)}
-                showLandSeaRoutes={showLandSeaRoutes}
-                onToggleLandSeaRoutes={() => setShowLandSeaRoutes(!showLandSeaRoutes)}
                 animateRoutes={animateRoutes}
                 onToggleAnimateRoutes={() => setAnimateRoutes(!animateRoutes)}
                 clusterMode={clusterMode}

@@ -52,10 +52,6 @@ export interface MapSettingsPanelProps {
   // Optional Expedition view mode & dynamics controls
   viewMode?: 'flights' | 'land_sea' | 'scratch' | 'all';
   onSelectViewMode?: (mode: 'flights' | 'land_sea' | 'scratch' | 'all') => void;
-  showIndependentFlights?: boolean;
-  onToggleIndependentFlights?: () => void;
-  showLandSeaRoutes?: boolean;
-  onToggleLandSeaRoutes?: () => void;
   animateRoutes?: boolean;
   onToggleAnimateRoutes?: () => void;
   clusterMode?: boolean;
@@ -77,10 +73,6 @@ export const MapSettingsPanel: React.FC<MapSettingsPanelProps> = ({
   onResetAll,
   viewMode,
   onSelectViewMode,
-  showIndependentFlights,
-  onToggleIndependentFlights,
-  showLandSeaRoutes,
-  onToggleLandSeaRoutes,
   animateRoutes,
   onToggleAnimateRoutes,
   clusterMode,
@@ -454,10 +446,6 @@ export const MapSettingsPanel: React.FC<MapSettingsPanelProps> = ({
                     onChangeSetting={handleUpdateSetting}
                     viewMode={viewMode}
                     onSelectViewMode={onSelectViewMode}
-                    showIndependentFlights={showIndependentFlights}
-                    onToggleIndependentFlights={onToggleIndependentFlights}
-                    showLandSeaRoutes={showLandSeaRoutes}
-                    onToggleLandSeaRoutes={onToggleLandSeaRoutes}
                     animateRoutes={animateRoutes}
                     onToggleAnimateRoutes={onToggleAnimateRoutes}
                     clusterMode={clusterMode}

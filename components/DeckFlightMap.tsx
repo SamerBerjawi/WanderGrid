@@ -87,7 +87,7 @@ import {
 } from '../types/mapAppearance';
 import { getTwilightGradientGeoJSON } from '../services/solarTerminator';
 import { getLatestRainRadarMetadata, RainRadarMetadata } from '../services/rainViewer';
-import { getPhysicalRunways } from '../services/airportRunways';
+import { getPhysicalRunways, getPhysicalRunwaysSync, generateAirportRunway, PhysicalRunway } from '../services/airportRunways';
 import { buildRouteCorridors, RouteCorridor, getApproxLocalTime, formatAirportDisplayName, resolveLocationMetadata, getRouteTransportSummary } from '../services/routeCorridor';
 import { getFlagEmoji, getRegion } from '../services/geoData';
 import { fetchMultiModalRoute, getCachedMultiModalRoute, generateSmoothRailCorridor } from '../services/multiModalRouting';
@@ -878,7 +878,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         elevatedRoutesProp !== undefined ? elevatedRoutesProp : initialElevated
     );
     const [hoveredRouteKey, setHoveredRouteKey] = useState<string | null>(null);
-    const [, setOsrmVersion] = useState(0);
+    const [osrmVersion, setOsrmVersion] = useState(0);
+    const [currentZoom, setCurrentZoom] = useState<number>(2.5);
+    const [runwayDataset, setRunwayDataset] = useState<Record<string, PhysicalRunway[]> | null>(() => getPhysicalRunwaysSync());
 
     // Weather Rain Radar Metadata
     const [radarMeta, setRadarMeta] = useState<RainRadarMetadata | null>(null);
@@ -970,12 +972,14 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
     // Runway dataset demand loading
     useEffect(() => {
-        if (activeAppearance.airportDetail === 'detailed') {
-            getPhysicalRunways().catch(err => {
+        if (activeAppearance.airportDetail === 'detailed' && !runwayDataset) {
+            getPhysicalRunways().then(dataset => {
+                setRunwayDataset(dataset);
+            }).catch(err => {
                 console.warn("[DeckFlightMap] Could not load physical runway dataset:", err);
             });
         }
-    }, [activeAppearance.airportDetail]);
+    }, [activeAppearance.airportDetail, runwayDataset]);
 
     // Load GeoJSON for Scratch Map
     useEffect(() => {
@@ -1279,10 +1283,11 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             trip.transports?.forEach(t => {
                 if (!t.originLat || !t.originLng || !t.destLat || !t.destLng) return;
 
-                const isFlight = !t.mode || t.mode === 'Flight';
-                const isTrain = (t.mode || '').toLowerCase().includes('train') || (t.mode || '').toLowerCase().includes('rail');
-                const isCarBus = ['Car Rental', 'Personal Car', 'Bus', 'Road Trip', 'Driving', 'Car', 'Taxi'].some(m => (t.mode || '').toLowerCase().includes(m.toLowerCase()));
-                const isSea = ['Cruise', 'Ferry', 'Boat', 'Ship'].some(m => (t.mode || '').toLowerCase().includes(m.toLowerCase()));
+                const cleanMode = (t.mode || '').toLowerCase();
+                const isFlight = !t.mode || cleanMode === 'flight';
+                const isTrain = cleanMode.includes('train') || cleanMode.includes('rail');
+                const isCarBus = ['car', 'bus', 'drive', 'road', 'taxi', 'rental'].some(m => cleanMode.includes(m));
+                const isSea = ['cruise', 'ferry', 'boat', 'ship'].some(m => cleanMode.includes(m));
 
                 const oCode = (t.origin || '').toUpperCase().trim();
                 const dCode = (t.destination || '').toUpperCase().trim();
@@ -1442,7 +1447,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         showRoadTracing,
         showFrequencyWeight,
         activeAppearance,
-        clusterMode
+        clusterMode,
+        osrmVersion
     ]);
 
     // -------------------------------------------------------------------------
@@ -2007,7 +2013,141 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             }
         }
 
-        // 7. Airport & Destination Nodes
+        // 7. Physical Runway Details (Rendered directly via Deck.gl on ALL basemaps)
+        if (activeAppearance.airportDetail === 'detailed' && runwayDataset && activeAppearance.airportSize !== 'off') {
+            const effectiveLayer = getEffectiveBasemap(currentLayer, isDark);
+            const isLight = isLightEffectiveBasemap(effectiveLayer);
+            const stripColor: [number, number, number, number] = isLight ? [30, 41, 59, 255] : [71, 85, 105, 255];
+            const centerlineColor: [number, number, number, number] = [255, 255, 255, 240];
+            const taxiwayColor: [number, number, number, number] = [245, 158, 11, 230];
+
+            const runwayStrips: { path: [number, number, number][]; width: number }[] = [];
+            const centerlineStrips: { path: [number, number, number][] }[] = [];
+            const taxiwayStrips: { path: [number, number, number][] }[] = [];
+            const thresholdStrips: { path: [number, number, number][] }[] = [];
+            const seenAirportCodes = new Set<string>();
+
+            // Always render physical runway geometry for all airports from user's trips
+            airportPoints.forEach((pt: any) => {
+                const code = pt.iata || (pt.name ? (pt.name.match(/\b([A-Z]{3,4})\b/)?.[1] || pt.name) : '');
+                if (!code) return;
+                const clean = code.toUpperCase().trim();
+                seenAirportCodes.add(clean);
+                const geom = generateAirportRunway(clean, pt.position[1], pt.position[0]);
+                if (!geom) return;
+
+                geom.runwayPaths.forEach((rw: any) => {
+                    runwayStrips.push({ path: rw.stripPath, width: rw.widthMeters });
+                    centerlineStrips.push({ path: rw.centerlinePath });
+                });
+                geom.taxiwayPaths.forEach((tw: any) => {
+                    taxiwayStrips.push({ path: tw });
+                });
+                geom.thresholdMarkings.forEach((th: any) => {
+                    thresholdStrips.push({ path: th });
+                });
+            });
+
+            // If zoomed in (zoom >= 8.0), also render physical runways for visible airports in current viewport
+            if (mapRef.current && currentZoom >= 8.0 && runwayDataset) {
+                try {
+                    const bounds = mapRef.current.getBounds();
+                    const west = bounds.getWest();
+                    const east = bounds.getEast();
+                    const south = bounds.getSouth();
+                    const north = bounds.getNorth();
+
+                    for (const [code, rws] of Object.entries(runwayDataset)) {
+                        if (seenAirportCodes.has(code) || !rws || rws.length === 0) continue;
+                        const first = rws[0];
+                        const lng = first.start[0];
+                        const lat = first.start[1];
+                        if (lng >= west && lng <= east && lat >= south && lat <= north) {
+                            seenAirportCodes.add(code);
+                            const geom = generateAirportRunway(code, lat, lng);
+                            if (!geom) continue;
+                            geom.runwayPaths.forEach((rw: any) => {
+                                runwayStrips.push({ path: rw.stripPath, width: rw.widthMeters });
+                                centerlineStrips.push({ path: rw.centerlinePath });
+                            });
+                            geom.taxiwayPaths.forEach((tw: any) => {
+                                taxiwayStrips.push({ path: tw });
+                            });
+                            geom.thresholdMarkings.forEach((th: any) => {
+                                thresholdStrips.push({ path: th });
+                            });
+                        }
+                    }
+                } catch {}
+            }
+
+            if (runwayStrips.length > 0) {
+                layers.push(
+                    new PathLayer({
+                        id: 'deck-runway-strips',
+                        data: runwayStrips,
+                        getPath: (d: any) => d.path,
+                        getColor: stripColor,
+                        getWidth: (d: any) => Math.max(30, d.width || 45),
+                        widthUnits: 'meters',
+                        widthMinPixels: 2.5,
+                        widthMaxPixels: 60,
+                        capRounded: false,
+                        jointRounded: false,
+                        wrapLongitude: true,
+                        pickable: false,
+                        parameters: { depthTest: false },
+                        extensions: [globeHorizonCullExtension]
+                    }),
+                    new PathLayer({
+                        id: 'deck-runway-taxiways',
+                        data: taxiwayStrips,
+                        getPath: (d: any) => d.path,
+                        getColor: taxiwayColor,
+                        getWidth: 12,
+                        widthUnits: 'meters',
+                        widthMinPixels: 1.2,
+                        widthMaxPixels: 10,
+                        capRounded: true,
+                        jointRounded: true,
+                        wrapLongitude: true,
+                        pickable: false,
+                        parameters: { depthTest: false },
+                        extensions: [globeHorizonCullExtension]
+                    }),
+                    new PathLayer({
+                        id: 'deck-runway-thresholds',
+                        data: thresholdStrips,
+                        getPath: (d: any) => d.path,
+                        getColor: centerlineColor,
+                        getWidth: 8,
+                        widthUnits: 'meters',
+                        widthMinPixels: 1.0,
+                        widthMaxPixels: 8,
+                        wrapLongitude: true,
+                        pickable: false,
+                        parameters: { depthTest: false },
+                        extensions: [globeHorizonCullExtension]
+                    }),
+                    new PathLayer({
+                        id: 'deck-runway-centerlines',
+                        data: centerlineStrips,
+                        getPath: (d: any) => d.path,
+                        getColor: centerlineColor,
+                        getWidth: 2.5,
+                        widthUnits: 'meters',
+                        widthMinPixels: 0.8,
+                        widthMaxPixels: 4,
+                        wrapLongitude: true,
+                        pickable: false,
+                        parameters: { depthTest: false },
+                        extensions: [globeHorizonCullExtension]
+                    })
+                );
+            }
+        }
+
+        // 8. Airport & Destination Nodes (Dots visible at any zoom, Labels when zoomed in)
         if ((showCityMarkers || activeAppearance.airportsOnly) && activeAppearance.airportSize !== 'off') {
             if (clusterMode && clusterNodes.length > 0) {
                 layers.push(
@@ -2055,6 +2195,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     })
                 );
             } else if (airportPoints.length > 0) {
+                // Airport marker dots (prominent & visible at any zoom level)
                 layers.push(
                     new ScatterplotLayer({
                         id: 'airport-markers',
@@ -2080,7 +2221,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                             return d.strokeColor;
                         },
                         getRadius: (d: any) => {
-                            const baseRadius = activeAppearance.airportSize === 'small' ? 3.0 : activeAppearance.airportSize === 'large' ? 8.0 : 5.0;
+                            const baseRadius = activeAppearance.airportSize === 'small' ? 3.5 : activeAppearance.airportSize === 'large' ? 8.5 : 5.5;
                             let r = baseRadius;
                             if (activeAppearance.airportMode === 'frequency') {
                                 const freq = d.frequency || 1;
@@ -2096,11 +2237,11 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                             return r;
                         },
                         radiusUnits: 'pixels',
-                        radiusMinPixels: activeAppearance.airportSize === 'small' ? 1.0 : 2,
+                        radiusMinPixels: activeAppearance.airportSize === 'small' ? 3.0 : activeAppearance.airportSize === 'large' ? 6.0 : 4.5,
                         radiusMaxPixels: 24,
                         stroked: true,
                         lineWidthUnits: 'pixels',
-                        getLineWidth: activeAppearance.airportSize === 'small' ? 0.75 : 1.2,
+                        getLineWidth: 1.5,
                         wrapLongitude: true,
                         pickable: true,
                         autoHighlight: true,
@@ -2114,6 +2255,34 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         extensions: [globeHorizonCullExtension]
                     })
                 );
+
+                // Airport labels (shown only when zoomed in)
+                if (currentZoom >= 4.0) {
+                    layers.push(
+                        new TextLayer({
+                            id: 'airport-labels',
+                            data: airportPoints,
+                            getPosition: (d: any) => d.position,
+                            getText: (d: any) => d.iata || d.name,
+                            getSize: 11,
+                            getColor: isDark ? [248, 250, 252, 255] : [15, 23, 42, 255],
+                            getTextAnchor: 'start',
+                            getAlignmentBaseline: 'center',
+                            pixelOffset: [9, 0],
+                            fontWeight: 700,
+                            background: true,
+                            getBackgroundColor: isDark ? [15, 23, 42, 210] : [255, 255, 255, 210],
+                            backgroundPadding: [4, 2],
+                            wrapLongitude: true,
+                            pickable: false,
+                            updateTriggers: {
+                                getColor: [isDark],
+                                getBackgroundColor: [isDark]
+                            },
+                            extensions: [globeHorizonCullExtension]
+                        })
+                    );
+                }
             }
         }
 
@@ -2148,7 +2317,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         currentTime,
         handleRouteHover,
         handleRouteClick,
-        onTripClick
+        onTripClick,
+        runwayDataset,
+        currentZoom
     ]);
 
     const deckLayersRef = useRef(deckLayers);
@@ -2376,11 +2547,19 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         };
         map.on('mousemove', onMouseMove);
 
+        const onZoom = () => {
+            setCurrentZoom(map.getZoom());
+        };
+        map.on('zoom', onZoom);
+        setCurrentZoom(initialCamera.zoom);
+
         mapRef.current = map;
         setMapInstance(map);
         overlayRef.current = overlay;
 
         return () => {
+            map.off('zoom', onZoom);
+            map.off('mousemove', onMouseMove);
             if (pickRafId !== null) {
                 cancelAnimationFrame(pickRafId);
                 pickRafId = null;

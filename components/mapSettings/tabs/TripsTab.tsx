@@ -24,10 +24,6 @@ interface TripsTabProps {
   onChangeSetting: <K extends keyof MapAppearanceSettings>(field: K, value: MapAppearanceSettings[K]) => void;
   viewMode?: 'flights' | 'land_sea' | 'scratch' | 'all';
   onSelectViewMode?: (mode: 'flights' | 'land_sea' | 'scratch' | 'all') => void;
-  showIndependentFlights?: boolean;
-  onToggleIndependentFlights?: () => void;
-  showLandSeaRoutes?: boolean;
-  onToggleLandSeaRoutes?: () => void;
   animateRoutes?: boolean;
   onToggleAnimateRoutes?: () => void;
   clusterMode?: boolean;
@@ -41,10 +37,6 @@ export const TripsTab: React.FC<TripsTabProps> = ({
   onChangeSetting,
   viewMode,
   onSelectViewMode,
-  showIndependentFlights,
-  onToggleIndependentFlights,
-  showLandSeaRoutes,
-  onToggleLandSeaRoutes,
   animateRoutes,
   onToggleAnimateRoutes,
   clusterMode,
@@ -72,48 +64,6 @@ export const TripsTab: React.FC<TripsTabProps> = ({
             showCheckOnSelected
           />
 
-          {/* Sub-toggles for Flight & Land/Sea routes (hidden in scratch view) */}
-          {!isScratchMode && (
-            <div className="pt-1.5 border-t border-black/5 dark:border-white/5 space-y-1.5">
-              {onToggleIndependentFlights && (
-                <SettingRow
-                  label={MAP_SETTINGS_LABELS.tripsTab.flightRoutes}
-                  icon={
-                    <div className="w-7 h-7 rounded-lg bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0">
-                      <Airplane size={15} weight="bold" />
-                    </div>
-                  }
-                  control={
-                    <GlassToggle
-                      checked={Boolean(showIndependentFlights)}
-                      accentColor="sky"
-                      onChange={onToggleIndependentFlights}
-                      ariaLabel={MAP_SETTINGS_LABELS.tripsTab.flightRoutes}
-                    />
-                  }
-                />
-              )}
-
-              {onToggleLandSeaRoutes && (
-                <SettingRow
-                  label={MAP_SETTINGS_LABELS.tripsTab.landSeaRoutes}
-                  icon={
-                    <div className="w-7 h-7 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
-                      <Compass size={15} weight="bold" />
-                    </div>
-                  }
-                  control={
-                    <GlassToggle
-                      checked={Boolean(showLandSeaRoutes)}
-                      accentColor="emerald"
-                      onChange={onToggleLandSeaRoutes}
-                      ariaLabel={MAP_SETTINGS_LABELS.tripsTab.landSeaRoutes}
-                    />
-                  }
-                />
-              )}
-            </div>
-          )}
         </SettingsSection>
       )}
 
