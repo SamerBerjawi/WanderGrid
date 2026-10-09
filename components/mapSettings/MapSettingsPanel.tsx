@@ -235,7 +235,27 @@ export const MapSettingsPanel: React.FC<MapSettingsPanelProps> = ({
     }
   };
 
-  // Mobile touch drag handle (MC-08)
+  // Mobile touch/pointer drag handle (MC-08)
+  const handlePointerDown = (e: React.PointerEvent) => {
+    touchStartYRef.current = e.clientY;
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (touchStartYRef.current === null) return;
+    const diff = e.clientY - touchStartYRef.current;
+    touchStartYRef.current = null;
+    // Swipe down to collapse / close
+    if (diff > 50) {
+      if (isExpandedMobile) {
+        setIsExpandedMobile(false);
+      } else {
+        handleClose();
+      }
+    } else if (diff < -30) {
+      setIsExpandedMobile(true);
+    }
+  };
+
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartYRef.current = e.touches[0].clientY;
   };
@@ -245,13 +265,13 @@ export const MapSettingsPanel: React.FC<MapSettingsPanelProps> = ({
     const diff = e.changedTouches[0].clientY - touchStartYRef.current;
     touchStartYRef.current = null;
     // Swipe down to collapse / close
-    if (diff > 60) {
+    if (diff > 50) {
       if (isExpandedMobile) {
         setIsExpandedMobile(false);
       } else {
         handleClose();
       }
-    } else if (diff < -40) {
+    } else if (diff < -30) {
       setIsExpandedMobile(true);
     }
   };
@@ -329,17 +349,27 @@ export const MapSettingsPanel: React.FC<MapSettingsPanelProps> = ({
             <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px] text-light-text dark:text-dark-text relative">
               {/* Mobile Drag Handle (MC-08) */}
               <div
+                onPointerDown={handlePointerDown}
+                onPointerUp={handlePointerUp}
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
                 onClick={() => setIsExpandedMobile(!isExpandedMobile)}
-                className="sm:hidden flex items-center justify-center pt-2.5 pb-1 w-full cursor-grab active:cursor-grabbing shrink-0"
+                className="sm:hidden flex items-center justify-center pt-2.5 pb-1 w-full cursor-grab active:cursor-grabbing shrink-0 select-none touch-none"
                 aria-label="Toggle drawer expansion"
               >
-                <div className="w-10 h-1 rounded-full bg-black/20 dark:bg-white/25" />
+                <div className="w-10 h-1 rounded-full bg-black/20 dark:bg-white/25 hover:bg-black/40 dark:hover:bg-white/45 transition-colors" />
               </div>
 
               {/* Header (MC-05: Title + Close only; no unlabelled refresh icon) */}
-              <div className="flex items-center justify-between px-6 py-3.5 border-b border-black/5 dark:border-white/5 bg-gradient-to-r from-primary-500/10 via-transparent to-transparent shrink-0">
+              <div
+                onClick={(e) => {
+                  // If clicking on header (not on buttons) at mobile viewport, toggle expansion
+                  if ((e.target as HTMLElement).tagName !== 'BUTTON' && (e.target as HTMLElement).tagName !== 'path' && window.innerWidth < 640) {
+                    setIsExpandedMobile(!isExpandedMobile);
+                  }
+                }}
+                className="flex items-center justify-between px-6 py-3.5 border-b border-black/5 dark:border-white/5 bg-gradient-to-r from-primary-500/10 via-transparent to-transparent shrink-0 sm:cursor-default cursor-pointer"
+              >
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-primary-500/15 dark:bg-primary-500/25 border border-primary-500/30 dark:border-primary-400/40 flex items-center justify-center text-primary-600 dark:text-primary-400 shrink-0 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_6px_rgba(234,88,12,0.15)] wg-glass-surface">
                     <SlidersHorizontal className="w-4 h-4" weight="bold" />
