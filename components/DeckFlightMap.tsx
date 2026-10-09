@@ -1368,17 +1368,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     let path: [number, number, number][] = [];
                     if (cachedCoords && cachedCoords.length > 0) {
                         path = cachedCoords;
-                    } else if (isTrain || isSea) {
-                        // Traces natural curved geographic corridor while real track / sea coordinates load (never road or 2-point straight line)
-                        path = generateSmoothRailCorridor(t.originLat, t.originLng, t.destLat, t.destLng, t.waypoints);
                     } else {
-                        path = [[t.originLng, t.originLat, 0]];
-                        if (t.waypoints) {
-                            t.waypoints.forEach((w: any) => {
-                                if (w.coordinates) path.push([w.coordinates.lng, w.coordinates.lat, 0]);
-                            });
-                        }
-                        path.push([t.destLng, t.destLat, 0]);
+                        // Traces natural curved geographic corridor while real road/rail/sea coordinates load (never 2-point straight lines)
+                        path = generateSmoothRailCorridor(t.originLat, t.originLng, t.destLat, t.destLng, t.waypoints);
                     }
 
                     const modeRGB: [number, number, number] = isTrain
@@ -2775,13 +2767,12 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 }
             }
 
-            // 2. Global Transit & Railway Layer (OpenRailwayMap - Minimal Hairline Styling)
+            // 2. Global Transit & Railway Layer (Crisp 1px Vector Hairline - Zero Glow / Halo)
             const transitSourceId = 'transit-railway-source';
             const transitLayerId = 'transit-railway-layer';
             const isTransitEnabled = Boolean(activeAppearance.transitOverlay && !activeAppearance.airportsOnly);
-            const rawTransitOpacity = activeAppearance.transitOverlayOpacity ?? 0.4;
-            const effectiveTransitOpacity = rawTransitOpacity * 0.45;
-            const transitTileUrl = 'https://a.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png';
+            const transitOpacity = activeAppearance.transitOverlayOpacity ?? 0.65;
+            const railColor = isDark ? 'rgba(217, 119, 6, 0.75)' : 'rgba(180, 83, 9, 0.8)';
 
             const existingTransitLayer = map.getLayer(transitLayerId);
             const existingTransitSource = map.getSource(transitSourceId);
@@ -2790,12 +2781,17 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 if (existingTransitLayer) map.removeLayer(transitLayerId);
                 if (existingTransitSource) map.removeSource(transitSourceId);
             } else {
+                // Remove legacy raster layer/source if present to upgrade to clean vector lines
+                if (existingTransitSource && (existingTransitSource as any).type !== 'geojson') {
+                    if (existingTransitLayer) map.removeLayer(transitLayerId);
+                    map.removeSource(transitSourceId);
+                }
+
                 if (!map.getSource(transitSourceId)) {
                     map.addSource(transitSourceId, {
-                        type: 'raster',
-                        tiles: [transitTileUrl],
-                        tileSize: 256,
-                        attribution: 'OpenRailwayMap'
+                        type: 'geojson',
+                        data: '/data/ne_railroads.geojson',
+                        attribution: 'Natural Earth Global Railroads'
                     });
                 }
                 if (!map.getLayer(transitLayerId)) {
@@ -2804,19 +2800,20 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         : undefined;
                     map.addLayer({
                         id: transitLayerId,
-                        type: 'raster',
+                        type: 'line',
                         source: transitSourceId,
                         paint: {
-                            'raster-opacity': effectiveTransitOpacity,
-                            'raster-contrast': -0.15,
-                            'raster-saturation': -0.4,
-                            'raster-resampling': 'linear'
+                            'line-width': 1,
+                            'line-color': railColor,
+                            'line-opacity': transitOpacity,
+                            'line-blur': 0
                         }
                     }, beforeId);
                 } else {
-                    map.setPaintProperty(transitLayerId, 'raster-opacity', effectiveTransitOpacity);
-                    map.setPaintProperty(transitLayerId, 'raster-contrast', -0.15);
-                    map.setPaintProperty(transitLayerId, 'raster-saturation', -0.4);
+                    map.setPaintProperty(transitLayerId, 'line-width', 1);
+                    map.setPaintProperty(transitLayerId, 'line-color', railColor);
+                    map.setPaintProperty(transitLayerId, 'line-opacity', transitOpacity);
+                    map.setPaintProperty(transitLayerId, 'line-blur', 0);
                 }
             }
 

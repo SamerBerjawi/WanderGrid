@@ -427,7 +427,8 @@ export async function fetchRoute(
 }
 
 /**
- * Fetches highway road geometry from backend routing proxy or direct Valhalla/OSRM.
+ * Fetches highway road geometry from backend routing proxy or direct OSRM/Valhalla.
+ * If routing fails or is offline, falls back to smooth geographic corridor (never straight lines).
  */
 export async function fetchHighwayGeometry(
     startLat: number,
@@ -453,7 +454,16 @@ export async function fetchHighwayGeometry(
     if (route && !route.isFallback && route.geometry && route.geometry.length > 2) {
         return route.geometry;
     }
-    return null;
+
+    if (allCoords.length > 2) {
+        const directRoute = await fetchRoute('car', [[startLng, startLat], [endLng, endLat]]);
+        if (directRoute && !directRoute.isFallback && directRoute.geometry && directRoute.geometry.length > 2) {
+            return directRoute.geometry;
+        }
+    }
+
+    // Smooth geographic corridor fallback (never 2-point straight lines)
+    return generateSmoothRailCorridor(startLat, startLng, endLat, endLng, waypoints);
 }
 
 /**

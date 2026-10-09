@@ -95,9 +95,9 @@ export const DataCreditsPopover: React.FC<DataCreditsPopoverProps> = ({
     },
     {
       layer: 'Rail & Transit',
-      provider: 'OpenRailwayMap',
-      license: 'ODbL © OpenStreetMap contributors',
-      url: 'https://www.openrailwaymap.org',
+      provider: 'Natural Earth Global Railroads',
+      license: 'Public Domain',
+      url: 'https://www.naturalearthdata.com',
       isActive: Boolean(activeAppearance.transitOverlay)
     },
     {

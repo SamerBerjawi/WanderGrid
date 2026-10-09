@@ -1305,7 +1305,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                             <span>Global Railway & Transit</span>
                                                             {settings.transitOverlay && (
                                                                 <span className="px-2 py-0.5 text-2xs font-bold rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                                                                    OpenRailway
+                                                                    Railways
                                                                 </span>
                                                             )}
                                                         </h4>
