@@ -104,9 +104,6 @@ export interface MapAppearanceSettings {
     transitOverlay?: boolean; // OpenRailwayMap global transit & rail infrastructure
     transitOverlayOpacity?: number; // 0.1 to 1.0
 
-    // Motion & Animation Optimization
-    flightInterpolation?: boolean; // Smooth flight progress interpolation
-
     // NASA GIBS Recent Satellite (Daily True-Color Mosaic) (P-04c)
     gibsDaily?: boolean;
     gibsDailyDate?: string;
@@ -150,7 +147,6 @@ export const DEFAULT_MAP_APPEARANCE: MapAppearanceSettings = {
     gibsDailyOpacity: 0.9,
     terrain3d: false,
     terrain3dExaggeration: 1.0,
-    flightInterpolation: true,
     scratchCitySize: 'medium',
     showLivedCountries: true,
     showWishlistCountries: true,
