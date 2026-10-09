@@ -105,6 +105,7 @@ import GlassPanel from './glass/GlassPanel';
 import { globeHorizonCullExtension } from './GlobeHorizonCullExtension';
 import { GlobeAtmosphericBackground } from './GlobeAtmosphericBackground';
 import { MapAppearanceModal } from './MapAppearanceModal';
+import { MAP_SETTINGS_LABELS } from './mapSettings/labels';
 
 // --- Country Matching Helper for Scratch Map & Overlays ---
 let geoJsonMemoryCache: any = null;
@@ -3319,10 +3320,11 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         <button
                             onClick={() => setIsAppearanceModalOpen(true)}
                             className="flex items-center gap-1.5 px-3 py-1.5 cursor-pointer text-xs font-bold text-light-text dark:text-dark-text hover:text-primary-500 dark:hover:text-primary-400 transition-colors active:scale-95 rounded-full"
-                            title="Mission Control: Basemaps, Flights, Radar, Terrain & Overlays"
+                            title={MAP_SETTINGS_LABELS.panelTitle}
+                            aria-label={MAP_SETTINGS_LABELS.panelTitle}
                         >
                             <SlidersHorizontal className="w-3.5 h-3.5 text-primary-500" weight="bold" />
-                            <span className="hidden sm:inline">Mission Control</span>
+                            <span className="hidden sm:inline">{MAP_SETTINGS_LABELS.panelTitle}</span>
                         </button>
                     </GlassPanel>
                 </div>
