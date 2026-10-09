@@ -33,18 +33,6 @@ export const GlassButton = React.forwardRef<HTMLButtonElement, GlassButtonProps>
   type = 'button',
   ...props
 }, ref) => {
-  const sizePadding = {
-    sm: '6px 14px',
-    md: '10px 20px',
-    lg: '14px 26px',
-  }[size];
-
-  const sizeRadius = {
-    sm: 16,
-    md: 20,
-    lg: 24,
-  }[size];
-
   const resolvedColor = color || 'primary';
   const colorClass = `wg-glass-pill-colored wg-glass-pill-${resolvedColor}`;
 

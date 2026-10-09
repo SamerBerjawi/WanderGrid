@@ -4,10 +4,9 @@ This document tracks all changes made to reorganize WanderGrid's "Mission Contro
 
 ---
 
-## Rollback & Feature Flag
-- **Feature Flag**: `MC_NEW_PANEL` in `config/featureFlags.ts` (default: `true`, override with `VITE_FF_MC_NEW_PANEL=false`).
-- **Legacy Fallback**: `components/MapAppearanceModalLegacy.tsx` preserves the original 1,463-line modal untouched.
-- **Switch**: `components/MapAppearanceModal.tsx` conditionally routes to `MapSettingsPanel` when `MC_NEW_PANEL` is enabled, or `MapAppearanceModalLegacy` when disabled.
+## Legacy Removal
+- The legacy 1,463-line modal and the `MC_NEW_PANEL` feature flag have been removed.
+- `components/MapAppearanceModal.tsx` is a thin alias of `MapSettingsPanel`, kept so existing imports keep working.
 
 ---
 
@@ -20,7 +19,6 @@ This document tracks all changes made to reorganize WanderGrid's "Mission Contro
   - `components/glass/GlassSlider.tsx`: Styled slider with live indicator and touch targets.
   - `components/glass/SettingRow.tsx`: Standard setting item row `[label + helper] ↔ [control]` with expandable child content.
   - `components/glass/SettingsSection.tsx`: Liquid glass sub-card container for grouping settings.
-- **Rollback**: Set `VITE_FF_MC_NEW_PANEL=false`.
 
 ### MC-02: New Structure (Map / Layers / Trips / Filter)
 - **Files**:

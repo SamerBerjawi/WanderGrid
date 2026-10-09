@@ -16,13 +16,25 @@ export type BasemapMode =
     | 'snow'
     | 'vibrant';
 
+/** Basemaps the map can actually render. Legacy stored ids are mapped onto these by getEffectiveBasemap. */
+export type EffectiveBasemap =
+    | 'liberty'
+    | 'bright'
+    | 'positron'
+    | '3d'
+    | 'dark'
+    | 'fiord'
+    | 'satellite'
+    | 'citylights'
+    | 'ocean';
+
 export const getEffectiveBasemap = (
     basemap: string | undefined,
     isDark: boolean,
     defaultLight?: string,
     defaultDark?: string,
     _deprecatedCartoKey?: string
-): 'liberty' | 'bright' | 'positron' | '3d' | 'dark' | 'fiord' | 'satellite' | 'citylights' | 'ocean' => {
+): EffectiveBasemap => {
     // Explicit layer requested other than 'default'
     if (basemap && basemap !== 'default') {
         if (basemap === 'liberty' || basemap === 'ofm_liberty') return 'liberty';

@@ -48,8 +48,6 @@ export const FEATURE_FLAGS = {
   // P-07: Dynamic data credits popover
   GEV_P07_DATA_CREDITS: getEnvFlag('VITE_FF_GEV_P07_DATA_CREDITS', true),
 
-  // Mission Control Reorganisation (MC-01 to MC-10)
-  MC_NEW_PANEL: getEnvFlag('VITE_FF_MC_NEW_PANEL', true),
 } as const;
 
 export type FeatureFlagKey = keyof typeof FEATURE_FLAGS;

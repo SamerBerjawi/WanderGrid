@@ -3,27 +3,13 @@ import {
     Compass,
     Globe,
     SlidersHorizontal,
-    ArrowsClockwise as RefreshCw,
-    Play,
-    Pulse as Activity,
     MapPin,
-    Stack as Layers,
     CalendarBlank as Calendar,
-    Sparkle as Sparkles,
-    Lightning as Zap,
     MapTrifold as MapIcon,
     Airplane as Plane,
     X,
-    Funnel as Filter,
-    Radio,
-    Eye,
-    ArrowCounterClockwise as RotateCcw,
-    Boat as Ship,
-    Train,
-    Car,
     ArrowsOut as Maximize,
-    ArrowsIn as Minimize,
-    Moon
+    ArrowsIn as Minimize
 } from '@phosphor-icons/react';
 const DeckFlightMap = lazy(() => import('../components/DeckFlightMap').then(m => ({ default: m.DeckFlightMap || m.default })));
 import { MapAppearanceModal } from '../components/MapAppearanceModal';
@@ -32,7 +18,6 @@ import GlassPanel from '../components/glass/GlassPanel';
 import { dataService } from '../services/mockDb';
 import { runAfterFirstPaint, mapWithConcurrency } from '../services/utils';
 import { Trip, CountryResidenceStatus, PredefinedMapMode, getResidenceStatuses } from '../types';
-import { Input } from '../components/ui';
 import { GlassSegmented } from '../components/glass/GlassSegmented';
 import { GlassDatePicker } from '../components/glass/GlassDatePicker';
 import { LiquidGlassSelect, LiquidGlassMultiSelect } from '../components/LiquidGlassSelect';
@@ -41,8 +26,7 @@ import {
     MapAppearanceSettings,
     DEFAULT_MAP_APPEARANCE,
     loadMapAppearanceSettings,
-    saveMapAppearanceSettings,
-    getEffectiveBasemap
+    saveMapAppearanceSettings
 } from '../types/mapAppearance';
 
 interface ExpeditionMapViewProps {
@@ -171,11 +155,9 @@ const MAP_MODE_THEMES: Record<PredefinedMapMode, {
 
 export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClick, isSidebarCollapsed = false }) => {
     const [trips, setTrips] = useState<Trip[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [, setLoading] = useState(true);
 
-    // Sidebar state & tab
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    const [activeSidebarTab, setActiveSidebarTab] = useState<'cartography' | 'aviation' | 'atmosphere' | 'filters'>('cartography');
 
     // Appearance Settings State
     const [appearance, setAppearance] = useState<MapAppearanceSettings>(() => loadMapAppearanceSettings());
@@ -205,22 +187,8 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
     const [arrFilter, setArrFilter] = useState<string[]>([]);
     const [dateFrom, setDateFrom] = useState<string>('');
     const [dateTo, setDateTo] = useState<string>('');
-    const [focusCoord, setFocusCoord] = useState<{ lat: number, lng: number } | null>(null);
-    const [hasOpenAipKey, setHasOpenAipKey] = useState<boolean>(true);
-    const [cartoKey, setCartoKey] = useState<string>('');
 
     const isDark = useDarkMode();
-
-    useEffect(() => {
-        try {
-            const raw = localStorage.getItem('wandergrid_workspace_settings') || localStorage.getItem('wandergrid_settings');
-            if (raw) {
-                const parsed = JSON.parse(raw);
-                setHasOpenAipKey(Boolean(parsed.openAipApiKey));
-                setCartoKey(parsed.cartoApiKey ? String(parsed.cartoApiKey).trim() : '');
-            }
-        } catch {}
-    }, [isSidebarOpen]);
 
     const handleSelectViewMode = (mode: PredefinedMapMode) => {
         setViewMode(mode);
@@ -854,7 +822,6 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
     }, [filteredTrips, visitedCountryCodes]);
 
     const activeSectorsCount = expeditionTypeMetrics.activeSectorsCount;
-    const totalDistanceKm = expeditionTypeMetrics.totalDistanceKm;
 
     const [isFullscreen, setIsFullscreen] = useState(false);
     const mapContainerRef = React.useRef<HTMLDivElement>(null);
@@ -927,7 +894,6 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                         showGradientRoutes={appearance.routeColorMode === 'gradient'}
                         clusterMode={clusterMode}
                         showRoadTracing={showRoadTracing}
-                        focusTransportCoordinates={focusCoord}
                         appearanceSettings={appearance}
                         onChangeAppearanceSettings={handleUpdateAppearance}
                         onOpenMissionControl={() => setIsSidebarOpen(true)}

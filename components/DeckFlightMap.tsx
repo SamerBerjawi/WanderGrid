@@ -20,11 +20,9 @@ import {
 } from '../services/openAipStyle';
 
 // Register PMTiles protocol globally once for MapLibre vector tile decoding
-let isPmtilesRegistered = false;
 try {
     const protocol = new PmtilesProtocol();
     (maplibregl as any).addProtocol('pmtiles', protocol.tile);
-    isPmtilesRegistered = true;
 } catch (e) {
     console.warn('[DeckFlightMap] PMTiles registration warning:', e);
 }
@@ -52,26 +50,21 @@ try {
 }
 
 import { MapboxOverlay } from '@deck.gl/mapbox';
-import { ArcLayer, ScatterplotLayer, GeoJsonLayer, PathLayer, BitmapLayer, TextLayer } from '@deck.gl/layers';
-import { TileLayer, TripsLayer } from '@deck.gl/geo-layers';
+import { ArcLayer, ScatterplotLayer, GeoJsonLayer, PathLayer, TextLayer } from '@deck.gl/layers';
+import { TripsLayer } from '@deck.gl/geo-layers';
 import { geoInterpolate } from 'd3';
 import {
-    ArrowsOut as Maximize2,
     CornersOut as Scan,
     Globe,
     ArrowLeft,
     ArrowRight,
     X,
     Airplane as Plane,
-    Clock,
-    CalendarBlank as Calendar,
     CaretRight as ChevronRight,
     CaretLeft,
     Train,
     Boat as Ship,
     Car,
-    MagnifyingGlassPlus as ZoomIn,
-    MagnifyingGlassMinus as ZoomOut,
     List,
     Sparkle,
     Bus,
@@ -85,7 +78,7 @@ import { useWanderSync } from '../hooks/useWanderSync';
 import { getCoordinatesSync, formatPlaceName, formatProperLocationName } from '../services/geocoding';
 import {
     MapAppearanceSettings,
-    DEFAULT_MAP_APPEARANCE,
+    EffectiveBasemap,
     loadMapAppearanceSettings,
     saveMapAppearanceSettings,
     getEffectiveBasemap,
@@ -95,11 +88,10 @@ import {
 import { getTwilightGradientGeoJSON } from '../services/solarTerminator';
 import { getLatestRainRadarMetadata, RainRadarMetadata } from '../services/rainViewer';
 import { getPhysicalRunways } from '../services/airportRunways';
-import { buildRouteCorridors, RouteCorridor, getApproxLocalTime, formatAirportDisplayName, resolveLocationMetadata, getRouteTransportSummary, RouteTransportSummary } from '../services/routeCorridor';
+import { buildRouteCorridors, RouteCorridor, getApproxLocalTime, formatAirportDisplayName, resolveLocationMetadata, getRouteTransportSummary } from '../services/routeCorridor';
 import { getFlagEmoji, getRegion } from '../services/geoData';
 import { fetchMultiModalRoute, getCachedMultiModalRoute, generateSmoothRailCorridor } from '../services/multiModalRouting';
 import { dataService } from '../services/mockDb';
-import { formatDate } from '../utils/formatters';
 import { DataCreditsPopover } from './DataCreditsPopover';
 import GlassPanel from './glass/GlassPanel';
 import { globeHorizonCullExtension } from './GlobeHorizonCullExtension';
@@ -297,19 +289,8 @@ const getFeatureCentroid = (feature: any): { lat: number; lng: number } => {
     return { lat: 20, lng: 0 };
 };
 
-const getStatusRGB = (trip: Trip): [number, number, number] => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const endDate = new Date(trip.endDate);
-
-    if (endDate < today || trip.status === 'Past') {
-        return [59, 130, 246]; // Blue
-    }
-    if (trip.status === 'Upcoming') {
-        return [16, 185, 129]; // Emerald
-    }
-    return [255, 255, 255]; // White
-};
+const LIGHT_BASEMAPS: ReadonlySet<EffectiveBasemap> = new Set(['liberty', 'bright', 'positron']);
+const isLightEffectiveBasemap = (layer: EffectiveBasemap): boolean => LIGHT_BASEMAPS.has(layer);
 
 const useDarkMode = () => {
     const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
@@ -324,7 +305,7 @@ const useDarkMode = () => {
 };
 
 export const getBasemapTileConfig = (
-    effectiveLayer: 'onyx' | 'citylights' | 'satellite' | 'snow' | 'vibrant' | 'ocean' | 'ofm_liberty' | 'ofm_bright' | 'ofm_positron' | 'liberty' | 'bright' | 'positron',
+    effectiveLayer: EffectiveBasemap,
     resolvedCartoKey?: string
 ) => {
     let key = (resolvedCartoKey || '').trim().replace(/^['"]|['"]$/g, '');
@@ -332,7 +313,7 @@ export const getBasemapTileConfig = (
     if (key.startsWith('?key=')) key = key.slice(5).trim();
     const keyParam = key ? `?key=${encodeURIComponent(key)}` : '';
 
-    const getCartoTiles = (style: 'dark_all' | 'light_all' | 'voyager') => [
+    const getCartoTiles = (style: 'dark_all' | 'light_all') => [
         `https://a.basemaps.cartocdn.com/rastertiles/${style}/{z}/{x}/{y}.png${keyParam}`,
         `https://b.basemaps.cartocdn.com/rastertiles/${style}/{z}/{x}/{y}.png${keyParam}`,
         `https://c.basemaps.cartocdn.com/rastertiles/${style}/{z}/{x}/{y}.png${keyParam}`,
@@ -345,9 +326,7 @@ export const getBasemapTileConfig = (
 
     switch (effectiveLayer) {
         case 'liberty':
-        case 'ofm_liberty':
         case 'bright':
-        case 'ofm_bright':
             attribution = 'OpenFreeMap Data © OpenStreetMap contributors';
             break;
         case 'satellite':
@@ -372,24 +351,7 @@ export const getBasemapTileConfig = (
             maxzoom = 8;
             attribution = 'NASA EOSDIS GIBS';
             break;
-        case 'vibrant':
-            if (key) {
-                tiles = getCartoTiles('voyager');
-                maxzoom = 20;
-                attribution = '© CARTO, © OpenStreetMap contributors';
-            } else {
-                tiles = [
-                    'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
-                ];
-                maxzoom = 19;
-                attribution = '© OpenStreetMap contributors';
-            }
-            break;
         case 'positron':
-        case 'ofm_positron':
-        case 'snow':
             if (key) {
                 tiles = getCartoTiles('light_all');
                 maxzoom = 20;
@@ -400,7 +362,9 @@ export const getBasemapTileConfig = (
                 attribution = 'Esri, HERE, Garmin, © OpenStreetMap contributors';
             }
             break;
-        case 'onyx':
+        case 'dark':
+        case 'fiord':
+        case '3d':
         default:
             if (key) {
                 tiles = getCartoTiles('dark_all');
@@ -448,12 +412,11 @@ export const createMapLibreStyle = (
 
     // OpenFreeMap vector basemaps (P-04b)
     if (FEATURE_FLAGS.GEV_P04B_OPENFREEMAP) {
-        if (effectiveLayer === 'liberty' || effectiveLayer === 'ofm_liberty') return 'https://tiles.openfreemap.org/styles/liberty';
-        if (effectiveLayer === 'bright' || effectiveLayer === 'ofm_bright') return 'https://tiles.openfreemap.org/styles/bright';
-        if (effectiveLayer === 'positron' || effectiveLayer === 'ofm_positron') return 'https://tiles.openfreemap.org/styles/positron';
-        if (effectiveLayer === 'dark' || effectiveLayer === 'onyx') return 'https://tiles.openfreemap.org/styles/dark';
+        if (effectiveLayer === 'liberty' || effectiveLayer === '3d') return 'https://tiles.openfreemap.org/styles/liberty';
+        if (effectiveLayer === 'bright') return 'https://tiles.openfreemap.org/styles/bright';
+        if (effectiveLayer === 'positron') return 'https://tiles.openfreemap.org/styles/positron';
+        if (effectiveLayer === 'dark') return 'https://tiles.openfreemap.org/styles/dark';
         if (effectiveLayer === 'fiord') return 'https://tiles.openfreemap.org/styles/fiord';
-        if (effectiveLayer === '3d' || effectiveLayer === 'liberty-3d') return 'https://tiles.openfreemap.org/styles/liberty';
     }
 
     // Synchronously resolve and sanitize CARTO API key from arguments or localStorage
@@ -475,7 +438,7 @@ export const createMapLibreStyle = (
 
     const { tiles, maxzoom, attribution } = getBasemapTileConfig(effectiveLayer, resolvedCartoKey);
     const basemapSourceId = `raster-basemap-source-${effectiveLayer}`;
-    const isLightBasemap = effectiveLayer === 'liberty' || effectiveLayer === 'bright' || effectiveLayer === 'positron' || effectiveLayer === 'snow' || effectiveLayer === 'vibrant' || effectiveLayer === 'ofm_liberty' || effectiveLayer === 'ofm_bright' || effectiveLayer === 'ofm_positron';
+    const isLightBasemap = isLightEffectiveBasemap(effectiveLayer);
 
     const sources: Record<string, any> = {
         [basemapSourceId]: {
@@ -806,18 +769,14 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     countryStatusMap = {},
     onUpdateCountryStatus,
     activeLayer: activeLayerProp,
-    onChangeActiveLayer,
     showFlightRoutes = true,
     showLandSeaRoutes = true,
     showCityMarkers = true,
-    showGradientRoutes = true,
     clusterMode = false,
     showRoadTracing = false,
     focusTransportCoordinates,
     projection: projectionProp,
     elevatedRoutes: elevatedRoutesProp,
-    onProjectionChange,
-    onElevatedRoutesChange,
     initialProjection = 'flat',
     initialElevated = false,
     appearanceSettings: appearanceSettingsProp,
@@ -1010,12 +969,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     selectedCountryRef.current = selectedCountry;
 
     // Runway dataset demand loading
-    const [runwayDatasetLoaded, setRunwayDatasetLoaded] = useState(false);
     useEffect(() => {
         if (activeAppearance.airportDetail === 'detailed') {
-            getPhysicalRunways().then(() => {
-                setRunwayDatasetLoaded(true);
-            }).catch(err => {
+            getPhysicalRunways().catch(err => {
                 console.warn("[DeckFlightMap] Could not load physical runway dataset:", err);
             });
         }
@@ -1523,6 +1479,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             timestamps: number[];
             color: [number, number, number, number];
             corridorId?: string;
+            isTrain?: boolean;
         }[] = [];
 
         const getPhase = (str: string) => {
@@ -2220,10 +2177,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             isDark,
             effectiveCartoKey,
             effectiveProjection,
-            activeAppearance.airportDetail || '',
-            isOpenAipOverlay,
-            effectiveOpenAipKey || '',
-            activeAppearance.openAipGroups
+            activeAppearance.airportDetail || ''
         );
 
         const rect = mapContainerRef.current.getBoundingClientRect();
@@ -2478,11 +2432,11 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         }
 
         const basemapSourceId = `raster-basemap-source-${effectiveLayer}`;
-        const isLightBasemap = effectiveLayer === 'liberty' || effectiveLayer === 'bright' || effectiveLayer === 'positron' || effectiveLayer === 'snow' || effectiveLayer === 'vibrant' || effectiveLayer === 'ofm_liberty' || effectiveLayer === 'ofm_bright' || effectiveLayer === 'ofm_positron';
+        const isLightBasemap = isLightEffectiveBasemap(effectiveLayer);
         const { tiles, maxzoom, attribution } = getBasemapTileConfig(effectiveLayer, effectiveCartoKey);
 
         // If the map style is already loaded, update the basemap raster source seamlessly in-place (unless using OFM vector styles)
-        const isOfmVector = effectiveLayer.startsWith('ofm_') || effectiveLayer === 'liberty' || effectiveLayer === 'bright' || effectiveLayer === 'positron' || effectiveLayer === 'dark' || effectiveLayer === 'fiord' || effectiveLayer === '3d';
+        const isOfmVector = effectiveLayer === 'liberty' || effectiveLayer === 'bright' || effectiveLayer === 'positron' || effectiveLayer === 'dark' || effectiveLayer === 'fiord' || effectiveLayer === '3d';
         const prevLayer = prevEffectiveLayerRef.current;
         prevEffectiveLayerRef.current = effectiveLayer;
 
