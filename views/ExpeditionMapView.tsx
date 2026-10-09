@@ -1143,6 +1143,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                 settings={appearance}
                 onChangeSettings={handleUpdateAppearance}
                 onResetCamera={handleRefresh}
+                onResetAll={handleResetAll}
                 viewMode={viewMode}
                 onSelectViewMode={handleSelectViewMode}
                 showIndependentFlights={showIndependentFlights}
