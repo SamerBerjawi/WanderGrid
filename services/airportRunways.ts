@@ -1,5 +1,6 @@
 // Airport Detailed Runway & Markings Geometry Generator for WanderGrid
 import type { PhysicalRunway } from './airportRunwayDataset';
+import { STATIC_GEO_DATA, formatProperLocationName } from './geocoding';
 
 export type { PhysicalRunway };
 
@@ -25,6 +26,47 @@ export async function getPhysicalRunways(): Promise<Record<string, PhysicalRunwa
  */
 export function getPhysicalRunwaysSync(): Record<string, PhysicalRunway[]> | null {
     return runwayDatasetCache;
+}
+
+export interface GlobalAirportNode {
+    code: string;
+    iata: string;
+    name: string;
+    city?: string;
+    country?: string;
+    position: [number, number, number];
+    isAirport: true;
+}
+
+let globalAirportNodesCache: GlobalAirportNode[] | null = null;
+
+export function getAllGlobalAirports(dataset?: Record<string, PhysicalRunway[]> | null): GlobalAirportNode[] {
+    if (globalAirportNodesCache) return globalAirportNodesCache;
+    const source = dataset || runwayDatasetCache;
+    if (!source) return [];
+    const nodes: GlobalAirportNode[] = [];
+    for (const [code, rws] of Object.entries(source)) {
+        if (!rws || rws.length === 0) continue;
+        const first = rws[0];
+        const lng = (first.start[0] + first.end[0]) / 2;
+        const lat = (first.start[1] + first.end[1]) / 2;
+        const staticEntry = STATIC_GEO_DATA[code.toUpperCase()];
+        const name = staticEntry?.name ? formatProperLocationName(staticEntry.name) : `${code} Airport`;
+        const city = staticEntry?.city ? formatProperLocationName(staticEntry.city) : undefined;
+        const country = staticEntry?.country || undefined;
+
+        nodes.push({
+            code,
+            iata: code,
+            name,
+            city,
+            country,
+            position: [lng, lat, 0],
+            isAirport: true
+        });
+    }
+    globalAirportNodesCache = nodes;
+    return nodes;
 }
 
 export interface RunwayGeometry {

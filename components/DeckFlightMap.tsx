@@ -87,7 +87,7 @@ import {
 } from '../types/mapAppearance';
 import { getTwilightGradientGeoJSON } from '../services/solarTerminator';
 import { getLatestRainRadarMetadata, RainRadarMetadata } from '../services/rainViewer';
-import { getPhysicalRunways, getPhysicalRunwaysSync, generateAirportRunway, PhysicalRunway, isKnownAirport } from '../services/airportRunways';
+import { getPhysicalRunways, getPhysicalRunwaysSync, generateAirportRunway, PhysicalRunway, isKnownAirport, getAllGlobalAirports, GlobalAirportNode } from '../services/airportRunways';
 import { buildRouteCorridors, RouteCorridor, getApproxLocalTime, formatAirportDisplayName, resolveLocationMetadata, getRouteTransportSummary } from '../services/routeCorridor';
 import { getFlagEmoji, getRegion } from '../services/geoData';
 import { fetchMultiModalRoute, getCachedMultiModalRoute, generateSmoothRailCorridor } from '../services/multiModalRouting';
@@ -970,16 +970,18 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     const selectedCountryRef = useRef(selectedCountry);
     selectedCountryRef.current = selectedCountry;
 
-    // Runway dataset demand loading
+    // Runway & global aerodromes dataset demand loading
     useEffect(() => {
-        if (activeAppearance.airportDetail === 'detailed' && !runwayDataset) {
+        const wantsAviationAirports = Boolean(activeAppearance.openAipOverlay && (activeAppearance.openAipGroups ? activeAppearance.openAipGroups.includes('airports') : true));
+        const wantsDetailedRunways = activeAppearance.airportDetail === 'detailed';
+        if ((wantsAviationAirports || wantsDetailedRunways) && !runwayDataset) {
             getPhysicalRunways().then(dataset => {
                 setRunwayDataset(dataset);
             }).catch(err => {
                 console.warn("[DeckFlightMap] Could not load physical runway dataset:", err);
             });
         }
-    }, [activeAppearance.airportDetail, runwayDataset]);
+    }, [activeAppearance.airportDetail, activeAppearance.openAipOverlay, activeAppearance.openAipGroups, runwayDataset]);
 
     // Load GeoJSON for Scratch Map
     useEffect(() => {
@@ -2175,7 +2177,69 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             }
         }
 
-        // 8. Airport & Destination Nodes (Dots visible at any zoom, Labels when zoomed in)
+        // 8. ALL AIRPORTS (Aviation Chart Overlay)
+        // When Aviation chart's airports toggle is active, show ALL global airports worldwide (not only visited ones)
+        const showAllAviationAirports = Boolean(
+            activeAppearance.openAipOverlay &&
+            (activeAppearance.openAipGroups ? activeAppearance.openAipGroups.includes('airports') : true)
+        );
+
+        if (showAllAviationAirports && runwayDataset) {
+            const allGlobalAirports = getAllGlobalAirports(runwayDataset);
+            if (allGlobalAirports.length > 0) {
+                layers.push(
+                    new ScatterplotLayer({
+                        id: 'aviation-all-airports-markers',
+                        data: allGlobalAirports,
+                        getPosition: (d: any) => d.position,
+                        filled: true,
+                        stroked: true,
+                        getFillColor: [14, 165, 233, 220], // Sky-500 aeronautical cyan/blue
+                        getLineColor: isDark ? [255, 255, 255, 220] : [15, 23, 42, 220],
+                        getRadius: 4.0,
+                        radiusUnits: 'pixels',
+                        radiusMinPixels: 3.5,
+                        radiusMaxPixels: 16,
+                        lineWidthUnits: 'pixels',
+                        getLineWidth: 1.5,
+                        lineWidthMinPixels: 1.0,
+                        wrapLongitude: true,
+                        pickable: true,
+                        autoHighlight: true,
+                        highlightColor: [255, 255, 255, 255],
+                        onHover: (info: any) => info.object && setHoverInfo(info),
+                        parameters: { depthTest: false },
+                        extensions: [globeHorizonCullExtension]
+                    })
+                );
+
+                if (currentZoom >= 5.0) {
+                    layers.push(
+                        new TextLayer({
+                            id: 'aviation-all-airports-labels',
+                            data: allGlobalAirports,
+                            getPosition: (d: any) => d.position,
+                            getText: (d: any) => d.code,
+                            getSize: 10,
+                            getColor: isDark ? [224, 242, 254, 255] : [12, 74, 110, 255],
+                            getTextAnchor: 'start',
+                            getAlignmentBaseline: 'center',
+                            pixelOffset: [8, 0],
+                            fontWeight: 700,
+                            background: true,
+                            getBackgroundColor: isDark ? [15, 23, 42, 210] : [240, 249, 255, 210],
+                            backgroundPadding: [4, 2],
+                            wrapLongitude: true,
+                            pickable: false,
+                            parameters: { depthTest: false },
+                            extensions: [globeHorizonCullExtension]
+                        })
+                    );
+                }
+            }
+        }
+
+        // 9. VISITED AIRPORT HUBS (Toggled from Airports Section under Trips)
         if ((showCityMarkers || activeAppearance.airportsOnly) && activeAppearance.airportSize !== 'off') {
             if (clusterMode && clusterNodes.length > 0) {
                 layers.push(

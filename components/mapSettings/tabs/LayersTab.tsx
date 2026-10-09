@@ -181,7 +181,7 @@ export const LayersTab: React.FC<LayersTabProps> = ({
         <div>
           <SettingRow
             label={MAP_SETTINGS_LABELS.layersTab.aviationCharts}
-            helper={!hasOpenAipKey ? MAP_SETTINGS_LABELS.layersTab.openAipKeyRequired : undefined}
+            helper={!hasOpenAipKey && (settings.openAipGroups || []).includes('airspaces') ? MAP_SETTINGS_LABELS.layersTab.openAipKeyRequired : undefined}
             icon={
               <div className="w-7 h-7 rounded-lg bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0">
                 <AirplaneTakeoff size={15} weight="bold" />
@@ -189,16 +189,15 @@ export const LayersTab: React.FC<LayersTabProps> = ({
             }
             control={
               <GlassToggle
-                checked={hasOpenAipKey && Boolean(settings.openAipOverlay)}
-                disabled={!hasOpenAipKey}
+                checked={Boolean(settings.openAipOverlay)}
                 accentColor="sky"
                 onChange={(val) => onChangeSetting('openAipOverlay', val)}
                 ariaLabel={MAP_SETTINGS_LABELS.layersTab.aviationCharts}
               />
             }
           >
-            {/* Show chips only when key present and overlay enabled */}
-            {hasOpenAipKey && settings.openAipOverlay && (
+            {/* Show chips when overlay enabled */}
+            {settings.openAipOverlay && (
               <div className="space-y-1.5">
                 <GlassSegmented<'airspaces' | 'airports'>
                   options={[
