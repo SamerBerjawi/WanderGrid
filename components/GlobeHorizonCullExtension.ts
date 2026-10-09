@@ -35,7 +35,9 @@ export class GlobeHorizonCullExtension extends LayerExtension {
                     if (project.projectionMode == 2) {
                         vGlobeHorizon_Mode = 1.0;
                         vec3 pSphere = geometry.position.xyz;
-                        if (pSphere.x == 0.0 && pSphere.y == 0.0 && pSphere.z == 0.0) {
+                        // Billboard layers (ScatterplotLayer quad, TextLayer glyphs) have local offsets near origin (|p| < 10.0).
+                        // Real globe surface vertices have |p| ~ 256.0 (dot >= 60000.0).
+                        if (dot(pSphere, pSphere) < 1000.0) {
                             pSphere = project_globe_(vec3(geometry.worldPosition.xy, 0.0));
                         }
                         vGlobeHorizon_WorldPos = pSphere;

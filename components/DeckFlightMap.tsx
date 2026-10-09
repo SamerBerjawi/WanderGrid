@@ -87,7 +87,7 @@ import {
 } from '../types/mapAppearance';
 import { getTwilightGradientGeoJSON } from '../services/solarTerminator';
 import { getLatestRainRadarMetadata, RainRadarMetadata } from '../services/rainViewer';
-import { getPhysicalRunways, getPhysicalRunwaysSync, generateAirportRunway, PhysicalRunway } from '../services/airportRunways';
+import { getPhysicalRunways, getPhysicalRunwaysSync, generateAirportRunway, PhysicalRunway, isKnownAirport } from '../services/airportRunways';
 import { buildRouteCorridors, RouteCorridor, getApproxLocalTime, formatAirportDisplayName, resolveLocationMetadata, getRouteTransportSummary } from '../services/routeCorridor';
 import { getFlagEmoji, getRegion } from '../services/geoData';
 import { fetchMultiModalRoute, getCachedMultiModalRoute, generateSmoothRailCorridor } from '../services/multiModalRouting';
@@ -1358,53 +1358,81 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     });
                 }
 
-                // Airport and Location Markers
-                const isOriginAirport = oCode.length === 3 || oCode.length === 4;
-                const isDestAirport = dCode.length === 3 || dCode.length === 4;
-                const metaOrigin = isOriginAirport ? resolveLocationMetadata(oCode, t.originLat, t.originLng) : null;
-                const metaDest = isDestAirport ? resolveLocationMetadata(dCode, t.destLat, t.destLng) : null;
+                // Airport Markers: strictly limit to verified airports (flights or recognized aerodromes)
+                const parseAirportCode = (raw: string): string => {
+                    if (!raw) return '';
+                    const trimmed = raw.trim();
+                    if (/^[A-Za-z]{3,4}$/.test(trimmed)) return trimmed.toUpperCase();
+                    const parenMatch = trimmed.match(/\(([A-Za-z]{3,4})\)/);
+                    if (parenMatch) return parenMatch[1].toUpperCase();
+                    const words = trimmed.match(/\b([A-Za-z]{3,4})\b/g);
+                    if (words) {
+                        for (const w of words) {
+                            const upper = w.toUpperCase();
+                            if (isKnownAirport(upper)) return upper;
+                        }
+                    }
+                    return '';
+                };
 
-                const origFreq = Math.max(airportFreqMap.get(p1) || 1, oCode ? (airportFreqMap.get(oCode) || 1) : 1);
-                const destFreq = Math.max(airportFreqMap.get(p2) || 1, dCode ? (airportFreqMap.get(dCode) || 1) : 1);
+                const oAirportCode = parseAirportCode(t.origin || '');
+                const dAirportCode = parseAirportCode(t.destination || '');
+
+                const isOriginAirport = isFlight || Boolean(oAirportCode && isKnownAirport(oAirportCode));
+                const isDestAirport = isFlight || Boolean(dAirportCode && isKnownAirport(dAirportCode));
+
                 const scaleFactor = activeAppearance.airportSize === 'small' ? 1.5 : activeAppearance.airportSize === 'large' ? 3.5 : 2.5;
 
-                if (!pointsMap.has(p1)) {
-                    pointsMap.set(p1, {
-                        position: [t.originLng, t.originLat, 0],
-                        name: metaOrigin ? metaOrigin.name : formatProperLocationName(t.origin),
-                        city: metaOrigin ? metaOrigin.city : undefined,
-                        iata: isOriginAirport ? oCode.toUpperCase() : undefined,
-                        isAirport: isOriginAirport,
-                        tripId: trip.id,
-                        color: isOriginAirport ? [250, 154, 29, 240] : [251, 191, 36, 240],
-                        strokeColor: [255, 255, 255, 230],
-                        frequency: origFreq,
-                        radius: isFreqMode
-                            ? Math.min(24.0, baseOriginRadius + Math.log2(Math.max(1, origFreq)) * scaleFactor)
-                            : baseOriginRadius
-                    });
+                if (isOriginAirport) {
+                    const resolvedCode = oAirportCode || (oCode.length === 3 || oCode.length === 4 ? oCode : '');
+                    const metaOrigin = resolvedCode ? resolveLocationMetadata(resolvedCode, t.originLat, t.originLng) : null;
+                    const origFreq = Math.max(airportFreqMap.get(p1) || 1, resolvedCode ? (airportFreqMap.get(resolvedCode) || 1) : 1);
+
+                    if (!pointsMap.has(p1)) {
+                        pointsMap.set(p1, {
+                            position: [t.originLng, t.originLat, 0],
+                            name: metaOrigin ? metaOrigin.name : (resolvedCode ? `${resolvedCode} Airport` : formatProperLocationName(t.origin)),
+                            city: metaOrigin ? metaOrigin.city : undefined,
+                            iata: resolvedCode || undefined,
+                            isAirport: true,
+                            tripId: trip.id,
+                            color: [250, 154, 29, 255],
+                            strokeColor: [255, 255, 255, 255],
+                            frequency: origFreq,
+                            radius: isFreqMode
+                                ? Math.min(24.0, baseOriginRadius + Math.log2(Math.max(1, origFreq)) * scaleFactor)
+                                : baseOriginRadius
+                        });
+                    }
                 }
-                if (!pointsMap.has(p2)) {
-                    pointsMap.set(p2, {
-                        position: [t.destLng, t.destLat, 0],
-                        name: metaDest ? metaDest.name : formatProperLocationName(t.destination),
-                        city: metaDest ? metaDest.city : undefined,
-                        iata: isDestAirport ? dCode.toUpperCase() : undefined,
-                        isAirport: isDestAirport,
-                        tripId: trip.id,
-                        color: isDestAirport ? [250, 154, 29, 240] : [251, 191, 36, 240],
-                        strokeColor: [255, 255, 255, 230],
-                        frequency: destFreq,
-                        radius: isFreqMode
-                            ? Math.min(24.0, baseOriginRadius + Math.log2(Math.max(1, destFreq)) * scaleFactor)
-                            : baseOriginRadius
-                    });
+
+                if (isDestAirport) {
+                    const resolvedCode = dAirportCode || (dCode.length === 3 || dCode.length === 4 ? dCode : '');
+                    const metaDest = resolvedCode ? resolveLocationMetadata(resolvedCode, t.destLat, t.destLng) : null;
+                    const destFreq = Math.max(airportFreqMap.get(p2) || 1, resolvedCode ? (airportFreqMap.get(resolvedCode) || 1) : 1);
+
+                    if (!pointsMap.has(p2)) {
+                        pointsMap.set(p2, {
+                            position: [t.destLng, t.destLat, 0],
+                            name: metaDest ? metaDest.name : (resolvedCode ? `${resolvedCode} Airport` : formatProperLocationName(t.destination)),
+                            city: metaDest ? metaDest.city : undefined,
+                            iata: resolvedCode || undefined,
+                            isAirport: true,
+                            tripId: trip.id,
+                            color: [250, 154, 29, 255],
+                            strokeColor: [255, 255, 255, 255],
+                            frequency: destFreq,
+                            radius: isFreqMode
+                                ? Math.min(24.0, baseOriginRadius + Math.log2(Math.max(1, destFreq)) * scaleFactor)
+                                : baseOriginRadius
+                        });
+                    }
                 }
             });
         });
 
         // 2. Clusters logic
-        const allAirports = Array.from(pointsMap.values());
+        const allAirports = Array.from(pointsMap.values()).filter(p => p.isAirport);
         const clusters: any[] = [];
         if (clusterMode) {
             const grid = new Map<string, any[]>();
@@ -2201,15 +2229,17 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         id: 'airport-markers',
                         data: airportPoints,
                         getPosition: (d: any) => d.position,
+                        filled: true,
+                        stroked: true,
                         getFillColor: (d: any) => {
                             if (selectedCorridor) {
                                 const code = (d.iata || d.name || '').toUpperCase().trim();
                                 if (code === selectedCorridor.originCode || code === selectedCorridor.destCode) {
                                     return [52, 211, 153, 255];
                                 }
-                                return isDark ? [100, 115, 135, 60] : [160, 175, 195, 60];
+                                return isDark ? [100, 115, 135, 90] : [160, 175, 195, 90];
                             }
-                            return d.color;
+                            return d.color || [250, 154, 29, 255];
                         },
                         getLineColor: (d: any) => {
                             if (selectedCorridor) {
@@ -2218,10 +2248,10 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                     return [255, 255, 255, 255];
                                 }
                             }
-                            return d.strokeColor;
+                            return [255, 255, 255, 255];
                         },
                         getRadius: (d: any) => {
-                            const baseRadius = activeAppearance.airportSize === 'small' ? 3.5 : activeAppearance.airportSize === 'large' ? 8.5 : 5.5;
+                            const baseRadius = activeAppearance.airportSize === 'small' ? 4.5 : activeAppearance.airportSize === 'large' ? 8.5 : 6.0;
                             let r = baseRadius;
                             if (activeAppearance.airportMode === 'frequency') {
                                 const freq = d.frequency || 1;
@@ -2231,23 +2261,24 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                             if (selectedCorridor) {
                                 const code = (d.iata || d.name || '').toUpperCase().trim();
                                 if (code === selectedCorridor.originCode || code === selectedCorridor.destCode) {
-                                    return r * 1.6;
+                                    return r * 1.5;
                                 }
                             }
                             return r;
                         },
                         radiusUnits: 'pixels',
-                        radiusMinPixels: activeAppearance.airportSize === 'small' ? 3.0 : activeAppearance.airportSize === 'large' ? 6.0 : 4.5,
-                        radiusMaxPixels: 24,
-                        stroked: true,
+                        radiusMinPixels: 4.5,
+                        radiusMaxPixels: 28,
                         lineWidthUnits: 'pixels',
-                        getLineWidth: 1.5,
+                        getLineWidth: 2,
+                        lineWidthMinPixels: 1.5,
                         wrapLongitude: true,
                         pickable: true,
                         autoHighlight: true,
                         highlightColor: [255, 255, 255, 255],
                         onHover: (info: any) => info.object && setHoverInfo(info),
                         onClick: (info: any) => info.object?.tripId && onTripClick && onTripClick(info.object.tripId),
+                        parameters: { depthTest: false },
                         updateTriggers: {
                             getFillColor: [selectedCorridor?.id, isDark, activeAppearance.routeColorMode, activeAppearance.airportMode],
                             getRadius: [selectedCorridor?.id, activeAppearance.airportMode, activeAppearance.airportSize]
@@ -2268,13 +2299,14 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                             getColor: isDark ? [248, 250, 252, 255] : [15, 23, 42, 255],
                             getTextAnchor: 'start',
                             getAlignmentBaseline: 'center',
-                            pixelOffset: [9, 0],
+                            pixelOffset: [10, 0],
                             fontWeight: 700,
                             background: true,
-                            getBackgroundColor: isDark ? [15, 23, 42, 210] : [255, 255, 255, 210],
-                            backgroundPadding: [4, 2],
+                            getBackgroundColor: isDark ? [15, 23, 42, 220] : [255, 255, 255, 220],
+                            backgroundPadding: [5, 3],
                             wrapLongitude: true,
                             pickable: false,
+                            parameters: { depthTest: false },
                             updateTriggers: {
                                 getColor: [isDark],
                                 getBackgroundColor: [isDark]
