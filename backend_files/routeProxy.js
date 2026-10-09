@@ -125,7 +125,7 @@ async function handleRouteProxy(req, res) {
       url: osrmUrl,
       ttlMs: ROUTE_CACHE_MS,
       staleMs: 60 * 60 * 1000,
-      timeoutMs: 4000,
+      timeoutMs: 9000,
       maxBytes: 8 * 1024 * 1024,
       hostGate: { minIntervalMs: 250 },
     });
@@ -157,7 +157,7 @@ async function handleRouteProxy(req, res) {
       url: demoUrl,
       ttlMs: ROUTE_CACHE_MS,
       staleMs: 60 * 60 * 1000,
-      timeoutMs: 4000,
+      timeoutMs: 9000,
       maxBytes: 8 * 1024 * 1024,
       hostGate: { minIntervalMs: 250 },
     });
@@ -185,7 +185,7 @@ async function handleRouteProxy(req, res) {
       url: valhallaUrl,
       ttlMs: ROUTE_CACHE_MS,
       staleMs: 60 * 60 * 1000,
-      timeoutMs: 4000,
+      timeoutMs: 9000,
       maxBytes: 8 * 1024 * 1024,
       hostGate: { minIntervalMs: 250 },
     });

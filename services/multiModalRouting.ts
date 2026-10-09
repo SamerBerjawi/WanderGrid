@@ -6,36 +6,52 @@ import { fetchSeaRoute } from './maritimeRouting';
 const multiModalCache = new Map<string, [number, number, number][]>();
 const pendingFetches = new Set<string>();
 
-const STORAGE_KEY = 'wandergrid_overland_routes_v3';
+const STORAGE_KEY = 'wandergrid_overland_routes_v4';
 
-// Checks if a geometry is effectively a straight line (e.g. 2 points or un-routed great-circle chord)
+// Checks if a geometry is an un-routed chord. Only degenerate (<=2 point) geometries qualify:
+// genuine routing engine output (even for very straight roads / short hops) always has intermediate vertices,
+// and a deviation heuristic wrongly rejected real routes, leaving them as straight lines.
 export function isStraightLineRoute(pts: [number, number, number][]): boolean {
     if (!Array.isArray(pts) || pts.length <= 2) return true;
     const start = pts[0];
     const end = pts[pts.length - 1];
     const dx = end[0] - start[0];
     const dy = end[1] - start[1];
-    const lenSq = dx * dx + dy * dy;
-    if (lenSq < 1e-8) return true;
-
-    // Check maximum perpendicular deviation from the line segment joining start & end
-    let maxDevSq = 0;
-    for (let i = 1; i < pts.length - 1; i++) {
-        const px = pts[i][0] - start[0];
-        const py = pts[i][1] - start[1];
-        const cross = dx * py - dy * px;
-        const devSq = (cross * cross) / lenSq;
-        if (devSq > maxDevSq) maxDevSq = devSq;
-    }
-    // If maximum perpendicular deviation is < 0.0015 deg (~150m), it's essentially a straight chord, not a road route
-    return Math.sqrt(maxDevSq) < 0.0015;
+    return dx * dx + dy * dy < 1e-10;
 }
+
+// --- Request scheduling: the public routing hosts are rate-gated (and the proxy aborts requests that wait too long
+// in its host queue), so bursting every transport at once made roughly half of them fail => random straight lines.
+const MAX_CONCURRENT_ROUTE_FETCHES = 2;
+const MAX_ROUTE_ATTEMPTS = 4;
+let activeRouteFetches = 0;
+const routeFetchQueue: Array<() => void> = [];
+
+function acquireRouteSlot(): Promise<void> {
+    if (activeRouteFetches < MAX_CONCURRENT_ROUTE_FETCHES) {
+        activeRouteFetches++;
+        return Promise.resolve();
+    }
+    return new Promise(resolve => routeFetchQueue.push(() => { activeRouteFetches++; resolve(); }));
+}
+
+function releaseRouteSlot() {
+    activeRouteFetches = Math.max(0, activeRouteFetches - 1);
+    const next = routeFetchQueue.shift();
+    if (next) next();
+}
+
+export type RouteStatus = 'ready' | 'loading' | 'failed' | 'idle';
+const routeAttempts = new Map<string, number>();
+const failedRoutes = new Set<string>();
 
 // Load stored routes from persistent storage on startup, purging any poisoned straight lines
 try {
     if (typeof window !== 'undefined') {
         localStorage.removeItem('wandergrid_multimodal_routes_v1');
         localStorage.removeItem('wandergrid_overland_routes_v2');
+        // v3 may contain synthetic great-circle corridors that were wrongly cached as traced rail routes
+        localStorage.removeItem('wandergrid_overland_routes_v3');
 
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
@@ -311,8 +327,9 @@ export async function fetchRailGeometry(
         } catch {}
     }
 
-    // 3. Smooth geographic rail corridor (NEVER highway roads and NEVER 2-point straight lines)
-    return generateSmoothRailCorridor(startLat, startLng, endLat, endLng, waypoints);
+    // No real track geometry available: report failure so the caller can retry. A synthetic corridor must
+    // never be cached/treated as a traced route.
+    return null;
 }
 
 export interface RouteResult {
@@ -337,7 +354,7 @@ export async function fetchRoute(
     // 1. Backend route proxy (Valhalla FOSSGIS engine)
     try {
         const proxyController = new AbortController();
-        const proxyTimeout = setTimeout(() => proxyController.abort(), 10000);
+        const proxyTimeout = setTimeout(() => proxyController.abort(), 20000);
         const res = await fetch(
             `/api/proxy/route?profile=${encodeURIComponent(profile)}&coords=${encodeURIComponent(coordsStr)}`,
             { signal: proxyController.signal }
@@ -520,44 +537,70 @@ export async function fetchMultiModalRoute(
     }
 
     pendingFetches.add(key);
+    failedRoutes.delete(key);
 
     (async () => {
+        let success = false;
+        await acquireRouteSlot();
         try {
-            // 1. Maritime / Sea Routing (Ferry & Cruise along shipping lanes)
+            let geom: [number, number, number][] | null = null;
             if (isSea) {
-                const seaGeom = await fetchSeaRoute(startLat, startLng, endLat, endLng, waypoints);
-                if (seaGeom && seaGeom.length > 2) {
-                    saveRouteToCache(key, seaGeom);
-                    onDone();
-                    return;
-                }
+                geom = await fetchSeaRoute(startLat, startLng, endLat, endLng, waypoints);
+            } else if (isTrain) {
+                geom = await fetchRailGeometry(startLat, startLng, endLat, endLng, waypoints);
+            } else if (isRoad) {
+                geom = await fetchHighwayGeometry(startLat, startLng, endLat, endLng, waypoints);
             }
-            // 2. Train / Rail (Tracks only, never roads or straight lines)
-            else if (isTrain) {
-                const railGeom = await fetchRailGeometry(startLat, startLng, endLat, endLng, waypoints);
-                if (railGeom && railGeom.length > 2) {
-                    saveRouteToCache(key, railGeom);
-                    onDone();
-                    return;
-                }
-            }
-            // 3. Driving / Road / Bus (Highway routing via Valhalla)
-            else if (isRoad) {
-                const highwayGeom = await fetchHighwayGeometry(startLat, startLng, endLat, endLng, waypoints);
-                if (highwayGeom && highwayGeom.length > 2) {
-                    saveRouteToCache(key, highwayGeom);
-                    onDone();
-                    return;
-                }
+            if (geom && geom.length > 2) {
+                saveRouteToCache(key, geom);
+                success = true;
             }
         } catch (e) {
             console.warn('Multi-modal route fetch failed:', e);
         } finally {
+            releaseRouteSlot();
             pendingFetches.delete(key);
+        }
+
+        if (success) {
+            routeAttempts.delete(key);
+            onDone();
+            return;
+        }
+
+        // Retry with backoff; only mark as failed (and let the map draw a fallback) once attempts are exhausted
+        const attempts = (routeAttempts.get(key) || 0) + 1;
+        routeAttempts.set(key, attempts);
+        if (attempts < MAX_ROUTE_ATTEMPTS) {
+            setTimeout(() => {
+                void fetchMultiModalRoute(mode, startLat, startLng, endLat, endLng, onDone, waypoints);
+            }, 1500 * attempts);
+        } else {
+            failedRoutes.add(key);
+            onDone();
         }
     })();
 
     return null;
+}
+
+/**
+ * Reports whether a route is traced ('ready'), still being fetched/retried ('loading'),
+ * permanently unavailable ('failed') or not requested yet ('idle').
+ */
+export function getMultiModalRouteStatus(
+    mode: string | undefined,
+    startLat: number,
+    startLng: number,
+    endLat: number,
+    endLng: number,
+    waypoints?: any[]
+): RouteStatus {
+    const key = buildRouteKey(mode, startLat, startLng, endLat, endLng, waypoints);
+    if (multiModalCache.has(key)) return 'ready';
+    if (failedRoutes.has(key)) return 'failed';
+    if (pendingFetches.has(key) || routeAttempts.has(key)) return 'loading';
+    return 'idle';
 }
 
 export function getCachedMultiModalRoute(

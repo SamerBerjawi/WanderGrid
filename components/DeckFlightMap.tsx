@@ -90,7 +90,7 @@ import { getLatestRainRadarMetadata, RainRadarMetadata } from '../services/rainV
 import { getPhysicalRunways, getPhysicalRunwaysSync, generateAirportRunway, PhysicalRunway, isKnownAirport, getAllGlobalAirports, GlobalAirportNode } from '../services/airportRunways';
 import { buildRouteCorridors, RouteCorridor, getApproxLocalTime, formatAirportDisplayName, resolveLocationMetadata, getRouteTransportSummary } from '../services/routeCorridor';
 import { getFlagEmoji, getRegion } from '../services/geoData';
-import { fetchMultiModalRoute, getCachedMultiModalRoute, generateSmoothRailCorridor } from '../services/multiModalRouting';
+import { fetchMultiModalRoute, getCachedMultiModalRoute, getMultiModalRouteStatus, generateSmoothRailCorridor } from '../services/multiModalRouting';
 import { dataService } from '../services/mockDb';
 import { DataCreditsPopover } from './DataCreditsPopover';
 import GlassPanel from './glass/GlassPanel';
@@ -1338,11 +1338,20 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         : null;
 
                     let path: [number, number, number][] = [];
+                    let isUntraced = false;
                     if (cachedCoords && cachedCoords.length > 0) {
                         path = cachedCoords;
+                    } else if (isTrackable && isTracingEnabled) {
+                        const status = getMultiModalRouteStatus(t.mode, t.originLat, t.originLng, t.destLat, t.destLng, t.waypoints);
+                        // While the real road/rail/sea geometry is loading (or being retried) draw nothing instead of a
+                        // misleading straight chord. Only after retries are exhausted show a faint estimated corridor.
+                        if (status === 'failed') {
+                            path = generateSmoothRailCorridor(t.originLat, t.originLng, t.destLat, t.destLng, t.waypoints);
+                            isUntraced = true;
+                        }
                     } else {
-                        // Traces natural curved geographic corridor while real road/rail/sea coordinates load (never 2-point straight lines)
                         path = generateSmoothRailCorridor(t.originLat, t.originLng, t.destLat, t.destLng, t.waypoints);
+                        isUntraced = true;
                     }
 
                     const modeRGB: [number, number, number] = isTrain
@@ -1351,9 +1360,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                             ? [245, 158, 11] // Amber for Road
                             : [6, 182, 212]; // Cyan for Ferry / Sea / Cruise
 
-                    overlandRoutes.push({
+                    if (path.length > 0) overlandRoutes.push({
                         path,
-                        color: [...modeRGB, 235],
+                        color: [...modeRGB, isUntraced ? 110 : 235],
                         corridorId,
                         routeKey: `${trip.id}_${t.origin}_${t.destination}`,
                         tripId: trip.id,
