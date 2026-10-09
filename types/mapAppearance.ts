@@ -1,25 +1,53 @@
-export type BasemapMode = 'default' | 'onyx' | 'snow' | 'vibrant' | 'satellite' | 'ocean' | 'citylights' | 'ofm_liberty' | 'ofm_bright' | 'ofm_positron';
+export type BasemapMode =
+    | 'default'
+    | 'liberty'
+    | 'bright'
+    | 'positron'
+    | 'satellite'
+    | 'onyx'
+    | 'citylights'
+    | 'ocean'
+    | 'ofm_liberty'
+    | 'ofm_bright'
+    | 'ofm_positron'
+    | 'snow'
+    | 'vibrant';
 
 export const getEffectiveBasemap = (
     basemap: string | undefined,
     isDark: boolean,
     defaultLight?: string,
-    defaultDark?: string
-): 'onyx' | 'citylights' | 'satellite' | 'snow' | 'vibrant' | 'ocean' | 'ofm_liberty' | 'ofm_bright' | 'ofm_positron' => {
-    // If an explicit layer style other than 'default' is requested, respect it unconditionally
+    defaultDark?: string,
+    cartoApiKey?: string
+): 'liberty' | 'bright' | 'positron' | 'satellite' | 'onyx' | 'citylights' | 'ocean' => {
+    // Check if CARTO API key is configured
+    let hasCartoKey = Boolean(cartoApiKey && cartoApiKey.trim());
+    if (!hasCartoKey && typeof localStorage !== 'undefined') {
+        try {
+            const raw = localStorage.getItem('wandergrid_workspace_settings') || localStorage.getItem('wandergrid_settings');
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (parsed.cartoApiKey && String(parsed.cartoApiKey).trim()) {
+                    hasCartoKey = true;
+                }
+            }
+        } catch {}
+    }
+
+    // Explicit layer requested other than 'default'
     if (basemap && basemap !== 'default') {
-        if (
-            basemap === 'onyx' ||
-            basemap === 'citylights' ||
-            basemap === 'satellite' ||
-            basemap === 'snow' ||
-            basemap === 'vibrant' ||
-            basemap === 'ocean' ||
-            basemap === 'ofm_liberty' ||
-            basemap === 'ofm_bright' ||
-            basemap === 'ofm_positron'
-        ) {
-            return basemap;
+        if (basemap === 'liberty' || basemap === 'ofm_liberty') return 'liberty';
+        if (basemap === 'bright' || basemap === 'ofm_bright') return 'bright';
+        if (basemap === 'satellite') return 'satellite';
+        if (basemap === 'citylights') return 'citylights';
+        if (basemap === 'ocean') {
+            return isDark ? 'ocean' : 'liberty';
+        }
+        if (basemap === 'positron' || basemap === 'ofm_positron' || basemap === 'snow') {
+            return hasCartoKey ? 'positron' : 'liberty';
+        }
+        if (basemap === 'onyx') {
+            return hasCartoKey ? 'onyx' : 'citylights';
         }
     }
 
@@ -41,25 +69,17 @@ export const getEffectiveBasemap = (
     }
 
     if (isDark) {
-        if (resolvedDark === 'citylights') return 'citylights';
-        if (resolvedDark === 'satellite') return 'satellite';
+        if (resolvedDark === 'onyx' && hasCartoKey) return 'onyx';
         if (resolvedDark === 'ocean') return 'ocean';
-        if (resolvedDark === 'snow') return 'snow';
-        if (resolvedDark === 'vibrant') return 'vibrant';
-        if (resolvedDark === 'ofm_liberty') return 'ofm_liberty';
-        if (resolvedDark === 'ofm_bright') return 'ofm_bright';
-        if (resolvedDark === 'ofm_positron') return 'ofm_positron';
-        return 'onyx';
+        if (resolvedDark === 'satellite') return 'satellite';
+        if (resolvedDark === 'citylights') return 'citylights';
+        return hasCartoKey ? 'onyx' : 'citylights';
     } else {
-        if (resolvedLight === 'vibrant') return 'vibrant';
-        if (resolvedLight === 'ocean') return 'ocean';
+        if ((resolvedLight === 'positron' || resolvedLight === 'snow') && hasCartoKey) return 'positron';
+        if (resolvedLight === 'bright' || resolvedLight === 'ofm_bright') return 'bright';
         if (resolvedLight === 'satellite') return 'satellite';
-        if (resolvedLight === 'citylights') return 'citylights';
-        if (resolvedLight === 'onyx') return 'onyx';
-        if (resolvedLight === 'ofm_liberty') return 'ofm_liberty';
-        if (resolvedLight === 'ofm_bright') return 'ofm_bright';
-        if (resolvedLight === 'ofm_positron') return 'ofm_positron';
-        return 'snow';
+        if (resolvedLight === 'liberty' || resolvedLight === 'ofm_liberty') return 'liberty';
+        return 'liberty';
     }
 };
 
@@ -86,8 +106,6 @@ export interface MapAppearanceSettings {
     rainRadar: boolean; // Global RainViewer precipitation radar
     rainRadarOpacity?: number; // 0.2 to 1.0
     rainRadarColorScheme?: number; // 1 to 8
-    weatherClouds?: boolean; // NOAA nowCOAST Global Infrared Satellite Clouds
-    weatherCloudsOpacity?: number; // 0.2 to 1.0
 
     // OpenAIP Aeronautical Chart Overlay
     openAipOverlay?: boolean;
@@ -134,8 +152,6 @@ export const DEFAULT_MAP_APPEARANCE: MapAppearanceSettings = {
     rainRadar: false,
     rainRadarOpacity: 0.85,
     rainRadarColorScheme: 2,
-    weatherClouds: false,
-    weatherCloudsOpacity: 0.75,
     openAipOverlay: false,
     openAipGroups: ['airspaces', 'airspaceLabels', 'airports', 'navaids', 'reportingPoints'],
     terrainHillshade: false,

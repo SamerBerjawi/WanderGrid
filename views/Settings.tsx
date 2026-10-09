@@ -142,8 +142,8 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
       defaultTravelClass: 'Economy',
       defaultStartingAirport: '',
       defaultLandTransportMethod: 'Train',
-      defaultBasemapLight: 'snow',
-      defaultBasemapDark: 'onyx'
+      defaultBasemapLight: 'liberty',
+      defaultBasemapDark: 'citylights'
   });
   const [isSavingOrg, setIsSavingOrg] = useState(false);
   const [saveToast, setSaveToast] = useState(false);
@@ -922,13 +922,37 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                           Default Basemap (Light Mode)
                         </span>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         {[
-                          { id: 'snow', label: 'Snow', desc: 'Clean Positron' },
-                          { id: 'vibrant', label: 'Vibrant', desc: 'Voyager Detailed' },
-                          { id: 'ocean', label: 'Ocean', desc: 'Nautical Marine' }
+                          { id: 'liberty', label: 'Liberty', desc: 'Vector Clean', requiresCarto: false },
+                          { id: 'bright', label: 'Bright', desc: 'Vector Vibrant', requiresCarto: false },
+                          { id: 'satellite', label: 'Satellite', desc: 'Orbital Photoreal', requiresCarto: false },
+                          { id: 'positron', label: 'Positron', desc: 'CARTO Minimal', requiresCarto: true }
                         ].map(b => {
-                          const isSelected = (config.defaultBasemapLight || 'snow') === b.id;
+                          const isSelected = (config.defaultBasemapLight || 'liberty') === b.id ||
+                            (b.id === 'positron' && (config.defaultBasemapLight === 'snow' || config.defaultBasemapLight === 'ofm_positron')) ||
+                            (b.id === 'liberty' && config.defaultBasemapLight === 'ofm_liberty') ||
+                            (b.id === 'bright' && config.defaultBasemapLight === 'ofm_bright');
+                          const isGreyedOut = b.requiresCarto && !Boolean(config.cartoApiKey && config.cartoApiKey.trim());
+
+                          if (isGreyedOut) {
+                            return (
+                              <div
+                                key={b.id}
+                                className="p-3.5 rounded-2xl border border-dashed border-black/15 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02] opacity-40 grayscale flex flex-col justify-between cursor-not-allowed select-none"
+                                title="Requires CARTO Maps API key configured below"
+                              >
+                                <div className="flex items-center justify-between w-full">
+                                  <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">{b.label}</span>
+                                  <span className="text-3xs font-bold uppercase px-1.5 py-0.5 rounded bg-black/10 dark:bg-white/10 text-light-text-secondary dark:text-dark-text-secondary">API</span>
+                                </div>
+                                <span className="text-2xs font-mono text-light-text-secondary dark:text-dark-text-secondary mt-1">
+                                  Requires Key
+                                </span>
+                              </div>
+                            );
+                          }
+
                           return (
                             <button
                               key={b.id}
@@ -965,13 +989,34 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                           Default Basemap (Dark Mode)
                         </span>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         {[
-                          { id: 'onyx', label: 'Onyx', desc: 'Dark Matter Minimal' },
-                          { id: 'citylights', label: 'City Lights', desc: 'Nocturnal Glow' },
-                          { id: 'satellite', label: 'Satellite', desc: 'Orbital Photoreal' }
+                          { id: 'citylights', label: 'NASA', desc: 'Nocturnal Glow', requiresCarto: false },
+                          { id: 'ocean', label: 'Ocean', desc: 'Bathymetric Marine', requiresCarto: false },
+                          { id: 'satellite', label: 'Satellite', desc: 'Orbital Photoreal', requiresCarto: false },
+                          { id: 'onyx', label: 'Onyx', desc: 'CARTO Dark Matter', requiresCarto: true }
                         ].map(b => {
-                          const isSelected = (config.defaultBasemapDark || 'onyx') === b.id;
+                          const isSelected = (config.defaultBasemapDark || 'citylights') === b.id;
+                          const isGreyedOut = b.requiresCarto && !Boolean(config.cartoApiKey && config.cartoApiKey.trim());
+
+                          if (isGreyedOut) {
+                            return (
+                              <div
+                                key={b.id}
+                                className="p-3.5 rounded-2xl border border-dashed border-black/15 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02] opacity-40 grayscale flex flex-col justify-between cursor-not-allowed select-none"
+                                title="Requires CARTO Maps API key configured below"
+                              >
+                                <div className="flex items-center justify-between w-full">
+                                  <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">{b.label}</span>
+                                  <span className="text-3xs font-bold uppercase px-1.5 py-0.5 rounded bg-black/10 dark:bg-white/10 text-light-text-secondary dark:text-dark-text-secondary">API</span>
+                                </div>
+                                <span className="text-2xs font-mono text-light-text-secondary dark:text-dark-text-secondary mt-1">
+                                  Requires Key
+                                </span>
+                              </div>
+                            );
+                          }
+
                           return (
                             <button
                               key={b.id}

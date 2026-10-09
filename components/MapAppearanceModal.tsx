@@ -85,7 +85,18 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
     const isDark = useDarkMode();
     const [activeTab, setActiveTab] = useState<'cartography' | 'aviation' | 'atmosphere' | 'filters'>('cartography');
     const [hasOpenAipKey, setHasOpenAipKey] = useState<boolean>(true);
-    const [cartoKey, setCartoKey] = useState<string>('');
+    const [cartoKey, setCartoKey] = useState<string>(() => {
+        try {
+            const raw = typeof localStorage !== 'undefined'
+                ? (localStorage.getItem('wandergrid_workspace_settings') || localStorage.getItem('wandergrid_settings'))
+                : null;
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                return parsed.cartoApiKey ? String(parsed.cartoApiKey).trim() : '';
+            }
+        } catch {}
+        return '';
+    });
 
     // Internal state fallbacks when dynamics handlers are not passed by parent view
     const [internalFlightsOnly, setInternalFlightsOnly] = useState(false);
@@ -120,15 +131,25 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
     };
 
     useEffect(() => {
-        if (!isOpen) return;
-        try {
-            const raw = localStorage.getItem('wandergrid_workspace_settings') || localStorage.getItem('wandergrid_settings');
-            if (raw) {
-                const parsed = JSON.parse(raw);
-                setHasOpenAipKey(Boolean(parsed.openAipApiKey));
-                setCartoKey(parsed.cartoApiKey ? String(parsed.cartoApiKey).trim() : '');
-            }
-        } catch {}
+        const refreshKeys = () => {
+            try {
+                const raw = localStorage.getItem('wandergrid_workspace_settings') || localStorage.getItem('wandergrid_settings');
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    setHasOpenAipKey(Boolean(parsed.openAipApiKey));
+                    setCartoKey(parsed.cartoApiKey ? String(parsed.cartoApiKey).trim() : '');
+                } else {
+                    setCartoKey('');
+                }
+            } catch {}
+        };
+        refreshKeys();
+        window.addEventListener('wandergrid_workspace_settings_updated', refreshKeys);
+        window.addEventListener('storage', refreshKeys);
+        return () => {
+            window.removeEventListener('wandergrid_workspace_settings_updated', refreshKeys);
+            window.removeEventListener('storage', refreshKeys);
+        };
     }, [isOpen]);
 
     if (!isOpen && !isVisible) return null;
@@ -180,10 +201,31 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
 
     return createPortal(
         <div className="fixed inset-0 z-modal overflow-hidden font-sans select-none pointer-events-auto">
-            {/* 1. Transparent click-outside dismiss backdrop (zero dimming effect, preserving full map brilliance) */}
+            {/* 1. Transparent click-outside dismiss backdrop (forwarding wheel scroll to map canvas so zooming works smoothly while drawer is open) */}
             <div 
                 className="fixed inset-0 bg-transparent"
                 onClick={handleClose}
+                onWheel={(e) => {
+                    const target = document.querySelector('.maplibregl-canvas-container') || document.querySelector('.maplibregl-canvas');
+                    if (target) {
+                        target.dispatchEvent(new WheelEvent('wheel', {
+                            deltaX: e.deltaX,
+                            deltaY: e.deltaY,
+                            deltaZ: e.deltaZ,
+                            deltaMode: e.deltaMode,
+                            clientX: e.clientX,
+                            clientY: e.clientY,
+                            screenX: e.screenX,
+                            screenY: e.screenY,
+                            ctrlKey: e.ctrlKey,
+                            altKey: e.altKey,
+                            shiftKey: e.shiftKey,
+                            metaKey: e.metaKey,
+                            bubbles: true,
+                            cancelable: true
+                        }));
+                    }
+                }}
             />
 
             {/* 2. Slide-out Floating Shell with Liquid Glass (Floating 28px standard) */}
@@ -193,6 +235,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                         isVisible ? 'translate-x-0' : 'translate-x-full'
                     }`}
                     onClick={(e) => e.stopPropagation()}
+                    onWheel={(e) => e.stopPropagation()}
                 >
                     <GlassPanel
                         className="wg-glass-card shadow-2xl h-full w-full flex flex-col overflow-hidden"
@@ -329,35 +372,30 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                             <div className="flex items-center gap-2">
                                                 <h3 className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase">Cartographic Basemap</h3>
                                                 {cartoKey ? (
-                                                    <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                                    <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                                         CARTO Active
                                                     </span>
                                                 ) : (
-                                                    <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
-                                                        Zero-Key Canvas
+                                                    <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary border border-black/10 dark:border-white/10">
+                                                        Zero-Key Mode
                                                     </span>
                                                 )}
                                             </div>
+                                            {!cartoKey && (
+                                                <span className="text-3xs font-medium text-amber-600 dark:text-amber-400">
+                                                    CARTO API unconfigured
+                                                </span>
+                                            )}
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-2">
                                             {(isDark ? [
-                                                {
-                                                    id: 'onyx',
-                                                    label: 'Onyx',
-                                                    renderSwatch: () => (
-                                                        <div className="w-full h-8 rounded-xl border border-white/15 flex items-center px-2.5 justify-between bg-gradient-to-r from-black via-zinc-950 to-zinc-900 relative overflow-hidden">
-                                                            <div className="flex items-center gap-1.5 z-10">
-                                                                <span className="text-2xs">🌑</span>
-                                                                <span className="text-2xs font-bold text-white drop-shadow">Onyx</span>
-                                                            </div>
-                                                            <div className="w-2 h-2 rounded-full border border-white/40 z-10" />
-                                                        </div>
-                                                    )
-                                                },
+                                                // Non-API dark basemaps visible FIRST
                                                 {
                                                     id: 'citylights',
-                                                    label: 'NASA Lights',
+                                                    label: 'NASA',
+                                                    requiresCarto: false,
                                                     renderSwatch: () => (
                                                         <div className="w-full h-8 rounded-xl border border-amber-500/30 flex items-center px-2.5 justify-between bg-[#040711] relative overflow-hidden">
                                                             <div className="absolute top-1.5 right-12 w-1.5 h-1.5 rounded-full bg-amber-400/90 shadow-[0_0_6px_#f59e0b] animate-pulse" />
@@ -372,7 +410,8 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                 },
                                                 {
                                                     id: 'ocean',
-                                                    label: 'Bathymetry',
+                                                    label: 'Ocean',
+                                                    requiresCarto: false,
                                                     renderSwatch: () => (
                                                         <div className="w-full h-8 rounded-xl border border-cyan-500/30 flex items-center px-2.5 justify-between bg-[#041a2f] relative overflow-hidden">
                                                             <div className="flex items-center gap-1.5 z-10">
@@ -386,6 +425,7 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                 {
                                                     id: 'satellite',
                                                     label: 'Satellite',
+                                                    requiresCarto: false,
                                                     renderSwatch: () => (
                                                         <div className="w-full h-8 rounded-xl border border-emerald-500/20 flex items-center px-2.5 justify-between bg-gradient-to-r from-[#0a1a14] to-[#0d2a1f] relative overflow-hidden">
                                                             <div className="flex items-center gap-1.5 z-10">
@@ -396,80 +436,58 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                         </div>
                                                     )
                                                 },
-                                                ...(FEATURE_FLAGS.GEV_P04B_OPENFREEMAP ? [
-                                                    {
-                                                        id: 'ofm_positron',
-                                                        label: 'Positron Vector',
-                                                        renderSwatch: () => (
-                                                            <div className="w-full h-8 rounded-xl border border-white/20 flex items-center px-2.5 justify-between bg-white/10 relative overflow-hidden">
-                                                                <div className="flex items-center gap-1.5 z-10">
-                                                                    <span className="text-2xs">🧭</span>
-                                                                    <span className="text-2xs font-bold text-white drop-shadow">Positron</span>
-                                                                </div>
-                                                                <div className="w-2 h-2 rounded-full border border-sky-400 z-10" />
-                                                            </div>
-                                                        )
-                                                    },
-                                                    {
-                                                        id: 'ofm_liberty',
-                                                        label: 'Liberty Vector',
-                                                        renderSwatch: () => (
-                                                            <div className="w-full h-8 rounded-xl border border-emerald-500/30 flex items-center px-2.5 justify-between bg-gradient-to-r from-sky-900/40 via-emerald-900/40 to-amber-900/40 relative overflow-hidden">
-                                                                <div className="flex items-center gap-1.5 z-10">
-                                                                    <span className="text-2xs">🗽</span>
-                                                                    <span className="text-2xs font-bold text-emerald-200 drop-shadow">Liberty</span>
-                                                                </div>
-                                                                <div className="w-2 h-2 rounded-full border border-emerald-400/60 z-10" />
-                                                            </div>
-                                                        )
-                                                    }
-                                                ] : [])
-                                            ] : [
+                                                // CARTO-dependent dark basemap LAST
                                                 {
-                                                    id: 'snow',
-                                                    label: 'Snow',
+                                                    id: 'onyx',
+                                                    label: 'Onyx',
+                                                    requiresCarto: true,
                                                     renderSwatch: () => (
-                                                        <div className="w-full h-8 rounded-xl border border-black/10 flex items-center px-2.5 justify-between bg-gradient-to-r from-zinc-100 via-white to-zinc-200 relative overflow-hidden">
+                                                        <div className="w-full h-8 rounded-xl border border-white/15 flex items-center px-2.5 justify-between bg-gradient-to-r from-black via-zinc-950 to-zinc-900 relative overflow-hidden">
                                                             <div className="flex items-center gap-1.5 z-10">
-                                                                <span className="text-2xs">❄️</span>
-                                                                <span className="text-2xs font-bold text-zinc-800">Snow</span>
+                                                                <span className="text-2xs">🌑</span>
+                                                                <span className="text-2xs font-bold text-white drop-shadow">Onyx</span>
                                                             </div>
-                                                            <div className="w-2 h-2 rounded-full border border-zinc-400 z-10" />
+                                                            <div className="w-2 h-2 rounded-full border border-white/40 z-10" />
                                                         </div>
                                                     )
-                                                },
+                                                }
+                                            ] : [
+                                                // Non-API light basemaps visible FIRST
                                                 {
-                                                    id: 'vibrant',
-                                                    label: 'Vibrant',
+                                                    id: 'liberty',
+                                                    label: 'Liberty',
+                                                    requiresCarto: false,
                                                     renderSwatch: () => (
-                                                        <div className="w-full h-8 rounded-xl border border-emerald-500/30 flex items-center px-2.5 justify-between bg-gradient-to-r from-[#e0f2fe] via-[#ecfdf5] to-[#fef3c7] relative overflow-hidden">
+                                                        <div className="w-full h-8 rounded-xl border border-emerald-500/30 flex items-center px-2.5 justify-between bg-gradient-to-r from-sky-100 via-emerald-100 to-amber-100 relative overflow-hidden">
                                                             <div className="flex items-center gap-1.5 z-10">
-                                                                <span className="text-2xs">🎨</span>
-                                                                <span className="text-2xs font-bold text-emerald-800">Vibrant</span>
+                                                                <span className="text-2xs">🗽</span>
+                                                                <span className="text-2xs font-bold text-emerald-900">Liberty</span>
                                                             </div>
                                                             <div className="flex items-center gap-1 z-10">
-                                                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_4px_#38bdf8]" title="Water" />
-                                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_4px_#34d399]" title="Parks" />
+                                                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                                                             </div>
                                                         </div>
                                                     )
                                                 },
                                                 {
-                                                    id: 'ocean',
-                                                    label: 'Bathymetry',
+                                                    id: 'bright',
+                                                    label: 'Bright',
+                                                    requiresCarto: false,
                                                     renderSwatch: () => (
-                                                        <div className="w-full h-8 rounded-xl border border-cyan-500/30 flex items-center px-2.5 justify-between bg-gradient-to-r from-[#e0f7fa] to-[#b2ebf2] relative overflow-hidden">
+                                                        <div className="w-full h-8 rounded-xl border border-amber-500/30 flex items-center px-2.5 justify-between bg-gradient-to-r from-amber-100 via-yellow-100 to-orange-100 relative overflow-hidden">
                                                             <div className="flex items-center gap-1.5 z-10">
-                                                                <span className="text-2xs">🌊</span>
-                                                                <span className="text-2xs font-bold text-cyan-900">Bathymetry</span>
+                                                                <span className="text-2xs">☀️</span>
+                                                                <span className="text-2xs font-bold text-amber-900">Bright</span>
                                                             </div>
-                                                            <div className="w-2 h-2 rounded-full border border-cyan-500/60 z-10" />
+                                                            <div className="w-2 h-2 rounded-full border border-amber-500/60 z-10" />
                                                         </div>
                                                     )
                                                 },
                                                 {
                                                     id: 'satellite',
                                                     label: 'Satellite',
+                                                    requiresCarto: false,
                                                     renderSwatch: () => (
                                                         <div className="w-full h-8 rounded-xl border border-emerald-500/20 flex items-center px-2.5 justify-between bg-gradient-to-r from-[#0a1a14] to-[#0d2a1f] relative overflow-hidden">
                                                             <div className="flex items-center gap-1.5 z-10">
@@ -480,56 +498,53 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                         </div>
                                                     )
                                                 },
-                                                ...(FEATURE_FLAGS.GEV_P04B_OPENFREEMAP ? [
-                                                    {
-                                                        id: 'ofm_liberty',
-                                                        label: 'Liberty Vector',
-                                                        renderSwatch: () => (
-                                                            <div className="w-full h-8 rounded-xl border border-emerald-500/30 flex items-center px-2.5 justify-between bg-gradient-to-r from-sky-100 via-emerald-100 to-amber-100 relative overflow-hidden">
-                                                                <div className="flex items-center gap-1.5 z-10">
-                                                                    <span className="text-2xs">🗽</span>
-                                                                    <span className="text-2xs font-bold text-emerald-900">Liberty</span>
-                                                                </div>
-                                                                <div className="flex items-center gap-1 z-10">
-                                                                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                                                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                                                </div>
+                                                // CARTO-dependent light basemap LAST
+                                                {
+                                                    id: 'positron',
+                                                    label: 'Positron',
+                                                    requiresCarto: true,
+                                                    renderSwatch: () => (
+                                                        <div className="w-full h-8 rounded-xl border border-black/10 flex items-center px-2.5 justify-between bg-gradient-to-r from-zinc-100 to-white relative overflow-hidden">
+                                                            <div className="flex items-center gap-1.5 z-10">
+                                                                <span className="text-2xs">🧭</span>
+                                                                <span className="text-2xs font-bold text-zinc-800">Positron</span>
                                                             </div>
-                                                        )
-                                                    },
-                                                    {
-                                                        id: 'ofm_bright',
-                                                        label: 'Bright Vector',
-                                                        renderSwatch: () => (
-                                                            <div className="w-full h-8 rounded-xl border border-amber-500/30 flex items-center px-2.5 justify-between bg-gradient-to-r from-amber-100 via-yellow-100 to-orange-100 relative overflow-hidden">
-                                                                <div className="flex items-center gap-1.5 z-10">
-                                                                    <span className="text-2xs">☀️</span>
-                                                                    <span className="text-2xs font-bold text-amber-900">Bright</span>
-                                                                </div>
-                                                                <div className="w-2 h-2 rounded-full border border-amber-500/60 z-10" />
-                                                            </div>
-                                                        )
-                                                    },
-                                                    {
-                                                        id: 'ofm_positron',
-                                                        label: 'Positron Vector',
-                                                        renderSwatch: () => (
-                                                            <div className="w-full h-8 rounded-xl border border-black/10 flex items-center px-2.5 justify-between bg-gradient-to-r from-zinc-100 to-white relative overflow-hidden">
-                                                                <div className="flex items-center gap-1.5 z-10">
-                                                                    <span className="text-2xs">🧭</span>
-                                                                    <span className="text-2xs font-bold text-zinc-800">Positron</span>
-                                                                </div>
-                                                                <div className="w-2 h-2 rounded-full border border-sky-500/50 z-10" />
-                                                            </div>
-                                                        )
-                                                    }
-                                                ] : [])
+                                                            <div className="w-2 h-2 rounded-full border border-sky-500/50 z-10" />
+                                                        </div>
+                                                    )
+                                                }
                                             ]).map(b => {
                                                 const effectiveBasemap = getEffectiveBasemap(settings.basemap, isDark);
-                                                const isSelected = effectiveBasemap === b.id;
+                                                const isSelected = effectiveBasemap === b.id ||
+                                                    (b.id === 'liberty' && (effectiveBasemap === 'ofm_liberty' || settings.basemap === 'ofm_liberty')) ||
+                                                    (b.id === 'bright' && (effectiveBasemap === 'ofm_bright' || settings.basemap === 'ofm_bright')) ||
+                                                    (b.id === 'positron' && (effectiveBasemap === 'ofm_positron' || effectiveBasemap === 'snow' || settings.basemap === 'ofm_positron' || settings.basemap === 'snow'));
+                                                const isGreyedOut = b.requiresCarto && !Boolean(cartoKey && cartoKey.trim());
+
+                                                if (isGreyedOut) {
+                                                    return (
+                                                        <button
+                                                            key={b.id}
+                                                            type="button"
+                                                            disabled
+                                                            className="p-2.5 rounded-2xl border transition-all duration-150 text-left flex flex-col justify-between gap-2 opacity-40 grayscale cursor-not-allowed border-dashed border-black/15 dark:border-white/15 bg-black/[0.03] dark:bg-white/[0.02] select-none"
+                                                            title="CARTO API key required. Configure in Settings > Integrations."
+                                                        >
+                                                            {b.renderSwatch()}
+                                                            <div className="flex items-center justify-between gap-1 w-full">
+                                                                <p className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary truncate">{b.label}</p>
+                                                                <span className="px-1.5 py-0.5 rounded text-3xs font-bold uppercase tracking-wider bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 shrink-0">
+                                                                    Requires API
+                                                                </span>
+                                                            </div>
+                                                        </button>
+                                                    );
+                                                }
+
                                                 return (
                                                     <button
                                                         key={b.id}
+                                                        type="button"
                                                         onClick={() => updateField('basemap', b.id as any)}
                                                         className={`p-2.5 rounded-2xl border transition-all duration-150 text-left flex flex-col justify-between gap-2 cursor-pointer active:scale-[0.98] ${
                                                             isSelected
@@ -539,8 +554,13 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                         style={isSelected ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
                                                     >
                                                         {b.renderSwatch()}
-                                                        <div>
+                                                        <div className="flex items-center justify-between gap-1 w-full">
                                                             <p className="text-xs font-bold text-light-text dark:text-dark-text truncate">{b.label}</p>
+                                                            {b.requiresCarto && (
+                                                                <span className="px-1.5 py-0.5 rounded text-3xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
+                                                                    CARTO
+                                                                </span>
+                                                            )}
                                                         </div>
                                                     </button>
                                                 );
@@ -1327,59 +1347,6 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                                 value={settings.transitOverlayOpacity || 0.4}
                                                                 onChange={(e) => updateField('transitOverlayOpacity', parseFloat(e.target.value))}
                                                                 className="w-full accent-emerald-500 cursor-pointer h-1.5 bg-black/10 dark:bg-white/10 rounded-lg"
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            {/* Satellite Clouds (NOAA nowCOAST Global Longwave) */}
-                                            <div className="p-4 rounded-2xl bg-white/40 dark:bg-white/[0.03] backdrop-blur-sm border border-black/5 dark:border-white/5 space-y-3">
-                                                <div className="flex items-center justify-between">
-                                                    <div>
-                                                        <h4 className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
-                                                            <span>Satellite Clouds</span>
-                                                            {settings.weatherClouds && (
-                                                                <span className="flex items-center gap-1 px-2 py-0.5 text-2xs font-bold rounded-full bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30">
-                                                                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-                                                                    NOAA nowCOAST
-                                                                </span>
-                                                            )}
-                                                        </h4>
-                                                        <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5">Real-time global infrared cloud tops</p>
-                                                    </div>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => updateField('weatherClouds', !settings.weatherClouds)}
-                                                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-black/10 dark:border-white/15 transition-all duration-200 ease-in-out backdrop-blur-md ${
-                                                            settings.weatherClouds
-                                                                ? 'bg-cyan-500/85 dark:bg-cyan-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_10px_rgba(6,182,212,0.3)]'
-                                                                : 'bg-black/15 dark:bg-white/15 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]'
-                                                        }`}
-                                                    >
-                                                        <span
-                                                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-white/95 shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.8)] ring-0 transition duration-200 ease-in-out ${
-                                                                settings.weatherClouds ? 'translate-x-5' : 'translate-x-0'
-                                                            }`}
-                                                        />
-                                                    </button>
-                                                </div>
-
-                                                {settings.weatherClouds && (
-                                                    <div className="pt-2.5 border-t border-black/5 dark:border-white/5 space-y-3 animate-fade-in">
-                                                        <div>
-                                                            <div className="flex items-center justify-between text-2xs font-bold text-light-text dark:text-dark-text mb-1">
-                                                                <span>Cloud Layer Opacity</span>
-                                                                <span className="text-cyan-500">{Math.round((settings.weatherCloudsOpacity || 0.75) * 100)}%</span>
-                                                            </div>
-                                                            <input
-                                                                type="range"
-                                                                min="0.2"
-                                                                max="1.0"
-                                                                step="0.05"
-                                                                value={settings.weatherCloudsOpacity || 0.75}
-                                                                onChange={(e) => updateField('weatherCloudsOpacity', parseFloat(e.target.value))}
-                                                                className="w-full accent-cyan-500 cursor-pointer h-1.5 bg-black/10 dark:bg-white/10 rounded-lg"
                                                             />
                                                         </div>
                                                     </div>

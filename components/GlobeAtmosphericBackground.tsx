@@ -170,42 +170,36 @@ export const GlobeAtmosphericBackground: FC<GlobeAtmosphericBackgroundProps> = (
                         bgGrad.addColorStop(0.5, '#010710');
                         bgGrad.addColorStop(1, '#01040a');
                         break;
-                    case 'snow':
-                        // Crisp glacial slate cosmos
-                        bgGrad.addColorStop(0, '#060a14');
-                        bgGrad.addColorStop(0.5, '#03050c');
-                        bgGrad.addColorStop(1, '#010206');
-                        break;
-                    case 'vibrant':
-                        // Warm cosmic bronze/carbon
-                        bgGrad.addColorStop(0, '#09080e');
-                        bgGrad.addColorStop(0.5, '#040307');
-                        bgGrad.addColorStop(1, '#020104');
-                        break;
                     case 'onyx':
-                    default:
                         // Sleek carbon onyx
                         bgGrad.addColorStop(0, '#05070e');
                         bgGrad.addColorStop(0.5, '#020409');
                         bgGrad.addColorStop(1, '#010205');
                         break;
+                    default:
+                        // Deep space default
+                        bgGrad.addColorStop(0, '#04081c');
+                        bgGrad.addColorStop(0.5, '#020412');
+                        bgGrad.addColorStop(1, '#010209');
+                        break;
                 }
             } else {
                 // Ethereal, high-end Light Mode celestial sky dome
                 switch (effectiveLayer) {
-                    case 'vibrant':
-                        // Warm alabaster / parchment sky
-                        bgGrad.addColorStop(0, '#fdfbf7');
-                        bgGrad.addColorStop(0.5, '#f4eee4');
-                        bgGrad.addColorStop(1, '#e7ded2');
+                    case 'bright':
+                        // Warm sunlit golden amber / parchment sky
+                        bgGrad.addColorStop(0, '#fefbf3');
+                        bgGrad.addColorStop(0.5, '#fbf4e6');
+                        bgGrad.addColorStop(1, '#f5e9d3');
                         break;
-                    case 'ocean':
-                        // Maritime seafoam & pale ocean sky
-                        bgGrad.addColorStop(0, '#f0f9ff');
-                        bgGrad.addColorStop(0.5, '#e0f2fe');
-                        bgGrad.addColorStop(1, '#cfe5f9');
+                    case 'liberty':
+                        // Fresh crisp sky / seafoam celestial horizon
+                        bgGrad.addColorStop(0, '#f0fdfa');
+                        bgGrad.addColorStop(0.5, '#e6f7f5');
+                        bgGrad.addColorStop(1, '#d5f0ec');
                         break;
-                    case 'snow':
+                    case 'positron':
+                    case 'satellite':
                     default:
                         // Pure arctic platinum / cloud-white
                         bgGrad.addColorStop(0, '#f8fafc');
@@ -466,10 +460,6 @@ export const GlobeAtmosphericBackground: FC<GlobeAtmosphericBackgroundProps> = (
                             outerHalo.addColorStop(0, 'rgba(34, 211, 238, 0.18)');
                             outerHalo.addColorStop(0.3, 'rgba(14, 165, 233, 0.08)');
                             outerHalo.addColorStop(0.7, 'rgba(30, 58, 138, 0.02)');
-                        } else if (effectiveLayer === 'vibrant') {
-                            outerHalo.addColorStop(0, 'rgba(251, 191, 36, 0.16)');
-                            outerHalo.addColorStop(0.3, 'rgba(56, 189, 248, 0.08)');
-                            outerHalo.addColorStop(0.7, 'rgba(99, 102, 241, 0.02)');
                         } else if (effectiveLayer === 'citylights') {
                             outerHalo.addColorStop(0, 'rgba(96, 165, 250, 0.20)');
                             outerHalo.addColorStop(0.35, 'rgba(139, 92, 246, 0.08)');
@@ -482,7 +472,7 @@ export const GlobeAtmosphericBackground: FC<GlobeAtmosphericBackgroundProps> = (
                         outerHalo.addColorStop(1, 'rgba(0, 0, 0, 0)');
                     } else {
                         // Light mode ethereal sky halo
-                        if (effectiveLayer === 'vibrant') {
+                        if (effectiveLayer === 'bright') {
                             outerHalo.addColorStop(0, 'rgba(245, 158, 11, 0.15)');
                             outerHalo.addColorStop(0.35, 'rgba(56, 189, 248, 0.07)');
                         } else {
@@ -526,10 +516,6 @@ export const GlobeAtmosphericBackground: FC<GlobeAtmosphericBackgroundProps> = (
                         if (effectiveLayer === 'ocean') oceanBacking = '#020d1c';
                         else if (effectiveLayer === 'satellite') oceanBacking = '#01040a';
                         else if (effectiveLayer === 'citylights') oceanBacking = '#020617';
-                        else if (effectiveLayer === 'vibrant') oceanBacking = '#0a0910';
-                    } else {
-                        if (effectiveLayer === 'ocean') oceanBacking = '#bae6fd';
-                        else if (effectiveLayer === 'vibrant') oceanBacking = '#e8ded2';
                     }
 
                     ctx.fillStyle = oceanBacking;

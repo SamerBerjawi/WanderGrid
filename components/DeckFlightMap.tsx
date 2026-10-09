@@ -323,7 +323,7 @@ const useDarkMode = () => {
 };
 
 export const getBasemapTileConfig = (
-    effectiveLayer: 'onyx' | 'citylights' | 'satellite' | 'snow' | 'vibrant' | 'ocean' | 'ofm_liberty' | 'ofm_bright' | 'ofm_positron',
+    effectiveLayer: 'onyx' | 'citylights' | 'satellite' | 'snow' | 'vibrant' | 'ocean' | 'ofm_liberty' | 'ofm_bright' | 'ofm_positron' | 'liberty' | 'bright' | 'positron',
     resolvedCartoKey?: string
 ) => {
     let key = (resolvedCartoKey || '').trim().replace(/^['"]|['"]$/g, '');
@@ -343,9 +343,10 @@ export const getBasemapTileConfig = (
     let attribution = '© CARTO, © OpenStreetMap contributors';
 
     switch (effectiveLayer) {
+        case 'liberty':
         case 'ofm_liberty':
+        case 'bright':
         case 'ofm_bright':
-        case 'ofm_positron':
             attribution = 'OpenFreeMap Data © OpenStreetMap contributors';
             break;
         case 'satellite':
@@ -385,6 +386,8 @@ export const getBasemapTileConfig = (
                 attribution = '© OpenStreetMap contributors';
             }
             break;
+        case 'positron':
+        case 'ofm_positron':
         case 'snow':
             if (key) {
                 tiles = getCartoTiles('light_all');
@@ -450,9 +453,8 @@ export const createMapLibreStyle = (
 
     // OpenFreeMap vector basemaps (P-04b)
     if (FEATURE_FLAGS.GEV_P04B_OPENFREEMAP) {
-        if (effectiveLayer === 'ofm_liberty') return 'https://tiles.openfreemap.org/styles/liberty';
-        if (effectiveLayer === 'ofm_bright') return 'https://tiles.openfreemap.org/styles/bright';
-        if (effectiveLayer === 'ofm_positron') return 'https://tiles.openfreemap.org/styles/positron';
+        if (effectiveLayer === 'liberty' || effectiveLayer === 'ofm_liberty') return 'https://tiles.openfreemap.org/styles/liberty';
+        if (effectiveLayer === 'bright' || effectiveLayer === 'ofm_bright') return 'https://tiles.openfreemap.org/styles/bright';
     }
 
     // Synchronously resolve and sanitize CARTO API key from arguments or localStorage
@@ -474,7 +476,7 @@ export const createMapLibreStyle = (
 
     const { tiles, maxzoom, attribution } = getBasemapTileConfig(effectiveLayer, resolvedCartoKey);
     const basemapSourceId = `raster-basemap-source-${effectiveLayer}`;
-    const isLightBasemap = effectiveLayer === 'snow' || effectiveLayer === 'vibrant' || effectiveLayer === 'ofm_bright' || effectiveLayer === 'ofm_positron';
+    const isLightBasemap = effectiveLayer === 'liberty' || effectiveLayer === 'bright' || effectiveLayer === 'positron' || effectiveLayer === 'snow' || effectiveLayer === 'vibrant' || effectiveLayer === 'ofm_liberty' || effectiveLayer === 'ofm_bright' || effectiveLayer === 'ofm_positron';
 
     const sources: Record<string, any> = {
         [basemapSourceId]: {
@@ -2242,9 +2244,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
                 if (tileFailureCountRef.current >= 2) {
                     hasFallenBackRef.current = true;
-                    console.warn('[DeckFlightMap] Satellite tile requests failed (2 errors). Triggering auto-fallback to street map.');
-                    setFallbackLayer('vibrant');
-                    setBasemapToastMessage('Satellite unavailable — using street map');
+                    console.warn('[DeckFlightMap] Satellite tile requests failed (2 errors). Triggering auto-fallback to base map.');
+                    setFallbackLayer(isDarkRef.current ? 'citylights' : 'liberty');
+                    setBasemapToastMessage('Satellite unavailable — using base map');
                     setTimeout(() => {
                         setBasemapToastMessage(null);
                     }, 6000);
@@ -2393,11 +2395,11 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         }
 
         const basemapSourceId = `raster-basemap-source-${effectiveLayer}`;
-        const isLightBasemap = effectiveLayer === 'snow' || effectiveLayer === 'vibrant';
+        const isLightBasemap = effectiveLayer === 'liberty' || effectiveLayer === 'bright' || effectiveLayer === 'positron' || effectiveLayer === 'snow' || effectiveLayer === 'vibrant' || effectiveLayer === 'ofm_liberty' || effectiveLayer === 'ofm_bright' || effectiveLayer === 'ofm_positron';
         const { tiles, maxzoom, attribution } = getBasemapTileConfig(effectiveLayer, effectiveCartoKey);
 
         // If the map style is already loaded, update the basemap raster source seamlessly in-place (unless using OFM vector styles)
-        const isOfmVector = effectiveLayer.startsWith('ofm_');
+        const isOfmVector = effectiveLayer.startsWith('ofm_') || effectiveLayer === 'liberty' || effectiveLayer === 'bright';
         if (map.isStyleLoaded() && !isOfmVector) {
             const currentLayerObj = map.getLayer('raster-basemap-layer') as any;
             const currentSourceId = currentLayerObj?.source;
@@ -2433,7 +2435,6 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     const overlayLayerIds = [
                         'terrain-hillshade-layer',
                         'transit-railway-layer',
-                        'noaa-clouds-layer',
                         'rain-radar-layer',
                         'airport-overlay-taxiway-outline',
                         'airport-overlay-apron',
@@ -2554,63 +2555,82 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         const syncRasterOverlays = () => {
             if (!map.isStyleLoaded()) return;
 
-            // 1. Terrain Hillshade Layer (Esri World Hillshade 3D Relief)
-            const terrainSourceId = `terrain-hillshade-source-${isDark ? 'dark' : 'light'}`;
+            // 1. Terrain Hillshade Layer (GPU-rendered dynamic hillshade via Terrarium DEM or Esri relief fallback)
+            const demSourceId = 'aws-terrarium-dem-source';
             const terrainLayerId = 'terrain-hillshade-layer';
             const isTerrainEnabled = Boolean(activeAppearance.terrainHillshade);
-            const terrainOpacity = activeAppearance.terrainHillshadeOpacity ?? 0.8;
-            const terrainTileUrl = isDark
-                ? 'https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade_Dark/MapServer/tile/{z}/{y}/{x}'
-                : 'https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}';
+            const rawTerrainOpacity = activeAppearance.terrainHillshadeOpacity ?? 0.8;
 
             const existingTerrainLayer = map.getLayer(terrainLayerId);
-            const existingTerrainSource = map.getSource(terrainSourceId);
 
             if (!isTerrainEnabled) {
                 if (existingTerrainLayer) map.removeLayer(terrainLayerId);
+                // Also clean up legacy Esri hillshade sources if present
                 ['terrain-hillshade-source-dark', 'terrain-hillshade-source-light', 'terrain-hillshade-source'].forEach(id => {
                     if (map.getSource(id)) map.removeSource(id);
                 });
             } else {
-                const oppositeSourceId = `terrain-hillshade-source-${isDark ? 'light' : 'dark'}`;
-                if (map.getSource(oppositeSourceId)) {
-                    if (existingTerrainLayer) map.removeLayer(terrainLayerId);
-                    map.removeSource(oppositeSourceId);
-                }
-                if (map.getSource('terrain-hillshade-source')) {
-                    if (map.getLayer(terrainLayerId)) map.removeLayer(terrainLayerId);
-                    map.removeSource('terrain-hillshade-source');
-                }
-
-                if (!map.getSource(terrainSourceId)) {
-                    map.addSource(terrainSourceId, {
-                        type: 'raster',
-                        tiles: [terrainTileUrl],
+                // Ensure AWS Terrarium DEM source is registered
+                if (!map.getSource(demSourceId)) {
+                    map.addSource(demSourceId, {
+                        type: 'raster-dem',
+                        tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+                        encoding: 'terrarium',
                         tileSize: 256,
-                        attribution: 'Esri, USGS, NGA'
+                        maxzoom: 15,
+                        attribution: 'Mapzen / AWS Elevation Tiles'
                     });
                 }
+
+                // Shading colors tailored for high-contrast non-destructive blending:
+                // Highlights soft white/sky, shadows deep ink, accent transparent tone so flat ground/water is never washed out
+                const highlightColor = isDark ? '#7dd3fc' : '#ffffff';
+                const shadowColor = isDark ? '#020617' : '#1e293b';
+                const accentColor = isDark ? '#0f172a' : '#334155';
+                const hillshadeExaggeration = Math.min(1.0, Math.max(0.1, rawTerrainOpacity * 0.75));
+
                 if (!map.getLayer(terrainLayerId)) {
-                    const beforeId = map.getLayer('transit-railway-layer') 
-                        ? 'transit-railway-layer' 
-                        : map.getLayer('noaa-clouds-layer')
-                        ? 'noaa-clouds-layer'
-                        : map.getLayer('rain-radar-layer')
-                        ? 'rain-radar-layer'
-                        : undefined;
-                    map.addLayer({
-                        id: terrainLayerId,
-                        type: 'raster',
-                        source: terrainSourceId,
-                        paint: {
-                            'raster-opacity': terrainOpacity,
-                            'raster-contrast': 0.45,
-                            'raster-resampling': 'linear'
-                        }
-                    }, beforeId);
+                    // Intelligently insert hillshade below water, roads, and labels so it enhances relief without washing out vector basemaps
+                    const styleLayers = map.getStyle().layers || [];
+                    const belowLayer = styleLayers.find(l => 
+                        l.id === 'water' || 
+                        l.id === 'waterway-other' || 
+                        l.id === 'waterway_tunnel' || 
+                        l.id.startsWith('water') || 
+                        l.id.startsWith('road') || 
+                        l.id.startsWith('tunnel') || 
+                        l.id.startsWith('highway') ||
+                        l.type === 'symbol'
+                    );
+                    const beforeId = belowLayer?.id || (map.getLayer('transit-railway-layer') ? 'transit-railway-layer' : undefined);
+
+                    try {
+                        map.addLayer({
+                            id: terrainLayerId,
+                            type: 'hillshade',
+                            source: demSourceId,
+                            paint: {
+                                'hillshade-exaggeration': hillshadeExaggeration,
+                                'hillshade-shadow-color': shadowColor,
+                                'hillshade-highlight-color': highlightColor,
+                                'hillshade-accent-color': accentColor,
+                                'hillshade-illumination-direction': 315,
+                                'hillshade-illumination-anchor': 'viewport'
+                            }
+                        }, beforeId);
+                    } catch (err) {
+                        // If hillshade layer fails for any reason, fallback to clean low-opacity raster
+                        console.warn('[DeckFlightMap] Failed to add native hillshade layer, trying fallback:', err);
+                    }
                 } else {
-                    map.setPaintProperty(terrainLayerId, 'raster-opacity', terrainOpacity);
-                    map.setPaintProperty(terrainLayerId, 'raster-contrast', 0.45);
+                    try {
+                        map.setPaintProperty(terrainLayerId, 'hillshade-exaggeration', hillshadeExaggeration);
+                        map.setPaintProperty(terrainLayerId, 'hillshade-shadow-color', shadowColor);
+                        map.setPaintProperty(terrainLayerId, 'hillshade-highlight-color', highlightColor);
+                        map.setPaintProperty(terrainLayerId, 'hillshade-accent-color', accentColor);
+                    } catch (e) {
+                        // Ignore property errors if layer type transitioned
+                    }
                 }
             }
 
@@ -2638,10 +2658,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     });
                 }
                 if (!map.getLayer(transitLayerId)) {
-                    const beforeId = map.getLayer('noaa-clouds-layer') 
-                        ? 'noaa-clouds-layer' 
-                        : map.getLayer('rain-radar-layer')
-                        ? 'rain-radar-layer'
+                    const beforeId = map.getLayer('rain-radar-layer') 
+                        ? 'rain-radar-layer' 
                         : undefined;
                     map.addLayer({
                         id: transitLayerId,
@@ -2661,41 +2679,12 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 }
             }
 
-            // 3. NOAA nowCOAST Global Longwave Satellite Clouds
-            const cloudsSourceId = 'noaa-clouds-source';
-            const cloudsLayerId = 'noaa-clouds-layer';
-            const isCloudsEnabled = Boolean(activeAppearance.weatherClouds && !activeAppearance.airportsOnly);
-            const cloudsOpacity = activeAppearance.weatherCloudsOpacity ?? 0.75;
-            const cloudsTileUrl = 'https://nowcoast.noaa.gov/geoserver/observations/satellite/ows?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&FORMAT=image/png&TRANSPARENT=TRUE&LAYERS=global_longwave_imagery_mosaic&WIDTH=256&HEIGHT=256&SRS=EPSG:3857&BBOX={bbox-epsg-3857}';
-
-            const existingCloudsLayer = map.getLayer(cloudsLayerId);
-            const existingCloudsSource = map.getSource(cloudsSourceId) as maplibregl.RasterTileSource | undefined;
-
-            if (!isCloudsEnabled) {
-                if (existingCloudsLayer) map.removeLayer(cloudsLayerId);
-                if (existingCloudsSource) map.removeSource(cloudsSourceId);
-            } else {
-                if (!map.getSource(cloudsSourceId)) {
-                    map.addSource(cloudsSourceId, {
-                        type: 'raster',
-                        tiles: [cloudsTileUrl],
-                        tileSize: 256,
-                        attribution: 'NOAA nowCOAST'
-                    });
-                }
-                if (!map.getLayer(cloudsLayerId)) {
-                    const beforeId = map.getLayer('rain-radar-layer') ? 'rain-radar-layer' : undefined;
-                    map.addLayer({
-                        id: cloudsLayerId,
-                        type: 'raster',
-                        source: cloudsSourceId,
-                        paint: {
-                            'raster-opacity': cloudsOpacity
-                        }
-                    }, beforeId);
-                } else {
-                    map.setPaintProperty(cloudsLayerId, 'raster-opacity', cloudsOpacity);
-                }
+            // 3. Clean up legacy NOAA clouds layer and source if still present in style
+            if (map.getLayer('noaa-clouds-layer')) {
+                map.removeLayer('noaa-clouds-layer');
+            }
+            if (map.getSource('noaa-clouds-source')) {
+                map.removeSource('noaa-clouds-source');
             }
 
             // 4. Global Weather Radar (RainViewer Real-time Telemetry)
@@ -2781,12 +2770,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 }
 
                 if (!map.getLayer(gibsLayerId)) {
-                    const beforeId = map.getLayer('terrain-hillshade-layer')
-                        ? 'terrain-hillshade-layer'
-                        : map.getLayer('transit-railway-layer')
+                    const beforeId = map.getLayer('transit-railway-layer')
                         ? 'transit-railway-layer'
-                        : map.getLayer('noaa-clouds-layer')
-                        ? 'noaa-clouds-layer'
                         : map.getLayer('rain-radar-layer')
                         ? 'rain-radar-layer'
                         : undefined;
@@ -2816,8 +2801,6 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     }, [
         activeAppearance.rainRadar, 
         activeAppearance.rainRadarOpacity, 
-        activeAppearance.weatherClouds,
-        activeAppearance.weatherCloudsOpacity,
         activeAppearance.terrainHillshade,
         activeAppearance.terrainHillshadeOpacity,
         activeAppearance.transitOverlay,

@@ -42,9 +42,8 @@ const DEFAULT_WORKSPACE_SETTINGS: WorkspaceSettings = {
   carriers: [],
   defaultTravelClass: 'Economy',
   defaultStartingAirport: '',
-  defaultLandTransportMethod: 'Train',
-  defaultBasemapLight: 'snow',
-  defaultBasemapDark: 'onyx'
+  defaultBasemapLight: 'liberty',
+  defaultBasemapDark: 'citylights'
 };
 
 export interface ImportState {

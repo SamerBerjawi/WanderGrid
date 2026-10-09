@@ -52,15 +52,17 @@ export const DataCreditsPopover: React.FC<DataCreditsPopoverProps> = ({
   if (!FEATURE_FLAGS.GEV_P07_DATA_CREDITS) return null;
 
   // Dynamically resolve active credits based on map state
-  const isOFM = currentBasemap.startsWith('ofm_');
+  const isOFM = currentBasemap.startsWith('ofm_') || currentBasemap === 'liberty' || currentBasemap === 'bright';
   const isSatellite = currentBasemap.includes('satellite');
+  const isNASA = currentBasemap === 'citylights';
+  const isOcean = currentBasemap === 'ocean';
 
   const credits: CreditItem[] = [
     {
       layer: 'Base Map',
-      provider: isOFM ? 'OpenFreeMap' : isSatellite ? 'Esri Satellite' : 'CARTO Basemaps',
-      license: isSatellite ? 'Esri, Maxar, Earthstar Geographics' : '© OpenStreetMap contributors',
-      url: isOFM ? 'https://openfreemap.org' : isSatellite ? 'https://www.esri.com' : 'https://carto.com',
+      provider: isOFM ? 'OpenFreeMap' : isSatellite ? 'Esri Satellite' : isNASA ? 'NASA EOSDIS GIBS' : isOcean ? 'Esri Ocean / GEBCO' : 'CARTO Basemaps',
+      license: isSatellite ? 'Esri, Maxar, Earthstar Geographics' : isNASA ? 'NASA EOSDIS GIBS' : isOcean ? 'Source: Esri, GEBCO, NOAA' : '© OpenStreetMap contributors',
+      url: isOFM ? 'https://openfreemap.org' : isSatellite ? 'https://www.esri.com' : isNASA ? 'https://earthdata.nasa.gov' : isOcean ? 'https://www.gebco.net' : 'https://carto.com',
       isActive: true
     },
     {
@@ -83,13 +85,6 @@ export const DataCreditsPopover: React.FC<DataCreditsPopoverProps> = ({
       license: 'VIIRS NOAA-21 True-Color Corrected',
       url: 'https://earthdata.nasa.gov/eosdis',
       isActive: Boolean(activeAppearance.gibsDaily)
-    },
-    {
-      layer: 'Atmospheric Clouds',
-      provider: 'NOAA nowCOAST',
-      license: 'Global Longwave Satellite Mosaic',
-      url: 'https://nowcoast.noaa.gov',
-      isActive: Boolean(activeAppearance.weatherClouds)
     },
     {
       layer: 'Weather Radar',
