@@ -1,5 +1,14 @@
 import React from 'react';
-import { CaretLeft, CaretRight, WarningCircle } from '@phosphor-icons/react';
+import {
+  CaretLeft,
+  CaretRight,
+  CloudRain,
+  Mountains,
+  Cube,
+  Train,
+  AirplaneTakeoff,
+  Planet,
+} from '@phosphor-icons/react';
 import {
   MapAppearanceSettings,
   getYesterdayDateString,
@@ -27,15 +36,21 @@ export const LayersTab: React.FC<LayersTabProps> = ({
   onFlushSettings,
 }) => {
   return (
-    <div className="space-y-5 animate-fadeIn">
+    <div className="space-y-3 animate-fadeIn">
       {/* 1. PRECIPITATION & WEATHER */}
-      <SettingsSection>
+      <SettingsSection accentColor="cyan">
         {/* Rain Radar */}
         <SettingRow
           label={MAP_SETTINGS_LABELS.layersTab.rainRadar}
+          icon={
+            <div className="w-7 h-7 rounded-lg bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-600 dark:text-cyan-400 shrink-0">
+              <CloudRain size={15} weight="bold" />
+            </div>
+          }
           control={
             <GlassToggle
               checked={Boolean(settings.rainRadar)}
+              accentColor="cyan"
               onChange={(val) => onChangeSetting('rainRadar', val)}
               ariaLabel={MAP_SETTINGS_LABELS.layersTab.rainRadar}
             />
@@ -48,6 +63,7 @@ export const LayersTab: React.FC<LayersTabProps> = ({
               min={0.2}
               max={1.0}
               step={0.05}
+              accentColor="cyan"
               onChange={(val) => onChangeSetting('rainRadarOpacity', val)}
               onPointerUp={onFlushSettings}
             />
@@ -56,13 +72,19 @@ export const LayersTab: React.FC<LayersTabProps> = ({
       </SettingsSection>
 
       {/* 2. TERRAIN & ELEVATION */}
-      <SettingsSection>
+      <SettingsSection accentColor="amber">
         {/* Relief Shading (Hillshade) */}
         <SettingRow
           label={MAP_SETTINGS_LABELS.layersTab.reliefShading}
+          icon={
+            <div className="w-7 h-7 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
+              <Mountains size={15} weight="bold" />
+            </div>
+          }
           control={
             <GlassToggle
               checked={Boolean(settings.terrainHillshade)}
+              accentColor="amber"
               onChange={(val) => onChangeSetting('terrainHillshade', val)}
               ariaLabel={MAP_SETTINGS_LABELS.layersTab.reliefShading}
             />
@@ -75,6 +97,7 @@ export const LayersTab: React.FC<LayersTabProps> = ({
               min={0.1}
               max={1.0}
               step={0.05}
+              accentColor="amber"
               onChange={(val) => onChangeSetting('terrainHillshadeOpacity', val)}
               onPointerUp={onFlushSettings}
             />
@@ -83,12 +106,18 @@ export const LayersTab: React.FC<LayersTabProps> = ({
 
         {/* 3D Elevation Mesh (only if GEV_P04D_TERRAIN enabled) */}
         {FEATURE_FLAGS.GEV_P04D_TERRAIN && (
-          <div className="pt-2 border-t border-black/5 dark:border-white/5">
+          <div className="pt-1.5 border-t border-black/5 dark:border-white/5">
             <SettingRow
               label={MAP_SETTINGS_LABELS.layersTab.terrain3d}
+              icon={
+                <div className="w-7 h-7 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                  <Cube size={15} weight="bold" />
+                </div>
+              }
               control={
                 <GlassToggle
                   checked={Boolean(settings.terrain3d)}
+                  accentColor="emerald"
                   onChange={(val) => onChangeSetting('terrain3d', val)}
                   ariaLabel={MAP_SETTINGS_LABELS.layersTab.terrain3d}
                 />
@@ -101,6 +130,7 @@ export const LayersTab: React.FC<LayersTabProps> = ({
                   min={0.5}
                   max={2.5}
                   step={0.1}
+                  accentColor="emerald"
                   formatValue={(v) => `${v.toFixed(1)}x`}
                   onChange={(val) => onChangeSetting('terrain3dExaggeration', val)}
                   onPointerUp={onFlushSettings}
@@ -112,13 +142,19 @@ export const LayersTab: React.FC<LayersTabProps> = ({
       </SettingsSection>
 
       {/* 3. INFRASTRUCTURE & AVIATION */}
-      <SettingsSection>
+      <SettingsSection accentColor="indigo">
         {/* Rail lines */}
         <SettingRow
           label={MAP_SETTINGS_LABELS.layersTab.railLines}
+          icon={
+            <div className="w-7 h-7 rounded-lg bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+              <Train size={15} weight="bold" />
+            </div>
+          }
           control={
             <GlassToggle
               checked={Boolean(settings.transitOverlay)}
+              accentColor="indigo"
               onChange={(val) => onChangeSetting('transitOverlay', val)}
               ariaLabel={MAP_SETTINGS_LABELS.layersTab.railLines}
             />
@@ -131,6 +167,7 @@ export const LayersTab: React.FC<LayersTabProps> = ({
               min={0.1}
               max={1.0}
               step={0.05}
+              accentColor="indigo"
               onChange={(val) => onChangeSetting('transitOverlayOpacity', val)}
               onPointerUp={onFlushSettings}
             />
@@ -138,14 +175,20 @@ export const LayersTab: React.FC<LayersTabProps> = ({
         </SettingRow>
 
         {/* Aviation charts (OpenAIP) */}
-        <div className="pt-2 border-t border-black/5 dark:border-white/5">
+        <div className="pt-1.5 border-t border-black/5 dark:border-white/5">
           <SettingRow
             label={MAP_SETTINGS_LABELS.layersTab.aviationCharts}
             helper={!hasOpenAipKey ? MAP_SETTINGS_LABELS.layersTab.openAipKeyRequired : undefined}
+            icon={
+              <div className="w-7 h-7 rounded-lg bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0">
+                <AirplaneTakeoff size={15} weight="bold" />
+              </div>
+            }
             control={
               <GlassToggle
                 checked={hasOpenAipKey && Boolean(settings.openAipOverlay)}
                 disabled={!hasOpenAipKey}
+                accentColor="sky"
                 onChange={(val) => onChangeSetting('openAipOverlay', val)}
                 ariaLabel={MAP_SETTINGS_LABELS.layersTab.aviationCharts}
               />
@@ -153,11 +196,11 @@ export const LayersTab: React.FC<LayersTabProps> = ({
           >
             {/* Show chips only when key present and overlay enabled */}
             {hasOpenAipKey && settings.openAipOverlay && (
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <GlassSegmented<'airspaces' | 'airports'>
                   options={[
-                    { id: 'airspaces', label: MAP_SETTINGS_LABELS.layersTab.airspaces },
-                    { id: 'airports', label: MAP_SETTINGS_LABELS.layersTab.airports },
+                    { id: 'airspaces', label: MAP_SETTINGS_LABELS.layersTab.airspaces, accentColor: 'sky' },
+                    { id: 'airports', label: MAP_SETTINGS_LABELS.layersTab.airports, accentColor: 'sky' },
                   ]}
                   value={
                     (settings.openAipGroups || []).filter(
@@ -165,7 +208,6 @@ export const LayersTab: React.FC<LayersTabProps> = ({
                     ) as ('airspaces' | 'airports')[]
                   }
                   onChange={(selected: ('airspaces' | 'airports')[]) => {
-                    // Retain airspaceLabels if airspaces is selected
                     const next: ('airspaces' | 'airspaceLabels' | 'airports')[] = [];
                     if (selected.includes('airspaces')) {
                       next.push('airspaces', 'airspaceLabels');
@@ -177,6 +219,7 @@ export const LayersTab: React.FC<LayersTabProps> = ({
                   }}
                   isMulti
                   columns={2}
+                  accentColor="sky"
                   showCheckOnSelected
                 />
               </div>
@@ -187,37 +230,43 @@ export const LayersTab: React.FC<LayersTabProps> = ({
 
       {/* 4. DAILY SATELLITE (only if GEV_P04C_GIBS_DAILY is on) */}
       {FEATURE_FLAGS.GEV_P04C_GIBS_DAILY && (
-        <SettingsSection>
+        <SettingsSection accentColor="emerald">
           <SettingRow
             label={MAP_SETTINGS_LABELS.layersTab.dailySatellite}
+            icon={
+              <div className="w-7 h-7 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                <Planet size={15} weight="bold" />
+              </div>
+            }
             control={
               <GlassToggle
                 checked={Boolean(settings.gibsDaily)}
+                accentColor="emerald"
                 onChange={(val) => onChangeSetting('gibsDaily', val)}
                 ariaLabel={MAP_SETTINGS_LABELS.layersTab.dailySatellite}
               />
             }
           >
             {settings.gibsDaily && (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {/* Date Stepper */}
                 <div className="flex items-center justify-between">
                   <span className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary">
                     {MAP_SETTINGS_LABELS.layersTab.imageryDate}
                   </span>
-                  <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 rounded-xl p-1 border border-black/5 dark:border-white/5">
+                  <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 rounded-xl p-0.5 border border-black/5 dark:border-white/5">
                     <button
                       type="button"
                       onClick={() => {
                         const cur = settings.gibsDailyDate || getYesterdayDateString();
                         onChangeSetting('gibsDailyDate', adjustDateString(cur, -1));
                       }}
-                      className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-black/10 dark:hover:bg-white/10 text-light-text dark:text-dark-text transition-colors cursor-pointer"
+                      className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-black/10 dark:hover:bg-white/10 text-light-text dark:text-dark-text transition-colors cursor-pointer"
                       aria-label="Previous day imagery"
                     >
-                      <CaretLeft size={16} weight="bold" />
+                      <CaretLeft size={14} weight="bold" />
                     </button>
-                    <span className="px-2 font-mono font-bold text-xs text-light-text dark:text-dark-text">
+                    <span className="px-1.5 font-mono font-bold text-2xs sm:text-xs text-light-text dark:text-dark-text">
                       {settings.gibsDailyDate || getYesterdayDateString()}
                     </span>
                     <button
@@ -230,10 +279,10 @@ export const LayersTab: React.FC<LayersTabProps> = ({
                         }
                       }}
                       disabled={(settings.gibsDailyDate || getYesterdayDateString()) >= getYesterdayDateString()}
-                      className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-black/10 dark:hover:bg-white/10 text-light-text dark:text-dark-text disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                      className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-black/10 dark:hover:bg-white/10 text-light-text dark:text-dark-text disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
                       aria-label="Next day imagery"
                     >
-                      <CaretRight size={16} weight="bold" />
+                      <CaretRight size={14} weight="bold" />
                     </button>
                   </div>
                 </div>
@@ -245,6 +294,7 @@ export const LayersTab: React.FC<LayersTabProps> = ({
                   min={0.2}
                   max={1.0}
                   step={0.05}
+                  accentColor="emerald"
                   onChange={(val) => onChangeSetting('gibsDailyOpacity', val)}
                   onPointerUp={onFlushSettings}
                 />

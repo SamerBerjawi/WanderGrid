@@ -6,7 +6,15 @@ export interface GlassToggleProps {
   disabled?: boolean;
   label?: string;
   ariaLabel?: string;
-  accentColor?: 'primary' | 'emerald' | 'amber' | 'rose';
+  accentColor?:
+    | 'primary'
+    | 'emerald'
+    | 'amber'
+    | 'rose'
+    | 'sky'
+    | 'indigo'
+    | 'cyan'
+    | 'purple';
   className?: string;
   id?: string;
 }
@@ -16,6 +24,10 @@ const ACCENT_STYLES = {
   emerald: 'bg-emerald-500/85 dark:bg-emerald-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_10px_rgba(16,185,129,0.3)] border-emerald-500/40',
   amber: 'bg-amber-500/85 dark:bg-amber-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_10px_rgba(245,158,11,0.3)] border-amber-500/40',
   rose: 'bg-rose-500/85 dark:bg-rose-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_10px_rgba(244,63,94,0.3)] border-rose-500/40',
+  sky: 'bg-sky-500/85 dark:bg-sky-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_10px_rgba(14,165,233,0.3)] border-sky-500/40',
+  indigo: 'bg-indigo-500/85 dark:bg-indigo-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_10px_rgba(99,102,241,0.3)] border-indigo-500/40',
+  cyan: 'bg-cyan-500/85 dark:bg-cyan-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_10px_rgba(6,182,212,0.3)] border-cyan-500/40',
+  purple: 'bg-purple-500/85 dark:bg-purple-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_10px_rgba(168,85,247,0.3)] border-purple-500/40',
 };
 
 export const GlassToggle: React.FC<GlassToggleProps> = ({
@@ -56,7 +68,7 @@ export const GlassToggle: React.FC<GlassToggleProps> = ({
       disabled={disabled}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
-      className={`min-w-[44px] min-h-[44px] inline-flex items-center justify-center p-1 rounded-full cursor-pointer select-none group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50 active:scale-[0.98] transition-transform duration-150 ${
+      className={`min-w-[40px] min-h-[38px] sm:min-w-[44px] sm:min-h-[40px] inline-flex items-center justify-center p-0.5 rounded-full cursor-pointer select-none group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50 active:scale-[0.98] transition-transform duration-150 ${
         disabled ? 'opacity-40 cursor-not-allowed pointer-events-none' : ''
       } ${className}`}
     >

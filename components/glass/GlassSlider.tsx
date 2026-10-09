@@ -9,10 +9,29 @@ export interface GlassSliderProps {
   step?: number;
   label?: string;
   formatValue?: (val: number) => string;
-  accentColor?: 'primary' | 'emerald' | 'amber';
+  accentColor?:
+    | 'primary'
+    | 'emerald'
+    | 'amber'
+    | 'rose'
+    | 'sky'
+    | 'indigo'
+    | 'cyan'
+    | 'purple';
   disabled?: boolean;
   className?: string;
 }
+
+const ACCENT_CLASSES: Record<string, { accent: string; text: string }> = {
+  primary: { accent: 'accent-primary-500', text: 'text-primary-600 dark:text-primary-400' },
+  emerald: { accent: 'accent-emerald-500', text: 'text-emerald-600 dark:text-emerald-400' },
+  amber: { accent: 'accent-amber-500', text: 'text-amber-600 dark:text-amber-400' },
+  rose: { accent: 'accent-rose-500', text: 'text-rose-600 dark:text-rose-400' },
+  sky: { accent: 'accent-sky-500', text: 'text-sky-600 dark:text-sky-400' },
+  indigo: { accent: 'accent-indigo-500', text: 'text-indigo-600 dark:text-indigo-400' },
+  cyan: { accent: 'accent-cyan-500', text: 'text-cyan-600 dark:text-cyan-400' },
+  purple: { accent: 'accent-purple-500', text: 'text-purple-600 dark:text-purple-400' },
+};
 
 export const GlassSlider: React.FC<GlassSliderProps> = ({
   value,
@@ -27,23 +46,19 @@ export const GlassSlider: React.FC<GlassSliderProps> = ({
   disabled = false,
   className = '',
 }) => {
-  const accentClasses = {
-    primary: 'accent-primary-500 text-primary-600 dark:text-primary-400',
-    emerald: 'accent-emerald-500 text-emerald-600 dark:text-emerald-400',
-    amber: 'accent-amber-500 text-amber-600 dark:text-amber-400',
-  }[accentColor];
+  const currentAccent = ACCENT_CLASSES[accentColor] || ACCENT_CLASSES.primary;
 
   return (
-    <div className={`space-y-1.5 w-full ${disabled ? 'opacity-40 pointer-events-none' : ''} ${className}`}>
+    <div className={`space-y-1 w-full ${disabled ? 'opacity-40 pointer-events-none' : ''} ${className}`}>
       {label && (
         <div className="flex items-center justify-between text-2xs font-bold text-light-text dark:text-dark-text">
           <span className="text-light-text-secondary dark:text-dark-text-secondary">{label}</span>
-          <span className={`font-mono ${accentClasses.split(' ')[1]} ${accentClasses.split(' ')[2]}`}>
+          <span className={`font-mono font-bold ${currentAccent.text}`}>
             {formatValue(value)}
           </span>
         </div>
       )}
-      <div className="flex items-center min-h-[44px] py-2">
+      <div className="flex items-center min-h-[32px] py-1">
         <input
           type="range"
           min={min}
@@ -55,7 +70,7 @@ export const GlassSlider: React.FC<GlassSliderProps> = ({
           onPointerUp={onPointerUp}
           onMouseUp={onPointerUp}
           onTouchEnd={onPointerUp}
-          className={`w-full cursor-pointer h-2 bg-black/10 dark:bg-white/10 rounded-lg ${accentClasses.split(' ')[0]} transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50`}
+          className={`w-full cursor-pointer h-1.5 bg-black/10 dark:bg-white/10 rounded-lg ${currentAccent.accent} transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50`}
         />
       </div>
     </div>

@@ -1187,28 +1187,29 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                 activeFilterCount={activeFilterCount}
                 onClearFilters={handleClearFilters}
                 filterTabContent={
-                    <div className="space-y-5">
+                    <div className="space-y-3">
                         {/* Status Filter */}
                         <div>
-                            <label className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase block mb-2">
+                            <label className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase block mb-1.5">
                                 Trip Status
                             </label>
                             <GlassSegmented<'all' | 'Past' | 'Upcoming' | 'Planning'>
                                 options={[
-                                    { id: 'all', label: 'All' },
-                                    { id: 'Past', label: 'Past' },
-                                    { id: 'Upcoming', label: 'Upcoming' },
-                                    { id: 'Planning', label: 'Planning' }
+                                    { id: 'all', label: 'All', accentColor: 'emerald' },
+                                    { id: 'Past', label: 'Past', accentColor: 'emerald' },
+                                    { id: 'Upcoming', label: 'Upcoming', accentColor: 'emerald' },
+                                    { id: 'Planning', label: 'Planning', accentColor: 'emerald' }
                                 ]}
                                 value={statusFilter}
                                 onChange={(val) => setStatusFilter(val)}
                                 columns={4}
+                                accentColor="emerald"
                             />
                         </div>
 
                         {/* Year Filter */}
                         <div>
-                            <label className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase block mb-2">
+                            <label className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase block mb-1.5">
                                 Operation Year
                             </label>
                             <LiquidGlassSelect
@@ -1226,7 +1227,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
 
                         {/* Departure Station */}
                         <div>
-                            <label className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase block mb-2">
+                            <label className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase block mb-1.5">
                                 Departure Hub
                             </label>
                             <LiquidGlassMultiSelect
@@ -1242,7 +1243,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
 
                         {/* Arrival Station */}
                         <div>
-                            <label className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase block mb-2">
+                            <label className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase block mb-1.5">
                                 Arrival Hub
                             </label>
                             <LiquidGlassMultiSelect
@@ -1258,12 +1259,12 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
 
                         {/* Date Range */}
                         <div>
-                            <label className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase block mb-2">
+                            <label className="text-2xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase block mb-1.5">
                                 Date Range
                             </label>
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
-                                    <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold block mb-1">From</span>
+                                    <span className="text-3xs text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold block mb-0.5">From</span>
                                     <GlassDatePicker
                                         value={dateFrom}
                                         onChange={setDateFrom}
@@ -1272,7 +1273,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                     />
                                 </div>
                                 <div>
-                                    <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold block mb-1">To</span>
+                                    <span className="text-3xs text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold block mb-0.5">To</span>
                                     <GlassDatePicker
                                         value={dateTo}
                                         onChange={setDateTo}

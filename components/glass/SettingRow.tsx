@@ -26,14 +26,14 @@ export const SettingRow: React.FC<SettingRowProps> = ({
   return (
     <div
       id={id}
-      className={`space-y-2.5 ${disabled ? 'opacity-50 pointer-events-none' : ''} ${className}`}
+      className={`space-y-1.5 ${disabled ? 'opacity-50 pointer-events-none' : ''} ${className}`}
     >
-      <div className="flex items-center justify-between gap-3 min-h-[44px]">
-        <div className="flex items-center gap-2.5 min-w-0 pr-1">
+      <div className="flex items-center justify-between gap-2 min-h-[36px] sm:min-h-[38px]">
+        <div className="flex items-center gap-2 min-w-0 pr-1">
           {icon && <div className="shrink-0">{icon}</div>}
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-xs font-bold text-light-text dark:text-dark-text leading-snug">
+              <span className="text-xs font-bold text-light-text dark:text-dark-text leading-tight">
                 {label}
               </span>
               {badge && <span className="shrink-0">{badge}</span>}
@@ -50,7 +50,7 @@ export const SettingRow: React.FC<SettingRowProps> = ({
       </div>
 
       {children && (
-        <div className="pt-2.5 border-t border-black/5 dark:border-white/5 space-y-2.5 animate-fadeIn">
+        <div className="pt-1.5 border-t border-black/5 dark:border-white/5 space-y-1.5 animate-fadeIn">
           {children}
         </div>
       )}

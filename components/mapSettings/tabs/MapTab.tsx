@@ -153,7 +153,7 @@ const BasemapCard = React.memo<BasemapCardProps>(({
     <button
       type="button"
       onClick={() => onSelect(item.id)}
-      className={`p-2.5 rounded-2xl border transition-all duration-150 text-left flex flex-col justify-between gap-2.5 cursor-pointer active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50 ${
+      className={`p-2 rounded-xl border transition-all duration-150 text-left flex flex-col justify-between gap-1.5 cursor-pointer active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50 ${
         isSelected
           ? 'border-primary-500/50 bg-primary-500/15 dark:bg-primary-500/25 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(234,88,12,0.15)] ring-1 ring-primary-500/30 wg-glass-surface'
           : 'border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] hover:border-black/15 dark:hover:border-white/20'
@@ -161,7 +161,7 @@ const BasemapCard = React.memo<BasemapCardProps>(({
     >
       {/* Swatch Pill with Phosphor Icon */}
       <div
-        className={`w-full h-8 rounded-xl border flex items-center px-2.5 justify-between relative overflow-hidden ${item.gradientClass}`}
+        className={`w-full h-7 rounded-lg border flex items-center px-2 justify-between relative overflow-hidden ${item.gradientClass}`}
       >
         <div className="flex items-center gap-1.5 z-10">
           <Icon className={`w-3.5 h-3.5 ${item.textColor}`} weight="bold" />
@@ -170,7 +170,7 @@ const BasemapCard = React.memo<BasemapCardProps>(({
           </span>
         </div>
         {isSelected && (
-          <div className="w-4 h-4 rounded-full bg-primary-500 flex items-center justify-center text-white shrink-0 z-10 shadow-xs">
+          <div className="w-3.5 h-3.5 rounded-full bg-primary-500 flex items-center justify-center text-white shrink-0 z-10 shadow-xs">
             <Check className="w-2.5 h-2.5" weight="bold" />
           </div>
         )}
@@ -178,7 +178,7 @@ const BasemapCard = React.memo<BasemapCardProps>(({
 
       {/* Caption & dark-theme-only helper */}
       <div className="flex items-center justify-between gap-1 w-full px-0.5">
-        <span className="text-xs font-bold text-light-text dark:text-dark-text truncate">
+        <span className="text-2xs sm:text-xs font-bold text-light-text dark:text-dark-text truncate">
           {item.label}
         </span>
         {item.isDarkOnly && !isDark && (
@@ -203,13 +203,13 @@ export const MapTab: React.FC<MapTabProps> = ({
   }, [settings.basemap, isDark]);
 
   return (
-    <div className="space-y-5 animate-fadeIn">
+    <div className="space-y-3 animate-fadeIn">
       {/* 1. VIEW PROJECTION ENGINE */}
-      <SettingsSection title={MAP_SETTINGS_LABELS.mapTab.view}>
+      <SettingsSection title={MAP_SETTINGS_LABELS.mapTab.view} accentColor="sky">
         <GlassSegmented<'globe' | 'flat'>
           options={[
-            { id: 'globe', label: MAP_SETTINGS_LABELS.mapTab.globe, icon: Globe },
-            { id: 'flat', label: MAP_SETTINGS_LABELS.mapTab.flat, icon: MapTrifold },
+            { id: 'globe', label: MAP_SETTINGS_LABELS.mapTab.globe, icon: Globe, accentColor: 'sky' },
+            { id: 'flat', label: MAP_SETTINGS_LABELS.mapTab.flat, icon: MapTrifold, accentColor: 'emerald' },
           ]}
           value={settings.projection || 'flat'}
           onChange={(val) => onChangeSetting('projection', val)}
@@ -221,10 +221,16 @@ export const MapTab: React.FC<MapTabProps> = ({
         <SettingRow
           label={MAP_SETTINGS_LABELS.mapTab.starsAndAtmosphere}
           helper={!isGlobe ? MAP_SETTINGS_LABELS.mapTab.starsAtmosphereHelper : undefined}
+          icon={
+            <div className="w-7 h-7 rounded-lg bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0">
+              <Sparkle size={15} weight="bold" />
+            </div>
+          }
           control={
             <GlassToggle
               checked={isGlobe && settings.atmosphere !== false}
               disabled={!isGlobe}
+              accentColor="sky"
               onChange={(val) => onChangeSetting('atmosphere', val)}
               ariaLabel={MAP_SETTINGS_LABELS.mapTab.starsAndAtmosphere}
             />
@@ -234,9 +240,15 @@ export const MapTab: React.FC<MapTabProps> = ({
         {/* Day & night shading */}
         <SettingRow
           label={MAP_SETTINGS_LABELS.mapTab.dayNightShading}
+          icon={
+            <div className="w-7 h-7 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
+              <Sun size={15} weight="bold" />
+            </div>
+          }
           control={
             <GlassToggle
               checked={Boolean(settings.timeOfDay)}
+              accentColor="amber"
               onChange={(val) => onChangeSetting('timeOfDay', val)}
               ariaLabel={MAP_SETTINGS_LABELS.mapTab.dayNightShading}
             />
@@ -245,14 +257,14 @@ export const MapTab: React.FC<MapTabProps> = ({
       </SettingsSection>
 
       {/* 2. BASEMAP PICKER */}
-      <SettingsSection title={MAP_SETTINGS_LABELS.mapTab.basemap}>
-        <div className="space-y-4">
+      <SettingsSection title={MAP_SETTINGS_LABELS.mapTab.basemap} accentColor="primary">
+        <div className="space-y-2.5">
           {BASEMAP_GROUPS.map((group) => (
-            <div key={group.groupName} className="space-y-2">
+            <div key={group.groupName} className="space-y-1.5">
               <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
                 {group.groupName}
               </span>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                 {group.items.map((b) => {
                   const isSelected =
                     settings.basemap === b.id ||

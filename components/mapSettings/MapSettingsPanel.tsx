@@ -283,16 +283,22 @@ export const MapSettingsPanel: React.FC<MapSettingsPanelProps> = ({
       id: 'map' as const,
       label: MAP_SETTINGS_LABELS.tabs.map,
       icon: Globe,
+      activeStyle: 'text-sky-700 dark:text-sky-300 bg-sky-500/15 dark:bg-sky-500/25 border-sky-500',
+      iconActive: 'text-sky-600 dark:text-sky-400',
     },
     {
       id: 'layers' as const,
       label: MAP_SETTINGS_LABELS.tabs.layers,
       icon: Stack,
+      activeStyle: 'text-amber-700 dark:text-amber-300 bg-amber-500/15 dark:bg-amber-500/25 border-amber-500',
+      iconActive: 'text-amber-600 dark:text-amber-400',
     },
     {
       id: 'trips' as const,
       label: MAP_SETTINGS_LABELS.tabs.trips,
       icon: Airplane,
+      activeStyle: 'text-indigo-700 dark:text-indigo-300 bg-indigo-500/15 dark:bg-indigo-500/25 border-indigo-500',
+      iconActive: 'text-indigo-600 dark:text-indigo-400',
     },
     ...(filterTabContent
       ? [
@@ -303,6 +309,8 @@ export const MapSettingsPanel: React.FC<MapSettingsPanelProps> = ({
                 ? `${MAP_SETTINGS_LABELS.tabs.filter} · ${activeFilterCount}`
                 : MAP_SETTINGS_LABELS.tabs.filter,
             icon: Funnel,
+            activeStyle: 'text-emerald-700 dark:text-emerald-300 bg-emerald-500/15 dark:bg-emerald-500/25 border-emerald-500',
+            iconActive: 'text-emerald-600 dark:text-emerald-400',
           },
         ]
       : []),
@@ -321,13 +329,13 @@ export const MapSettingsPanel: React.FC<MapSettingsPanelProps> = ({
       <div
         className={`fixed z-modal flex pointer-events-none transition-all duration-300 ease-out ${
           // Desktop: Floating right drawer
-          'sm:top-4 sm:right-4 sm:bottom-4 sm:left-auto sm:max-w-full sm:pl-10 ' +
+          'sm:top-3 sm:right-3 sm:bottom-3 md:top-4 md:right-4 md:bottom-4 sm:left-auto sm:max-w-full sm:pl-6 ' +
           // Mobile: Bottom sheet docked at bottom
           'inset-x-0 bottom-0 top-auto'
         }`}
       >
         <div
-          className={`w-screen sm:w-[500px] md:w-[540px] flex flex-col pointer-events-auto transition-transform duration-300 ease-out ${
+          className={`w-screen sm:w-[460px] md:w-[480px] flex flex-col pointer-events-auto transition-transform duration-300 ease-out ${
             // Mobile: slide up from bottom; Desktop: slide in from right
             isVisible
               ? 'translate-y-0 sm:translate-y-0 sm:translate-x-0'
@@ -335,8 +343,8 @@ export const MapSettingsPanel: React.FC<MapSettingsPanelProps> = ({
           } ${
             // Mobile height
             isExpandedMobile
-              ? 'h-[90dvh] sm:h-full'
-              : 'h-[62dvh] sm:h-full'
+              ? 'h-[88dvh] sm:h-full'
+              : 'h-[60dvh] sm:h-full'
           }`}
           onClick={(e) => e.stopPropagation()}
           onWheel={(e) => e.stopPropagation()}
@@ -354,7 +362,7 @@ export const MapSettingsPanel: React.FC<MapSettingsPanelProps> = ({
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
                 onClick={() => setIsExpandedMobile(!isExpandedMobile)}
-                className="sm:hidden flex items-center justify-center pt-2.5 pb-1 w-full cursor-grab active:cursor-grabbing shrink-0 select-none touch-none"
+                className="sm:hidden flex items-center justify-center pt-2 pb-1 w-full cursor-grab active:cursor-grabbing shrink-0 select-none touch-none"
                 aria-label="Toggle drawer expansion"
               >
                 <div className="w-10 h-1 rounded-full bg-black/20 dark:bg-white/25 hover:bg-black/40 dark:hover:bg-white/45 transition-colors" />
@@ -368,14 +376,14 @@ export const MapSettingsPanel: React.FC<MapSettingsPanelProps> = ({
                     setIsExpandedMobile(!isExpandedMobile);
                   }
                 }}
-                className="flex items-center justify-between px-6 py-3.5 border-b border-black/5 dark:border-white/5 bg-gradient-to-r from-primary-500/10 via-transparent to-transparent shrink-0 sm:cursor-default cursor-pointer"
+                className="flex items-center justify-between px-4 sm:px-5 py-2.5 sm:py-3 border-b border-black/5 dark:border-white/5 bg-gradient-to-r from-primary-500/10 via-transparent to-transparent shrink-0 sm:cursor-default cursor-pointer"
               >
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-primary-500/15 dark:bg-primary-500/25 border border-primary-500/30 dark:border-primary-400/40 flex items-center justify-center text-primary-600 dark:text-primary-400 shrink-0 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_6px_rgba(234,88,12,0.15)] wg-glass-surface">
-                    <SlidersHorizontal className="w-4 h-4" weight="bold" />
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-primary-500/15 dark:bg-primary-500/25 border border-primary-500/30 dark:border-primary-400/40 flex items-center justify-center text-primary-600 dark:text-primary-400 shrink-0 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_6px_rgba(234,88,12,0.15)] wg-glass-surface">
+                    <SlidersHorizontal className="w-3.5 h-3.5 sm:w-4 sm:h-4" weight="bold" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-bold text-light-text dark:text-dark-text tracking-tight">
+                    <h2 className="text-xs sm:text-sm font-bold text-light-text dark:text-dark-text tracking-tight">
                       {MAP_SETTINGS_LABELS.panelTitle}
                     </h2>
                   </div>
@@ -385,10 +393,10 @@ export const MapSettingsPanel: React.FC<MapSettingsPanelProps> = ({
                   <button
                     type="button"
                     onClick={handleClose}
-                    className="w-8 h-8 rounded-xl bg-white/50 dark:bg-white/10 hover:bg-white/80 dark:hover:bg-white/15 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text transition-all duration-150 flex items-center justify-center cursor-pointer border border-black/5 dark:border-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)] active:scale-95 wg-glass-surface"
+                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white/50 dark:bg-white/10 hover:bg-white/80 dark:hover:bg-white/15 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text transition-all duration-150 flex items-center justify-center cursor-pointer border border-black/5 dark:border-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)] active:scale-95 wg-glass-surface"
                     aria-label={MAP_SETTINGS_LABELS.actions.close}
                   >
-                    <X className="w-4 h-4" weight="bold" />
+                    <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" weight="bold" />
                   </button>
                 </div>
               </div>
@@ -397,7 +405,7 @@ export const MapSettingsPanel: React.FC<MapSettingsPanelProps> = ({
               <div
                 className={`grid ${
                   tabs.length === 4 ? 'grid-cols-4' : 'grid-cols-3'
-                } border-b border-black/5 dark:border-white/5 px-4 pt-2 gap-1.5 bg-black/[0.02] dark:bg-white/[0.02] shrink-0`}
+                } border-b border-black/5 dark:border-white/5 px-2.5 sm:px-3 pt-1.5 gap-1 bg-black/[0.02] dark:bg-white/[0.02] shrink-0`}
               >
                 {tabs.map((tab) => {
                   const isActive = activeTab === tab.id;
@@ -407,22 +415,22 @@ export const MapSettingsPanel: React.FC<MapSettingsPanelProps> = ({
                       key={tab.id}
                       type="button"
                       onClick={() => setActiveTab(tab.id)}
-                      className={`flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-t-xl text-xs font-bold transition-all duration-200 cursor-pointer relative min-w-0 ${
+                      className={`flex items-center justify-center gap-1.5 py-2 px-1.5 rounded-t-xl text-xs font-bold transition-all duration-200 cursor-pointer relative min-w-0 ${
                         isActive
-                          ? 'text-primary-700 dark:text-primary-300 bg-primary-500/15 dark:bg-primary-500/25 border-b-2 border-primary-500 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)] wg-glass-surface'
+                          ? `${tab.activeStyle} border-b-2 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)] wg-glass-surface`
                           : 'text-light-text-secondary dark:text-dark-text-secondary opacity-75 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/5'
                       }`}
                       title={tab.label}
                     >
-                      <Icon className="w-4 h-4 shrink-0" weight={isActive ? 'bold' : 'regular'} />
+                      <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? tab.iconActive : ''}`} weight={isActive ? 'bold' : 'regular'} />
                       <span className="truncate">{tab.label}</span>
                     </button>
                   );
                 })}
               </div>
 
-              {/* Scrollable Tab Body (pb-28 ensures footer never overlaps content) */}
-              <div className="flex-1 overflow-y-auto p-6 pb-28 space-y-6 custom-scrollbar text-light-text dark:text-dark-text">
+              {/* Scrollable Tab Body (pb-20 ensures footer never overlaps content) */}
+              <div className="flex-1 overflow-y-auto p-3.5 sm:p-4 pb-20 space-y-3 sm:space-y-3.5 custom-scrollbar text-light-text dark:text-dark-text">
                 {activeTab === 'map' && (
                   <MapTab
                     settings={localSettings}
@@ -469,37 +477,38 @@ export const MapSettingsPanel: React.FC<MapSettingsPanelProps> = ({
               </div>
 
               {/* Sticky Footer Actions (MC-05: Reset settings with confirm + Recenter + Done) */}
-              <div className="absolute bottom-0 inset-x-0 p-4 border-t border-black/5 dark:border-white/10 bg-white/80 dark:bg-dark-card/90 wg-glass-surface flex items-center justify-between gap-2 shrink-0 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
+              <div className="absolute bottom-0 inset-x-0 px-3.5 py-2 sm:px-4 sm:py-2.5 border-t border-black/5 dark:border-white/10 bg-white/80 dark:bg-dark-card/90 wg-glass-surface flex items-center justify-between gap-2 shrink-0 pb-[calc(0.625rem+env(safe-area-inset-bottom,0px))]">
                 {/* Reset settings button & inline confirm dialog */}
                 {isResetConfirming ? (
-                  <div className="flex items-center gap-2 animate-fadeIn">
+                  <div className="flex items-center gap-1.5 animate-fadeIn">
                     <span className="text-2xs font-bold text-rose-600 dark:text-rose-400">
                       {MAP_SETTINGS_LABELS.actions.resetSettingsConfirm}
                     </span>
                     <button
                       type="button"
                       onClick={() => setIsResetConfirming(false)}
-                      className="px-2.5 py-1.5 rounded-lg text-2xs font-bold bg-black/5 dark:bg-white/10 text-light-text dark:text-dark-text hover:bg-black/10 transition-colors"
+                      className="px-2 py-1 rounded-lg text-2xs font-bold bg-black/5 dark:bg-white/10 text-light-text dark:text-dark-text hover:bg-black/10 transition-colors"
                     >
                       {MAP_SETTINGS_LABELS.actions.cancel}
                     </button>
                     <button
                       type="button"
                       onClick={handleConfirmReset}
-                      className="px-2.5 py-1.5 rounded-lg text-2xs font-bold bg-rose-500 text-white hover:bg-rose-600 shadow-sm transition-colors"
+                      className="px-2 py-1 rounded-lg text-2xs font-bold bg-rose-500 text-white hover:bg-rose-600 shadow-sm transition-colors"
                     >
                       {MAP_SETTINGS_LABELS.actions.reset}
                     </button>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => setIsResetConfirming(true)}
-                      className="px-3 py-2 rounded-xl text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer flex items-center gap-1.5 active:scale-95"
+                      className="px-2.5 py-1.5 rounded-xl text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer flex items-center gap-1.5 active:scale-95"
                     >
                       <ArrowCounterClockwise className="w-3.5 h-3.5" weight="bold" />
-                      <span>{MAP_SETTINGS_LABELS.actions.resetSettings}</span>
+                      <span className="hidden xs:inline">{MAP_SETTINGS_LABELS.actions.resetSettings}</span>
+                      <span className="xs:hidden">Reset</span>
                     </button>
 
                     {/* Optional Recenter map button */}
@@ -507,10 +516,11 @@ export const MapSettingsPanel: React.FC<MapSettingsPanelProps> = ({
                       <button
                         type="button"
                         onClick={onResetCamera}
-                        className="px-3 py-2 rounded-xl text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer flex items-center gap-1.5 active:scale-95"
+                        className="px-2.5 py-1.5 rounded-xl text-xs font-semibold text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer flex items-center gap-1.5 active:scale-95"
                       >
                         <Compass className="w-3.5 h-3.5" weight="bold" />
                         <span className="hidden xs:inline">{MAP_SETTINGS_LABELS.actions.recenterMap}</span>
+                        <span className="xs:hidden">Recenter</span>
                       </button>
                     )}
                   </div>
@@ -520,7 +530,7 @@ export const MapSettingsPanel: React.FC<MapSettingsPanelProps> = ({
                 <button
                   type="button"
                   onClick={handleClose}
-                  className="px-5 py-2 rounded-xl text-xs font-bold bg-primary-500 hover:bg-primary-600 text-white shadow-md shadow-primary-500/20 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
+                  className="px-4 py-1.5 rounded-xl text-xs font-bold bg-primary-500 hover:bg-primary-600 text-white shadow-md shadow-primary-500/20 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
                 >
                   <span>{MAP_SETTINGS_LABELS.actions.done}</span>
                   <Check className="w-3.5 h-3.5" weight="bold" />
