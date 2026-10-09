@@ -71,4 +71,10 @@ This document tracks all changes made to reorganize WanderGrid's "Mission Contro
 - **Changes**: Debounced slider persistence (200ms delay, flushed on pointer up/close). Removed unreferenced `flightInterpolation` setting. Memoized basemap list.
 
 ### MC-10: Icons Instead of Emoji
-- **Changes**: Replaced all emoji in swatches and territory rows with duotone Phosphor icons and legend dots.
+- **Changes**: Replaced all emoji characters with Phosphor icons and legend dots matching map layers:
+  - Swatches: `Sparkle` (Auto/Night lights), `MapTrifold` (Streets), `Sun` (Bright), `Compass` (Light), `Moon` (Dark), `Mountains` (Dark blue), `Planet` (Satellite), `Buildings` (3D), `Waves` (Ocean).
+  - Territory highlights:
+    - Lived in: `House` icon with emerald theme (`[16, 185, 129]`)
+    - Layovers only: `AirplaneLanding` with amber theme (`[245, 158, 11]`)
+    - Wishlist: `Star` with rose theme (`[244, 63, 94]`)
+- **Verification**: Verified zero emoji characters in `components/mapSettings/` and `components/glass/`.
