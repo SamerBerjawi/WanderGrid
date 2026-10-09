@@ -134,6 +134,63 @@ const BASEMAP_GROUPS: { groupName: string; items: BasemapDef[] }[] = [
   },
 ];
 
+interface BasemapCardProps {
+  item: BasemapDef;
+  isSelected: boolean;
+  isDark: boolean;
+  onSelect: (id: BasemapMode) => void;
+}
+
+const BasemapCard = React.memo<BasemapCardProps>(({
+  item,
+  isSelected,
+  isDark,
+  onSelect,
+}) => {
+  const Icon = item.icon;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(item.id)}
+      className={`p-2.5 rounded-2xl border transition-all duration-150 text-left flex flex-col justify-between gap-2.5 cursor-pointer active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50 ${
+        isSelected
+          ? 'border-primary-500/50 bg-primary-500/15 dark:bg-primary-500/25 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(234,88,12,0.15)] ring-1 ring-primary-500/30 wg-glass-surface'
+          : 'border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] hover:border-black/15 dark:hover:border-white/20'
+      }`}
+    >
+      {/* Swatch Pill with Phosphor Icon */}
+      <div
+        className={`w-full h-8 rounded-xl border flex items-center px-2.5 justify-between relative overflow-hidden ${item.gradientClass}`}
+      >
+        <div className="flex items-center gap-1.5 z-10">
+          <Icon className={`w-3.5 h-3.5 ${item.textColor}`} weight="bold" />
+          <span className={`text-2xs font-bold truncate ${item.textColor}`}>
+            {item.label}
+          </span>
+        </div>
+        {isSelected && (
+          <div className="w-4 h-4 rounded-full bg-primary-500 flex items-center justify-center text-white shrink-0 z-10 shadow-xs">
+            <Check className="w-2.5 h-2.5" weight="bold" />
+          </div>
+        )}
+      </div>
+
+      {/* Caption & dark-theme-only helper */}
+      <div className="flex items-center justify-between gap-1 w-full px-0.5">
+        <span className="text-xs font-bold text-light-text dark:text-dark-text truncate">
+          {item.label}
+        </span>
+        {item.isDarkOnly && !isDark && (
+          <span className="text-3xs font-medium text-light-text-secondary dark:text-dark-text-secondary shrink-0">
+            {MAP_SETTINGS_LABELS.mapTab.oceanDarkOnlyHelper}
+          </span>
+        )}
+      </div>
+    </button>
+  );
+});
+
 export const MapTab: React.FC<MapTabProps> = ({
   settings,
   onChangeSetting,
@@ -197,52 +254,19 @@ export const MapTab: React.FC<MapTabProps> = ({
               </span>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {group.items.map((b) => {
-                  const Icon = b.icon;
                   const isSelected =
                     settings.basemap === b.id ||
                     (settings.basemap === 'default' && b.id === 'default') ||
                     (b.id !== 'default' && effectiveBasemap === b.id);
 
                   return (
-                    <button
+                    <BasemapCard
                       key={b.id}
-                      type="button"
-                      onClick={() => onChangeSetting('basemap', b.id)}
-                      className={`p-2.5 rounded-2xl border transition-all duration-150 text-left flex flex-col justify-between gap-2.5 cursor-pointer active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50 ${
-                        isSelected
-                          ? 'border-primary-500/50 bg-primary-500/15 dark:bg-primary-500/25 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(234,88,12,0.15)] ring-1 ring-primary-500/30 wg-glass-surface'
-                          : 'border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] hover:border-black/15 dark:hover:border-white/20'
-                      }`}
-                    >
-                      {/* Swatch Pill with Phosphor Icon */}
-                      <div
-                        className={`w-full h-8 rounded-xl border flex items-center px-2.5 justify-between relative overflow-hidden ${b.gradientClass}`}
-                      >
-                        <div className="flex items-center gap-1.5 z-10">
-                          <Icon className={`w-3.5 h-3.5 ${b.textColor}`} weight="bold" />
-                          <span className={`text-2xs font-bold truncate ${b.textColor}`}>
-                            {b.label}
-                          </span>
-                        </div>
-                        {isSelected && (
-                          <div className="w-4 h-4 rounded-full bg-primary-500 flex items-center justify-center text-white shrink-0 z-10 shadow-xs">
-                            <Check className="w-2.5 h-2.5" weight="bold" />
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Caption & dark-theme-only helper */}
-                      <div className="flex items-center justify-between gap-1 w-full px-0.5">
-                        <span className="text-xs font-bold text-light-text dark:text-dark-text truncate">
-                          {b.label}
-                        </span>
-                        {b.isDarkOnly && !isDark && (
-                          <span className="text-3xs font-medium text-light-text-secondary dark:text-dark-text-secondary shrink-0">
-                            {MAP_SETTINGS_LABELS.mapTab.oceanDarkOnlyHelper}
-                          </span>
-                        )}
-                      </div>
-                    </button>
+                      item={b}
+                      isSelected={isSelected}
+                      isDark={isDark}
+                      onSelect={(id) => onChangeSetting('basemap', id)}
+                    />
                   );
                 })}
               </div>
