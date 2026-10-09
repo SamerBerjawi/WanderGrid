@@ -8,6 +8,49 @@ function viteDevApiPlugin() {
     name: 'vite-dev-api-plugin',
     configureServer(server: any) {
       server.middlewares.use(async (req: any, res: any, next: any) => {
+        // Route proxy handler for overland road & rail tracing in dev mode
+        if (req.url && (req.url.startsWith('/api/proxy/route?') || req.url.startsWith('/api/route?'))) {
+          try {
+            const urlObj = new URL(req.url, 'http://localhost');
+            const profile = urlObj.searchParams.get('profile') || 'car';
+            const coords = urlObj.searchParams.get('coords') || '';
+            const osrmPath = profile === 'bike' ? 'routed-bike/route/v1/bicycle' : profile === 'foot' ? 'routed-foot/route/v1/foot' : 'routed-car/route/v1/driving';
+            const upstreamUrl = `https://routing.openstreetmap.de/${osrmPath}/${coords}?overview=full&geometries=geojson&alternatives=false&steps=false`;
+
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 12000);
+            const upstream = await fetch(upstreamUrl, { signal: controller.signal });
+            clearTimeout(timer);
+
+            if (upstream.ok) {
+              const data = await upstream.json();
+              const route = data?.routes?.[0];
+              if (data.code === 'Ok' && route?.geometry?.coordinates?.length) {
+                res.statusCode = 200;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({
+                  ok: true,
+                  code: 'Ok',
+                  distanceKm: Math.round((route.distance / 1000) * 10) / 10,
+                  durationMin: Math.round(route.duration / 60),
+                  geometry: route.geometry.coordinates.map((c: any) => [c[0], c[1], 0]),
+                  attribution: '© OpenStreetMap contributors · routing by FOSSGIS'
+                }));
+                return;
+              }
+            }
+            res.statusCode = 502;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ ok: false, error: 'Upstream route calculation failed' }));
+            return;
+          } catch (err: any) {
+            res.statusCode = 502;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ ok: false, error: err.message || 'Routing error' }));
+            return;
+          }
+        }
+
         if (!req.url || !req.url.startsWith('/api/proxy/test/')) {
           return next();
         }
@@ -84,6 +127,12 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: true,
+        proxy: {
+          '/api': {
+            target: 'http://localhost:3001',
+            changeOrigin: true
+          }
+        }
       },
       plugins: [
         react(),

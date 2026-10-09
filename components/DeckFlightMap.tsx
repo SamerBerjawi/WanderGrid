@@ -449,6 +449,10 @@ export const createMapLibreStyle = (
     if (FEATURE_FLAGS.GEV_P04B_OPENFREEMAP) {
         if (effectiveLayer === 'liberty' || effectiveLayer === 'ofm_liberty') return 'https://tiles.openfreemap.org/styles/liberty';
         if (effectiveLayer === 'bright' || effectiveLayer === 'ofm_bright') return 'https://tiles.openfreemap.org/styles/bright';
+        if (effectiveLayer === 'positron' || effectiveLayer === 'ofm_positron') return 'https://tiles.openfreemap.org/styles/positron';
+        if (effectiveLayer === 'dark' || effectiveLayer === 'onyx') return 'https://tiles.openfreemap.org/styles/dark';
+        if (effectiveLayer === 'fiord') return 'https://tiles.openfreemap.org/styles/fiord';
+        if (effectiveLayer === '3d' || effectiveLayer === 'liberty-3d') return 'https://tiles.openfreemap.org/styles/liberty';
     }
 
     // Synchronously resolve and sanitize CARTO API key from arguments or localStorage
@@ -739,6 +743,34 @@ const syncOpenAipOverlayOnMap = (
     }
 };
 
+const simplifyRailroadLayers = (map: maplibregl.Map) => {
+    if (!map.isStyleLoaded()) {
+        const retry = () => simplifyRailroadLayers(map);
+        map.once('styledata', retry);
+        map.once('load', retry);
+        return;
+    }
+    try {
+        const style = map.getStyle();
+        if (!style || !style.layers) return;
+        style.layers.forEach((layer) => {
+            const id = layer.id;
+            const isRailLine = layer.type === 'line' && (
+                id.includes('rail') || 
+                id.includes('railway') || 
+                (layer['source-layer'] && String(layer['source-layer']).includes('rail'))
+            );
+            if (isRailLine) {
+                try {
+                    map.setPaintProperty(id, 'line-width', 1);
+                } catch {}
+            }
+        });
+    } catch (e) {
+        // Ignore style access error
+    }
+};
+
 export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     trips,
     onTripClick,
@@ -923,6 +955,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     const isDarkRef = useRef(isDark);
     isDarkRef.current = isDark;
     const lastAppliedStyleKeyRef = useRef<string>('');
+    const prevEffectiveLayerRef = useRef<string>(getEffectiveBasemap(currentLayer, isDark));
 
     // Reset fallback on manual basemap/appearance change
     useEffect(() => {
@@ -1194,7 +1227,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                             t.originLng,
                             t.destLat,
                             t.destLng,
-                            () => setOsrmVersion(v => v + 1)
+                            () => setOsrmVersion(v => v + 1),
+                            t.waypoints
                         );
                     }
                 }
@@ -1305,7 +1339,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     const isTracingEnabled = showRoadTracing || activeAppearance.routeTracing !== false;
                     const isTrackable = isTrain || isCarBus;
                     const cachedCoords = (isTrackable && isTracingEnabled)
-                        ? getCachedMultiModalRoute(t.mode, t.originLat, t.originLng, t.destLat, t.destLng)
+                        ? getCachedMultiModalRoute(t.mode, t.originLat, t.originLng, t.destLat, t.destLng, t.waypoints)
                         : null;
 
                     let path: [number, number, number][] = [];
@@ -1338,7 +1372,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         destination: t.destination,
                         provider: t.provider || t.mode,
                         identifier: t.identifier || '',
-                        mode: t.mode
+                        mode: t.mode,
+                        isTrain
                     });
                 }
 
@@ -1771,13 +1806,16 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         return hoveredRouteKey === d.corridorId ? [255, 255, 255, 255] : d.color;
                     },
                     getWidth: (d: any) => {
-                        const base = effectiveProjection === 'globe' ? 1.6 : 1.2;
-                        if (selectedCorridor && d.corridorId === selectedCorridor.id) return base * 1.5;
-                        return hoveredRouteKey === d.corridorId ? base + 0.8 : base;
+                        if (d.isTrain || (d.mode && ((d.mode.toLowerCase().includes('train') || d.mode.toLowerCase().includes('rail'))))) {
+                            return 1.0;
+                        }
+                        const base = effectiveProjection === 'globe' ? 2.2 : 1.8;
+                        if (selectedCorridor && d.corridorId === selectedCorridor.id) return base * 1.8;
+                        return hoveredRouteKey === d.corridorId ? base + 1.0 : base;
                     },
                     widthUnits: 'pixels',
-                    widthMinPixels: effectiveProjection === 'globe' ? 1.2 : 1.0,
-                    widthMaxPixels: 6,
+                    widthMinPixels: 1.0,
+                    widthMaxPixels: 8,
                     capRounded: true,
                     jointRounded: true,
                     wrapLongitude: true,
@@ -1802,8 +1840,10 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
         // 6. GPU Great-Circle Flight Arcs (AirTrail Benchmark Architecture)
         if (!activeAppearance.airportsOnly && flightArcs.length > 0 && showFlightRoutes && viewMode !== 'scratch') {
-            // Arc height elevation: on 3D globe, conform naturally to globe curvature (0.035 or 0.08 if elevated)
-            const arcHeight = effectiveProjection === 'globe' ? (isElevatedActive ? 0.08 : 0.035) : 0;
+            // Arc height elevation: on 3D globe, elevate flight arcs gracefully above the globe curvature
+            const arcHeight = effectiveProjection === 'globe'
+                ? (isElevatedActive ? 0.45 : 0.32)
+                : (isElevatedActive ? 0.35 : 0);
 
             // Visible Arc Layer
             layers.push(
@@ -1849,16 +1889,16 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     },
                     getWidth: (d: any) => {
                         const baseStroke = effectiveProjection === 'globe'
-                            ? (isWidthByFreq ? Math.min(3.2, 1.2 + Math.log2(d.count) * 0.45) : 1.3)
+                            ? (isWidthByFreq ? Math.min(4.8, 2.0 + Math.log2(d.count) * 0.7) : 2.2)
                             : (isWidthByFreq ? Math.min(4.5, 1.2 + Math.log2(d.count) * 0.75) : 1.5);
                         const strokeWidth = baseStroke * scaleMultiplier;
-                        if (selectedCorridor && d.corridorId === selectedCorridor.id) return strokeWidth * 2.0;
-                        if (hoveredRouteKey === d.corridorId) return strokeWidth + 1.0;
+                        if (selectedCorridor && d.corridorId === selectedCorridor.id) return strokeWidth * 2.2;
+                        if (hoveredRouteKey === d.corridorId) return strokeWidth + 1.5;
                         return strokeWidth;
                     },
                     widthUnits: 'pixels',
-                    widthMinPixels: effectiveProjection === 'globe' ? 1.1 : 1.5,
-                    widthMaxPixels: 8,
+                    widthMinPixels: effectiveProjection === 'globe' ? 2.0 : 1.5,
+                    widthMaxPixels: 14,
                     pickable: false, // Handled by wide ghost arc for effortless interaction
                     updateTriggers: {
                         getSourceColor: [selectedCorridor?.id, hoveredRouteKey, activeAppearance.routeColorMode],
@@ -2278,6 +2318,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             isMapLoadedRef.current = true;
             setupAirportIcons();
             syncAirportOverlayOnMap(map, isDetailedAirports, isDark);
+            simplifyRailroadLayers(map);
             if (isOpenAipOverlay && effectiveOpenAipKey) {
                 ensureOpenAipIcons(map, isDark ? 'dark' : 'light');
                 syncOpenAipOverlayOnMap(map, isOpenAipOverlay, isDark, effectiveOpenAipKey, activeAppearance.openAipGroups);
@@ -2416,7 +2457,18 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         const { tiles, maxzoom, attribution } = getBasemapTileConfig(effectiveLayer, effectiveCartoKey);
 
         // If the map style is already loaded, update the basemap raster source seamlessly in-place (unless using OFM vector styles)
-        const isOfmVector = effectiveLayer.startsWith('ofm_') || effectiveLayer === 'liberty' || effectiveLayer === 'bright';
+        const isOfmVector = effectiveLayer.startsWith('ofm_') || effectiveLayer === 'liberty' || effectiveLayer === 'bright' || effectiveLayer === 'positron' || effectiveLayer === 'dark' || effectiveLayer === 'fiord' || effectiveLayer === '3d';
+        const prevLayer = prevEffectiveLayerRef.current;
+        prevEffectiveLayerRef.current = effectiveLayer;
+
+        if (effectiveLayer === '3d') {
+            if (map.getPitch() < 20) {
+                map.easeTo({ pitch: 50, duration: 800 });
+            }
+        } else if (prevLayer === '3d' || map.getPitch() > 5 || Math.abs(map.getBearing()) > 0.5) {
+            // Unskew map when switching back from 3D to a standard basemap view
+            map.easeTo({ pitch: 0, bearing: 0, duration: 600 });
+        }
         if (map.isStyleLoaded() && !isOfmVector) {
             const currentLayerObj = map.getLayer('raster-basemap-layer') as any;
             const currentSourceId = currentLayerObj?.source;
@@ -2511,6 +2563,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 }
             });
             syncAirportOverlayOnMap(map, isDetailedAirports, isDark);
+            simplifyRailroadLayers(map);
             if (isOpenAipOverlay && effectiveOpenAipKey) {
                 ensureOpenAipIcons(map, isDark ? 'dark' : 'light');
                 syncOpenAipOverlayOnMap(map, isOpenAipOverlay, isDark, effectiveOpenAipKey, activeAppearance.openAipGroups);
@@ -2543,6 +2596,17 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         effectiveProjection,
         activeAppearance.airportDetail,
     ]);
+
+    // When switching view modes/tabs, if not in 3D basemap mode, unskew the map back to top-down
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map) return;
+        const effectiveLayer = getEffectiveBasemap(currentLayer, isDark);
+        if (effectiveLayer === '3d') return;
+        if (map.getPitch() > 5 || Math.abs(map.getBearing()) > 0.5) {
+            map.easeTo({ pitch: 0, bearing: 0, duration: 500 });
+        }
+    }, [viewMode, currentLayer, isDark]);
 
     // Synchronize airport overlay details and dark/light theme palette
     useEffect(() => {
@@ -2862,14 +2926,20 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
     // P-04d: 3D Terrain Elevation Mesh (AWS Terrarium DEM)
     const prevTerrain3dRef = useRef<boolean>(false);
     useEffect(() => {
+        const effectiveLayer = getEffectiveBasemap(currentLayer, isDark);
         if (activeAppearance.terrain3d && !prevTerrain3dRef.current && FEATURE_FLAGS.GEV_P04D_TERRAIN) {
             const map = mapRef.current;
             if (map && map.getPitch() < 15) {
                 map.easeTo({ pitch: 45, duration: 800 });
             }
+        } else if (!activeAppearance.terrain3d && prevTerrain3dRef.current && effectiveLayer !== '3d') {
+            const map = mapRef.current;
+            if (map && (map.getPitch() > 5 || Math.abs(map.getBearing()) > 0.5)) {
+                map.easeTo({ pitch: 0, bearing: 0, duration: 600 });
+            }
         }
         prevTerrain3dRef.current = Boolean(activeAppearance.terrain3d);
-    }, [activeAppearance.terrain3d]);
+    }, [activeAppearance.terrain3d, currentLayer, isDark]);
 
     useEffect(() => {
         const map = mapRef.current;
@@ -2942,9 +3012,12 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     map.setPadding(cam.padding);
                 } catch (e) { }
                 map.setMinZoom(0);
+                const effectiveLayer = getEffectiveBasemap(currentLayer, isDark);
                 map.easeTo({
                     center: cam.center,
                     zoom: cam.zoom,
+                    pitch: effectiveLayer === '3d' ? 50 : 0,
+                    bearing: 0,
                     duration: 600
                 });
             } catch (e) {

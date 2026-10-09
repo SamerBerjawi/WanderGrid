@@ -922,36 +922,19 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                           Default Basemap (Light Mode)
                         </span>
                       </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                         {[
-                          { id: 'liberty', label: 'Liberty', desc: 'Vector Clean', requiresCarto: false },
-                          { id: 'bright', label: 'Bright', desc: 'Vector Vibrant', requiresCarto: false },
-                          { id: 'satellite', label: 'Satellite', desc: 'Orbital Photoreal', requiresCarto: false },
-                          { id: 'positron', label: 'Positron', desc: 'CARTO Minimal', requiresCarto: true }
+                          { id: 'liberty', label: 'Liberty', desc: 'Vector Clean' },
+                          { id: 'bright', label: 'Bright', desc: 'Vector Vibrant' },
+                          { id: 'positron', label: 'Positron', desc: 'Vector Minimal' },
+                          { id: '3d', label: '3D', desc: '3D Perspective' },
+                          { id: 'satellite', label: 'Satellite', desc: 'Orbital Photoreal' }
                         ].map(b => {
                           const isSelected = (config.defaultBasemapLight || 'liberty') === b.id ||
                             (b.id === 'positron' && (config.defaultBasemapLight === 'snow' || config.defaultBasemapLight === 'ofm_positron')) ||
                             (b.id === 'liberty' && config.defaultBasemapLight === 'ofm_liberty') ||
-                            (b.id === 'bright' && config.defaultBasemapLight === 'ofm_bright');
-                          const isGreyedOut = b.requiresCarto && !Boolean(config.cartoApiKey && config.cartoApiKey.trim());
-
-                          if (isGreyedOut) {
-                            return (
-                              <div
-                                key={b.id}
-                                className="p-3.5 rounded-2xl border border-dashed border-black/15 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02] opacity-40 grayscale flex flex-col justify-between cursor-not-allowed select-none"
-                                title="Requires CARTO Maps API key configured below"
-                              >
-                                <div className="flex items-center justify-between w-full">
-                                  <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">{b.label}</span>
-                                  <span className="text-3xs font-bold uppercase px-1.5 py-0.5 rounded bg-black/10 dark:bg-white/10 text-light-text-secondary dark:text-dark-text-secondary">API</span>
-                                </div>
-                                <span className="text-2xs font-mono text-light-text-secondary dark:text-dark-text-secondary mt-1">
-                                  Requires Key
-                                </span>
-                              </div>
-                            );
-                          }
+                            (b.id === 'bright' && config.defaultBasemapLight === 'ofm_bright') ||
+                            (b.id === '3d' && config.defaultBasemapLight === 'liberty-3d');
 
                           return (
                             <button
@@ -980,7 +963,6 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                         })}
                       </div>
                     </div>
-
                     {/* Dark Mode Default Basemap Selection */}
                     <div className="space-y-3 pt-2">
                       <div className="flex items-center gap-2">
@@ -989,33 +971,16 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
                           Default Basemap (Dark Mode)
                         </span>
                       </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                         {[
-                          { id: 'citylights', label: 'NASA', desc: 'Nocturnal Glow', requiresCarto: false },
-                          { id: 'ocean', label: 'Ocean', desc: 'Bathymetric Marine', requiresCarto: false },
-                          { id: 'satellite', label: 'Satellite', desc: 'Orbital Photoreal', requiresCarto: false },
-                          { id: 'onyx', label: 'Onyx', desc: 'CARTO Dark Matter', requiresCarto: true }
+                          { id: 'dark', label: 'Dark', desc: 'Vector Modern' },
+                          { id: 'fiord', label: 'Fiord', desc: 'Vector Nordic' },
+                          { id: 'citylights', label: 'NASA', desc: 'Nocturnal Glow' },
+                          { id: 'satellite', label: 'Satellite', desc: 'Orbital Photoreal' },
+                          { id: 'ocean', label: 'Ocean', desc: 'Bathymetric Marine' }
                         ].map(b => {
-                          const isSelected = (config.defaultBasemapDark || 'citylights') === b.id;
-                          const isGreyedOut = b.requiresCarto && !Boolean(config.cartoApiKey && config.cartoApiKey.trim());
-
-                          if (isGreyedOut) {
-                            return (
-                              <div
-                                key={b.id}
-                                className="p-3.5 rounded-2xl border border-dashed border-black/15 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02] opacity-40 grayscale flex flex-col justify-between cursor-not-allowed select-none"
-                                title="Requires CARTO Maps API key configured below"
-                              >
-                                <div className="flex items-center justify-between w-full">
-                                  <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">{b.label}</span>
-                                  <span className="text-3xs font-bold uppercase px-1.5 py-0.5 rounded bg-black/10 dark:bg-white/10 text-light-text-secondary dark:text-dark-text-secondary">API</span>
-                                </div>
-                                <span className="text-2xs font-mono text-light-text-secondary dark:text-dark-text-secondary mt-1">
-                                  Requires Key
-                                </span>
-                              </div>
-                            );
-                          }
+                          const isSelected = (config.defaultBasemapDark || 'dark') === b.id ||
+                            (b.id === 'dark' && config.defaultBasemapDark === 'onyx');
 
                           return (
                             <button
@@ -1645,7 +1610,7 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
             </GlassPanel>
           </div>
 
-          {/* CARTO Maps API */}
+          {/* OpenFreeMap Cartography */}
           <div className="flex flex-col overflow-hidden rounded-[28px]">
             <GlassPanel
               className="wg-glass-card shadow-glass-card flex flex-col h-full overflow-hidden border border-black/5 dark:border-white/10"
@@ -1653,63 +1618,46 @@ export const Settings: React.FC<SettingsProps> = ({ onThemeChange }) => {
               padding="0px"
             >
               <div className="flex flex-col h-full w-full overflow-hidden rounded-[28px]">
-                <div className="p-5 border-b border-black/10 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-cyan-500/10 via-cyan-500/5 to-transparent shrink-0">
+                <div className="p-5 border-b border-black/10 dark:border-white/5 flex items-center justify-between bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent shrink-0">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/20 flex items-center justify-center shrink-0">
+                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20 flex items-center justify-center shrink-0">
                       <MapPin className="w-5 h-5" weight="duotone" />
                     </div>
                     <div>
-                      <h3 className="text-base font-bold text-light-text dark:text-dark-text tracking-tight">
-                        CARTO Maps API
+                      <h3 className="text-base font-bold text-light-text dark:text-dark-text tracking-tight flex items-center gap-2">
+                        OpenFreeMap Cartography
+                        <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                          Zero-Key Active
+                        </span>
                       </h3>
                       <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary font-medium truncate mt-0.5">
-                        High-throughput vector basemaps and geographical tile feeds
+                        High-throughput vector basemaps (Liberty, Bright, Positron, Dark, Fiord, 3D) via openfreemap.org
                       </p>
                     </div>
                   </div>
                   <a
-                    href="https://carto.com/basemaps/apikey/"
+                    href="https://openfreemap.org"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs font-mono font-bold text-cyan-500 hover:underline flex items-center gap-1 shrink-0"
+                    className="text-xs font-mono font-bold text-emerald-500 hover:underline flex items-center gap-1 shrink-0"
                   >
-                    <span>DOCS</span>
+                    <span>OPENFREEMAP.ORG</span>
                     <ArrowSquareOut className="w-3.5 h-3.5" />
                   </a>
                 </div>
 
                 <div className="p-5 sm:p-6">
-                  <Input
-                    label="API Key (Optional)"
-                    type={visibleKeys['carto'] ? 'text' : 'password'}
-                    placeholder="Paste CARTO API Key..."
-                    value={config.cartoApiKey || ''}
-                    onChange={e => {
-                      const val = e.target.value;
-                      const next = { ...config, cartoApiKey: val };
-                      setConfig(next);
-                      try {
-                        const raw = localStorage.getItem('wandergrid_workspace_settings') || localStorage.getItem('wandergrid_settings');
-                        const existing = raw ? JSON.parse(raw) : {};
-                        existing.cartoApiKey = val.trim();
-                        localStorage.setItem('wandergrid_workspace_settings', JSON.stringify(existing));
-                        localStorage.setItem('wandergrid_settings', JSON.stringify(existing));
-                        window.dispatchEvent(new CustomEvent('wandergrid_settings_updated', { detail: existing }));
-                        window.dispatchEvent(new CustomEvent('wandergrid_db_updated', { detail: { key: 'settings' } }));
-                      } catch {}
-                    }}
-                    className="font-mono"
-                    rightElement={
-                      <button
-                        type="button"
-                        onClick={() => toggleKeyVisibility('carto')}
-                        className="text-light-text-secondary hover:text-light-text dark:hover:text-dark-text p-1 cursor-pointer"
-                        aria-label="Toggle CARTO API key visibility"
-                      >
-                        {visibleKeys['carto'] ? <EyeSlash className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    }
-                  />
+                  <div className="p-4 rounded-2xl bg-white/40 dark:bg-white/[0.03] border border-black/5 dark:border-white/5 flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <p className="text-xs font-bold text-light-text dark:text-dark-text">No API Key Required</p>
+                      <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary">
+                        All cartographic basemap styles are free, open-source, and served without API rate limits or keys.
+                      </p>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-full text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
+                      READY
+                    </span>
+                  </div>
                 </div>
               </div>
             </GlassPanel>

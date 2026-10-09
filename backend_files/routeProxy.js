@@ -13,8 +13,8 @@
 
 const { fetchUpstream } = require('./upstream');
 
-const ROUTE_MAX_LEG_KM = 600;
-const ROUTE_MAX_TOTAL_KM = 2500;
+const ROUTE_MAX_LEG_KM = 2500;
+const ROUTE_MAX_TOTAL_KM = 10000;
 const ROUTE_CACHE_MS = 10 * 60 * 1000; // 10 minutes
 
 function haversineKm(lat1, lon1, lat2, lon2) {
@@ -46,8 +46,8 @@ async function handleRouteProxy(req, res) {
   }
 
   const pairs = rawCoords.split(';').map(s => s.trim()).filter(Boolean);
-  if (pairs.length < 2 || pairs.length > 12) {
-    return res.status(400).json({ ok: false, error: 'coords must contain between 2 and 12 points' });
+  if (pairs.length < 2 || pairs.length > 25) {
+    return res.status(400).json({ ok: false, error: 'coords must contain between 2 and 25 points' });
   }
 
   const cleanPairs = [];
@@ -96,9 +96,9 @@ async function handleRouteProxy(req, res) {
       url: upstreamUrl,
       ttlMs: ROUTE_CACHE_MS,
       staleMs: 60 * 60 * 1000,
-      timeoutMs: 12000,
+      timeoutMs: 20000,
       maxBytes: 8 * 1024 * 1024,
-      hostGate: { minIntervalMs: 1000 }, // 1 req/s FOSSGIS rate limit
+      hostGate: { minIntervalMs: 500 }, // 2 req/s FOSSGIS rate limit
     });
 
     if (result.outcome === 'hit') res.set('X-Cache', 'HIT');

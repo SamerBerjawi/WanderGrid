@@ -3,6 +3,9 @@ export type BasemapMode =
     | 'liberty'
     | 'bright'
     | 'positron'
+    | '3d'
+    | 'dark'
+    | 'fiord'
     | 'satellite'
     | 'onyx'
     | 'citylights'
@@ -18,37 +21,19 @@ export const getEffectiveBasemap = (
     isDark: boolean,
     defaultLight?: string,
     defaultDark?: string,
-    cartoApiKey?: string
-): 'liberty' | 'bright' | 'positron' | 'satellite' | 'onyx' | 'citylights' | 'ocean' => {
-    // Check if CARTO API key is configured
-    let hasCartoKey = Boolean(cartoApiKey && cartoApiKey.trim());
-    if (!hasCartoKey && typeof localStorage !== 'undefined') {
-        try {
-            const raw = localStorage.getItem('wandergrid_workspace_settings') || localStorage.getItem('wandergrid_settings');
-            if (raw) {
-                const parsed = JSON.parse(raw);
-                if (parsed.cartoApiKey && String(parsed.cartoApiKey).trim()) {
-                    hasCartoKey = true;
-                }
-            }
-        } catch {}
-    }
-
+    _deprecatedCartoKey?: string
+): 'liberty' | 'bright' | 'positron' | '3d' | 'dark' | 'fiord' | 'satellite' | 'citylights' | 'ocean' => {
     // Explicit layer requested other than 'default'
     if (basemap && basemap !== 'default') {
         if (basemap === 'liberty' || basemap === 'ofm_liberty') return 'liberty';
         if (basemap === 'bright' || basemap === 'ofm_bright') return 'bright';
+        if (basemap === 'positron' || basemap === 'ofm_positron' || basemap === 'snow') return 'positron';
+        if (basemap === '3d' || basemap === 'liberty-3d') return '3d';
+        if (basemap === 'dark' || basemap === 'onyx') return 'dark';
+        if (basemap === 'fiord') return 'fiord';
         if (basemap === 'satellite') return 'satellite';
         if (basemap === 'citylights') return 'citylights';
-        if (basemap === 'ocean') {
-            return isDark ? 'ocean' : 'liberty';
-        }
-        if (basemap === 'positron' || basemap === 'ofm_positron' || basemap === 'snow') {
-            return hasCartoKey ? 'positron' : 'liberty';
-        }
-        if (basemap === 'onyx') {
-            return hasCartoKey ? 'onyx' : 'citylights';
-        }
+        if (basemap === 'ocean') return isDark ? 'ocean' : 'liberty';
     }
 
     // Resolve from arguments or persistent workspace settings
@@ -69,14 +54,16 @@ export const getEffectiveBasemap = (
     }
 
     if (isDark) {
-        if (resolvedDark === 'onyx' && hasCartoKey) return 'onyx';
+        if (resolvedDark === 'dark' || resolvedDark === 'onyx') return 'dark';
+        if (resolvedDark === 'fiord') return 'fiord';
         if (resolvedDark === 'ocean') return 'ocean';
         if (resolvedDark === 'satellite') return 'satellite';
         if (resolvedDark === 'citylights') return 'citylights';
-        return hasCartoKey ? 'onyx' : 'citylights';
+        return 'dark';
     } else {
-        if ((resolvedLight === 'positron' || resolvedLight === 'snow') && hasCartoKey) return 'positron';
+        if (resolvedLight === 'positron' || resolvedLight === 'snow' || resolvedLight === 'ofm_positron') return 'positron';
         if (resolvedLight === 'bright' || resolvedLight === 'ofm_bright') return 'bright';
+        if (resolvedLight === '3d' || resolvedLight === 'liberty-3d') return '3d';
         if (resolvedLight === 'satellite') return 'satellite';
         if (resolvedLight === 'liberty' || resolvedLight === 'ofm_liberty') return 'liberty';
         return 'liberty';
@@ -153,7 +140,7 @@ export const DEFAULT_MAP_APPEARANCE: MapAppearanceSettings = {
     rainRadarOpacity: 0.85,
     rainRadarColorScheme: 2,
     openAipOverlay: false,
-    openAipGroups: ['airspaces', 'airspaceLabels', 'airports', 'navaids', 'reportingPoints'],
+    openAipGroups: ['airspaces', 'airspaceLabels', 'airports'],
     terrainHillshade: false,
     terrainHillshadeOpacity: 0.8,
     transitOverlay: false,

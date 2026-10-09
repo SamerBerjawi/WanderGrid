@@ -55,22 +55,34 @@ export class GlobeHorizonCullExtension extends LayerExtension {
                     if (vGlobeHorizon_Mode > 0.5) {
                         vec3 P = vGlobeHorizon_WorldPos;
                         vec3 C = vGlobeHorizon_CamPos;
-
-                        // 1. Surface and near-surface back-face test:
-                        // Outward normal is P. Vector towards camera is (C - P).
-                        // If dot(P, C - P) < 0, the point faces away from the camera behind the geometric horizon.
-                        if (dot(P, C - P) < 0.0) {
-                            discard;
-                        }
-
-                        // 2. Aerial ray penetration test for elevated flight arcs:
-                        // Does the ray from camera C to elevated point P pass through the Earth sphere (radius 256)?
                         vec3 V = P - C;
                         float vSq = dot(V, V);
+
+                        // Earth sphere radius squared in Deck.gl globe space (R = 256.0)
+                        // Use 255.0^2 = 65025.0 to provide numerical tolerance for surface vertices
+                        float R2 = 65025.0;
+
+                        // 1. Ray-Sphere penetration test:
+                        // Does the line of sight from camera C to point P punch through the planet?
                         float t = -dot(C, V) / max(vSq, 1e-6);
-                        if (t > 0.001 && t < 0.999) {
+                        if (t > 0.0) {
                             vec3 Q = C + t * V;
-                            if (dot(Q, Q) < 65536.0) {
+                            float qSq = dot(Q, Q);
+                            if (qSq < R2) {
+                                float d = sqrt((R2 - qSq) / max(vSq, 1e-6));
+                                float tEntry = t - d;
+                                // If the ray enters the Earth sphere before reaching point P, P is on the far side
+                                if (tEntry > 0.005 && tEntry < 0.995) {
+                                    discard;
+                                }
+                            }
+                        }
+
+                        // 2. Surface horizon test (strictly for ground/near-ground points where |P| <= 258.0):
+                        // Elevated flight arcs (|P| > 258.0) are NOT surface points and are governed solely by ray-sphere test above.
+                        float pSq = dot(P, P);
+                        if (pSq < 66564.0) { // 258.0^2
+                            if (dot(P, -V) < -2.0) {
                                 discard;
                             }
                         }

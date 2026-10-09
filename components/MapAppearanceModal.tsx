@@ -364,38 +364,52 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                 </button>
                                             </div>
                                         )}
-                                    </div>
-
-                                    {/* BASEMAP PALETTE */}
+                                    </div>                                    {/* BASEMAP PALETTE */}
                                     <div>
                                         <div className="flex items-center justify-between mb-3">
                                             <div className="flex items-center gap-2">
                                                 <h3 className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase">Cartographic Basemap</h3>
-                                                {cartoKey ? (
-                                                    <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
-                                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                                        CARTO Active
-                                                    </span>
-                                                ) : (
-                                                    <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary border border-black/10 dark:border-white/10">
-                                                        Zero-Key Mode
-                                                    </span>
-                                                )}
-                                            </div>
-                                            {!cartoKey && (
-                                                <span className="text-3xs font-medium text-amber-600 dark:text-amber-400">
-                                                    CARTO API unconfigured
+                                                <span className="px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                                    OpenFreeMap + Orbital
                                                 </span>
-                                            )}
+                                            </div>
+                                            <span className="text-3xs font-medium text-emerald-600 dark:text-emerald-400">
+                                                Zero Key Required
+                                            </span>
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-2">
                                             {(isDark ? [
-                                                // Non-API dark basemaps visible FIRST
+                                                {
+                                                    id: 'dark',
+                                                    label: 'Dark',
+                                                    renderSwatch: () => (
+                                                        <div className="w-full h-8 rounded-xl border border-white/15 flex items-center px-2.5 justify-between bg-gradient-to-r from-black via-zinc-950 to-zinc-900 relative overflow-hidden">
+                                                            <div className="flex items-center gap-1.5 z-10">
+                                                                <span className="text-2xs">🌑</span>
+                                                                <span className="text-2xs font-bold text-white drop-shadow">Dark</span>
+                                                            </div>
+                                                            <div className="w-2 h-2 rounded-full border border-white/40 z-10" />
+                                                        </div>
+                                                    )
+                                                },
+                                                {
+                                                    id: 'fiord',
+                                                    label: 'Fiord',
+                                                    renderSwatch: () => (
+                                                        <div className="w-full h-8 rounded-xl border border-blue-400/30 flex items-center px-2.5 justify-between bg-gradient-to-r from-[#111c2e] via-[#1a2b42] to-[#162235] relative overflow-hidden">
+                                                            <div className="flex items-center gap-1.5 z-10">
+                                                                <span className="text-2xs">🏔️</span>
+                                                                <span className="text-2xs font-bold text-blue-200">Fiord</span>
+                                                            </div>
+                                                            <div className="w-2 h-2 rounded-full border border-blue-400/60 z-10" />
+                                                        </div>
+                                                    )
+                                                },
                                                 {
                                                     id: 'citylights',
                                                     label: 'NASA',
-                                                    requiresCarto: false,
                                                     renderSwatch: () => (
                                                         <div className="w-full h-8 rounded-xl border border-amber-500/30 flex items-center px-2.5 justify-between bg-[#040711] relative overflow-hidden">
                                                             <div className="absolute top-1.5 right-12 w-1.5 h-1.5 rounded-full bg-amber-400/90 shadow-[0_0_6px_#f59e0b] animate-pulse" />
@@ -409,23 +423,8 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                     )
                                                 },
                                                 {
-                                                    id: 'ocean',
-                                                    label: 'Ocean',
-                                                    requiresCarto: false,
-                                                    renderSwatch: () => (
-                                                        <div className="w-full h-8 rounded-xl border border-cyan-500/30 flex items-center px-2.5 justify-between bg-[#041a2f] relative overflow-hidden">
-                                                            <div className="flex items-center gap-1.5 z-10">
-                                                                <span className="text-2xs">🌊</span>
-                                                                <span className="text-2xs font-bold text-cyan-200">Ocean</span>
-                                                            </div>
-                                                            <div className="w-2 h-2 rounded-full border border-cyan-400/60 z-10" />
-                                                        </div>
-                                                    )
-                                                },
-                                                {
                                                     id: 'satellite',
                                                     label: 'Satellite',
-                                                    requiresCarto: false,
                                                     renderSwatch: () => (
                                                         <div className="w-full h-8 rounded-xl border border-emerald-500/20 flex items-center px-2.5 justify-between bg-gradient-to-r from-[#0a1a14] to-[#0d2a1f] relative overflow-hidden">
                                                             <div className="flex items-center gap-1.5 z-10">
@@ -436,27 +435,23 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                         </div>
                                                     )
                                                 },
-                                                // CARTO-dependent dark basemap LAST
                                                 {
-                                                    id: 'onyx',
-                                                    label: 'Onyx',
-                                                    requiresCarto: true,
+                                                    id: 'ocean',
+                                                    label: 'Ocean',
                                                     renderSwatch: () => (
-                                                        <div className="w-full h-8 rounded-xl border border-white/15 flex items-center px-2.5 justify-between bg-gradient-to-r from-black via-zinc-950 to-zinc-900 relative overflow-hidden">
+                                                        <div className="w-full h-8 rounded-xl border border-cyan-500/30 flex items-center px-2.5 justify-between bg-[#041a2f] relative overflow-hidden">
                                                             <div className="flex items-center gap-1.5 z-10">
-                                                                <span className="text-2xs">🌑</span>
-                                                                <span className="text-2xs font-bold text-white drop-shadow">Onyx</span>
+                                                                <span className="text-2xs">🌊</span>
+                                                                <span className="text-2xs font-bold text-cyan-200">Ocean</span>
                                                             </div>
-                                                            <div className="w-2 h-2 rounded-full border border-white/40 z-10" />
+                                                            <div className="w-2 h-2 rounded-full border border-cyan-400/60 z-10" />
                                                         </div>
                                                     )
                                                 }
                                             ] : [
-                                                // Non-API light basemaps visible FIRST
                                                 {
                                                     id: 'liberty',
                                                     label: 'Liberty',
-                                                    requiresCarto: false,
                                                     renderSwatch: () => (
                                                         <div className="w-full h-8 rounded-xl border border-emerald-500/30 flex items-center px-2.5 justify-between bg-gradient-to-r from-sky-100 via-emerald-100 to-amber-100 relative overflow-hidden">
                                                             <div className="flex items-center gap-1.5 z-10">
@@ -473,7 +468,6 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                 {
                                                     id: 'bright',
                                                     label: 'Bright',
-                                                    requiresCarto: false,
                                                     renderSwatch: () => (
                                                         <div className="w-full h-8 rounded-xl border border-amber-500/30 flex items-center px-2.5 justify-between bg-gradient-to-r from-amber-100 via-yellow-100 to-orange-100 relative overflow-hidden">
                                                             <div className="flex items-center gap-1.5 z-10">
@@ -485,24 +479,8 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                     )
                                                 },
                                                 {
-                                                    id: 'satellite',
-                                                    label: 'Satellite',
-                                                    requiresCarto: false,
-                                                    renderSwatch: () => (
-                                                        <div className="w-full h-8 rounded-xl border border-emerald-500/20 flex items-center px-2.5 justify-between bg-gradient-to-r from-[#0a1a14] to-[#0d2a1f] relative overflow-hidden">
-                                                            <div className="flex items-center gap-1.5 z-10">
-                                                                <span className="text-2xs">🛰️</span>
-                                                                <span className="text-2xs font-bold text-emerald-200">Satellite</span>
-                                                            </div>
-                                                            <div className="w-2 h-2 rounded-full border border-emerald-400/50 z-10" />
-                                                        </div>
-                                                    )
-                                                },
-                                                // CARTO-dependent light basemap LAST
-                                                {
                                                     id: 'positron',
                                                     label: 'Positron',
-                                                    requiresCarto: true,
                                                     renderSwatch: () => (
                                                         <div className="w-full h-8 rounded-xl border border-black/10 flex items-center px-2.5 justify-between bg-gradient-to-r from-zinc-100 to-white relative overflow-hidden">
                                                             <div className="flex items-center gap-1.5 z-10">
@@ -512,34 +490,41 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                             <div className="w-2 h-2 rounded-full border border-sky-500/50 z-10" />
                                                         </div>
                                                     )
+                                                },
+                                                {
+                                                    id: '3d',
+                                                    label: '3D',
+                                                    renderSwatch: () => (
+                                                        <div className="w-full h-8 rounded-xl border border-purple-500/30 flex items-center px-2.5 justify-between bg-gradient-to-r from-indigo-100 via-sky-100 to-purple-100 relative overflow-hidden">
+                                                            <div className="flex items-center gap-1.5 z-10">
+                                                                <span className="text-2xs">🏙️</span>
+                                                                <span className="text-2xs font-bold text-purple-900">3D</span>
+                                                            </div>
+                                                            <div className="w-2 h-2 rounded-full border border-purple-500/60 z-10" />
+                                                        </div>
+                                                    )
+                                                },
+                                                {
+                                                    id: 'satellite',
+                                                    label: 'Satellite',
+                                                    renderSwatch: () => (
+                                                        <div className="w-full h-8 rounded-xl border border-emerald-500/20 flex items-center px-2.5 justify-between bg-gradient-to-r from-[#0a1a14] to-[#0d2a1f] relative overflow-hidden">
+                                                            <div className="flex items-center gap-1.5 z-10">
+                                                                <span className="text-2xs">🛰️</span>
+                                                                <span className="text-2xs font-bold text-emerald-200">Satellite</span>
+                                                            </div>
+                                                            <div className="w-2 h-2 rounded-full border border-emerald-400/50 z-10" />
+                                                        </div>
+                                                    )
                                                 }
                                             ]).map(b => {
                                                 const effectiveBasemap = getEffectiveBasemap(settings.basemap, isDark);
                                                 const isSelected = effectiveBasemap === b.id ||
                                                     (b.id === 'liberty' && (effectiveBasemap === 'ofm_liberty' || settings.basemap === 'ofm_liberty')) ||
                                                     (b.id === 'bright' && (effectiveBasemap === 'ofm_bright' || settings.basemap === 'ofm_bright')) ||
-                                                    (b.id === 'positron' && (effectiveBasemap === 'ofm_positron' || effectiveBasemap === 'snow' || settings.basemap === 'ofm_positron' || settings.basemap === 'snow'));
-                                                const isGreyedOut = b.requiresCarto && !Boolean(cartoKey && cartoKey.trim());
-
-                                                if (isGreyedOut) {
-                                                    return (
-                                                        <button
-                                                            key={b.id}
-                                                            type="button"
-                                                            disabled
-                                                            className="p-2.5 rounded-2xl border transition-all duration-150 text-left flex flex-col justify-between gap-2 opacity-40 grayscale cursor-not-allowed border-dashed border-black/15 dark:border-white/15 bg-black/[0.03] dark:bg-white/[0.02] select-none"
-                                                            title="CARTO API key required. Configure in Settings > Integrations."
-                                                        >
-                                                            {b.renderSwatch()}
-                                                            <div className="flex items-center justify-between gap-1 w-full">
-                                                                <p className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary truncate">{b.label}</p>
-                                                                <span className="px-1.5 py-0.5 rounded text-3xs font-bold uppercase tracking-wider bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 shrink-0">
-                                                                    Requires API
-                                                                </span>
-                                                            </div>
-                                                        </button>
-                                                    );
-                                                }
+                                                    (b.id === 'positron' && (effectiveBasemap === 'ofm_positron' || effectiveBasemap === 'snow' || settings.basemap === 'ofm_positron' || settings.basemap === 'snow')) ||
+                                                    (b.id === 'dark' && (effectiveBasemap === 'onyx' || settings.basemap === 'onyx')) ||
+                                                    (b.id === '3d' && (effectiveBasemap === 'liberty-3d' || settings.basemap === 'liberty-3d'));
 
                                                 return (
                                                     <button
@@ -556,17 +541,17 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                         {b.renderSwatch()}
                                                         <div className="flex items-center justify-between gap-1 w-full">
                                                             <p className="text-xs font-bold text-light-text dark:text-dark-text truncate">{b.label}</p>
-                                                            {b.requiresCarto && (
-                                                                <span className="px-1.5 py-0.5 rounded text-3xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
-                                                                    CARTO
-                                                                </span>
-                                                            )}
+                                                            <span className="px-1.5 py-0.5 rounded text-3xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
+                                                                Free
+                                                            </span>
                                                         </div>
                                                     </button>
                                                 );
                                             })}
                                         </div>
                                     </div>
+
+
 
                                     {/* EXPEDITION VIEW MODES (when handler passed) */}
                                     {onSelectViewMode && (
@@ -789,6 +774,104 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                                 />
                                             </button>
                                         </div>
+
+                                        {/* Integrated OpenAIP Aeronautical Charts */}
+                                        <div className="pt-2.5 border-t border-black/5 dark:border-white/5 space-y-2.5">
+                                            <div className="flex items-center justify-between">
+                                                <div className="min-w-0 pr-3">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="text-xs font-bold text-light-text dark:text-dark-text">OpenAIP Charts</span>
+                                                        {settings.openAipOverlay && (
+                                                            <span className={`px-1.5 py-0.2 rounded-full text-2xs font-bold uppercase tracking-wider ${
+                                                                hasOpenAipKey
+                                                                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                                                                    : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                                                            }`}>
+                                                                {hasOpenAipKey ? 'Key Active' : 'Key Required'}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5">
+                                                        Controlled airspaces and airfield points overlay
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => updateField('openAipOverlay', !settings.openAipOverlay)}
+                                                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-black/10 dark:border-white/15 transition-all duration-200 ease-in-out backdrop-blur-md ${
+                                                        settings.openAipOverlay
+                                                            ? 'bg-indigo-500/85 dark:bg-indigo-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_10px_rgba(99,102,241,0.3)]'
+                                                            : 'bg-black/15 dark:bg-white/15 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]'
+                                                    }`}
+                                                    aria-label="Toggle OpenAIP charts"
+                                                >
+                                                    <span
+                                                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-white/95 shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.8)] ring-0 transition duration-200 ease-in-out ${
+                                                            settings.openAipOverlay ? 'translate-x-5' : 'translate-x-0'
+                                                        }`}
+                                                    />
+                                                </button>
+                                            </div>
+
+                                            {settings.openAipOverlay && (
+                                                <div className="space-y-2 animate-fade-in">
+                                                    {!hasOpenAipKey && (
+                                                        <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-start gap-2 text-2xs text-amber-700 dark:text-amber-300 leading-tight">
+                                                            <span className="text-sm shrink-0">⚠️</span>
+                                                            <div>
+                                                                <span className="font-bold">OpenAIP Key Required:</span> Register a free key at{' '}
+                                                                <a href="https://www.openaip.net" target="_blank" rel="noopener noreferrer" className="underline font-semibold hover:text-amber-900 dark:hover:text-amber-100">
+                                                                    openaip.net
+                                                                </a>{' '}
+                                                                and add it in <strong>Settings → Integrations</strong>.
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        {[
+                                                            { id: 'airspaces', label: 'Airspaces', desc: 'Controlled Zones' },
+                                                            { id: 'airports', label: 'Airports', desc: 'Airfield Points' }
+                                                        ].map(layerItem => {
+                                                            const currentGroups = settings.openAipGroups || ['airspaces', 'airspaceLabels', 'airports'];
+                                                            const isGroupActive = currentGroups.includes(layerItem.id as any);
+
+                                                            return (
+                                                                <button
+                                                                    key={layerItem.id}
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        let next: any[];
+                                                                        if (layerItem.id === 'airspaces') {
+                                                                            if (isGroupActive) {
+                                                                                next = currentGroups.filter(g => g !== 'airspaces' && g !== 'airspaceLabels');
+                                                                            } else {
+                                                                                next = Array.from(new Set([...currentGroups, 'airspaces', 'airspaceLabels']));
+                                                                            }
+                                                                        } else {
+                                                                            if (isGroupActive) {
+                                                                                next = currentGroups.filter(g => g !== 'airports');
+                                                                            } else {
+                                                                                next = Array.from(new Set([...currentGroups, 'airports']));
+                                                                            }
+                                                                        }
+                                                                        updateField('openAipGroups', next);
+                                                                    }}
+                                                                    className={`p-2.5 rounded-xl border text-center transition-all duration-150 cursor-pointer active:scale-[0.98] flex flex-col items-center justify-center ${
+                                                                        isGroupActive
+                                                                            ? 'bg-indigo-500/15 dark:bg-indigo-500/25 backdrop-blur-md border border-indigo-500/40 dark:border-indigo-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(99,102,241,0.15)] text-indigo-700 dark:text-indigo-300 font-bold'
+                                                                            : 'border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
+                                                                    }`}
+                                                                >
+                                                                    <span className="text-xs font-bold">{layerItem.label}</span>
+                                                                    <span className="text-3xs opacity-75 mt-0.5">{layerItem.desc}</span>
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
 
                                     {/* AIRPORT HUB SIZING */}
@@ -979,93 +1062,6 @@ export const MapAppearanceModal: React.FC<MapAppearanceModalProps> = ({
                                             </button>
                                         </div>
 
-                                        {/* OpenAIP Aeronautical Vector Charts */}
-                                        <div className="p-4 rounded-2xl bg-white/40 dark:bg-white/[0.03] backdrop-blur-sm border border-black/5 dark:border-white/5 space-y-3">
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <h4 className="text-xs font-bold text-light-text dark:text-dark-text flex items-center gap-1.5">
-                                                        <span>OpenAIP Aero Charts</span>
-                                                        {settings.openAipOverlay && (
-                                                            <span className="flex items-center gap-1 px-2 py-0.5 text-2xs font-bold rounded-full bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30">
-                                                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
-                                                                Vector Charts
-                                                            </span>
-                                                        )}
-                                                    </h4>
-                                                    <p className="text-2xs text-light-text-secondary dark:text-dark-text-secondary mt-0.5">Airspaces, navaids, waypoints & airfields</p>
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => updateField('openAipOverlay', !settings.openAipOverlay)}
-                                                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-black/10 dark:border-white/15 transition-all duration-200 ease-in-out backdrop-blur-md ${
-                                                        settings.openAipOverlay
-                                                            ? 'bg-indigo-500/85 dark:bg-indigo-500/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_10px_rgba(99,102,241,0.3)]'
-                                                            : 'bg-black/15 dark:bg-white/15 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]'
-                                                    }`}
-                                                >
-                                                    <span
-                                                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-white/95 shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.8)] ring-0 transition duration-200 ease-in-out ${
-                                                            settings.openAipOverlay ? 'translate-x-5' : 'translate-x-0'
-                                                        }`}
-                                                    />
-                                                </button>
-                                            </div>
-
-                                            {settings.openAipOverlay && (
-                                                <div className="pt-2.5 border-t border-black/5 dark:border-white/5 space-y-2 animate-fade-in">
-                                                    <div className="flex items-center justify-between text-2xs font-bold">
-                                                        <span className="uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">Layers</span>
-                                                        <span className={`px-1.5 py-0.2 rounded-full ${hasOpenAipKey ? 'text-emerald-500 bg-emerald-500/10' : 'text-amber-500 bg-amber-500/10'}`}>
-                                                            {hasOpenAipKey ? 'Key Active' : 'Key Required'}
-                                                        </span>
-                                                    </div>
-
-                                                    {!hasOpenAipKey && (
-                                                        <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-start gap-2 text-2xs text-amber-700 dark:text-amber-300 leading-tight">
-                                                            <span className="text-sm shrink-0">⚠️</span>
-                                                            <div>
-                                                                <span className="font-bold">OpenAIP Key Required:</span> Register a free key at{' '}
-                                                                <a href="https://www.openaip.net" target="_blank" rel="noopener noreferrer" className="underline font-semibold hover:text-amber-900 dark:hover:text-amber-100">
-                                                                    openaip.net
-                                                                </a>{' '}
-                                                                and add it in <strong>Settings → Integrations</strong> to display aeronautical vector charts.
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                    <div className="grid grid-cols-2 gap-1.5">
-                                                        {[
-                                                            { id: 'airspaces', label: 'Airspaces' },
-                                                            { id: 'airspaceLabels', label: 'Labels' },
-                                                            { id: 'navaids', label: 'Navaids' },
-                                                            { id: 'reportingPoints', label: 'Waypoints' },
-                                                            { id: 'airports', label: 'Airfields' }
-                                                        ].map(group => {
-                                                            const currentGroups = settings.openAipGroups || ['airspaces', 'airspaceLabels', 'airports', 'navaids', 'reportingPoints'];
-                                                            const active = currentGroups.includes(group.id as any);
-                                                            return (
-                                                                <button
-                                                                    key={group.id}
-                                                                    type="button"
-                                                                    onClick={() => {
-                                                                        const next = active
-                                                                            ? currentGroups.filter(g => g !== group.id)
-                                                                            : [...currentGroups, group.id as any];
-                                                                        updateField('openAipGroups', next);
-                                                                    }}
-                                                                    className={`py-1 px-2 rounded-xl text-2xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                                                                        active
-                                                                            ? 'bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30'
-                                                                            : 'bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary opacity-60 hover:opacity-100'
-                                                                    }`}
-                                                                >
-                                                                    {group.label}
-                                                                </button>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
                                     </div>
                                 </div>
                             )}

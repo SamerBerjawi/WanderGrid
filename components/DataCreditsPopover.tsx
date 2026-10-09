@@ -52,7 +52,7 @@ export const DataCreditsPopover: React.FC<DataCreditsPopoverProps> = ({
   if (!FEATURE_FLAGS.GEV_P07_DATA_CREDITS) return null;
 
   // Dynamically resolve active credits based on map state
-  const isOFM = currentBasemap.startsWith('ofm_') || currentBasemap === 'liberty' || currentBasemap === 'bright';
+  const isOFM = currentBasemap.startsWith('ofm_') || ['liberty', 'bright', 'positron', 'dark', 'fiord', '3d'].includes(currentBasemap);
   const isSatellite = currentBasemap.includes('satellite');
   const isNASA = currentBasemap === 'citylights';
   const isOcean = currentBasemap === 'ocean';
@@ -60,9 +60,9 @@ export const DataCreditsPopover: React.FC<DataCreditsPopoverProps> = ({
   const credits: CreditItem[] = [
     {
       layer: 'Base Map',
-      provider: isOFM ? 'OpenFreeMap' : isSatellite ? 'Esri Satellite' : isNASA ? 'NASA EOSDIS GIBS' : isOcean ? 'Esri Ocean / GEBCO' : 'CARTO Basemaps',
-      license: isSatellite ? 'Esri, Maxar, Earthstar Geographics' : isNASA ? 'NASA EOSDIS GIBS' : isOcean ? 'Source: Esri, GEBCO, NOAA' : '© OpenStreetMap contributors',
-      url: isOFM ? 'https://openfreemap.org' : isSatellite ? 'https://www.esri.com' : isNASA ? 'https://earthdata.nasa.gov' : isOcean ? 'https://www.gebco.net' : 'https://carto.com',
+      provider: isOFM ? 'OpenFreeMap' : isSatellite ? 'Esri Satellite' : isNASA ? 'NASA EOSDIS GIBS' : isOcean ? 'Esri Ocean / GEBCO' : 'OpenFreeMap',
+      license: isSatellite ? 'Esri, Maxar, Earthstar Geographics' : isNASA ? 'NASA EOSDIS GIBS' : isOcean ? 'Source: Esri, GEBCO, NOAA' : 'OpenFreeMap / © OpenStreetMap contributors',
+      url: isOFM ? 'https://openfreemap.org' : isSatellite ? 'https://www.esri.com' : isNASA ? 'https://earthdata.nasa.gov' : isOcean ? 'https://www.gebco.net' : 'https://openfreemap.org',
       isActive: true
     },
     {

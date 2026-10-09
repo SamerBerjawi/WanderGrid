@@ -16,8 +16,6 @@ export const OPENAIP_DEFAULT_ENABLED_GROUPS: OpenAipOverlayGroup[] = [
   "airspaces",
   "airspaceLabels",
   "airports",
-  "navaids",
-  "reportingPoints",
 ];
 
 export type OpenAipTheme = "light" | "dark";
@@ -1310,7 +1308,7 @@ const OPENAIP_ALL_LAYERS: OpenAipOverlayLayer[] = [
       'icon-opacity': 1,
     },
     {
-      minzoom: 6,
+      minzoom: 10,
       filter: [
         'all',
         ['!=', ['get', 'type'], 'ad_closed'],
@@ -1479,30 +1477,22 @@ const OPENAIP_ALL_LAYERS: OpenAipOverlayLayer[] = [
     'airports',
     {
       visibility: 'visible',
-      'icon-image': zoomStep('apt-dot', 6, 'apt-tiny', 8, 'apt-medium'),
-      'icon-size': zoomStep(0.4, 6, 0.65, 8, 1),
+      'icon-image': zoomStep('apt-dot', 8, 'apt-medium'),
+      'icon-size': zoomStep(0.35, 6, 0.45, 8, 0.85, 11, 1),
       'icon-pitch-alignment': 'map',
       'icon-allow-overlap': true,
       'text-allow-overlap': false,
       'text-ignore-placement': false,
       'text-field': zoomStep(
         '',
-        4,
-        ['coalesce', ['get', 'icao_code'], ['get', 'name_label']],
         8,
-        ['coalesce', ['get', 'name_label_full'], ['get', 'name']],
+        ['coalesce', ['get', 'name'], ['get', 'name_label_full'], ['get', 'name_label'], ['get', 'icao_code']],
       ),
-      'text-justify': 'left',
-      'text-anchor': 'center',
-      'text-offset': zoomStep(
-        ['literal', [0, -1.5]],
-        8,
-        ['literal', [0, -4]],
-        10,
-        ['literal', [0, -5]],
-      ),
-      'text-size': zoomStep(9, 6, 10, 8, 12),
-      'text-font': ['Roboto Mono Regular'],
+      'text-justify': 'center',
+      'text-anchor': 'top',
+      'text-offset': ['literal', [0, 0.8]],
+      'text-size': zoomStep(10, 8, 11, 11, 12.5),
+      'text-font': ['Noto Sans Regular'],
       'text-transform': 'none',
       'text-optional': true,
       'icon-ignore-placement': false,
@@ -1520,30 +1510,22 @@ const OPENAIP_ALL_LAYERS: OpenAipOverlayLayer[] = [
     'airports',
     {
       visibility: 'visible',
-      'icon-image': genericAirportIconByType(),
-      'icon-size': zoomStep(0.35, 6, 0.5, 9, 0.8, 11, 1),
+      'icon-image': zoomStep('apt-dot', 8.5, genericAirportMediumIconByType()),
+      'icon-size': zoomStep(0.28, 6, 0.38, 8.5, 0.75, 11, 0.9),
       'icon-pitch-alignment': 'map',
       'icon-allow-overlap': true,
       'text-allow-overlap': false,
       'text-ignore-placement': false,
       'text-field': zoomStep(
         '',
-        5,
-        ['coalesce', ['get', 'icao_code'], ['get', 'name_label']],
-        8,
-        ['coalesce', ['get', 'name_label_full'], ['get', 'name']],
+        8.5,
+        ['coalesce', ['get', 'name'], ['get', 'name_label_full'], ['get', 'name_label'], ['get', 'icao_code']],
       ),
-      'text-justify': 'left',
-      'text-anchor': 'center',
-      'text-offset': zoomStep(
-        ['literal', [0, -1.5]],
-        8,
-        ['literal', [0, -2]],
-        10,
-        ['literal', [0, -4]],
-      ),
-      'text-size': zoomStep(9, 6, 10, 8, 12),
-      'text-font': ['Roboto Mono Regular'],
+      'text-justify': 'center',
+      'text-anchor': 'top',
+      'text-offset': ['literal', [0, 0.8]],
+      'text-size': zoomStep(9.5, 9, 10.5, 11, 11.5),
+      'text-font': ['Noto Sans Regular'],
       'text-transform': 'none',
       'text-optional': true,
       'icon-ignore-placement': false,
@@ -1709,8 +1691,18 @@ const OPENAIP_ALL_LAYERS: OpenAipOverlayLayer[] = [
 export const getOpenAipOverlayLayers = (
   enabledGroups: OpenAipOverlayGroup[] = OPENAIP_DEFAULT_ENABLED_GROUPS,
   theme: OpenAipTheme = "light"
-): any[] =>
-  OPENAIP_ALL_LAYERS.filter((layer) => enabledGroups.includes(layer.group)).map((layer) => {
+): any[] => {
+  const effectiveGroups = new Set<string>(enabledGroups);
+  if (effectiveGroups.has("airspaces")) {
+    effectiveGroups.add("airspaceLabels");
+  }
+
+  return OPENAIP_ALL_LAYERS.filter((layer) => {
+    if (layer.group === "navaids" || layer.group === "reportingPoints") {
+      return false;
+    }
+    return effectiveGroups.has(layer.group);
+  }).map((layer) => {
     let layout = layer.layout ? { ...layer.layout } : undefined;
     if (layout?.["text-font"]) {
       layout["text-font"] = ["Noto Sans Regular"];
@@ -1758,3 +1750,4 @@ export const getOpenAipOverlayLayers = (
       layout,
     };
   });
+};
