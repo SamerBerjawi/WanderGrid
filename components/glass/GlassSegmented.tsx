@@ -81,6 +81,7 @@ export function GlassSegmented<T extends string = string>({
   isMulti = false,
   columns,
   showCheckOnSelected = false,
+  accentColor = 'primary',
   className = '',
   ariaLabel,
   disabled = false,
