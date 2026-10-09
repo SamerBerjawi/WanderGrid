@@ -33,6 +33,8 @@ import { dataService } from '../services/mockDb';
 import { runAfterFirstPaint, mapWithConcurrency } from '../services/utils';
 import { Trip, CountryResidenceStatus, PredefinedMapMode, getResidenceStatuses } from '../types';
 import { Input } from '../components/ui';
+import { GlassSegmented } from '../components/glass/GlassSegmented';
+import { GlassDatePicker } from '../components/glass/GlassDatePicker';
 import { LiquidGlassSelect, LiquidGlassMultiSelect } from '../components/LiquidGlassSelect';
 import { getCoordinates, getCoordinatesSync, STATIC_GEO_DATA, calculateDistance, formatProperLocationName } from '../services/geocoding';
 import {
@@ -252,6 +254,10 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
         setAnimateRoutes(false);
         setClusterMode(false);
         setShowRoadTracing(false);
+        handleClearFilters();
+    };
+
+    const handleClearFilters = () => {
         setStatusFilter('all');
         setYearFilter('all');
         setDepFilter([]);
@@ -259,6 +265,13 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
         setDateFrom('');
         setDateTo('');
     };
+
+    const activeFilterCount =
+        (statusFilter !== 'all' ? 1 : 0) +
+        (yearFilter !== 'all' ? 1 : 0) +
+        (depFilter.length > 0 ? 1 : 0) +
+        (arrFilter.length > 0 ? 1 : 0) +
+        (dateFrom || dateTo ? 1 : 0);
 
     const handleRefresh = () => {
         setLoading(true);
@@ -1018,6 +1031,11 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                     >
                         <SlidersHorizontal className={`w-4 h-4 ${isSidebarOpen ? 'text-primary-600 dark:text-primary-400' : 'text-primary-500'} transition-transform duration-300 ${isSidebarOpen ? 'rotate-90' : ''}`} />
                         <span>Controls & Appearance</span>
+                        {activeFilterCount > 0 && !isSidebarOpen && (
+                            <span className="px-1.5 py-0.5 rounded-full text-3xs font-bold bg-primary-500 text-white leading-none">
+                                {activeFilterCount}
+                            </span>
+                        )}
                     </button>
                 </GlassPanel>
             </div>
@@ -1077,6 +1095,11 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                             >
                                 <SlidersHorizontal className={`w-3.5 h-3.5 ${isSidebarOpen ? 'text-primary-600 dark:text-primary-400' : 'text-primary-500'} transition-transform duration-300 ${isSidebarOpen ? 'rotate-90' : ''}`} />
                                 <span className="text-2xs font-bold uppercase tracking-wider">Controls</span>
+                                {activeFilterCount > 0 && !isSidebarOpen && (
+                                    <span className="px-1.5 py-0.5 rounded-full text-3xs font-bold bg-primary-500 text-white leading-none">
+                                        {activeFilterCount}
+                                    </span>
+                                )}
                             </button>
                         </div>
                     </GlassPanel>
@@ -1161,6 +1184,8 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                     localStorage.setItem('wandergrid_road_tracing', String(newVal));
                     handleUpdateAppearance({ ...appearance, routeTracing: newVal });
                 }}
+                activeFilterCount={activeFilterCount}
+                onClearFilters={handleClearFilters}
                 filterTabContent={
                     <div className="space-y-5">
                         {/* Status Filter */}
@@ -1168,26 +1193,17 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                             <label className="text-xs font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-wider uppercase block mb-2">
                                 Trip Status
                             </label>
-                            <div className="grid grid-cols-4 gap-1.5">
-                                {[
+                            <GlassSegmented<'all' | 'Past' | 'Upcoming' | 'Planning'>
+                                options={[
                                     { id: 'all', label: 'All' },
                                     { id: 'Past', label: 'Past' },
                                     { id: 'Upcoming', label: 'Upcoming' },
                                     { id: 'Planning', label: 'Planning' }
-                                ].map((s) => (
-                                    <button
-                                        key={s.id}
-                                        onClick={() => setStatusFilter(s.id as any)}
-                                        className={`py-2 rounded-xl text-xs font-semibold tracking-wide transition-all duration-150 text-center cursor-pointer active:scale-[0.98] ${statusFilter === s.id
-                                                ? 'bg-emerald-500/20 dark:bg-emerald-500/30 backdrop-blur-md text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-500/40 dark:border-emerald-400/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(16,185,129,0.15)]'
-                                                : 'bg-white/40 dark:bg-white/[0.04] backdrop-blur-sm border border-black/5 dark:border-white/10 text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text dark:hover:text-dark-text'
-                                            }`}
-                                        style={statusFilter === s.id ? { WebkitBackdropFilter: 'blur(12px)' } : undefined}
-                                    >
-                                        {s.label}
-                                    </button>
-                                ))}
-                            </div>
+                                ]}
+                                value={statusFilter}
+                                onChange={(val) => setStatusFilter(val)}
+                                columns={4}
+                            />
                         </div>
 
                         {/* Year Filter */}
@@ -1214,7 +1230,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                 Departure Hub
                             </label>
                             <LiquidGlassMultiSelect
-                                placeholder="Any Departure Hub"
+                                placeholder="Any airport"
                                 options={uniqueAirports.origins}
                                 value={depFilter}
                                 onChange={setDepFilter}
@@ -1230,7 +1246,7 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                                 Arrival Hub
                             </label>
                             <LiquidGlassMultiSelect
-                                placeholder="Any Arrival Hub"
+                                placeholder="Any airport"
                                 options={uniqueAirports.destinations}
                                 value={arrFilter}
                                 onChange={setArrFilter}
@@ -1248,37 +1264,30 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
                                     <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold block mb-1">From</span>
-                                    <input
-                                        type="date"
+                                    <GlassDatePicker
                                         value={dateFrom}
-                                        onChange={(e) => setDateFrom(e.target.value)}
-                                        className="w-full h-10 sm:h-11 px-3 text-xs font-bold bg-black/5 dark:bg-white/5 text-light-text dark:text-dark-text border border-black/5 dark:border-white/10 rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all cursor-pointer"
+                                        onChange={setDateFrom}
+                                        placeholder="Select date"
+                                        accentColor="emerald"
                                     />
                                 </div>
                                 <div>
                                     <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary uppercase font-bold block mb-1">To</span>
-                                    <input
-                                        type="date"
+                                    <GlassDatePicker
                                         value={dateTo}
-                                        onChange={(e) => setDateTo(e.target.value)}
-                                        className="w-full h-10 sm:h-11 px-3 text-xs font-bold bg-black/5 dark:bg-white/5 text-light-text dark:text-dark-text border border-black/5 dark:border-white/10 rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all cursor-pointer"
+                                        onChange={setDateTo}
+                                        placeholder="Select date"
+                                        accentColor="emerald"
                                     />
                                 </div>
                             </div>
                         </div>
 
                         {/* Reset Active Filters Action */}
-                        {(statusFilter !== 'all' || yearFilter !== 'all' || depFilter.length > 0 || arrFilter.length > 0 || dateFrom || dateTo) && (
+                        {activeFilterCount > 0 && (
                             <button
                                 type="button"
-                                onClick={() => {
-                                    setStatusFilter('all');
-                                    setYearFilter('all');
-                                    setDepFilter([]);
-                                    setArrFilter([]);
-                                    setDateFrom('');
-                                    setDateTo('');
-                                }}
+                                onClick={handleClearFilters}
                                 className="w-full py-2.5 rounded-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98]"
                             >
                                 <X className="w-3.5 h-3.5" weight="bold" />
