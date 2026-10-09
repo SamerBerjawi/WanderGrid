@@ -11,6 +11,7 @@ import {
   Lightning,
   CirclesThree,
   GitFork,
+  EyeSlash,
 } from '@phosphor-icons/react';
 import { MapAppearanceSettings } from '../../../types/mapAppearance';
 import MAP_SETTINGS_LABELS from '../labels';
@@ -22,8 +23,8 @@ import { SettingsSection } from '../../glass/SettingsSection';
 interface TripsTabProps {
   settings: MapAppearanceSettings;
   onChangeSetting: <K extends keyof MapAppearanceSettings>(field: K, value: MapAppearanceSettings[K]) => void;
-  viewMode?: 'flights' | 'land_sea' | 'scratch' | 'all';
-  onSelectViewMode?: (mode: 'flights' | 'land_sea' | 'scratch' | 'all') => void;
+  viewMode?: 'flights' | 'land_sea' | 'scratch' | 'all' | 'none';
+  onSelectViewMode?: (mode: 'flights' | 'land_sea' | 'scratch' | 'all' | 'none') => void;
   animateRoutes?: boolean;
   onToggleAnimateRoutes?: () => void;
   clusterMode?: boolean;
@@ -53,17 +54,27 @@ export const TripsTab: React.FC<TripsTabProps> = ({
         <SettingsSection title={MAP_SETTINGS_LABELS.tripsTab.show} accentColor="primary">
           <GlassSegmented<'all' | 'flights' | 'land_sea' | 'scratch'>
             options={[
-              { id: 'all', label: MAP_SETTINGS_LABELS.tripsTab.showAll, icon: Globe, accentColor: 'primary' },
+              {
+                id: 'all',
+                label: viewMode === 'none' ? MAP_SETTINGS_LABELS.tripsTab.showNone : MAP_SETTINGS_LABELS.tripsTab.showAll,
+                icon: viewMode === 'none' ? EyeSlash : Globe,
+                accentColor: 'primary',
+              },
               { id: 'flights', label: MAP_SETTINGS_LABELS.tripsTab.showFlights, icon: Airplane, accentColor: 'sky' },
               { id: 'land_sea', label: MAP_SETTINGS_LABELS.tripsTab.showLandSea, icon: Compass, accentColor: 'emerald' },
               { id: 'scratch', label: MAP_SETTINGS_LABELS.tripsTab.showScratch, icon: MapTrifold, accentColor: 'amber' },
             ]}
-            value={viewMode || 'all'}
-            onChange={(mode) => onSelectViewMode(mode)}
+            value={viewMode === 'none' ? 'all' : (viewMode || 'all')}
+            onChange={(mode) => {
+              if (mode === 'all') {
+                onSelectViewMode(viewMode === 'all' ? 'none' : 'all');
+              } else {
+                onSelectViewMode(mode);
+              }
+            }}
             columns={2}
             showCheckOnSelected
           />
-
         </SettingsSection>
       )}
 

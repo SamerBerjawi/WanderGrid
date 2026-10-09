@@ -400,7 +400,7 @@ export const toggleCountryResidenceStatus = (
   }
 };
 
-export type PredefinedMapMode = 'flights' | 'land_sea' | 'scratch' | 'all';
+export type PredefinedMapMode = 'flights' | 'land_sea' | 'scratch' | 'all' | 'none';
 
 // --- Live Flight Tracking Types ---
 export interface FlightStatusResponse {

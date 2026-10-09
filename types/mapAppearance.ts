@@ -109,6 +109,7 @@ export interface MapAppearanceSettings {
     // OpenAIP Aeronautical Chart Overlay
     openAipOverlay?: boolean;
     openAipGroups?: ('airspaces' | 'airspaceLabels' | 'airports' | 'navaids' | 'reportingPoints')[];
+    openAipOpacity?: number; // 0.1 to 1.0 (opacity of aviation charts / airports dots & labels)
 
     // Terrain, Elevation & Infrastructure Overlays
     terrainHillshade?: boolean; // Esri World Hillshade 3D relief shading
@@ -150,6 +151,7 @@ export const DEFAULT_MAP_APPEARANCE: MapAppearanceSettings = {
     rainRadarColorScheme: 2,
     openAipOverlay: false,
     openAipGroups: ['airspaces', 'airspaceLabels', 'airports'],
+    openAipOpacity: 0.85,
     terrainHillshade: false,
     terrainHillshadeOpacity: 0.8,
     transitOverlay: false,

@@ -655,7 +655,8 @@ const syncOpenAipOverlayOnMap = (
     isOpenAipOverlay: boolean,
     isDark: boolean,
     openAipKey?: string,
-    openAipGroups?: OpenAipOverlayGroup[]
+    openAipGroups?: OpenAipOverlayGroup[],
+    openAipOpacity: number = 0.85
 ) => {
     if (!map.isStyleLoaded()) return;
     const sanitizedKey = (openAipKey || '').trim();
@@ -702,7 +703,14 @@ const syncOpenAipOverlayOnMap = (
 
         // Add enabled layers in canonical order (fills -> borders -> symbols -> labels)
         activeLayers.forEach(layer => {
-            try { map.addLayer(layer); } catch (e) {}
+            try {
+                map.addLayer(layer);
+                if (layer.type === 'fill' && map.getLayer(layer.id)) {
+                    map.setPaintProperty(layer.id, 'fill-opacity', openAipOpacity * 0.4);
+                } else if (layer.type === 'line' && map.getLayer(layer.id)) {
+                    map.setPaintProperty(layer.id, 'line-opacity', openAipOpacity);
+                }
+            } catch (e) {}
         });
     }
 };
@@ -1527,7 +1535,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         };
 
         // 1. Flight routes: Generate smooth Great-Circle paths using d3.geoInterpolate
-        if (showFlightRoutes && viewMode !== 'scratch' && flightArcs.length > 0) {
+        if (showFlightRoutes && viewMode !== 'scratch' && viewMode !== 'none' && flightArcs.length > 0) {
             flightArcs.forEach(arc => {
                 if (!arc.originLng || !arc.destLng) return;
                 try {
@@ -1583,7 +1591,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         }
 
         // 2. Overland & Maritime routes: Trace multi-modal paths
-        if (showLandSeaRoutes && viewMode !== 'scratch' && overlandSegments.length > 0) {
+        if (showLandSeaRoutes && viewMode !== 'scratch' && viewMode !== 'none' && overlandSegments.length > 0) {
             overlandSegments.forEach(seg => {
                 if (!seg.path || seg.path.length < 2) return;
                 const singlePath: [number, number][] = seg.path.map((p: any) => [p[0], p[1]]);
@@ -1808,7 +1816,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         }
 
         // 5. Overland & Maritime Routes (PathLayer for High-Speed Rail & Road Geometries)
-        if (!activeAppearance.airportsOnly && overlandSegments.length > 0 && showLandSeaRoutes && viewMode !== 'scratch') {
+        if (!activeAppearance.airportsOnly && overlandSegments.length > 0 && showLandSeaRoutes && viewMode !== 'scratch' && viewMode !== 'none') {
             layers.push(
                 new PathLayer({
                     id: 'overland-routes',
@@ -1857,7 +1865,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         }
 
         // 6. GPU Great-Circle Flight Arcs (AirTrail Benchmark Architecture)
-        if (!activeAppearance.airportsOnly && flightArcs.length > 0 && showFlightRoutes && viewMode !== 'scratch') {
+        if (!activeAppearance.airportsOnly && flightArcs.length > 0 && showFlightRoutes && viewMode !== 'scratch' && viewMode !== 'none') {
             // Arc height elevation: on 3D globe, elevate flight arcs gracefully above the globe curvature
             const arcHeight = effectiveProjection === 'globe'
                 ? (isElevatedActive ? 0.45 : 0.32)
@@ -2183,6 +2191,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             activeAppearance.openAipOverlay &&
             (activeAppearance.openAipGroups ? activeAppearance.openAipGroups.includes('airports') : true)
         );
+        const aviationOpacity = Math.max(0.1, Math.min(1.0, activeAppearance.openAipOpacity ?? 0.85));
 
         if (showAllAviationAirports && runwayDataset) {
             const allGlobalAirports = getAllGlobalAirports(runwayDataset);
@@ -2194,8 +2203,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         getPosition: (d: any) => d.position,
                         filled: true,
                         stroked: true,
-                        getFillColor: [14, 165, 233, 220], // Sky-500 aeronautical cyan/blue
-                        getLineColor: isDark ? [255, 255, 255, 220] : [15, 23, 42, 220],
+                        getFillColor: [14, 165, 233, Math.round(255 * aviationOpacity)], // Sky-500 aeronautical cyan/blue
+                        getLineColor: isDark ? [255, 255, 255, Math.round(220 * aviationOpacity)] : [15, 23, 42, Math.round(220 * aviationOpacity)],
                         getRadius: 4.0,
                         radiusUnits: 'pixels',
                         radiusMinPixels: 3.5,
@@ -2208,6 +2217,10 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         autoHighlight: true,
                         highlightColor: [255, 255, 255, 255],
                         onHover: (info: any) => info.object && setHoverInfo(info),
+                        updateTriggers: {
+                            getFillColor: [aviationOpacity],
+                            getLineColor: [isDark, aviationOpacity],
+                        },
                         parameters: { depthTest: false },
                         extensions: [globeHorizonCullExtension]
                     })
@@ -2221,16 +2234,20 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                             getPosition: (d: any) => d.position,
                             getText: (d: any) => d.code,
                             getSize: 10,
-                            getColor: isDark ? [224, 242, 254, 255] : [12, 74, 110, 255],
+                            getColor: isDark ? [224, 242, 254, Math.round(255 * aviationOpacity)] : [12, 74, 110, Math.round(255 * aviationOpacity)],
                             getTextAnchor: 'start',
                             getAlignmentBaseline: 'center',
                             pixelOffset: [8, 0],
                             fontWeight: 700,
                             background: true,
-                            getBackgroundColor: isDark ? [15, 23, 42, 210] : [240, 249, 255, 210],
+                            getBackgroundColor: isDark ? [15, 23, 42, Math.round(210 * aviationOpacity)] : [240, 249, 255, Math.round(210 * aviationOpacity)],
                             backgroundPadding: [4, 2],
                             wrapLongitude: true,
                             pickable: false,
+                            updateTriggers: {
+                                getColor: [isDark, aviationOpacity],
+                                getBackgroundColor: [isDark, aviationOpacity],
+                            },
                             parameters: { depthTest: false },
                             extensions: [globeHorizonCullExtension]
                         })
@@ -2885,6 +2902,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         if (!map) return;
         const isOpenAipOverlay = Boolean(activeAppearance.openAipOverlay);
         const openAipGroups = activeAppearance.openAipGroups;
+        const openAipOpacity = activeAppearance.openAipOpacity ?? 0.85;
 
         let isCancelled = false;
         const syncOpenAip = async () => {
@@ -2893,7 +2911,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 await ensureOpenAipIcons(map, isDark ? 'dark' : 'light');
             }
             if (isCancelled) return;
-            syncOpenAipOverlayOnMap(map, isOpenAipOverlay, isDark, effectiveOpenAipKey, openAipGroups);
+            syncOpenAipOverlayOnMap(map, isOpenAipOverlay, isDark, effectiveOpenAipKey, openAipGroups, openAipOpacity);
             map.triggerRepaint();
         };
 
@@ -2905,6 +2923,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         };
     }, [
         activeAppearance.openAipOverlay,
+        activeAppearance.openAipOpacity,
         JSON.stringify(activeAppearance.openAipGroups),
         isDark,
         effectiveOpenAipKey

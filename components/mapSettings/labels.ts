@@ -65,7 +65,8 @@ export const MAP_SETTINGS_LABELS = {
   // Trips Tab
   tripsTab: {
     show: 'Show',
-    showAll: 'All',
+    showAll: 'All / None',
+    showNone: 'None',
     showFlights: 'Flights',
     showLandSea: 'Land & sea',
     showScratch: 'Scratch map',

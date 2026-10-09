@@ -9,7 +9,8 @@ import {
     Airplane as Plane,
     X,
     ArrowsOut as Maximize,
-    ArrowsIn as Minimize
+    ArrowsIn as Minimize,
+    EyeSlash
 } from '@phosphor-icons/react';
 const DeckFlightMap = lazy(() => import('../components/DeckFlightMap').then(m => ({ default: m.DeckFlightMap || m.default })));
 import { MapAppearanceModal } from '../components/MapAppearanceModal';
@@ -150,6 +151,22 @@ const MAP_MODE_THEMES: Record<PredefinedMapMode, {
         cardActiveBorder: 'border-indigo-500/40 dark:border-indigo-400/50',
         cardActiveText: 'text-indigo-700 dark:text-indigo-300',
         cardActiveShadow: 'shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(99,102,241,0.2)]'
+    },
+    none: {
+        label: 'None',
+        shortLabel: 'None',
+        desc: 'Hiding all routes',
+        icon: EyeSlash,
+        color: 'text-zinc-500 dark:text-zinc-400',
+        activeText: 'text-zinc-700 dark:text-zinc-300',
+        activeBg: 'bg-zinc-500/20 dark:bg-zinc-500/30',
+        activeBorder: 'border-zinc-500/40 dark:border-zinc-400/50',
+        activeShadow: 'shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_10px_rgba(100,100,100,0.3)]',
+        badgeStyle: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20',
+        cardActiveBg: 'bg-zinc-500/15 dark:bg-zinc-500/25',
+        cardActiveBorder: 'border-zinc-500/40 dark:border-zinc-400/50',
+        cardActiveText: 'text-zinc-700 dark:text-zinc-300',
+        cardActiveShadow: 'shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(100,100,100,0.2)]'
     }
 };
 
@@ -191,22 +208,35 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
     const isDark = useDarkMode();
 
     const handleSelectViewMode = (mode: PredefinedMapMode) => {
-        setViewMode(mode);
-        if (mode === 'flights') {
+        let targetMode = mode;
+        if (mode === 'all' && viewMode === 'all') {
+            targetMode = 'none';
+        } else if (mode === 'all' && viewMode === 'none') {
+            targetMode = 'all';
+        } else if (mode === 'none' && viewMode === 'none') {
+            targetMode = 'all';
+        }
+
+        setViewMode(targetMode);
+        if (targetMode === 'flights') {
             setShowIndependentFlights(true);
             setShowLandSeaRoutes(false);
             setShowCountries(false);
-        } else if (mode === 'land_sea') {
+        } else if (targetMode === 'land_sea') {
             setShowIndependentFlights(false);
             setShowLandSeaRoutes(true);
             setShowCountries(false);
-        } else if (mode === 'scratch') {
+        } else if (targetMode === 'scratch') {
             setShowIndependentFlights(false);
             setShowLandSeaRoutes(false);
             setShowCountries(true);
-        } else if (mode === 'all') {
+        } else if (targetMode === 'all') {
             setShowIndependentFlights(true);
             setShowLandSeaRoutes(true);
+            setShowCountries(false);
+        } else if (targetMode === 'none') {
+            setShowIndependentFlights(false);
+            setShowLandSeaRoutes(false);
             setShowCountries(false);
         }
     };
@@ -816,6 +846,10 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                 count: allCount,
                 distanceStr: `${Math.round(allDist).toLocaleString()} km`
             },
+            none: {
+                count: 0,
+                distanceStr: '0 km'
+            },
             activeSectorsCount: allCount,
             totalDistanceKm: Math.round(allDist)
         };
@@ -911,8 +945,9 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                 >
                     <div className="flex gap-1 relative items-center">
                         {(['flights', 'land_sea', 'scratch', 'all'] as PredefinedMapMode[]).map((modeKey) => {
-                            const config = MAP_MODE_THEMES[modeKey];
-                            const isSelected = viewMode === modeKey;
+                            const isAllNoneActive = modeKey === 'all' && viewMode === 'none';
+                            const config = isAllNoneActive ? MAP_MODE_THEMES.none : MAP_MODE_THEMES[modeKey];
+                            const isSelected = viewMode === modeKey || isAllNoneActive;
                             const IconComponent = config.icon;
                             const metrics = expeditionTypeMetrics[modeKey];
                             return (
@@ -1083,8 +1118,9 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
                     >
                         <div className="grid grid-cols-4 gap-1 w-full relative">
                             {(['flights', 'land_sea', 'scratch', 'all'] as PredefinedMapMode[]).map((modeKey) => {
-                                const config = MAP_MODE_THEMES[modeKey];
-                                const isSelected = viewMode === modeKey;
+                                const isAllNoneActive = modeKey === 'all' && viewMode === 'none';
+                                const config = isAllNoneActive ? MAP_MODE_THEMES.none : MAP_MODE_THEMES[modeKey];
+                                const isSelected = viewMode === modeKey || isAllNoneActive;
                                 const IconComponent = config.icon;
                                 const metrics = expeditionTypeMetrics[modeKey];
                                 return (

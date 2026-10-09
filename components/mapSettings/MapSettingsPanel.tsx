@@ -50,8 +50,8 @@ export interface MapSettingsPanelProps {
   onResetCamera?: () => void;
   onResetAll?: () => void;
   // Optional Expedition view mode & dynamics controls
-  viewMode?: 'flights' | 'land_sea' | 'scratch' | 'all';
-  onSelectViewMode?: (mode: 'flights' | 'land_sea' | 'scratch' | 'all') => void;
+  viewMode?: 'flights' | 'land_sea' | 'scratch' | 'all' | 'none';
+  onSelectViewMode?: (mode: 'flights' | 'land_sea' | 'scratch' | 'all' | 'none') => void;
   animateRoutes?: boolean;
   onToggleAnimateRoutes?: () => void;
   clusterMode?: boolean;

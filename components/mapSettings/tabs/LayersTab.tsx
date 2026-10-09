@@ -196,9 +196,9 @@ export const LayersTab: React.FC<LayersTabProps> = ({
               />
             }
           >
-            {/* Show chips when overlay enabled */}
+            {/* Show chips & opacity slider when overlay enabled */}
             {settings.openAipOverlay && (
-              <div className="space-y-1.5">
+              <div className="space-y-2.5 pt-0.5">
                 <GlassSegmented<'airspaces' | 'airports'>
                   options={[
                     { id: 'airspaces', label: MAP_SETTINGS_LABELS.layersTab.airspaces, accentColor: 'sky' },
@@ -223,6 +223,17 @@ export const LayersTab: React.FC<LayersTabProps> = ({
                   columns={2}
                   accentColor="sky"
                   showCheckOnSelected
+                />
+
+                <GlassSlider
+                  label={MAP_SETTINGS_LABELS.layersTab.opacity}
+                  value={settings.openAipOpacity ?? 0.85}
+                  min={0.1}
+                  max={1.0}
+                  step={0.05}
+                  accentColor="sky"
+                  onChange={(val) => onChangeSetting('openAipOpacity', val)}
+                  onPointerUp={onFlushSettings}
                 />
               </div>
             )}
