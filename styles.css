@@ -805,4 +805,10 @@
   min-height: 44px;
 }
 
+/* ── Shared glass surface blur for segmented / active chips ────────── */
+.wg-glass-surface {
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
 
