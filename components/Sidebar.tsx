@@ -13,6 +13,7 @@ import {
   SidebarSimple, 
   Compass
 } from '@phosphor-icons/react';
+import { APP_VERSION } from '../version';
 
 interface SidebarProps {
   currentView: ViewState;
@@ -325,6 +326,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         <SidebarSimple weight="duotone" className="w-5 h-5" />
                     </button>
                 </div>
+
+                {/* Version Detail */}
+                <div 
+                    className={`pt-2 font-mono font-medium text-zinc-400 dark:text-zinc-500 text-center select-none truncate transition-all ${
+                        isCollapsed ? 'text-[9px] tracking-tight' : 'text-xs tracking-wider opacity-70'
+                    }`}
+                    title={`WanderGrid ${APP_VERSION}`}
+                >
+                    {isCollapsed ? APP_VERSION.replace('v0.5-', '') : APP_VERSION}
+                </div>
               </div>
             </div>
           </GlassPanel>
@@ -554,6 +565,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       </button>
                     </>
                   )}
+
+                  {/* Version Detail */}
+                  <div className="pt-2 pb-1 text-center font-mono text-[10px] font-medium text-zinc-400 dark:text-zinc-500 select-none tracking-wider opacity-70">
+                    {APP_VERSION}
+                  </div>
                 </div>
               </GlassPanel>
             </motion.div>

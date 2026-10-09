@@ -1,11 +1,12 @@
 {
   "name": "wandergrid-v0.2",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.5-261009.3",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "bump-version": "node scripts/bump-version.cjs",
+    "build": "node scripts/bump-version.cjs && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
