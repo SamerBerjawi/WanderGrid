@@ -12,7 +12,7 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const { fetchUpstream } = require('./upstream');
 const { resolveIcaoCallsign } = require('./carrierMapping');
-const { handleRouteProxy } = require('./routeProxy');
+const { handleRouteProxy, handleRailRouteProxy } = require('./routeProxy');
 const { searchGeocodingChain } = require('./geocodingChain');
 const { testProvider } = require('./integrationsTester');
 
@@ -1351,10 +1351,12 @@ app.get('/api/proxy/adsbdb/aircraft/:hexOrReg', async (req, res) => {
 });
 
 // ==========================================
-// P-02: REAL ROAD ROUTING PROXY (FOSSGIS / OSRM)
+// P-02: REAL ROAD & RAIL ROUTING PROXIES
 // ==========================================
 app.get('/api/proxy/route', handleRouteProxy);
 app.get('/api/route', handleRouteProxy);
+app.get('/api/proxy/rail', handleRailRouteProxy);
+app.get('/api/rail', handleRailRouteProxy);
 
 // ==========================================
 // P-06: INTEGRATIONS TEST ENDPOINT (/api/proxy/test/:provider)

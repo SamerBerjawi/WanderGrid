@@ -97,7 +97,7 @@ import { getLatestRainRadarMetadata, RainRadarMetadata } from '../services/rainV
 import { getPhysicalRunways } from '../services/airportRunways';
 import { buildRouteCorridors, RouteCorridor, getApproxLocalTime, formatAirportDisplayName, resolveLocationMetadata, getRouteTransportSummary, RouteTransportSummary } from '../services/routeCorridor';
 import { getFlagEmoji, getRegion } from '../services/geoData';
-import { fetchMultiModalRoute, getCachedMultiModalRoute } from '../services/multiModalRouting';
+import { fetchMultiModalRoute, getCachedMultiModalRoute, generateSmoothRailCorridor } from '../services/multiModalRouting';
 import { dataService } from '../services/mockDb';
 import { formatDate } from '../utils/formatters';
 import { DataCreditsPopover } from './DataCreditsPopover';
@@ -760,11 +760,33 @@ const simplifyRailroadLayers = (map: maplibregl.Map) => {
                 id.includes('railway') || 
                 (layer['source-layer'] && String(layer['source-layer']).includes('rail'))
             );
-            if (isRailLine) {
+            if (!isRailLine) return;
+
+            // Remove glow / fuzzy effects by hiding hatching, dashlines, halos, and casings
+            const isAuxiliaryRailLayer = 
+                id.includes('hatching') || 
+                id.includes('dashline') || 
+                id.includes('casing') || 
+                id.includes('halo');
+
+            if (isAuxiliaryRailLayer) {
                 try {
-                    map.setPaintProperty(id, 'line-width', 1);
+                    map.setLayoutProperty(id, 'visibility', 'none');
                 } catch {}
+                return;
             }
+
+            // Keep primary rail line as a clean, simple 1px hairline with zero glow
+            try {
+                map.setLayoutProperty(id, 'visibility', 'visible');
+                map.setPaintProperty(id, 'line-width', 1);
+                map.setPaintProperty(id, 'line-blur', 0);
+                map.setPaintProperty(id, 'line-gap-width', 0);
+                map.setPaintProperty(id, 'line-offset', 0);
+                try {
+                    map.setPaintProperty(id, 'line-dasharray', [1, 0]);
+                } catch {}
+            } catch {}
         });
     } catch (e) {
         // Ignore style access error
@@ -1219,8 +1241,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     const mode = (t.mode || '').toLowerCase();
                     const isTrain = mode.includes('train') || mode.includes('rail');
                     const isRoad = mode.includes('car') || mode.includes('drive') || mode.includes('bus') || mode.includes('road') || mode.includes('taxi');
+                    const isSea = ['cruise', 'ferry', 'boat', 'ship'].some(m => mode.includes(m));
 
-                    if (isTrain || isRoad) {
+                    if (isTrain || isRoad || isSea) {
                         void fetchMultiModalRoute(
                             t.mode,
                             t.originLat,
@@ -1337,7 +1360,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 } else if (showLandSeaRoutes) {
                     // Overland / Maritime multi-modal route
                     const isTracingEnabled = showRoadTracing || activeAppearance.routeTracing !== false;
-                    const isTrackable = isTrain || isCarBus;
+                    const isTrackable = isTrain || isCarBus || isSea;
                     const cachedCoords = (isTrackable && isTracingEnabled)
                         ? getCachedMultiModalRoute(t.mode, t.originLat, t.originLng, t.destLat, t.destLng, t.waypoints)
                         : null;
@@ -1345,6 +1368,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     let path: [number, number, number][] = [];
                     if (cachedCoords && cachedCoords.length > 0) {
                         path = cachedCoords;
+                    } else if (isTrain || isSea) {
+                        // Traces natural curved geographic corridor while real track / sea coordinates load (never road or 2-point straight line)
+                        path = generateSmoothRailCorridor(t.originLat, t.originLng, t.destLat, t.destLng, t.waypoints);
                     } else {
                         path = [[t.originLng, t.originLat, 0]];
                         if (t.waypoints) {
@@ -1356,10 +1382,10 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     }
 
                     const modeRGB: [number, number, number] = isTrain
-                        ? [168, 85, 247] // Purple
+                        ? [168, 85, 247] // Purple for Rail
                         : isCarBus
-                            ? [245, 158, 11] // Amber
-                            : [6, 182, 212]; // Cyan
+                            ? [245, 158, 11] // Amber for Road
+                            : [6, 182, 212]; // Cyan for Ferry / Sea / Cruise
 
                     overlandRoutes.push({
                         path,
@@ -1373,7 +1399,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         provider: t.provider || t.mode,
                         identifier: t.identifier || '',
                         mode: t.mode,
-                        isTrain
+                        isTrain,
+                        isSea
                     });
                 }
 
@@ -1598,12 +1625,14 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 result.push({
                     path: singlePath,
                     timestamps: singlePath.map((_, i) => phase + (i / n) * duration),
-                    color: modeColor
+                    color: modeColor,
+                    isTrain: Boolean(seg.isTrain)
                 });
                 result.push({
                     path: singlePath,
                     timestamps: singlePath.map((_, i) => phase + duration + (i / n) * duration),
-                    color: modeColor
+                    color: modeColor,
+                    isTrain: Boolean(seg.isTrain)
                 });
             });
         }
@@ -1809,6 +1838,9 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         if (d.isTrain || (d.mode && ((d.mode.toLowerCase().includes('train') || d.mode.toLowerCase().includes('rail'))))) {
                             return 1.0;
                         }
+                        if (d.isSea || (d.mode && ['cruise', 'ferry', 'boat', 'ship'].some(m => d.mode.toLowerCase().includes(m)))) {
+                            return 1.2;
+                        }
                         const base = effectiveProjection === 'globe' ? 2.2 : 1.8;
                         if (selectedCorridor && d.corridorId === selectedCorridor.id) return base * 1.8;
                         return hoveredRouteKey === d.corridorId ? base + 1.0 : base;
@@ -1952,7 +1984,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     getColor: (d: any) => d.color,
                     opacity: 1,
                     widthUnits: 'pixels',
-                    getWidth: 3.5,
+                    getWidth: (d: any) => (d.isTrain ? 1.0 : 3.5),
                     trailLength: 160,
                     currentTime: currentTime,
                     fadeTrail: true,

@@ -313,6 +313,7 @@ export interface WorkspaceSettings {
     carriers?: Carrier[]; // Manageable custom carriers list
     defaultTravelClass?: 'Economy' | 'Premium Economy' | 'Business' | 'First';
     defaultStartingAirport?: string;
+    defaultLandTransportMethod?: 'Train' | 'Bus' | 'Car Rental' | 'Personal Car';
     defaultBasemapLight?: 'liberty' | 'bright' | 'positron' | 'satellite' | 'snow' | 'vibrant' | 'ocean';
     defaultBasemapDark?: 'citylights' | 'ocean' | 'satellite' | 'onyx';
 }

@@ -3,42 +3,160 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
+function decodePolyline6(str: string): [number, number, number][] {
+  let index = 0, lat = 0, lng = 0;
+  const coordinates: [number, number, number][] = [];
+  const factor = 1e6;
+  while (index < str.length) {
+    let b, shift = 0, result = 0;
+    do {
+      b = str.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    const dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
+    lat += dlat;
+
+    shift = 0;
+    result = 0;
+    do {
+      b = str.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    const dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
+    lng += dlng;
+
+    coordinates.push([lng / factor, lat / factor, 0]);
+  }
+  return coordinates;
+}
+
 function viteDevApiPlugin() {
   return {
     name: 'vite-dev-api-plugin',
     configureServer(server: any) {
       server.middlewares.use(async (req: any, res: any, next: any) => {
-        // Route proxy handler for overland road & rail tracing in dev mode
+        // Route proxy handler for overland road tracing in dev mode
         if (req.url && (req.url.startsWith('/api/proxy/route?') || req.url.startsWith('/api/route?'))) {
           try {
             const urlObj = new URL(req.url, 'http://localhost');
             const profile = urlObj.searchParams.get('profile') || 'car';
             const coords = urlObj.searchParams.get('coords') || '';
-            const osrmPath = profile === 'bike' ? 'routed-bike/route/v1/bicycle' : profile === 'foot' ? 'routed-foot/route/v1/foot' : 'routed-car/route/v1/driving';
-            const upstreamUrl = `https://routing.openstreetmap.de/${osrmPath}/${coords}?overview=full&geometries=geojson&alternatives=false&steps=false`;
+            const pairs = coords.split(';').map((s: string) => s.trim()).filter(Boolean);
 
-            const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), 12000);
-            const upstream = await fetch(upstreamUrl, { signal: controller.signal });
-            clearTimeout(timer);
-
-            if (upstream.ok) {
-              const data = await upstream.json();
-              const route = data?.routes?.[0];
-              if (data.code === 'Ok' && route?.geometry?.coordinates?.length) {
-                res.statusCode = 200;
-                res.setHeader('Content-Type', 'application/json');
-                res.end(JSON.stringify({
-                  ok: true,
-                  code: 'Ok',
-                  distanceKm: Math.round((route.distance / 1000) * 10) / 10,
-                  durationMin: Math.round(route.duration / 60),
-                  geometry: route.geometry.coordinates.map((c: any) => [c[0], c[1], 0]),
-                  attribution: '© OpenStreetMap contributors · routing by FOSSGIS'
-                }));
-                return;
-              }
+            if (pairs.length < 2) {
+              res.statusCode = 400;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ ok: false, error: 'At least 2 coordinate pairs required' }));
+              return;
             }
+
+            const osrmPath = profile === 'bike' ? 'routed-bike/route/v1/bicycle' : profile === 'foot' ? 'routed-foot/route/v1/foot' : 'routed-car/route/v1/driving';
+
+            // 1. Primary: FOSSGIS OSRM
+            try {
+              const osrmController = new AbortController();
+              const osrmTimer = setTimeout(() => osrmController.abort(), 4000);
+              const osrmUpstream = await fetch(`https://routing.openstreetmap.de/${osrmPath}/${coords}?overview=full&geometries=geojson&alternatives=false&steps=false`, {
+                signal: osrmController.signal,
+                headers: { 'User-Agent': 'WanderGrid/1.0' }
+              });
+              clearTimeout(osrmTimer);
+
+              if (osrmUpstream.ok) {
+                const data = await osrmUpstream.json();
+                const route = data?.routes?.[0];
+                if (data.code === 'Ok' && route?.geometry?.coordinates?.length) {
+                  res.statusCode = 200;
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify({
+                    ok: true,
+                    code: 'Ok',
+                    distanceKm: Math.round((route.distance / 1000) * 10) / 10,
+                    durationMin: Math.round(route.duration / 60),
+                    geometry: route.geometry.coordinates.map((c: any) => [c[0], c[1], 0]),
+                    attribution: '© OpenStreetMap contributors · routing by FOSSGIS'
+                  }));
+                  return;
+                }
+              }
+            } catch {}
+
+            // 2. Secondary: Project OSRM Demo
+            try {
+              const demoController = new AbortController();
+              const demoTimer = setTimeout(() => demoController.abort(), 4000);
+              const demoProfile = profile === 'bike' ? 'bicycle' : profile === 'foot' ? 'foot' : 'driving';
+              const demoUpstream = await fetch(`https://router.project-osrm.org/route/v1/${demoProfile}/${coords}?overview=full&geometries=geojson&alternatives=false&steps=false`, {
+                signal: demoController.signal,
+                headers: { 'User-Agent': 'WanderGrid/1.0' }
+              });
+              clearTimeout(demoTimer);
+
+              if (demoUpstream.ok) {
+                const data = await demoUpstream.json();
+                const route = data?.routes?.[0];
+                if (data.code === 'Ok' && route?.geometry?.coordinates?.length) {
+                  res.statusCode = 200;
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify({
+                    ok: true,
+                    code: 'Ok',
+                    distanceKm: Math.round((route.distance / 1000) * 10) / 10,
+                    durationMin: Math.round(route.duration / 60),
+                    geometry: route.geometry.coordinates.map((c: any) => [c[0], c[1], 0]),
+                    attribution: '© OpenStreetMap contributors, OSRM'
+                  }));
+                  return;
+                }
+              }
+            } catch {}
+
+            // 3. Tertiary: Valhalla FOSSGIS
+            try {
+              const locations = pairs.map((p: string) => {
+                const [lon, lat] = p.split(',').map(Number);
+                return { lat, lon };
+              });
+              const costing = profile === 'bike' ? 'bicycle' : profile === 'foot' ? 'pedestrian' : profile === 'bus' ? 'bus' : 'auto';
+              const valhallaUrl = `https://valhalla1.openstreetmap.de/route?json=${encodeURIComponent(JSON.stringify({ locations, costing }))}`;
+              const controller = new AbortController();
+              const timer = setTimeout(() => controller.abort(), 4000);
+              const upstream = await fetch(valhallaUrl, {
+                signal: controller.signal,
+                headers: { 'User-Agent': 'WanderGrid/1.0' }
+              });
+              clearTimeout(timer);
+
+              if (upstream.ok) {
+                const data = await upstream.json();
+                const trip = data?.trip;
+                if (trip?.legs?.length) {
+                  let allGeometry: [number, number, number][] = [];
+                  for (const leg of trip.legs) {
+                    if (leg.shape) {
+                      const legCoords = decodePolyline6(leg.shape);
+                      allGeometry = allGeometry.concat(legCoords);
+                    }
+                  }
+                  if (allGeometry.length > 2) {
+                    res.statusCode = 200;
+                    res.setHeader('Content-Type', 'application/json');
+                    res.end(JSON.stringify({
+                      ok: true,
+                      code: 'Ok',
+                      distanceKm: Math.round((trip.summary?.length || 0) * 10) / 10,
+                      durationMin: Math.round((trip.summary?.time || 0) / 60),
+                      geometry: allGeometry,
+                      attribution: '© OpenStreetMap contributors · routing by FOSSGIS (Valhalla)'
+                    }));
+                    return;
+                  }
+                }
+              }
+            } catch {}
+
             res.statusCode = 502;
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify({ ok: false, error: 'Upstream route calculation failed' }));
@@ -47,6 +165,65 @@ function viteDevApiPlugin() {
             res.statusCode = 502;
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify({ ok: false, error: err.message || 'Routing error' }));
+            return;
+          }
+        }
+
+        // Rail proxy handler for railway route tracing in dev mode
+        if (req.url && (req.url.startsWith('/api/proxy/rail?') || req.url.startsWith('/api/rail?'))) {
+          try {
+            const urlObj = new URL(req.url, 'http://localhost');
+            const rawCoords = urlObj.searchParams.get('coords') || urlObj.searchParams.get('points') || '';
+            const profile = urlObj.searchParams.get('profile') || 'all_tracks';
+            const pairs = rawCoords.split(';').map(s => s.trim()).filter(Boolean);
+            
+            const ghPoints = pairs.map(pr => {
+              const parts = pr.split(',');
+              const p1 = Number(parts[0]);
+              const p2 = Number(parts[1]);
+              let lat = p2, lon = p1;
+              if (urlObj.searchParams.get('format') === 'lat,lng') {
+                lat = p1;
+                lon = p2;
+              }
+              return `point=${lat.toFixed(5)},${lon.toFixed(5)}`;
+            });
+
+            const pointsQuery = ghPoints.join('&');
+            const upstreamUrl = `https://routing.openrailrouting.org/route?${pointsQuery}&profile=${encodeURIComponent(profile)}&points_encoded=false`;
+
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 12000);
+            const upstream = await fetch(upstreamUrl, {
+              signal: controller.signal,
+              headers: { 'User-Agent': 'WanderGrid/1.0' }
+            });
+            clearTimeout(timer);
+
+            if (upstream.ok) {
+              const data = await upstream.json();
+              const path = data?.paths?.[0];
+              if (path?.points?.coordinates?.length) {
+                res.statusCode = 200;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({
+                  ok: true,
+                  distanceKm: Math.round((path.distance / 1000) * 10) / 10,
+                  durationMin: Math.round(path.time / 60000),
+                  geometry: path.points.coordinates.map((c: any) => [c[0], c[1], 0]),
+                  attribution: '© OpenStreetMap contributors · OpenRailRouting (GraphHopper)'
+                }));
+                return;
+              }
+            }
+            res.statusCode = 502;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ ok: false, error: 'Upstream rail calculation failed' }));
+            return;
+          } catch (err: any) {
+            res.statusCode = 502;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ ok: false, error: err.message || 'Rail routing error' }));
             return;
           }
         }
