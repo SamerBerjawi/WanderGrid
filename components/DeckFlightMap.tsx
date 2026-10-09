@@ -421,10 +421,7 @@ export const computeStyleKey = (
     dark: boolean,
     cartoKey?: string,
     proj?: string,
-    airportDetail?: string,
-    openAip?: boolean,
-    openAipKey?: string,
-    openAipGroups?: any
+    airportDetail?: string
 ): string => {
     return [
         layer,
@@ -432,9 +429,6 @@ export const computeStyleKey = (
         cartoKey || '',
         proj || 'mercator',
         airportDetail || '',
-        openAip ? 'openaip' : '',
-        openAipKey || '',
-        JSON.stringify(openAipGroups || [])
     ].join('|');
 };
 
@@ -697,7 +691,25 @@ const syncOpenAipOverlayOnMap = (
 ) => {
     if (!map.isStyleLoaded()) return;
     const sanitizedKey = (openAipKey || '').trim();
-    if (!isOpenAipOverlay || !sanitizedKey) return;
+
+    const allPotentialLayers = getOpenAipOverlayLayers(
+        ['airspaces', 'airspaceLabels', 'airports', 'navaids', 'reportingPoints'],
+        isDark ? 'dark' : 'light'
+    );
+
+    if (!isOpenAipOverlay || !sanitizedKey) {
+        // Remove OpenAIP layers if disabled
+        allPotentialLayers.forEach(layer => {
+            if (map.getLayer(layer.id)) {
+                try { map.removeLayer(layer.id); } catch (e) {}
+            }
+        });
+        if (map.getSource(OPENAIP_AIRSPACE_SOURCE_ID)) {
+            try { map.removeSource(OPENAIP_AIRSPACE_SOURCE_ID); } catch (e) {}
+        }
+        return;
+    }
+
     if (!map.getSource(OPENAIP_AIRSPACE_SOURCE_ID)) {
         try {
             map.addSource(OPENAIP_AIRSPACE_SOURCE_ID, {
@@ -709,12 +721,20 @@ const syncOpenAipOverlayOnMap = (
             });
         } catch (e) {}
     }
+
     if (map.getSource(OPENAIP_AIRSPACE_SOURCE_ID)) {
-        const openAipLayers = getOpenAipOverlayLayers(openAipGroups, isDark ? 'dark' : 'light');
-        openAipLayers.forEach(layer => {
-            if (!map.getLayer(layer.id)) {
-                try { map.addLayer(layer); } catch (e) {}
+        const activeLayers = getOpenAipOverlayLayers(openAipGroups, isDark ? 'dark' : 'light');
+
+        // Remove any existing OpenAIP layers so active ones are added cleanly in proper z-order with current theme
+        allPotentialLayers.forEach(layer => {
+            if (map.getLayer(layer.id)) {
+                try { map.removeLayer(layer.id); } catch (e) {}
             }
+        });
+
+        // Add enabled layers in canonical order (fills -> borders -> symbols -> labels)
+        activeLayers.forEach(layer => {
+            try { map.addLayer(layer); } catch (e) {}
         });
     }
 };
@@ -2383,10 +2403,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             isDark,
             effectiveCartoKey,
             effectiveProjection,
-            activeAppearance.airportDetail || '',
-            isOpenAipOverlay,
-            effectiveOpenAipKey || '',
-            activeAppearance.openAipGroups
+            activeAppearance.airportDetail || ''
         );
 
         // Avoid re-applying unchanged style or triggering setStyle during initial mount
@@ -2523,11 +2540,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         currentLayer,
         isDark,
         effectiveCartoKey,
-        effectiveOpenAipKey,
         effectiveProjection,
         activeAppearance.airportDetail,
-        activeAppearance.openAipOverlay,
-        JSON.stringify(activeAppearance.openAipGroups)
     ]);
 
     // Synchronize airport overlay details and dark/light theme palette
@@ -2546,6 +2560,37 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             map.off('idle', trySync);
         };
     }, [activeAppearance.airportDetail, isDark]);
+
+    // Synchronize OpenAIP vector overlays (Airports, Navaids, Reporting Points, Airspaces, Airspace Labels)
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map) return;
+        const isOpenAipOverlay = Boolean(activeAppearance.openAipOverlay);
+        const openAipGroups = activeAppearance.openAipGroups;
+
+        let isCancelled = false;
+        const syncOpenAip = async () => {
+            if (!map.isStyleLoaded() || isCancelled) return;
+            if (isOpenAipOverlay && effectiveOpenAipKey) {
+                await ensureOpenAipIcons(map, isDark ? 'dark' : 'light');
+            }
+            if (isCancelled) return;
+            syncOpenAipOverlayOnMap(map, isOpenAipOverlay, isDark, effectiveOpenAipKey, openAipGroups);
+            map.triggerRepaint();
+        };
+
+        syncOpenAip();
+        map.on('idle', syncOpenAip);
+        return () => {
+            isCancelled = true;
+            map.off('idle', syncOpenAip);
+        };
+    }, [
+        activeAppearance.openAipOverlay,
+        JSON.stringify(activeAppearance.openAipGroups),
+        isDark,
+        effectiveOpenAipKey
+    ]);
 
     // Synchronize Terrain Hillshade, Transit, NOAA Clouds and Precipitation Radar directly into MapLibre GL
     useEffect(() => {

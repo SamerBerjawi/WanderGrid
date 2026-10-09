@@ -114,6 +114,32 @@ export const ensureOpenAipIcons = async (map: maplibregl.Map, theme: OpenAipThem
     if (!loadedIcons.has(symbolKey) && !map.hasImage(symbolKey)) {
       promises.push((async () => {
         try {
+          if (theme === "dark" && typeof fetch !== "undefined") {
+            const resp = await fetch(`/openaip-style/symbols/${id}.svg`);
+            if (resp.ok) {
+              const svgText = await resp.text();
+              const darkSvg = svgText
+                .replace(/#000000/gi, '#f8fafc')
+                .replace(/#000/gi, '#f8fafc')
+                .replace(/fill:\s*#000/gi, 'fill:#f8fafc')
+                .replace(/stroke:\s*#000/gi, 'stroke:#f8fafc')
+                .replace(/fill="black"/gi, 'fill="#f8fafc"')
+                .replace(/stroke="black"/gi, 'stroke="#f8fafc"');
+              const blob = new Blob([darkSvg], { type: 'image/svg+xml' });
+              const blobUrl = URL.createObjectURL(blob);
+              try {
+                const res = await map.loadImage(blobUrl);
+                if (res?.data && !map.hasImage(symbolKey)) {
+                  map.addImage(symbolKey, res.data as any);
+                  loadedIcons.add(symbolKey);
+                }
+              } finally {
+                URL.revokeObjectURL(blobUrl);
+              }
+              return;
+            }
+          }
+
           const res = await map.loadImage(`/openaip-style/symbols/${id}.svg`);
           if (res?.data && !map.hasImage(symbolKey)) {
             map.addImage(symbolKey, res.data as any);
@@ -180,6 +206,11 @@ const themeOpenAipIconImage = (
   }
 
   if (iconImage[0] === 'concat') {
+    // If second element is a string literal (e.g. 'navaid_' or 'reporting_point_'),
+    // prefix it with 'dark:' so the concatenated icon name resolves to e.g. 'dark:navaid_vor-small'
+    if (typeof iconImage[1] === 'string') {
+      return ['concat', `dark:${iconImage[1]}`, ...iconImage.slice(2)];
+    }
     return ['concat', 'dark:', ...iconImage.slice(1)];
   }
 
@@ -212,7 +243,7 @@ const getAirportLabelPaint = (
   'text-halo-width': 2,
   'text-halo-blur': 1,
   'icon-opacity': 1,
-  'text-opacity': ['step', ['zoom'], 0, 8, 1],
+  'text-opacity': 1,
 });
 
 const getDarkModeLabelPaintOverrides =
@@ -225,8 +256,12 @@ const OPENAIP_DARK_MODE_INVERTED_LABEL_LAYER_IDS = new Set([
   'openaip-airport-gliding',
   'openaip-airport-gliding-winch',
   'openaip-navaid',
+  'openaip-navaid-other',
   'openaip-navaid-ndb',
   'openaip-reporting-point',
+  'openaip-airspace-label-minimal',
+  'openaip-airspace-label-medium',
+  'openaip-airspace-label-full',
 ]);
 
 const OPENAIP_AIRPORT_LABEL_LAYER_IDS = new Set([
@@ -1138,7 +1173,7 @@ const OPENAIP_ALL_LAYERS: OpenAipOverlayLayer[] = [
       ],
       'symbol-spacing': 150,
       'text-optional': true,
-      'text-size': ['interpolate', ['linear'], ['zoom'], 7, 6, 8, 9],
+      'text-size': ['interpolate', ['linear'], ['zoom'], 5, 7, 8, 9],
       'text-font': ['Roboto Medium'],
       'text-allow-overlap': false,
       'text-ignore-placement': false,
@@ -1149,7 +1184,7 @@ const OPENAIP_ALL_LAYERS: OpenAipOverlayLayer[] = [
     },
     textPaint,
     {
-      minzoom: 7,
+      minzoom: 5,
       maxzoom: 8,
     },
   ),
@@ -1275,7 +1310,7 @@ const OPENAIP_ALL_LAYERS: OpenAipOverlayLayer[] = [
       'icon-opacity': 1,
     },
     {
-      minzoom: 8,
+      minzoom: 6,
       filter: [
         'all',
         ['!=', ['get', 'type'], 'ad_closed'],
@@ -1445,14 +1480,14 @@ const OPENAIP_ALL_LAYERS: OpenAipOverlayLayer[] = [
     {
       visibility: 'visible',
       'icon-image': zoomStep('apt-dot', 6, 'apt-tiny', 8, 'apt-medium'),
-      'icon-size': zoomStep(0.1, 5, 0.4, 8, 1),
+      'icon-size': zoomStep(0.4, 6, 0.65, 8, 1),
       'icon-pitch-alignment': 'map',
       'icon-allow-overlap': true,
       'text-allow-overlap': false,
       'text-ignore-placement': false,
       'text-field': zoomStep(
         '',
-        6,
+        4,
         ['coalesce', ['get', 'icao_code'], ['get', 'name_label']],
         8,
         ['coalesce', ['get', 'name_label_full'], ['get', 'name']],
@@ -1466,7 +1501,7 @@ const OPENAIP_ALL_LAYERS: OpenAipOverlayLayer[] = [
         10,
         ['literal', [0, -5]],
       ),
-      'text-size': zoomStep(0, 4, 5, 6, 12),
+      'text-size': zoomStep(9, 6, 10, 8, 12),
       'text-font': ['Roboto Mono Regular'],
       'text-transform': 'none',
       'text-optional': true,
@@ -1486,16 +1521,16 @@ const OPENAIP_ALL_LAYERS: OpenAipOverlayLayer[] = [
     {
       visibility: 'visible',
       'icon-image': genericAirportIconByType(),
-      'icon-size': zoomStep(0.2, 7, 0.35, 9, 0.8, 11, 1),
+      'icon-size': zoomStep(0.35, 6, 0.5, 9, 0.8, 11, 1),
       'icon-pitch-alignment': 'map',
       'icon-allow-overlap': true,
       'text-allow-overlap': false,
       'text-ignore-placement': false,
       'text-field': zoomStep(
         '',
-        7,
+        5,
         ['coalesce', ['get', 'icao_code'], ['get', 'name_label']],
-        9,
+        8,
         ['coalesce', ['get', 'name_label_full'], ['get', 'name']],
       ),
       'text-justify': 'left',
@@ -1507,7 +1542,7 @@ const OPENAIP_ALL_LAYERS: OpenAipOverlayLayer[] = [
         10,
         ['literal', [0, -4]],
       ),
-      'text-size': zoomStep(0, 7, 9, 8, 10, 10, 12),
+      'text-size': zoomStep(9, 6, 10, 8, 12),
       'text-font': ['Roboto Mono Regular'],
       'text-transform': 'none',
       'text-optional': true,
@@ -1515,7 +1550,7 @@ const OPENAIP_ALL_LAYERS: OpenAipOverlayLayer[] = [
     },
     getAirportLabelPaint('light'),
     {
-      minzoom: 5,
+      minzoom: 4,
       filter: [
         'all',
         ['!=', ['get', 'type'], 'intl_apt'],
@@ -1534,9 +1569,10 @@ const OPENAIP_ALL_LAYERS: OpenAipOverlayLayer[] = [
         8,
         ['concat', 'navaid_', ['get', 'type'], '-medium'],
       ),
+      'icon-size': zoomStep(0.45, 6, 0.7, 8, 1),
       'icon-pitch-alignment': 'map',
       'icon-allow-overlap': true,
-      'text-field': zoomStep(['get', 'identifier'], 9, [
+      'text-field': zoomStep(['get', 'identifier'], 7, [
         'coalesce',
         ['get', 'name_label_full'],
         ['get', 'name'],
@@ -1549,14 +1585,14 @@ const OPENAIP_ALL_LAYERS: OpenAipOverlayLayer[] = [
         10,
         ['literal', [0, 2.5]],
       ),
-      'text-size': 12,
+      'text-size': zoomStep(9, 6, 10, 8, 12),
       'text-font': ['Roboto Regular'],
       'icon-ignore-placement': false,
       'text-ignore-placement': true,
     },
     pointTextPaint,
     {
-      minzoom: 6,
+      minzoom: 4,
       filter: [
         'all',
         ['!=', ['get', 'type'], 'ndb'],
@@ -1577,14 +1613,15 @@ const OPENAIP_ALL_LAYERS: OpenAipOverlayLayer[] = [
     {
       visibility: 'visible',
       'icon-image': zoomStep('navaid_ndb-small', 10, 'navaid_ndb-medium'),
+      'icon-size': zoomStep(0.45, 6, 0.7, 8, 1),
       'icon-pitch-alignment': 'map',
       'symbol-placement': 'point',
-      'text-field': zoomStep(['get', 'identifier'], 9, [
+      'text-field': zoomStep(['get', 'identifier'], 7, [
         'coalesce',
         ['get', 'name_label_full'],
         ['get', 'name'],
       ]),
-      'text-size': 12,
+      'text-size': zoomStep(9, 6, 10, 8, 12),
       'text-font': ['Roboto Regular'],
       'text-justify': 'left',
       'text-allow-overlap': true,
@@ -1594,7 +1631,8 @@ const OPENAIP_ALL_LAYERS: OpenAipOverlayLayer[] = [
       'icon-optional': false,
     },
     {
-      'icon-opacity': zoomOpacity(6, 0.5, 10, 1),
+      'icon-opacity': zoomOpacity(4, 0.6, 7, 1),
+      'text-color': 'rgba(0, 0, 0, 1)',
       'text-halo-color': 'rgba(255, 255, 255, 1)',
       'text-halo-width': 1,
       'text-translate-anchor': 'map',
@@ -1607,7 +1645,7 @@ const OPENAIP_ALL_LAYERS: OpenAipOverlayLayer[] = [
       ),
     },
     {
-      minzoom: 6,
+      minzoom: 4,
       filter: ['==', ['get', 'type'], 'ndb'],
     },
   ),
@@ -1618,6 +1656,7 @@ const OPENAIP_ALL_LAYERS: OpenAipOverlayLayer[] = [
     {
       visibility: 'visible',
       'icon-image': 'navaid_rose-medium',
+      'icon-size': zoomStep(0.5, 7, 0.8, 10, 1),
       'icon-allow-overlap': true,
       'icon-rotate': ['coalesce', ['get', 'icon_rotation'], 0],
       'icon-rotation-alignment': 'map',
@@ -1628,10 +1667,10 @@ const OPENAIP_ALL_LAYERS: OpenAipOverlayLayer[] = [
       'icon-optional': false,
     },
     {
-      'icon-opacity': zoomOpacity(6, 0, 10, 1),
+      'icon-opacity': zoomOpacity(5, 0.35, 7, 0.95),
     },
     {
-      minzoom: 6,
+      minzoom: 5,
       filter: [
         'match',
         ['get', 'type'],
@@ -1648,19 +1687,20 @@ const OPENAIP_ALL_LAYERS: OpenAipOverlayLayer[] = [
     {
       visibility: 'visible',
       'icon-image': ['concat', 'reporting_point_', ['get', 'type'], '-medium'],
+      'icon-size': zoomStep(0.65, 8, 1),
       'icon-pitch-alignment': 'map',
       'icon-allow-overlap': true,
       'text-field': ['get', 'name'],
       'text-allow-overlap': true,
-      'text-offset': ['literal', [0, 2.5]],
-      'text-size': 12,
+      'text-offset': ['literal', [0, 2]],
+      'text-size': zoomStep(9, 8, 11),
       'text-font': ['Roboto Regular'],
       'icon-ignore-placement': false,
       'text-ignore-placement': true,
     },
     pointTextPaint,
     {
-      minzoom: 10,
+      minzoom: 7,
     },
   ),
 ];
