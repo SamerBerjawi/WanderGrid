@@ -25,7 +25,7 @@ export const MAP_SETTINGS_LABELS = {
     basemap: 'Basemap',
     basemapGroups: {
       auto: 'Auto',
-      streets: 'Streets',
+      streets: 'Light',
       dark: 'Dark',
       imagery: 'Imagery',
       special: 'Special',
@@ -34,7 +34,7 @@ export const MAP_SETTINGS_LABELS = {
       default: 'Auto (theme)',
       liberty: 'Streets',
       bright: 'Bright',
-      positron: 'Light',
+      positron: 'Positron',
       dark: 'Dark',
       fiord: 'Dark blue',
       satellite: 'Satellite',

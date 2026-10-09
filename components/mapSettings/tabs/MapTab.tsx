@@ -13,6 +13,7 @@ import {
   Check,
 } from '@phosphor-icons/react';
 import { MapAppearanceSettings, BasemapMode, getEffectiveBasemap } from '../../../types/mapAppearance';
+import { syncThemeWithBasemap } from '../../../services/themeSync';
 import MAP_SETTINGS_LABELS from '../labels';
 import { GlassSegmented } from '../../glass/GlassSegmented';
 import { GlassToggle } from '../../glass/GlassToggle';
@@ -28,6 +29,7 @@ interface MapTabProps {
 interface BasemapDef {
   id: BasemapMode;
   label: string;
+  subtitle?: string;
   icon: React.ComponentType<{ className?: string; weight?: any; size?: number }>;
   gradientClass: string;
   textColor: string;
@@ -42,9 +44,10 @@ const BASEMAP_GROUPS: { groupName: string; items: BasemapDef[] }[] = [
       {
         id: 'default',
         label: MAP_SETTINGS_LABELS.mapTab.basemaps.default,
+        subtitle: 'Adapts to theme',
         icon: Sparkle,
-        gradientClass: 'bg-gradient-to-r from-primary-500/20 via-sky-500/20 to-indigo-500/20 border-primary-500/30',
-        textColor: 'text-primary-700 dark:text-primary-300',
+        gradientClass: 'bg-gradient-to-br from-primary-500/25 via-sky-500/20 to-indigo-500/30 border-primary-500/30',
+        textColor: 'text-primary-600 dark:text-primary-400',
       },
     ],
   },
@@ -54,22 +57,25 @@ const BASEMAP_GROUPS: { groupName: string; items: BasemapDef[] }[] = [
       {
         id: 'liberty',
         label: MAP_SETTINGS_LABELS.mapTab.basemaps.liberty,
+        subtitle: 'Roads & transit',
         icon: MapTrifold,
-        gradientClass: 'bg-gradient-to-r from-emerald-100 via-sky-100 to-amber-100 dark:from-emerald-950/60 dark:via-sky-950/60 dark:to-amber-950/60 border-emerald-500/30',
-        textColor: 'text-emerald-800 dark:text-emerald-200',
+        gradientClass: 'bg-gradient-to-br from-emerald-100 via-sky-100 to-amber-100 dark:from-emerald-950/70 dark:via-sky-950/70 dark:to-teal-950/70 border-emerald-500/30',
+        textColor: 'text-emerald-700 dark:text-emerald-300',
       },
       {
         id: 'bright',
         label: MAP_SETTINGS_LABELS.mapTab.basemaps.bright,
+        subtitle: 'Warm daylight',
         icon: Sun,
-        gradientClass: 'bg-gradient-to-r from-amber-100 via-yellow-100 to-orange-100 dark:from-amber-950/60 dark:via-yellow-950/60 dark:to-orange-950/60 border-amber-500/30',
-        textColor: 'text-amber-800 dark:text-amber-200',
+        gradientClass: 'bg-gradient-to-br from-amber-100 via-yellow-100 to-orange-100 dark:from-amber-950/70 dark:via-yellow-950/70 dark:to-orange-950/70 border-amber-500/30',
+        textColor: 'text-amber-700 dark:text-amber-300',
       },
       {
         id: 'positron',
         label: MAP_SETTINGS_LABELS.mapTab.basemaps.positron,
+        subtitle: 'Clean & minimal',
         icon: Compass,
-        gradientClass: 'bg-gradient-to-r from-zinc-100 via-slate-100 to-white dark:from-zinc-900/80 dark:via-slate-900/80 dark:to-zinc-800/80 border-slate-400/30',
+        gradientClass: 'bg-gradient-to-br from-slate-100 via-zinc-100 to-white dark:from-zinc-900/90 dark:via-slate-900/90 dark:to-zinc-800/90 border-slate-400/30',
         textColor: 'text-slate-700 dark:text-slate-300',
       },
     ],
@@ -80,16 +86,18 @@ const BASEMAP_GROUPS: { groupName: string; items: BasemapDef[] }[] = [
       {
         id: 'dark',
         label: MAP_SETTINGS_LABELS.mapTab.basemaps.dark,
+        subtitle: 'Midnight charcoal',
         icon: Moon,
-        gradientClass: 'bg-gradient-to-r from-zinc-900 via-neutral-900 to-zinc-800 border-zinc-700/50',
+        gradientClass: 'bg-gradient-to-br from-zinc-900 via-neutral-900 to-stone-900 border-zinc-700/50',
         textColor: 'text-zinc-200',
       },
       {
         id: 'fiord',
         label: MAP_SETTINGS_LABELS.mapTab.basemaps.fiord,
+        subtitle: 'Deep navy',
         icon: Mountains,
-        gradientClass: 'bg-gradient-to-r from-[#111c2e] via-[#1a2b42] to-[#162235] border-blue-400/30',
-        textColor: 'text-blue-200',
+        gradientClass: 'bg-gradient-to-br from-[#0c1a2e] via-[#162a45] to-[#1e3a5f] border-blue-400/30',
+        textColor: 'text-blue-300',
       },
     ],
   },
@@ -99,16 +107,18 @@ const BASEMAP_GROUPS: { groupName: string; items: BasemapDef[] }[] = [
       {
         id: 'satellite',
         label: MAP_SETTINGS_LABELS.mapTab.basemaps.satellite,
+        subtitle: 'Earth orbit',
         icon: Planet,
-        gradientClass: 'bg-gradient-to-r from-[#0a1a14] via-[#0d2a1f] to-[#12382b] border-emerald-500/30',
-        textColor: 'text-emerald-200',
+        gradientClass: 'bg-gradient-to-br from-[#071911] via-[#0d2a1f] to-[#1a4435] border-emerald-500/30',
+        textColor: 'text-emerald-300',
       },
       {
         id: 'citylights',
         label: MAP_SETTINGS_LABELS.mapTab.basemaps.citylights,
+        subtitle: 'Night lights',
         icon: Sparkle,
-        gradientClass: 'bg-gradient-to-r from-[#040711] via-[#0a0f24] to-[#131b3d] border-amber-500/30',
-        textColor: 'text-amber-200',
+        gradientClass: 'bg-gradient-to-br from-[#030612] via-[#091129] to-[#15234d] border-amber-500/30',
+        textColor: 'text-amber-300',
       },
     ],
   },
@@ -118,16 +128,18 @@ const BASEMAP_GROUPS: { groupName: string; items: BasemapDef[] }[] = [
       {
         id: '3d',
         label: MAP_SETTINGS_LABELS.mapTab.basemaps.threeD,
+        subtitle: '3D buildings',
         icon: Buildings,
-        gradientClass: 'bg-gradient-to-r from-indigo-100 via-sky-100 to-purple-100 dark:from-indigo-950/60 dark:via-sky-950/60 dark:to-purple-950/60 border-purple-500/30',
-        textColor: 'text-purple-800 dark:text-purple-200',
+        gradientClass: 'bg-gradient-to-br from-indigo-100 via-purple-100 to-sky-100 dark:from-indigo-950/70 dark:via-purple-950/70 dark:to-sky-950/70 border-purple-500/30',
+        textColor: 'text-purple-700 dark:text-purple-300',
       },
       {
         id: 'ocean',
         label: MAP_SETTINGS_LABELS.mapTab.basemaps.ocean,
+        subtitle: 'Bathymetry',
         icon: Waves,
-        gradientClass: 'bg-gradient-to-r from-[#041a2f] via-[#062c4f] to-[#0a3e6d] border-cyan-500/30',
-        textColor: 'text-cyan-200',
+        gradientClass: 'bg-gradient-to-br from-[#031526] via-[#06294a] to-[#0d477a] border-cyan-500/30',
+        textColor: 'text-cyan-300',
         isDarkOnly: true,
       },
     ],
@@ -153,39 +165,56 @@ const BasemapCard = React.memo<BasemapCardProps>(({
     <button
       type="button"
       onClick={() => onSelect(item.id)}
-      className={`p-2 rounded-xl border transition-all duration-150 text-left flex flex-col justify-between gap-1.5 cursor-pointer active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50 ${
+      className={`group relative p-2 rounded-2xl border transition-all duration-200 text-left flex flex-col gap-1.5 cursor-pointer active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50 ${
         isSelected
-          ? 'border-primary-500/50 bg-primary-500/15 dark:bg-primary-500/25 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_2px_8px_rgba(234,88,12,0.15)] ring-1 ring-primary-500/30 wg-glass-surface'
-          : 'border-black/5 dark:border-white/10 bg-white/40 dark:bg-white/[0.04] hover:border-black/15 dark:hover:border-white/20'
+          ? 'border-primary-500/50 bg-primary-500/10 dark:bg-primary-500/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2),0_2px_10px_rgba(234,88,12,0.12)] ring-1 ring-primary-500/40'
+          : 'border-black/5 dark:border-white/10 bg-white/50 dark:bg-white/[0.04] hover:bg-white/80 dark:hover:bg-white/[0.08] hover:border-black/15 dark:hover:border-white/20'
       }`}
     >
-      {/* Swatch Pill with Phosphor Icon */}
+      {/* Visual Swatch Preview (clean map aesthetic, no duplicated title) */}
       <div
-        className={`w-full h-7 rounded-lg border flex items-center px-2 justify-between relative overflow-hidden ${item.gradientClass}`}
+        className={`w-full h-11 rounded-xl border flex items-center justify-between px-2.5 relative overflow-hidden transition-transform duration-200 group-hover:scale-[1.01] ${item.gradientClass}`}
       >
-        <div className="flex items-center gap-1.5 z-10">
+        {/* Subtle grid pattern overlay */}
+        <div
+          className="absolute inset-0 opacity-[0.07] dark:opacity-[0.12] pointer-events-none"
+          style={{
+            backgroundImage: 'radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)',
+            backgroundSize: '8px 8px'
+          }}
+        />
+
+        {/* Icon glass badge */}
+        <div className="w-6 h-6 rounded-lg bg-white/70 dark:bg-white/10 backdrop-blur-sm border border-white/60 dark:border-white/10 flex items-center justify-center shrink-0 shadow-xs z-10 transition-transform group-hover:scale-105">
           <Icon className={`w-3.5 h-3.5 ${item.textColor}`} weight="bold" />
-          <span className={`text-2xs font-bold truncate ${item.textColor}`}>
-            {item.label}
-          </span>
         </div>
+
+        {/* Active Selected Check Badge */}
         {isSelected && (
-          <div className="w-3.5 h-3.5 rounded-full bg-primary-500 flex items-center justify-center text-white shrink-0 z-10 shadow-xs">
+          <div className="w-4 h-4 rounded-full bg-primary-500 flex items-center justify-center text-white shrink-0 z-10 shadow-xs ring-2 ring-white/60 dark:ring-dark-card animate-scaleIn">
             <Check className="w-2.5 h-2.5" weight="bold" />
           </div>
         )}
       </div>
 
-      {/* Caption & dark-theme-only helper */}
-      <div className="flex items-center justify-between gap-1 w-full px-0.5">
-        <span className="text-2xs sm:text-xs font-bold text-light-text dark:text-dark-text truncate">
-          {item.label}
-        </span>
-        {item.isDarkOnly && !isDark && (
-          <span className="text-3xs font-medium text-light-text-secondary dark:text-dark-text-secondary shrink-0">
-            {MAP_SETTINGS_LABELS.mapTab.oceanDarkOnlyHelper}
+      {/* Typography: Title + Subtitle */}
+      <div className="w-full px-0.5 min-w-0">
+        <div className="flex items-center justify-between gap-1">
+          <span className="text-xs font-bold text-light-text dark:text-dark-text tracking-tight truncate">
+            {item.label}
           </span>
-        )}
+        </div>
+        <div className="mt-0.5 truncate">
+          {item.isDarkOnly && !isDark ? (
+            <span className="text-3xs font-semibold text-amber-600 dark:text-amber-400 truncate block">
+              {MAP_SETTINGS_LABELS.mapTab.oceanDarkOnlyHelper}
+            </span>
+          ) : item.subtitle ? (
+            <span className="text-3xs font-medium text-light-text-secondary dark:text-dark-text-secondary truncate block">
+              {item.subtitle}
+            </span>
+          ) : null}
+        </div>
       </div>
     </button>
   );
@@ -201,6 +230,11 @@ export const MapTab: React.FC<MapTabProps> = ({
   const effectiveBasemap = useMemo(() => {
     return getEffectiveBasemap(settings.basemap, isDark);
   }, [settings.basemap, isDark]);
+
+  const handleSelectBasemap = (id: BasemapMode) => {
+    onChangeSetting('basemap', id);
+    syncThemeWithBasemap(id);
+  };
 
   return (
     <div className="space-y-3 animate-fadeIn">
@@ -277,7 +311,7 @@ export const MapTab: React.FC<MapTabProps> = ({
                       item={b}
                       isSelected={isSelected}
                       isDark={isDark}
-                      onSelect={(id) => onChangeSetting('basemap', id)}
+                      onSelect={handleSelectBasemap}
                     />
                   );
                 })}

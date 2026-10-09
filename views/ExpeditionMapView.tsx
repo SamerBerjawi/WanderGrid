@@ -29,6 +29,7 @@ import {
     loadMapAppearanceSettings,
     saveMapAppearanceSettings
 } from '../types/mapAppearance';
+import { syncThemeWithBasemap } from '../services/themeSync';
 
 interface ExpeditionMapViewProps {
     onTripClick: (tripId: string) => void;
@@ -242,6 +243,9 @@ export const ExpeditionMapView: React.FC<ExpeditionMapViewProps> = ({ onTripClic
     };
 
     const handleUpdateAppearance = (newSettings: MapAppearanceSettings) => {
+        if (newSettings.basemap && newSettings.basemap !== appearance.basemap) {
+            syncThemeWithBasemap(newSettings.basemap);
+        }
         setAppearance(newSettings);
         saveMapAppearanceSettings(newSettings);
     };

@@ -14,7 +14,9 @@ import {
 import {
   MapAppearanceSettings,
   DEFAULT_MAP_APPEARANCE,
+  BasemapMode,
 } from '../../types/mapAppearance';
+import { syncThemeWithBasemap } from '../../services/themeSync';
 import GlassPanel from '../glass/GlassPanel';
 import MAP_SETTINGS_LABELS from './labels';
 import MapTab from './tabs/MapTab';
@@ -118,6 +120,10 @@ export const MapSettingsPanel: React.FC<MapSettingsPanelProps> = ({
   // Update setting field with debounced persistence
   const handleUpdateSetting = useCallback(
     <K extends keyof MapAppearanceSettings>(field: K, value: MapAppearanceSettings[K]) => {
+      if (field === 'basemap') {
+        syncThemeWithBasemap(value as BasemapMode);
+      }
+
       setLocalSettings((prev) => {
         const next = { ...prev, [field]: value };
         pendingSettingsRef.current = next;
