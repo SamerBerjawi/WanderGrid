@@ -49,7 +49,12 @@ This document tracks all changes made to reorganize WanderGrid's "Mission Contro
 - **Changes**: Removed unlabelled refresh icon in header. Added sticky footer with explicit "Reset settings" (with confirmation dialog), optional "Recenter map" (calling `onResetCamera`), and "Done" button. Added `onResetAll` support for parent reset handlers.
 
 ### MC-06: Context-Sensitive Controls (No No-Ops)
-- **Changes**: Controls render only when their corresponding parent handler is provided. Removed internal fallback state. Scratch settings only show in scratch view; airport/route styling hides in scratch view.
+- **Changes**: Controls render only when their corresponding parent handler is provided. Removed internal fallback state (`internalFlightsOnly`, `internalLandSea`, `internalCometFlow`, `internalCluster`).
+- **Context Matrix**:
+  1. **ExpeditionMapView**: Passes all handlers. Shows View Preset (All, Flights, Land & sea, Scratch map); Flight routes & Land/sea routes; Airports group (size, size by traffic, runway detail, solo mode); Routes group (color, thickness, animate, cluster, follow roads/rails); when in Scratch view, shows Scratch map group (city pins, lived in, layovers, wishlist) and hides routes/airports; Filter tab present.
+  2. **Dashboard**: Embedded via `DeckFlightMap` without parent handlers. Map Tab: View, Basemaps, Stars & Atmosphere, Day & Night. Layers Tab: Rain Radar, Relief Shading, Rail Lines, Aviation Charts (if key present). Trips Tab: Airports (size, size by traffic, runway detail, solo focus) and Routes (color, thickness, follow roads & rails). No no-op view mode, flight route switches, animate, cluster, scratch groups, or filter tab.
+  3. **TripDetail**: Same as Dashboard (DeckFlightMap without parent dynamics).
+  4. **RoadTrips**: Same as Dashboard (DeckFlightMap without parent dynamics).
 
 ### MC-07: Filter Tab Polish
 - **Files**:
