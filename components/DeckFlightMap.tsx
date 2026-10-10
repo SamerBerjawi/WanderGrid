@@ -2202,8 +2202,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         );
         const aviationOpacity = Math.max(0.1, Math.min(1.0, activeAppearance.openAipOpacity ?? 0.85));
 
-        if (showAllAviationAirports && runwayDataset) {
-            const allGlobalAirports = getAllGlobalAirports(runwayDataset);
+        if (showAllAviationAirports) {
+            const allGlobalAirports = runwayDataset ? getAllGlobalAirports(runwayDataset) : airportPoints;
             if (allGlobalAirports.length > 0) {
                 layers.push(
                     new ScatterplotLayer({
@@ -2232,36 +2232,31 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         },
                         parameters: { depthTest: false },
                         extensions: [globeHorizonCullExtension]
+                    }),
+                    new TextLayer({
+                        id: 'aviation-all-airports-labels',
+                        data: allGlobalAirports,
+                        getPosition: (d: any) => d.position,
+                        getText: (d: any) => d.code || d.iata || d.name,
+                        getSize: 10,
+                        getColor: isDark ? [224, 242, 254, Math.round(255 * aviationOpacity)] : [12, 74, 110, Math.round(255 * aviationOpacity)],
+                        getTextAnchor: 'start',
+                        getAlignmentBaseline: 'center',
+                        pixelOffset: [8, 0],
+                        fontWeight: 700,
+                        background: true,
+                        getBackgroundColor: isDark ? [15, 23, 42, Math.round(210 * aviationOpacity)] : [240, 249, 255, Math.round(210 * aviationOpacity)],
+                        backgroundPadding: [4, 2],
+                        wrapLongitude: true,
+                        pickable: false,
+                        updateTriggers: {
+                            getColor: [isDark, aviationOpacity],
+                            getBackgroundColor: [isDark, aviationOpacity],
+                        },
+                        parameters: { depthTest: false },
+                        extensions: [globeHorizonCullExtension]
                     })
                 );
-
-                if (currentZoom >= 5.0) {
-                    layers.push(
-                        new TextLayer({
-                            id: 'aviation-all-airports-labels',
-                            data: allGlobalAirports,
-                            getPosition: (d: any) => d.position,
-                            getText: (d: any) => d.code,
-                            getSize: 10,
-                            getColor: isDark ? [224, 242, 254, Math.round(255 * aviationOpacity)] : [12, 74, 110, Math.round(255 * aviationOpacity)],
-                            getTextAnchor: 'start',
-                            getAlignmentBaseline: 'center',
-                            pixelOffset: [8, 0],
-                            fontWeight: 700,
-                            background: true,
-                            getBackgroundColor: isDark ? [15, 23, 42, Math.round(210 * aviationOpacity)] : [240, 249, 255, Math.round(210 * aviationOpacity)],
-                            backgroundPadding: [4, 2],
-                            wrapLongitude: true,
-                            pickable: false,
-                            updateTriggers: {
-                                getColor: [isDark, aviationOpacity],
-                                getBackgroundColor: [isDark, aviationOpacity],
-                            },
-                            parameters: { depthTest: false },
-                            extensions: [globeHorizonCullExtension]
-                        })
-                    );
-                }
             }
         }
 
@@ -2377,34 +2372,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                     })
                 );
 
-                // Airport labels (shown only when zoomed in)
-                if (currentZoom >= 4.0) {
-                    layers.push(
-                        new TextLayer({
-                            id: 'airport-labels',
-                            data: airportPoints,
-                            getPosition: (d: any) => d.position,
-                            getText: (d: any) => d.iata || d.name,
-                            getSize: 11,
-                            getColor: isDark ? [248, 250, 252, 255] : [15, 23, 42, 255],
-                            getTextAnchor: 'start',
-                            getAlignmentBaseline: 'center',
-                            pixelOffset: [10, 0],
-                            fontWeight: 700,
-                            background: true,
-                            getBackgroundColor: isDark ? [15, 23, 42, 220] : [255, 255, 255, 220],
-                            backgroundPadding: [5, 3],
-                            wrapLongitude: true,
-                            pickable: false,
-                            parameters: { depthTest: false },
-                            updateTriggers: {
-                                getColor: [isDark],
-                                getBackgroundColor: [isDark]
-                            },
-                            extensions: [globeHorizonCullExtension]
-                        })
-                    );
-                }
+
             }
         }
 
