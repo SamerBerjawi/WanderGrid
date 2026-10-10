@@ -82,6 +82,16 @@ export const getEffectiveBasemap = (
     }
 };
 
+export type AirportCategory = 'international' | 'regional' | 'military' | 'cargo' | 'local';
+
+export const ALL_AIRPORT_CATEGORIES: AirportCategory[] = [
+    'international',
+    'regional',
+    'military',
+    'cargo',
+    'local'
+];
+
 export interface MapAppearanceSettings {
     // Atlas & Cartography
     basemap: BasemapMode;
@@ -110,6 +120,7 @@ export interface MapAppearanceSettings {
     openAipOverlay?: boolean;
     openAipGroups?: ('airspaces' | 'airspaceLabels' | 'airports' | 'navaids' | 'reportingPoints')[];
     openAipOpacity?: number; // 0.1 to 1.0 (opacity of aviation charts / airports dots & labels)
+    openAipAirportCategories?: AirportCategory[];
 
     // Terrain, Elevation & Infrastructure Overlays
     terrainHillshade?: boolean; // Esri World Hillshade 3D relief shading
@@ -152,6 +163,7 @@ export const DEFAULT_MAP_APPEARANCE: MapAppearanceSettings = {
     openAipOverlay: false,
     openAipGroups: ['airspaces', 'airspaceLabels', 'airports'],
     openAipOpacity: 0.85,
+    openAipAirportCategories: ['international', 'regional', 'military', 'cargo', 'local'],
     terrainHillshade: false,
     terrainHillshadeOpacity: 0.8,
     transitOverlay: false,

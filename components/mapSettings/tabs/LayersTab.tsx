@@ -11,6 +11,7 @@ import {
 } from '@phosphor-icons/react';
 import {
   MapAppearanceSettings,
+  AirportCategory,
   getYesterdayDateString,
   adjustDateString,
 } from '../../../types/mapAppearance';
@@ -224,6 +225,36 @@ export const LayersTab: React.FC<LayersTabProps> = ({
                   accentColor="sky"
                   showCheckOnSelected
                 />
+
+                {/* Airport Categories multi-select filter when Airports is checked */}
+                {(settings.openAipGroups || []).includes('airports') && (
+                  <div className="space-y-1.5 pt-1.5 border-t border-black/5 dark:border-white/5">
+                    <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
+                      {MAP_SETTINGS_LABELS.layersTab.airportCategories}
+                    </span>
+                    <GlassSegmented<AirportCategory>
+                      options={[
+                        { id: 'international', label: MAP_SETTINGS_LABELS.layersTab.catInternational, accentColor: 'sky' },
+                        { id: 'regional', label: MAP_SETTINGS_LABELS.layersTab.catRegional, accentColor: 'emerald' },
+                        { id: 'cargo', label: MAP_SETTINGS_LABELS.layersTab.catCargo, accentColor: 'amber' },
+                        { id: 'military', label: MAP_SETTINGS_LABELS.layersTab.catMilitary, accentColor: 'rose' },
+                        { id: 'local', label: MAP_SETTINGS_LABELS.layersTab.catLocal, accentColor: 'indigo' },
+                      ]}
+                      value={
+                        settings.openAipAirportCategories && settings.openAipAirportCategories.length > 0
+                          ? settings.openAipAirportCategories
+                          : ['international', 'regional', 'military', 'cargo', 'local']
+                      }
+                      onChange={(selected: AirportCategory[]) => {
+                        onChangeSetting('openAipAirportCategories', selected);
+                      }}
+                      isMulti
+                      columns={2}
+                      accentColor="sky"
+                      showCheckOnSelected
+                    />
+                  </div>
+                )}
 
                 <GlassSlider
                   label={MAP_SETTINGS_LABELS.layersTab.opacity}

@@ -1,4 +1,5 @@
 import type * as maplibregl from "maplibre-gl";
+import type { AirportCategory } from "../types/mapAppearance";
 
 export const OPENAIP_AIRSPACE_SOURCE_ID = "openaip-airspaces";
 
@@ -1690,18 +1691,35 @@ const OPENAIP_ALL_LAYERS: OpenAipOverlayLayer[] = [
 
 export const getOpenAipOverlayLayers = (
   enabledGroups: OpenAipOverlayGroup[] = OPENAIP_DEFAULT_ENABLED_GROUPS,
-  theme: OpenAipTheme = "light"
+  theme: OpenAipTheme = "light",
+  airportCategories?: AirportCategory[]
 ): any[] => {
   const effectiveGroups = new Set<string>(enabledGroups);
   if (effectiveGroups.has("airspaces")) {
     effectiveGroups.add("airspaceLabels");
   }
 
+  const activeCategories = airportCategories && airportCategories.length > 0 ? new Set(airportCategories) : null;
+
   return OPENAIP_ALL_LAYERS.filter((layer) => {
     if (layer.group === "navaids" || layer.group === "reportingPoints") {
       return false;
     }
-    return effectiveGroups.has(layer.group);
+    if (!effectiveGroups.has(layer.group)) {
+      return false;
+    }
+    if (layer.group === "airports" && activeCategories) {
+      if (layer.id.includes("intl") || layer.id.includes("runway-large")) {
+        if (!activeCategories.has("international")) return false;
+      } else if (layer.id.includes("gliding") || layer.id.includes("parachute")) {
+        if (!activeCategories.has("local")) return false;
+      } else if (layer.id.includes("generic") || layer.id.includes("runway")) {
+        if (!activeCategories.has("regional") && !activeCategories.has("military") && !activeCategories.has("local")) {
+          return false;
+        }
+      }
+    }
+    return true;
   }).map((layer) => {
     let layout = layer.layout ? { ...layer.layout } : undefined;
     if (layout?.["text-font"]) {

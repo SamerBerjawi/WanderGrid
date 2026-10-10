@@ -87,7 +87,7 @@ import {
 } from '../types/mapAppearance';
 import { getTwilightGradientGeoJSON } from '../services/solarTerminator';
 import { getLatestRainRadarMetadata, RainRadarMetadata } from '../services/rainViewer';
-import { getPhysicalRunways, getPhysicalRunwaysSync, generateAirportRunway, PhysicalRunway, isKnownAirport, getAllGlobalAirports, GlobalAirportNode } from '../services/airportRunways';
+import { getPhysicalRunways, getPhysicalRunwaysSync, generateAirportRunway, PhysicalRunway, isKnownAirport, getAllGlobalAirports, GlobalAirportNode, AirportCategory, AIRPORT_CATEGORY_META } from '../services/airportRunways';
 import { buildRouteCorridors, RouteCorridor, getApproxLocalTime, formatAirportDisplayName, resolveLocationMetadata, getRouteTransportSummary } from '../services/routeCorridor';
 import { getFlagEmoji, getRegion } from '../services/geoData';
 import { fetchMultiModalRoute, getCachedMultiModalRoute, getMultiModalRouteStatus, generateSmoothRailCorridor } from '../services/multiModalRouting';
@@ -406,7 +406,8 @@ export const createMapLibreStyle = (
     detailedAirports: boolean = false,
     openAipOverlay: boolean = false,
     openAipKey?: string,
-    openAipGroups?: OpenAipOverlayGroup[]
+    openAipGroups?: OpenAipOverlayGroup[],
+    openAipAirportCategories?: AirportCategory[]
 ): string | maplibregl.StyleSpecification => {
     const effectiveLayer = getEffectiveBasemap(layer, isDark);
 
@@ -484,7 +485,7 @@ export const createMapLibreStyle = (
             minzoom: 0,
             maxzoom: 24
         },
-        ...(canEnableOpenAip ? getOpenAipOverlayLayers(openAipGroups, isDark ? 'dark' : 'light') : []),
+        ...(canEnableOpenAip ? getOpenAipOverlayLayers(openAipGroups, isDark ? 'dark' : 'light', openAipAirportCategories) : []),
         ...(detailedAirports ? createAirportOverlayLayers(isDark) : [])
     ];
 
@@ -656,7 +657,8 @@ const syncOpenAipOverlayOnMap = (
     isDark: boolean,
     openAipKey?: string,
     openAipGroups?: OpenAipOverlayGroup[],
-    openAipOpacity: number = 0.85
+    openAipOpacity: number = 0.85,
+    openAipAirportCategories?: AirportCategory[]
 ) => {
     if (!map.isStyleLoaded()) return;
     const sanitizedKey = (openAipKey || '').trim();
@@ -692,7 +694,7 @@ const syncOpenAipOverlayOnMap = (
     }
 
     if (map.getSource(OPENAIP_AIRSPACE_SOURCE_ID)) {
-        const activeLayers = getOpenAipOverlayLayers(openAipGroups, isDark ? 'dark' : 'light');
+        const activeLayers = getOpenAipOverlayLayers(openAipGroups, isDark ? 'dark' : 'light', openAipAirportCategories);
 
         // Remove any existing OpenAIP layers so active ones are added cleanly in proper z-order with current theme
         allPotentialLayers.forEach(layer => {
@@ -2266,22 +2268,40 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
 
         if (showAllAviationAirports) {
             const allGlobalAirports = runwayDataset ? getAllGlobalAirports(runwayDataset) : airportPoints.filter((p: any) => p.isAirport);
-            if (allGlobalAirports.length > 0) {
+            const selectedCategories = activeAppearance.openAipAirportCategories && activeAppearance.openAipAirportCategories.length > 0
+                ? activeAppearance.openAipAirportCategories
+                : ['international', 'regional', 'military', 'cargo', 'local'];
+
+            const filteredAviationAirports = allGlobalAirports.filter((apt: any) => {
+                const cat = apt.category || 'regional';
+                return selectedCategories.includes(cat);
+            });
+
+            if (filteredAviationAirports.length > 0) {
+                // ScatterplotLayer: dots are the DEFAULT marker displayed across all zoom levels
                 layers.push(
                     new ScatterplotLayer({
                         id: 'aviation-all-airports-markers',
-                        data: allGlobalAirports,
+                        data: filteredAviationAirports,
                         getPosition: (d: any) => d.position,
                         filled: true,
                         stroked: true,
-                        getFillColor: [14, 165, 233, Math.round(255 * aviationOpacity)], // Sky-500 aeronautical cyan/blue
-                        getLineColor: isDark ? [255, 255, 255, Math.round(220 * aviationOpacity)] : [15, 23, 42, Math.round(220 * aviationOpacity)],
-                        getRadius: 4.0,
+                        getFillColor: (d: any) => {
+                            const meta = AIRPORT_CATEGORY_META[d.category as AirportCategory] || AIRPORT_CATEGORY_META.regional;
+                            return [...meta.fillColor, Math.round(255 * aviationOpacity)];
+                        },
+                        getLineColor: isDark 
+                            ? [255, 255, 255, Math.round(200 * aviationOpacity)] 
+                            : [15, 23, 42, Math.round(200 * aviationOpacity)],
+                        getRadius: (d: any) => {
+                            const meta = AIRPORT_CATEGORY_META[d.category as AirportCategory] || AIRPORT_CATEGORY_META.regional;
+                            return meta.radius;
+                        },
                         radiusUnits: 'pixels',
-                        radiusMinPixels: 3.5,
-                        radiusMaxPixels: 16,
+                        radiusMinPixels: 2.5,
+                        radiusMaxPixels: 14,
                         lineWidthUnits: 'pixels',
-                        getLineWidth: 1.5,
+                        getLineWidth: 1.2,
                         lineWidthMinPixels: 1.0,
                         wrapLongitude: true,
                         pickable: true,
@@ -2289,36 +2309,43 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                         highlightColor: [255, 255, 255, 255],
                         onHover: (info: any) => info.object && setHoverInfo(info),
                         updateTriggers: {
-                            getFillColor: [aviationOpacity],
+                            getFillColor: [selectedCategories, aviationOpacity],
                             getLineColor: [isDark, aviationOpacity],
-                        },
-                        parameters: { depthTest: false },
-                        extensions: [globeHorizonCullExtension]
-                    }),
-                    new TextLayer({
-                        id: 'aviation-all-airports-labels',
-                        data: allGlobalAirports,
-                        getPosition: (d: any) => d.position,
-                        getText: (d: any) => d.code || d.iata || d.name,
-                        getSize: 10,
-                        getColor: isDark ? [224, 242, 254, Math.round(255 * aviationOpacity)] : [12, 74, 110, Math.round(255 * aviationOpacity)],
-                        getTextAnchor: 'start',
-                        getAlignmentBaseline: 'center',
-                        pixelOffset: [8, 0],
-                        fontWeight: 700,
-                        background: true,
-                        getBackgroundColor: isDark ? [15, 23, 42, Math.round(210 * aviationOpacity)] : [240, 249, 255, Math.round(210 * aviationOpacity)],
-                        backgroundPadding: [4, 2],
-                        wrapLongitude: true,
-                        pickable: false,
-                        updateTriggers: {
-                            getColor: [isDark, aviationOpacity],
-                            getBackgroundColor: [isDark, aviationOpacity],
+                            getRadius: [selectedCategories],
                         },
                         parameters: { depthTest: false },
                         extensions: [globeHorizonCullExtension]
                     })
                 );
+
+                // Labels ONLY appear at zoom >= 5.5, preserving dots as the default marker at lower zoom levels
+                if (currentZoom >= 5.5) {
+                    layers.push(
+                        new TextLayer({
+                            id: 'aviation-all-airports-labels',
+                            data: filteredAviationAirports,
+                            getPosition: (d: any) => d.position,
+                            getText: (d: any) => d.code || d.iata,
+                            getSize: (d: any) => (d.category === 'international' || d.category === 'cargo') ? 11 : 9.5,
+                            getColor: isDark ? [224, 242, 254, Math.round(255 * aviationOpacity)] : [12, 74, 110, Math.round(255 * aviationOpacity)],
+                            getTextAnchor: 'start',
+                            getAlignmentBaseline: 'center',
+                            pixelOffset: [8, 0],
+                            fontWeight: 700,
+                            background: true,
+                            getBackgroundColor: isDark ? [15, 23, 42, Math.round(210 * aviationOpacity)] : [240, 249, 255, Math.round(210 * aviationOpacity)],
+                            backgroundPadding: [4, 2],
+                            wrapLongitude: true,
+                            pickable: false,
+                            updateTriggers: {
+                                getColor: [isDark, aviationOpacity],
+                                getBackgroundColor: [isDark, aviationOpacity],
+                            },
+                            parameters: { depthTest: false },
+                            extensions: [globeHorizonCullExtension]
+                        })
+                    );
+                }
             }
         }
 
@@ -2492,7 +2519,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             isDetailedAirports,
             isOpenAipOverlay,
             effectiveOpenAipKey,
-            activeAppearance.openAipGroups
+            activeAppearance.openAipGroups,
+            activeAppearance.openAipAirportCategories
         );
 
         lastAppliedStyleKeyRef.current = computeStyleKey(
@@ -2623,7 +2651,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             simplifyRailroadLayers(map);
             if (isOpenAipOverlay && effectiveOpenAipKey) {
                 ensureOpenAipIcons(map, isDark ? 'dark' : 'light');
-                syncOpenAipOverlayOnMap(map, isOpenAipOverlay, isDark, effectiveOpenAipKey, activeAppearance.openAipGroups);
+                syncOpenAipOverlayOnMap(map, isOpenAipOverlay, isDark, effectiveOpenAipKey, activeAppearance.openAipGroups, activeAppearance.openAipOpacity ?? 0.85, activeAppearance.openAipAirportCategories);
             }
             try {
                 setupAirportIcons();
@@ -2876,7 +2904,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             simplifyRailroadLayers(map);
             if (isOpenAipOverlay && effectiveOpenAipKey) {
                 ensureOpenAipIcons(map, isDark ? 'dark' : 'light');
-                syncOpenAipOverlayOnMap(map, isOpenAipOverlay, isDark, effectiveOpenAipKey, activeAppearance.openAipGroups);
+                syncOpenAipOverlayOnMap(map, isOpenAipOverlay, isDark, effectiveOpenAipKey, activeAppearance.openAipGroups, activeAppearance.openAipOpacity ?? 0.85, activeAppearance.openAipAirportCategories);
             }
             if (overlayRef.current) {
                 try {
@@ -2950,7 +2978,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                 await ensureOpenAipIcons(map, isDark ? 'dark' : 'light');
             }
             if (isCancelled) return;
-            syncOpenAipOverlayOnMap(map, isOpenAipOverlay, isDark, effectiveOpenAipKey, openAipGroups, openAipOpacity);
+            syncOpenAipOverlayOnMap(map, isOpenAipOverlay, isDark, effectiveOpenAipKey, openAipGroups, openAipOpacity, activeAppearance.openAipAirportCategories);
             map.triggerRepaint();
         };
 
@@ -2964,6 +2992,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         activeAppearance.openAipOverlay,
         activeAppearance.openAipOpacity,
         JSON.stringify(activeAppearance.openAipGroups),
+        JSON.stringify(activeAppearance.openAipAirportCategories),
         isDark,
         effectiveOpenAipKey
     ]);
@@ -4351,14 +4380,16 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                 <div className="flex items-center justify-between gap-3 pb-1 border-b border-black/5 dark:border-white/10">
                                     <span className="text-2xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary">
                                         {hoverInfo.object.isAirport
-                                            ? '✈️ Airport Hub'
+                                            ? (hoverInfo.object.category && AIRPORT_CATEGORY_META[hoverInfo.object.category as AirportCategory]
+                                                ? AIRPORT_CATEGORY_META[hoverInfo.object.category as AirportCategory].badgeLabel
+                                                : '✈️ Airport Hub')
                                             : hoverInfo.object.type === 'city'
                                                 ? '📍 City / Destination'
                                                 : (hoverInfo.object.count ? '🌐 Cluster' : 'Location')}
                                     </span>
                                     {hoverInfo.object.isAirport && (
-                                        <span className="px-1.5 py-0.5 rounded text-2xs font-mono font-bold bg-primary-500/10 text-primary-600 dark:text-primary-400 border border-primary-500/20">
-                                            {hoverInfo.object.iata ? hoverInfo.object.iata.toUpperCase() : 'AERODROME'}
+                                        <span className={`px-1.5 py-0.5 rounded text-2xs font-mono font-bold border ${hoverInfo.object.category && AIRPORT_CATEGORY_META[hoverInfo.object.category as AirportCategory] ? AIRPORT_CATEGORY_META[hoverInfo.object.category as AirportCategory].badgeStyle : 'bg-primary-500/10 text-primary-600 dark:text-primary-400 border-primary-500/20'}`}>
+                                            {hoverInfo.object.iata ? hoverInfo.object.iata.toUpperCase() : (hoverInfo.object.code ? hoverInfo.object.code.toUpperCase() : 'AERODROME')}
                                         </span>
                                     )}
                                 </div>
@@ -4366,9 +4397,12 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                                     <div className="flex items-center gap-2 min-w-0">
                                         <span
                                             className={`w-2.5 h-2.5 rounded-full shrink-0 ${hoverInfo.object.isAirport
-                                                    ? 'bg-primary-500 shadow-[0_0_8px_rgba(250,154,29,0.8)]'
+                                                    ? 'shadow-[0_0_8px_rgba(14,165,233,0.8)]'
                                                     : 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]'
                                                 }`}
+                                            style={hoverInfo.object.isAirport && hoverInfo.object.category && AIRPORT_CATEGORY_META[hoverInfo.object.category as AirportCategory] ? {
+                                                backgroundColor: `rgb(${AIRPORT_CATEGORY_META[hoverInfo.object.category as AirportCategory].fillColor.join(',')})`
+                                            } : undefined}
                                         />
                                         <span className="text-sm tracking-tight text-light-text dark:text-dark-text truncate">
                                             {hoverInfo.object.isAirport
