@@ -1,7 +1,12 @@
 import { COUNTRY_REGION_MAP } from './geoData';
+import { searchPlaces, resolveBestPlace, lookupPlaceByLabel, cleanLabel, norm as normText, Place, SearchMode } from './placeSearch';
 
-const CACHE_KEY = 'wandergrid_geo_cache_v3';
-const GEO_DB_NAME = 'wandergrid_geo_db_v3';
+const CACHE_KEY = 'wandergrid_geo_cache_v4';
+const GEO_DB_NAME = 'wandergrid_geo_db_v4';
+// v3 caches were filled by the old "first provider result / keyword map" resolver and contain wrong coordinates
+// (e.g. Malmö -> Stockholm, Nice -> Paris). They are discarded once and rebuilt from ranked, verified results.
+const LEGACY_CACHE_KEYS = ['wandergrid_geo_cache_v3', 'wandergrid_coord_cache'];
+const LEGACY_GEO_DBS = ['wandergrid_geo_db_v3'];
 const GEO_STORE_NAME = 'geo_entries';
 
 let internalCache: Map<string, any> = new Map();
@@ -96,15 +101,31 @@ const cleanupContaminatedCache = () => {
     }
 };
 
+// Import-order-proof text folding (this module runs loadCache() at load time, possibly before placeSearch is evaluated)
+function plainKey(v?: string): string {
+    return (v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
+const purgeLegacyCaches = () => {
+    try {
+        if (typeof localStorage !== 'undefined') LEGACY_CACHE_KEYS.forEach(k => localStorage.removeItem(k));
+        if (typeof indexedDB !== 'undefined') LEGACY_GEO_DBS.forEach(n => { try { indexedDB.deleteDatabase(n); } catch {} });
+    } catch {}
+};
+
 const loadCache = () => {
     if (isCacheLoaded) return;
+    purgeLegacyCaches();
     try {
         const stored = localStorage.getItem(CACHE_KEY);
         if (stored) internalCache = new Map(JSON.parse(stored));
     } catch (e) {}
     
     Object.keys(STATIC_GEO_DATA).forEach(key => {
-        if (!internalCache.has(key)) internalCache.set(key, STATIC_GEO_DATA[key]);
+        const row = STATIC_GEO_DATA[key];
+        // Country-level placeholder rows (e.g. "Sweden") carry an arbitrary point: never resolve them offline.
+        if (!/^[A-Z]{3}$/.test(key) && plainKey(key) === plainKey(row?.country)) return;
+        if (!internalCache.has(key)) internalCache.set(key, row);
     });
     cleanupContaminatedCache();
     isCacheLoaded = true;
@@ -154,7 +175,7 @@ if (typeof window !== 'undefined') {
 }
 
 const openGeoDb = (): Promise<IDBDatabase | null> => new Promise((resolve) => {
-    if (!('indexedDB' in window)) {
+    if (typeof window === 'undefined' || !('indexedDB' in window)) {
         resolve(null);
         return;
     }
@@ -431,53 +452,6 @@ export function calculateArrivalTime(originIata: string, destIata: string, depDa
 
 // Active search abort controllers to cancel stale queries
 const activeSearchAborts = new Map<string, AbortController>();
-const searchQueriesCache = new Map<string, string[]>();
-
-async function fetchOpenMeteoGeocoding(query: string, bias?: { lat?: number; lon?: number }): Promise<any[]> {
-    let queryParams = `q=${encodeURIComponent(query)}`;
-    if (bias && Number.isFinite(bias.lat) && Number.isFinite(bias.lon)) {
-        queryParams += `&lat=${bias.lat}&lon=${bias.lon}`;
-    }
-
-    try {
-        // 1. Fetch from backend geocoding search endpoint first (P-03 Multi-provider chain: Open-Meteo -> Photon -> Nominatim)
-        const res = await fetchWithTimeout(`/api/geocode/search?${queryParams}`, {}, 5000);
-        if (res.ok) {
-            const data = await res.json();
-            if (Array.isArray(data)) return data;
-            if (data && Array.isArray(data.results)) return data.results;
-        } else if (res.status === 502) {
-            console.warn(`[Geocoding] Upstream geocoding services did not answer for query: "${query}"`);
-            return [];
-        }
-    } catch (e) {
-        console.warn("Backend geocoding search failed, trying fallback proxy...", e);
-    }
-
-    try {
-        // Fallback to proxy route
-        const res = await fetchWithTimeout(`/api/proxy/geocoding?${queryParams}`, {}, 5000);
-        if (res.ok) {
-            const data = await res.json();
-            if (Array.isArray(data)) return data;
-            if (data && Array.isArray(data.results)) return data.results;
-        }
-    } catch (e) {
-        console.warn("Backend geocoding proxy failed. Falling back to direct client-side fetch...", e);
-    }
-
-    try {
-        // 2. Direct client-side fallback if backend is offline or slow
-        const res = await fetchWithTimeout(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=10&language=en&format=json`, {}, 3000);
-        if (res.ok) {
-            const data = await res.json();
-            return data.results || [];
-        }
-    } catch (e) {
-        console.error("Direct Open-Meteo geocoding failed as well:", e);
-    }
-    return [];
-}
 
 export const US_STATE_CODES: Record<string, string> = {
     'alabama': 'AL', 'alaska': 'AK', 'arizona': 'AZ', 'arkansas': 'AR', 'california': 'CA',
@@ -764,174 +738,57 @@ export function cleanCityName(rawName: string, countryCode?: string, adminRegion
     return name || formatPlaceName(rawName.trim());
 }
 
-export async function searchLocations(query: string, bias?: { lat?: number; lon?: number }): Promise<string[]> {
-    if (!query) return [];
-    const trimmedQuery = query.trim();
-    if (trimmedQuery.length < 2) return [];
+type Bias = { lat?: number; lon?: number };
+type PartialHandler = (labels: string[]) => void;
 
-    const lowerQuery = trimmedQuery.toLowerCase();
-    const memoKey = `${lowerQuery}${bias && Number.isFinite(bias.lat) && Number.isFinite(bias.lon) ? `:${bias.lat.toFixed(2)},${bias.lon.toFixed(2)}` : ''}`;
-    
-    // Check local memory cache first for instant sub-millisecond snapping
-    if (searchQueriesCache.has(memoKey)) {
-        return searchQueriesCache.get(memoKey)!;
+const placeCity = (p: Place): string => (p.kind === 'city' ? p.name : (p.subtitle.split(',')[0] || p.name));
+
+const placeToCoords = (p: Place) => ({
+    lat: p.lat,
+    lng: p.lng,
+    tz: p.tz,
+    city: placeCity(p),
+    country: p.country,
+    countryCode: p.countryCode,
+    viewport: p.viewport,
+    types: [p.kind]
+});
+
+/** Remembers the exact coordinates behind every label we show, so picking a suggestion never needs a re-geocode. */
+function hydrateFromPlaces(places: Place[]): string[] {
+    const labels: string[] = [];
+    for (const p of places) {
+        if (labels.includes(p.label)) continue;
+        labels.push(p.label);
+        internalCache.set(p.label, { ...placeToCoords(p), lon: p.lng, name: p.name, provider: p.provider });
     }
+    if (places.length) saveCache();
+    return labels;
+}
 
-    const citySuggestions = new Set<string>();
-    const airportSuggestions = new Set<string>();
-
-    // 1. Direct IATA airport code extraction & static airport name search (FAST & offline)
-    const uppercaseQuery = trimmedQuery.toUpperCase();
-    if (uppercaseQuery.length === 3 && STATIC_GEO_DATA[uppercaseQuery]) {
-        const ap = STATIC_GEO_DATA[uppercaseQuery];
-        airportSuggestions.add(`${uppercaseQuery} - ${ap.name}, ${ap.city}, ${ap.country}`);
-    }
-
-    Object.entries(STATIC_GEO_DATA).forEach(([key, ap]) => {
-        if (
-            key.toLowerCase().includes(lowerQuery) ||
-            ap.name?.toLowerCase().includes(lowerQuery) ||
-            ap.city?.toLowerCase().includes(lowerQuery) ||
-            ap.country?.toLowerCase().includes(lowerQuery)
-        ) {
-            airportSuggestions.add(`${key} - ${ap.name}, ${ap.city}, ${ap.country}`);
-        }
+async function runLabelSearch(query: string, mode: SearchMode, bias?: Bias, onPartial?: PartialHandler): Promise<string[]> {
+    const trimmed = (query || '').trim();
+    if (trimmed.length < 2) return [];
+    loadCache();
+    const places = await searchPlaces(trimmed, {
+        mode,
+        bias,
+        limit: 8,
+        onUpdate: onPartial ? (list) => onPartial(hydrateFromPlaces(list)) : undefined
     });
+    return hydrateFromPlaces(places);
+}
 
-    // 2. Offline-first local database query matching based on keywords or city name
-    const queryParts = lowerQuery.split(',').map(s => s.trim()).filter(Boolean);
-    const queryCity = queryParts[0] || lowerQuery;
-
-    LOCAL_GEO_MAP.forEach(item => {
-        const cleanCity = cleanCityName(item.city, item.countryCode);
-        const formatted = `${cleanCity}, ${item.country}`;
-        const itemCityLower = item.city.toLowerCase();
-        const cleanCityLower = cleanCity.toLowerCase();
-        const itemCountryLower = item.country.toLowerCase();
-
-        // City match: query matches or starts with city, or city starts with query
-        const cityMatch = 
-            itemCityLower === queryCity || 
-            itemCityLower.startsWith(queryCity) || 
-            cleanCityLower.startsWith(queryCity) ||
-            (queryCity.length >= 3 && itemCityLower.includes(queryCity));
-
-        // Country match: ONLY if user explicitly typed country name alone or as second token
-        const countryMatch = 
-            (queryParts.length === 1 && itemCountryLower === lowerQuery) ||
-            (queryParts.length > 1 && itemCountryLower === queryParts[1]);
-
-        // Keyword match: must match city part or exact keyword (never let country keyword hijack a different city!)
-        const keywordMatch = item.keywords.some(kw => 
-            kw === queryCity || 
-            kw === lowerQuery || 
-            (queryCity.length >= 3 && kw.startsWith(queryCity))
-        );
-
-        if (cityMatch || (countryMatch && queryParts.length === 1) || keywordMatch) {
-            citySuggestions.add(formatted);
-        }
-    });
-
-    // 3. Match from existing geocoding cache entries
-    try {
-        internalCache.forEach((val, key) => {
-            if (key.toLowerCase().includes(lowerQuery)) {
-                if (val.city && val.country) {
-                    const cleanCity = cleanCityName(val.city, val.countryCode || val.iso);
-                    citySuggestions.add(`${cleanCity}, ${val.country}`);
-                } else if (typeof val === 'string') {
-                    if (val.toLowerCase().includes('airport')) {
-                        airportSuggestions.add(val);
-                    } else {
-                        citySuggestions.add(val);
-                    }
-                } else if (val.displayName) {
-                    if (val.displayName.toLowerCase().includes('airport')) {
-                        airportSuggestions.add(val.displayName);
-                    } else {
-                        citySuggestions.add(val.displayName);
-                    }
-                }
-            }
-        });
-    } catch (e) {}
-
-    // 4. Multi-provider backend geocoding chain (Open-Meteo -> Photon -> Nominatim with proximity bias)
-    let networkCitySuggestions: string[] = [];
-    let networkAirportSuggestions: string[] = [];
-    if (trimmedQuery.length >= 2) {
-        try {
-            const chainResults = await fetchOpenMeteoGeocoding(trimmedQuery, bias);
-            if (chainResults && chainResults.length > 0) {
-                chainResults.forEach((item: any, idx: number) => {
-                    const cleanCity = cleanCityName(item.name, item.country_code, item.admin1);
-                    const country = item.country || '';
-                    const displayName = item.displayName || (country ? `${cleanCity}, ${country}` : cleanCity);
-                    
-                    if (item.types?.includes('airport') || item.name?.toLowerCase().includes('airport') || item.name?.toLowerCase().includes('aerod')) {
-                        if (!networkAirportSuggestions.includes(displayName)) networkAirportSuggestions.push(displayName);
-                    } else {
-                        if (!networkCitySuggestions.includes(displayName)) networkCitySuggestions.push(displayName);
-                    }
-
-                    // Hydrate cache with exact lookup data so it is instant afterwards
-                    const cacheData = {
-                        lat: item.latitude,
-                        lng: item.longitude,
-                        lon: item.longitude,
-                        tz: item.timezone || undefined, // Never default silently to UTC
-                        city: cleanCity,
-                        country: item.country,
-                        countryCode: item.country_code?.toUpperCase(),
-                        name: cleanCity,
-                        viewport: item.viewport,
-                        types: item.types,
-                        provider: item.provider
-                    };
-                    internalCache.set(displayName.trim(), cacheData);
-                    internalCache.set(displayName.trim().toUpperCase(), cacheData);
-                    if (idx === 0) {
-                        const nameUpper = cleanCity.trim().toUpperCase();
-                        // Never overwrite 3-letter codes with random geocoding names (avoids contaminating airport/IATA codes)
-                        if (nameUpper.length !== 3) {
-                            internalCache.set(nameUpper, cacheData);
-                        }
-                    }
-                });
-                saveCache();
-            }
-        } catch (e) {
-            console.warn("[Geocoding] Network chain search error:", e);
-        }
-    }
-
-    const combined = new Set<string>();
-    const isAirportQuery = lowerQuery.includes('airport') || 
-                            lowerQuery.includes('apt') || 
-                            lowerQuery.includes('fly') || 
-                            lowerQuery.includes('transit') || 
-                            lowerQuery.includes('terminal') || 
-                            lowerQuery.includes('iata') || 
-                            (trimmedQuery.length === 3 && trimmedQuery === trimmedQuery.toUpperCase());
-
-    if (isAirportQuery) {
-        // Airport search prioritizes airport nodes
-        airportSuggestions.forEach(s => combined.add(s));
-        networkAirportSuggestions.forEach(s => combined.add(s));
-        citySuggestions.forEach(s => combined.add(s));
-        networkCitySuggestions.forEach(s => combined.add(s));
-    } else {
-        // General search prioritizes cities and clean addresses
-        citySuggestions.forEach(s => combined.add(s));
-        networkCitySuggestions.forEach(s => combined.add(s));
-        airportSuggestions.forEach(s => combined.add(s));
-        networkAirportSuggestions.forEach(s => combined.add(s));
-    }
-
-    const finalResult = Array.from(combined).slice(0, 8);
-    searchQueriesCache.set(lowerQuery, finalResult);
-    return finalResult;
+/**
+ * Location autocomplete (cities, airports, stations, landmarks). Returns display labels; the exact coordinates of every
+ * label are remembered so getCoordinates(label) is instant and identical to what was suggested.
+ * Optional second/third argument: a bias point and/or a callback that receives progressively better results
+ * (instant local tier first, then providers as they answer).
+ */
+export function searchLocations(query: string, arg2?: Bias | PartialHandler, arg3?: PartialHandler): Promise<string[]> {
+    const bias = typeof arg2 === 'function' ? undefined : arg2;
+    const onPartial = typeof arg2 === 'function' ? arg2 : arg3;
+    return runLabelSearch(query, 'auto', bias, onPartial);
 }
 
 // Reusable debouncing utility helper
@@ -949,224 +806,126 @@ export function debounce<T extends (...args: any[]) => any>(fn: T, delay: number
 }
 
 // Reusable debounced location search helper
-export const debouncedSearchLocations = debounce(searchLocations, 350);
+export const debouncedSearchLocations = debounce(searchLocations, 150);
 
-export async function searchStations(query: string, type: 'train' | 'bus'): Promise<string[]> {
-    return searchLocations(`${query} ${type === 'train' ? 'railway station' : 'bus station'}`);
+export function searchStations(query: string, type: 'train' | 'bus', onPartial?: PartialHandler): Promise<string[]> {
+    return runLabelSearch(query, type === 'train' ? 'station' : 'bus', undefined, onPartial);
+}
+
+export function searchAddresses(query: string, onPartial?: PartialHandler): Promise<string[]> {
+    return runLabelSearch(query, 'address', undefined, onPartial);
+}
+
+export function searchAirports(query: string, onPartial?: PartialHandler): Promise<string[]> {
+    return runLabelSearch(query, 'airport', undefined, onPartial);
+}
+
+type CoordResult = { lat: number; lng: number; tz?: string; city?: string; country?: string; countryCode?: string; viewport?: [number, number, number, number]; types?: string[] };
+
+const staticToCoords = (ap: any): CoordResult => ({
+    lat: parseFloat(ap.lat),
+    lng: parseFloat(ap.lon || ap.lng),
+    tz: ap.tz,
+    city: ap.city || ap.name,
+    country: ap.country,
+    countryCode: ap.countryCode || ap.iso
+});
+
+const UK_ALIASES = new Set(['united kingdom', 'uk', 'great britain', 'gb', 'britain']);
+
+/** Does a "City, Country" query's country part agree with a static row? (no country part => compatible) */
+function countryCompatible(countryPart: string, row: any): boolean {
+    const hint = normText(countryPart);
+    if (!hint) return true;
+    const country = normText(row.country);
+    const iso = normText(row.iso || row.countryCode);
+    if (hint === country || hint === iso) return true;
+    if (country && (hint.includes(country) || country.includes(hint))) return true;
+    if ((row.iso || '').toUpperCase().startsWith('GB') && UK_ALIASES.has(hint)) return true;
+    return false;
+}
+
+/**
+ * Offline, synchronous resolution. Deliberately strict: only exact IATA codes, exact picked labels and exact
+ * (country-compatible) city names resolve here. Anything fuzzy goes to the ranked network search instead of being
+ * "snapped" to a bigger, unrelated city.
+ */
+function resolveOffline(cleanLocation: string): CoordResult | undefined {
+    // 0. A label the user picked from the suggestions resolves to its exact coordinates
+    const picked = lookupPlaceByLabel(cleanLocation);
+    if (picked) return placeToCoords(picked);
+
+    // A. "ARN - Arlanda ..." style IATA prefix
+    const iataMatch = cleanLocation.match(/^([A-Z]{3})\s*-\s*/);
+    if (iataMatch && STATIC_GEO_DATA[iataMatch[1]]) return staticToCoords(STATIC_GEO_DATA[iataMatch[1]]);
+
+    // B. Bare IATA code
+    const upper = cleanLocation.toUpperCase();
+    if (upper.length === 3 && /^[A-Z]{3}$/.test(upper) && STATIC_GEO_DATA[upper]) return staticToCoords(STATIC_GEO_DATA[upper]);
+
+    // C. Exact entry in the (versioned) cache: labels we resolved or suggested earlier
+    const cached = internalCache.get(cleanLocation);
+    if (cached?.lat && !isNaN(parseFloat(cached.lat))) {
+        return {
+            lat: parseFloat(cached.lat),
+            lng: parseFloat(cached.lon || cached.lng),
+            tz: cached.tz,
+            city: cached.city,
+            country: cached.country,
+            countryCode: cached.countryCode || cached.iso,
+            viewport: cached.viewport,
+            types: cached.types
+        };
+    }
+
+    // D. Exact city name (optionally with a country that must agree)
+    const parts = cleanLocation.split(',').map(p => p.trim()).filter(Boolean);
+    const nCity = normText(parts[0]);
+    const countryPart = parts.slice(1).join(' ');
+    if (nCity.length >= 3) {
+        for (const [key, row] of Object.entries(STATIC_GEO_DATA)) {
+            if (/^[A-Z]{3}$/.test(key) || !row?.lat) continue;
+            if (normText(key) === normText(row.country)) continue; // country placeholder rows
+            if ((normText(key) === nCity || normText(row.city) === nCity) && countryCompatible(countryPart, row)) {
+                return staticToCoords(row);
+            }
+        }
+    }
+    return undefined;
 }
 
 export function getCoordinatesSync(location: string): { lat: number; lng: number; tz?: string; city?: string; country?: string; countryCode?: string } | undefined {
-  if (!location) return undefined;
-  loadCache();
-
-  const cleanLocation = location.trim();
-
-  // A. Quick IATA token parsing
-  const iataMatch = cleanLocation.match(/^([A-Z]{3})\s*-\s*/);
-  if (iataMatch) {
-      const code = iataMatch[1];
-      if (STATIC_GEO_DATA[code]) {
-          const ap = STATIC_GEO_DATA[code];
-          return {
-              lat: parseFloat(ap.lat),
-              lng: parseFloat(ap.lon || ap.lng),
-              tz: ap.tz,
-              city: ap.city,
-              country: ap.country,
-              countryCode: ap.iso
-          };
-      }
-  }
-
-  // B. Priority IATA 3-letter Exact Lookup (Structural bypass protecting airports)
-  const uppercaseLoc = cleanLocation.toUpperCase();
-  if (uppercaseLoc.length === 3 && STATIC_GEO_DATA[uppercaseLoc]) {
-      const ap = STATIC_GEO_DATA[uppercaseLoc];
-      return {
-          lat: parseFloat(ap.lat),
-          lng: parseFloat(ap.lon || ap.lng),
-          tz: ap.tz,
-          city: ap.city,
-          country: ap.country,
-          countryCode: ap.iso
-      };
-  }
-
-  // C. Check exact match in active cache
-  const cached = internalCache.get(cleanLocation) || internalCache.get(uppercaseLoc);
-  if (cached?.lat) {
-      return { 
-          lat: parseFloat(cached.lat), 
-          lng: parseFloat(cached.lon || cached.lng), 
-          tz: cached.tz,
-          city: cached.city,
-          country: cached.country,
-          countryCode: cached.countryCode || cached.iso
-      };
-  }
-
-  // D. Quick local keyword map lookup
-  const lowerLoc = cleanLocation.toLowerCase();
-  const locCityPart = cleanLocation.includes(',') ? cleanLocation.split(',')[0].trim() : '';
-  const locCityLower = locCityPart ? locCityPart.toLowerCase() : '';
-  const localMatch = LOCAL_GEO_MAP.find(item => 
-      item.city.toLowerCase() === lowerLoc || 
-      (locCityLower && item.city.toLowerCase() === locCityLower) ||
-      item.keywords.includes(lowerLoc) ||
-      (locCityLower && item.keywords.includes(locCityLower))
-  );
-  if (localMatch) {
-      const staticMatch = Object.values(STATIC_GEO_DATA).find(ap => ap.city?.toLowerCase() === localMatch.city.toLowerCase());
-      if (staticMatch) {
-          return {
-              lat: parseFloat(staticMatch.lat),
-              lng: parseFloat(staticMatch.lon || staticMatch.lng),
-              tz: staticMatch.tz,
-              city: localMatch.city,
-              country: localMatch.country,
-              countryCode: localMatch.countryCode
-          };
-      }
-  }
-
-  // If we can match by city/country directly in static data
-  const directMatch = STATIC_GEO_DATA[cleanLocation] || (locCityPart ? STATIC_GEO_DATA[locCityPart] : undefined);
-  if (directMatch?.lat) {
-      return {
-          lat: parseFloat(directMatch.lat),
-          lng: parseFloat(directMatch.lon || directMatch.lng),
-          tz: directMatch.tz,
-          city: directMatch.city || directMatch.name,
-          country: directMatch.country,
-          countryCode: directMatch.countryCode || directMatch.iso
-      };
-  }
-
-  return undefined;
+    if (!location) return undefined;
+    loadCache();
+    return resolveOffline(cleanLabel(location));
 }
 
-export async function getCoordinates(location: string, bias?: { lat?: number; lon?: number }): Promise<{ lat: number; lng: number; tz?: string; city?: string; country?: string; countryCode?: string; viewport?: [number, number, number, number]; types?: string[] } | undefined> {
-  if (!location) return undefined;
-  loadCache();
+export async function getCoordinates(location: string, bias?: { lat?: number; lon?: number }): Promise<CoordResult | undefined> {
+    if (!location) return undefined;
+    loadCache();
 
-  const cleanLocation = location.trim();
+    const cleanLocation = cleanLabel(location);
+    if (!cleanLocation) return undefined;
 
-  // A. Quick IATA token parsing
-  const iataMatch = cleanLocation.match(/^([A-Z]{3})\s*-\s*/);
-  if (iataMatch) {
-      const code = iataMatch[1];
-      if (STATIC_GEO_DATA[code]) {
-          const ap = STATIC_GEO_DATA[code];
-          return {
-              lat: parseFloat(ap.lat),
-              lng: parseFloat(ap.lon || ap.lng),
-              tz: ap.tz,
-              city: ap.city,
-              country: ap.country,
-              countryCode: ap.iso
-          };
-      }
-  }
+    const offline = resolveOffline(cleanLocation);
+    if (offline) return offline;
 
-  // B. Priority IATA 3-letter Exact Lookup (Structural bypass protecting airports)
-  const uppercaseLoc = cleanLocation.toUpperCase();
-  if (uppercaseLoc.length === 3 && STATIC_GEO_DATA[uppercaseLoc]) {
-      const ap = STATIC_GEO_DATA[uppercaseLoc];
-      return {
-          lat: parseFloat(ap.lat),
-          lng: parseFloat(ap.lon || ap.lng),
-          tz: ap.tz,
-          city: ap.city,
-          country: ap.country,
-          countryCode: ap.iso
-      };
-  }
-
-  // C. Check exact match in active cash
-  const cached = internalCache.get(cleanLocation) || internalCache.get(uppercaseLoc);
-  if (cached?.lat) {
-      return { 
-          lat: parseFloat(cached.lat), 
-          lng: parseFloat(cached.lon || cached.lng), 
-          tz: cached.tz,
-          city: cached.city,
-          country: cached.country,
-          countryCode: cached.countryCode || cached.iso,
-          viewport: cached.viewport,
-          types: cached.types
-      };
-  }
-
-  // D. Quick local keyword map lookup
-  const lowerLoc = cleanLocation.toLowerCase();
-  const locCityPart = cleanLocation.includes(',') ? cleanLocation.split(',')[0].trim() : '';
-  const locCityLower = locCityPart ? locCityPart.toLowerCase() : '';
-  const localMatch = LOCAL_GEO_MAP.find(item => 
-      item.city.toLowerCase() === lowerLoc || 
-      (locCityLower && item.city.toLowerCase() === locCityLower) ||
-      item.keywords.includes(lowerLoc) ||
-      (locCityLower && item.keywords.includes(locCityLower))
-  );
-  if (localMatch) {
-      const staticMatch = Object.values(STATIC_GEO_DATA).find(ap => ap.city?.toLowerCase() === localMatch.city.toLowerCase());
-      if (staticMatch) {
-          return {
-              lat: parseFloat(staticMatch.lat),
-              lng: parseFloat(staticMatch.lon || staticMatch.lng),
-              tz: staticMatch.tz,
-              city: localMatch.city,
-              country: localMatch.country,
-              countryCode: localMatch.countryCode
-          };
-      }
-  }
-
-  // Check direct match in static data before external network fetch
-  const directMatch = STATIC_GEO_DATA[cleanLocation] || (locCityPart ? STATIC_GEO_DATA[locCityPart] : undefined);
-  if (directMatch?.lat) {
-      return {
-          lat: parseFloat(directMatch.lat),
-          lng: parseFloat(directMatch.lon || directMatch.lng),
-          tz: directMatch.tz,
-          city: directMatch.city || directMatch.name,
-          country: directMatch.country,
-          countryCode: directMatch.countryCode || directMatch.iso
-      };
-  }
-
-  // E. Live network query via backend multi-provider geocoding chain (Open-Meteo -> Photon -> Nominatim)
-  try {
-    const isIataLike = cleanLocation.length === 3 && cleanLocation === cleanLocation.toUpperCase();
-    const searchQuery = isIataLike ? `${cleanLocation} airport` : cleanLocation;
-
-    const chainData = await fetchOpenMeteoGeocoding(searchQuery, bias);
-    if (chainData && chainData.length > 0) {
-        const item = chainData[0];
-        const lat = item.latitude;
-        const lng = item.longitude;
-        // Sanity check: valid numbers, in-range, and reject (0,0)
-        if (!isNaN(lat) && !isNaN(lng) && (lat !== 0 || lng !== 0) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-            const entry = {
-                lat,
-                lng,
-                lon: lng,
-                tz: item.timezone || undefined,
-                city: item.name,
-                country: item.country,
-                countryCode: item.country_code?.toUpperCase(),
-                viewport: item.viewport,
-                types: item.types,
-                provider: item.provider
-            };
+    // Ranked live lookup (instant local tier + parallel providers). Never "first provider result wins".
+    try {
+        const isIataLike = /^[A-Za-z]{3}$/.test(cleanLocation);
+        const best = isIataLike
+            ? await resolveBestPlace(`${cleanLocation} airport`, { mode: 'airport', bias })
+            : await resolveBestPlace(cleanLocation, { bias });
+        if (best && !isNaN(best.lat) && !isNaN(best.lng)) {
+            const entry = { ...placeToCoords(best), lon: best.lng, provider: best.provider };
             internalCache.set(cleanLocation, entry);
             saveCache();
-            return { ...entry, lat, lng };
+            return placeToCoords(best);
         }
+    } catch (e) {
+        console.warn('[geocoding] live lookup failed for', cleanLocation, e);
     }
-  } catch (e) {
-    console.warn('[geocoding] live lookup failed for', cleanLocation, e);
-  }
-  return undefined;
+    return undefined;
 }
 
 export const LOCAL_GEO_MAP: Array<{ keywords: string[]; city: string; country: string; countryCode: string }> = [
@@ -1351,59 +1110,23 @@ async function resolvePlaceNameRaw(query: string): Promise<{ city: string, count
             };
         }
 
-        // Match in LOCAL_GEO_MAP
-        const localMatch = LOCAL_GEO_MAP.find(item => 
-            item.city.toLowerCase() === lowerBase ||
-            cleanCityName(item.city, item.countryCode).toLowerCase() === lowerBase ||
-            item.keywords.includes(lowerBase)
-        );
-        if (localMatch) {
-            const cleanCity = cleanCityName(localMatch.city, localMatch.countryCode);
-            return {
-                city: cleanCity,
-                country: localMatch.country,
-                countryCode: localMatch.countryCode,
-                displayName: `${cleanCity}, ${localMatch.country}`
-            };
-        }
     }
 
-    // 4. Perform localized fallback lookup first (highly responsive!)
-    const norm = cleanQuery.toLowerCase();
-    for (const item of LOCAL_GEO_MAP) {
-        if (item.keywords.some(kw => {
-            if (norm.length <= 3) {
-                return kw === norm;
-            }
-            return norm.includes(kw);
-        })) {
-            const cleanCity = cleanCityName(item.city, item.countryCode);
-            const obj = { city: cleanCity, country: item.country, countryCode: item.countryCode, displayName: `${cleanCity}, ${item.country}` };
-            internalCache.set(cleanQuery, obj);
-            saveCache();
-            return obj;
-        }
-    }
-
-    // 5. Perform network search matching via Open-Meteo and Nominatim fallback
+    // 4. Ranked live lookup (same engine as autocomplete) - never snap to an unrelated bigger city
     try {
-        const isIataLike = cleanQuery.length === 3 && cleanQuery === cleanQuery.toUpperCase();
-        const searchQuery = isIataLike ? `${cleanQuery} airport` : cleanQuery;
-
-        // Try Open-Meteo first
-        const meteoData = await fetchOpenMeteoGeocoding(searchQuery);
-        if (meteoData && meteoData.length > 0) {
-            const item = meteoData[0];
-            const cleanCity = cleanCityName(item.name, item.country_code, item.admin1);
-            const country = item.country || '';
-            const code = item.country_code?.toUpperCase() || '';
-            const displayName = country ? `${cleanCity}, ${country}` : cleanCity;
-            const obj = { city: cleanCity, country, countryCode: code, displayName };
+        const picked = lookupPlaceByLabel(cleanQuery);
+        const isIataLike = /^[A-Za-z]{3}$/.test(cleanQuery);
+        const best = picked || (isIataLike
+            ? await resolveBestPlace(`${cleanQuery} airport`, { mode: 'airport' })
+            : await resolveBestPlace(cleanQuery));
+        if (best) {
+            const cleanCity = best.kind === 'city' ? best.name : cleanCityName(best.subtitle.split(',')[0] || best.name, best.countryCode);
+            const country = best.country || '';
+            const obj = { city: cleanCity, country, countryCode: best.countryCode, displayName: country ? `${cleanCity}, ${country}` : cleanCity };
             internalCache.set(cleanQuery, obj);
             saveCache();
             return obj;
         }
-
     } catch (e) {
         console.warn('[geocoding] getCityCountryInfo live lookup failed:', e);
     }

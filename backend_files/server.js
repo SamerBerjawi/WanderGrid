@@ -13,7 +13,7 @@ const rateLimit = require('express-rate-limit');
 const { fetchUpstream } = require('./upstream');
 const { resolveIcaoCallsign } = require('./carrierMapping');
 const { handleRouteProxy, handleRailRouteProxy } = require('./routeProxy');
-const { searchGeocodingChain } = require('./geocodingChain');
+const { searchGeocodingChain, searchOpenMeteo, searchPhoton, searchNominatim } = require('./geocodingChain');
 const { testProvider } = require('./integrationsTester');
 
 const pbkdf2Async = util.promisify(crypto.pbkdf2);
@@ -1631,7 +1631,7 @@ function searchLocalAirportData(q) {
             const cityLower = (gps.city || '').toLowerCase();
             const airportLower = (gps.name || '').toLowerCase();
             
-            if (iataLower === queryLower || cityLower.includes(queryLower) || airportLower.includes(queryLower) || queryLower.includes(cityLower)) {
+            if (iataLower === queryLower || (cityLower && queryLower.length >= 3 && cityLower.startsWith(queryLower)) || (airportLower && queryLower.length >= 3 && airportLower.startsWith(queryLower)) || (cityLower && queryLower === cityLower)) {
                 const details = memoryAirports.get(iata);
                 results.push({
                     name: details?.airport_name || gps.name || gps.city ? `${details?.airport_name || gps.name} (${iata})` : iata,
@@ -1652,7 +1652,7 @@ function searchLocalAirportData(q) {
         const cityLower = (details.city_name || '').toLowerCase();
         const airportLower = (details.airport_name || '').toLowerCase();
         
-        if (iataLower === queryLower || cityLower.includes(queryLower) || airportLower.includes(queryLower)) {
+        if (iataLower === queryLower || (queryLower.length >= 3 && (cityLower.startsWith(queryLower) || airportLower.startsWith(queryLower)))) {
             // Only add if not already matched from static coords to avoid duplicates
             if (!results.some(r => r.name.includes(`(${iata})`))) {
                 const gps = STATIC_GEO_COORDS[iata];
@@ -1723,7 +1723,45 @@ const handleGeocodingSearch = async (req, res) => {
     const biasLon = lon ? parseFloat(lon) : undefined;
     const cacheKey = `${trimmedQ}${Number.isFinite(biasLat) && Number.isFinite(biasLon) ? `:${biasLat.toFixed(2)},${biasLon.toFixed(2)}` : ''}`;
     
-    // 1. Search local airport data first beforehand to avoid external api/geocoding cache contamination for common trips & flights
+    // 0. Provider-specific lookups (used by the progressive autocomplete: providers are queried in parallel by the client).
+    const provider = String(req.query.provider || '').toLowerCase();
+    if (provider) {
+        const tag = String(req.query.tag || '');
+        const providerKey = `${provider}|${tag}|${cacheKey}`;
+        if (memoryGeocoding.has(providerKey)) {
+            res.set('X-Cache', 'RAM');
+            return res.json({ ok: true, answered: true, provider, results: memoryGeocoding.get(providerKey) });
+        }
+        try {
+            const row = (await pool.query('SELECT results, created_at FROM geocoding_cache WHERE query = $1', [providerKey])).rows[0];
+            if (row && Date.now() - new Date(row.created_at).getTime() < GEOCODE_CACHE_TTL_MS) {
+                memoryGeocoding.set(providerKey, row.results);
+                res.set('X-Cache', 'HIT');
+                return res.json({ ok: true, answered: true, provider, results: row.results });
+            }
+        } catch (dbErr) {
+            console.warn('Geocoding provider cache lookup failed:', dbErr.message);
+        }
+
+        let providerResults = [];
+        if (provider === 'open-meteo') providerResults = await searchOpenMeteo(q.trim());
+        else if (provider === 'photon') providerResults = await searchPhoton(q.trim(), { lat: biasLat, lon: biasLon, tag });
+        else if (provider === 'nominatim') providerResults = await searchNominatim(q.trim());
+        else return res.status(400).json({ ok: false, answered: false, error: 'Unknown provider', results: [] });
+
+        // Only cache non-empty answers so a transient upstream failure is retried on the next keystroke
+        if (providerResults.length > 0) {
+            memoryGeocoding.set(providerKey, providerResults);
+            pool.query(
+                'INSERT INTO geocoding_cache (query, results) VALUES ($1, $2) ON CONFLICT (query) DO UPDATE SET results = $2',
+                [providerKey, JSON.stringify(providerResults)]
+            ).catch(e => console.warn('Could not write geocoding provider result to cache:', e.message));
+        }
+        res.set('X-Cache', 'MISS');
+        return res.json({ ok: true, answered: true, provider, results: providerResults });
+    }
+
+    // 1. Legacy path: search local airport data first beforehand to avoid external api/geocoding cache contamination for common trips & flights
     const localMatches = searchLocalAirportData(trimmedQ);
     if (localMatches) {
         res.set('X-Cache', 'LOCAL_AIRPORT');

@@ -41,7 +41,7 @@ import GlassButton from './glass/GlassButton';
 import { Trip, Transport, Accommodation, TransportMode, User, GeoCoordinates, WorkspaceSettings } from '../types';
 import { dataService } from '../services/mockDb';
 import { invalidateGlobalWanderCache, useWanderSync } from '../hooks/useWanderSync';
-import { searchLocations, searchStations, getCoordinates } from '../services/geocoding';
+import { searchLocations, searchStations, searchAddresses, getCoordinates } from '../services/geocoding';
 import { parseGoogleMapsUrl } from '../services/locationParser';
 import { getAirportsByQueryLocally, getCarriersByQueryLocally, AIRLINE_CODES, formatCommercialAirlineName } from '../utils/flightData';
 import { formatDate, formatDateRange, formatCurrency, getCurrencySymbol, calculateTransportCost } from '../utils/formatters';
@@ -837,51 +837,18 @@ export const TripSetupBoard: React.FC<TripSetupBoardProps> = ({
         const suggestions: string[] = [];
         const seen = new Set<string>();
 
-        // 2. High-precision address search via Photon / OpenStreetMap API (handles house numbers, streets, postcodes, hotels)
+        // 2. Ranked address / venue / landmark search (exact coordinates are remembered for the picked label)
         try {
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 2500);
-            const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(trimmed)}&limit=10&lang=en`, {
-                signal: controller.signal
-            });
-            clearTimeout(timeout);
-            if (res.ok) {
-                const data = await res.json();
-                if (data?.features && Array.isArray(data.features)) {
-                    for (const f of data.features) {
-                        const p = f.properties || {};
-                        const parts: string[] = [];
-                        if (p.name) parts.push(p.name);
-                        const streetPart = [p.housenumber, p.street].filter(Boolean).join(' ');
-                        if (streetPart && (!p.name || !p.name.includes(p.street))) parts.push(streetPart);
-                        const cityPart = p.city || p.town || p.village || p.municipality;
-                        if (cityPart && (!p.name || !p.name.includes(cityPart))) parts.push(cityPart);
-                        if (p.country) parts.push(p.country);
-
-                        const formatted = parts.join(', ');
-                        if (formatted && !seen.has(formatted.toLowerCase())) {
-                            seen.add(formatted.toLowerCase());
-                            suggestions.push(`📍 ${formatted}`);
-                        }
-                    }
+            const labels = await searchAddresses(trimmed);
+            for (const loc of labels) {
+                const formatted = `📍 ${loc}`;
+                if (!seen.has(formatted.toLowerCase())) {
+                    seen.add(formatted.toLowerCase());
+                    suggestions.push(formatted);
                 }
             }
         } catch {
             // Network fallback
-        }
-
-        // 3. Fallback to searchLocations from geocoding service
-        if (suggestions.length < 5) {
-            try {
-                const locs = await searchLocations(trimmed);
-                for (const loc of locs) {
-                    const formatted = loc.startsWith('📍 ') ? loc : `📍 ${loc}`;
-                    if (!seen.has(formatted.toLowerCase())) {
-                        seen.add(formatted.toLowerCase());
-                        suggestions.push(formatted);
-                    }
-                }
-            } catch {}
         }
 
         return suggestions.slice(0, 12);

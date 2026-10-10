@@ -567,7 +567,8 @@ interface AutocompleteProps {
   label?: string;
   value: string;
   onChange: (value: string) => void;
-  fetchSuggestions: (query: string) => Promise<string[]>;
+  /** Optional second argument streams progressively better suggestions (instant local tier first, then providers). */
+  fetchSuggestions: (query: string, onPartial?: (suggestions: string[]) => void) => Promise<string[]>;
   placeholder?: string;
   className?: string;
 }
@@ -663,7 +664,12 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
       setIsLoading(true);
       timeoutRef.current = setTimeout(async () => {
         try {
-          const results = await fetchSuggestions(val);
+          const results = await fetchSuggestions(val, (partial) => {
+            // Streamed updates: show whatever is best so far without waiting for the slowest provider
+            if (latestQueryRef.current !== val || !partial || partial.length === 0) return;
+            setSuggestions(partial);
+            setIsOpen(true);
+          });
           if (latestQueryRef.current !== val) return;
 
           if (results && results.length > 0) {
@@ -680,7 +686,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
             setIsLoading(false);
           }
         }
-      }, 350);
+      }, 120);
     } else {
       setIsOpen(false);
       setIsLoading(false);

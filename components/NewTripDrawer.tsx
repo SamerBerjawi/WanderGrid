@@ -259,7 +259,11 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
         setIsSearching(true);
         const timer = setTimeout(async () => {
             try {
-                const results = await searchLocationSuggestions(query);
+                const results = await searchLocationSuggestions(query, (partial) => {
+                    if (isCancelled || partial.length === 0) return;
+                    setSuggestions(partial);
+                    setShowSuggestions(true);
+                });
                 if (!isCancelled) {
                     setSuggestions(results);
                     setShowSuggestions(results.length > 0);
@@ -270,7 +274,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                     setIsSearching(false);
                 }
             }
-        }, 220);
+        }, 100);
 
         return () => {
             isCancelled = true;

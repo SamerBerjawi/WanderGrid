@@ -919,22 +919,16 @@ class DataService {
   private async processGeocoding(trip: Trip): Promise<Trip> {
       const updatedTrip = { ...trip };
       if (updatedTrip.location) {
-          const isMalmo = /malm[öo]/i.test(updatedTrip.location);
-          if (isMalmo && (!updatedTrip.coordinates || updatedTrip.coordinates.lat > 57)) {
-              updatedTrip.coordinates = { lat: 55.6059, lng: 13.0007 };
-          } else {
-              const coords = await getCoordinates(updatedTrip.location);
-              if (coords) updatedTrip.coordinates = coords;
-          }
+          // Ranked resolution wins (a picked suggestion resolves to its exact coordinates, typed text is ranked by
+          // relevance/population/country); previously stored coordinates are only a fallback when nothing resolves.
+          const coords = await getCoordinates(updatedTrip.location);
+          if (coords) updatedTrip.coordinates = coords;
       }
       if (updatedTrip.locations && Array.isArray(updatedTrip.locations)) {
           updatedTrip.locations = await Promise.all(updatedTrip.locations.map(async (loc) => {
               if (loc.name) {
-                  const isLocMalmo = /malm[öo]/i.test(loc.name);
-                  if (isLocMalmo) {
-                      return { ...loc, coordinates: { lat: 55.6059, lng: 13.0007 } };
-                  }
-                  if (loc.coordinates?.lat && loc.coordinates?.lng && !isNaN(loc.coordinates.lat)) {
+                  if (loc.coordinates?.lat && loc.coordinates?.lng && !isNaN(loc.coordinates.lat) && !isNaN(loc.coordinates.lng)) {
+                      // Keep coordinates the user already confirmed for this stop
                       return loc;
                   }
                   const c = await getCoordinates(loc.name);

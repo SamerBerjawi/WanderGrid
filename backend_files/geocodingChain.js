@@ -53,6 +53,145 @@ async function lookupTimezoneForCoord(lat, lon) {
   return undefined;
 }
 
+
+/**
+ * Single-provider lookups used by the progressive autocomplete (/api/geocode/search?provider=...).
+ * Each returns a flat array of normalised raw places (never throws, [] on failure/timeout) so the client can
+ * query providers in parallel and merge/rank the results itself. All calls are cached by fetchUpstream and
+ * obey the 3 s hard timeout required for geocoding providers.
+ */
+const GEOCODE_TIMEOUT_MS = 3000;
+
+function splitQuery(query) {
+  const parts = String(query || '').split(',').map(s => s.trim()).filter(Boolean);
+  return { main: parts[0] || '', hint: parts.slice(1).join(', ') };
+}
+
+async function searchOpenMeteo(query) {
+  const { main } = splitQuery(query);
+  if (main.length < 2) return [];
+  const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(main)}&count=10&language=en&format=json`;
+  try {
+    const res = await fetchUpstream({
+      key: `geocode:meteo:v2:${normalizeToponym(main)}`,
+      url,
+      ttlMs: 7 * 24 * 3600 * 1000,
+      staleMs: 30 * 24 * 3600 * 1000,
+      timeoutMs: GEOCODE_TIMEOUT_MS,
+      maxBytes: 512 * 1024,
+      hostGate: { minIntervalMs: 50 },
+    });
+    if (!res.ok || !Array.isArray(res.data?.results)) return [];
+    return res.data.results.map(item => ({
+      name: item.name,
+      latitude: item.latitude,
+      longitude: item.longitude,
+      country: item.country || '',
+      country_code: (item.country_code || '').toUpperCase(),
+      timezone: item.timezone || undefined,
+      admin1: item.admin1 || '',
+      population: item.population || 0,
+      feature_code: item.feature_code || '',
+      provider: 'open-meteo',
+    }));
+  } catch (err) {
+    console.warn('[Geocoding] Open-Meteo provider error:', err.message);
+    return [];
+  }
+}
+
+async function searchPhoton(query, { lat, lon, tag } = {}) {
+  const q = String(query || '').trim();
+  if (q.length < 2) return [];
+  const allowedTag = /^[a-z_]+:[a-z_]+$/.test(tag || '') ? tag : '';
+  let url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=8&lang=en`;
+  if (Number.isFinite(lat) && Number.isFinite(lon)) url += `&lat=${lat}&lon=${lon}`;
+  if (allowedTag) url += `&osm_tag=${encodeURIComponent(allowedTag)}`;
+  try {
+    const res = await fetchUpstream({
+      key: `geocode:photon:v2:${normalizeToponym(q)}:${allowedTag}:${Number.isFinite(lat) ? `${lat.toFixed(1)},${lon.toFixed(1)}` : 'global'}`,
+      url,
+      ttlMs: 7 * 24 * 3600 * 1000,
+      staleMs: 30 * 24 * 3600 * 1000,
+      timeoutMs: GEOCODE_TIMEOUT_MS,
+      maxBytes: 512 * 1024,
+      hostGate: { minIntervalMs: 50 },
+    });
+    if (!res.ok || !Array.isArray(res.data?.features)) return [];
+    return res.data.features.map(f => {
+      const props = f.properties || {};
+      const geom = f.geometry?.coordinates || [];
+      let viewport;
+      if (Array.isArray(props.extent) && props.extent.length === 4) {
+        const [west, north, east, south] = props.extent;
+        if (west <= east && south <= north) viewport = [west, south, east, north];
+      }
+      return {
+        name: props.name || props.street || props.city || q,
+        latitude: geom[1],
+        longitude: geom[0],
+        country: props.country || '',
+        country_code: (props.countrycode || '').toUpperCase(),
+        admin1: props.state || '',
+        locality: props.city || props.town || props.village || props.municipality || props.district || props.county || '',
+        street: props.street || '',
+        housenumber: props.housenumber || '',
+        osm_key: props.osm_key || '',
+        osm_value: props.osm_value || '',
+        ptype: props.type || '',
+        provider: 'photon',
+        viewport,
+      };
+    }).filter(r => Number.isFinite(r.latitude) && Number.isFinite(r.longitude));
+  } catch (err) {
+    console.warn('[Geocoding] Photon provider error:', err.message);
+    return [];
+  }
+}
+
+async function searchNominatim(query) {
+  const q = String(query || '').trim();
+  if (q.length < 2) return [];
+  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(q)}&addressdetails=1&limit=5&accept-language=en`;
+  try {
+    const res = await fetchUpstream({
+      key: `geocode:nominatim:v2:${normalizeToponym(q)}`,
+      url,
+      ttlMs: 7 * 24 * 3600 * 1000,
+      staleMs: 30 * 24 * 3600 * 1000,
+      timeoutMs: GEOCODE_TIMEOUT_MS,
+      maxBytes: 512 * 1024,
+      hostGate: { minIntervalMs: 1000 },
+    });
+    if (!res.ok || !Array.isArray(res.data)) return [];
+    return res.data.map(item => {
+      const addr = item.address || {};
+      let viewport;
+      if (Array.isArray(item.boundingbox) && item.boundingbox.length === 4) {
+        const [south, north, west, east] = item.boundingbox.map(Number);
+        viewport = [west, south, east, north];
+      }
+      return {
+        name: item.name || addr.city || addr.town || addr.village || String(item.display_name || '').split(',')[0],
+        latitude: parseFloat(item.lat),
+        longitude: parseFloat(item.lon),
+        country: addr.country || '',
+        country_code: (addr.country_code || '').toUpperCase(),
+        admin1: addr.state || addr.province || '',
+        locality: addr.city || addr.town || addr.village || '',
+        osm_key: item.category || '',
+        osm_value: item.type || '',
+        ptype: item.addresstype || '',
+        provider: 'nominatim',
+        viewport,
+      };
+    }).filter(r => Number.isFinite(r.latitude) && Number.isFinite(r.longitude));
+  } catch (err) {
+    console.warn('[Geocoding] Nominatim provider error:', err.message);
+    return [];
+  }
+}
+
 async function searchGeocodingChain(query, { lat, lon } = {}) {
   const trimmed = query.trim();
   const normalizedQuery = normalizeToponym(trimmed);
@@ -240,6 +379,9 @@ async function searchGeocodingChain(query, { lat, lon } = {}) {
 }
 
 module.exports = {
+  searchOpenMeteo,
+  searchPhoton,
+  searchNominatim,
   normalizeToponym,
   classifyOsmType,
   lookupTimezoneForCoord,
