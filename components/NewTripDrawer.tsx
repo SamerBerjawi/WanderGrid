@@ -17,7 +17,7 @@ import {
 } from '@phosphor-icons/react';
 import GlassButton from './glass/GlassButton';
 import GlassPanel from './glass/GlassPanel';
-import { DateRangePicker } from './ui';
+import { DateRangePicker, CategoryBadge } from './ui';
 import { dataService } from '../services/mockDb';
 import { Trip, User, Transport, Accommodation } from '../types';
 import { searchLocationSuggestions, ParsedLocationItem, parseGoogleMapsUrl } from '../services/locationParser';
@@ -845,9 +845,7 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
                                                                     </span>
                                                                 )}
                                                             </div>
-                                                            <span className="text-2xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/20 shrink-0">
-                                                                Select
-                                                            </span>
+                                                            <CategoryBadge category={item.category || item.kind} />
                                                         </button>
                                                     ))}
                                                 </div>

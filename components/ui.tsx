@@ -1,6 +1,19 @@
-import React, { ReactNode, useState, useEffect, useRef, forwardRef, useCallback } from 'react';
+import React, { ReactNode, useState, useEffect, useRef, forwardRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { CaretDown as ChevronDown, X } from '@phosphor-icons/react';
+import { 
+  CaretDown as ChevronDown, 
+  X,
+  Storefront,
+  House,
+  RoadHorizon,
+  Train,
+  Anchor,
+  AirplaneTilt,
+  Buildings,
+  Globe,
+  MapPin
+} from '@phosphor-icons/react';
+import { getLocationMetadata, detectCategoryFromLabel } from '../services/geocoding';
 import {
   INPUT_BASE_STYLE,
   BTN_PRIMARY_STYLE,
@@ -562,13 +575,95 @@ export const Badge: React.FC<BadgeProps> = ({ children, color = 'primary', class
   );
 };
 
+// --- Category Badge ---
+export const CategoryBadge: React.FC<{ category?: string; className?: string }> = ({ category, className = '' }) => {
+  if (!category) return null;
+  const cat = category.toLowerCase();
+  
+  switch (cat) {
+    case 'business':
+      return (
+        <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 shrink-0", className)}>
+          <Storefront className="text-xs shrink-0" weight="bold" />
+          <span>Business</span>
+        </span>
+      );
+    case 'building':
+      return (
+        <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 shrink-0", className)}>
+          <House className="text-xs shrink-0" weight="bold" />
+          <span>Building</span>
+        </span>
+      );
+    case 'street':
+      return (
+        <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0", className)}>
+          <RoadHorizon className="text-xs shrink-0" weight="bold" />
+          <span>Street</span>
+        </span>
+      );
+    case 'station':
+      return (
+        <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 shrink-0", className)}>
+          <Train className="text-xs shrink-0" weight="bold" />
+          <span>Station</span>
+        </span>
+      );
+    case 'port':
+      return (
+        <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 shrink-0", className)}>
+          <Anchor className="text-xs shrink-0" weight="bold" />
+          <span>Port</span>
+        </span>
+      );
+    case 'airport':
+      return (
+        <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 shrink-0", className)}>
+          <AirplaneTilt className="text-xs shrink-0" weight="bold" />
+          <span>Airport</span>
+        </span>
+      );
+    case 'city':
+      return (
+        <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 shrink-0", className)}>
+          <Buildings className="text-xs shrink-0" weight="bold" />
+          <span>City</span>
+        </span>
+      );
+    case 'country':
+      return (
+        <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20 shrink-0", className)}>
+          <Globe className="text-xs shrink-0" weight="bold" />
+          <span>Country</span>
+        </span>
+      );
+    case 'region':
+    case 'area':
+    case 'poi':
+    default:
+      return (
+        <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-light-text-secondary dark:text-dark-text-secondary border border-black/10 dark:border-white/10 shrink-0", className)}>
+          <MapPin className="text-xs shrink-0" weight="bold" />
+          <span>{cat === 'region' ? 'Region' : cat === 'poi' ? 'Point' : 'Area'}</span>
+        </span>
+      );
+  }
+};
+
 // --- Autocomplete ---
+export interface AutocompleteItem {
+  label: string;
+  title?: string;
+  subtitle?: string;
+  category?: string;
+}
+
 interface AutocompleteProps {
   label?: string;
   value: string;
-  onChange: (value: string) => void;
+  onChange: (value: string, item?: AutocompleteItem) => void;
   /** Optional second argument streams progressively better suggestions (instant local tier first, then providers). */
-  fetchSuggestions: (query: string, onPartial?: (suggestions: string[]) => void) => Promise<string[]>;
+  fetchSuggestions: (query: string, onPartial?: (suggestions: (string | AutocompleteItem)[]) => void) => Promise<(string | AutocompleteItem)[]>;
   placeholder?: string;
   className?: string;
 }
@@ -580,7 +675,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
   placeholder,
   className = '',
 }) => {
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<(string | AutocompleteItem)[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState<number>(-1);
@@ -589,6 +684,24 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
   const timeoutRef = useRef<any>(null);
   const latestQueryRef = useRef<string>('');
   const [coords, setCoords] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  const normalizedItems = useMemo<AutocompleteItem[]>(() => {
+    return suggestions.map(item => {
+      if (typeof item === 'string') {
+        const meta = getLocationMetadata(item);
+        const title = meta?.title || (item.includes(' - ') ? item.split(' - ')[1]?.split(',')[0] : item.split(',')[0]);
+        const subtitle = meta?.subtitle || (item.includes(', ') ? item.substring(item.indexOf(', ') + 2) : undefined);
+        const category = meta?.category || detectCategoryFromLabel(item);
+        return {
+          label: item,
+          title: title || item,
+          subtitle,
+          category
+        };
+      }
+      return item;
+    });
+  }, [suggestions]);
 
   const updateCoords = useCallback(() => {
     if (!wrapperRef.current) return;
@@ -694,26 +807,26 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
     }
   };
 
-  const handleSelect = (suggestion: string) => {
-    onChange(suggestion);
+  const handleSelect = (item: AutocompleteItem) => {
+    onChange(item.label, item);
     setIsOpen(false);
     setSuggestions([]);
     setActiveIndex(-1);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!isOpen || suggestions.length === 0) return;
+    if (!isOpen || normalizedItems.length === 0) return;
 
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setActiveIndex((prev) => (prev + 1) % suggestions.length);
+      setActiveIndex((prev) => (prev + 1) % normalizedItems.length);
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setActiveIndex((prev) => (prev - 1 + suggestions.length) % suggestions.length);
+      setActiveIndex((prev) => (prev - 1 + normalizedItems.length) % normalizedItems.length);
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      if (activeIndex >= 0 && activeIndex < suggestions.length) {
-        handleSelect(suggestions[activeIndex]);
+      if (activeIndex >= 0 && activeIndex < normalizedItems.length) {
+        handleSelect(normalizedItems[activeIndex]);
       } else {
         setIsOpen(false);
       }
@@ -752,7 +865,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
         </GlassPanel>
       </div>
 
-      {isOpen && suggestions.length > 0 && coords && createPortal(
+      {isOpen && normalizedItems.length > 0 && coords && createPortal(
         <ul
           ref={dropdownRef}
           style={{
@@ -762,9 +875,9 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
             width: coords.width,
             zIndex: 70, // z-popover
           }}
-          className="z-popover min-w-full w-max max-w-[90vw] bg-white/95 dark:bg-dark-card/95 backdrop-blur-xl border border-black/10 dark:border-white/10 shadow-2xl rounded-2xl overflow-hidden max-h-60 overflow-y-auto animate-fade-in p-1 custom-scrollbar"
+          className="z-popover min-w-full w-max max-w-[90vw] bg-white/95 dark:bg-dark-card/95 backdrop-blur-xl border border-black/10 dark:border-white/10 shadow-2xl rounded-2xl overflow-hidden max-h-60 overflow-y-auto animate-fade-in p-1.5 custom-scrollbar flex flex-col gap-1"
         >
-          {suggestions.map((item, index) => {
+          {normalizedItems.map((item, index) => {
             const isSelected = index === activeIndex;
             return (
               <li
@@ -772,14 +885,24 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
                 onClick={() => handleSelect(item)}
                 onMouseEnter={() => setActiveIndex(index)}
                 className={cn(
-                  "px-3.5 py-2.5 cursor-pointer text-xs font-bold rounded-xl transition-colors truncate max-w-[400px]",
+                  "px-3.5 py-2.5 cursor-pointer rounded-xl transition-all flex items-center justify-between gap-3 text-left",
                   isSelected
-                    ? "bg-primary-500 text-white"
+                    ? "bg-primary-500/10 dark:bg-primary-500/20 text-primary-600 dark:text-primary-300 shadow-xs"
                     : "text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/5"
                 )}
-                title={item}
+                title={item.label}
               >
-                {item}
+                <div className="flex flex-col min-w-0 flex-1">
+                  <span className="text-xs font-bold truncate">
+                    {item.title}
+                  </span>
+                  {item.subtitle && (
+                    <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary truncate font-medium mt-0.5">
+                      {item.subtitle}
+                    </span>
+                  )}
+                </div>
+                <CategoryBadge category={item.category} />
               </li>
             );
           })}

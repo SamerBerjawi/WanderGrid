@@ -244,6 +244,10 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
           mode: defaultMode,
           origin: locA.name,
           destination: locB.name,
+          originLat: locA.coordinates?.lat,
+          originLng: locA.coordinates?.lng,
+          destLat: locB.coordinates?.lat,
+          destLng: locB.coordinates?.lng,
           departureDate: locA.endDate || locA.startDate,
           departureTime: '10:00',
           arrivalDate: locB.startDate,
@@ -490,6 +494,42 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
       return 0;
     });
   }, [roadTrips, searchQuery, modeFilter, statusFilter, sortBy]);
+
+  const mapTrips = useMemo(() => {
+    const existingTransportIds = new Set<string>();
+    trips.forEach(t => t.transports?.forEach(tr => existingTransportIds.add(tr.id)));
+
+    const standalone = roadTrips.filter(rt => !existingTransportIds.has(rt.id)).map(rt => {
+      if (!rt.originLat || !rt.destLat) {
+        const o = getCoordinatesSync(rt.origin);
+        const d = getCoordinatesSync(rt.destination);
+        return {
+          ...rt,
+          originLat: rt.originLat ?? o?.lat,
+          originLng: rt.originLng ?? o?.lng,
+          destLat: rt.destLat ?? d?.lat,
+          destLng: rt.destLng ?? d?.lng,
+        };
+      }
+      return rt;
+    });
+
+    if (standalone.length === 0) return trips;
+
+    const virtualTrip: Trip = {
+      id: 'roadtrips-overview',
+      name: 'Overland & Road Trips',
+      location: 'Overland Routes',
+      startDate: standalone[0]?.departureDate || '',
+      endDate: standalone[standalone.length - 1]?.arrivalDate || '',
+      status: 'Upcoming',
+      participants: [],
+      transports: standalone,
+      locations: [],
+      notes: ''
+    };
+    return [...trips, virtualTrip];
+  }, [trips, roadTrips]);
 
   // Reset modal fields for create
   const handleOpenCreateModal = () => {
@@ -924,7 +964,7 @@ export const RoadTrips: React.FC<{ onTripClick?: (id: string) => void }> = ({ on
                   </div>
                 }>
                   <DeckFlightMap
-                    trips={trips}
+                    trips={mapTrips}
                     showFlightRoutes={false}
                     showLandSeaRoutes={true}
                     showCityMarkers={true}

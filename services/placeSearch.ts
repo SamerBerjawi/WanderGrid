@@ -12,7 +12,7 @@
  */
 import { STATIC_GEO_DATA, cleanCityName } from './geocoding';
 
-export type PlaceKind = 'city' | 'airport' | 'station' | 'poi' | 'region' | 'country';
+export type PlaceKind = 'city' | 'country' | 'street' | 'building' | 'business' | 'station' | 'port' | 'airport' | 'region' | 'poi';
 export type SearchMode = 'auto' | 'airport' | 'station' | 'bus' | 'address';
 
 export interface Place {
@@ -21,6 +21,7 @@ export interface Place {
     name: string;
     subtitle: string;
     kind: PlaceKind;
+    category?: PlaceKind;
     lat: number;
     lng: number;
     country: string;
@@ -262,28 +263,93 @@ interface RawPlaceLike { entry: LocalEntry }
 // ---------------------------------------------------------------------------------------------------------------
 
 function classify(raw: RawPlace): PlaceKind {
-    const fc = raw.feature_code || '';
-    const key = raw.osm_key || '';
-    const val = raw.osm_value || '';
-    const ptype = raw.ptype || '';
+    const fc = (raw.feature_code || '').toUpperCase();
+    const key = (raw.osm_key || '').toLowerCase();
+    const val = (raw.osm_value || '').toLowerCase();
+    const ptype = (raw.ptype || '').toLowerCase();
+    const rawName = (raw.name || '').toLowerCase();
 
-    if (key === 'aeroway' || fc === 'AIRP' || fc === 'AIRF') return 'airport';
-    if (key === 'railway' && (val === 'station' || val === 'halt')) return 'station';
-    if (key === 'public_transport' && val === 'station') return 'station';
-    if (key === 'amenity' && val === 'bus_station') return 'station';
-    if (key === 'building' && val === 'train_station') return 'station';
-    if (key === 'place') {
-        if (val === 'country') return 'country';
-        if (['state', 'region', 'province', 'county', 'district'].includes(val)) return 'region';
+    // 1. Airport
+    if (key === 'aeroway' || fc === 'AIRP' || fc === 'AIRF' || raw.iata || val === 'airport' || val === 'aerodrome' || (rawName.includes('airport') && !rawName.includes('station'))) {
+        return 'airport';
+    }
+
+    // 2. Station (Rail & Bus)
+    if (
+        (key === 'railway' && (val === 'station' || val === 'halt' || val === 'stop')) ||
+        (key === 'public_transport' && (val === 'station' || val === 'stop_position' || val === 'platform')) ||
+        (key === 'amenity' && (val === 'bus_station' || val === 'bus_stop')) ||
+        (key === 'building' && val === 'train_station') ||
+        ptype === 'station' || fc === 'RSTN' || fc === 'BUSN' ||
+        (/\b(train station|railway station|bus station|central station|metro station|gare|bahnhof|estacion|stazione)\b/i.test(raw.name || ''))
+    ) {
+        return 'station';
+    }
+
+    // 3. Port / Ferry / Marina
+    if (
+        (key === 'amenity' && val === 'ferry_terminal') ||
+        key === 'harbour' || key === 'marina' || key === 'port' ||
+        ['ferry_terminal', 'harbour', 'marina', 'port', 'pier', 'dock'].includes(val) ||
+        fc === 'PRT' || fc === 'HBR' || fc === 'MRNA' ||
+        (/\b(port|harbour|harbor|ferry terminal|marina|cruise terminal|pier|dock)\b/i.test(raw.name || '') && !rawName.includes('airport'))
+    ) {
+        return 'port';
+    }
+
+    // 4. Street / Road
+    if (
+        ['highway', 'street', 'road', 'track'].includes(key) ||
+        ptype === 'street' ||
+        fc.startsWith('RD') ||
+        Boolean(raw.street && !raw.name)
+    ) {
+        return 'street';
+    }
+
+    // 5. Building / Residential
+    if (
+        ['building', 'house', 'apartments', 'residential', 'industrial'].includes(val) ||
+        Boolean(raw.housenumber) ||
+        fc.startsWith('BLD')
+    ) {
+        return 'building';
+    }
+
+    // 6. Business / Commercial / Venue / Attraction
+    if (
+        ['shop', 'amenity', 'commercial', 'tourism', 'leisure', 'craft', 'office', 'healthcare'].includes(key) ||
+        ['hotel', 'restaurant', 'bar', 'cafe', 'bank', 'pharmacy', 'hospital', 'supermarket', 'attraction', 'museum', 'theme_park', 'viewpoint'].includes(val) ||
+        fc.startsWith('HTL') || fc.startsWith('REST')
+    ) {
+        return 'business';
+    }
+
+    // 7. Country
+    if (val === 'country' || fc.startsWith('PCL') || ptype === 'country' || (key === 'boundary' && ptype === 'country')) {
+        return 'country';
+    }
+
+    // 8. Region / State / Province / County
+    if (
+        ['state', 'region', 'province', 'county', 'district'].includes(val) ||
+        fc.startsWith('ADM') ||
+        ptype === 'state' || ptype === 'county' ||
+        (key === 'boundary' && (ptype === 'state' || ptype === 'county'))
+    ) {
+        return 'region';
+    }
+
+    // 9. City / Town / Municipality
+    if (
+        key === 'place' ||
+        fc.startsWith('PPL') ||
+        ['city', 'town', 'village', 'hamlet', 'municipality', 'suburb', 'borough', 'quarter', 'neighbourhood'].includes(val) ||
+        ['city', 'town', 'village', 'municipality'].includes(ptype)
+    ) {
         return 'city';
     }
-    if (fc.startsWith('PPL')) return 'city';
-    if (fc.startsWith('PCL')) return 'country';
-    if (fc.startsWith('ADM')) return 'region';
-    if (key === 'boundary') return ptype === 'country' ? 'country' : ptype === 'state' || ptype === 'county' ? 'region' : 'city';
-    if (ptype === 'city') return 'city';
-    if (ptype === 'state' || ptype === 'county') return 'region';
-    if (ptype === 'country') return 'country';
+
     return 'poi';
 }
 
@@ -324,9 +390,26 @@ function buildPlaceFromRaw(raw: RawPlace): Place | null {
         label = name;
     } else if (kind === 'region') {
         label = country && norm(country) !== norm(name) ? `${name}, ${country}` : name;
+    } else if (kind === 'street') {
+        const streetLine = raw.street ? (raw.housenumber ? `${raw.street} ${raw.housenumber}` : raw.street) : name;
+        name = streetLine;
+        const sub = [raw.locality, admin1, country].filter(Boolean);
+        subtitle = sub.join(', ');
+        label = [name, raw.locality, country].filter(Boolean).join(', ');
+    } else if (kind === 'building') {
+        const streetLine = raw.street ? (raw.housenumber ? `${raw.street} ${raw.housenumber}` : raw.street) : '';
+        const isNamedPlace = name && name.toLowerCase() !== (raw.street || '').toLowerCase();
+        name = isNamedPlace ? name : (streetLine || name);
+        const sub = isNamedPlace && streetLine ? [streetLine, raw.locality, country] : [raw.locality, admin1, country];
+        subtitle = sub.filter(Boolean).join(', ');
+        label = [name, raw.locality, country].filter(Boolean).join(', ');
+    } else if (kind === 'business' || kind === 'poi' || kind === 'port') {
+        const streetLine = raw.street ? (raw.housenumber ? `${raw.street} ${raw.housenumber}` : raw.street) : '';
+        const sub = [streetLine, raw.locality, admin1, country].filter(Boolean);
+        subtitle = sub.join(', ');
+        label = [name, raw.locality, country].filter(Boolean).join(', ');
     } else {
-        // Airports, stations and POIs keep their full name: never run them through the city cleaner
-        // (it strips "Airport" / "Station" and would make them collide with the city itself).
+        // Airports, stations keep their specific naming
         let displayName = name;
         if (kind === 'airport') {
             const near = raw.iata ? getLocalIndex().find(e => e.iata === raw.iata) || findNearbyIata(lat, lng, countryCode) : findNearbyIata(lat, lng, countryCode);
@@ -354,6 +437,7 @@ function buildPlaceFromRaw(raw: RawPlace): Place | null {
         name,
         subtitle,
         kind,
+        category: kind,
         lat,
         lng,
         country,
@@ -380,6 +464,7 @@ function buildPlaceFromLocal(e: LocalEntry): Place {
         name: iata ? e.name : cleanCityName(e.city, e.countryCode),
         subtitle: e.country,
         kind: e.kind,
+        category: e.kind,
         lat: e.lat,
         lng: e.lng,
         country: e.country,
@@ -467,12 +552,23 @@ function scorePlace(p: Place, q: QueryProfile): number {
     // Tiny localities must not outrank real destinations: the city bonus scales with importance.
     const importance = p.population ?? 0;
     const cityBoost = importance >= 100_000 || (p.rank ?? 0) >= 30 ? 24 : importance >= 10_000 || (p.rank ?? 0) >= 20 ? 16 : 6;
-    const intentBoost: Record<PlaceKind, number> = { city: cityBoost, region: 6, country: 12, airport: 10, station: 10, poi: 4 };
+    const intentBoost: Record<PlaceKind, number> = {
+        city: cityBoost,
+        region: 6,
+        country: 12,
+        airport: 10,
+        station: 10,
+        port: 8,
+        business: 4,
+        building: 4,
+        street: 4,
+        poi: 4
+    };
     if (q.mode === 'airport') s += p.kind === 'airport' ? 90 : -40;
     else if (q.mode === 'station' || q.mode === 'bus') s += p.kind === 'station' ? 90 : -40;
-    else if (q.mode === 'address') s += p.kind === 'poi' ? 22 : p.kind === 'city' ? 10 : 0;
+    else if (q.mode === 'address') s += (p.kind === 'street' || p.kind === 'building' || p.kind === 'business' || p.kind === 'poi') ? 30 : p.kind === 'city' ? 10 : 0;
     else {
-        s += intentBoost[p.kind];
+        s += intentBoost[p.kind] || 4;
         if (q.airportIntent && p.kind === 'airport') s += 70;
         if (q.stationIntent && p.kind === 'station') s += 70;
     }
@@ -504,7 +600,18 @@ function scorePlace(p: Place, q: QueryProfile): number {
     return s;
 }
 
-const SAME_PLACE_KM: Record<PlaceKind, number> = { airport: 8, station: 1.2, poi: 0.4, city: 25, region: 80, country: 500 };
+const SAME_PLACE_KM: Record<PlaceKind, number> = {
+    airport: 8,
+    station: 1.2,
+    port: 1.5,
+    street: 0.2,
+    building: 0.1,
+    business: 0.1,
+    poi: 0.4,
+    city: 25,
+    region: 80,
+    country: 500
+};
 
 function mergeAndRank(candidates: Place[], q: QueryProfile, limit: number): Place[] {
     candidates.forEach(p => { p.score = scorePlace(p, q); });

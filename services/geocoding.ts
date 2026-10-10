@@ -1,5 +1,5 @@
 import { COUNTRY_REGION_MAP } from './geoData';
-import { searchPlaces, resolveBestPlace, lookupPlaceByLabel, cleanLabel, norm as normText, Place, SearchMode } from './placeSearch';
+import { searchPlaces, resolveBestPlace, lookupPlaceByLabel, cleanLabel, norm as normText, Place, SearchMode, PlaceKind } from './placeSearch';
 
 const CACHE_KEY = 'wandergrid_geo_cache_v4';
 const GEO_DB_NAME = 'wandergrid_geo_db_v4';
@@ -760,10 +760,93 @@ function hydrateFromPlaces(places: Place[]): string[] {
     for (const p of places) {
         if (labels.includes(p.label)) continue;
         labels.push(p.label);
-        internalCache.set(p.label, { ...placeToCoords(p), lon: p.lng, name: p.name, provider: p.provider });
+        internalCache.set(p.label, {
+            ...placeToCoords(p),
+            lon: p.lng,
+            name: p.name,
+            provider: p.provider,
+            category: p.kind,
+            subtitle: p.subtitle
+        });
     }
     if (places.length) saveCache();
     return labels;
+}
+
+export function getLocationCategory(label: string): PlaceKind | undefined {
+    if (!label) return undefined;
+    loadCache();
+    const hit = internalCache.get(label) || internalCache.get(label.trim());
+    if (hit?.category) return hit.category as PlaceKind;
+    if (hit?.types?.[0]) return hit.types[0] as PlaceKind;
+    return detectCategoryFromLabel(label);
+}
+
+export function getLocationMetadata(label: string): { category?: PlaceKind; title?: string; subtitle?: string } | undefined {
+    if (!label) return undefined;
+    loadCache();
+    const hit = internalCache.get(label) || internalCache.get(label.trim());
+    const category = (hit?.category || hit?.types?.[0] || detectCategoryFromLabel(label)) as PlaceKind;
+    const title = hit?.name || (label.includes(' - ') ? label.split(' - ')[1]?.split(',')[0] : label.split(',')[0]);
+    const subtitle = hit?.subtitle || (label.includes(', ') ? label.substring(label.indexOf(', ') + 2) : undefined);
+    return { category, title: title?.trim(), subtitle: subtitle?.trim() };
+}
+
+export function detectCategoryFromLabel(label: string): PlaceKind {
+    if (!label) return 'city';
+    const l = label.toLowerCase();
+    if (l.includes('airport') || l.includes('aerodrome') || /^[A-Z]{3}\s*-/.test(label)) return 'airport';
+    if (l.includes('station') || l.includes('gare ') || l.includes('bahnhof') || l.includes('gare de')) return 'station';
+    if (l.includes('port ') || l.includes(' harbour') || l.includes(' harbor') || l.includes('marina') || l.includes('ferry') || l.includes('cruise')) return 'port';
+    if (l.includes('hotel') || l.includes('restaurant') || l.includes('cafe') || l.includes('bar ') || l.includes('museum')) return 'business';
+    if (/\b(street|st\.|avenue|ave\.|boulevard|blvd\.|road|rd\.|drive|dr\.|way|lane|ln\.)\b/i.test(l)) return 'street';
+    if (/\b(building|tower|house|apartments|residence)\b/i.test(l)) return 'building';
+    return 'city';
+}
+
+export interface LocationSuggestion {
+    label: string;
+    title: string;
+    subtitle: string;
+    category: PlaceKind;
+    lat: number;
+    lng: number;
+    country?: string;
+    city?: string;
+}
+
+export async function searchLocationsDetailed(
+    query: string,
+    arg2?: Bias | ((suggestions: LocationSuggestion[]) => void),
+    arg3?: (suggestions: LocationSuggestion[]) => void
+): Promise<LocationSuggestion[]> {
+    const bias = typeof arg2 === 'function' ? undefined : arg2;
+    const onPartial = typeof arg2 === 'function' ? arg2 : arg3;
+    const trimmed = (query || '').trim();
+    if (trimmed.length < 2) return [];
+    loadCache();
+
+    const toSuggestions = (places: Place[]): LocationSuggestion[] => {
+        hydrateFromPlaces(places);
+        return places.map(p => ({
+            label: p.label,
+            title: p.name,
+            subtitle: p.subtitle,
+            category: p.kind,
+            lat: p.lat,
+            lng: p.lng,
+            country: p.country,
+            city: placeCity(p)
+        }));
+    };
+
+    const places = await searchPlaces(trimmed, {
+        mode: 'auto',
+        bias,
+        limit: 8,
+        onUpdate: onPartial ? (list) => onPartial(toSuggestions(list)) : undefined
+    });
+    return toSuggestions(places);
 }
 
 async function runLabelSearch(query: string, mode: SearchMode, bias?: Bias, onPartial?: PartialHandler): Promise<string[]> {

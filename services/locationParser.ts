@@ -23,6 +23,8 @@ export interface ParsedLocationItem {
   lat?: number;
   lng?: number;
   population?: number;
+  kind?: Place['kind'];
+  category?: Place['kind'];
 }
 
 /**
@@ -141,7 +143,9 @@ export async function searchLocationSuggestions(
         displayName: p.country && p.kind === 'city' ? `${flag} ${p.name}, ${p.country}` : `${flag} ${p.label}`,
         lat: p.lat,
         lng: p.lng,
-        population: p.population
+        population: p.population,
+        kind: p.kind,
+        category: p.kind
       };
     });
 
