@@ -1414,6 +1414,25 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                             city: metaOrigin ? metaOrigin.city : undefined,
                             iata: resolvedCode || undefined,
                             isAirport: true,
+                            type: 'airport',
+                            tripId: trip.id,
+                            color: [250, 154, 29, 255],
+                            strokeColor: [255, 255, 255, 255],
+                            frequency: origFreq,
+                            radius: isFreqMode
+                                ? Math.min(24.0, baseOriginRadius + Math.log2(Math.max(1, origFreq)) * scaleFactor)
+                                : baseOriginRadius
+                        });
+                    }
+                } else if (t.originLat && t.originLng && t.origin) {
+                    const origFreq = airportFreqMap.get(p1) || 1;
+                    if (!pointsMap.has(p1)) {
+                        pointsMap.set(p1, {
+                            position: [t.originLng, t.originLat, 0],
+                            name: formatProperLocationName(t.origin),
+                            city: formatProperLocationName(t.origin),
+                            isAirport: false,
+                            type: 'city',
                             tripId: trip.id,
                             color: [250, 154, 29, 255],
                             strokeColor: [255, 255, 255, 255],
@@ -1437,6 +1456,25 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
                             city: metaDest ? metaDest.city : undefined,
                             iata: resolvedCode || undefined,
                             isAirport: true,
+                            type: 'airport',
+                            tripId: trip.id,
+                            color: [250, 154, 29, 255],
+                            strokeColor: [255, 255, 255, 255],
+                            frequency: destFreq,
+                            radius: isFreqMode
+                                ? Math.min(24.0, baseOriginRadius + Math.log2(Math.max(1, destFreq)) * scaleFactor)
+                                : baseOriginRadius
+                        });
+                    }
+                } else if (t.destLat && t.destLng && t.destination) {
+                    const destFreq = airportFreqMap.get(p2) || 1;
+                    if (!pointsMap.has(p2)) {
+                        pointsMap.set(p2, {
+                            position: [t.destLng, t.destLat, 0],
+                            name: formatProperLocationName(t.destination),
+                            city: formatProperLocationName(t.destination),
+                            isAirport: false,
+                            type: 'city',
                             tripId: trip.id,
                             color: [250, 154, 29, 255],
                             strokeColor: [255, 255, 255, 255],
@@ -1450,13 +1488,36 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             });
         });
 
+        // Add any visitedPlaces (cities/destinations) not already keyed
+        if (visitedPlaces && visitedPlaces.length > 0) {
+            visitedPlaces.forEach(place => {
+                if (!place.lat || !place.lng) return;
+                const key = `${place.lng.toFixed(3)},${place.lat.toFixed(3)}`;
+                if (!pointsMap.has(key)) {
+                    pointsMap.set(key, {
+                        position: [place.lng, place.lat, 0],
+                        name: place.name,
+                        city: place.name,
+                        isAirport: false,
+                        type: 'city',
+                        color: [250, 154, 29, 255],
+                        strokeColor: [255, 255, 255, 255],
+                        frequency: 1,
+                        radius: baseOriginRadius
+                    });
+                }
+            });
+        }
+
         // 2. Clusters logic
-        const allAirports = Array.from(pointsMap.values()).filter(p => p.isAirport);
+        const allLocationNodes = activeAppearance.airportsOnly
+            ? Array.from(pointsMap.values()).filter(p => p.isAirport)
+            : Array.from(pointsMap.values());
         const clusters: any[] = [];
         if (clusterMode) {
             const grid = new Map<string, any[]>();
             const gridSize = 2.0;
-            allAirports.forEach(pt => {
+            allLocationNodes.forEach(pt => {
                 const gKey = `${Math.floor(pt.position[1] / gridSize)},${Math.floor(pt.position[0] / gridSize)}`;
                 if (!grid.has(gKey)) grid.set(gKey, []);
                 grid.get(gKey)!.push(pt);
@@ -1484,11 +1545,12 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         return {
             flightArcs: Array.from(flightCorridorsMap.values()),
             overlandSegments: overlandRoutes,
-            airportPoints: allAirports,
+            airportPoints: allLocationNodes,
             clusterNodes: clusters
         };
     }, [
         enrichedTrips,
+        visitedPlaces,
         showFlightRoutes,
         showLandSeaRoutes,
         showRoadTracing,
@@ -2203,7 +2265,7 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
         const aviationOpacity = Math.max(0.1, Math.min(1.0, activeAppearance.openAipOpacity ?? 0.85));
 
         if (showAllAviationAirports) {
-            const allGlobalAirports = runwayDataset ? getAllGlobalAirports(runwayDataset) : airportPoints;
+            const allGlobalAirports = runwayDataset ? getAllGlobalAirports(runwayDataset) : airportPoints.filter((p: any) => p.isAirport);
             if (allGlobalAirports.length > 0) {
                 layers.push(
                     new ScatterplotLayer({
@@ -2260,8 +2322,8 @@ export const DeckFlightMap: React.FC<DeckFlightMapProps> = ({
             }
         }
 
-        // 9. VISITED AIRPORT HUBS (Toggled from Airports Section under Trips)
-        if ((showCityMarkers || activeAppearance.airportsOnly) && activeAppearance.airportSize !== 'off') {
+        // 9. VISITED AIRPORT & CITY HUBS (Toggled from Airports Section under Trips)
+        if ((showCityMarkers || activeAppearance.airportsOnly) && activeAppearance.airportSize !== 'off' && viewMode !== 'scratch') {
             if (clusterMode && clusterNodes.length > 0) {
                 layers.push(
                     new ScatterplotLayer({
