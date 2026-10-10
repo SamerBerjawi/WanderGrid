@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Train, Clock, Armchair, X } from '@phosphor-icons/react';
 import { Input, Select, Autocomplete, TimeInput } from '../ui';
+import GlassPanel from '../glass/GlassPanel';
 import { SegmentForm } from './transportTypes';
 import { DurationInput } from './DurationInput';
 import { searchStations, getCoordinates, calculateDistance } from '../../services/geocoding';
@@ -55,7 +56,8 @@ export const TrainForm: React.FC<TrainFormProps> = ({
         : 'bg-primary-500/10 text-primary-600 dark:text-primary-400';
 
     return (
-        <div className="p-5 sm:p-6 rounded-3xl bg-white/70 dark:bg-white/[0.05] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-xs space-y-4">
+        <GlassPanel className="wg-glass-card w-full shadow-2xl overflow-hidden relative" overrides={{ borderRadius: 28 }} padding="0px">
+            <div className="p-5 sm:p-6 space-y-4">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <span className={`px-2.5 py-1 rounded-full text-2xs font-bold uppercase tracking-wider ${sectionBadgeColor}`}>
@@ -181,6 +183,7 @@ export const TrainForm: React.FC<TrainFormProps> = ({
                     canAutoCalc={Boolean(segment.origin && segment.destination)} 
                 />
             </div>
-        </div>
+            </div>
+        </GlassPanel>
     );
 };

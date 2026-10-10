@@ -9,6 +9,7 @@ import {
     CalendarBlank
 } from '@phosphor-icons/react';
 import { Button, Input, Select } from './ui';
+import GlassPanel from './glass/GlassPanel';
 import { Transport, TransportMode } from '../types';
 import { dataService } from '../services/mockDb';
 import {
@@ -499,27 +500,32 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
     return (
         <div className="space-y-6 animate-fade-in">
 
-            {/* Mode Selector Pill Bar - Derived from single source of truth TRANSPORT_MODES */}
-            <div className="bg-black/5 dark:bg-white/5 p-1.5 rounded-2xl flex gap-1 overflow-x-auto border border-black/5 dark:border-white/5 custom-scrollbar">
-                {TRANSPORT_MODES.map(m => {
-                    const ModeIcon = m.icon;
-                    const isActive = mode === m.mode;
-                    return (
-                        <button
-                            type="button"
-                            key={m.mode}
-                            onClick={() => handleModeChange(m.mode)}
-                            className={`flex-1 flex flex-col items-center justify-center py-2.5 px-3 rounded-xl transition-all min-w-[72px] min-h-[48px] cursor-pointer ${isActive
-                                    ? 'bg-white dark:bg-dark-card shadow-sm text-primary-600 dark:text-primary-400 font-bold border border-black/5 dark:border-white/10'
-                                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/10'
-                                }`}
-                        >
-                            <ModeIcon className="w-5 h-5 mb-1" weight={isActive ? "duotone" : "regular"} />
-                            <span className="text-2xs font-bold uppercase tracking-wider">{m.label}</span>
-                        </button>
-                    );
-                })}
-            </div>
+            <GlassPanel
+                className="wg-glass-pill w-full border border-black/5 dark:border-white/5 p-1 rounded-2xl"
+                padding="4px"
+                overrides={{ borderRadius: 20 }}
+            >
+                <div className="flex gap-1 overflow-x-auto custom-scrollbar w-full">
+                    {TRANSPORT_MODES.map(m => {
+                        const ModeIcon = m.icon;
+                        const isActive = mode === m.mode;
+                        return (
+                            <button
+                                type="button"
+                                key={m.mode}
+                                onClick={() => handleModeChange(m.mode)}
+                                className={`flex-1 flex flex-col items-center justify-center py-2 px-3 rounded-xl transition-all min-w-[72px] min-h-[48px] cursor-pointer ${isActive
+                                        ? 'bg-white/90 dark:bg-dark-card shadow-sm text-primary-600 dark:text-primary-400 font-bold border border-black/5 dark:border-white/10'
+                                        : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/10'
+                                    }`}
+                            >
+                                <ModeIcon className="w-5 h-5 mb-1" weight={isActive ? "duotone" : "regular"} />
+                                <span className="text-2xs font-bold uppercase tracking-wider">{m.label}</span>
+                            </button>
+                        );
+                    })}
+                </div>
+            </GlassPanel>
 
             {/* Trip Type Selector (Round Trip, One-Way, Multi-City) for multi-segment modes */}
             {!isCar && (
@@ -645,77 +651,89 @@ export const TransportConfigurator: React.FC<TransportConfiguratorProps> = ({
 
             {/* Booking Reference & Cost Bar for non-car transports */}
             {!isCar && (
-                <div className="p-5 rounded-3xl bg-white/70 dark:bg-white/[0.05] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-xs space-y-3">
-                    <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
-                        Booking Reference & Financials
-                    </span>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Input
-                            label="Confirmation Code"
-                            placeholder="e.g. 6-letter PNR (e.g. W9Q7KL)"
-                            value={bookingRef}
-                            onChange={e => setBookingRef(e.target.value.toUpperCase())}
-                            className="font-mono uppercase font-bold"
-                        />
-                        <div className="relative">
+                <GlassPanel
+                    className="wg-glass-card w-full shadow-lg overflow-hidden"
+                    overrides={{ borderRadius: 24 }}
+                    padding="0px"
+                >
+                    <div className="p-5 space-y-3">
+                        <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
+                            Booking Reference & Financials
+                        </span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <Input
-                                label="Total Itinerary Cost"
-                                type="number"
-                                placeholder="0.00"
-                                value={bookingCost}
-                                onChange={e => setBookingCost(e.target.value)}
-                                className="pl-8 font-bold text-lg"
+                                label="Confirmation Code"
+                                placeholder="e.g. 6-letter PNR (e.g. W9Q7KL)"
+                                value={bookingRef}
+                                onChange={e => setBookingRef(e.target.value.toUpperCase())}
+                                className="font-mono uppercase font-bold"
                             />
-                            <span className="absolute left-3 top-9 text-light-text-secondary font-bold text-xs">{currencySymbol}</span>
+                            <div className="relative">
+                                <Input
+                                    label="Total Itinerary Cost"
+                                    type="number"
+                                    placeholder="0.00"
+                                    value={bookingCost}
+                                    onChange={e => setBookingCost(e.target.value)}
+                                    className="pl-8 font-bold text-lg"
+                                />
+                                <span className="absolute left-3 top-9 text-light-text-secondary font-bold text-xs">{currencySymbol}</span>
+                            </div>
                         </div>
                     </div>
-                </div>
+                </GlassPanel>
             )}
 
             {/* Excursion Grouping for Ground & Sea Transports */}
             {mode !== 'Flight' && (
-                <div className="p-5 rounded-3xl bg-white/70 dark:bg-white/[0.05] backdrop-blur-md border border-black/8 dark:border-white/10 shadow-xs space-y-3">
-                    <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
-                            Excursion Grouping (Routes)
-                        </span>
-                        <span className="text-2xs font-bold text-primary-600 dark:text-primary-400">
-                            Synced with Routes tab
-                        </span>
-                    </div>
+                <GlassPanel
+                    className="wg-glass-card w-full shadow-lg overflow-hidden"
+                    overrides={{ borderRadius: 24 }}
+                    padding="0px"
+                >
+                    <div className="p-5 space-y-3">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold uppercase tracking-wider text-light-text-secondary dark:text-dark-text-secondary block">
+                                Excursion Grouping (Routes)
+                            </span>
+                            <span className="text-2xs font-bold text-primary-600 dark:text-primary-400">
+                                Synced with Routes tab
+                            </span>
+                        </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-                        <Select
-                            label="Assign to Excursion"
-                            value={isCustomExcursion ? '__new__' : selectedExcursion}
-                            onChange={e => {
-                                if (e.target.value === '__new__') {
-                                    setIsCustomExcursion(true);
-                                } else {
-                                    setIsCustomExcursion(false);
-                                    setSelectedExcursion(e.target.value);
-                                }
-                            }}
-                            options={[
-                                ...availableExcursions.map(title => ({
-                                    value: title,
-                                    label: title
-                                })),
-                                { value: '__new__', label: '+ Create New Excursion...' }
-                            ]}
-                        />
-
-                        {isCustomExcursion && (
-                            <Input
-                                label="New Excursion Name"
-                                placeholder="e.g. Day Trip to Amalfi"
-                                value={customExcursionTitle}
-                                onChange={e => setCustomExcursionTitle(e.target.value)}
-                                autoFocus
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                            <Select
+                                label="Assign to Excursion"
+                                value={isCustomExcursion ? '__new__' : selectedExcursion}
+                                onChange={e => {
+                                    if (e.target.value === '__new__') {
+                                        setIsCustomExcursion(true);
+                                    } else {
+                                        setIsCustomExcursion(false);
+                                        setSelectedExcursion(e.target.value);
+                                    }
+                                }}
+                                options={[
+                                    ...availableExcursions.map(title => ({
+                                        value: title,
+                                        label: title
+                                    })),
+                                    { value: '__new__', label: '+ Create New Excursion...' }
+                                ]}
                             />
-                        )}
+
+                            {isCustomExcursion && (
+                                <Input
+                                    label="New Excursion Name"
+                                    placeholder="e.g. Day Trip to Amalfi"
+                                    value={customExcursionTitle}
+                                    onChange={e => setCustomExcursionTitle(e.target.value)}
+                                    autoFocus
+                                />
+                            )}
+                        </div>
                     </div>
-                </div>
+                </GlassPanel>
             )}
 
             {/* Sticky Frosted Action Footer */}

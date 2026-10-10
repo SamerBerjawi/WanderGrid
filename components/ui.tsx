@@ -708,7 +708,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
     const rect = wrapperRef.current.getBoundingClientRect();
     if (rect.width === 0 && rect.height === 0) return;
 
-    const width = Math.max(rect.width, 240);
+    const width = rect.width;
     let left = rect.left;
     left = Math.max(12, Math.min((typeof window !== 'undefined' ? window.innerWidth : 360) - width - 12, left));
 
@@ -873,9 +873,10 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
             top: coords.top,
             left: coords.left,
             width: coords.width,
+            maxWidth: coords.width,
             zIndex: 70, // z-popover
           }}
-          className="z-popover min-w-full w-max max-w-[90vw] bg-white/95 dark:bg-dark-card/95 backdrop-blur-xl border border-black/10 dark:border-white/10 shadow-2xl rounded-2xl overflow-hidden max-h-60 overflow-y-auto animate-fade-in p-1.5 custom-scrollbar flex flex-col gap-1"
+          className="z-popover bg-white/95 dark:bg-dark-card/95 backdrop-blur-xl border border-black/10 dark:border-white/10 shadow-2xl rounded-2xl overflow-hidden max-h-60 overflow-y-auto animate-fade-in p-1.5 custom-scrollbar flex flex-col gap-1 box-border"
         >
           {normalizedItems.map((item, index) => {
             const isSelected = index === activeIndex;
@@ -885,14 +886,14 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
                 onClick={() => handleSelect(item)}
                 onMouseEnter={() => setActiveIndex(index)}
                 className={cn(
-                  "px-3.5 py-2.5 cursor-pointer rounded-xl transition-all flex items-center justify-between gap-3 text-left",
+                  "px-3.5 py-2.5 cursor-pointer rounded-xl transition-all flex items-center justify-between gap-3 text-left w-full overflow-hidden",
                   isSelected
                     ? "bg-primary-500/10 dark:bg-primary-500/20 text-primary-600 dark:text-primary-300 shadow-xs"
                     : "text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/5"
                 )}
                 title={item.label}
               >
-                <div className="flex flex-col min-w-0 flex-1">
+                <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
                   <span className="text-xs font-bold truncate">
                     {item.title}
                   </span>
@@ -902,7 +903,9 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
                     </span>
                   )}
                 </div>
-                <CategoryBadge category={item.category} />
+                <div className="shrink-0">
+                  <CategoryBadge category={item.category} />
+                </div>
               </li>
             );
           })}
