@@ -828,24 +828,26 @@ export const NewTripDrawer: React.FC<NewTripDrawerProps> = ({
 
                                             {/* Suggestions Flyout */}
                                             {showSuggestions && suggestions.length > 0 && (
-                                                <div className="absolute top-full left-0 mt-2 w-full z-dropdown bg-white/90 dark:bg-dark-card/90 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden max-h-52 overflow-y-auto custom-scrollbar p-1.5">
+                                                <div className="absolute top-full left-0 mt-2 w-full z-dropdown bg-white/95 dark:bg-dark-card/95 backdrop-blur-xl border border-black/10 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden max-h-72 overflow-y-auto custom-scrollbar p-2 flex flex-col gap-1.5">
                                                     {suggestions.map((item, idx) => (
                                                         <button
                                                             key={idx}
                                                             type="button"
                                                             onClick={() => handleAddDestination(item)}
-                                                            className="w-full text-left px-3.5 py-2.5 text-xs hover:bg-black/5 dark:hover:bg-white/10 text-zinc-800 dark:text-zinc-200 border-b border-black/5 dark:border-white/5 last:border-0 font-medium flex items-center justify-between gap-2 transition-colors cursor-pointer rounded-xl"
+                                                            className="w-full text-left px-3.5 py-3 min-h-[48px] text-xs hover:bg-black/5 dark:hover:bg-white/10 text-light-text dark:text-dark-text border border-transparent hover:border-black/5 dark:hover:border-white/5 font-medium flex items-center justify-between gap-3 transition-colors cursor-pointer rounded-xl"
                                                         >
                                                             <div className="flex items-center gap-2 truncate">
-                                                                <span>{item.flag || '📍'}</span>
-                                                                <span className="font-bold text-slate-900 dark:text-white truncate">{item.name}</span>
+                                                                <span className="shrink-0">{item.flag || '📍'}</span>
+                                                                <span className="font-bold text-light-text dark:text-dark-text truncate">{item.name}</span>
                                                                 {item.country && (
-                                                                    <span className="text-zinc-500 dark:text-zinc-400 truncate text-xs">
+                                                                    <span className="text-light-text-secondary dark:text-dark-text-secondary truncate text-xs">
                                                                         · {item.country}
                                                                     </span>
                                                                 )}
                                                             </div>
-                                                            <CategoryBadge category={item.category || item.kind} />
+                                                            <div className="shrink-0 self-center">
+                                                                <CategoryBadge category={item.category || item.kind} />
+                                                            </div>
                                                         </button>
                                                     ))}
                                                 </div>

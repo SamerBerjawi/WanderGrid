@@ -712,7 +712,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
     let left = rect.left;
     left = Math.max(12, Math.min((typeof window !== 'undefined' ? window.innerWidth : 360) - width - 12, left));
 
-    const dropdownHeight = dropdownRef.current?.offsetHeight || 240;
+    const dropdownHeight = dropdownRef.current?.offsetHeight || 300;
     const spaceBelow = window.innerHeight - rect.bottom;
     const spaceAbove = rect.top;
 
@@ -876,7 +876,7 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
             maxWidth: coords.width,
             zIndex: 70, // z-popover
           }}
-          className="z-popover bg-white/95 dark:bg-dark-card/95 backdrop-blur-xl border border-black/10 dark:border-white/10 shadow-2xl rounded-2xl overflow-hidden max-h-60 overflow-y-auto animate-fade-in p-1.5 custom-scrollbar flex flex-col gap-1 box-border"
+          className="z-popover bg-white/95 dark:bg-dark-card/95 backdrop-blur-xl border border-black/10 dark:border-white/10 shadow-2xl rounded-2xl overflow-hidden max-h-72 sm:max-h-80 overflow-y-auto animate-fade-in p-2 custom-scrollbar flex flex-col gap-1.5 box-border"
         >
           {normalizedItems.map((item, index) => {
             const isSelected = index === activeIndex;
@@ -886,24 +886,24 @@ export const Autocomplete: React.FC<AutocompleteProps> = ({
                 onClick={() => handleSelect(item)}
                 onMouseEnter={() => setActiveIndex(index)}
                 className={cn(
-                  "px-3.5 py-2.5 cursor-pointer rounded-xl transition-all flex items-center justify-between gap-3 text-left w-full overflow-hidden",
+                  "px-3.5 py-3 sm:py-3.5 min-h-[52px] cursor-pointer rounded-xl transition-all flex items-center justify-between gap-3 text-left w-full overflow-hidden border",
                   isSelected
-                    ? "bg-primary-500/10 dark:bg-primary-500/20 text-primary-600 dark:text-primary-300 shadow-xs"
-                    : "text-light-text dark:text-dark-text hover:bg-black/5 dark:hover:bg-white/5"
+                    ? "bg-primary-500/10 dark:bg-primary-500/20 text-primary-600 dark:text-primary-300 border-primary-500/20 shadow-xs"
+                    : "text-light-text dark:text-dark-text border-transparent hover:border-black/5 dark:hover:border-white/5 hover:bg-black/5 dark:hover:bg-white/5"
                 )}
                 title={item.label}
               >
-                <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
-                  <span className="text-xs font-bold truncate">
+                <div className="flex flex-col justify-center min-w-0 flex-1 overflow-hidden gap-1">
+                  <span className="text-xs font-bold leading-snug truncate">
                     {item.title}
                   </span>
                   {item.subtitle && (
-                    <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary truncate font-medium mt-0.5">
+                    <span className="text-2xs text-light-text-secondary dark:text-dark-text-secondary truncate font-medium leading-normal">
                       {item.subtitle}
                     </span>
                   )}
                 </div>
-                <div className="shrink-0">
+                <div className="shrink-0 self-center">
                   <CategoryBadge category={item.category} />
                 </div>
               </li>
