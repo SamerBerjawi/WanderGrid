@@ -1,0 +1,13 @@
+{
+  "name": "wandergrid-e2e",
+  "private": true,
+  "description": "Playwright end-to-end tests. Self-contained so the app's own package.json is untouched.",
+  "scripts": {
+    "test": "playwright test",
+    "test:auth": "playwright test auth/"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.49.1",
+    "pg-mem": "3.0.5"
+  }
+}

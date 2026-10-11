@@ -1,0 +1,121 @@
+# CLAUDE.md
+
+WanderGrid is a self-hosted travel planner, flight log and leave manager. It has a React SPA at the repo root and an Express + PostgreSQL backend in `backend_files/`.
+**Read [AGENTS.md](AGENTS.md) and [Design.md](Design.md) before any change.** They are binding: AGENTS.md covers architecture, performance and UI rules, and Design.md is the design system. This file is the orientation layer and does not repeat them.
+
+## Stack (versions from package.json ranges)
+
+**Frontend (root `package.json`, ESM)**
+- React 19.2 / react-dom 19.2, TypeScript ~5.8, Vite 6.2 with `@vitejs/plugin-react` 5, `vite-plugin-pwa` 1.3 (Workbox generateSW)
+- Tailwind CSS 3.4 + PostCSS/autoprefixer; `clsx`, `tailwind-merge`; global CSS in `styles.css`
+- UI: `@nkzw/liquid-glass` 1.3 (glass surfaces), `@phosphor-icons/react` 2.1, `motion` 12 (`motion/react`), `@number-flow/react`, `@dnd-kit/*`
+- Maps/geo: `maplibre-gl` 6.4, `deck.gl` 9.3, `pmtiles` 4.5, `leaflet` 1.9.4, `react-simple-maps` 3, `d3` 7, `topojson-client`, `searoute-js`, `@mapbox/mapbox-gl-rtl-text`
+- Charts: `recharts` 3.8. Data I/O: `xlsx` 0.18, `html2canvas` 1.4.1. AI: `@google/genai` 1.34
+- `.npmrc` sets `legacy-peer-deps=true`. Peer conflicts are expected.
+
+**Backend (`backend_files/package.json`, CommonJS)**
+- Node 20 (Dockerfile `node:20-alpine`), Express 4.19, `pg` 8.12, `jsonwebtoken` 9, `helmet` 7, `express-rate-limit` 8, `compression`, `cors`
+- Tests use the built-in `node:test` runner. There is no test framework dependency.
+- Postgres 15 (`postgres:15-alpine` in docker-compose)
+
+## Commands (verified 2026-10-10 on Node 24 / npm 11 unless noted)
+
+```bash
+npm install                      # root/frontend deps (legacy-peer-deps via .npmrc)
+npm run dev                      # Vite on :3000 (host: true); proxies /api -> http://localhost:3001
+npx tsc --noEmit                 # type check; currently 0 errors. There is no lint script
+npx vite build                   # production build to dist/ (works, ~8s)
+npm run build                    # = bump-version + vite build. SIDE EFFECT: rewrites version.ts and package.json "version"
+npm run preview                  # serve dist/
+
+cd backend_files && npm install
+npm test                         # node --test test/*.test.js : 28 tests, 27 pass, 1 FAILS (see Fragile)
+PORT=3001 DATABASE_URL=postgres://wandergrid:wandergrid_password@localhost:5432/wandergrid node server.js
+docker compose up -d --build     # full stack (app :4921 -> 3000, db). Needs JWT_SECRET in .env (copy .env.example)
+```
+- `npm start` is in the README but **does not exist**. Use `npm run dev`.
+- The backend defaults to `PORT=3000`, and that clashes with Vite. Set `PORT=3001` locally so the Vite proxy reaches it. I verified that it boots and that `/api/health` responds. Running it against a live Postgres was **not verified** because no Postgres or Docker was available.
+- Without a backend, `npm run dev` still works. In dev mode the data layer falls back to localStorage (see Data flow).
+- **There is no seed script.** The schema is created at startup by `initDb()` in `server.js` (`CREATE TABLE IF NOT EXISTS`, retried 10×/3s). `backend_files/schema.sql` mirrors it but nothing executes it. The global airport and carrier tables are populated automatically from external datasets. To get sample data, register a user in the UI or restore a backup JSON in Settings.
+- No frontend tests exist.
+
+## Directory map
+
+| Path | Responsibility |
+|---|---|
+| `index.tsx`, `App.tsx` | Entry point. `App` does view switching on `ViewState` with a `switch`; there is no router library. Views are `React.lazy`-loaded |
+| `views/` | Top-level pages (Dashboard, PlannerView, VacationPlanner, VacationCalendar, ExpeditionMapView, Flights/Flights2, RoadTrips/RoadTrips2, TripDetail/TripDetail2, TravelAtlas, Settings, UserDetail, Auth) |
+| `components/` | Feature components (configurators, drawers, map, passport/stamps). `ui.tsx` has the shared Card, Button and similar components |
+| `components/glass/` | Liquid-glass primitives: GlassPanel, GlassButton, GlassInput, GlassSelect, GlassDatePicker, GlassToggle, GlassSegmented, GlassSlider, SettingRow |
+| `components/ui/` | Icon wrapper, date pickers, bento grid, virtual list item |
+| `services/` | Client-side domain logic. `mockDb.ts` is **the** data service (`dataService`), despite its name. The rest cover geocoding, routing (road/rail/maritime), flight tracking, import/export, map styles, and the solar terminator |
+| `hooks/` | `useWanderSync` (SWR cache), `usePWA`, `useExistingTripSuggestions` |
+| `utils/` | `formatters.ts` (date/currency; mandatory), `brandfetch.ts`, `flightData.ts`, static aviation and sticker data |
+| `config/` | `featureFlags.ts` (`VITE_FF_*` overrides) and `pageThemes.ts` |
+| `types.ts`, `types/` | Shared TS types and `ViewState`. Path alias `@/*` points at the repo root |
+| `constants.ts` | Shared style strings (`INPUT_BASE_STYLE`, `BTN_*_STYLE`, …) |
+| `backend_files/` | Express server (`server.js`, ~2.9k lines), upstream helpers (`upstream.js`, `geocodingChain.js`, `routeProxy.js`, `aviationStack.js`, `carrierMapping.js`, `integrationsTester.js`), the `test/` folder, and the Dockerfile |
+| `public/` | PWA icons, `manifest.json`, GeoJSON (`data/`), map styles, `airport-overlay.pmtiles` (gitignored and must be present locally) |
+| `docs/` | Change registries: `gev-changes.md` (GEV feature ports with reversal recipes) and `mission-control-changes.md` |
+| `.agents/skills/liquid-glass-wandergrid`, `liquid-glass-wandergrid-SKILL.md` | Liquid-glass styling skill referenced by AGENTS.md §11 |
+| `scripts/bump-version.cjs` | Writes `v0.5-YYMMDD.N` to `version.ts` and `package.json` |
+| `dist/`, `scratch/` | Build output and an empty scratch dir. Both are untracked/ignored |
+
+## Architecture
+
+**Data flow**
+- Every collection is a Postgres table of shape `(id TEXT PK, data JSONB)`: users, trips, events, entitlements, configs, flights and visited. `settings` is a key/JSONB table. Generic `getResources/createResource/updateResource/deleteResource` handlers in `server.js` serve `/api/<collection>`, plus `/bulk` upserts for trips, flights and visited.
+- Client: components call `dataService` (in `services/mockDb.ts`). It calls `fetch('/api…')` with a Bearer token, a 10s timeout and exponential retry on network errors and 5xx responses. After a successful POST/PUT/DELETE it dispatches the `wandergrid_db_updated` window event. `useWanderSync` (5s TTL in-memory cache) listens for that event and refetches.
+- **Dev vs prod persistence:** in dev (`!import.meta.env.PROD`), a failed API call silently switches `dataService` to localStorage (`_useApi = false`). In prod it throws. In dev, state can therefore come from either localStorage or the database, so check which one when debugging.
+- Heavy jobs (backup, refresh, global data refresh) return 202 + `jobId`. Clients poll `/api/jobs/status/:jobId` (AGENTS.md §3).
+- Airports and carriers are served from in-memory maps loaded from the `global_airports` and `global_carriers` tables. A weekly `setInterval` refreshes them (`GLOBAL_DATA_REFRESH_MS`). Do not fetch them live per request (AGENTS.md §1).
+- Production: the Dockerfile builds the SPA, copies it to `client_build/`, and Express serves it statically along with the `*` SPA fallback. CI (`.github/workflows/build-and-publish.yml`) pushes the image to GHCR on main, master and `v*` tags.
+
+**Auth**
+- JWT (7d expiry), signed with `JWT_SECRET`. In production the server refuses to start with the default dev secret. Passwords use PBKDF2-SHA512 with a salt (`hashPassword`).
+- `authenticateToken` is applied to all of `/api`. The public paths are `/api/health`, `/api/auth/login`, `/api/auth/register` and `/api/calendar/:userId/feed.ics`. Token and user are stored in localStorage (`wandergrid_session_token`, `wandergrid_session_user`).
+- A 401 or 403 from the API dispatches `wandergrid-unauthorized` / `wandergrid:unauthorized` window events. `role` is carried in the token.
+- Rate limits: a general limiter on `/api` and a stricter one on `/api/auth`.
+
+**External services.** All of them go through backend proxies under `/api/proxy/*` with timeouts. `vite.config.ts` re-implements the route, rail and test proxies as dev middleware.
+- Geocoding: Open-Meteo, then Photon, then Nominatim (`geocodingChain.js`). Results are cached in the `geocoding_cache` table, the timeout is 3s, and the fallback on failure is `[]`.
+- Routing: FOSSGIS OSRM, then project-osrm, then Valhalla for road. OpenRailRouting for rail. `searoute-js` for maritime. Results are cached in `cached_routes`.
+- Flights: AviationStack, AeroDataBox (RapidAPI), adsbdb, adsb.lol and OpenSky. Map tiles: OpenFreeMap, CARTO, OSM, NASA GIBS, AWS Terrarium and OpenAIP (keyed). Logos: Brandfetch. Holidays: Nager.Date. Weather radar: RainViewer.
+- Gemini (`@google/genai`) runs client-side in `PackingList.tsx` and `TripDetail*.tsx`. The key comes from workspace settings (`googleGeminiApiKey`) or `GEMINI_API_KEY`, which `vite.config.ts` `define` **inlines into the bundle**.
+- Most third-party API keys are stored in workspace settings and sent by the client as headers, for example `X-AeroDataBox-Key` and `X-OpenAIP-Key`. A key can also be set through env vars (`INTEGRATIONS_*`).
+
+**Env vars** (see `.env.example`): `DATABASE_URL`, `JWT_SECRET`, `PORT`, `NODE_ENV`, `STRUCTURED_LOGGING`, `DB_POOL_SIZE`, `DB_CONNECTION_TIMEOUT_MS`, `DB_STATEMENT_TIMEOUT_MS`, `API_CACHE_TTL_MS`, `FLIGHT_FETCH_TIMEOUT_MS`, `GLOBAL_DATA_REFRESH_MS`, `GEOCODE_CACHE_TTL_MS`, `EXTERNAL_FETCH_TIMEOUT_MS`, `INTEGRATIONS_*`. Frontend: `GEMINI_API_KEY` and `VITE_FF_*`.
+
+## Conventions
+
+- **Naming:** PascalCase `.tsx` files for components and views, with named exports (e.g. `export const Flights`). camelCase `.ts` files for services and utils. Hooks are named `useX`. Backend files use camelCase CommonJS. Feature-flag IDs follow `GEV_P0x_*`.
+- **State:** there is no global store (no Redux or Zustand). Each view keeps local `useState` and reads through `dataService` and `useWanderSync`. Settings are loaded via `dataService.getWorkspaceSettings()`.
+- **Styling:** Tailwind utility classes with design tokens from `tailwind.config.js`, such as `light-text`/`dark-text`, `primary-*`, the `z-modal`/`z-popover`/… scale and `text-2xs`. Shared class strings live in `constants.ts`. Surfaces use `GlassPanel` (`wg-glass-card`/`wg-glass-pill`). Use Phosphor icons in duotone for headers and the regular `Plus` for add buttons. Dark mode is class-based.
+- **Formatting:** always use `formatDate`, `formatDateRange` and `formatCurrency` from `utils/formatters.ts`. Never call `toLocaleDateString` directly.
+- **UI rules to enforce** (AGENTS.md §7–11):
+  - No arbitrary `z-[…]` values.
+  - No raw `<select>` outside `GlassSelect`.
+  - No near-black surface fills.
+  - 44px touch targets, with `aria-label` on icon-only buttons.
+  - Use `<EmptyState />` for empty collections.
+  - Run the §11.3 grep self-check on touched files and report it.
+- **Error handling:**
+  - Server responses go through `sendError(res, err, status, msg)`, which sanitizes messages in production. Logs are structured JSON when `NODE_ENV=production` or `STRUCTURED_LOGGING=true`.
+  - On the client, `ErrorBoundary` wraps the root (`index.tsx`) and `AppErrorBoundary` wraps views.
+  - External calls fail fast and return empty results rather than throwing to the UI.
+- **Feature work:** new user-facing features go behind a flag in `config/featureFlags.ts`, default OFF. Record GEV ports in `docs/gev-changes.md`.
+
+## Fragile, legacy, or out of scope
+
+- **Failing test:** `test/route.test.js` "normalizes supported routing profiles" expects no `costing` key, but `routeProxy.js` now returns `costing: 'auto'`.
+- **Duplicate "v2" views:** `Flights`/`Flights2`, `RoadTrips`/`RoadTrips2` and `TripDetail`/`TripDetail2` are all routed (`ViewState.*_2`). Confirm which one the user means before editing, and keep any shared changes in sync.
+- **`services/mockDb.ts`** (~1.5k lines) is the real production data client, despite its name. It contains the API client, the localStorage fallback, backup/restore and trip↔flight sync. Edit it carefully. Restore assigns the password `password` to users that have none.
+- **`verifyPassword`** accepts plaintext stored passwords (legacy, no `:` salt separator). This is a legacy compatibility path, so do not extend it.
+- **`backend_files/server.js`** is a ~2.9k-line monolith, and `initDb()` is the real schema. Keep `schema.sql` in sync manually if you touch tables.
+- **Dev proxy duplication:** `vite.config.ts` duplicates the backend route, rail and test proxy logic. A change to one copy is not reflected in the other.
+- **PWA/service worker:** the app auto-reloads on `controllerchange` and on `vite:preloadError`. Stale caches can mask changes, so hard-reload or unregister the SW when testing builds.
+- **Version bumps:** `npm run build` bumps the version and creates a diff in `version.ts` and `package.json`.
+- **Case-sensitive filename:** the design spec is `Design.md`, but AGENTS.md links `design.md`. This only works on case-insensitive filesystems.
+- **README is partly stale:** it mentions `npm start`, React Globe GL and Nager-only geocoding.
+- **Missing local assets:** `public/airport-overlay.pmtiles` is gitignored, so fresh clones lack the airport overlay.
+- **Out of scope unless asked:** `dist/`, `node_modules/`, `scratch/`, `.agents/`, GHCR/CI workflow, `metadata.json` (AI Studio manifest), and vendored files in `public/vendor/`.
